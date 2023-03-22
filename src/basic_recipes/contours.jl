@@ -90,9 +90,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
     valuerange = lift(nan_extrema, plot, volume)
-    cliprange = replace_automatic!(plot, :colorrange) do
-        valuerange
-    end
+    cliprange = replace_automatic!(()-> valuerange, plot, :colorrange)
     cmap = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
