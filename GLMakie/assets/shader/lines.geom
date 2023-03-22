@@ -519,7 +519,7 @@ void main(void)
     o_normal = vec3(0);
 
     // we generate very thin lines for linewidth 0, so we manually skip them:
-    if (g_thickness[0] == 0.0 && g_thickness[1] == 0.0 && g_thickness[2] == 0.0 && g_thickness[3] == 0.0) {
+    if (g_thickness[1] == 0.0 && g_thickness[2] == 0.0) {
         return;
     }
 
