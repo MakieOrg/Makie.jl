@@ -916,23 +916,24 @@ end
 @reference_test "Z-translation within a recipe" begin
     # This is testing whether backends respect the 
     # z-level of plots within recipes in 2d.
-    # In an ideal world, the output of this test
+    # Ideally, the output of this test
     # would be a blue line with red scatter markers.
-    
     # However, if a backend does not correctly pick up on translations,
-    # then this will be drawn in 
-    @recipe(__TestRecipeForZTranslation) do scene
-        default_theme(scene)
-    end
-
-    function Makie.plot!(plot::__TestRecipeForZTranslation)
-        scatterlineplot_1 = scatterlines!(plot, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
-        scatterlineplot_2 = scatterlines!(plot, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
-        translate!(scatterlineplot_1.plots[2], 0, 0, 1)
-        translate!(scatterlineplot_2.plots[2], 0, 0, -1)
-    end
-
+    # then this will be drawn in the drawing order, and blue
+    # will completely obscure red.
+    
+    # It seems like we can't define recipes in `@reference_test` yet,
+    # so we'll have to fake a recipe's structure.
+    
     fig = Figure(resolution = (600, 600))
-    __testrecipeforztranslation(fig[1, 1])
+    # Create a recipe plot
+    ax, plot_top = contour(randn(10, 10))
+    # Plot some recipes at the level below the contour
+    scatterlineplot_1 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
+    scatterlineplot_2 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
+    # Translate the lowest level plots (scatters)
+    translate!(scatterlineplot_1.plots[2], 0, 0, 1)
+    translate!(scatterlineplot_2.plots[2], 0, 0, -1)
+    # Display
     fig
 end
