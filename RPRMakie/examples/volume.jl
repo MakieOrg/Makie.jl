@@ -29,9 +29,9 @@ vp = Makie.volume!(
     absorption=1f0, 
     colormap = Reverse(:plasma)
 )
-vp.absorption[] = 0.1f0
+vp.absorption[] = 0.5f0
 vp.colormap[] = :turbo
-vp.colorrange[] = extrema(vp[4][])
+
 scr = RPRMakie.Screen(ax.scene; iterations = 10)
 
 record(ax.scene, "volume_cube.mp4"; backend = RPRMakie, iterations = 15, framerate = 15) do io
