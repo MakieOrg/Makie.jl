@@ -511,7 +511,7 @@ end
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
-        for cplot in Makie.flatten_plots(plot)
+        for cplot in Makie.collect_atomic_plots(plot)
             delete!(screen, scene, cplot)
         end
     else
@@ -645,7 +645,7 @@ end
 """
     depthbuffer(screen::Screen)
 
-Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.  
+Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.
 
 A depth buffer is used to determine which plot's contents should be shown at each pixel.
 Usage:
@@ -912,7 +912,7 @@ function renderloop(screen)
 end
 
 function plot2robjs(screen::Screen, plot)
-    plots = Makie.flatten_plots(plot)
+    plots = Makie.collect_atomic_plots(plot)
     return map(x-> screen.cache[objectid(x)], plots)
 end
 

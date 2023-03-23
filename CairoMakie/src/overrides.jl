@@ -12,11 +12,9 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
 end
 
-# Override `should_not_flatten` to allow `poly` to remain a unit,
+# Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
-function should_not_flatten(plot::Poly)
-    true
-end
+is_cairomakie_atomic_plot(plot::Poly) = true
 
 """
 Fallback method for args without special treatment.
@@ -186,10 +184,10 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
-# Override `should_not_flatten` to allow this dispatch of `band` to remain a unit,
+# Override `is_cairomakie_atomic_plot` to allow this dispatch of `band` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
-function should_not_flatten(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
-    true
+function is_cairomakie_atomic_plot(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    return true
 end
 
 #################################################################################
@@ -225,8 +223,8 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     return
 end
 
-# Override `should_not_flatten` to allow `Tricontourf` to remain a unit,
+# Override `is_cairomakie_atomic_plot` to allow `Tricontourf` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
-function should_not_flatten(plot::Tricontourf)
-    true
+function is_cairomakie_atomic_plot(plot::Tricontourf)
+    return true
 end

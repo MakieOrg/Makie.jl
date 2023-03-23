@@ -11,7 +11,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
-    allplots = Makie.flatten_plots(scene; additional_criteria = should_not_flatten)
+    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
     zvals = Makie.zvalue2d.(allplots)
     permute!(allplots, sortperm(zvals))
 
@@ -38,8 +38,8 @@ function cairo_draw(screen::Screen, scene::Scene)
         end
         Cairo.save(screen.context)
 
-        # When a plot is too large to save with a reasonable file size on a vector backend, 
-        # the user can choose to rasterize it when plotting to vector backends, by using the 
+        # When a plot is too large to save with a reasonable file size on a vector backend,
+        # the user can choose to rasterize it when plotting to vector backends, by using the
         # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
         # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
@@ -57,18 +57,16 @@ function cairo_draw(screen::Screen, scene::Scene)
 end
 
 """
-    should_not_flatten(plot::Combined)::Bool
+    is_cairomakie_atomic_plot(plot::Combined)::Bool
 
-Returns whether the plot should be flattened (false) or not (true); for use in `Makie.flatten_plots`.
-This is overridden for `Poly`, `Band`, and `Tricontourf` so we can apply 
-CairoMakie-specific drawing methods to them.
+Returns whether the plot is considered atomic for the CairoMakie backend.
+This is overridden for `Poly`, `Band`, and `Tricontourf` so we can apply
+CairoMakie can treat them as atomic plots and render them directly.
 
 Plots with children are by default recursed into.  This can be overridden
-by defining specific dispatches for `should_flatten` for a given plot type.
+by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
-function should_not_flatten(plot)
-    return false
-end
+is_cairomakie_atomic_plot(plot::Combined) = isempty(plot.plots)
 
 """
     check_parent_plots(f, plot::Combined)::Bool

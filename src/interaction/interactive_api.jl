@@ -10,7 +10,7 @@ Returns true if the mouse currently hovers any of `plots`.
 mouseover(x, plots::AbstractPlot...) = mouseover(get_scene(x), plots...)
 function mouseover(scene::Scene, plots::AbstractPlot...)
     p, idx = pick(scene)
-    return p in flatten_plots(plots)
+    return p in collect_atomic_plots(plots)
 end
 
 """
@@ -22,7 +22,7 @@ hovered element
 """
 onpick(f, x, plots::AbstractPlot...; range=1) = onpick(f, get_scene(x), plots..., range = range)
 function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
-    fplots = flatten_plots(plots)
+    fplots = collect_atomic_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
         p, idx = pick(args...)
@@ -32,38 +32,6 @@ function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
 end
 
 @deprecate mouse_selection pick
-
-"""
-    flatten_plots(scene::Scene, plots = AbstractPlot[]; additional_criteria = x -> false)
-    flatten_plots(x::Combined, plots = AbstractPlot[]; additional_criteria = x -> false)
-
-Flattens all plots in the provided `<: ScenePlot` and returns a vector of all plots 
-which are either atomic (`length(plot.plots) == 0`) or satisfy `additional_criteria`.
-"""
-function flatten_plots(x::Combined, plots = AbstractPlot[]; additional_criteria = x -> false)
-    if isempty(x.plots) || additional_criteria(x)
-        # Atomic plot!
-        push!(plots, x)
-    else
-        for elem in x.plots
-            flatten_plots(elem, plots)
-        end
-    end
-    return plots
-end
-
-function flatten_plots(array, plots = AbstractPlot[]; additional_criteria = x -> false)
-    for elem in array
-        flatten_plots(elem, plots)
-    end
-    plots
-end
-
-function flatten_plots(scene::Scene, plots = AbstractPlot[]; additional_criteria = x -> false)
-    flatten_plots(scene.plots, plots)
-    flatten_plots(scene.children, plots)
-    plots
-end
 
 """
     mouse_in_scene(fig/ax/scene[, priority = 0])

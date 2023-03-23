@@ -15,7 +15,7 @@ function pick_native(screen::Screen, rect::Rect2i)
         if isempty(matrix)
             return Matrix{Tuple{Union{Nothing, AbstractPlot}, Int}}(undef, 0, 0)
         else
-            all_children = Makie.flatten_plots(scene)
+            all_children = Makie.collect_atomic_plots(scene)
             lookup = Dict(Pair.(js_uuid.(all_children), all_children))
             return map(matrix) do (uuid, index)
                 !haskey(lookup, uuid) && return (nothing, 0)
@@ -27,7 +27,7 @@ function pick_native(screen::Screen, rect::Rect2i)
 end
 
 function plot_lookup(scene::Scene)
-    all_plots = Makie.flatten_plots(scene)
+    all_plots = Makie.collect_atomic_plots(scene)
     return Dict(Pair.(js_uuid.(all_plots), all_plots))
 end
 
@@ -107,7 +107,7 @@ struct ToolTip
         if isnothing(plots)
             plots = scene.plots
         end
-        all_plots = WGLMakie.js_uuid.(filter!(x-> x.inspectable[], Makie.flatten_plots(plots)))
+        all_plots = WGLMakie.js_uuid.(filter!(x-> x.inspectable[], Makie.collect_atomic_plots(plots)))
         new(scene, callback, all_plots)
     end
 end

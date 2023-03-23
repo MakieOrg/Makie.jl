@@ -619,3 +619,46 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+"""
+    is_atomic_plot(plot::Combined)
+
+Defines what Makie considers an atomic plot, used in `collect_atomic_plots`.
+Backends may have a different definition of what is considered an atomic plot,
+but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
+"""
+is_atomic_plot(plot::Combined) = isempty(plot.plots)
+
+"""
+    collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+    collect_atomic_plots(x::Combined, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+
+Collects all plots in the provided `<: ScenePlot` and returns a vector of all plots
+which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
+"""
+function collect_atomic_plots(xplot::Combined, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    if is_atomic_plot(plot)
+        # Atomic plot!
+        push!(plots, plot)
+    else
+        for elem in plot.plots
+            collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+        end
+    end
+    return plots
+end
+
+function collect_atomic_plots(array, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    for elem in array
+        collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+    end
+    plots
+end
+
+function collect_atomic_plots(scene::Scene, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.plots, plots; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.children, plots; is_atomic_plot=is_atomic_plot)
+    plots
+end
+
+Base.@deprecate flatten_plots(scenelike) collect_atomic_plots(scenelike)
