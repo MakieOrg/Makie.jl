@@ -212,7 +212,7 @@ struct DirectionalLight <: Makie.AbstractLight
     rotation::Observable{Quaternionf}
     "Coefficient value within the range of [0;1]. 0.0 means sharp shadows.  This is, essentially, the inverse of the size of the 'source' of the directional light."
     shadow_softness_angle::Observable{Float32}
-    "Coefficient value within the range of [0;1]. 0.0 means sharp shadows.  This is the inverse of the 'size' of the directional light source."
+    "The radiant power of the light, measured in watt analogues."
     radiant_power::Observable{RGBf}
 end
 
@@ -243,6 +243,4 @@ function RPRMakie.to_rpr_light(context::RPR.Context, light::DirectionalLight)
     return directional_light
 end
 
-############################################################
-#                        Sky light                         #
-############################################################
+# Note that SkyLight is deprecated, so we don't use that.
