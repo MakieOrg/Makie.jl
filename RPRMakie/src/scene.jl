@@ -136,7 +136,7 @@ function Base.show(io::IO, ::MIME"image/png", screen::Screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
 end
 
-function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
+function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args...)
     context = RPR.Context(; resource=config.resource, plugin=config.plugin)
     screen.context = context
     screen.matsys = RPR.MaterialSystem(context, 0)
