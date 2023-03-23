@@ -69,6 +69,17 @@ function calculated_attributes!(::Type{<: Surface}, plot)
     color_and_colormap!(plot, colors)
 end
 
+function calculated_attributes!(::Type{<: Volume}, plot)
+    colors = plot[4]
+    if haskey(plot, :color)
+        color = plot[:color][]
+        if isa(color, AbstractArray{3, <: Number}) && !(color === to_value(colors)) || isa(color, AbstractArray{3, <: Colors.Colorant})
+            colors = plot[:color]
+        end
+    end
+    color_and_colormap!(plot, colors)
+end
+
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
 end
