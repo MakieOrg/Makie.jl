@@ -142,13 +142,23 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     # like a grid
     faces = decompose(GLTriangleFace, r)
     uv = decompose_uv(r)
-    # with this we can beuild a mesh
+    # with this we can build a mesh
     mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
 
     rpr_mesh = RPR.Shape(context, mesh)
-    color = plot.color[]
-    material = mesh_material(context, matsys, plot, color isa AbstractMatrix ? plot.color : z)
-    set!(rpr_mesh, material)
+    
+    color_obs = lift(plot.z, plot.color) do z, color
+        if color isa AbstractMatrix
+            color
+        else
+            z
+        end
+    end
+    
+    lift(color_obs) do color
+        material = mesh_material(context, matsys, plot, color)
+        set!(rpr_mesh, material)
+    end
     return rpr_mesh
 end
 
