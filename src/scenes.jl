@@ -637,11 +637,11 @@ Collects all plots in the provided `<: ScenePlot` and returns a vector of all pl
 which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
 """
 function collect_atomic_plots(xplot::Combined, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
-    if is_atomic_plot(plot)
+    if is_atomic_plot(xplot)
         # Atomic plot!
-        push!(plots, plot)
+        push!(plots, xplot)
     else
-        for elem in plot.plots
+        for elem in xplot.plots
             collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
         end
     end

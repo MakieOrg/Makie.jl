@@ -66,7 +66,7 @@ CairoMakie can treat them as atomic plots and render them directly.
 Plots with children are by default recursed into.  This can be overridden
 by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
-is_cairomakie_atomic_plot(plot::Combined) = isempty(plot.plots)
+is_cairomakie_atomic_plot(plot::Combined) = isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
 
 """
     check_parent_plots(f, plot::Combined)::Bool
