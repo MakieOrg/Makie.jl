@@ -6,18 +6,18 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Volume)
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
         w = maxi .- mi
-        m2 = Mat4f(w[1], 0, 0, 0, 0, w[2], 0, 0, 0, 0, w[3], 0, mi[1], mi[2], mi[3], 1)
+        m2 = Makie.transformationmatrix(mi, w) # Mat4f(w[1], 0, 0, 0, 0, w[2], 0, 0, 0, 0, w[3], 0, mi[1], mi[2], mi[3], 1)
         mat = convert(Mat4f, m) * m2
         transform!(cube, mat)
         return
     end
 
-    onany(update_cube, plot.model, plot.x, plot.y, plot.z)
+    lift(update_cube, plot.model, plot.x, plot.y, plot.z; ignore_equal_values = true)
     update_cube(plot.model[], plot.x[], plot.y[], plot.z[])
 
-    vol_normed_obs = lift(plot.volume) do vol
-        mini, maxi = extrema(vol)
-        (vol .- mini) ./ (maxi - mini)
+    vol_normed_obs = lift(plot.volume, plot.colorrange) do vol, crange
+        mini, maxi = crange
+        normed_vol = clamp.((vol .- mini) ./ (maxi - mini), 0f0, 1f0)
     end
 
     grid_sampler = RPR.GridSamplerMaterial(matsys)
@@ -26,18 +26,12 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Volume)
         grid_sampler.data = RPR.VoxelGrid(context, vol_normed)
     end
 
-    # color_grid = lift(vol_normed_obs) do vol_normed
-    #     return RPR.VoxelGrid(context, vol_normed)
-        
-    # end
-
     color_sampler = RPR.ImageTextureMaterial(matsys)
 
     lift(plot.colormap) do cmap
         color_sampler.data = RPR.Image(context, reverse(to_colormap(cmap))')
     end
 
-    # gridsampler2 = RPR.GridSamplerMaterial(matsys)
     color_sampler.uv = grid_sampler
 
     volmat = RPR.VolumeMaterial(matsys)
