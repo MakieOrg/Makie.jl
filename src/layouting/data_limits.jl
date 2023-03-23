@@ -145,7 +145,7 @@ end
 
 function iterate_transformed(points, model, space, trans_func)
     if space != :data
-        (,)
+        tuple()
     end
     (to_ndim(Point3f, project(model, apply_transform(trans_func, point, space)), 0f0) for point in points)
 end
