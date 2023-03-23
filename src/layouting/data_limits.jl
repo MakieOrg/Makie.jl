@@ -144,6 +144,9 @@ function iterate_transformed(plot)
 end
 
 function iterate_transformed(points, model, space, trans_func)
+    if space != :data
+        (,)
+    end
     (to_ndim(Point3f, project(model, apply_transform(trans_func, point, space)), 0f0) for point in points)
 end
 
