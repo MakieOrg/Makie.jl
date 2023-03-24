@@ -19,11 +19,13 @@ using ReferenceTests
 GLMakie.activate!(framerate=1.0)
 
 @testset "mimes" begin
+    Makie.inline!(true)
     f, ax, pl = scatter(1:4)
     @test showable("image/png", f)
     @test showable("image/jpeg", f)
     # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
+    Makie.inline!(false)
 end
 
 # run the unit test suite

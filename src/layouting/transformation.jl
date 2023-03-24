@@ -45,6 +45,16 @@ function Transformation(transformable::Transformable;
     return trans
 end
 
+function free(transformation::Transformation)
+    # clear parent...Needs to be same type, so just use itself
+    transformation.parent[] = transformation
+    for name in [:translation, :scale, :rotation, :model, :transform_func]
+        obs = getfield(transformation, name)
+        Observables.clear(obs)
+    end
+    return
+end
+
 function model_transform(transformation::Transformation)
     return transformationmatrix(transformation.translation[], transformation.scale[], transformation.rotation[])
 end
