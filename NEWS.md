@@ -2,6 +2,8 @@
 
 ## master
 
+- `hexbin` now supports any per-observation weights which StatsBase respects - `<: StatsBase.AbstractWeights`, `Vector{Real}`, or `nothing` (the default). [#2804](https://github.com/MakieOrg/Makie.jl/pulls/2804)
+
 ## v0.19.3
 
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
