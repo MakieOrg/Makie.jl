@@ -219,10 +219,13 @@ f = Figure(resolution = (800, 800))
 
 x = 1:100
 y = 1:100
-points = Point2f.(x, y') |> vec
+points = vec(Point2f.(x, y'))
 
-for (i, weight) in enumerate([nothing, rand(length(points)), Makie.StatsBase.eweights(length(points), 0.005), Makie.StatsBase.weights(randn(length(points)))])
-    ax = Axis(f[fldmod1(i, 2)...], title = "weights::$(typeof(weight))", aspect = DataAspect())
+weights = [nothing, rand(length(points)), Makie.StatsBase.eweights(length(points), 0.005), Makie.StatsBase.weights(randn(length(points)))]
+weight_labels = ["No weights", "Vector{<: Real}", "Exponential weights (StatsBase.eweights)", "StatesBase.weights(randn(...))"]
+
+for (i, (weight, title)) in enumerate(zip(weights, weight_labels))
+    ax = Axis(f[fldmod1(i, 2)...], title = title, aspect = DataAspect())
     hexbin!(ax, points; weights = weight)
     autolimits!(ax)
 end
