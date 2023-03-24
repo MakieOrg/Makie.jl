@@ -5,7 +5,7 @@ r = LinRange(-1, 1, 100)
 cube = [(x .^ 2 + y .^ 2 + z .^ 2) for x = r, y = r, z = r]
 
 RPRMakie.activate!(
-    iterations = 32,
+    iterations = 5, # increase this if you want a better render!
     plugin=RPR.Northstar, 
     resource = RPR.RPR_CREATION_FLAGS_ENABLE_CPU | RPR.RPR_CREATION_FLAGS_ENABLE_METAL
 )
