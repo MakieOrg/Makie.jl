@@ -927,7 +927,7 @@ end
     
     fig = Figure(resolution = (600, 600))
     # Create a recipe plot
-    ax, plot_top = contour(randn(10, 10))
+    ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
     # Plot some recipes at the level below the contour
     scatterlineplot_1 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
     scatterlineplot_2 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
