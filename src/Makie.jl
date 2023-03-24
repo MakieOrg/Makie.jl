@@ -330,5 +330,4 @@ export PointLight, EnvironmentLight, AmbientLight, SSAO
 
 include("precompiles.jl")
 
-
 end # module
