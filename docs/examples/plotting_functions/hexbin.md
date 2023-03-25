@@ -210,6 +210,8 @@ f
 \begin{examplefigure}{svg = true}
 ```
 using CairoMakie
+using CairoMakie.Makie # hide
+using CairoMakie.Makie.StatsBase # hide
 CairoMakie.activate!() # hide
 
 using Random
