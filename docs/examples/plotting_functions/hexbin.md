@@ -208,7 +208,7 @@ f
 ### Applying weights to observations
 
 \begin{examplefigure}{svg = true}
-```
+```julia
 using CairoMakie
 using CairoMakie.Makie # hide
 using CairoMakie.Makie.StatsBase # hide
