@@ -35,6 +35,7 @@ current_figure!(fig) = (_current_figure[] = fig)
 
 "Returns the current active axis (or the last axis that got created)"
 current_axis() = current_axis(current_figure())
+current_axis(::Nothing) = nothing
 current_axis(fig::Figure) = fig.current_axis[]
 "Set `ax` as the current active axis in `fig`"
 function current_axis!(fig::Figure, ax)
