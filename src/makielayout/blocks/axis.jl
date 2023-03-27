@@ -801,7 +801,10 @@ function Makie.plot!(
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(la)
 
-    if is_open_or_any_parent(la.scene)
+    xauto = to_value(get(allattrs, :xautolimits, true))
+    yauto = to_value(get(allattrs, :yautolimits, true))
+
+    if is_open_or_any_parent(la.scene) && (xauto || yauto)
         reset_limits!(la)
     end
     plot
