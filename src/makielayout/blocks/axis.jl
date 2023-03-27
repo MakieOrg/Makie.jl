@@ -800,14 +800,10 @@ function Makie.plot!(
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
+    needs_tight_limits(plot) && tightlimits!(la)
     
     if is_open_or_any_parent(la.scene) && should_reset
-        if needs_tight_limits(plot)
-            # Also calls reset_limits!(la)
-            tightlimits!(la)
-        else
-            reset_limits!(la)
-        end
+        reset_limits!(la)
     end
     plot
 end
