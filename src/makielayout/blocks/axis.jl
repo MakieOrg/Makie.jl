@@ -794,18 +794,20 @@ function Makie.plot!(
 
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
+    should_reset = to_value(pop!(allattrs, :reset_limits, true))
 
     plot = Makie.plot!(la.scene, P, allattrs, args...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(la)
-
-    xauto = to_value(get(allattrs, :xautolimits, true))
-    yauto = to_value(get(allattrs, :yautolimits, true))
-
-    if is_open_or_any_parent(la.scene) && (xauto || yauto)
-        reset_limits!(la)
+    
+    if is_open_or_any_parent(la.scene) && should_reset
+        if needs_tight_limits(plot)
+            # Also calls reset_limits!(la)
+            tightlimits!(la)
+        else
+            reset_limits!(la)
+        end
     end
     plot
 end
