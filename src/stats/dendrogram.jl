@@ -28,11 +28,10 @@ and parent nodes identified by `merges`.
         branch_shape = :box,
         linewidth = Makie.inherit(scene, :linewidth, 1.0),
         color = Makie.inherit(scene, :color, :black),
-        colormap = Makie.inherit(scene, :colormap, :viridis),
+        colormap = Makie.inherit(scene, :colormap, :tableau_10),
         colorrange = Makie.automatic,
         orientation = :vertical,
         groups = nothing,
-        fallback_color = :black,
         cycle = [:color => :patchcolor],
         inspectable = Makie.inherit(scene, :inspectable, false),
         xautolimits = Makie.inherit(scene, :xautolimits, true),
@@ -40,7 +39,7 @@ and parent nodes identified by `merges`.
     )
 end
 
-function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_colors = []; groups=nothing, branch_shape=:tree, fallback_color=:black)
+function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_colors = []; color=:black, branch_shape=:tree, groups=nothing)
     isnothing(node.children) && return nothing
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
@@ -55,7 +54,7 @@ function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_co
         cgroup = Float32(node.idx)
     else
         gs = recursive_leaf_groups(node, nodes, groups)
-        cgroup = length(unique(gs)) == 1 ? Float32(first(gs)) : 0f0 # needs to select fallback_color...
+        cgroup = length(unique(gs)) == 1 ? Float32(first(gs)) : color
     end
 
     @info cgroup
@@ -74,12 +73,10 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
 
     points_vec = Observable{Any}()
     colors_vec = Observable{Any}()
-    group_colors = Observable{Any}() # placeholder - I don't really understand this
-    group_colors = Dict(1=> :black, 2=> :blue, 3=> :orange) # want to get this automatically, but don't know how
-
-    lift(plot[1], plot.branch_shape) do nodes, branch_shape
+    
+    lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
         # this pattern is basically first updating the values of the observables,
-        points_vec.val, colors_vec.val = recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes; branch_shape, groups=groups.val)
+        points_vec.val, colors_vec.val = recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes; color, branch_shape, groups=groups.val)
         # then propagating the signal, so that there is no error with differing lengths.
         notify(points_vec); notify(colors_vec)
     end
