@@ -531,7 +531,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
         N = min(length(ticklabs), length(points))
         v = [(ticklabs[i], points[i]) for i in 1:N]
-        v::Vector{Tuple{String, Point2f}}
+        v::Vector{Tuple{Union{String, LaTeXStrings.LaTeXString}, Point2f}}
     end
 
     align = lift(topscene, miv, min1, min2) do mv, m1, m2
