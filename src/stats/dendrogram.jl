@@ -51,13 +51,14 @@ function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_co
     push!(ret_points, Point3f(NaN)) # separate segments
 
     if isnothing(groups)
-        cgroup = Float32(node.idx)
+        cgroup = 0
     else
         gs = recursive_leaf_groups(node, nodes, groups)
-        cgroup = length(unique(gs)) == 1 ? Float32(first(gs)) : color
+        @debug gs
+        cgroup = length(unique(gs)) == 1 ? first(gs) : 0
     end
 
-    @info cgroup
+    @debug cgroup maxlog=2
 
     append!(ret_colors, [cgroup for _ in 1:length(l)])
     push!(ret_colors, NaN32) # separate segments
