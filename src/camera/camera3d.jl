@@ -9,12 +9,12 @@ struct Camera3D <: AbstractCamera3D
     pulser::Observable{Float64}
     selected::Observable{Bool}
 
-	# view matrix
+    # view matrix
     eyeposition::Observable{Vec3f}
     lookat::Observable{Vec3f}
     upvector::Observable{Vec3f}
 	
-	# perspective projection matrix
+    # perspective projection matrix
     fov::Observable{Float32}
     near::Observable{Float32}
     far::Observable{Float32}
