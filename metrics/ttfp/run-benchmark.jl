@@ -207,7 +207,7 @@ ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 if Package == "WGLMakie"
-    Pkg.add([(; name="Electron"), (; name="JSServe", rev="sd/bonito")])
+    Pkg.add([(; name="Electron"), (; name="JSServe", rev="master")])
 end
 pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")
