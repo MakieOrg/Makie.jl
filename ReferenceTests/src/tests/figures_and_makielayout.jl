@@ -121,3 +121,16 @@ end
         f
     end
 end
+
+@reference_test "LaTeXStrings in Axis3 plots" begin
+    xs = LinRange(-10, 10, 100)
+    ys = LinRange(0, 15, 100)
+    zs = [cos(x) * sin(y) for x in xs, y in ys]
+
+    set_theme!(Theme(Axis3=(xtickformat=xs -> [L"%$x" for x in xs],)))
+
+    fig = Figure()
+    ax = Axis3(fig[1, 1])
+
+    surface!(ax, xs, ys, zs)
+end
