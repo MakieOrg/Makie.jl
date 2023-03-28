@@ -132,7 +132,7 @@ function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=
     if isnothing(screen.session)
         throw_error("Screen has no session. Not yet displayed?"); return nothing
     end
-    if screen.session.status == JSServe.UNINITIALIZED
+    if !(screen.session.status in (JSServe.DISPLAYED, JSServe.OPEN))
         throw_error("Screen Session uninitialized. Not yet displayed?"); return nothing
     end
     tstart = time()
