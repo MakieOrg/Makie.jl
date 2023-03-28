@@ -252,6 +252,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
         else
             handle_intensities!(gl_attributes)
             if x isa MeshScatter
+                if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+                    gl_attributes[:image] = gl_attributes[:color]
+                end
                 return draw_mesh_particle(screen, (marker, positions), gl_attributes)
             else
                 return draw_scatter(screen, (marker, positions), gl_attributes)
@@ -273,7 +276,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         space = get!(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(x, data, scene.camera)
         transform_func = transform_func_obs(x)
-        
+
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = ls
@@ -284,7 +287,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls * _mean(to_value(linewidth))
             data[:fast] = false
-            
+
             pvm = map(*, data[:projectionview], data[:model])
             positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
                 transformed = apply_transform(f, ps, space)
@@ -297,7 +300,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
                 output
             end
         end
-            
+
         handle_intensities!(data)
         return draw_lines(screen, positions, data)
     end
