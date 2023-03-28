@@ -2,11 +2,23 @@
 
 ## master
 
+## v0.19.3
+
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
-- Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
-- Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
-- Switch `plot.converted` to Float64 types to avoid loss of precision. This should fix precision related issues for CairoMakie but not GL backends [2573](https://github.com/MakieOrg/Makie.jl/pull/2573)
+- Added the `brackets` plotting function [#2356](https://github.com/MakieOrg/Makie.jl/pull/2356).
+- Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478).
+- Fixed a small typo which caused an error in the `Stepper` constructor [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478).
+- Improve cleanup on block deletion [#2614](https://github.com/MakieOrg/Makie.jl/pull/2614)
+- Add `menu.scroll_speed` and increase default speed for non-apple [#2616](https://github.com/MakieOrg/Makie.jl/pull/2616).
 - Fixed rectangle zoom for nonlinear axes [#2674](https://github.com/MakieOrg/Makie.jl/pull/2674)
+- Cleaned up linestyles in GLMakie (Fixing artifacting, spacing/size, anti-aliasing) [#2666](https://github.com/MakieOrg/Makie.jl/pull/2666).
+- Fixed issue with scatterlines only accepting concrete color types as `markercolor` [#2691](https://github.com/MakieOrg/Makie.jl/pull/2691).
+- Fixed an accidental issue where `LaTeXStrings` were not typeset correctly in `Axis3` [#2558](https://github.com/MakieOrg/Makie.jl/pull/2588).
+- Fixed a bug where line segments in `text(lstr::LaTeXString)` were ignoring offsets [#2668](https://github.com/MakieOrg/Makie.jl/pull/2668).
+- Fixed a bug where the `arrows` recipe accidentally called a `Bool` when `normalize = true` [#2740](https://github.com/MakieOrg/Makie.jl/pull/2740).
+- Re-exported the `@colorant_str` (`colorant"..."`) macro from Colors.jl [#2726](https://github.com/MakieOrg/Makie.jl/pull/2726).
+- Speedup heatmaps in WGLMakie. [#2647](https://github.com/MakieOrg/Makie.jl/pull/2647)
+- Fix slow `data_limits` for recipes, which made plotting lots of data with recipes much slower [#2770](https://github.com/MakieOrg/Makie.jl/pull/2770).
 
 ## v0.19.1
 

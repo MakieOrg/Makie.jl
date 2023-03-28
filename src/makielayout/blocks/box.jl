@@ -1,12 +1,11 @@
 function initialize_block!(box::Box)
-
     blockscene = box.blockscene
 
-    strokecolor_with_visibility = lift(box.strokecolor, box.strokevisible) do col, vis
+    strokecolor_with_visibility = lift(blockscene, box.strokecolor, box.strokevisible) do col, vis
         vis ? col : RGBAf(0, 0, 0, 0)
     end
 
-    ibbox = @lift(round_to_IRect2D($(box.layoutobservables.computedbbox)))
+    ibbox = lift(round_to_IRect2D, blockscene, box.layoutobservables.computedbbox)
 
     poly!(blockscene, ibbox, color = box.color, visible = box.visible,
         strokecolor = strokecolor_with_visibility, strokewidth = box.strokewidth,

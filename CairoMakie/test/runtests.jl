@@ -69,6 +69,25 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         rm("test.png")
     end
 
+    @testset "removing old screen" begin
+        f, ax, pl = scatter(1:4)
+        test_type(f, typ) = CairoMakie.get_render_type(Makie.getscreen(f.scene).surface) == typ
+        save("test.png", f)
+        @test length(f.scene.current_screens) == 1
+        @test test_type(f, CairoMakie.IMAGE)
+
+        save("test.svg", f)
+        @test length(f.scene.current_screens) == 1
+        @test test_type(f, CairoMakie.SVG)
+
+        save("test.png", f)
+        @test length(f.scene.current_screens) == 1
+        @test test_type(f, CairoMakie.IMAGE)
+
+        rm("test.svg")
+        rm("test.png")
+    end
+
     @testset "changing resolution of same format" begin
         # see: https://github.com/MakieOrg/Makie.jl/issues/2433
         # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441

@@ -59,7 +59,18 @@ end
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
 
 function point_iterator(list::AbstractVector)
-    Iterators.flatten((point_iterator(elem) for elem in list))
+    if length(list) == 1
+        # save a copy!
+        return point_iterator(list[1])
+    else
+        points = Point3f[]
+        for elem in list
+            for point in point_iterator(elem)
+                push!(points, to_ndim(Point3f, point, 0))
+            end
+        end
+        return points
+    end
 end
 
 point_iterator(plot::Combined) = point_iterator(plot.plots)
@@ -74,45 +85,9 @@ function br_getindex(matrix::AbstractMatrix, idx::CartesianIndex, dim::Int)
     return matrix[idx]
 end
 
-function get_point_xyz(linear_indx::Int, indices, X, Y, Z)
-    idx = indices[linear_indx]
-    x = br_getindex(X, idx, 1)
-    y = br_getindex(Y, idx, 2)
-    z = Z[linear_indx]
-    return Point(x, y, z)
-end
-
-function get_point_xyz(linear_indx::Int, indices, X, Y)
-    idx = indices[linear_indx]
-    x = br_getindex(X, idx, 1)
-    y = br_getindex(Y, idx, 2)
-    return Point(x, y, 0.0)
-end
-
-function point_iterator(plot::Surface)
-    X = plot.x[]
-    Y = plot.y[]
-    Z = plot.z[]
-    indices = CartesianIndices(Z)
-    return (get_point_xyz(idx, indices, X, Y, Z) for idx in 1:length(Z))
-end
-
-function point_iterator(plot::Heatmap)
-    X = plot.x[]
-    Y = plot.y[]
-    Z = plot[3][]
-    zsize = size(Z) .+ 1
-    indices = CartesianIndices(zsize)
-    return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
-end
-
-function point_iterator(plot::Image)
-    X = plot.x[]
-    Y = plot.y[]
-    Z = plot[3][]
-    zsize = size(Z)
-    indices = CartesianIndices(zsize)
-    return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
+function point_iterator(plot::Union{Image, Heatmap, Surface})
+    rect = data_limits(plot)
+    return unique(decompose(Point3f, rect))
 end
 
 function point_iterator(x::Volume)
@@ -162,15 +137,15 @@ function iterate_transformed(plot)
     points = point_iterator(plot)
     t = transformation(plot)
     model = model_transform(t)
-    # TODO: For some reason this was identity before and limit calculations in Axis with log scale are wrong if not, because they're already log transformed. What's the right behavior?
-    # trans_func = t.transform_func[]
-    trans_func = identity
-    iterate_transformed(points, model, trans_func)
+    # TODO: without this, axes with log scales error.  Why?
+    trans_func = identity # transform_func(t)
+    # trans_func = identity
+    iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
 end
 
-function iterate_transformed(points, model, trans_func)
+function iterate_transformed(points, model, space, trans_func)
     Iterators.map(points) do point
-        p = apply_transform(trans_func, Point{length(point), Float64}(point))
+        p = apply_transform(trans_func, Point{length(point), Float64}(point), space)
         to_ndim(Point3e, project(model, p), 0.0)
     end
 end
