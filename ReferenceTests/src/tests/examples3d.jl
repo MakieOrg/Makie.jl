@@ -55,6 +55,17 @@ end
     mesh(catmesh, color=loadasset("diffusemap.png"))
 end
 
+@reference_test "Textured meshscatter" begin
+    catmesh = loadasset("cat.obj")
+    img = loadasset("diffusemap.png")
+    rot = qrotation(Vec3f(1, 0, 0), 0.5pi) * qrotation(Vec3f(0, 1, 0), 0.7pi)
+    meshscatter(
+        1:3, 1:3, fill(0, 3, 3),
+        marker=catmesh, color=img, markersize=1, rotation=rot,
+        axis=(type=LScene, show_axis=false)
+    )
+end
+
 @reference_test "Load Mesh" begin
     mesh(loadasset("cat.obj"))
 end
