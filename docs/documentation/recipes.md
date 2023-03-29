@@ -11,8 +11,10 @@ Recipes allow you to extend `Makie` with your own custom types and plotting comm
 
 There are two types of recipes:
 
-- _Type recipes_ define a simple mapping from a user defined type to an existing plot type
-- _Full recipes_ define new custom plotting functions.
+- _Type recipes_ define a simple mapping from a user defined type to an existing plot type (`convert_arguments` and friends).
+- _Full recipes_ define new custom plotting function (`@recipe(MyRecipe)...` and `Makie.plot!(plot::MyRecipe)`).
+
+Full recipes can also subscribe to the conversion trait interface by implementing `Makie.conversion_trait(::Type{<: MyRecipe})`, which returns an instance of a `ConversionTrait` subclass, such as `PointBased()`, `ContinuousSurface()`, `DiscreteSurface()`, or `SampleBased()`.
 
 ## Type recipes
 
@@ -28,10 +30,52 @@ This is the sequential logic by which conversions in Makie are attempted:
 - Fail if no method was found
 
 There are two methods in the type recipe API: 
-- `convert_arguments(::Type{<: PlotType}, args...)`
+- `convert_arguments(::Type{<: PlotType}, args...)` which takes in some input arguments and converts them into forms which Makie can handle.  This is *not* recursive, so either return data which can be used directly, or return `convert_arguments(PlotType, myoutputs...)`.
 - `used_attributes(::Type{<: PlotType}, input_args...)::NTuple{Symbol}` which passes the returned keys as kwargs to `convert_arguments`.
 
-### Multiple Argument Conversion with `convert_arguments`
+`convert_arguments` should return a tuple which covers all positional arguments (in exact order) for the plot type that is being considered (e.g. if the type is `Surface`, then the tuple should be `(x::Vector, y::Vector, z::Matrix)` corresponding to the positional arguments required for that category of plots).
+
+### A simple example of `convert_arguments`
+
+Let's say I have a struct, `LonLatGrid`, which encodes two vectors defining the shape of a grid, and a matrix which contains values at each grid point.
+
+```julia:simpleconvert
+struct LonLatGrid
+    xs::AbstractVector{<: Real}
+    ys::AbstractVector{<: Real}
+    zs::AbstractMatrix{<: Real}
+end
+
+mygrid = LonLatGrid(-5:5, -5:5, Makie.peaks(11)) # a grid centered at null island!
+```
+
+Clearly, Makie has no idea that this exists.  If I want to be able to plot this using surface, I have to define how it's to be done:
+
+```julia:simpleconvert
+function Makie.convert_arguments(::Type{<: Makie.Surface}, grid::LonLatGrid)
+    return (grid.xs, grid.ys, grid.zs)
+end
+
+surface(mygrid)
+```
+
+This is cool!  But it won't work with other functions which take the same arguments, like `heatmap` or `contour`.  This is where _conversion traits_ come in - by dispatching `convert_arguments` on the appropriate conversion trait, it will automatically apply to all plots which declare that trait!
+
+```julia:simpleconvert
+function Makie.convert_arguments(::Makie.ContinuousSurface, grid::LonLatGrid)
+    return (grid.xs, grid.ys, grid.zs)
+end
+
+f, a, p = surface(mygrid)
+heatmap(f[1, 2], mygrid)
+contour(f[2, 1], mygrid)
+contour3d(f[2, 2], mygrid)
+f
+```
+
+This is how you can get the most out of type recipes and conversion traits.
+
+### Argument Conversion with `convert_arguments`
 
 Plotting of a `Circle` for example can be defined via a conversion into a vector of points:
 
@@ -51,7 +95,7 @@ You can restrict conversion to a subset of plot types, like only for scatter plo
 Makie.convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
 ```
 
-Conversion traits make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc. Predefined are `NoConversion`, `PointBased`, `SurfaceLike` and `VolumeLike`.
+Conversion traits make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc. Predefined are `NoConversion`, `PointBased`, `ContinuousSurface`, `DiscreteSurface`, and `VolumeLike`.
 
 ```julia
 Makie.convert_arguments(P::PointBased, x::MyType) = ...
