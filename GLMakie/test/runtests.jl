@@ -19,11 +19,13 @@ using ReferenceTests
 GLMakie.activate!(framerate=1.0)
 
 @testset "mimes" begin
+    Makie.inline!(true)
     f, ax, pl = scatter(1:4)
     @test showable("image/png", f)
     @test showable("image/jpeg", f)
     # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
+    Makie.inline!(false)
 end
 
 # run the unit test suite
@@ -43,7 +45,6 @@ include("unit_tests.jl")
         recorded_files, recording_dir = @include_reference_tests joinpath(@__DIR__, "glmakie_refimages.jl")
         missing_images, scores = ReferenceTests.record_comparison(recording_dir)
         n_missing_images += length(missing_images)
-        ReferenceTests.test_comparison(scores; threshold = 0.01)
         ReferenceTests.test_comparison(scores; threshold = 0.01)
     end
     GLMakie.closeall()

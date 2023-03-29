@@ -9,13 +9,14 @@ function plot!(plot::Text)
     
     onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                ts, f, fs, al, rot, jus, lh, col, scol, swi, www
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
+                ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
         ts = to_fontsize(ts)
         f = to_font(fs, f)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
+        offs = to_offset(offs)
 
         gcs = GlyphCollection[]
         lsegs = Point2f[]
@@ -36,12 +37,12 @@ function plot!(plot::Text)
             # as per string.
             broadcast_foreach(
                 func, 
-                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www
+                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
             )
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
-            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         end
         glyphcollections[] = gcs
         linewidths[] = lwidths
@@ -80,11 +81,14 @@ function plot!(plot::Text)
     plot
 end
 
-function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+to_offset(v::VecTypes) = Vec2f(v)
+to_offset(v::AbstractVector) = map(to_offset, v)
+
+function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
-function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, col, scol, swi, www)
 
@@ -99,8 +103,8 @@ function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, 
         if element isa MathTeXEngine.HLine
             h = element
             x, y = position
-            push!(linesegs, rotate_2d(rot, ts * Point2f(x, y) - offset))
-            push!(linesegs, rotate_2d(rot, ts * Point2f(x + h.width, y) - offset))
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x, y) - offset) + offs)
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x + h.width, y) - offset) + offs)
             push!(linewidths, ts * h.thickness)
             push!(linewidths, ts * h.thickness)
             push!(linecolors, col) # TODO how to specify color better?
@@ -292,7 +296,7 @@ superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
 
 export rich, subscript, superscript
 
-function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
