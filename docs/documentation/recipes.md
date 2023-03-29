@@ -40,6 +40,9 @@ There are two methods in the type recipe API:
 Let's say I have a struct, `LonLatGrid`, which encodes two vectors defining the shape of a grid, and a matrix which contains values at each grid point.
 
 ```julia:simpleconvert
+using Makie
+using CairoMakie # hide
+
 struct LonLatGrid
     xs::AbstractVector{<: Real}
     ys::AbstractVector{<: Real}
