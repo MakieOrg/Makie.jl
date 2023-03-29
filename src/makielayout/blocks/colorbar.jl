@@ -80,14 +80,14 @@ end
 
 function initialize_block!(cb::Colorbar)
     blockscene = cb.blockscene
-    limits = lift(cb.limits, cb.colorrange) do limits, colorrange
+    limits = lift(blockscene, cb.limits, cb.colorrange) do limits, colorrange
         if all(!isnothing, (limits, colorrange))
             error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
         end
         return something(limits, colorrange, (0, 1))
     end
 
-    onany(cb.size, cb.vertical) do sz, vertical
+    onany(blockscene, cb.size, cb.vertical) do sz, vertical
         if vertical
             cb.layoutobservables.autosize[] = (sz, nothing)
         else
@@ -95,10 +95,10 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    framebox = @lift(round_to_IRect2D($(cb.layoutobservables.computedbbox)))
+    framebox = lift(round_to_IRect2D, blockscene, cb.layoutobservables.computedbbox)
 
     cgradient = Observable{PlotUtils.ColorGradient}()
-    map!(cgradient, cb.colormap) do cmap
+    map!(blockscene, cgradient, cb.colormap) do cmap
         if cmap isa PlotUtils.ColorGradient
             # if we have a colorgradient directly, we want to keep it intact
             # to enable correct categorical colormap behavior etc
@@ -119,10 +119,10 @@ function initialize_block!(cb::Colorbar)
         return c != compare
     end
 
-    lowclip_tri_visible = lift(isvisible, cb.lowclip, lift(x-> get(x, 0), cgradient))
-    highclip_tri_visible = lift(isvisible, cb.highclip, lift(x-> get(x, 1), cgradient))
+    lowclip_tri_visible = lift(isvisible, blockscene, cb.lowclip, lift(x-> get(x, 0), blockscene, cgradient))
+    highclip_tri_visible = lift(isvisible, blockscene, cb.highclip, lift(x-> get(x, 1), blockscene, cgradient))
 
-    tri_heights = lift(highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
+    tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
         if cb.vertical[]
             (lv * width(box), hv * width(box))
         else
@@ -130,7 +130,7 @@ function initialize_block!(cb::Colorbar)
         end .* sin(pi/3)
     end
 
-    barsize = lift(tri_heights) do heights
+    barsize = lift(blockscene, tri_heights) do heights
         if cb.vertical[]
             max(1, height(framebox[]) - sum(heights))
         else
@@ -138,7 +138,7 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    barbox = lift(barsize) do sz
+    barbox = lift(blockscene, barsize) do sz
         fbox = framebox[]
         if cb.vertical[]
             BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[][1], top(fbox) - tri_heights[][2])
@@ -148,9 +148,9 @@ function initialize_block!(cb::Colorbar)
     end
 
 
-    map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, cgradient)
+    map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, blockscene, cgradient)
 
-    steps = lift(cgradient, cb.nsteps) do cgradient, n
+    steps = lift(blockscene, cgradient, cb.nsteps) do cgradient, n
         s = if cgradient isa PlotUtils.CategoricalColorGradient
             cgradient.values
         else
@@ -169,7 +169,8 @@ function initialize_block!(cb::Colorbar)
 
     # for categorical colormaps we make a number of rectangle polys
 
-    rects_and_colors = lift(barbox, cb.vertical, steps, cgradient, cb.scale, limits) do bbox, v, steps, gradient, scale, lims
+    rects_and_colors = lift(blockscene, barbox, cb.vertical, steps, cgradient, cb.scale,
+                            limits) do bbox, v, steps, gradient, scale, lims
 
         # we need to convert the 0 to 1 steps into rescaled 0 to 1 steps given the
         # colormap's `scale` attribute
@@ -193,9 +194,9 @@ function initialize_block!(cb::Colorbar)
         rects, colors
     end
 
-    colors = lift(x -> getindex(x, 2), rects_and_colors)
+    colors = lift(x -> getindex(x, 2), blockscene, rects_and_colors)
     rects = poly!(blockscene,
-        lift(x -> getindex(x, 1), rects_and_colors),
+        lift(x -> getindex(x, 1), blockscene, rects_and_colors);
         color = colors,
         visible = map_is_categorical,
         inspectable = false
@@ -204,24 +205,25 @@ function initialize_block!(cb::Colorbar)
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
 
-    continous_pixels = lift(cb.vertical, cb.nsteps, cgradient, limits, cb.scale) do v, n, grad, lims, scale
+    continous_pixels = lift(blockscene, cb.vertical, cb.nsteps, cgradient, limits,
+                            cb.scale) do v, n, grad, lims, scale
 
         s_steps = scaled_steps(LinRange(0, 1, n), scale, lims)
         px = get.(Ref(grad), s_steps)
-        v ? reshape(px, 1, n) : reshape(px, n, 1)
+        return v ? reshape(px, 1, n) : reshape(px, n, 1)
     end
 
     cont_image = image!(blockscene,
-        @lift(range(left($barbox), right($barbox), length = 2)),
-        @lift(range(bottom($barbox), top($barbox), length = 2)),
+        lift(bb -> range(left(bb), right(bb); length=2), blockscene, barbox),
+        lift(bb -> range(bottom(bb), top(bb); length=2), blockscene, barbox),
         continous_pixels,
-        visible = @lift(!$map_is_categorical),
+        visible=lift(!, blockscene, map_is_categorical),
         interpolate = true,
         inspectable = false
     )
 
 
-    highclip_tri = lift(barbox, cb.spinewidth) do box, spinewidth
+    highclip_tri = lift(blockscene, barbox, cb.spinewidth) do box, spinewidth
         if cb.vertical[]
             lb, rb = topline(box)
             l = lb
@@ -235,7 +237,7 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    highclip_tri_color = Observables.map(cb.highclip) do hc
+    highclip_tri_color = lift(blockscene, cb.highclip) do hc
         to_color(isnothing(hc) ? :transparent : hc)
     end
 
@@ -243,7 +245,7 @@ function initialize_block!(cb::Colorbar)
         strokecolor = :transparent,
         visible = highclip_tri_visible, inspectable = false)
 
-    lowclip_tri = lift(barbox, cb.spinewidth) do box, spinewidth
+    lowclip_tri = lift(blockscene, barbox, cb.spinewidth) do box, spinewidth
         if cb.vertical[]
             lb, rb = bottomline(box)
             l = lb
@@ -257,7 +259,7 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    lowclip_tri_color = Observables.map(cb.lowclip) do lc
+    lowclip_tri_color = lift(blockscene, cb.lowclip) do lc
         to_color(isnothing(lc) ? :transparent : lc)
     end
 
@@ -265,7 +267,7 @@ function initialize_block!(cb::Colorbar)
         strokecolor = :transparent,
         visible = lowclip_tri_visible, inspectable = false)
 
-    borderpoints = lift(barbox, highclip_tri_visible, lowclip_tri_visible) do bb, hcv, lcv
+    borderpoints = lift(blockscene, barbox, highclip_tri_visible, lowclip_tri_visible) do bb, hcv, lcv
         if cb.vertical[]
             points = [bottomright(bb), topright(bb)]
             if hcv
@@ -293,7 +295,7 @@ function initialize_block!(cb::Colorbar)
 
     lines!(blockscene, borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
 
-    axispoints = lift(barbox, cb.vertical, cb.flipaxis) do scenearea,
+    axispoints = lift(blockscene, barbox, cb.vertical, cb.flipaxis) do scenearea,
             vertical, flipaxis
 
         if vertical
@@ -330,7 +332,7 @@ function initialize_block!(cb::Colorbar)
     cb.axis = axis
 
 
-    onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
+    onany(blockscene, axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
             vertical, flipaxis
 
 

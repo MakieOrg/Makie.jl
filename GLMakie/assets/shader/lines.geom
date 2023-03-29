@@ -482,12 +482,12 @@ void draw_solid_line(bool isvalid[4])
     // direction and enforce an AA border at the original start/end position
     // with f_uv_minmax.
     float is_start = float(!isvalid[0]);
-    f_uv_minmax.x = ifelse(is_start, px2uv * u1, f_uv_minmax.x);
+    if (!isvalid[0]) f_uv_minmax.x = px2uv * u1;
     p1 -= is_start * AA_THICKNESS * v1;
     u1 -= is_start * AA_THICKNESS;
 
     float is_end = float(!isvalid[3]);
-    f_uv_minmax.y = ifelse(is_end, px2uv * u2, f_uv_minmax.y);
+    if (!isvalid[3]) f_uv_minmax.y = px2uv * u2;
     u2 += is_end * AA_THICKNESS;
     p2 += is_end * AA_THICKNESS * v1;
 
@@ -517,6 +517,12 @@ void main(void)
     // These need to be set but don't have reasonable values here
     o_view_pos = vec3(0);
     o_normal = vec3(0);
+
+    // we generate very thin lines for linewidth 0, so we manually skip them:
+    if (g_thickness[1] == 0.0 && g_thickness[2] == 0.0) {
+        return;
+    }
+
 
     // We mark each of the four vertices as valid or not. Vertices can be
     // marked invalid on input (eg, if they contain NaN). We also mark them

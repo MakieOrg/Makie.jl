@@ -37,6 +37,13 @@ function block_docs(::Type{SliderGrid})
     """
 end
 
+function free(sg::SliderGrid)
+    foreach(delete!, sg.sliders)
+    foreach(delete!, sg.valuelabels)
+    foreach(delete!, sg.labels)
+    return
+end
+
 function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
 
     default_format(x) = string(x)
