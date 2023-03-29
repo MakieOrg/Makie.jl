@@ -27,6 +27,10 @@ This is the sequential logic by which conversions in Makie are attempted:
 - Dispatch on `convert_arguments(::PlotType, converted_args...)`
 - Fail if no method was found
 
+There are two methods in the type recipe API: 
+- `convert_arguments(::Type{<: PlotType}, args...)`
+- `used_attributes(::Type{<: PlotType}, input_args...)::NTuple{Symbol}` which passes the returned keys as kwargs to `convert_arguments`.
+
 ### Multiple Argument Conversion with `convert_arguments`
 
 Plotting of a `Circle` for example can be defined via a conversion into a vector of points:
