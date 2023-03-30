@@ -35,48 +35,6 @@ There are two methods in the type recipe API:
 
 `convert_arguments` should return a tuple which covers all positional arguments (in exact order) for the plot type that is being considered (e.g. if the type is `Surface`, then the tuple should be `(x::Vector, y::Vector, z::Matrix)` corresponding to the positional arguments required for that category of plots).
 
-### A simple example of `convert_arguments`
-
-Let's say I have a struct, `LonLatGrid`, which encodes two vectors defining the shape of a grid, and a matrix which contains values at each grid point.
-
-```julia:simpleconvert
-using Makie
-using CairoMakie # hide
-
-struct LonLatGrid
-    xs::AbstractVector{<: Real}
-    ys::AbstractVector{<: Real}
-    zs::AbstractMatrix{<: Real}
-end
-
-mygrid = LonLatGrid(-5:5, -5:5, Makie.peaks(11)) # a grid centered at null island!
-```
-
-Clearly, Makie has no idea that this exists.  If I want to be able to plot this using surface, I have to define how it's to be done:
-
-```julia:simpleconvert
-function Makie.convert_arguments(::Type{<: Makie.Surface}, grid::LonLatGrid)
-    return (grid.xs, grid.ys, grid.zs)
-end
-
-surface(mygrid)
-```
-
-This is cool!  But it won't work with other functions which take the same arguments, like `heatmap` or `contour`.  This is where _conversion traits_ come in - by dispatching `convert_arguments` on the appropriate conversion trait, it will automatically apply to all plots which declare that trait!
-
-```julia:simpleconvert
-function Makie.convert_arguments(::Makie.ContinuousSurface, grid::LonLatGrid)
-    return (grid.xs, grid.ys, grid.zs)
-end
-
-f, a, p = surface(mygrid)
-heatmap(f[1, 2], mygrid)
-contour(f[2, 1], mygrid)
-contour3d(f[2, 2], mygrid)
-f
-```
-
-This is how you can get the most out of type recipes and conversion traits.
 
 ### Argument Conversion with `convert_arguments`
 
@@ -116,6 +74,55 @@ use it directly:
 ```julia
 plottype(::MyType) = Surface
 ```
+
+### A simple example of `convert_arguments`
+
+Let's say I have a struct, `LonLatGrid`, which encodes two vectors defining the shape of a grid, and a matrix which contains values at each grid point.
+
+```julia:example_figure
+using Makie
+using CairoMakie # hide
+
+struct LonLatGrid
+    xs::AbstractVector{<: Real}
+    ys::AbstractVector{<: Real}
+    zs::AbstractMatrix{<: Real}
+end
+
+mygrid = LonLatGrid(-5:5, -5:5, Makie.peaks(11)) # a grid centered at null island!
+```
+
+Clearly, Makie has no idea that this exists.  If I want to be able to plot this using surface, I have to define how it's to be done:
+
+\begin{examplefigure}
+```julia
+function Makie.convert_arguments(::Type{<: Makie.Surface}, grid::LonLatGrid)
+    return (grid.xs, grid.ys, grid.zs)
+end
+
+surface(mygrid)
+```
+\end{examplefigure}
+
+This is cool!  But it won't work with other functions which take the same arguments, like `heatmap` or `contour`.  This is where _conversion traits_ come in - by dispatching `convert_arguments` on the appropriate conversion trait, it will automatically apply to all plots which declare that trait!
+
+\begin{examplefigure}
+```julia
+function Makie.convert_arguments(::Makie.ContinuousSurface, grid::LonLatGrid)
+    return (grid.xs, grid.ys, grid.zs)
+end
+begin
+    f, a, p = surface(mygrid)
+    heatmap(f[1, 2], mygrid)
+    contour(f[2, 1], mygrid)
+    contour3d(f[2, 2], mygrid)
+    f
+end
+```
+\end{examplefigure}
+
+This is how you can get the most out of type recipes and conversion traits.
+
 
 ### Single Argument Conversion with `convert_single_argument`
 
