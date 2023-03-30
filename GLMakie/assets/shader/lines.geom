@@ -467,16 +467,11 @@ void draw_solid_line(bool isvalid[4])
     // Here we treat this by adding an artificial AA boundary at the line start
     // and end. Note that always doing this will introduce AA where lines should
     // smoothly connect.
-    f_uv_minmax.x = ifelse(
-        segment_length < abs(length_a * dot(miter_a, v1)),
-        (u1 - g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1))) * px2uv,
-        f_uv_minmax.x
-    );
-    f_uv_minmax.y = ifelse(
-        segment_length < abs(length_b * dot(miter_b, v1)),
-        (u2 + g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1))) * px2uv,
-        f_uv_minmax.y
-    );
+    if (segment_length < abs(length_a * dot(miter_a, v1)))
+        f_uv_minmax.x = (u1 - g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1))) * px2uv;
+
+    if (segment_length < abs(length_b * dot(miter_b, v1)))
+        f_uv_minmax.y = (u2 + g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1))) * px2uv;
 
     // To treat line starts and ends we elongate the line in the respective
     // direction and enforce an AA border at the original start/end position
