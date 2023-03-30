@@ -127,7 +127,6 @@ end
     ys = LinRange(0, 15, 100)
     zs = [cos(x) * sin(y) for x in xs, y in ys]
 
-    set_theme!(Theme(Axis3=(xtickformat=xs -> [L"%$x" for x in xs],)))
 
     fig = Figure()
     ax = Axis3(fig[1, 1])
