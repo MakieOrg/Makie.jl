@@ -29,6 +29,10 @@ end
     f
 end
 
+@reference_test "Heatmap with integer inputs" begin
+    heatmap(rand(UInt16.(1:150), 10, 10))
+end
+
 @reference_test "poly and colormap" begin
     # example by @Paulms from MakieOrg/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
