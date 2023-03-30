@@ -147,11 +147,11 @@ end
 #     Image/heatmap -> ARGBSurface     #
 ########################################
 
-function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
+function to_cairo_image(img::AbstractMatrix{<: Real}, attributes)
     to_cairo_image(to_rgba_image(img, attributes), attributes)
 end
 
-function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
+function to_rgba_image(img::AbstractMatrix{<: Real}, attributes)
     Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
 
     nan_color = Makie.to_color(nan_color)
