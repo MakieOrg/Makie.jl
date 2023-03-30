@@ -129,7 +129,7 @@ end
 
 
     fig = Figure()
-    ax = Axis3(fig[1, 1])
+    ax = Axis3(fig[1, 1]; xtickformat = xs -> [L"%$x" for x in xs])
 
     surface!(ax, xs, ys, zs)
 end
