@@ -35,12 +35,6 @@ function JSServe.jsrender(session::Session, fig::Makie.FigureLike)
     return JSServe.jsrender(session, Makie.get_scene(fig))
 end
 
-const WEB_MIMES = (
-    MIME"text/html",
-    MIME"application/vnd.webio.application+html",
-    MIME"application/prs.juno.plotpane+html",
-    MIME"juliavscode/html")
-
 """
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
 """
@@ -86,7 +80,7 @@ function mark_as_displayed!(screen::Screen, scene::Scene)
     return
 end
 
-for M in WEB_MIMES
+for M in Makie.WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
             inline_display = App() do session::Session
@@ -108,7 +102,7 @@ for M in WEB_MIMES
 end
 
 function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
-    return T in WEB_MIMES
+    return T in Makie.WEB_MIMES
 end
 
 # TODO implement

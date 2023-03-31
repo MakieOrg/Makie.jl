@@ -12,7 +12,7 @@ using ReferenceTests
 @testset "mimes" begin
     Makie.inline!(true)
     f, ax, pl = scatter(1:4)
-    @testset for mime in WGLMakie.WEB_MIMES
+    @testset for mime in Makie.WEB_MIMES
         @test showable(mime(), f)
     end
     # I guess we explicitely don't say we can show those since it's highly Inefficient compared to html

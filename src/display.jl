@@ -156,8 +156,18 @@ end
 
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 
-# need to define this to resolve ambiguoity issue
+# need to define this to resolve ambiguity issue
 Base.showable(mime::MIME"application/json", fig::FigureLike) = _backend_showable(mime)
+
+const WEB_MIMES = (
+    MIME"text/html",
+    MIME"application/vnd.webio.application+html",
+    MIME"application/prs.juno.plotpane+html",
+    MIME"juliavscode/html")
+
+# because we have a default way to display pngs in html contexts, we can say that
+# if png is showable, so are the html types
+Base.showable(mime::Union{WEB_MIMES...}, fig::FigureLike) = showable(MIME"image/png"(), fig)
 
 backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
@@ -382,7 +392,7 @@ function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::S
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, ::Union{MIME"text/html",MIME"application/vnd.webio.application+html",MIME"application/prs.juno.plotpane+html",MIME"juliavscode/html"}, scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene)
     w, h = widths(scene.px_area[])
     png_io = IOBuffer()
     backend_show(screen, png_io, MIME"image/png"(), scene)
