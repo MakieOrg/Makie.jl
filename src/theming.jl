@@ -87,6 +87,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         vsync = false,
         render_on_demand = true,
         framerate = 30.0,
+        px_per_unit = automatic,
 
         # GLFW window attributes
         float = false,
@@ -97,6 +98,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         debugging = false,
         monitor = nothing,
         visible = true,
+        scalefactor = automatic,
 
         # Postproccessor
         oit = true,
