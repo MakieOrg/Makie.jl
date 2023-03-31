@@ -113,16 +113,6 @@ function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::MIME"image/png", sc
     return screen
 end
 
-function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::Union{MIME"text/html",MIME"application/vnd.webio.application+html",MIME"application/prs.juno.plotpane+html",MIME"juliavscode/html"}, scene::Scene)
-    w, h = widths(scene.px_area[])
-    cairo_draw(screen, scene)
-    png_io = IOBuffer()
-    Cairo.write_to_png(screen.surface, png_io)
-    b64 = Base64.base64encode(String(take!(png_io)))
-    print(io, "<img width=$w height=$h style='object-fit: contain;' src=\"data:image/png;base64, $(b64)\"/>")
-    return screen
-end
-
 # Disabling mimes and showable
 
 const DISABLED_MIMES = Set{String}()
