@@ -1,6 +1,6 @@
 using Base.Docs: doc
 
-@enum RenderType SVG IMAGE PDF EPS
+@enum RenderType SVG IMAGE PDF EPS HTML
 
 Base.convert(::Type{RenderType}, ::MIME{SYM}) where SYM = mime_to_rendertype(SYM)
 function Base.convert(::Type{RenderType}, type::String)
@@ -12,6 +12,8 @@ function Base.convert(::Type{RenderType}, type::String)
         return PDF
     elseif type == "eps"
         return EPS
+    elseif type in ("html", "text/html", "application/vnd.webio.application+html", "application/prs.juno.plotpane+html", "juliavscode/html")
+        return HTML
     else
         error("Unsupported cairo render type: $type")
     end
@@ -22,6 +24,7 @@ function to_mime(type::RenderType)
     type == SVG && return MIME("image/svg+xml")
     type == PDF && return MIME("application/pdf")
     type == EPS && return MIME("application/postscript")
+    type == HTML && return MIME("text/html")
     return MIME("image/png")
 end
 
@@ -35,6 +38,8 @@ function mime_to_rendertype(mime::Symbol)::RenderType
         return PDF
     elseif mime == Symbol("application/postscript")
         return EPS
+    elseif mime in (Symbol("text/html"), Symbol("text/html"), Symbol("application/vnd.webio.application+html"), Symbol("application/prs.juno.plotpane+html"), Symbol("juliavscode/html"))
+        return HTML
     else
         error("Unsupported mime: $mime")
     end
@@ -55,7 +60,7 @@ function surface_from_output_type(type::RenderType, io, w, h)
         return Cairo.CairoPDFSurface(io, w, h)
     elseif type === EPS
         return Cairo.CairoEPSSurface(io, w, h)
-    elseif type === IMAGE
+    elseif type === IMAGE || type === HTML
         img = fill(ARGB32(0, 0, 0, 0), w, h)
         return Cairo.CairoImageSurface(img)
     else
@@ -76,8 +81,8 @@ end
 to_cairo_antialias(aa::Int) = aa
 
 """
-* `px_per_unit = 1.0`: see [figure size docs](https://docs.makie.org/v0.17.13/documentation/figure_size/index.html).
-* `pt_per_unit = 0.75`: see [figure size docs](https://docs.makie.org/v0.17.13/documentation/figure_size/index.html).
+* `px_per_unit = 2.0`: see [figure docs](https://docs.makie.org/stable/documentation/figure/).
+* `pt_per_unit = 0.75`: see [figure docs](https://docs.makie.org/stable/documentation/figure/).
 * `antialias::Union{Symbol, Int} = :best`: antialias modus Cairo uses to draw. Applicable options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`.
 * `visible::Bool`: if true, a browser/image viewer will open to display rendered output.
 """
@@ -120,9 +125,7 @@ function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
         # So, if we want to prefer the png mime, we disable the mimes that are usually higher up in the stack.
         disable_mime!("svg", "pdf")
     elseif type == "svg"
-        # SVG is usually pretty high up the priority, so we can just enable all mimes
-        # If we implement html display for CairoMakie, we might need to disable that.
-        disable_mime!()
+        disable_mime!("text/html", "application/vnd.webio.application+html", "application/prs.juno.plotpane+html", "juliavscode/html")
     else
         enable_only_mime!(type)
     end
