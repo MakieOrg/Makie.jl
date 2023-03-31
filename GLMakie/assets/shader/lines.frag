@@ -56,10 +56,6 @@ vec2 get_sd(Nothing _, vec2 uv){
     return uv;
 }
 
-float ifelse(bool condition, float true_val, float false_val){
-    return float(condition) * (true_val - false_val) + false_val;
-}
-
 void main(){
     vec4 color = vec4(f_color.rgb, 0.0);
     vec2 xy = get_sd(pattern, f_uv);
