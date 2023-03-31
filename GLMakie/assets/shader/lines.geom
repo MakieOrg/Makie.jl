@@ -41,16 +41,6 @@ vec2 screen_space(vec4 vertex)
     return vec2(vertex.xy / vertex.w) * resolution;
 }
 
-// should be noticably faster than branching if true_val and false_val are
-// easy to calculate
-float ifelse(bool condition, float true_val, float false_val){
-    return float(condition) * (true_val - false_val) + false_val;
-}
-float ifelse(float condition, float true_val, float false_val){
-    return condition * (true_val - false_val) + false_val;
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// Emit Vertex Methods
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,12 +148,14 @@ void draw_patterned_line(bool isvalid[4])
 
         // update left side
         temp = ceil((edge1 - right) * inv_pl) + left * inv_pl;
-        start_width = ifelse(temp < start, right - left, start_width);
+        if (temp < start)
+            start_width = right - left;
         start = min(start, temp);
 
         // update right side
         temp = floor((edge2 - left) * inv_pl) + right * inv_pl;
-        stop_width = ifelse(temp > stop, right - left, stop_width);
+        if (temp > stop)
+            stop_width = right - left;
         stop = max(stop, temp);
     }
     // Technically start and stop should be offset by another
@@ -297,11 +289,10 @@ void draw_patterned_line(bool isvalid[4])
             // If the line starts with this segment or the center of the "on"
             // section of the pattern is in this segment, we draw it, else
             // we skip past the first "on" section.
-            start = ifelse(
-                !isvalid[0] || (start > (g_lastlen[1] - start_width) * px2uv),
-                start - AA_THICKNESS * px2uv,
-                start + (start_width + 0.5 * AA_THICKNESS) * inv_pl
-            );
+            if (!isvalid[0] || (start > (g_lastlen[1] - start_width) * px2uv))
+                start = start - AA_THICKNESS * px2uv;
+            else
+                start = start + (start_width + 0.5 * AA_THICKNESS) * inv_pl;
             p1 += (2 * start * pattern_length - g_lastlen[1]) * v1;
         }
 
@@ -327,11 +318,10 @@ void draw_patterned_line(bool isvalid[4])
         } else {
             miter_b = n1;
             length_b = thickness_aa2;
-            stop = ifelse(
-                isvalid[3] && (stop > (g_lastlen[2] + stop_width) * px2uv),
-                stop - (stop_width + 0.5 * AA_THICKNESS) * inv_pl,
-                stop + AA_THICKNESS * px2uv
-            );
+            if (isvalid[3] && (stop > (g_lastlen[2] + stop_width) * px2uv))
+                stop = stop - (stop_width + 0.5 * AA_THICKNESS) * inv_pl;
+            else
+                stop = stop + AA_THICKNESS * px2uv;
             p2 += (2 * stop * pattern_length - g_lastlen[2]) * v1;
         }
 
@@ -341,8 +331,10 @@ void draw_patterned_line(bool isvalid[4])
 
         // If this segment starts or ends a line we force anti-aliasing to
         // happen at the respective edge.
-        f_uv_minmax.x = ifelse(isvalid[0], f_uv_minmax.x, g_lastlen[1] * px2uv);
-        f_uv_minmax.y = ifelse(isvalid[3], f_uv_minmax.y, g_lastlen[2] * px2uv);
+        if (!isvalid[0])
+            f_uv_minmax.x = g_lastlen[1] * px2uv;
+        if (!isvalid[3])
+            f_uv_minmax.y = g_lastlen[2] * px2uv;
 
         // generate rectangle for this segment
         emit_vertex(p1 + miter_a, vec2(start + dot(v1, miter_a) * px2uv, -thickness_aa1), 1);
@@ -467,16 +459,11 @@ void draw_solid_line(bool isvalid[4])
     // Here we treat this by adding an artificial AA boundary at the line start
     // and end. Note that always doing this will introduce AA where lines should
     // smoothly connect.
-    f_uv_minmax.x = ifelse(
-        segment_length < abs(length_a * dot(miter_a, v1)),
-        (u1 - g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1))) * px2uv,
-        f_uv_minmax.x
-    );
-    f_uv_minmax.y = ifelse(
-        segment_length < abs(length_b * dot(miter_b, v1)),
-        (u2 + g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1))) * px2uv,
-        f_uv_minmax.y
-    );
+    if (segment_length < abs(length_a * dot(miter_a, v1)))
+        f_uv_minmax.x = (u1 - g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1))) * px2uv;
+
+    if (segment_length < abs(length_b * dot(miter_b, v1)))
+        f_uv_minmax.y = (u2 + g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1))) * px2uv;
 
     // To treat line starts and ends we elongate the line in the respective
     // direction and enforce an AA border at the original start/end position
