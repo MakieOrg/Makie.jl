@@ -30,7 +30,7 @@ end
 end
 
 @reference_test "Heatmap with integer inputs" begin
-    heatmap(rand(UInt16.(1:150), 10, 10))
+    heatmap(RNG.rand(UInt16.(1:150), 10, 10))
 end
 
 @reference_test "poly and colormap" begin
