@@ -64,7 +64,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         fig = scatter(1:4, figure=(; resolution=(800, 800)))
         save("test.pdf", fig)
         save("test.png", fig)
-        @test size(load("test.png")) == (800, 800)
+        @test size(load("test.png")) == (1600, 1600)
         rm("test.pdf")
         rm("test.png")
     end
@@ -193,7 +193,7 @@ excludes = Set([
 functions = [:volume, :volume!, :uv_mesh]
 
 @testset "refimages" begin
-    CairoMakie.activate!(type = "png")
+    CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions=functions)
     recorded_files, recording_dir = @include_reference_tests "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)
