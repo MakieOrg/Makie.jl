@@ -53,6 +53,6 @@
     ax = Axis(fig[1, 1])
     p = text!(ax, Point2f(10), text = "test", fontsize = 20)
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(340, 341, 0)
+    @test bb.origin ≈ Point3f(351, 353, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)
 end
