@@ -37,50 +37,50 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(window_open))
     GLFW.SetWindowCloseCallback(window, nothing)
 end
 
-function window_position(window::GLFW.Window)
-    xy = GLFW.GetWindowPos(window)
-    (xy.x, xy.y)
-end
-
-struct WindowAreaUpdater
-    window::GLFW.Window
-    dpi::Observable{Float64}
-    area::Observable{GeometryBasics.HyperRectangle{2, Int64}}
-end
-
-function (x::WindowAreaUpdater)(::Nothing)
-    ShaderAbstractions.switch_context!(x.window)
-    rect = x.area[]
-    # TODO put back window position, but right now it makes more trouble than it helps#
-    # x, y = GLFW.GetWindowPos(window)
-    # if minimum(rect) != Vec(x, y)
-    #     event[] = Recti(x, y, framebuffer_size(window))
-    # end
-    w, h = GLFW.GetFramebufferSize(x.window)
-    if Vec(w, h) != widths(rect)
-        monitor = GLFW.GetPrimaryMonitor()
-        props = MonitorProperties(monitor)
-        # dpi of a monitor should be the same in x y direction.
-        # if not, minimum seems to be a fair default
-        x.dpi[] = minimum(props.dpi)
-        x.area[] = Recti(minimum(rect), w, h)
-    end
-    return
-end
-
 function Makie.window_area(scene::Scene, screen::Screen)
     disconnect!(screen, window_area)
 
-    updater = WindowAreaUpdater(
-        to_native(screen), scene.events.window_dpi, scene.events.window_area
-    )
-    on(updater, screen.render_tick)
+    # TODO: Figure out which monitor the window is on and react to DPI changes
+    monitor = GLFW.GetPrimaryMonitor()
+    props = MonitorProperties(monitor)
+    scene.events.window_dpi[] = minimum(props.dpi)
 
+    function windowsizecb(window, width::Cint, height::Cint)
+        area = scene.events.window_area
+        sf = screen.scalefactor[]
+
+        ShaderAbstractions.switch_context!(window)
+        winscale = sf / (@static Sys.isapple() ? scale_factor(window) : 1)
+        winw, winh = round.(Int, (width, height) ./ winscale)
+        if Vec(winw, winh) != widths(area[])
+            area[] = Recti(minimum(area[]), winw, winh)
+        end
+        return
+    end
+    # TODO put back window position, but right now it makes more trouble than it helps
+    #function windowposcb(window, x::Cint, y::Cint)
+    #    area = scene.events.window_area
+    #    ShaderAbstractions.switch_context!(window)
+    #    winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
+    #    xs, ys = round.(Int, (x, y) ./ winscale)
+    #    if Vec(xs, ys) != minimum(area[])
+    #        area[] = Recti(xs, ys, widths(area[]))
+    #    end
+    #    return
+    #end
+
+    window = to_native(screen)
+    GLFW.SetWindowSizeCallback(window, (win, w, h) -> windowsizecb(win, w, h))
+    #GLFW.SetWindowPosCallback(window, (win, x, y) -> windowposcb(win, x, y))
+
+    windowsizecb(window, Cint.(window_size(window))...)
     return
 end
 
 function Makie.disconnect!(screen::Screen, ::typeof(window_area))
-    filter!(p -> !isa(p[2], WindowAreaUpdater), screen.render_tick.listeners)
+    window = to_native(screen)
+    #GLFW.SetWindowPosCallback(window, nothing)
+    GLFW.SetWindowSizeCallback(window, nothing)
     return
 end
 function Makie.disconnect!(::GLFW.Window, ::typeof(window_area))
@@ -168,44 +168,28 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(unicode_input))
     GLFW.SetCharCallback(window, nothing)
 end
 
-# TODO memoise? Or to bug ridden for the small performance gain?
-function retina_scaling_factor(w, fb)
-    (w[1] == 0 || w[2] == 0) && return (1.0, 1.0)
-    fb ./ w
-end
-
-# TODO both of these methods are slow!
-# ~90µs, ~80µs
-# This is too slow for events that may happen 100x per frame
-function framebuffer_size(window::GLFW.Window)
-    wh = GLFW.GetFramebufferSize(window)
-    (wh.width, wh.height)
-end
-function window_size(window::GLFW.Window)
-    wh = GLFW.GetWindowSize(window)
-    (wh.width, wh.height)
-end
-function retina_scaling_factor(window::GLFW.Window)
-    w, fb = window_size(window), framebuffer_size(window)
-    retina_scaling_factor(w, fb)
-end
-
-function correct_mouse(window::GLFW.Window, w, h)
-    ws, fb = window_size(window), framebuffer_size(window)
-    s = retina_scaling_factor(ws, fb)
-    (w * s[1], fb[2] - (h * s[2]))
+function correct_mouse(screen::Screen, w, h)
+    nw = to_native(screen)
+    sf = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(nw) : 1)
+    _, winh = window_size(nw)
+    @static if Sys.isapple()
+        return w, (winh / sf) - h
+    else
+        return w / sf, (winh - h) / sf
+    end
 end
 
 struct MousePositionUpdater
-    window::GLFW.Window
+    screen::Screen
     mouseposition::Observable{Tuple{Float64, Float64}}
     hasfocus::Observable{Bool}
 end
 
 function (p::MousePositionUpdater)(::Nothing)
     !p.hasfocus[] && return
-    x, y = GLFW.GetCursorPos(p.window)
-    pos = correct_mouse(p.window, x, y)
+    nw = to_native(p.screen)
+    x, y = GLFW.GetCursorPos(nw)
+    pos = correct_mouse(p.screen, x, y)
     if pos != p.mouseposition[]
         @print_error p.mouseposition[] = pos
         # notify!(e.mouseposition)
@@ -222,7 +206,7 @@ which is not in scene coordinates, with the upper left window corner being 0
 function Makie.mouse_position(scene::Scene, screen::Screen)
     disconnect!(screen, mouse_position)
     updater = MousePositionUpdater(
-        to_native(screen), scene.events.mouseposition, scene.events.hasfocus
+        screen, scene.events.mouseposition, scene.events.hasfocus
     )
     on(updater, screen.render_tick)
     return

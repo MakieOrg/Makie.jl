@@ -2,6 +2,10 @@
 
 ## master
 
+- GLMakie has gained support for HiDPI (aka Retina) screens.
+  This also enables saving images with higher resolution than screen pixel dimensions.
+  [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544)
+  
 ## v0.19.3
 
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
