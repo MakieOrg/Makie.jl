@@ -516,7 +516,7 @@ end
         "The color of the tick labels."
         ticklabelcolor = @inherit(:textcolor, :black)
         "The size of the tick marks."
-        ticksize = 6f0
+        ticksize = 5f0
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
@@ -592,7 +592,7 @@ end
         "The alignment of minor ticks on the axis spine"
         minortickalign = 0f0
         "The tick size of minor ticks"
-        minorticksize = 4f0
+        minorticksize = 3f0
         "The tick width of minor ticks"
         minortickwidth = 1f0
         "The tick color of minor ticks"
