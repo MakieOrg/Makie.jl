@@ -2,6 +2,8 @@
 
 ## master
 
+- Added export of `hidezdecorations!` from MakieLayout. [#2821](https://github.com/MakieOrg/Makie.jl/pull/2821)
+
 ## v0.19.3
 
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
