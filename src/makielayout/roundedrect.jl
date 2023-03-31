@@ -16,7 +16,7 @@ function plot!(roundrect::RoundedRect)
     heightattr = roundrect.height
     widthattr = roundrect.width
 
-    roundedrectpoints = lift(rect, cornerradius, cornersegments) do rect,
+    roundedrectpoints = lift(roundrect, rect, cornerradius, cornersegments) do rect,
             cr, csegs
 
         cr = min(width(rect) / 2, height(rect) / 2, cr)

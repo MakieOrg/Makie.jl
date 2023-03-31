@@ -541,7 +541,13 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
         end
     end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    # If already correct eltypes for GL, we can pass the mesh through as is
+    if eltype(metafree(coordinates(mesh))) == Point{N, Float32} && eltype(faces(mesh)) == GLTriangleFace
+        return (mesh,)
+    else
+        # Else, we need to convert it!
+        return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    end
 end
 
 function convert_arguments(
@@ -833,7 +839,7 @@ convert_attribute(x::Nothing, ::key"linestyle") = x
 #     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
 #
 # [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-convert_attribute(A::AbstractVector, ::key"linestyle") = A
+convert_attribute(A::AbstractVector, ::key"linestyle") = [float(x - A[1]) for x in A]
 
 # A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
