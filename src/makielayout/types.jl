@@ -292,9 +292,9 @@ end
         "The horizontal and vertical alignment of the yticklabels."
         yticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The size of the xtick marks."
-        xticksize::Float64 = 6f0
+        xticksize::Float64 = 5f0
         "The size of the ytick marks."
-        yticksize::Float64 = 6f0
+        yticksize::Float64 = 5f0
         "Controls if the xtick marks are visible."
         xticksvisible::Bool = true
         "Controls if the ytick marks are visible."
@@ -440,7 +440,7 @@ end
         "The alignment of x minor ticks on the axis spine"
         xminortickalign::Float64 = 0f0
         "The tick size of x minor ticks"
-        xminorticksize::Float64 = 4f0
+        xminorticksize::Float64 = 3f0
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
@@ -452,7 +452,7 @@ end
         "The alignment of y minor ticks on the axis spine"
         yminortickalign::Float64 = 0f0
         "The tick size of y minor ticks"
-        yminorticksize::Float64 = 4f0
+        yminorticksize::Float64 = 3f0
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
@@ -698,7 +698,7 @@ end
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
         value = 0
         "The width of the slider line"
-        linewidth::Float32 = 15
+        linewidth::Float32 = 10
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."
@@ -785,7 +785,7 @@ end
         "The vertical alignment of the button in its suggested boundingbox"
         valign = :center
         "The extra space added to the sides of the button label's boundingbox."
-        padding = (10f0, 10f0, 10f0, 10f0)
+        padding = (8f0, 8f0, 8f0, 8f0)
         "The font size of the button label."
         fontsize = @inherit(:fontsize, 16f0)
         "The text of the button label."
@@ -898,13 +898,13 @@ end
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
-        dropdown_arrow_size = 20
+        dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
         fontsize = @inherit(:fontsize, 16f0)
         "Padding of entry texts"
-        textpadding = (10, 10, 10, 10)
+        textpadding = (8, 10, 8, 8)
         "Color of entry texts"
         textcolor = :black
         "The opening direction of the menu (:up or :down)"
@@ -1130,13 +1130,13 @@ end
         "Color of the box border when focused and invalid."
         bordercolor_focused_invalid = RGBf(1, 0, 0)
         "Width of the box border."
-        borderwidth = 2f0
+        borderwidth = 1f0
         "Padding of the text against the box."
-        textpadding = (10, 10, 10, 10)
+        textpadding = (8, 8, 8, 8)
         "If the textbox is focused and receives text input."
         focused = false
         "Corner radius of text box."
-        cornerradius = 8
+        cornerradius = 5
         "Corner segments of one rounded corner."
         cornersegments = 20
         "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."

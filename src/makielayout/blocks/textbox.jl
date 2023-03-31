@@ -99,7 +99,7 @@ function initialize_block!(tbox::Textbox)
         end
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 2, inspectable = false)
+    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
 
     tbox.cursoranimtask = nothing
 

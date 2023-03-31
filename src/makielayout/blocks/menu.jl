@@ -330,7 +330,7 @@ function initialize_block!(m::Menu; default = 1)
     end
     dropdown_arrow = scatter!(
         blockscene, symbol_pos;
-        marker=lift(iso -> iso ? '▴' : '▾', blockscene, m.is_open),
+        marker=lift(iso -> iso ? :utriangle : :dtriangle, blockscene, m.is_open),
         markersize = m.dropdown_arrow_size,
         color = m.dropdown_arrow_color,
         strokecolor = :transparent,
