@@ -118,13 +118,12 @@ f
 ### Columns or rows are shrunk to the size of Text or another element
 
 Columns or rows that have size `Auto(true)` try to determine the width or height of all
-single-spanned elements that are placed in them, and if any elements report their
-size the row or column will shrink to the maximum reported size. This is so smaller
+single-spanned elements that are placed in them, and if any elements "tell" the layout their own height or width,
+the row or column will shrink to the maximum reported size. This is so smaller
 elements with a known size take as little space as needed. But if there is other
 content in the row that should take more space, you can give the offending element
-the attribute `tellheight = false` or `tellwidth = false`. This way, its own size
-can be determined automatically, but
-it doesn't report it to the row or column of the layout. Alternatively, you can set the size
+the attribute `tellheight = false` or `tellwidth = false`. This way, its own height
+or width doesn't influence the automatic sizing of the layout. Alternatively, you can set the size
 of that row or column to `Auto(false)` (or any other value than `Auto(true)`).
 
 \begin{examplefigure}{svg = true}
@@ -135,8 +134,8 @@ f = Figure()
 
 Axis(f[1, 1], title = "Shrunk")
 Axis(f[2, 1], title = "Expanded")
-Label(f[1, 2], "tellheight = true", tellheight = true)
-Label(f[2, 2], "tellheight = false", tellheight = false)
+Label(f[1, 2], "This Label has the setting\ntellheight = true\ntherefore the row it is in has\nadjusted to match its height.", tellheight = true)
+Label(f[2, 2], "This Label has the setting\ntellheight = false.\nThe row it is in can use\nall the remaining space.", tellheight = false)
 
 f
 ```
