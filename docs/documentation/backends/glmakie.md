@@ -15,6 +15,50 @@ println("~~~")
 ```
 \textoutput{docs}
 
+#### Window Scaling
+
+The sizes of figures are given in display-independent "logical" dimensions, and the
+GLMakie backend will scale the size of the displayed window on HiDPI/Retina displays
+automatically.
+For example, the default `resolution = (800, 600)` will be shown in a 1600 × 1200 window
+on a HiDPI display which is configured with a 200% scaling factor.
+
+The scaling factor may be overridden by displaying the figure with a different
+`scalefactor` value:
+```julia
+fig = Figure(resolution = (800, 600))
+# ...
+display(fig, scalefactor = 1.5)
+```
+
+If the scale factor is not changed from its default automatic configuration, the window
+will be resized to maintain its apparent size when moved across displays with different
+scaling factors on Windows and OSX.
+(Independent scaling factors are not supported by X11, and at this time the underlying
+GLFW library is not compiled with Wayland support.)
+
+#### Resolution Scaling
+
+Related to the window scaling factor, the mapping from figure sizes and positions to pixels
+can be scaled to achieve HiDPI/Retina resolution renderings.
+The resolution scaling defaults to the same factor as the window scaling, but it may
+be independently overridden with the `px_per_unit` argument when showing a figure:
+```julia
+fig = Figure(resolution = (800, 600))
+# ...
+display(fig, px_per_unit = 2)
+```
+
+The resolution scale factor may also be changed when saving pngs:
+```julia
+save("hires.png", fig, px_per_unit = 2)    # 1600 × 1200 px png
+save("lores.png", fig, px_per_unit = 0.5)  #  400 × 300 px png
+```
+If a script may run in interactive environments where the native screen DPI can vary,
+you may want to explicitly set `px_per_unit = 1` when saving figures to ensure consistency
+of results.
+
+
 #### Multiple Windows
 
 GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`.
