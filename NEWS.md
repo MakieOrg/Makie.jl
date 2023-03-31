@@ -3,7 +3,11 @@
 ## master
 
 - Deprecated `flatten_plots` in favor of `collect_atomic_plots`. Using the new `collect_atomic_plots` fixed a bug in CairoMakie where the z-level of plots within recipes was not respected. [#2793](https://github.com/MakieOrg/Makie.jl/pull/2793)
-- Added export of `hidezdecorations!` from MakieLayout. [#2821](https://github.com/MakieOrg/Makie.jl/pull/2821)
+
+## v0.19.4
+
+- Added export of `hidezdecorations!` from MakieLayout [#2821](https://github.com/MakieOrg/Makie.jl/pull/2821).
+- Fix line shader [#2828](https://github.com/MakieOrg/Makie.jl/pull/2828).
 
 ## v0.19.3
 

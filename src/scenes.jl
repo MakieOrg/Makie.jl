@@ -326,7 +326,7 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        map!(zero_origin, child, child_px_area, parent.px_area)
+        map!(identity, child, child_px_area, parent.px_area)
     elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
         a = Rect2i(px_area)
         on(child, pixelarea(parent)) do p
