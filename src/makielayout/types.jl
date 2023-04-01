@@ -983,7 +983,7 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "The vertical alignment of the entry labels."
         labelvalign = :center
         "The additional space between the legend content and the border."
-        padding = (10f0, 10f0, 8f0, 8f0)
+        padding = (6f0, 6f0, 6f0, 6f0)
         "The additional space between the legend and its suggested boundingbox."
         margin = (0f0, 0f0, 0f0, 0f0)
         "The background color of the legend."
