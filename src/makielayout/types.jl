@@ -834,9 +834,9 @@ end
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
         "The width of the toggle."
-        width = 60
+        width = 32
         "The height of the toggle."
-        height = 28
+        height = 18
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
