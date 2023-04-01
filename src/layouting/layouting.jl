@@ -170,20 +170,20 @@ function glyph_collection(
     # shift all x values by the justification amount needed for each line
     # if justification is automatic it depends on alignment
     float_justification = if justification === automatic
-        if halign == :left || halign == 0
+        if halign === :left || halign == 0
             0.0f0
-        elseif halign == :right || halign == 1
+        elseif halign === :right || halign == 1
             1.0f0
-        elseif halign == :center || halign == 0.5
+        elseif halign === :center || halign == 0.5
             0.5f0
         else
             0.5f0
         end
-    elseif justification == :left
+    elseif justification === :left
         0.0f0
-    elseif justification == :right
+    elseif justification === :right
         1.0f0
-    elseif justification == :center
+    elseif justification === :center
         0.5f0
     else
         Float32(justification)
@@ -205,11 +205,11 @@ function glyph_collection(
     # compute x values after left/center/right alignment
     halign = if halign isa Number
         Float32(halign)
-    elseif halign == :left
+    elseif halign === :left
         0.0f0
-    elseif halign == :center
+    elseif halign === :center
         0.5f0
-    elseif halign == :right
+    elseif halign === :right
         1.0f0
     else
         error("Invalid halign $halign. Valid values are <:Number, :left, :center and :right.")
@@ -230,16 +230,16 @@ function glyph_collection(
     overall_height = first_line_ascender - ys[end] - last_line_descender
 
     # compute y values after top/center/bottom/baseline alignment
-    ys_aligned = if valign == :baseline
+    ys_aligned = if valign === :baseline
         ys .- first_line_ascender .+ overall_height .+ last_line_descender
     else
         va = if valign isa Number
             Float32(valign)
-        elseif valign == :top
+        elseif valign === :top
             1f0
-        elseif valign == :bottom
+        elseif valign === :bottom
             0f0
-        elseif valign == :center
+        elseif valign === :center
             0.5f0
         else
             error("Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
@@ -288,7 +288,7 @@ function padded_vcat(arrs::AbstractVector{T}, fillvalue) where T <: AbstractVect
 end
 
 function alignment2num(x::Symbol)
-    (x == :center) && return 0.5f0
+    (x === :center) && return 0.5f0
     (x in (:left, :bottom)) && return 0.0f0
     (x in (:right, :top)) && return 1.0f0
     return 0.0f0 # 0 default, or better to error?
@@ -299,8 +299,6 @@ end
 
 _offset_to_vec(o::VecTypes) = to_ndim(Vec3f, o, 0)
 _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
-_offset_at(o::Vec3f, i) = o
-_offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
@@ -322,7 +320,7 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
         )
         uvs[i] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
         scales[i] = widths(glyph_bb) .+ gc.scales[i] .* 2pad
-        char_offsets[i] = gc.origins[i] .+ _offset_at(off, i)
+        char_offsets[i] = gc.origins[i] .+ sv_getindex(off, i)
         quad_offsets[i] = minimum(glyph_bb) .- gc.scales[i] .* pad
     end
 
@@ -364,7 +362,7 @@ function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphC
             )
             uvs[k] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
             scales[k] = widths(glyph_bb) .+ gc.scales[i] * 2pad
-            char_offsets[k] = gc.origins[i] .+ _offset_at(off, j)
+            char_offsets[k] = gc.origins[i] .+ sv_getindex(off, j)
             quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] .* pad
             k += 1
         end

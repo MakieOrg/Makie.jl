@@ -38,7 +38,7 @@ function calculated_attributes!(::Type{<: Spy}, plot)
 end
 
 function plot!(p::Spy)
-    rect = lift(p.x, p.y) do x, y
+    rect = lift(p, p.x, p.y) do x, y
         xe = extrema(x)
         ye = extrema(y)
         Rect2f((xe[1], ye[1]), (xe[2] - xe[1], ye[2] - ye[1]))
@@ -46,7 +46,7 @@ function plot!(p::Spy)
     # TODO FastPixel isn't accepting marker size in data coordinates
     # but instead in pixel - so we need to fix that in GLMakie for consistency
     # and make this nicer when redoing unit support
-    markersize = lift(p.markersize, rect, p.z) do msize, rect, z
+    markersize = lift(p, p.markersize, rect, p.z) do msize, rect, z
         if msize === automatic
             widths(rect) ./ Vec2f(size(z))
         else
@@ -54,7 +54,7 @@ function plot!(p::Spy)
         end
     end
     # TODO correctly align marker
-    xycol = lift(rect, p.z, markersize) do rect, z, markersize
+    xycol = lift(p, rect, p.z, markersize) do rect, z, markersize
         x, y, color = SparseArrays.findnz(z)
         points = map(x, y) do x, y
             (((Point2f(x, y) .- 1) ./ Point2f(size(z) .- 1)) .*
@@ -64,18 +64,18 @@ function plot!(p::Spy)
     end
 
     replace_automatic!(p, :colorrange) do
-        lift(xycol) do (xy, col)
+        lift(p, xycol) do (xy, col)
             extrema_nan(col)
         end
     end
 
-    marker = lift(p.marker) do x
+    marker = lift(p, p.marker) do x
         return x === automatic ? FastPixel() : x
     end
 
     scatter!(
         p,
-        lift(first, xycol), color = lift(last, xycol),
+        lift(first, p, xycol), color = lift(last, p, xycol),
         marker = marker, markersize = markersize, colorrange = p.colorrange,
         colormap = p.colormap, colorscale = p.colorscale,inspectable = p.inspectable, visible = p.visible
     )

@@ -4,10 +4,15 @@ import {
     delete_scenes,
     insert_plot,
     delete_plots,
-    deserialize_scene,
     delete_scene,
+    delete_three_scene,
+    find_plots,
+    deserialize_scene,
     TEXTURE_ATLAS,
     on_next_insert,
+    scene_cache,
+    plot_cache,
+    find_scene,
 } from "./Serialization.js";
 
 import { event2scene_pixel } from "./Camera.js";
@@ -23,6 +28,7 @@ export function render_scene(scene, picking = false) {
         console.log("EXITING WGL");
         renderer.state.reset();
         renderer.dispose();
+        delete_three_scene(scene);
         return false;
     }
     // dont render invisible scenes
@@ -422,6 +428,58 @@ export function pick_native_matrix(scene, x, y, w, h) {
     const [matrix, _] = pick_native(scene, x, y, w, h);
     return matrix;
 }
+
+export function register_popup(popup, scene, plots_to_pick, callback) {
+    if (!scene || !scene.screen) {
+        // scene not innitialized or removed already
+        return;
+    }
+    const { canvas } = scene.screen;
+    canvas.addEventListener("mousedown", (event) => {
+        if (!popup.classList.contains("show")) {
+            popup.classList.add("show");
+        }
+        popup.style.left = event.pageX + "px";
+        popup.style.top = event.pageY + "px";
+        const [x, y] = WGLMakie.event2scene_pixel(scene, event);
+        const [_, picks] = WGLMakie.pick_native(scene, x, y, 1, 1);
+        if (picks.length == 1) {
+            const [plot, index] = picks[0];
+            if (plots_to_pick.has(plot.plot_uuid)) {
+                const result = callback(plot, index);
+                if (typeof result === "string" || result instanceof String) {
+                    popup.innerText = result;
+                } else {
+                    popup.innerHTML = result;
+                }
+            }
+        } else {
+            popup.classList.remove("show");
+        }
+    });
+    canvas.addEventListener("keyup", (event) => {
+        if (event.key === "Escape") {
+            popup.classList.remove("show");
+        }
+    });
+}
+
+window.WGL = {
+    deserialize_scene,
+    threejs_module,
+    start_renderloop,
+    delete_plots,
+    insert_plot,
+    find_plots,
+    delete_scene,
+    find_scene,
+    scene_cache,
+    plot_cache,
+    delete_scenes,
+    create_scene,
+    event2scene_pixel,
+    on_next_insert,
+};
 
 export {
     deserialize_scene,

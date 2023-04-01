@@ -66,15 +66,14 @@ to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
-    padding = pop!(kwargs_dict, :figure_padding, current_default_theme()[:figure_padding])
+    padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, kwargs_dict...)
-    padding = padding isa Observable ? padding : Observable{Any}(padding)
-
-    alignmode = lift(Outside ∘ to_rectsides, padding)
+    padding = convert(Observable{Any}, padding)
+    alignmode = lift(Outside ∘ to_rectsides, scene, padding)
 
     layout = GridLayout(scene)
 
-    on(alignmode) do al
+    on(scene, alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end
@@ -144,7 +143,7 @@ function resize_to_layout!(fig::Figure)
     # it is assumed that all plot objects have been added at this point,
     # but it's possible the limits have not been updated, yet,
     # so without `update_state_before_display!` it's possible that the layout
-    # is optimized for the wrong ticks 
+    # is optimized for the wrong ticks
     update_state_before_display!(fig)
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
@@ -153,7 +152,10 @@ function resize_to_layout!(fig::Figure)
 end
 
 function Base.empty!(fig::Figure)
+    screens = copy(fig.scene.current_screens)
     empty!(fig.scene)
+    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
+    append!(fig.scene.current_screens, screens)
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)

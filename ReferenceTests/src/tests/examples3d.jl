@@ -55,6 +55,17 @@ end
     mesh(catmesh, color=loadasset("diffusemap.png"))
 end
 
+@reference_test "Textured meshscatter" begin
+    catmesh = loadasset("cat.obj")
+    img = loadasset("diffusemap.png")
+    rot = qrotation(Vec3f(1, 0, 0), 0.5pi) * qrotation(Vec3f(0, 1, 0), 0.7pi)
+    meshscatter(
+        1:3, 1:3, fill(0, 3, 3),
+        marker=catmesh, color=img, markersize=1, rotation=rot,
+        axis=(type=LScene, show_axis=false)
+    )
+end
+
 @reference_test "Load Mesh" begin
     mesh(loadasset("cat.obj"))
 end
@@ -136,7 +147,7 @@ end
 
     linesegments!(ax, linepoints, linestyle=:dot)
 
-    Record(fig, 1:2) do i
+    Record(fig, 1:2; framerate=1) do i
         t[] = i / 10
     end
 end
@@ -297,7 +308,6 @@ end
         fontsize=20,
         font="helvetica"
     )
-    c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
     scene
 end
@@ -398,7 +408,7 @@ end
     wf = wireframe!(ax, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
-    Record(fig, range(5, stop=40, length=3)) do i
+    Record(fig, range(5, stop=40, length=3); framerate=1) do i
         surf[3] = surf_func(i)
     end
 end
@@ -448,7 +458,7 @@ end
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
     N = 5
-    Record(f, 1:N) do i
+    Record(f, 1:N; framerate=1) do i
         t = i/(N/5)
         if length(lineplots) < 20
             p = lines!(

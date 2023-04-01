@@ -1,54 +1,55 @@
 function default_theme(scene)
-    Attributes(
-        # color = theme(scene, :color),
-        linewidth = 1,
+    return Attributes(
         transformation = automatic,
         model = automatic,
         visible = true,
         transparency = false,
         overdraw = false,
-        diffuse = Vec3f(0.4),
-        specular = Vec3f(0.2),
-        shininess = 32f0,
-        nan_color = RGBAf(0,0,0,0),
         ssao = false,
-        inspectable = theme(scene, :inspectable),
+        inspectable = true,
         depth_shift = 0f0,
         space = :data
     )
 end
 
-
-
 function color_and_colormap!(plot, intensity = plot[:color])
-    if isa(intensity[], AbstractArray{<: Number})
-        haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
-
-        replace_automatic!(plot, :colorrange) do
-            lift(distinct_extrema_nan, intensity)
-        end
+    if intensity[] isa Union{Number, AbstractArray{<: Number}}
+        @converted_attribute plot (colormap,)
         replace_automatic!(plot, :highclip) do
-            lift(plot.colormap) do cmap
-                return to_colormap(cmap)[end]
-            end
+            lift(last, plot, colormap)
         end
         replace_automatic!(plot, :lowclip) do
-            lift(plot.colormap) do cmap
-                return to_colormap(cmap)[1]
+            lift(first, plot, colormap)
+        end
+        get!(plot, :nan_color, RGBAf(0,0,0,0))
+        if intensity[] isa Number
+            plot[:colorrange][] isa Automatic &&
+                error("Cannot determine a colorrange automatically for single number color value $intens. Pass an explicit colorrange.")
+            args = @converted_attribute plot (colorscale, colorrange, lowclip, highclip, nan_color)
+            plot[:color] = lift(numbers_to_colors, plot, intensity, colormap, args...)
+            delete!(plot, :colorscale)
+            delete!(plot, :colorrange)
+            delete!(plot, :colormap)
+        elseif intensity[] isa AbstractArray{<: Number}
+            haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
+            replace_automatic!(plot, :colorrange) do
+                lift(x-> Vec2f(distinct_extrema_nan(x)), plot, intensity)
             end
         end
         return true
     else
         delete!(plot, :highclip)
         delete!(plot, :lowclip)
+        delete!(plot, :colorscale)
         delete!(plot, :colorrange)
+        delete!(plot, :colormap)
         return false
     end
 end
 
 function calculated_attributes!(T::Type{<: Mesh}, plot)
-    mesha = lift(GeometryBasics.attributes, plot.mesh)
-    color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
+    mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
+    color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
     need_cmap = color_and_colormap!(plot, color)
     need_cmap || delete!(plot, :colormap)
     return
@@ -74,6 +75,9 @@ function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
 end
 
+function calculated_attributes!(::Type{<:Text}, plot)
+    return color_and_colormap!(plot)
+end
 
 function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
@@ -81,11 +85,13 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 
     replace_automatic!(plot, :marker_offset) do
         # default to middle
-        lift(x-> to_2d_scale(map(x-> x .* -0.5f0, x)), plot[:markersize])
+        return lift(plot, plot[:markersize]) do msize
+            return to_2d_scale(map(x -> x .* -0.5f0, msize))
+        end
     end
 
     replace_automatic!(plot, :markerspace) do
-        lift(plot.markersize) do ms
+        lift(plot, plot.markersize) do ms
             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
                 return :pixel
             else
@@ -103,7 +109,7 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
         for attr in [:color, :linewidth]
             # taken from @edljk  in PR #77
             if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
-                plot[attr] = lift(plot[attr]) do cols
+                plot[attr] = lift(plot, plot[attr]) do cols
                     map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
                 end
             end
@@ -182,10 +188,14 @@ end
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args) where Typ
     input = convert.(Observable, args)
-    argnodes = lift(input...) do args...
-        convert_arguments(PlotType, args...)
+    aconvert(args...) = convert_arguments(PlotType, args...)
+    argnodes = lift(aconvert, input...)
+    plot = PlotType(scene, attributes, input, argnodes)
+    # Manually register obsfuncs, since we can't do lift(aconvert, plot, input...)
+    for arg in input
+        push!(plot.deregister_callbacks, Observables.ObserverFunction(aconvert, arg, false))
     end
-    return PlotType(scene, attributes, input, argnodes)
+    return plot
 end
 
 function plot(scene::Scene, plot::AbstractPlot)
@@ -312,7 +322,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         Observable(())
     else
         # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
-        lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)
+        lift((args...) -> Pair.(convert_keys, args), scene, pop!.(attributes, convert_keys)...)
     end
     # call convert_arguments for a first time to get things started
     converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
@@ -321,8 +331,8 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Observable(argsconverted)
-    input_nodes =  convert.(Observable, args)
-    onany(kw_signal, input_nodes...) do kwargs, args...
+    input_nodes = convert.(Observable, args)
+    obs_funcs = onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
         finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
@@ -333,7 +343,10 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         end
         converted_node[] = argsconverted_
     end
-    plot!(scene, FinalType, attributes, input_nodes, converted_node)
+    plot_object = plot!(scene, FinalType, attributes, input_nodes, converted_node)
+    # bind observable clean up to plot object:
+    append!(plot_object.deregister_callbacks, obs_funcs)
+    return plot_object
 end
 
 plot!(p::Combined) = _plot!(p)

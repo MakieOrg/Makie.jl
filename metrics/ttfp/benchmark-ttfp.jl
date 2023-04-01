@@ -19,7 +19,7 @@ function get_colorbuffer(fig)
     end
 end
 
-if Package == :WGLMakie
+if Package === :WGLMakie
     import Electron
     WGLMakie.JSServe.use_electron_display()
 end

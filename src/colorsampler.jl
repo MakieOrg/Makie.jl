@@ -132,22 +132,34 @@ apply_scale(scale::AbstractObservable, x) = apply_scale(scale[], x)
 apply_scale(::Union{Nothing,typeof(identity)}, x) = x  # noop
 apply_scale(scale, x) = broadcast(scale, to_value(x))
 
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
+function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
-    colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
+    _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
     colorscale = get_attribute(primitive, :colorscale)
-    cmin, cmax = if isnothing(colorrange)
+    colorrange = if isnothing(_colorrange)
         # TODO, plot primitive should always expand automatic values
+        numbers isa Number && error("Cannot determine a colorrange automatically for single number color value $numbers. Pass an explicit colorrange.")
         Vec2f(extrema_nan(numbers))
     else
-        colorrange
+        _colorrange
     end
-    scaled_cmin = apply_scale(colorscale, cmin)
-    scaled_cmax = apply_scale(colorscale, cmax)
 
     lowclip = get_attribute(primitive, :lowclip)
     highclip = get_attribute(primitive, :highclip)
     nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
+
+    return numbers_to_colors(numbers, colormap, colorscale, colorrange, lowclip, highclip, nan_color)
+end
+
+
+function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number},
+                           colormap, colorscale, colorrange::Vec2, 
+                           lowclip::Union{Nothing,RGBAf},
+                           highclip::Union{Nothing,RGBAf},
+                           nan_color::RGBAf)::Union{Vector{RGBAf},RGBAf}
+    cmin, cmax = colorrange
+    scaled_cmin = apply_scale(colorscale, cmin)
+    scaled_cmax = apply_scale(colorscale, cmax)
 
     return map(numbers) do number
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex

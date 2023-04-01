@@ -201,7 +201,7 @@ end
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2, colormap=:magma, axis=(;title=title_str))
-    Record(sp, LinRange(0, 20, 5)) do i
+    Record(sp, LinRange(0, 20, 5); framerate=1) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
     end
@@ -211,7 +211,7 @@ end
 @reference_test "Line changing colour" begin
     fig, ax, lineplot = lines(RNG.rand(10); linewidth=10)
     N = 20
-    Record(fig, 1:N; framerate=20) do i
+    Record(fig, 1:N; framerate=1) do i
         lineplot.color = RGBf(i / N, (N - i) / N, 0) # animate scene
     end
 end
@@ -713,6 +713,37 @@ end
     f
 end
 
+@reference_test "contour labels 2D" begin
+    paraboloid = (x, y) -> 10(x^2 + y^2)
+
+    x = range(-4, 4; length = 40)
+    y = range(-4, 4; length = 60)
+    z = paraboloid.(x, y')
+
+    fig, ax, hm = heatmap(x, y, z)
+    Colorbar(fig[1, 2], hm)
+
+    contour!(
+        ax, x, y, z;
+        color = :red, levels = 0:20:100, labels = true,
+        labelsize = 15, labelfont = :bold, labelcolor = :orange,
+    )
+    fig
+end
+
+@reference_test "contour labels 3D" begin
+    fig = Figure()
+    Axis3(fig[1, 1])
+
+    xs = ys = range(-.5, .5; length = 50)
+    zs = @. √(xs^2 + ys'^2)
+
+    levels = .025:.05:.475
+    contour3d!(-zs; levels = -levels, labels = true, color = :blue)
+    contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
+    fig
+end
+
 @reference_test "marker offset in data space" begin
     f = Figure()
     ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
@@ -868,5 +899,84 @@ end
     )
     Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
     Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
+    f
+end
+
+@reference_test "bracket scalar" begin
+    f, ax, l = lines(0..9, sin; axis = (; xgridvisible = false, ygridvisible = false))
+    ylims!(ax, -1.5, 1.5)
+
+    bracket!(pi/2, 1, 5pi/2, 1, offset = 5, text = "Period length", style = :square)
+
+    bracket!(pi/2, 1, pi/2, -1, text = "Amplitude", orientation = :down,
+        linestyle = :dash, rotation = 0, align = (:right, :center), textoffset = 4, linewidth = 2, color = :red, textcolor = :red)
+
+    bracket!(2.3, sin(2.3), 4.0, sin(4.0),
+        text = "Falling", offset = 10, orientation = :up, color = :purple, textcolor = :purple)
+
+    bracket!(Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
+        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange, 
+        fontsize = 30, textoffset = 30, width = 50)
+    f
+end
+
+@reference_test "bracket vector" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+
+    bracket!(ax,
+        1:5,
+        2:6,
+        3:7,
+        2:6,
+        text = ["A", "B", "C", "D", "E"],
+        orientation = :down,
+    )
+
+    bracket!(ax,
+        [(Point2f(i, i-0.7), Point2f(i+2, i-0.7)) for i in 1:5],
+        text = ["F", "G", "H", "I", "J"],
+        color = [:red, :blue, :green, :orange, :brown],
+        linestyle = [:dash, :dot, :dash, :dot, :dash],
+        orientation = [:up, :down, :up, :down, :up],
+        textcolor = [:red, :blue, :green, :orange, :brown],
+        fontsize = range(12, 24, length = 5),
+    )
+
+    f
+end
+
+@reference_test "Stephist" begin
+    stephist(RNG.rand(10000))
+    current_figure()
+end
+
+@reference_test "LaTeXStrings linesegment offsets" begin
+    s = Scene(camera = campixel!, resolution = (600, 600))
+    for (i, (offx, offy)) in enumerate(zip([0, 20, 50], [0, 10, 30]))
+        for (j, rot) in enumerate([0, pi/4, pi/2])
+            scatter!(s, 150i, 150j)
+            text!(s, 150i, 150j, text = L"\sqrt{x+y}", offset = (offx, offy),
+                rotation = rot, fontsize = 30)
+        end
+    end
+    s
+end
+
+@reference_test "Scalar colors from colormaps" begin
+    f = Figure(resolution = (600, 600))
+    ax = Axis(f[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    colormap = :tab10
+    colorrange = (1, 10)
+    for i in 1:10
+        color = i
+        lines!(ax, i .* [10, 10], [10, 590]; color, colormap, colorrange, linewidth = 5)
+        scatter!(ax, fill(10 * i + 130, 50), range(10, 590, length = 50); color, colormap, colorrange)
+        poly!(ax, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)]; color, colormap, colorrange)
+        text!(ax, 360, i * 50, text = "$i"; color, colormap, colorrange, fontsize = 40)
+        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange)
+    end
     f
 end

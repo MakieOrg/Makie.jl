@@ -11,7 +11,7 @@ function add_scene(scene_id, three_scene) {
     scene_cache[scene_id] = three_scene;
 }
 
-function find_scene(scene_id) {
+export function find_scene(scene_id) {
     return scene_cache[scene_id];
 }
 
@@ -26,7 +26,7 @@ export function delete_scene(scene_id) {
     delete scene_cache[scene_id];
 }
 
-function find_plots(plot_uuids) {
+export function find_plots(plot_uuids) {
     const plots = [];
     plot_uuids.forEach((id) => {
         const plot = plot_cache[id];
@@ -54,6 +54,7 @@ export function insert_plot(scene_id, plot_data) {
 }
 
 export function delete_plots(scene_id, plot_uuids) {
+    console.log(`deleting plots!: ${plot_uuids}`)
     const scene = find_scene(scene_id);
     const plots = find_plots(plot_uuids);
     plots.forEach((p) => {
@@ -484,6 +485,7 @@ export function deserialize_scene(data, screen) {
     scene.screen = screen;
     const { canvas } = screen;
     add_scene(data.uuid, scene);
+    scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
     scene.pixelarea = data.pixelarea;
     scene.backgroundcolor = data.backgroundcolor;
@@ -515,4 +517,22 @@ export function deserialize_scene(data, screen) {
     return scene;
 }
 
-export { TEXTURE_ATLAS };
+export function delete_plot(plot) {
+    delete plot_cache[plot.plot_uuid];
+    const {parent} = plot
+    if (parent) {
+        parent.remove(plot)
+    }
+    plot.geometry.dispose();
+    plot.material.dispose();
+}
+
+export function delete_three_scene(scene) {
+    delete scene_cache[scene.scene_uuid];
+    scene.scene_children.forEach(delete_three_scene);
+    while(scene.children.length > 0) {
+        delete_plot(scene.children[0])
+    }
+}
+
+export { TEXTURE_ATLAS, scene_cache, plot_cache };

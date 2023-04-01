@@ -9,9 +9,7 @@ function has_forwarded_layout end
 
 macro Block(name::Symbol, body::Expr = Expr(:block))
 
-    if !(body.head == :block)
-        error("A Block needs to be defined within a `begin end` block")
-    end
+    body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
     structdef = quote
         mutable struct $name <: Makie.Block
@@ -27,7 +25,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     attrs = extract_attributes!(body)
 
     i_forwarded_layout = findfirst(
-        x -> x isa Expr && x.head == :macrocall &&
+        x -> x isa Expr && x.head === :macrocall &&
             x.args[1] == Symbol("@forwarded_layout"),
         body.args
     )
@@ -69,8 +67,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = Makie.current_default_theme()
-
+            curdeftheme = deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
@@ -155,7 +152,7 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
     pairs = map(attrs) do a
 
         d = a.default
-        if d isa Expr && d.head == :macrocall && d.args[1] == Symbol("@inherit")
+        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
             if length(d.args) != 4
                 error("@inherit works with exactly 2 arguments, expression was $d")
             end
@@ -168,9 +165,9 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             # then default value
             d = quote
                 if haskey($sceneattrsym, $key)
-                    $sceneattrsym[$key]
+                    $sceneattrsym[$key][] # only use value of theme entry
                 elseif haskey($curthemesym, $key)
-                    $curthemesym[$key]
+                    $curthemesym[$key][] # only use value of theme entry
                 else
                     $default
                 end
@@ -196,8 +193,8 @@ end
 
 function extract_attributes!(body)
     i = findfirst(
-        (x -> x isa Expr && x.head == :macrocall && x.args[1] == Symbol("@attributes") &&
-            x.args[3] isa Expr && x.args[3].head == :block),
+        (x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
+            x.args[3] isa Expr && x.args[3].head === :block),
         body.args
     )
     if i === nothing
@@ -231,7 +228,7 @@ function extract_attributes!(body)
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
     function extract_attr(arg)
-        has_docs = arg isa Expr && arg.head == :macrocall && arg.args[1] isa GlobalRef
+        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
 
         if has_docs
             docs = arg.args[3]
@@ -241,7 +238,7 @@ function extract_attributes!(body)
             attr = arg
         end
 
-        if !(attr isa Expr && attr.head == :(=) && length(attr.args) == 2)
+        if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
             error("$attr is not a valid attribute line like :x[::Type] = default_value")
         end
         left = attr.args[1]
@@ -250,7 +247,7 @@ function extract_attributes!(body)
             attr_symbol = left
             type = Any
         else
-            if !(left isa Expr && left.head == :(::) && length(left.args) == 2)
+            if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
                 error("$left is not a Symbol or an expression such as x::Type")
             end
             attr_symbol = left.args[1]::Symbol
@@ -300,7 +297,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
 
     # first sort out all user kwargs that correspond to block attributes
     kwdict = Dict(kwargs)
-    
+
     if haskey(kwdict, :textsize)
         throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
@@ -319,8 +316,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     # and also the `Block = (...` style attributes from scene and global theme
     default_attrs = default_attribute_values(T, topscene)
     typekey_scene_attrs = get(theme(topscene), nameof(T), Attributes())::Attributes
-    typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())::Attributes
-
+    typekey_attrs = theme(nameof(T); default=Attributes())::Attributes
     # make a final attribute dictionary using different priorities
     # for the different themes
     attributes = Dict{Symbol, Any}()
@@ -362,14 +358,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(
-        topscene,
-        # the block scene tracks the parent scene exactly
-        # for this it seems to be necessary to zero-out a possible non-zero
-        # origin of the parent
-        lift(Makie.zero_origin, topscene.px_area),
-        camera = campixel!
-    )
+    blockscene = Scene(topscene, clear=false, camera = campixel!)
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
@@ -435,7 +424,6 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     b
 end
 
-
 """
 Get the scene which blocks need from their parent to plot stuff into
 """
@@ -494,23 +482,24 @@ function Base.show(io::IO, ::T) where T <: Block
     print(io, "$T()")
 end
 
+# fallback if block doesn't need specific clean up
+free(::Block) = nothing
+
 function Base.delete!(block::Block)
+    free(block)
     block.parent === nothing && return
+    # detach plots, cameras, transformations, px_area
+    empty!(block.blockscene)
 
-    s = get_topscene(block.parent)
-    deleteat!(
-        s.children,
-        findfirst(x -> x === block.blockscene, s.children)
-    )
-    # TODO: what about the lift of the parent scene's
-    # `px_area`, should this be cleaned up as well?
+    gc = GridLayoutBase.gridcontent(block)
+    if gc !== nothing
+        GridLayoutBase.remove_from_gridlayout!(gc)
+    end
 
-    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(block))
-
-    on_delete(block)
-    delete_from_parent!(block.parent, block)
-    block.parent = nothing
-
+    if block.parent !== nothing
+        delete_from_parent!(block.parent, block)
+        block.parent = nothing
+    end
     return
 end
 
@@ -526,13 +515,6 @@ function delete_from_parent!(figure::Figure, block::Block)
     nothing
 end
 
-"""
-Overload to execute cleanup actions for specific blocks that go beyond
-deleting elements and removing from gridlayout
-"""
-function on_delete(block)
-end
-
 function remove_element(x)
     delete!(x)
 end
@@ -546,14 +528,6 @@ function remove_element(xs::AbstractArray)
 end
 
 function remove_element(::Nothing)
-end
-
-function delete_scene!(s::Scene)
-    for p in copy(s.plots)
-        delete!(s, p)
-    end
-    deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
-    nothing
 end
 
 # if a non-observable is passed, its value is converted and placed into an observable of

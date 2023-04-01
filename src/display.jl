@@ -25,42 +25,18 @@ end
 Adds a screen to the scene and registeres a clean up event when screen closes.
 Also, makes sure that always just one screen is active for on scene.
 """
-function push_screen!(scene::Scene, screen::MakieScreen)
-    if length(scene.current_screens) == 1 && scene.current_screens[1] === screen
-        # Nothing todo here, already displayed on screen
-        return
+function push_screen!(scene::Scene, screen::T) where {T<:MakieScreen}
+    if !(screen in scene.current_screens)
+        # If screen isn't already part of this scene, we make sure
+        # that the screen only has one screen per type
+        of_same_type = filter(x -> x isa T, scene.current_screens) # collect all of same type
+        foreach(x -> delete_screen!(scene, x), of_same_type)
+        # Now we can push the screen :)
+        push!(scene.current_screens, screen)
     end
-    # Else we delete all other screens, only one screen per scene is allowed!!
-    while !isempty(scene.current_screens)
-        delete_screen!(scene, pop!(scene.current_screens))
-    end
-
-    # Now we push the screen :)
-    push!(scene.current_screens, screen)
-    deregister = nothing
-    deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
-        # when screen closes, it should set the scene isopen event to false
-        # so that's when we can remove the screen
-        if !is_open
-            delete_screen!(scene, screen)
-            # deregister itself after letting other listeners run
-            if !isnothing(deregister)
-                off(deregister)
-
-                # if there are multiple listeners removing this one will skip the
-                # second one (now first). To fix this we run the listener manually here
-                callbacks = listeners(events(scene).window_open)
-                if length(callbacks) > 0
-                    result = Base.invokelatest(callbacks[1][2], is_open)
-                    if result isa Consume && result.x
-                        # if the second listener consumes we need to consume here
-                        # to avoid executing the third (now second).
-                        return Consume(true)
-                    end
-                end
-            end
-        end
-        return Consume(false)
+    # Now only thing left is to make sure all children also have the screen!
+    for children in scene.children
+        push_screen!(children, screen)
     end
     return
 end
@@ -121,6 +97,8 @@ function inline!(inline=true)
     ALWAYS_INLINE_PLOTS[] = inline
 end
 
+wait_for_display(screen) = nothing
+
 """
     Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
 
@@ -141,6 +119,9 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
     end
     if ALWAYS_INLINE_PLOTS[]
         Core.invoke(display, Tuple{Any}, figlike)
+        screen = getscreen(get_scene(figlike))
+        wait_for_display(screen)
+        return screen
     else
         scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
@@ -164,12 +145,15 @@ function Base.display(screen::MakieScreen, figlike::FigureLike; update=true, dis
 end
 
 function _backend_showable(mime::MIME{SYM}) where SYM
+    # If we open a window, don't become part of the display/show system
+    !ALWAYS_INLINE_PLOTS[] && return false
     Backend = current_backend()
     if ismissing(Backend)
         return Symbol("text/plain") == SYM
     end
     return backend_showable(Backend.Screen, mime)
 end
+
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 
 # need to define this to resolve ambiguoity issue
@@ -195,13 +179,19 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
+    if !ALWAYS_INLINE_PLOTS[]
+        # If we always want to open a window, we call display manually here
+        # and then throw a method error to signal the calling display system, that we don't want to display it with them
+        display(figlike)
+        throw(MethodError(show, io, m, figlike))
+    end
     scene = get_scene(figlike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
     update_state_before_display!(figlike)
-    screen = getscreen(backend, scene, io, m)
+    screen = getscreen(backend, scene, io, m; visible=false)
     backend_show(screen, io, m, scene)
-    return
+    return screen
 end
 
 format2mime(::Type{FileIO.format"PNG"}) = MIME("image/png")
@@ -320,11 +310,34 @@ end
 
 function apply_screen_config! end
 
+"""
+    getscreen(scene::Scene)
+
+Gets the current screen a scene is associated with.
+Returns nothing if not yet displayed on a screen.
+"""
+function getscreen(scene::Scene, backend=current_backend())
+    isempty(scene.current_screens) && return nothing # stop search
+    idx = findfirst(scene.current_screens) do screen
+        parentmodule(typeof(screen)) === backend
+    end
+    isnothing(idx) && return nothing
+    # TODO, when would we actually want to get a specific screen?
+    return scene.current_screens[idx]
+end
+
+getscreen(scene::SceneLike, backend=current_backend()) = getscreen(get_scene(scene), backend)
+
 function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; screen_config...)
-    screen = getscreen(scene)
+    screen = getscreen(scene, backend)
     config = Makie.merge_screen_config(backend.ScreenConfig, screen_config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
-        return apply_screen_config!(screen, config, scene, args...)
+        new_screen = apply_screen_config!(screen, config, scene, args...)
+        if new_screen !== screen
+            # Apply config is allowed to recreate a screen, but that means we need to delete the old one:
+            delete_screen!(scene, screen)
+        end
+        return new_screen
     end
     if ismissing(backend)
         error("""
