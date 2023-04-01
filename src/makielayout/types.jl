@@ -602,7 +602,7 @@ end
         "The axis scale"
         scale = identity
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
-        size = 14
+        size = 12
     end
 end
 
