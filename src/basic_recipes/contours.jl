@@ -292,13 +292,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     end
 
     lines!(
-<<<<<<< HEAD
         plot, masked_lines;
-        color = lift(x -> x[2], cont_lines),
-=======
-        plot, lift(first, plot, result);
-        color=lift(last, plot, result),
->>>>>>> master
+        color = lift(x -> x[2], plot, cont_lines),
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
