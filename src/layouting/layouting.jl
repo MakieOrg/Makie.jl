@@ -299,8 +299,6 @@ end
 
 _offset_to_vec(o::VecTypes) = to_ndim(Vec3f, o, 0)
 _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
-_offset_at(o::Vec3f, i) = o
-_offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
@@ -322,7 +320,7 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
         )
         uvs[i] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
         scales[i] = widths(glyph_bb) .+ gc.scales[i] .* 2pad
-        char_offsets[i] = gc.origins[i] .+ _offset_at(off, i)
+        char_offsets[i] = gc.origins[i] .+ sv_getindex(off, i)
         quad_offsets[i] = minimum(glyph_bb) .- gc.scales[i] .* pad
     end
 
@@ -364,7 +362,7 @@ function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphC
             )
             uvs[k] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
             scales[k] = widths(glyph_bb) .+ gc.scales[i] * 2pad
-            char_offsets[k] = gc.origins[i] .+ _offset_at(off, j)
+            char_offsets[k] = gc.origins[i] .+ sv_getindex(off, j)
             quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] .* pad
             k += 1
         end

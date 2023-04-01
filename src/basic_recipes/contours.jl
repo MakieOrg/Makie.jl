@@ -117,11 +117,9 @@ conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T =
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
-    valuerange = lift(nan_extrema, volume)
-    cliprange = replace_automatic!(plot, :colorrange) do
-        valuerange
-    end
-    cmap = lift(colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
+    valuerange = lift(nan_extrema, plot, volume)
+    cliprange = replace_automatic!(()-> valuerange, plot, :colorrange)
+    cmap = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
         N = 50 * nlevels
@@ -193,8 +191,8 @@ end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
-    zrange = lift(nan_extrema, z)
-    levels = lift(plot.levels, zrange) do levels, zrange
+    zrange = lift(nan_extrema, plot, z)
+    levels = lift(plot, plot.levels, zrange) do levels, zrange
         if levels isa AbstractVector{<: Number}
             return levels
         elseif levels isa Integer
@@ -208,8 +206,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorrange, alpha)
-    level_colors = lift(color_per_level, args..., levels)
-    cont_lines = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
+    level_colors = lift(color_per_level, plot, args..., levels)
+    cont_lines = lift(plot, x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
         t = eltype(z)
         # Compute contours
         xv, yv = to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t)
@@ -294,8 +292,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     end
 
     lines!(
+<<<<<<< HEAD
         plot, masked_lines;
         color = lift(x -> x[2], cont_lines),
+=======
+        plot, lift(first, plot, result);
+        color=lift(last, plot, result),
+>>>>>>> master
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
