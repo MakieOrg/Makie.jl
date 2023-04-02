@@ -762,7 +762,7 @@ end
         "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
         interval = (0, 0)
         "The width of the slider line"
-        linewidth::Float64 = 15.0
+        linewidth::Float64 = 10.0
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."

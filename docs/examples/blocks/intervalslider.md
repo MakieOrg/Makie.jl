@@ -51,7 +51,7 @@ colors = lift(rs_h.interval, rs_v.interval) do h_int, v_int
     end
 end
 
-scatter!(points, color = colors, colormap = [:black, :orange], strokewidth = 0)
+scatter!(points, color = colors, colormap = [:gray90, :dodgerblue], strokewidth = 0)
 
 f
 ```
