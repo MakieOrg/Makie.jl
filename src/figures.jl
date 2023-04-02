@@ -28,16 +28,32 @@ get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
 const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
-"Returns the current active figure (or the last figure that got created)"
+"""
+    current_figure()
+
+Returns the current active figure (or the last figure created). Returns `nothing` if there is no current active figure.
+"""
 current_figure() = _current_figure[]
-"Set `fig` as the current active scene"
+"""
+    current_figure!(fig)
+
+Set `fig` as the current active figure.
+"""
 current_figure!(fig) = (_current_figure[] = fig)
 
-"Returns the current active axis (or the last axis that got created)"
+"""
+    current_axis()
+
+Returns the current active axis (or the last axis created). Returns `nothing` if there is no current active axis.
+"""
 current_axis() = current_axis(current_figure())
 current_axis(::Nothing) = nothing
 current_axis(fig::Figure) = fig.current_axis[]
-"Set `ax` as the current active axis in `fig`"
+"""
+    current_axis!(fig::Figure, ax)
+
+Set `ax` as the current active axis in `fig`.
+"""
 function current_axis!(fig::Figure, ax)
     if ax.parent !== fig
         error("This axis' parent is not the given figure")
@@ -48,6 +64,11 @@ end
 function current_axis!(fig::Figure, ::Nothing)
     fig.current_axis[] = nothing
 end
+"""
+    current_axis!(ax)
+
+Set an axis `ax`, which must be part of a figure, as the figure's current active axis.
+"""
 function current_axis!(ax)
     fig = ax.parent
     if !(fig isa Figure)
