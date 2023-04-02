@@ -19,7 +19,7 @@ fig[1:2, 1:3] = [Axis(fig) for _ in 1:6]
 
 supertitle = Label(fig[0, :], "Six plots", fontsize = 30)
 
-sideinfo = Label(fig[2:3, 0], "This text is vertical", rotation = pi/2)
+sideinfo = Label(fig[1:2, 0], "This text is vertical", rotation = pi/2)
 
 fig
 ```
@@ -35,19 +35,21 @@ CairoMakie.activate!() # hide
 f = Figure()
 
 Label(f[1, 1],
-    "Left Justified\nMultiline\nLabel\nLineheight 0.9",
+    "Multiline label\nwith\njustification = :left\nand\nlineheight = 0.9",
     justification = :left,
     lineheight = 0.9
 )
 Label(f[1, 2],
-    "Center Justified\nMultiline\nLabel\nLineheight 1.1",
+    "Multiline label\nwith\njustification = :center\nand\nlineheight = 1.1",
     justification = :center,
-    lineheight = 1.1
+    lineheight = 1.1,
+    color = :dodgerblue,
 )
 Label(f[1, 3],
-    "Right Justified\nMultiline\nLabel\nLineheight 1.3",
+    "Multiline label\nwith\njustification = :right\nand\nlineheight = 1.3",
     justification = :right,
-    lineheight = 1.3
+    lineheight = 1.3,
+    color = :firebrick
 )
 
 f

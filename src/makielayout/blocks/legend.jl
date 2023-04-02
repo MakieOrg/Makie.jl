@@ -605,7 +605,7 @@ to one occurrence.
 function axislegend(ax, args...; position = :rt, kwargs...)
     Legend(ax.parent, args...;
         bbox = ax.scene.px_area,
-        margin = (10, 10, 10, 10),
+        margin = (6, 6, 6, 6),
         legend_position_to_aligns(position)...,
         kwargs...)
 end

@@ -644,7 +644,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-f = Figure(resolution = (800, 700))
+f = Figure(resolution = (600, 500))
 
 lines(f[1, 1], -100:0.1:100, axis = (
     yscale = Makie.pseudolog10,
