@@ -185,31 +185,36 @@ function cached_load(resolution::Int, pix_per_glyph::Int)
     return atlas
 end
 
-const _default_font = NativeFont[]
-const _alternative_fonts = NativeFont[]
+const DEFAULT_FONT = NativeFont[]
+const ALTERNATIVE_FONTS = NativeFont[]
+const FONT_LOCK = Base.ReentrantLock()
 
 function defaultfont()
-    if isempty(_default_font)
-        push!(_default_font, to_font("TeX Gyre Heros Makie"))
+    lock(FONT_LOCK) do
+        if isempty(DEFAULT_FONT)
+            push!(DEFAULT_FONT, to_font("TeX Gyre Heros Makie"))
+        end
+        DEFAULT_FONT[]
     end
-    _default_font[]
 end
 
 function alternativefonts()
-    if isempty(_alternative_fonts)
-        alternatives = [
-            "TeXGyreHerosMakie-Regular.otf",
-            "DejaVuSans.ttf",
-            "NotoSansCJKkr-Regular.otf",
-            "NotoSansCuneiform-Regular.ttf",
-            "NotoSansSymbols-Regular.ttf",
-            "FiraMono-Medium.ttf"
-        ]
-        for font in alternatives
-            push!(_alternative_fonts, NativeFont(assetpath("fonts", font)))
+    lock(FONT_LOCK) do
+        if isempty(ALTERNATIVE_FONTS)
+            alternatives = [
+                "TeXGyreHerosMakie-Regular.otf",
+                "DejaVuSans.ttf",
+                "NotoSansCJKkr-Regular.otf",
+                "NotoSansCuneiform-Regular.ttf",
+                "NotoSansSymbols-Regular.ttf",
+                "FiraMono-Medium.ttf"
+            ]
+            for font in alternatives
+                push!(ALTERNATIVE_FONTS, NativeFont(assetpath("fonts", font)))
+            end
         end
+        return ALTERNATIVE_FONTS
     end
-    return _alternative_fonts
 end
 
 function render_default_glyphs!(atlas)
