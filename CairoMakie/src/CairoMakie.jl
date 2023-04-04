@@ -34,6 +34,6 @@ function __init__()
     activate!()
 end
 
-include("precompiles.jl")
+# include("precompiles.jl")
 
 end

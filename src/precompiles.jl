@@ -17,7 +17,7 @@ let
         empty!(FONT_CACHE)
         empty!(_default_font)
         empty!(_alternative_fonts)
-        Makie._current_figure[] = nothing
+        Makie.CURRENT_FIGURE[] = nothing
     end
     nothing
 end

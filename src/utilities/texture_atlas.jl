@@ -215,7 +215,7 @@ end
 function render_default_glyphs!(atlas)
     font = defaultfont()
     chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-']
-    fonts = to_font.(to_value.(values(Makie.minimal_default.fonts)))
+    fonts = to_font.(to_value.(values(Makie.MAKIE_DEFAULT_THEME.fonts)))
     for font in fonts
         for c in chars
             insert_glyph!(atlas, c, font)
@@ -473,7 +473,7 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas))
     # left + right pad - cutoff from pixel centering
-    full_pad = 2f0 * atlas.glyph_padding - 1 
+    full_pad = 2f0 * atlas.glyph_padding - 1
     return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
 end
 

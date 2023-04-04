@@ -15,7 +15,7 @@ function wong_colors(alpha = 1.0)
     return RGBAf.(colors, alpha)
 end
 
-const default_palettes = Attributes(
+const DEFAULT_PALETTES = (
     color = wong_colors(1),
     patchcolor = wong_colors(0.8),
     marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
@@ -23,8 +23,10 @@ const default_palettes = Attributes(
     side = [:left, :right]
 )
 
-const minimal_default = Attributes(
-    palette = default_palettes,
+Base.@deprecate_binding default_palettes DEFAULT_PALETTES
+
+const MAKIE_DEFAULT_THEME = Attributes(
+    palette = DEFAULT_PALETTES,
     font = :regular,
     fonts = Attributes(
         regular = "TeX Gyre Heros Makie",
@@ -118,7 +120,11 @@ const minimal_default = Attributes(
     )
 )
 
-const CURRENT_DEFAULT_THEME = deepcopy(minimal_default)
+Base.@deprecate_binding minimal_default MAKIE_DEFAULT_THEME
+
+
+const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
+const THEME_LOCK = Base.ReentrantLock()
 
 # Basically like deepcopy but while merging it into another Attribute dict
 function merge_without_obs!(result::Attributes, theme::Attributes)
@@ -138,9 +144,8 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     return result
 end
 
-function current_default_theme(; kw_args...)
-    return merge_without_obs!(Attributes(kw_args), CURRENT_DEFAULT_THEME)
-end
+current_default_theme() = CURRENT_DEFAULT_THEME
+
 
 """
     set_theme(theme; kwargs...)
@@ -149,10 +154,12 @@ Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.
 """
 function set_theme!(new_theme=Attributes(); kwargs...)
-    empty!(CURRENT_DEFAULT_THEME)
-    new_theme = merge!(deepcopy(new_theme), deepcopy(minimal_default))
-    new_theme = merge!(Theme(kwargs), new_theme)
-    merge!(CURRENT_DEFAULT_THEME, new_theme)
+    lock(THEME_LOCK) do
+        empty!(CURRENT_DEFAULT_THEME)
+        new_theme = merge_without_obs!(deepcopy(new_theme), MAKIE_DEFAULT_THEME)
+        new_theme = merge!(Theme(kwargs), new_theme)
+        merge!(CURRENT_DEFAULT_THEME, new_theme)
+    end
     return
 end
 
@@ -173,14 +180,16 @@ end
 ```
 """
 function with_theme(f, theme = Theme(); kwargs...)
-    previous_theme = copy(CURRENT_DEFAULT_THEME)
-    try
-        set_theme!(theme; kwargs...)
-        f()
-    catch e
-        rethrow(e)
-    finally
-        set_theme!(previous_theme)
+    lock(THEME_LOCK) do
+        previous_theme = merge_without_obs!(Attributes(), CURRENT_DEFAULT_THEME)
+        try
+            set_theme!(theme; kwargs...)
+            f()
+        catch e
+            rethrow(e)
+        finally
+            set_theme!(previous_theme)
+        end
     end
 end
 
@@ -201,28 +210,30 @@ end
 """
     update_theme!(with_theme::Theme; kwargs...)
 
-Update the current theme incrementally. This means that only the keys given in `with_theme` or through keyword arguments are changed, 
-the rest is left intact.  
+Update the current theme incrementally. This means that only the keys given in `with_theme` or through keyword arguments are changed,
+the rest is left intact.
 Nested attributes are either also updated incrementally, or replaced if they are not attributes in the new theme.
 
 # Example
-To change the default colormap to `:greys`, you can pass that attribute as 
+To change the default colormap to `:greys`, you can pass that attribute as
 a keyword argument to `update_theme!` as demonstrated below.
 ```
 update_theme!(colormap=:greys)
 ```
 
-This can also be achieved by passing an object of types `Attributes` or `Theme` 
+This can also be achieved by passing an object of types `Attributes` or `Theme`
 as the first and only positional argument:
 ```
 update_theme!(Attributes(colormap=:greys))
 update_theme!(Theme(colormap=:greys))
 ```
 """
-function update_theme!(with_theme = Theme()::Attributes; kwargs...)
-    new_theme = merge!(with_theme, Theme(kwargs))
-    _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
-    return
+function update_theme!(with_theme = Attributes(); kwargs...)
+    lock(THEME_LOCK) do
+        new_theme = merge!(with_theme, Attributes(kwargs))
+        _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
+        return
+    end
 end
 
 function _update_attrs!(attrs1, attrs2)

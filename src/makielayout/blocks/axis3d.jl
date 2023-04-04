@@ -110,7 +110,7 @@ function initialize_block!(ax::Axis3)
         inspectable = false)
 
     ax.cycler = Cycler()
-    ax.palette = copy(Makie.default_palettes)
+    ax.palette = Attributes(Makie.DEFAULT_PALETTES)
 
     ax.mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))

@@ -243,7 +243,7 @@ end
 
     xs = 0:9        # data
     ys = zeros(10)
-    colors = Makie.default_palettes.color[]
+    colors = Makie.DEFAULT_PALETTES.color
     plots = map(1:N) do i # plot lines
         lines!(ax,
             xs, ys;
@@ -878,7 +878,7 @@ end
         text = "Falling", offset = 10, orientation = :up, color = :purple, textcolor = :purple)
 
     bracket!(Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
-        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange, 
+        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange,
         fontsize = 30, textoffset = 30, width = 50)
     f
 end
