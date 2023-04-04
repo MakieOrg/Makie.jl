@@ -31,7 +31,7 @@ const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 
 "Returns the current active figure (or the last figure that got created)"
-current_figure() = lock(()-> return CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
+current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
 "Set `fig` as the current active scene"
 current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
 
