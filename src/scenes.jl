@@ -232,7 +232,8 @@ function Scene(;
         theme = Attributes(),
         theme_kw...
     )
-    global_theme = current_default_theme()
+
+    global_theme = merge_without_obs!(copy(theme), current_default_theme())
     m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
