@@ -27,7 +27,7 @@ let
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
-        Makie._current_figure[] = nothing
+        Makie.CURRENT_FIGURE[] = nothing
         Observables.clear(TEXTURE_ATLAS)
         TEXTURE_ATLAS[] = Float32[]
         nothing
