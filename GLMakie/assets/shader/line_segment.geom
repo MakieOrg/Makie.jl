@@ -62,7 +62,7 @@ void main(void)
     float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
     // determine the direction of each of the 3 segments (previous, current, next)
     vec3 vun0 = p1 - p0;
-    vec3 v0 = normalize(vun0);
+    vec3 v0 = vun0 / length(vun0.xy);
     // determine the normal of each of the 3 segments (previous, current, next)
     vec3 n0 = vec3(-v0.y, v0.x, 0);
     float l = length(p1 - p0);
