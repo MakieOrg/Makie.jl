@@ -165,9 +165,6 @@ const WEB_MIMES = (
     MIME"application/prs.juno.plotpane+html",
     MIME"juliavscode/html")
 
-# because we have a default way to display pngs in html contexts, we can say that
-# if png is showable, so are the html types
-Base.showable(mime::Union{WEB_MIMES...}, fig::FigureLike) = showable(MIME"image/png"(), fig)
 
 backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
