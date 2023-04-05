@@ -4,6 +4,11 @@
 
 - Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie. [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598)
 
+## v0.19.4
+
+- Added export of `hidezdecorations!` from MakieLayout [#2821](https://github.com/MakieOrg/Makie.jl/pull/2821).
+- Fix line shader [#2828](https://github.com/MakieOrg/Makie.jl/pull/2828).
+
 ## v0.19.3
 
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
