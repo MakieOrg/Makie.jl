@@ -117,7 +117,7 @@ end
 
 const DISABLED_MIMES = Set{String}()
 const SUPPORTED_MIMES = Set([
-    Makie.WEB_MIMES...,
+    map(x->string(x()), Makie.WEB_MIMES)...,
     "image/svg+xml",
     "application/pdf",
     "application/postscript",
