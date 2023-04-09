@@ -5,6 +5,7 @@ macro compile(block)
         let
             figlike = $(esc(block))
             Makie.colorbuffer(figlike)
+            return nothing
         end
     end
 end
@@ -24,7 +25,12 @@ let
                 display(plot(x); visible=false)
             catch
             end
+            Makie._current_figure[] = nothing
+            empty!(atlas_texture_cache)
             closeall()
+            @assert isempty(SCREEN_REUSE_POOL)
+            @assert isempty(ALL_SCREENS)
+            @assert isempty(SINGLETON_SCREEN)
         end
     end
     nothing

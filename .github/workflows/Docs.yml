@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         persist-credentials: false
     # NOTE: Python is necessary for the pre-rendering (minification) step
     - name: Install python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.8'
     - name: Install binary dependencies
@@ -46,7 +46,7 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes makedocs.jl
     - name: Upload site as artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: Docs build
         path: ./docs/__site

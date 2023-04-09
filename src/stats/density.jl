@@ -56,7 +56,7 @@ end
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     x = plot[1]
 
-    lowerupper = lift(x, plot.direction, plot.boundary, plot.offset,
+    lowerupper = lift(plot, x, plot.direction, plot.boundary, plot.offset,
         plot.npoints, plot.bandwidth, plot.weights) do x, dir, bound, offs, n, bw, weights
 
         k = KernelDensity.kde(x;
@@ -78,7 +78,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         (lowerv, upperv)
     end
 
-    linepoints = lift(lowerupper, plot.strokearound) do lu, sa
+    linepoints = lift(plot, lowerupper, plot.strokearound) do lu, sa
         if sa
             ps = copy(lu[2])
             push!(ps, lu[1][end])
@@ -93,14 +93,14 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     lower = Observable(Point2f[])
     upper = Observable(Point2f[])
 
-    on(lowerupper) do (l, u)
+    on(plot, lowerupper) do (l, u)
         lower.val = l
         upper[] = u
     end
     notify(lowerupper)
 
     colorobs = Observable{RGBColors}()
-    map!(colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
+    map!(plot, colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
         if (dir === :x && c === :x) || (dir === :y && c === :y)
             dim = dir === :x ? 1 : 2
             return Float32[l[dim] for l in lu[1]]

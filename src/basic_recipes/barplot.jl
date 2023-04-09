@@ -249,7 +249,7 @@ function Makie.plot!(p::BarPlot)
         return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.gap,
+    bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 

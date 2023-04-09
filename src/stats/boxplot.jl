@@ -82,6 +82,7 @@ function Makie.plot!(plot::BoxPlot)
     args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(
+        plot,
         plot[1],
         plot[2],
         plot[:color],

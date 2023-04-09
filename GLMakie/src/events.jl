@@ -24,6 +24,7 @@ function Makie.window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
         @print_error begin
+            @debug("Closing event from GLFW")
             event[] = false
         end
     end
@@ -242,15 +243,24 @@ which is an x and y offset.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
 Makie.scroll(scene::Scene, screen) = scroll(scene, to_native(screen))
-function Makie.scroll(scene::Scene, window::GLFW.Window)
-    event = scene.events.scroll
-    function scrollcb(window, w::Cdouble, h::Cdouble)
-        @print_error begin
-            event[] = (w, h)
-        end
+mutable struct ScrollUpdater <: Function
+    event::Observable{Tuple{Float64, Float64}}
+    integer_scroll::Bool
+end
+function (sc::ScrollUpdater)(window, w::Cdouble, h::Cdouble)
+    @static if Sys.isapple()
+        sc.integer_scroll = sc.integer_scroll && isinteger(w) && isinteger(h)
+        w, h = ifelse(sc.integer_scroll, 1.0, 0.067) .* (w, h)
     end
+    @print_error begin
+        sc.event[] = (w, h)
+    end
+    return
+end
+function Makie.scroll(scene::Scene, window::GLFW.Window)
+    updater = ScrollUpdater(scene.events.scroll, true)
     disconnect!(window, scroll)
-    GLFW.SetScrollCallback(window, scrollcb)
+    GLFW.SetScrollCallback(window, updater)
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(scroll))
     GLFW.SetScrollCallback(window, nothing)

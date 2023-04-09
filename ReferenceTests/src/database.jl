@@ -98,6 +98,7 @@ macro include_reference_tests(path)
         recorded_files = collect(ReferenceTests.REGISTERED_TESTS)
         recording_dir = recording_dir
         empty!(ReferenceTests.REGISTERED_TESTS)
+        ReferenceTests.COUNTER[] = 0
         (recorded_files, recording_dir)
     end)
 end

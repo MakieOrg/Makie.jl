@@ -101,3 +101,29 @@ end
         return Makie.RamStepper(fig, Makie.current_backend().Screen(fig.scene), reference, :png)
     end
 end
+
+@reference_test "deletion" begin
+    f = Figure()
+    l = Legend(f[1, 1], [LineElement(color=:red)], ["Line"])
+    s = display(f)
+    @test f.scene.current_screens[1] === s
+    @test f.scene.children[1].current_screens[1] === s
+    @test f.scene.children[1].children[1].current_screens[1] === s
+    delete!(l)
+    @test f.scene.current_screens[1] === s
+    ## legend should be gone
+    ax = Axis(f[1, 1])
+    scatter!(ax, 1:4, markersize=200, color=1:4)
+    f
+end
+
+@reference_test "deletion and observable args" begin
+    obs = Observable(1:5)
+    f, ax, pl = scatter(obs; markersize=150)
+    s = display(f)
+    @test length(obs.listeners) == 1
+    delete!(ax, pl)
+    @test length(obs.listeners) == 0
+    sleep(1.0)
+    f
+end

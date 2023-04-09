@@ -67,7 +67,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = deepcopy(CURRENT_DEFAULT_THEME)
+            curdeftheme = deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
@@ -165,9 +165,9 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             # then default value
             d = quote
                 if haskey($sceneattrsym, $key)
-                    $sceneattrsym[$key]
+                    $sceneattrsym[$key][] # only use value of theme entry
                 elseif haskey($curthemesym, $key)
-                    $curthemesym[$key]
+                    $curthemesym[$key][] # only use value of theme entry
                 else
                     $default
                 end
@@ -358,15 +358,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(
-        topscene,
-        # the block scene tracks the parent scene exactly
-        # for this it seems to be necessary to zero-out a possible non-zero
-        # origin of the parent
-        lift(Makie.zero_origin, topscene.px_area),
-        clear=false,
-        camera = campixel!
-    )
+    blockscene = Scene(topscene, clear=false, camera = campixel!)
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
@@ -432,7 +424,6 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     b
 end
 
-
 """
 Get the scene which blocks need from their parent to plot stuff into
 """
@@ -491,26 +482,24 @@ function Base.show(io::IO, ::T) where T <: Block
     print(io, "$T()")
 end
 
+# fallback if block doesn't need specific clean up
+free(::Block) = nothing
+
 function Base.delete!(block::Block)
+    free(block)
     block.parent === nothing && return
-    
     # detach plots, cameras, transformations, px_area
     empty!(block.blockscene)
 
-    s = get_topscene(block.parent)
-    deleteat!(
-        s.children,
-        findfirst(x -> x === block.blockscene, s.children)
-    )
-    # TODO: what about the lift of the parent scene's
-    # `px_area`, should this be cleaned up as well?
+    gc = GridLayoutBase.gridcontent(block)
+    if gc !== nothing
+        GridLayoutBase.remove_from_gridlayout!(gc)
+    end
 
-    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(block))
-
-    on_delete(block)
-    delete_from_parent!(block.parent, block)
-    block.parent = nothing
-
+    if block.parent !== nothing
+        delete_from_parent!(block.parent, block)
+        block.parent = nothing
+    end
     return
 end
 
@@ -526,13 +515,6 @@ function delete_from_parent!(figure::Figure, block::Block)
     nothing
 end
 
-"""
-Overload to execute cleanup actions for specific blocks that go beyond
-deleting elements and removing from gridlayout
-"""
-function on_delete(block)
-end
-
 function remove_element(x)
     delete!(x)
 end
@@ -546,14 +528,6 @@ function remove_element(xs::AbstractArray)
 end
 
 function remove_element(::Nothing)
-end
-
-function delete_scene!(s::Scene)
-    for p in copy(s.plots)
-        delete!(s, p)
-    end
-    deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
-    nothing
 end
 
 # if a non-observable is passed, its value is converted and placed into an observable of

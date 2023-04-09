@@ -29,7 +29,7 @@ function _disallow_keyword(kw, attributes)
 end
 
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
-    
+
     _validate_nt_like_keyword(axis, "axis")
     _validate_nt_like_keyword(figure, "figure")
 
@@ -51,6 +51,7 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         else
             ax = LScene(fig; axis...)
         end
+        empty!(proxyscene)
     end
 
     fig[1, 1] = ax
@@ -118,7 +119,7 @@ end
 function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
 
     _validate_nt_like_keyword(axis, "axis")
-    
+
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
     c = contents(gsp, exact = true)
     if !isempty(c)

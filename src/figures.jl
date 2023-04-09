@@ -69,11 +69,11 @@ function Figure(; kwargs...)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
-    alignmode = lift(Outside ∘ to_rectsides, padding)
+    alignmode = lift(Outside ∘ to_rectsides, scene, padding)
 
     layout = GridLayout(scene)
 
-    on(alignmode) do al
+    on(scene, alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end
@@ -152,7 +152,10 @@ function resize_to_layout!(fig::Figure)
 end
 
 function Base.empty!(fig::Figure)
+    screens = copy(fig.scene.current_screens)
     empty!(fig.scene)
+    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
+    append!(fig.scene.current_screens, screens)
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)

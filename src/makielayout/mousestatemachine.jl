@@ -143,7 +143,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     last_click_was_double = Ref(false)
 
     # react to mouse position changes
-    mousepos_observerfunc = on(events(scene).mouseposition, priority=priority) do mp
+    mousepos_observerfunc = on(scene, events(scene).mouseposition; priority=priority) do mp
         consumed = false
         t = time()
         data = mouseposition(scene)
@@ -229,7 +229,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
 
     # react to mouse button changes
-    mousedrag_observerfunc = on(events(scene).mousebutton, priority=priority) do event
+    mousedrag_observerfunc = on(scene, events(scene).mousebutton, priority=priority) do event
         consumed = false
         t = time()
         data = prev_data[]

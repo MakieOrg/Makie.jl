@@ -2,21 +2,21 @@ function initialize_block!(t::Toggle)
 
     topscene = t.blockscene
 
-    markersize = lift(t.layoutobservables.computedbbox) do bbox
+    markersize = lift(topscene, t.layoutobservables.computedbbox) do bbox
         min(width(bbox), height(bbox))
     end
 
-    button_endpoint_inactive = lift(markersize) do ms
+    button_endpoint_inactive = lift(topscene, markersize) do ms
         bbox = t.layoutobservables.computedbbox[]
         Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
     end
 
-    button_endpoint_active = lift(markersize) do ms
+    button_endpoint_active = lift(topscene, markersize) do ms
         bbox = t.layoutobservables.computedbbox[]
         Point2f(right(bbox) - ms / 2, bottom(bbox) + ms / 2)
     end
 
-    buttonvertices = lift(markersize, t.cornersegments) do ms, cs
+    buttonvertices = lift(topscene, markersize, t.cornersegments) do ms, cs
         roundedrectvertices(t.layoutobservables.computedbbox[], ms * 0.499, cs)
     end
 
@@ -30,14 +30,14 @@ function initialize_block!(t::Toggle)
     buttonpos = Observable(t.active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
 
     # make the button stay in the correct place (and start there)
-    on(t.layoutobservables.computedbbox) do bbox
+    on(topscene, t.layoutobservables.computedbbox) do bbox
         if !animating[]
             buttonpos[] = t.active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]]
         end
     end
 
     buttonfactor = Observable(1.0)
-    buttonsize = lift(markersize, t.rimfraction, buttonfactor) do ms, rf, bf
+    buttonsize = lift(topscene, markersize, t.rimfraction, buttonfactor) do ms, rf, bf
         ms * (1 - rf) * bf
     end
 

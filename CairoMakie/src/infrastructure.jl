@@ -36,11 +36,13 @@ function cairo_draw(screen::Screen, scene::Scene)
         end
         Cairo.save(screen.context)
 
-        # This is a bit of a hack for now.  When a plot is too large to save with
-        # a reasonable file size on a vector backend, the user can choose to
-        # rasterize it when plotting to vector backends, by using the `rasterize`
-        # keyword argument.  This can be set to a Bool or an Int which describes
+        # When a plot is too large to save with a reasonable file size on a vector backend, 
+        # the user can choose to rasterize it when plotting to vector backends, by using the 
+        # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
+        # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
+        # the backend module which should be used to render the scene, and the pixel density
+        # at which it should be rendered.
         if to_value(get(p, :rasterize, false)) != false && should_rasterize
             draw_plot_as_image(pparent, screen, p, p[:rasterize][])
         else # draw vector

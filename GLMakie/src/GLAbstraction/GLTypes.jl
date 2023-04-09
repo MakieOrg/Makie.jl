@@ -178,6 +178,11 @@ mutable struct GLVertexArray{T}
 
     function GLVertexArray{T}(program, id, bufferlength, buffers, indices) where T
         va = new(program, id, bufferlength, buffers, indices, current_context(), true)
+        if indices isa GLBuffer
+            on(indices.requires_update) do _ # only triggers true anyway
+                va.requires_update[] = true
+            end
+        end
         for (name, buffer) in buffers
             on(buffer.requires_update) do _ # only triggers true anyway
                 va.requires_update[] = true

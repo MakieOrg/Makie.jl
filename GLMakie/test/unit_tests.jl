@@ -102,6 +102,7 @@ end
     text!(ax, [Point2f(2)], text=["hi"])
     screen = display(fig)
     empty!(fig)
+    @test screen in fig.scene.current_screens
     @testset "all got freed" begin
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms

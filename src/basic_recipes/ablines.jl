@@ -19,15 +19,13 @@ function Makie.plot!(p::ABLines)
     scene = Makie.parent_scene(p)
     transf = transform_func(scene)
 
-    
-
     is_identity_transform(transf) || throw(ArgumentError("ABLines is only defined for the identity transform, not $(typeof(transf))."))
 
-    limits = lift(projview_to_2d_limits, scene.camera.projectionview)
+    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
 
     points = Observable(Point2f[])
-    
-    onany(limits, p[1], p[2]) do lims, intercept, slope
+
+    onany(p, limits, p[1], p[2]) do lims, intercept, slope
         inv = inverse_transform(transf)
         empty!(points[])
         f(x) = x * b + a

@@ -379,7 +379,8 @@ App() do session
         DOM.div(name, slider)
     end
     center!(s)
-    JSServe.record_states(session, DOM.div(sliders..., s))
+    # JSServe.record_states(session, DOM.div(sliders..., s))
+    return DOM.div(sliders..., s)
 end
 ```
 \end{showhtml}

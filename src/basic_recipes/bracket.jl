@@ -50,9 +50,12 @@ function Makie.plot!(pl::Bracket)
     bp = Observable(BezierPath[])
     textpoints = Observable(Point2f[])
 
-    realtextoffset = @lift($(pl.textoffset) === automatic ? Float32.(0.75 .* $(pl.fontsize)) : Float32.($(pl.textoffset)))
-    
-    onany(points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset, pl.style) do points, pv, offset, width, orientation, textoff, style
+    realtextoffset = lift(pl, pl.textoffset, pl.fontsize) do to, fs
+        return to === automatic ? Float32.(0.75 .* fs) : Float32.(to)
+    end
+
+    onany(pl, points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset,
+          pl.style) do points, pv, offset, width, orientation, textoff, style
 
         empty!(bp[])
         empty!(textoffset_vec[])
@@ -61,7 +64,7 @@ function Makie.plot!(pl::Bracket)
         broadcast_foreach(points, offset, width, orientation, textoff, style) do (_p1, _p2), offset, width, orientation, textoff, style
             p1 = scene_to_screen(_p1, scene)
             p2 = scene_to_screen(_p2, scene)
-            
+
             v = p2 - p1
             d1 = normalize(v)
             d2 = [0 -1; 1 0] * d1
@@ -84,7 +87,7 @@ function Makie.plot!(pl::Bracket)
 
     notify(points)
 
-    autorotations = lift(pl.rotation, textoffset_vec) do rot, tv
+    autorotations = lift(pl, pl.rotation, textoffset_vec) do rot, tv
         rots = Quaternionf[]
         broadcast_foreach(rot, tv) do rot, tv
             r = if rot === automatic
@@ -98,8 +101,8 @@ function Makie.plot!(pl::Bracket)
     end
 
     # TODO: this works around `text()` not being happy if text="xyz" comes with one-element vector attributes
-    texts = lift(pl.text) do text
-        text isa AbstractString ? [text] : text
+    texts = lift(pl, pl.text) do text
+        return text isa AbstractString ? [text] : text
     end
 
     series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, linestyle = pl.linestyle)
