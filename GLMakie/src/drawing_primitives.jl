@@ -20,8 +20,6 @@ to_range(x::VecTypes{2}) = x
 to_range(x::AbstractRange) = (minimum(x), maximum(x))
 to_range(x::AbstractVector) = (minimum(x), maximum(x))
 
-default_colorscale(x) = hasproperty(x, :colorscale) ? x.colorscale : nothing
-
 function to_range(x::AbstractArray)
     if length(x) in size(x) # assert that just one dim != 1
         to_range(vec(x))
@@ -206,7 +204,7 @@ function handle_intensities!(attributes, colorscale)
 end
 
 function handle_colorscale!(p::AbstractPlot, attributes, x)
-    colorscale = default_colorscale(p)
+    colorscale = get(p, :colorscale, nothing)
     handle_color_norm!(attributes, colorscale)
     lift(x -> el32convert(apply_scale(colorscale, x)), x)
 end
@@ -267,7 +265,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             end
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
-            handle_intensities!(gl_attributes, default_colorscale(x))
+            handle_intensities!(gl_attributes, get(x, :colorscale, nothing))
             if x isa MeshScatter
                 if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
                     gl_attributes[:image] = gl_attributes[:color]
@@ -317,7 +315,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
                 output
             end
         end
-        handle_intensities!(data, default_colorscale(x))
+        handle_intensities!(data, get(x, :colorscale, nothing))
         return draw_lines(screen, positions, data)
     end
 end
@@ -490,7 +488,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
         gl_attributes[:shading] = false
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(x, gl_attributes, scene.camera)
-        return mesh_inner(screen, mesh, transform_func_obs(x), default_colorscale(x), gl_attributes, space)
+        return mesh_inner(screen, mesh, transform_func_obs(x), get(x, :colorscale, nothing), gl_attributes, space)
     end
 end
 
@@ -506,6 +504,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, colorscale, gl_attributes, 
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
+    colorscale = to_value(colorscale)
     interp = interp ? :linear : :nearest
 
     if to_value(color) isa Colorant
@@ -521,13 +520,13 @@ function mesh_inner(screen::Screen, mesh, transfunc, colorscale, gl_attributes, 
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<: Number}
-        gl_attributes[:image] = Texture(const_lift(el32convert ∘ to_value, apply_scale(colorscale, color)), minfilter = interp)
+        gl_attributes[:image] = Texture(const_lift(el32convert, apply_scale(colorscale, color)), minfilter = interp)
         handle_color_norm!(gl_attributes, colorscale)
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<:Colorant}
         gl_attributes[:vertex_color] = lift(el32convert, color)
     elseif to_value(color) isa AbstractVector{<:Number}
-        gl_attributes[:vertex_color] = lift(el32convert ∘ to_value, apply_scale(colorscale, color))
+        gl_attributes[:vertex_color] = lift(el32convert, apply_scale(colorscale, color))
         handle_color_norm!(gl_attributes, colorscale)
     else
         error("Unsupported color type: $(typeof(to_value(color)))")
@@ -546,7 +545,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Mesh)
         t = transform_func_obs(x)
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(x, gl_attributes, scene.camera)
-        return mesh_inner(screen, x[1], t, default_colorscale(x), gl_attributes, space)
+        return mesh_inner(screen, x[1], t, get(x, :colorscale, nothing), gl_attributes, space)
     end
 end
 
@@ -557,7 +556,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if isa(to_value(color), AbstractMatrix{<: Number}) && to_value(color) !== to_value(x[3])
-            img = handle_colorscale!(x, gl_attributes, color)
+            img = handle_colorscale!(x, gl_attributes, color) |> to_value
         elseif to_value(color) isa Makie.AbstractPattern
             pattern_img = lift(x -> el32convert(Makie.to_image(x)), color)
             img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)

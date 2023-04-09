@@ -16,12 +16,10 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
         uniforms[:colormap] = Sampler(cmap)
     end
 
-    colorscale = pop!(plot, :colorscale, identity)
+    colorscale = to_value(pop!(plot, :colorscale, nothing))
 
     colorrange = if haskey(plot, :colorrange)
-        uniforms[:colorrange] = lift(plot.colorrange, colorscale) do colorrange, colorscale
-            return Vec2f(apply_scale(colorscale, colorrange))
-        end
+        uniforms[:colorrange] = lift(x -> Vec2f(apply_scale(colorscale, x)), plot.colorrange)
     end
 
     get!(uniforms, :colormap, false)
@@ -134,7 +132,8 @@ function create_shader(mscene::Scene, plot::Surface)
         pz
     end
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    color = Sampler(lift(x -> (el32convert ∘ to_color ∘ to_value)(apply_scale(plot.colorscale, permutedims(x))), pcolor);
+    colorscale = to_value(get(plot, :colorscale, nothing))
+    color = Sampler(lift(x -> (el32convert ∘ to_color)(apply_scale(colorscale, permutedims(x))), pcolor);
                     minfilter=minfilter)
     normals = Buffer(lift(Makie.surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
@@ -152,7 +151,8 @@ end
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     plot_attributes = copy(plot.attributes)
-    color = Sampler(map(x -> (el32convert ∘ to_value)(apply_scale(plot.colorscale, permutedims(x))), image);
+    colorscale = to_value(get(plot, :colorscale, nothing))
+    color = Sampler(lift(x -> el32convert(apply_scale(colorscale, permutedims(x))), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
     if eltype(color) <: Colorant
@@ -189,12 +189,13 @@ function create_shader(mscene::Scene, plot::Volume)
     diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot.diffuse)
     specular = lift(x -> convert_attribute(x, Key{:specular}()), plot.specular)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
+    colorscale = to_value(get(plot, :colorscale, nothing))
 
     uniforms = Dict{Symbol, Any}(
-        :volumedata => Sampler(lift(x -> (el32convert ∘ to_value)(apply_scale(plot.colorscale, x)), vol)),
+        :volumedata => Sampler(lift(x -> el32convert(apply_scale(colorscale, x)), vol)),
         :modelinv => modelinv,
         :colormap => Sampler(lift(to_colormap, plot.colormap)),
-        :colorrange => lift(Vec2f, apply_scale(plot.colorscale, plot.colorrange) |> to_value),
+        :colorrange => lift(Vec2f, apply_scale(colorscale, plot.colorrange)),
         :isovalue => lift(Float32, plot.isovalue),
         :isorange => lift(Float32, plot.isorange),
         :absorption => lift(Float32, get(plot, :absorption, Observable(1.0f0))),
