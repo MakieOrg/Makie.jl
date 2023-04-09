@@ -132,7 +132,7 @@ function create_shader(mscene::Scene, plot::Surface)
         pz
     end
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    colorscale = to_value(get(plot, :colorscale, nothing))
+    colorscale = get(plot, :colorscale, nothing)
     color = Sampler(lift(x -> (el32convert ∘ to_color)(apply_scale(colorscale, permutedims(x))), pcolor);
                     minfilter=minfilter)
     normals = Buffer(lift(Makie.surface_normals, px, py, pz))
@@ -151,7 +151,7 @@ end
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     plot_attributes = copy(plot.attributes)
-    colorscale = to_value(get(plot, :colorscale, nothing))
+    colorscale = get(plot, :colorscale, nothing)
     color = Sampler(lift(x -> el32convert(apply_scale(colorscale, permutedims(x))), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
@@ -189,7 +189,7 @@ function create_shader(mscene::Scene, plot::Volume)
     diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot.diffuse)
     specular = lift(x -> convert_attribute(x, Key{:specular}()), plot.specular)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
-    colorscale = to_value(get(plot, :colorscale, nothing))
+    colorscale = get(plot, :colorscale, nothing)
 
     uniforms = Dict{Symbol, Any}(
         :volumedata => Sampler(lift(x -> el32convert(apply_scale(colorscale, x)), vol)),

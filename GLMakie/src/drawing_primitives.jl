@@ -185,7 +185,9 @@ pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 function handle_color_norm!(attributes, colorscale)
     if haskey(attributes, :color_norm)
-        attributes[:color_norm] = apply_scale(colorscale, attributes[:color_norm])
+        attributes[:color_norm] = lift(colorscale, attributes[:color_norm]) do colorscale, color_norm
+            apply_scale(colorscale, color_norm)
+        end
     end
 end
 
@@ -193,7 +195,7 @@ function handle_intensities!(attributes, colorscale)
     if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
         color = pop!(attributes, :color)
         attributes[:intensity] = lift(colorscale, color) do colorscale, color
-            return convert(Vector{Float32}, apply_scale(colorscale, color))
+            convert(Vector{Float32}, apply_scale(colorscale, color))
         end
         handle_color_norm!(attributes, colorscale)
     else
@@ -204,9 +206,11 @@ function handle_intensities!(attributes, colorscale)
 end
 
 function handle_colorscale!(p::AbstractPlot, attributes, x)
-    colorscale = get(p, :colorscale, nothing)
+    colorscale = get(p, :colorscale, Observable(nothing))
     handle_color_norm!(attributes, colorscale)
-    lift(x -> el32convert(apply_scale(colorscale, x)), x)
+    lift(colorscale, x) do colorscale, x
+        el32convert(apply_scale(colorscale, x))
+    end
 end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
@@ -504,7 +508,6 @@ function mesh_inner(screen::Screen, mesh, transfunc, colorscale, gl_attributes, 
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
-    colorscale = to_value(colorscale)
     interp = interp ? :linear : :nearest
 
     if to_value(color) isa Colorant
@@ -556,7 +559,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if isa(to_value(color), AbstractMatrix{<: Number}) && to_value(color) !== to_value(x[3])
-            img = handle_colorscale!(x, gl_attributes, color) |> to_value
+            img = handle_colorscale!(x, gl_attributes, color)
         elseif to_value(color) isa Makie.AbstractPattern
             pattern_img = lift(x -> el32convert(Makie.to_image(x)), color)
             img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)
@@ -582,7 +585,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         types = map(v -> typeof(to_value(v)), x[1:2])
 
         if isnothing(img)
-            gl_attributes[:image] = Texture(handle_colorscale!(x, gl_attributes, mat) |> to_value; minfilter=:linear)
+            gl_attributes[:image] = Texture(handle_colorscale!(x, gl_attributes, mat); minfilter=:linear)
         end
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(x)
