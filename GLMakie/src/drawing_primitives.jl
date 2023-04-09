@@ -187,7 +187,7 @@ pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 function handle_color_norm!(attributes, colorscale)
     if haskey(attributes, :color_norm)
-        attributes[:color_norm] = apply_scale(colorscale, attributes[:color_norm])
+        attributes[:color_norm] = lift(x -> apply_scale(colorscale, x), attributes[:color_norm])
     end
 end
 
@@ -206,7 +206,7 @@ function handle_intensities!(attributes, colorscale)
 end
 
 function handle_colorscale!(p::AbstractPlot, attributes, x)
-    colorscale = haskey(p, :colorscale) ? p.colorscale : nothing
+    colorscale = default_colorscale(p)
     handle_color_norm!(attributes, colorscale)
     lift(x -> el32convert(apply_scale(colorscale, x)), x)
 end

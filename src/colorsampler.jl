@@ -128,7 +128,7 @@ function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
     return Sampler(cmap, uv, alpha, interpolation, Scaling())
 end
 
-apply_scale(scale::AbstractObservable, x) = apply_scale(scale[], x)
+apply_scale(scale::AbstractObservable, x) = lift(scale -> apply_scale(scale, x), scale)
 apply_scale(::Union{Nothing,typeof(identity)}, x) = x  # noop
 apply_scale(scale, x) = broadcast(scale, to_value(x))
 
