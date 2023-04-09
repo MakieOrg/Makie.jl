@@ -192,7 +192,7 @@ end
 function handle_intensities!(attributes, colorscale)
     if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
         color = pop!(attributes, :color)
-        attributes[:intensity] = lift(color, colorscale) do color, colorscale
+        attributes[:intensity] = lift(colorscale, color) do colorscale, color
             return convert(Vector{Float32}, apply_scale(colorscale, color))
         end
         handle_color_norm!(attributes, colorscale)
@@ -582,7 +582,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         types = map(v -> typeof(to_value(v)), x[1:2])
 
         if isnothing(img)
-            gl_attributes[:image] = Texture(handle_colorscale!(x, gl_attributes, mat); minfilter=:linear)
+            gl_attributes[:image] = Texture(handle_colorscale!(x, gl_attributes, mat) |> to_value; minfilter=:linear)
         end
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(x)
