@@ -51,7 +51,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
         color = color_signal[]
         uniforms[:uniform_color] = Observable(false) # this is the default
-        colorscale = get(plot, :colorscale, nothing)
+        colorscale = get(plot, :colorscale, Observable(nothing))
 
         if color isa AbstractArray
             if eltype(color) <: Number
