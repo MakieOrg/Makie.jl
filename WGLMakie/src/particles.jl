@@ -16,7 +16,7 @@ function handle_color!(uniform_dict, instance_dict)
         if haskey(uniform_dict, :colorscale)
             colorscale = pop!(uniform_dict, :colorscale)
             udict[:color] = c = apply_scale(colorscale, color)
-            uniform_dict[:colorrange] = Vec2f(Makie.distinct_extrema_nan(c))
+            uniform_dict[:colorrange] = Vec2f(Makie.distinct_extrema_nan(to_value(c)))
         end
         uniform_dict[:color_getter] = """
             vec4 get_color(){

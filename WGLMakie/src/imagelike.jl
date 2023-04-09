@@ -134,7 +134,7 @@ function create_shader(mscene::Scene, plot::Surface)
         pz
     end
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    color = Sampler(lift(x -> el32convert(to_color(apply_scale(plot.colorscale, permutedims(x)))), pcolor);
+    color = Sampler(lift(x -> (el32convert ∘ to_color ∘ to_value)(apply_scale(plot.colorscale, permutedims(x))), pcolor);
                     minfilter=minfilter)
     normals = Buffer(lift(Makie.surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
@@ -152,7 +152,7 @@ end
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     plot_attributes = copy(plot.attributes)
-    color = Sampler(map(x -> el32convert(apply_scale(plot.colorscale, permutedims(x))), image);
+    color = Sampler(map(x -> (el32convert ∘ to_value)(apply_scale(plot.colorscale, permutedims(x))), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
     if eltype(color) <: Colorant
@@ -191,10 +191,10 @@ function create_shader(mscene::Scene, plot::Volume)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
 
     uniforms = Dict{Symbol, Any}(
-        :volumedata => Sampler(lift(el32convert, apply_scale(plot.colorscale, vol))),
+        :volumedata => Sampler(lift(x -> (el32convert ∘ to_value)(apply_scale(plot.colorscale, x)), vol)),
         :modelinv => modelinv,
         :colormap => Sampler(lift(to_colormap, plot.colormap)),
-        :colorrange => lift(Vec2f, apply_scale(plot.colorscale, plot.colorrange)),
+        :colorrange => lift(Vec2f, apply_scale(plot.colorscale, plot.colorrange) |> to_value),
         :isovalue => lift(Float32, plot.isovalue),
         :isorange => lift(Float32, plot.isorange),
         :absorption => lift(Float32, get(plot, :absorption, Observable(1.0f0))),

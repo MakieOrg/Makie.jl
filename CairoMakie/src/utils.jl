@@ -242,10 +242,10 @@ function per_face_colors(
         if color isa AbstractVector{<: Colorant}
             return FaceIterator(color, faces)
         elseif color isa AbstractArray{<: Number}
-            scaled_colorrange = apply_scale(colorscale, colorrange)
+            scaled_colorrange = apply_scale(colorscale, colorrange) |> to_value
             low, high = extrema(scaled_colorrange)
             cvec = map(color[:]) do c
-                scaled_c = apply_scale(colorscale, c)
+                scaled_c = apply_scale(colorscale, c) |> to_value
                 if isnan(scaled_c) && nan_color !== nothing
                     return nan_color
                 elseif scaled_c < low && lowclip !== nothing

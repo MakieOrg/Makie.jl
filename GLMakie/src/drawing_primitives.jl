@@ -187,7 +187,7 @@ pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 function handle_color_norm!(attributes, colorscale)
     if haskey(attributes, :color_norm)
-        attributes[:color_norm] = lift(x -> apply_scale(colorscale, x), attributes[:color_norm])
+        attributes[:color_norm] = apply_scale(colorscale, attributes[:color_norm])
     end
 end
 
@@ -521,13 +521,13 @@ function mesh_inner(screen::Screen, mesh, transfunc, colorscale, gl_attributes, 
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<: Number}
-        gl_attributes[:image] = Texture(const_lift(el32convert, apply_scale(colorscale, color)), minfilter = interp)
+        gl_attributes[:image] = Texture(const_lift(el32convert ∘ to_value, apply_scale(colorscale, color)), minfilter = interp)
         handle_color_norm!(gl_attributes, colorscale)
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<:Colorant}
         gl_attributes[:vertex_color] = lift(el32convert, color)
     elseif to_value(color) isa AbstractVector{<:Number}
-        gl_attributes[:vertex_color] = lift(el32convert, apply_scale(colorscale, color))
+        gl_attributes[:vertex_color] = lift(el32convert ∘ to_value, apply_scale(colorscale, color))
         handle_color_norm!(gl_attributes, colorscale)
     else
         error("Unsupported color type: $(typeof(to_value(color)))")
