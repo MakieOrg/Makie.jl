@@ -9,7 +9,8 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{define_fast_path}}
 
 layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 9) out;
+layout(triangle_strip, max_vertices = 10) out;
+// layout(triangle_strip, max_vertices = 14) out; // DEBUG
 
 in vec4 g_color[];
 in float g_lastlen[];
@@ -33,6 +34,7 @@ uniform sampler1D pattern_sections;
 
 float px2uv = 0.5 / pattern_length;
 
+// Constants
 #define MITER_LIMIT -0.4
 #define AA_THICKNESS 4
 
@@ -51,7 +53,6 @@ vec3 screen_space(vec4 vertex)
 // - uv with uv.u normalized (0..1), uv.v unnormalized (0..pattern_length)
 void emit_vertex(vec3 position, vec2 uv, int index)
 {
-    vec4 inpos  = gl_in[index].gl_Position;
     f_uv        = uv;
     f_color     = g_color[index];
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
@@ -60,6 +61,147 @@ void emit_vertex(vec3 position, vec2 uv, int index)
     EmitVertex();
 }
 
+// For center point
+void emit_vertex(vec3 position, vec2 uv)
+{
+    f_uv        = uv;
+    f_color     = 0.5 * (g_color[1] + g_color[2]);
+    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
+    f_id        = g_id[1];
+    f_thickness = 0.5 * (g_thickness[1] + g_thickness[2]);
+    EmitVertex();
+}
+
+// Debug
+void emit_vertex(vec3 position, vec2 uv, int index, vec4 color)
+{
+    f_uv        = uv;
+    f_color     = color;
+    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
+    f_id        = g_id[index];
+    f_thickness = g_thickness[index];
+    EmitVertex();
+}
+void emit_vertex(vec3 position, vec2 uv, vec4 color)
+{
+    f_uv        = uv;
+    f_color     = color;
+    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
+    f_id        = g_id[1];
+    f_thickness = 0.5 * (g_thickness[1] + g_thickness[2]);
+    EmitVertex();
+}
+
+
+// With offset calculations for core line segment
+void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv, int index)
+{
+    emit_vertex(
+        position + vec3(offset, 0),
+        vec2(uv.x + px2uv * dot(line_dir, offset), uv.y),
+        index
+    );
+}
+
+void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv)
+{
+    emit_vertex(
+        position + vec3(offset, 0),
+        vec2(uv.x + px2uv * dot(line_dir, offset), uv.y)
+    );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Draw full line segment
+////////////////////////////////////////////////////////////////////////////////
+
+
+// Generate line segment with 3 triangles
+// - p1, p2 are the line start and end points in pixel space
+// - miter_a and miter_b are the offsets from p1 and p2 respectively that 
+//   generate the line segment quad. This should include thickness and AA
+// - u1, u2 are the u values at p1 and p2. These should be in uv scale (px2uv applied)
+// - thickness_aa1, thickness_aa2 are linewidth at p1 and p2 with AA added. They
+//   double as uv.y values, which are in pixel space
+// - v1 is the line direction of this segment (xy component)
+void generate_line_segment(
+        vec3 p1, vec2 miter_a, float u1, float thickness_aa1,
+        vec3 p2, vec2 miter_b, float u2, float thickness_aa2,
+        vec2 v1
+    )
+{
+    vec3 pc = 0.5 * (p1 + p2);
+    vec2 miter_c = 0.5 * (miter_a + miter_b);
+    float uc = 0.5 * (u1 + u2);
+    float thickness_aac = 0.5 * (thickness_aa1 + thickness_aa2);
+
+    if (dot(miter_a, v1) < dot(miter_b, v1)){
+        // additive side has more space
+        emit_vertex(p1, +miter_a, v1, vec2(u1, -thickness_aa1), 1);
+        emit_vertex(p1, -miter_a, v1, vec2(u1,  thickness_aa1), 1);
+        emit_vertex(pc,  miter_c, v1, vec2(uc, -thickness_aac));
+        emit_vertex(p2, -miter_b, v1, vec2(u2,  thickness_aa2), 2);
+        emit_vertex(p2, +miter_b, v1, vec2(u2, -thickness_aa2), 2);
+    } else {
+        // subtractive side has more space
+        emit_vertex(p1, -miter_a, v1, vec2(u1, -thickness_aa1), 1);
+        emit_vertex(p1, +miter_a, v1, vec2(u1,  thickness_aa1), 1);
+        emit_vertex(pc, -miter_c, v1, vec2(uc, -thickness_aac));
+        emit_vertex(p2, +miter_b, v1, vec2(u2,  thickness_aa2), 2);
+        emit_vertex(p2, -miter_b, v1, vec2(u2, -thickness_aa2), 2);
+    }
+}
+
+// Debug Version
+// Generates more triangles and colors them individually so they can be differentiated
+void generate_line_segment_debug(
+        vec3 p1, vec2 miter_a, float u1, float thickness_aa1,
+        vec3 p2, vec2 miter_b, float u2, float thickness_aa2,
+        vec2 v1
+    )
+{
+    vec3 pc = 0.5 * (p1 + p2);
+    vec2 miter_c = 0.5 * (miter_a + miter_b);
+    float uc = 0.5 * (u1 + u2);
+    float thickness_aac = 0.5 * (thickness_aa1 + thickness_aa2);
+
+    if (dot(miter_a, v1) < dot(miter_b, v1)){
+        emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
+        emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
+        emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(1, 0, 0, 0.5));
+        
+        EndPrimitive();
+        
+        emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(0, 1, 0, 0.5));
+        emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 1, 0, 0.5));
+        emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 1, 0, 0.5));
+        
+        EndPrimitive();
+
+        emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 0, 1, 0.5));
+        emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
+        emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b), -thickness_aa2), 2, vec4(0, 0, 1, 0.5));
+
+    } else {
+        // subtractive side has more space
+        emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
+        emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
+        emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(1, 0, 0, 0.5));
+        
+        EndPrimitive();
+        
+        emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(0, 1, 0, 0.5));
+        emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 1, 0, 0.5));
+        emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 1, 0, 0.5));
+        
+        EndPrimitive();
+
+        emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 0, 1, 0.5));
+        emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
+        emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b), -thickness_aa2), 2, vec4(0, 0, 1, 0.5));
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,8 +351,8 @@ void draw_patterned_line(bool isvalid[4])
         if (
             isvalid[0] &&
             abs(2 * start * pattern_length - g_lastlen[1] + start_width) < (start_width - left_offset)
-            ) {
-
+            )
+        {
             // if the corner is too sharp, we do a truncated miter join
             //        ----------c.
             //        ----------a.'.
@@ -305,7 +447,8 @@ void draw_patterned_line(bool isvalid[4])
         if (
             isvalid[3] &&
             abs(2*stop * pattern_length - g_lastlen[2] - stop_width) < (stop_width - right_offset)
-            ) {
+            )
+        {
             if( dot( v1.xy, v2.xy ) < MITER_LIMIT ){
                 // setup for truncated join (flat line end)
                 miter_b = n1;
@@ -337,10 +480,13 @@ void draw_patterned_line(bool isvalid[4])
             f_uv_minmax.y = g_lastlen[2] * px2uv;
 
         // generate rectangle for this segment
-        emit_vertex(p1 + vec3(miter_a, 0), vec2(start + dot(v1.xy, miter_a) * px2uv, -thickness_aa1), 1);
-        emit_vertex(p1 - vec3(miter_a, 0), vec2(start - dot(v1.xy, miter_a) * px2uv,  thickness_aa1), 1);
-        emit_vertex(p2 + vec3(miter_b, 0), vec2(stop  + dot(v1.xy, miter_b) * px2uv, -thickness_aa2), 2);
-        emit_vertex(p2 - vec3(miter_b, 0), vec2(stop  - dot(v1.xy, miter_b) * px2uv,  thickness_aa2), 2);
+
+        // Normal Version
+        generate_line_segment(p1, miter_a, start, thickness_aa1,   p2, miter_b, stop, thickness_aa2,   v1.xy);
+
+        // Debug - show each triangle (this needs more +4 vertices in triangle_strip output)
+        // generate_line_segment_debug(p1, miter_a, start, thickness_aa1, p2, miter_b, stop, thickness_aa2, v1.xy);
+
     }
 
     return;
@@ -436,34 +582,11 @@ void draw_solid_line(bool isvalid[4])
         length_b = thickness_aa2;
     }
 
-
     // Without a pattern (linestyle) we use uv.u directly as a signed distance
     // field. We only care about u1 - u0 being the correct distance and
     // u0 > AA_THICHKNESS at all times.
     float u1 = 10.0 * AA_THICKNESS + thickness_aa1 + thickness_aa2;
     float u2 = u1 + segment_length;
-
-    // Fix #1129
-    // When points are very close together the AA padding propagated through
-    // shallow miter joins in v1 direction can draw outside the lines region.
-    //
-    //         | | <- extrusion in v1 direction from AA padding
-    // .----------
-    // | .--------
-    // | |'.    ##  <- potentially draws outside
-    // | |  '.  ##  <- the current line segment
-    // | |    '.--
-    // | |     | .
-    // | |     | |
-    //
-    // Here we treat this by adding an artificial AA boundary at the line start
-    // and end. Note that always doing this will introduce AA where lines should
-    // smoothly connect.
-    if (segment_length < abs(length_a * dot(miter_a, v1.xy)))
-        f_uv_minmax.x = (u1 - g_thickness[1] * abs(dot(miter_a, v1.xy) / dot(miter_a, n1))) * px2uv;
-
-    if (segment_length < abs(length_b * dot(miter_b, v1.xy)))
-        f_uv_minmax.y = (u2 + g_thickness[2] * abs(dot(miter_b, v1.xy) / dot(miter_b, n1))) * px2uv;
 
     // To treat line starts and ends we elongate the line in the respective
     // direction and enforce an AA border at the original start/end position
@@ -478,15 +601,17 @@ void draw_solid_line(bool isvalid[4])
     u2 += is_end * AA_THICKNESS;
     p2 += is_end * AA_THICKNESS * v1;
 
-    // to save some space
+    // Generate line segment
     miter_a *= length_a;
     miter_b *= length_b;
+    u1 *= px2uv;
+    u2 *= px2uv;
 
-    // Generate line segment (with uv.u being signed distance field values)
-    emit_vertex(p1 + vec3(miter_a, 0), vec2(px2uv * (u1 + dot(v1.xy, miter_a)), -thickness_aa1), 1);
-    emit_vertex(p1 - vec3(miter_a, 0), vec2(px2uv * (u1 - dot(v1.xy, miter_a)),  thickness_aa1), 1);
-    emit_vertex(p2 + vec3(miter_b, 0), vec2(px2uv * (u2 + dot(v1.xy, miter_b)), -thickness_aa2), 2);
-    emit_vertex(p2 - vec3(miter_b, 0), vec2(px2uv * (u2 - dot(v1.xy, miter_b)),  thickness_aa2), 2);
+    // Normal Version
+    generate_line_segment(p1, miter_a, u1, thickness_aa1,   p2, miter_b, u2, thickness_aa2,   v1.xy);
+
+    // Debug - show each triangle (this needs more +4 vertices in triangle_strip output)
+    // generate_line_segment_debug(p1, miter_a, u1, thickness_aa1,   p2, miter_b, u2, thickness_aa2,   v1.xy);
 
     return;
 }
