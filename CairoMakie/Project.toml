@@ -1,7 +1,7 @@
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
-version = "0.10.3"
+version = "0.10.4"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -23,7 +23,7 @@ FFTW = "1"
 FileIO = "1.1"
 FreeType = "3, 4.0"
 GeometryBasics = "0.4.1"
-Makie = "=0.19.3"
+Makie = "=0.19.4"
 SnoopPrecompile = "1.0"
 julia = "1.3"
 
