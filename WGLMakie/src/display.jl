@@ -24,7 +24,7 @@ function JSServe.jsrender(session::Session, scene::Scene)
     screen = Screen(c, true, scene)
     screen.session = session
     Makie.push_screen!(scene, screen)
-    on(on_init) do i
+    on(session, on_init) do i
         mark_as_displayed!(screen, scene)
     end
     return canvas
@@ -93,7 +93,7 @@ for M in WEB_MIMES
                 screen.session = session
                 three, canvas, init_obs = three_display(session, scene)
                 Makie.push_screen!(scene, screen)
-                on(init_obs) do _
+                on(session, init_obs) do _
                     put!(screen.three, three)
                     mark_as_displayed!(screen, scene)
                     return
@@ -183,7 +183,7 @@ function Base.display(screen::Screen, scene::Scene; kw...)
     app = App() do session, request
         screen.session = session
         three, canvas, done_init = three_display(session, scene)
-        on(done_init) do _
+        on(session, done_init) do _
             put!(screen.three, three)
             mark_as_displayed!(screen, scene)
             return
