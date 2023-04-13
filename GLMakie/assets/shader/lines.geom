@@ -28,7 +28,6 @@ out vec3 o_normal;
 
 uniform vec2 resolution;
 uniform float pattern_length;
-{{pattern_type}} pattern;
 uniform sampler1D pattern_sections;
 
 float px2uv = 0.5 / pattern_length;
