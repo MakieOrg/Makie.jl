@@ -690,25 +690,35 @@ void draw_solid_line(bool isvalid[4])
     // Without a pattern (linestyle) we use uv.u directly as a signed distance
     // field. We only care about u1 - u0 being the correct distance and
     // u0 > AA_THICHKNESS at all times.
-    float u1 = 10.0 * AA_THICKNESS + thickness_aa1 + thickness_aa2;
+    float u1 = 10000.0;
     float u2 = u1 + segment_length;
+
+    miter_a *= length_a;
+    miter_b *= length_b;
 
     // To treat line starts and ends we elongate the line in the respective
     // direction and enforce an AA border at the original start/end position
     // with f_uv_minmax.
-    float is_start = float(!isvalid[0]);
-    if (!isvalid[0]) f_uv_minmax.x = px2uv * u1;
-    p1 -= is_start * AA_THICKNESS * v1;
-    u1 -= is_start * AA_THICKNESS;
+    if (!isvalid[0])
+    {
+        float corner_offset = max(0, abs(dot(miter_b, v1.xy)) - segment_length);
+        f_uv_minmax.x = px2uv * (u1 - corner_offset);
+        p1 -= (corner_offset + AA_THICKNESS) * v1;
+        u1 -= (corner_offset + AA_THICKNESS);
+        segment_length += corner_offset;
+    }
 
-    float is_end = float(!isvalid[3]);
-    if (!isvalid[3]) f_uv_minmax.y = px2uv * u2;
-    p2 += is_end * AA_THICKNESS * v1;
-    u2 += is_end * AA_THICKNESS;
+    if (!isvalid[3])
+    {
+        float corner_offset = max(0, abs(dot(miter_a, v1.xy)) - segment_length);
+        f_uv_minmax.y = px2uv * (u2 + corner_offset);
+        p2 += (corner_offset + AA_THICKNESS) * v1;
+        u2 += (corner_offset + AA_THICKNESS);
+        segment_length += corner_offset;
+    }
+
 
     // Generate line segment
-    miter_a *= length_a;
-    miter_b *= length_b;
     u1 *= px2uv;
     u2 *= px2uv;
 
