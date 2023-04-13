@@ -435,7 +435,13 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
+        screen.requires_update = true
         on(_ -> screen.requires_update = true, scene.visible)
+        on(_ -> screen.requires_update = true, scene.backgroundcolor)
+        on(_ -> screen.requires_update = true, scene.px_area)
+        # TODO 
+        # - trigger on scene.clear but that's not an observable
+        # - maybe lighting?
         return id
     end
     for elem in scene.plots
