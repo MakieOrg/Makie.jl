@@ -225,6 +225,31 @@ function Makie.colorbuffer(screen::Screen)
     return session2image(three.session, screen.scene)
 end
 
+
+function insert_scene!(disp, screen::Screen, scene::Scene)
+    if js_uuid(scene) in screen.displayed_scenes
+        return true
+    else
+        scene_ser = serialize_scene(scene)
+        parent = scene.parent
+        parent_uuid = js_uuid(parent)
+        insert_scene!(disp, screen, parent) # make sure parent is also already displayed
+        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
+        evaljs_value(disp.session, js"""
+        $(WGL).then(WGL=> {
+            const parent = WGL.find_scene($(parent_uuid));
+            if (!parent) {
+                throw new Error($(err))
+            }
+            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
+            parent.scene_children.push(new_scene);
+        })
+        """)
+        mark_as_displayed!(screen, scene)
+        return false
+    end
+end
+
 function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
@@ -245,20 +270,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
         # We serialize the whole scene (containing `plot` as well),
         # since, we should only get here if scene is newly created and this is the first plot we insert!
         @assert scene.plots[1] == plot
-        scene_ser = serialize_scene(scene)
-        parent_uuid = js_uuid(parent)
-        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
-        evaljs_value(disp.session, js"""
-        $(WGL).then(WGL=> {
-            const parent = WGL.find_scene($(parent_uuid));
-            if (!parent) {
-                throw new Error($(err))
-            }
-            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
-            parent.scene_children.push(new_scene);
-        })
-        """)
-        mark_as_displayed!(screen, scene)
+        insert_scene!(disp, screen, scene)
     end
     return
 end
