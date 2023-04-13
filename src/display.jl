@@ -178,6 +178,10 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     show(io, scene)
 end
 
+function Base.show(io::IO, m::MIME"text/markdown", fig::FigureLike)
+    throw(MethodError(show, io, m, fig))
+end
+
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
     if !ALWAYS_INLINE_PLOTS[]
         # If we always want to open a window, we call display manually here
