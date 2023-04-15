@@ -523,13 +523,17 @@ function mesh_inner(screen::Screen, mesh, transfunc, colorscale, gl_attributes, 
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<: Number}
-        gl_attributes[:image] = Texture(const_lift(el32convert, apply_scale(colorscale, color)), minfilter = interp)
+        gl_attributes[:image] = Texture(lift(colorscale, color) do scale, col
+            el32convert(apply_scale(scale, col))
+        end; minfilter = interp)
         handle_color_norm!(gl_attributes, colorscale)
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<:Colorant}
         gl_attributes[:vertex_color] = lift(el32convert, color)
     elseif to_value(color) isa AbstractVector{<:Number}
-        gl_attributes[:vertex_color] = lift(el32convert, apply_scale(colorscale, color))
+        gl_attributes[:vertex_color] = lift(colorscale, color) do scale, col
+            el32convert(apply_scale(scale, col))
+        end
         handle_color_norm!(gl_attributes, colorscale)
     else
         error("Unsupported color type: $(typeof(to_value(color)))")
