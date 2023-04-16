@@ -64,7 +64,7 @@ function load_frames(video, dir)
     mkdir(framedir)
     Makie.extract_frames(video, framedir)
     return map(readdir(framedir; join=true)) do path
-        return convert(Matrix{RGB{N0f8}}, FileIO.load(path))
+        return convert(Matrix{RGB{N0f8}}, load(path))
     end
 end
 
@@ -126,4 +126,44 @@ end
     @test length(obs.listeners) == 0
     sleep(1.0)
     f
+end
+
+@reference_test "interactive colorscale - mesh" begin
+    brain = load(assetpath("brain.stl"))
+    color = [abs(tri[1][2]) for tri in brain for i in 1:3]
+    f, ax, m = mesh(brain; color, colorscale=identity)
+    mesh(f[1, 2], brain; color, colorscale=log10)
+    st = Stepper(f)
+    Makie.step!(st)
+    m.colorscale = log10
+    Makie.step!(st)
+end
+
+@reference_test "interactive colorscale - heatmap" begin
+    data = exp.(abs.(randn(20, 20)))
+    f, ax, hm = heatmap(data, colorscale=log10, axis=(; title="log10"))
+    Colorbar(f[1, 2], hm)
+    ax2, hm2 = heatmap(f[1, 3], data, colorscale=log10, axis=(; title="log10"))
+    st = Stepper(f)
+    Makie.step!(st)
+    hm2.colorscale = identity
+    ax2.title = "identity"
+    Makie.step!(st)
+    hm.colorscale = identity
+    ax.title = "identity"
+    Makie.step!(st)
+end
+
+@reference_test "interactive colorscale - hexbin" begin
+    x = randn(1_000)
+    y = randn(1_000)
+    f = Figure()
+    hexbin(f[1, 1], x, y; axis=(aspect=DataAspect(), title="identity"))
+    ax, hb = hexbin(f[1, 2], x, y; colorscale=log, axis=(aspect=DataAspect(), title="log"))
+    Colorbar(f[1, end+1], hb)
+    st = Stepper(f)
+    Makie.step!(st)
+    hb.colorscale = identity
+    ax.title = "identity"
+    Makie.step!(st)
 end
