@@ -64,7 +64,7 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
             for i in length(old_plotspec_types):-1:length(plotspec_types)
                 deleteat!(p.plots, i)
                 delete!(p, cached_plots[i])
-                pop!(cached_plots)
+                cached_plots = cached_plots[begin:end-1]
             end
             println("Length less")
             plotspec_types .== old_plotspec_types[1:length(plotspec_types)]
@@ -78,7 +78,7 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
         end
 
         old_plotspec_types = plotspec_types
-        @show types_unchanged
+        @show types_unchanged typeof.(cached_plots)
         # If the types have changed, then we need to delete and replot certain plots.
         if !(all(types_unchanged)) 
             println("Found changed plottypes")
@@ -90,7 +90,7 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
                     deleteat!(p.plots, findfirst(==(old_plot), p.plots))
                 end
                 new_plot = plot!(p, plotspec_types[plot_ind].parameters[1], Attributes(plotspecs[plot_ind].kwargs), plotspecs[plot_ind].args...)
-                if length(cached_plots) > plot_ind
+                if length(cached_plots) ≥ plot_ind
                     cached_plots[plot_ind] = new_plot # reorder and re-store the plot - this can probably be more efficient!
                     _tmp = p.plots[plot_ind]
                     p.plots[plot_ind] = new_plot
@@ -169,7 +169,7 @@ pl[1][] = [
 ]
 
 fig
-
+pl.plots
 
 pl[1][] = [
     PlotSpec{Surface}(0..1, 0..1, Makie.peaks(); colormap = :viridis, transformation = (; translation = Vec3f(0, 0, -1))),

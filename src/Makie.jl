@@ -152,6 +152,7 @@ include("basic_recipes/volumeslices.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
+include("basic_recipes/plotlist.jl")
 
 # layouting of plots
 include("layouting/transformation.jl")
