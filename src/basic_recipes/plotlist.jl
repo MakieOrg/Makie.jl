@@ -34,12 +34,12 @@ pl[1][] = [
 
 fig
 
-
 pl[1][] = [
-    PlotSpec{Lines}(0..1, sin.(0:0.01:1); color = Makie.resample_cmap(:viridis, 101)), 
+    PlotSpec{Surface}(0..1, 0..1, Makie.peaks(); colormap = :viridis, transformation = (; translation = Vec3f(0, 0, -1))),
 ]
 
 fig
+
 ```
 """
 @recipe(PlotList) do scene
@@ -84,10 +84,10 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
             println("Found changed plottypes")
             indices_to_renew = findall(==(false), types_unchanged)
             for plot_ind in indices_to_renew
-                if length(cached_plots) > plot_ind
+                if length(cached_plots) ≥ plot_ind
                     old_plot = cached_plots[plot_ind]
                     delete!(p, old_plot)
-                    deleteat!(p.plots, findfirst(==(old_plot), p.plots))
+                    deleteat!(p.plots, plot_ind)
                 end
                 new_plot = plot!(p, plotspec_types[plot_ind].parameters[1], Attributes(plotspecs[plot_ind].kwargs), plotspecs[plot_ind].args...)
                 if length(cached_plots) ≥ plot_ind
@@ -122,14 +122,25 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
 end
 
 
-"This function updates the attributes of a plot inplace, recursively."
-function update_attributes_inplace!(p::Union{AbstractPlot, Symbol}, key::Symbol, new_value)
+"""
+    update_attributes_inplace!(p::AbstractPlot, key::Symbol, new_value)
+    update_attributes_inplace!(attrs::Attributes, new_attrs::AttributesLike)
+    update_attributes_inplace!(obs::Observable, new_value)
+    
+This function updates the attributes of a plot silently and recursively.
+Here, silently means that the observable is not notified, and only the value is changed.
+"""
+function update_attributes_inplace!(p::AbstractPlot, key::Symbol, new_value)
     return update_attributes_inplace!(getindex(p, key), new_value)
 end
 
-function update_attributes_inplace!(attrs::Attributes, new_attrs::Union{Attributes, NamedTuple})
+function update_attributes_inplace!(attrs::Attributes, new_attrs::Union{Attributes, NamedTuple, AbstractDict})
     for key in keys(new_attrs)
-        update_attributes_inplace!(attrs[key], new_attrs[key])
+        if !haskey(attrs, key)
+            attrs[key] = new_attrs[key]
+        else
+            update_attributes_inplace!(attrs[key], new_attrs[key])
+        end
     end
 end
 
@@ -143,38 +154,3 @@ _notify!(obs::Observable) = notify(obs)
 _notify!(attrs::Attributes) = for (key, val) in attrs
     _notify!(val)
 end
-
-
-# An example
-
-
-fig = Figure()
-ax = Axis(fig[1, 1])
-
-pl = plotlist!(
-    ax,
-    [PlotSpec{Lines}(0..1, sin.(0:0.01:1); color = :blue), PlotSpec{Heatmap}(0..1, 0..1, Makie.peaks(); transformation = (; translation = Vec3f(0, 0, -1)))]
-)
-
-fig
-
-pl[1][] = [PlotSpec{Lines}(0..1, sin.(0:0.01:1); color = :red), PlotSpec{Heatmap}(0..1, 0..1, Makie.peaks(); transformation = (; translation = Vec3f(0, 0, -1)))]
-
-fig
-
-pl[1][] = [
-    PlotSpec{Lines}(0..1, sin.(0:0.01:1); color = Makie.resample_cmap(:viridis, 101)), 
-    PlotSpec{Surface}(0..1, 0..1, Makie.peaks(); transformation = (; translation = Vec3f(0, 0, -1))),
-    PlotSpec{Poly}(Rect2f(0.45, 0.45, 0.1, 0.1)),
-]
-
-fig
-pl.plots
-
-pl[1][] = [
-    PlotSpec{Surface}(0..1, 0..1, Makie.peaks(); colormap = :viridis, transformation = (; translation = Vec3f(0, 0, -1))),
-]
-
-fig
-
-pl.plots
