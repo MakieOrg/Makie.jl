@@ -118,8 +118,8 @@ function Camera3D(scene::Scene; kwargs...)
         # Zooms
         zoom_in_key   = Keyboard.u,
         zoom_out_key  = Keyboard.o,
-        increase_fov_key = Keyboard.page_up,
-        decrease_fov_key = Keyboard.page_down,
+        increase_fov_key = Keyboard.b,
+        decrease_fov_key = Keyboard.n,
         # Rotations
         pan_left_key  = Keyboard.j,
         pan_right_key = Keyboard.l,
@@ -135,7 +135,7 @@ function Camera3D(scene::Scene; kwargs...)
         fix_x_key = Keyboard.x,
         fix_y_key = Keyboard.y,
         fix_z_key = Keyboard.z,
-        reset = Keyboard.home
+        reset = Keyboard.left_control & Mouse.left
     )
 
     replace!(controls, :Camera3D, scene, overwrites)
@@ -240,7 +240,7 @@ function Camera3D(scene::Scene; kwargs...)
 
     # reset
     on(camera(scene), events(scene).keyboardbutton) do event
-        if cam.selected[] && event.key == controls[:reset][] && event.action == Keyboard.release
+        if cam.selected[] && ispressed(scene, controls[:reset][])
             # center keeps the rotation of the camera so we reset that here
             # might make sense to keep user set lookat, upvector, eyeposition
             # around somewhere for this?
