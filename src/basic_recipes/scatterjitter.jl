@@ -9,6 +9,8 @@ Plot a scatter plot, but jitter points along the x-axis.
 - `jitter_width=1`: How much to jitter left/right
 - `clamped_proportion=0`: Optionally clamp the values left/right by a certain amount of jitter_width
 
+
+Benedikt Ehinger & Vladimir Mikheev
 """
 @recipe(ScatterJitter,x,y) do scene
         return Attributes(
