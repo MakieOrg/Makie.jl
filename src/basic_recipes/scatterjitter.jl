@@ -71,7 +71,7 @@ function create_jitter_array(data_array; jitter_type = :uniform,jitter_width = 1
 		pdf_x = pdf_x ./ maximum(pdf_x)
 		jitter = pdf_x .* jitter
 	end
-	@show maximum(jitter),minimum(jitter)
+
 	
     # created clamp_min, and clamp_max to clamp a portion of the data
     @assert (base_max - base_min) == 1.0
