@@ -53,6 +53,9 @@ f
 
 ## Emoji and color fonts
 
-Currently, Makie does not have the ability to draw emoji or other color fonts.
+Currently, Makie does not have the ability to draw emoji.
 This is due to the implementation of text drawing in GLMakie and WGLMakie, which relies on signed distance fields that can only be used to render monochrome glyphs, but not arbitrary bitmaps.
+
+Multicolored _fonts_, like those in the [color fonts](https://www.colorfonts.wtf/) project, are currently not supported.
+Colored text is supported with the [rich text](https://docs.makie.org/stable/examples/plotting_functions/text/index.html#rich_text) functionality.
 If you want to use emoji as scatter markers, consider using images (you will need to find suitable images separately, you cannot easily extract emoji from fonts with Makie).
