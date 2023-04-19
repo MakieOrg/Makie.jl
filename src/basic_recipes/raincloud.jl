@@ -6,15 +6,6 @@ function cloud_plot_check_args(category_labels, data_array)
     return nothing
 end
 
-# Allow to globally set jitter RNG for testing
-# A bit of a lazy solution, but it doesn't seem to be desirably to
-# pass the RNG through the plotting command
-const RAINCLOUD_RNG = Ref{Random.AbstractRNG}(Random.GLOBAL_RNG)
-
-# quick custom function for jitter
-rand_localized(min, max) = rand_localized(RAINCLOUD_RNG[], min, max)
-rand_localized(RNG::Random.AbstractRNG, min, max) = rand(RNG) * (max - min) .+ min
-
 """
     rainclouds!(ax, category_labels, data_array; plot_boxplots=true, plot_clouds=true, kwargs...)
 
@@ -105,31 +96,6 @@ paired with the scatter plot so the default is to not show them)
         color = theme(scene, :patchcolor),
         cycle = [:color => :patchcolor],
     )
-end
-
-# create_jitter_array(length_data_array; jitter_width = 0.1, clamped_portion = 0.1)
-# Returns a array containing random values with a mean of 0, and a values from `-jitter_width/2.0` to `+jitter_width/2.0`, where a portion of a values are clamped right at the edges.
-function create_jitter_array(length_data_array; jitter_width = 0.1, clamped_portion = 0.1)
-    jitter_width < 0 && ArgumentError("`jitter_width` should be positive.")
-    !(0 <= clamped_portion <= 1) || ArgumentError("`clamped_portion` should be between 0.0 to 1.0")
-
-    # Make base jitter, note base jitter minimum-to-maximum span is 1.0
-    base_min, base_max = (-0.5, 0.5)
-    jitter = [rand_localized(base_min, base_max) for _ in 1:length_data_array]
-
-    # created clamp_min, and clamp_max to clamp a portion of the data
-    @assert (base_max - base_min) == 1.0
-    @assert (base_max + base_min) / 2.0 == 0
-    clamp_min = base_min + (clamped_portion / 2.0)
-    clamp_max = base_max - (clamped_portion / 2.0)
-
-    # clamp if need be
-    clamp!(jitter, clamp_min, clamp_max)
-
-    # Based on assumptions of clamp_min and clamp_max above
-    jitter = jitter * (0.5jitter_width / clamp_max)
-
-    return jitter
 end
 
 ####
@@ -261,8 +227,8 @@ function plot!(plot::RainClouds)
                                                     plot.n_dodge[], plot.dodge_gap[])
     width_ratio = width / full_width
 
-    jitter = create_jitter_array(length(data_array);
-                                    jitter_width = jitter_width*width_ratio)
+    jitter = create_jitter_array(data_array;
+                                    jitter_width = jitter_width*width_ratio,clamped_proportion=0.2,jitter_type=:uniform)
 
     if !isnothing(clouds)
         if clouds === violin
