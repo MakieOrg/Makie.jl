@@ -209,7 +209,7 @@ function data_limits(plot::Surface)
     return Rect3f(mini, maxi .- mini)
 end
 
-function data_limits(plot::Mesh)
+function data_limits(plot::Mesh{<:Tuple{<:GeometryBasics.Mesh}})
     xyz = plot.mesh[].position
     mini,maxi = extrema(xyz)
     return Rect3f(mini, maxi .- mini)
