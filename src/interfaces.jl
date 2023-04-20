@@ -16,10 +16,10 @@ function color_and_colormap!(plot, intensity = plot[:color])
     if intensity[] isa Union{Number, AbstractArray{<: Number}}
         @converted_attribute plot (colormap,)
         replace_automatic!(plot, :highclip) do
-            lift(last, plot, colormap)
+            map!(last, plot, Observable{Any}(), colormap)
         end
         replace_automatic!(plot, :lowclip) do
-            lift(first, plot, colormap)
+            map!(first, plot, Observable{Any}(), colormap)
         end
         get!(plot, :nan_color, RGBAf(0,0,0,0))
         if intensity[] isa Number
