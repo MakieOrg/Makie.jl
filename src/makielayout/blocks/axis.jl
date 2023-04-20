@@ -967,7 +967,7 @@ function autolimits(ax::Axis, dim::Integer)
     margin = getproperty(ax, Symbol(dimsym, :autolimitmargin))[]
     if !isnothing(lims)
         if !validate_limits_for_scale(lims, scale)
-            error("Found invalid x-limits $lims for scale $(scale) which is defined on the interval $(defined_interval(scale))")
+            error("Found invalid $(dimsym)-limits $lims for scale $(scale) which is defined on the interval $(defined_interval(scale))")
         end
         lims = expandlimits(lims, margin[1], margin[2], scale)
     end
