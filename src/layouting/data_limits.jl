@@ -209,11 +209,9 @@ function data_limits(plot::Surface)
     return Rect3f(mini, maxi .- mini)
 end
 
-function data_limits(plot::Mesh{<:Tuple{<:GeometryBasics.Mesh{dim}}}) where dim
+function data_limits(plot::Mesh)
     xyz = plot.mesh[].position
-    minmaxi = ntuple(d->extrema(x->x[d],xyz),dim)
-    mini = Vec3f(ntuple(d->minmaxi[d][1],dim))
-    maxi = Vec3f(ntuple(d->minmaxi[d][2],dim))
+    mini, maxi = bbox_mesh(xyz)
     return Rect3f(mini, maxi .- mini)
 end
 
@@ -230,3 +228,20 @@ function data_limits(plot::Image)
     maxi = Vec3f(last.(mini_maxi)..., 0)
     return Rect3f(mini, maxi .- mini)
 end
+
+function bbox_mesh(coords)
+    dim = length(coords[1])
+    mini = [xyz for xyz in coords[1]]
+    maxi = [xyz for xyz in coords[1]]
+    for coord in coords
+        for d in 1:dim
+            if coord[d] < mini[d]
+               mini[d] = coord[d]
+            elseif coord[d] > maxi[d]
+               maxi[d] = coord[d]
+            end
+        end
+    end
+    return (mini,maxi)
+end
+
