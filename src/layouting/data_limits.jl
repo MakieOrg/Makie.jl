@@ -209,6 +209,12 @@ function data_limits(plot::Surface)
     return Rect3f(mini, maxi .- mini)
 end
 
+function data_limits(plot::Mesh)
+    xyz = plot.mesh[].position
+    mini,maxi = extrema(xyz)
+    return Rect3f(mini, maxi .- mini)
+end
+
 function data_limits(plot::Heatmap)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
