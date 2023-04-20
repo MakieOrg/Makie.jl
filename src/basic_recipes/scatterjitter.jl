@@ -7,7 +7,7 @@ Plot a scatter plot, but jitter points along the x-axis.
 # Keywords
 - `jitter_type=:pseudorandom`: Type of jitter. Available are `:pseudorandom` (follows the deterministic VanDerCorput series, weighted by the kernel-estimated-density), `:quasirandom` (uniform jitter, but weighted by the kernel-estimated-density density) or `:uniform`
 - `jitter_width=1`: How much to jitter left/right
-- `clamped_proportion=0`: Optionally clamp the values left/right by a certain amount of jitter_width
+- `clamped_portion=0`: Optionally clamp the values left/right by a certain amount of jitter_width
 
 
 Benedikt Ehinger & Vladimir Mikheev
@@ -38,6 +38,7 @@ const JITTER_RNG = Ref{Random.AbstractRNG}(Random.GLOBAL_RNG)
 jitter_uniform(n) = jitter_uniform(JITTER_RNG[],n)
 jitter_uniform(RNG::Random.AbstractRNG, n) = rand(RNG,n)
 
+jitter_vandercorput(num) = sum(d * 2. ^-ex for (ex, d) in enumerate(digits(num, base = 2)))
 function create_jitter_array(data_array; jitter_type = :uniform,jitter_width = 1, clamped_portion = 0.0)
     jitter_width < 0 && ArgumentError("`jitter_width` should be positive.")
     !(0 <= clamped_portion <= 1) || ArgumentError("`clamped_portion` should be between 0.0 to 1.0")
@@ -54,7 +55,9 @@ function create_jitter_array(data_array; jitter_type = :uniform,jitter_width = 1
 		jitter = jitter_uniform(length(data_array))
 		
 	elseif jitter_type ==:quasirandom
-		jitter = vandercorput.(1:length(data_array))
+
+
+		jitter = jitter_vandercorput.(1:length(data_array))
 	else
 	
 		error("jitter_type not implemented")
@@ -66,8 +69,8 @@ function create_jitter_array(data_array; jitter_type = :uniform,jitter_width = 1
 	if jitter_type == :pseudorandom || jitter_type == :quasirandom
 	
 		k = KernelDensity.kde(data_array,npoints=200)	
-		ik = InterpKDE(k)
-		pdf_x = pdf(ik, data_array)
+		ik = KernelDensity.InterpKDE(k)
+		pdf_x = KernelDensity.pdf(ik, data_array)
 		pdf_x = pdf_x ./ maximum(pdf_x)
 		jitter = pdf_x .* jitter
 	end

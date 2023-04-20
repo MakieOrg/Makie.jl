@@ -6,6 +6,13 @@ function cloud_plot_check_args(category_labels, data_array)
     return nothing
 end
 
+const RAINCLOUD_RNG = Ref{Random.AbstractRNG}(Random.GLOBAL_RNG)
+
+# quick custom function for jitter
+rand_localized(min, max) = rand_localized(RAINCLOUD_RNG[], min, max)
+rand_localized(RNG::Random.AbstractRNG, min, max) = rand(RNG) * (max - min) .+ min
+
+
 """
     rainclouds!(ax, category_labels, data_array; plot_boxplots=true, plot_clouds=true, kwargs...)
 
@@ -228,7 +235,7 @@ function plot!(plot::RainClouds)
     width_ratio = width / full_width
 
     jitter = create_jitter_array(data_array;
-                                    jitter_width = jitter_width*width_ratio,clamped_proportion=0.2,jitter_type=:uniform)
+                                    jitter_width = jitter_width*width_ratio,clamped_portion=0.2,jitter_type=:uniform)
 
     if !isnothing(clouds)
         if clouds === violin
