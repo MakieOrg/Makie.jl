@@ -121,9 +121,14 @@ function plot!(arrowplot::Arrows{<:Tuple{AbstractVector{<:Point{N}},V}}) where {
                          lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
                 dir = n ? LinearAlgebra.normalize(dir) : dir
-                if align in (:head, :lineend, :tailend, :headstart, :center)
+                if align == :headcenter
                     shift = s .* dir
-                else
+                elseif align == :center
+                    shift = (s .* dir) ./ 2
+                    # TODO: :head, :lineend, :tailend, :headstart, :center
+                elseif align in (:head, :lineend, :tailend, :headstart, :center)
+                    shift = s .* dir
+                else # align == :origin
                     shift = Vec2f(0)
                 end
                 return Point2f(p1 .- shift) => Point2f(p1 .- shift .+ (dir .* s))
