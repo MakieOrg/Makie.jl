@@ -55,10 +55,10 @@ abstract type AggMethod end
 struct AggSerial <: AggMethod end
 struct AggThreads <: AggMethod end
 
-aggregate(c::Canvas, xs, ys, zs...; op::AggOp=AggCount(), method::AggMethod=AggSerial()) =
-    _aggregate(c, op, method, xs, ys, zs...)
+aggregate(c::Canvas, points; op::AggOp=AggCount(), method::AggMethod=AggSerial()) =
+    _aggregate(c, op, method, points)
 
-function _aggregate(c::Canvas, op::AggOp, method::AggSerial, xs, ys, zs...)
+function _aggregate(c::Canvas, op::AggOp, ::AggSerial, points)
     xmin, xmax = xlims(c)
     ymin, ymax = ylims(c)
     xsize, ysize = size(c)
@@ -67,21 +67,27 @@ function _aggregate(c::Canvas, op::AggOp, method::AggSerial, xs, ys, zs...)
     xscale = xsize / (xmax - xmin)
     yscale = ysize / (ymax - ymin)
     out = fill(null(op), xsize, ysize)
-    @inbounds for idx in eachindex(xs, ys, zs...)
-        x = xs[idx]
-        y = ys[idx]
-        z = map(z->z[idx], zs)
+    @inbounds for point in points
+        x = point[1]
+        y = point[2]
+        if length(point) > 2 # should compile away
+            z = point[3]
+        end
         xmin ≤ x ≤ xmax || continue
         ymin ≤ y ≤ ymax || continue
         i = clamp(1+floor(Int, xscale*(x-xmin)), 1, xsize)
         j = clamp(1+floor(Int, yscale*(y-ymin)), 1, ysize)
-        out[i,j] = update(op, out[i,j], z...)
+        if length(point) == 2 # should compile away
+            out[i,j] = update(op, out[i,j])
+        elseif length(point) == 3
+            out[i,j] = update(op, out[i,j], z)
+        end
         nothing
     end
     map(x->value(op, x), out)
 end
 
-function _aggregate(c::Canvas, op::AggOp, method::AggThreads, xs, ys, zs...)
+function _aggregate(c::Canvas, op::AggOp, ::AggThreads, points)
     xmin, xmax = xlims(c)
     ymin, ymax = ylims(c)
     xsize, ysize = size(c)
@@ -90,24 +96,31 @@ function _aggregate(c::Canvas, op::AggOp, method::AggThreads, xs, ys, zs...)
     xscale = xsize / (xmax - xmin)
     yscale = ysize / (ymax - ymin)
     # each thread reduces some of the data separately
-    out = fill(null(op), nthreads(), xsize, ysize)
-    @threads for idx in eachindex(xs, ys, zs...)
-        t = threadid()
-        x = @inbounds xs[idx]
-        y = @inbounds ys[idx]
-        z = map(z->@inbounds(z[idx]), zs)
+    out = fill(null(op), Threads.nthreads(), xsize, ysize)
+    @threads for idx in eachindex(points)
+        t = Threads.threadid()
+        p = @inbounds points[idx]
+        x = p[1]
+        y = p[2]
+        if length(p) > 2 # should compile away
+            z = p[3]
+        end
         xmin ≤ x ≤ xmax || continue
         ymin ≤ y ≤ ymax || continue
         i = clamp(1+floor(Int, xscale*(x-xmin)), 1, xsize)
         j = clamp(1+floor(Int, yscale*(y-ymin)), 1, ysize)
-        @inbounds out[t,i,j] = update(op, out[t,i,j], z...)
+        if length(p) == 2 # should compile away
+            @inbounds out[t,i,j] = update(op, out[t,i,j])
+        elseif length(p) == 3
+            @inbounds out[t,i,j] = update(op, out[t,i,j], z)
+        end
     end
     # reduce along the thread dimension
     out2 = fill(null(op), xsize, ysize)
     for j in 1:ysize
         for i in 1:xsize
             @inbounds val = out[1,i,j]
-            for t in 2:nthreads()
+            for t in 2:Threads.nthreads()
                 @inbounds val = merge(op, val, out[t,i,j])
             end
             @inbounds out2[i,j] = val
@@ -176,6 +189,7 @@ import .ShadeYourData
     Theme(
         agg = ShadeYourData.AggCount(),
         post = identity,
+        method = ShadeYourData.AggThreads(),
         colormap = theme(scene, :colormap),
         binfactor = 1,
     )
@@ -183,7 +197,7 @@ end
 
 conversion_trait(::Type{<: DataShader}) = PointBased()
 
-function Makie.plot!(p::DataShader{Tuple{Vector{Point2f}}})
+function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
     scene = parent_scene(p)
     # transf = transform_func_obs(scene)
 
@@ -198,9 +212,9 @@ function Makie.plot!(p::DataShader{Tuple{Vector{Point2f}}})
         ShadeYourData.Canvas(xmin, xmax, xsize, ymin, ymax, ysize)
     end
 
-    input_data = p[1]
+    points = p[1]
 
-    sorted_data = lift(input_data) do data
+    sorted_points = lift(points) do data
         sort(data, by = x -> (x[1], x[2]))
     end
 
@@ -208,13 +222,10 @@ function Makie.plot!(p::DataShader{Tuple{Vector{Point2f}}})
     yrange = Observable(0f0..1f0)
     
     pixels = Observable(Float32[0; 0;; 1; 1])
-    onany(canvas, p.agg, p.post, sorted_data) do canvas, agg, post, sorted_data
+    onany(canvas, p.agg, p.post, p.method, sorted_points) do canvas, agg, post, method, sorted_points
         xrange.val = canvas.xmin .. canvas.xmax
         yrange.val = canvas.ymin .. canvas.ymax
-        # TODO optimize this away
-        x = getindex.(sorted_data, 1)
-        y = getindex.(sorted_data, 2)
-        pixels[] = float(post(ShadeYourData.aggregate(canvas, x, y; op=agg)))
+        pixels[] = float(post(ShadeYourData.aggregate(canvas, sorted_points; op=agg, method)))
     end
     heatmap!(p, xrange, yrange, pixels, colormap = p.colormap)
     return p
