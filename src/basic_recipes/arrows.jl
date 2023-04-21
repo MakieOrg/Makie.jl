@@ -38,10 +38,8 @@ function arrow_head(N, marker::Automatic, quality)
     if N == 2
         return :utriangle
     else
-        merge([
-           _circle(Point3f(0), 0.5f0, Vec3f(0,0,-1), quality),
-           _mantle(Point3f(0), Point3f(0,0,1), 0.5f0, 0f0, quality)
-        ])
+        merge([_circle(Point3f(0), 0.5f0, Vec3f(0, 0, -1), quality),
+               _mantle(Point3f(0), Point3f(0, 0, 1), 0.5f0, 0.0f0, quality)])
     end
 end
 
@@ -50,13 +48,10 @@ function arrow_tail(N, marker::Automatic, quality)
     if N == 2
         nothing
     else
-        merge([
-            _circle(Point3f(0,0,-1), 0.5f0, Vec3f(0,0,-1), quality),
-            _mantle(Point3f(0,0,-1), Point3f(0), 0.5f0, 0.5f0, quality)
-        ])
+        merge([_circle(Point3f(0, 0, -1), 0.5f0, Vec3f(0, 0, -1), quality),
+               _mantle(Point3f(0, 0, -1), Point3f(0), 0.5f0, 0.5f0, quality)])
     end
 end
-
 
 function _mantle(origin, extremity, r1, r2, N)
     dphi = 2pi / N
@@ -64,7 +59,7 @@ function _mantle(origin, extremity, r1, r2, N)
     # Equivalent to
     # xy = cos(atan(temp))
     # z  = sin(atan(temp))
-    temp = -(r2-r1) / norm(extremity .- origin)
+    temp = -(r2 - r1) / norm(extremity .- origin)
     xy = 1.0 / sqrt(temp^2 + 1)
     z = temp / sqrt(temp^2 + 1)
 
@@ -72,59 +67,58 @@ function _mantle(origin, extremity, r1, r2, N)
     normals = Vector{Vec3f}(undef, 2N)
     faces = Vector{GLTriangleFace}(undef, 2N)
 
-    for (i, phi) in enumerate(0:dphi:2pi-0.5dphi)
+    for (i, phi) in enumerate(0:dphi:(2pi - 0.5dphi))
         coords[2i - 1] = origin .+ r1 * Vec3f(cos(phi), sin(phi), 0)
         coords[2i] = extremity .+ r2 * Vec3f(cos(phi), sin(phi), 0)
-        normals[2i - 1] = Vec3f(xy*cos(phi), xy*sin(phi), z)
-        normals[2i] = Vec3f(xy*cos(phi), xy*sin(phi), z)
-        faces[2i - 1] = GLTriangleFace(2i-1, mod1(2i+1, 2N), 2i)
-        faces[2i] = GLTriangleFace(mod1(2i+1, 2N), mod1(2i+2, 2N), 2i)
+        normals[2i - 1] = Vec3f(xy * cos(phi), xy * sin(phi), z)
+        normals[2i] = Vec3f(xy * cos(phi), xy * sin(phi), z)
+        faces[2i - 1] = GLTriangleFace(2i - 1, mod1(2i + 1, 2N), 2i)
+        faces[2i] = GLTriangleFace(mod1(2i + 1, 2N), mod1(2i + 2, 2N), 2i)
     end
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    return GeometryBasics.Mesh(meta(coords; normals=normals), faces)
 end
 
 # GeometryBasics.Circle doesn't work with Point3f...
 function _circle(origin, r, normal, N)
     dphi = 2pi / N
 
-    coords = Vector{Point3f}(undef, N+1)
-    normals = fill(normal, N+1)
+    coords = Vector{Point3f}(undef, N + 1)
+    normals = fill(normal, N + 1)
     faces = Vector{GLTriangleFace}(undef, N)
 
-    for (i, phi) in enumerate(0:dphi:2pi-0.5dphi)
+    for (i, phi) in enumerate(0:dphi:(2pi - 0.5dphi))
         coords[i] = origin .+ r * Vec3f(cos(phi), sin(phi), 0)
-        faces[i] = GLTriangleFace(N+1, mod1(i+1, N), i)
+        faces[i] = GLTriangleFace(N + 1, mod1(i + 1, N), i)
     end
-    coords[N+1] = origin
+    coords[N + 1] = origin
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    return GeometryBasics.Mesh(meta(coords; normals=normals), faces)
 end
 
-
-convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
+convert_arguments(::Type{<:Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
+function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix,
+                           v::AbstractMatrix)
+    return (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
 end
-convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
+convert_arguments(::Type{<:Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
 
-function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
-    @extract arrowplot (
-        points, directions, colormap, normalize, align,
-        arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
-        arrowhead, arrowsize, arrowcolor, quality,
-        # passthrough
-        diffuse, specular, shininess,
-        fxaa, ssao, transparency, visible, inspectable
-    )
+function plot!(arrowplot::Arrows{<:Tuple{AbstractVector{<:Point{N}},V}}) where {N,V}
+    @extract arrowplot (points, directions, colormap, normalize, align,
+                        arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
+                        arrowhead, arrowsize, arrowcolor, quality,
+                        # passthrough
+                        diffuse, specular, shininess,
+                        fxaa, ssao, transparency, visible, inspectable)
 
-    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
-    line_c = map((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
+    arrow_c = map((a, c) -> a === automatic ? c : a, arrowplot, arrowcolor, color)
+    line_c = map((a, c) -> a === automatic ? c : a, arrowplot, linecolor, color)
     fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic == fxaa for 3D
 
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
     if N == 2
-        headstart = lift(arrowplot, points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
+        headstart = lift(arrowplot, points, directions, normalize, align,
+                         lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
                 dir = n ? LinearAlgebra.normalize(dir) : dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
@@ -155,31 +149,29 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
                         angle = ifelse(diff[1] > 0, 2pi - angle, angle)
                     end
                 end
-                Billboard(angles)
+                return Billboard(angles)
             end
         end
 
-        linesegments!(
-            arrowplot, headstart,
-            color = line_c, colormap = colormap, linestyle = linestyle,
-            linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
-            fxaa = fxaa_bool, inspectable = inspectable,
-            transparency = transparency, visible = visible,
-        )
-        scatter!(
-            arrowplot,
-            lift(x-> last.(x), arrowplot, headstart),
-            marker=marker_head,
-            markersize = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize),
-            color = arrow_c, rotations = rotations, strokewidth = 0.0,
-            colormap = colormap, markerspace = arrowplot.markerspace,
-            fxaa = fxaa_bool, inspectable = inspectable,
-            transparency = transparency, visible = visible
-        )
+        linesegments!(arrowplot, headstart;
+                      color=line_c, colormap=colormap, linestyle=linestyle,
+                      linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
+                      fxaa=fxaa_bool, inspectable=inspectable,
+                      transparency=transparency, visible=visible)
+        scatter!(arrowplot,
+                 lift(x -> last.(x), arrowplot, headstart);
+                 marker=marker_head,
+                 markersize=lift(as -> as === automatic ? theme(scene, :markersize)[] : as, arrowplot,
+                                 arrowsize),
+                 color=arrow_c, rotations=rotations, strokewidth=0.0,
+                 colormap=colormap, markerspace=arrowplot.markerspace,
+                 fxaa=fxaa_bool, inspectable=inspectable,
+                 transparency=transparency, visible=visible)
     else
-        msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
-        markersize = Observable{Union{Vec3f, Vector{Vec3f}}}()
-        map!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
+        msize = Observable{Union{Vec3f,Vector{Vec3f}}}()
+        markersize = Observable{Union{Vec3f,Vector{Vec3f}}}()
+        map!(arrowplot, msize, directions, normalize, linewidth, lengthscale,
+             arrowsize) do dirs, n, linewidth, ls, as
             ms = as isa Automatic ? Vec3f(0.2, 0.2, 0.3) : as
             markersize[] = to_3d_scale(ms)
             lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth
@@ -203,28 +195,23 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             end
         end
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
-        meshscatter!(
-            arrowplot,
-            start, rotations = directions,
-            marker=marker_tail,
-            markersize = msize,
-            color = line_c, colormap = colormap,
-            fxaa = fxaa_bool, ssao = ssao,
-            diffuse = diffuse,
-            specular = specular, shininess = shininess, inspectable = inspectable,
-            transparency = transparency, visible = visible
-        )
-        meshscatter!(
-            arrowplot,
-            start, rotations = directions,
-            marker=marker_head,
-            markersize = markersize,
-            color = arrow_c, colormap = colormap,
-            fxaa = fxaa_bool, ssao = ssao,
-            diffuse = diffuse,
-            specular = specular, shininess = shininess, inspectable = inspectable,
-            transparency = transparency, visible = visible
-        )
+        meshscatter!(arrowplot,
+                     start; rotations=directions,
+                     marker=marker_tail,
+                     markersize=msize,
+                     color=line_c, colormap=colormap,
+                     fxaa=fxaa_bool, ssao=ssao,
+                     diffuse=diffuse,
+                     specular=specular, shininess=shininess, inspectable=inspectable,
+                     transparency=transparency, visible=visible)
+        meshscatter!(arrowplot,
+                     start; rotations=directions,
+                     marker=marker_head,
+                     markersize=markersize,
+                     color=arrow_c, colormap=colormap,
+                     fxaa=fxaa_bool, ssao=ssao,
+                     diffuse=diffuse,
+                     specular=specular, shininess=shininess, inspectable=inspectable,
+                     transparency=transparency, visible=visible)
     end
-
 end
