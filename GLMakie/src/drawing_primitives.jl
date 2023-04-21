@@ -252,6 +252,9 @@ function draw_atomic(screen::Screen, scene::Scene, x, pt::Union{Scatter, MeshSca
         else
             handle_intensities!(gl_attributes)
             if x isa MeshScatter
+                if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+                    gl_attributes[:image] = gl_attributes[:color]
+                end
                 return draw_mesh_particle(screen, (marker, positions), gl_attributes)
             else
                 return draw_scatter(screen, (marker, positions), gl_attributes)

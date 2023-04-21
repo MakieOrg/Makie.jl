@@ -54,7 +54,8 @@ excludes = Set([
     "Image Scatter different sizes",
     "scatter with stroke",
     "scatter with glow",
-    "lines and linestyles"
+    "lines and linestyles",
+    "Textured meshscatter" # not yet implemented
 ])
 
 @testset "refimages" begin

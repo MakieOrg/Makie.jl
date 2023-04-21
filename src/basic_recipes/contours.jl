@@ -1,3 +1,7 @@
+function contour_label_formatter(level::Real)::String
+    lev_short = round(level; digits = 2)
+    string(isinteger(lev_short) ? round(Int, lev_short) : lev_short)
+end
 
 """
     contour(x, y, z)
@@ -11,6 +15,8 @@ The attribute levels can be either
     an Int that produces n equally wide levels or bands
 
     an AbstractVector{<:Real} that lists n consecutive edges from low to high, which result in n-1 levels or bands
+
+To add contour labels, use `labels = true`, and pass additional label attributes such as `labelcolor`, `labelsize`, `labelfont` or `labelformatter`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -27,7 +33,12 @@ $(ATTRIBUTES)
         linestyle = nothing,
         alpha = 1.0,
         enable_depth = true,
-        transparency = false
+        transparency = false,
+        labels = false,
+        labelfont = theme(scene, :font),
+        labelcolor = nothing,  # matches color by default
+        labelformatter = contour_label_formatter,
+        labelsize = 10,  # arbitrary
     )
 end
 
@@ -46,32 +57,49 @@ end
 
 plot_preferred_axis(::Type{<:Contour3d}) = LScene
 
-function contourlines(::Type{<: Contour}, contours, cols)
-    result = Point2f[]
-    colors = RGBA{Float32}[]
-    for (color, c) in zip(cols, Contours.levels(contours))
-        for elem in Contours.lines(c)
-            append!(result, elem.vertices)
-            push!(result, Point2f(NaN32))
-            append!(colors, fill(color, length(elem.vertices) + 1))
-        end
-    end
-    result, colors
+angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
+    atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+
+function label_info(lev, vertices, col)
+    mid = ceil(Int, 0.5f0 * length(vertices))
+    pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
+    (
+        lev,
+        map(p -> to_ndim(Point3f, p, lev), Tuple(pts)),
+        col,
+    )
 end
 
-function contourlines(::Type{<: Contour3d}, contours, cols)
-    result = Point3f[]
+function contourlines(::Type{<: Contour}, contours, cols, labels)
+    points = Point2f[]
     colors = RGBA{Float32}[]
+    lev_pos_col = Tuple{Float32,NTuple{3,Point2f},RGBA{Float32}}[]
+    for (color, c) in zip(cols, Contours.levels(contours))
+        for elem in Contours.lines(c)
+            append!(points, elem.vertices)
+            push!(points, Point2f(NaN32))
+            append!(colors, fill(color, length(elem.vertices) + 1))
+            labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
+        end
+    end
+    points, colors, lev_pos_col
+end
+
+function contourlines(::Type{<: Contour3d}, contours, cols, labels)
+    points = Point3f[]
+    colors = RGBA{Float32}[]
+    lev_pos_col = Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
-                push!(result, Point3f(p[1], p[2], c.level))
+                push!(points, to_ndim(Point3f, p, c.level))
             end
-            push!(result, Point3f(NaN32))
+            push!(points, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
+            labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
         end
     end
-    result, colors
+    points, colors, lev_pos_col
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -90,15 +118,11 @@ conversion_trait(::Type{Contour}) = ContinuousSurface()
 function plot!(plot::PlotObject, ::Contour, X, Y, Z, Vol) # 4 arg 3d volume
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
-    valuerange = Observable{Vec2f}()
-    map!(nan_extrema, plot, valuerange, volume)
-    cliprange = replace_automatic!(plot, :colorrange) do
-        valuerange
-    end
-    colormap_obs = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, a, cliprange, vrange
-        alpha_num = Float32(a)
-        level_vec = to_levels(l, vrange)
-        nlevels = length(level_vec)
+    valuerange = lift(nan_extrema, plot, volume)
+    cliprange = replace_automatic!(()-> valuerange, plot, :colorrange)
+    cmap = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
+        levels = to_levels(l, vrange)
+        nlevels = length(levels)
         N = 50 * nlevels
 
         iso_eps = if haskey(plot, :isorange)
@@ -109,15 +133,15 @@ function plot!(plot::PlotObject, ::Contour, X, Y, Z, Vol) # 4 arg 3d volume
         cmap = to_colormap(_cmap)
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
-        return map(1:N) do i
+        map(1:N) do i
             i01 = (i-1) / (N - 1)
             c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
-            line = reduce(level_vec, init = false) do v0, level
-                (isoval in v_interval) || return false
-                v0 || (abs(level - isoval) <= iso_eps)
+            line = reduce(levels, init = false) do v0, level
+                isoval in v_interval || return false
+                v0 || abs(level - isoval) <= iso_eps
             end
-            return RGBAf(Colors.color(c), line ? alpha_num : 0.0)
+            RGBAf(Colors.color(c), line ? alpha : 0.0)
         end
     end
 
@@ -126,6 +150,12 @@ function plot!(plot::PlotObject, ::Contour, X, Y, Z, Vol) # 4 arg 3d volume
     attr[:colormap] = colormap_obs
     attr[:algorithm] = 7
     pop!(attr, :levels)
+    # unused attributes
+    pop!(attr, :labels)
+    pop!(attr, :labelfont)
+    pop!(attr, :labelsize)
+    pop!(attr, :labelcolor)
+    pop!(attr, :labelformatter)
     volume!(plot, attr, x, y, z, volume)
 end
 
@@ -175,18 +205,96 @@ function plot!(plot::PlotObject, ::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
+    @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, plot, args..., levels)
-    result = lift(plot, x, y, z, levels, level_colors) do x, y, z, levels, level_colors
+    cont_lines = lift(plot, x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
         t = eltype(z)
         # Compute contours
-        xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
-        contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
-        contourlines(T, contours, level_colors)
+        xv, yv = to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t)
+        contours = Contours.contours(xv, yv, z,  convert(Vector{t}, levels))
+        contourlines(T, contours, level_colors, labels)
     end
+
+    P = T <: Contour ? Point2f : Point3f
+    scene = parent_scene(plot)
+    space = plot.space[]
+
+    texts = text!(
+        plot,
+        Observable(P[]);
+        color = Observable(RGBA{Float32}[]),
+        rotation = Observable(Float32[]),
+        text = Observable(String[]),
+        align = (:center, :center),
+        fontsize = labelsize,
+        font = labelfont,
+    )
+
+    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, labelformatter, cont_lines) do _, _,
+            labels, labelcolor, labelformatter, (_, _, lev_pos_col)
+        labels || return
+        pos = texts.positions.val; empty!(pos)
+        rot = texts.rotation.val; empty!(rot)
+        col = texts.color.val; empty!(col)
+        lbl = texts.text.val; empty!(lbl)
+        for (lev, (p1, p2, p3), color) in lev_pos_col
+            rot_from_horz::Float32 = angle(project(scene, p1), project(scene, p3))
+            # transition from an angle from horizontal axis in [-π; π]
+            # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
+            rot_from_vert::Float32 = if abs(rot_from_horz) > 0.5f0 * π
+                rot_from_horz - copysign(Float32(π), rot_from_horz)
+            else
+                rot_from_horz
+            end
+            push!(col, labelcolor === nothing ? color : to_color(labelcolor))
+            push!(rot, rot_from_vert)
+            push!(lbl, labelformatter(lev))
+            push!(pos, p1)
+        end
+        notify(texts.text)
+        nothing
+    end
+
+    bboxes = lift(labels, texts.text) do labels, _
+        labels || return
+        broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
+            # drop the depth component of the bounding box for 3D
+            Rect2f(boundingbox(gc, project(scene.camera, space, :pixel, pt), to_rotation(rot)))
+        end
+    end
+
+    masked_lines = lift(labels, bboxes) do labels, bboxes
+        segments = cont_lines.val[1]
+        labels || return segments
+        n = 1
+        bb = bboxes[n]
+        nlab = length(bboxes)
+        masked = copy(segments)
+        nan = P(NaN32)
+        for (i, p) in enumerate(segments)
+            if isnan(p) && n < nlab
+                bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
+                # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
+            elseif project(scene.camera, space, :pixel, p) in bb
+                masked[i] = nan
+                for dir in (-1, +1)
+                    j = i
+                    while true
+                        j += dir
+                        checkbounds(Bool, segments, j) || break
+                        project(scene.camera, space, :pixel, segments[j]) in bb || break
+                        masked[j] = nan
+                    end
+                end
+            end
+        end
+        masked
+    end
+
     lines!(
-        plot, lift(first, plot, result);
-        color=lift(last, plot, result),
+        plot, masked_lines;
+        color = lift(x -> x[2], plot, cont_lines),
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
