@@ -209,12 +209,12 @@ function data_limits(plot::Surface)
     return Rect3f(mini, maxi .- mini)
 end
 
-function data_limits(plot::Mesh)
+function data_limits(plot::Mesh{<:Tuple{<:GeometryBasics.Mesh}})
     xyz = plot.mesh[].position
     mini, maxi = bbox_mesh(xyz)
     mini = to_ndim(Vec3f, mini, 0f0)
     maxi = to_ndim(Vec3f, maxi, 0f0)
-    return Rectf(mini, maxi .- mini)
+    return Rect3f(mini, maxi .- mini)
 end
 
 function data_limits(plot::Heatmap)
