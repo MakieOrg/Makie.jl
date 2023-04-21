@@ -129,7 +129,12 @@ Base.getproperty(@nospecialize(plot::TypedPlot), key::Symbol) = getproperty(getf
 Base.getindex(@nospecialize(plot::TypedPlot), key::Integer) = getindex(getfield(plot, :plot), key)
 Base.getindex(@nospecialize(plot::TypedPlot), key::Symbol) = getindex(getfield(plot, :plot), key)
 Base.setproperty!(@nospecialize(plot::TypedPlot), key::Symbol, @nospecialize(value)) = setproperty!(getfield(plot, :plot), key, value)
-Base.setindex!(@nospecialize(plot::TypedPlot), @nospecialize(value), key::Symbol) = setindex!(getfield(plot, :plot), value, key)
+function Base.setindex!(@nospecialize(plot::TypedPlot), @nospecialize(value), key::Symbol)
+    return setindex!(getfield(plot, :plot), value, key)
+end
+function Base.setindex!(@nospecialize(plot::TypedPlot), @nospecialize(value::Observable), key::Symbol)
+    return setindex!(getfield(plot, :plot), value, key)
+end
 
 
 struct Key{K} end

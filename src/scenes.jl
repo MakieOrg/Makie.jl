@@ -620,7 +620,13 @@ end
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 function plot!(scene::Union{PlotObject, Scene}, P::AbstractPlot, args...)
-    # plot!(scene, P)
+    plot!(scene, P)
+end
+
+function plot!(::Union{PlotObject,Scene}, P::AbstractPlot)
+    if !(P in (Scatter(), Mesh(), Text(), Lines(), LineSegments(), MeshScatter(), Heatmap(), Surface()))
+        error("No recipe for $(P)?")
+    end
 end
 
 function apply_theme!(scene::Scene, plot::PlotObject)
@@ -632,6 +638,7 @@ function apply_theme!(scene::Scene, plot::PlotObject)
     merge!(plot.attributes, theme)
 end
 
+using InteractiveUtils
 function prepare_plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
     plot.parent = scene
     connect!(transformation(scene), transformation(plot))

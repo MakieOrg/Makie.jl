@@ -182,17 +182,9 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing
-        if haskey(x, key)
-            # error("You're trying to update an attribute Observable with a new Observable. This is not supported right now.
-            # You can do this manually like this:
-            # lift(val-> attributes[$key] = val, Observable::$(typeof(value)))
-            # ")
-            return x.attributes[key] = value
-        else
-            return x.attributes[key] = value
-        end
+        return Attributes(x)[key] = value
     else
-        return setindex!(x.converted[idx], value)
+        return setindex!(getfield(x, :converted)[idx], value)
     end
 end
 

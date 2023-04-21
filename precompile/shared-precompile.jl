@@ -18,29 +18,29 @@ end
 @compile lines(Circle(Point2f(0), Float32(1)))
 @compile lines(-1..1, x -> x^2)
 
-# @compile heatmap(rand(50, 50), colormap=(:RdBu, 0.2))
+@compile heatmap(rand(50, 50), colormap=(:RdBu, 0.2))
 
-# @compile contour(randn(100, 90), levels=3)
-# @compile contour(randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
+@compile contour(randn(100, 90), levels=3)
+@compile contour(randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
 
-# @compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
-# @compile meshscatter(rand(Point3f, 10), color=rand(RGBAf, 10), transparency=true)
+@compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
+@compile meshscatter(rand(Point3f, 10), color=rand(RGBAf, 10), transparency=true)
 
-# @compile begin
-#     l = range(-10, stop=10, length=10)
-#     surface(l, l, rand(10, 10), colormap=:Spectral)
-# end
+@compile begin
+    l = range(-10, stop=10, length=10)
+    surface(l, l, rand(10, 10), colormap=:Spectral)
+end
 
-# @compile begin
-#     NL = 30
-#     NR = 31
-#     l = range(0, stop=3, length=NL)
-#     r = range(0, stop=3, length=NR)
-#     surface(
-#         [l for l in l, r in r], [r for l in l, r in r], rand(NL, NR),
-#         colormap=:Spectral
-#     )
-# end
+@compile begin
+    NL = 30
+    NR = 31
+    l = range(0, stop=3, length=NL)
+    r = range(0, stop=3, length=NR)
+    surface(
+        [l for l in l, r in r], [r for l in l, r in r], rand(NL, NR),
+        colormap=:Spectral
+    )
+end
 
 @compile begin
     heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
@@ -80,6 +80,6 @@ end
     poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
 end
 
-# @compile begin
-#     meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
-# end
+@compile begin
+    meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
+end
