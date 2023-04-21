@@ -212,13 +212,8 @@ end
 function data_limits(plot::Mesh)
     xyz = plot.mesh[].position
     mini, maxi = bbox_mesh(xyz)
-    if length(mini) == 2
-        mini = Vec3f(mini...,0)
-        maxi = Vec3f(maxi...,0)
-    else
-        mini = Vec3f(mini)
-        maxi = Vec3f(maxi)
-    end
+    mini = to_ndim(Vec3f, mini, 0f0)
+    maxi = to_ndim(Vec3f, maxi, 0f0)
     return Rectf(mini, maxi .- mini)
 end
 
