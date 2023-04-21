@@ -212,7 +212,14 @@ end
 function data_limits(plot::Mesh)
     xyz = plot.mesh[].position
     mini, maxi = bbox_mesh(xyz)
-    return Rect3f(mini, maxi .- mini)
+    if length(mini) == 2
+        mini = Vec3f(mini...,0)
+        maxi = Vec3f(maxi...,0)
+    else
+        mini = Vec3f(mini)
+        maxi = Vec3f(maxi)
+    end
+    return Rectf(mini, maxi .- mini)
 end
 
 function data_limits(plot::Heatmap)
@@ -235,6 +242,9 @@ function bbox_mesh(coords)
     maxi = [xyz for xyz in coords[1]]
     for coord in coords
         for d in 1:dim
+            if isnan(coord[d]) || isinf(coord[d])
+                continue
+            end
             if coord[d] < mini[d]
                mini[d] = coord[d]
             elseif coord[d] > maxi[d]
