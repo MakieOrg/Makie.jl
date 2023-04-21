@@ -224,10 +224,10 @@ create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
 # ispressed and logic evaluation
 
 """
-    ispressed(parent, result::Bool)
-    ispressed(parent, button::Union{Mouse.Button, Keyboard.Button)
-    ispressed(parent, collection::Union{Set, Vector, Tuple})
-    ispressed(parent, op::BooleanOperator)
+ispressed(parent, result::Bool[, waspressed = nothing])
+ispressed(parent, button::Union{Mouse.Button, Keyboard.Button[, waspressed = nothing])
+    ispressed(parent, collection::Union{Set, Vector, Tuple}[, waspressed = nothing])
+    ispressed(parent, op::BooleanOperator[, waspressed = nothing])
 
 This function checks if a button or combination of buttons is pressed.
 
@@ -251,25 +251,32 @@ Furthermore you can also make any button, button collection or boolean
 expression exclusive by wrapping it in `Exclusively(...)`. With that `ispressed`
 will only return true if the currently pressed buttons match the request exactly.
 
-See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
+For cases where you want to react to a release event you can optionally add 
+a key or mousebutton `waspressed` which is then assumed to be pressed regardless
+of it's current state. For example, when reacting to a mousebutton event, you can 
+pass `event.button` so that a key combination including that button still evaluates
+as true.
+
+See also: [`waspressed`](@ref) [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
 [`&`](@ref), [`|`](@ref), [`!`](@ref)
 """
-ispressed(events::Events, mb::Mouse.Button) = mb in events.mousebuttonstate
-ispressed(events::Events, key::Keyboard.Button) = key in events.keyboardstate
-ispressed(parent, result::Bool) = result
+ispressed(events::Events, mb::Mouse.Button, waspressed = nothing) = mb in events.mousebuttonstate || mb == waspressed
+ispressed(events::Events, key::Keyboard.Button, waspressed = nothing) = key in events.keyboardstate || key == waspressed
+ispressed(parent, result::Bool, waspressed = nothing) = result
 
-ispressed(parent, mb::Mouse.Button) = ispressed(events(parent), mb)
-ispressed(parent, key::Keyboard.Button) = ispressed(events(parent), key)
+ispressed(parent, mb::Mouse.Button, waspressed = nothing) = ispressed(events(parent), mb, waspressed)
+ispressed(parent, key::Keyboard.Button, waspressed = nothing) = ispressed(events(parent), key, waspressed)
 @deprecate ispressed(scene, ::Nothing) ispressed(parent, true)
 
 # Boolean Operator evaluation
-ispressed(parent, op::And) = ispressed(parent, op.left) && ispressed(parent, op.right)
-ispressed(parent, op::Or)  = ispressed(parent, op.left) || ispressed(parent, op.right)
-ispressed(parent, op::Not) = !ispressed(parent, op.x)
-ispressed(parent, op::Exclusively) = ispressed(events(parent), op)
-ispressed(e::Events, op::Exclusively) = op.x == union(e.keyboardstate, e.mousebuttonstate)
+ispressed(parent, op::And, waspressed = nothing) = ispressed(parent, op.left, waspressed) && ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Or, waspressed = nothing)  = ispressed(parent, op.left, waspressed) || ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Not, waspressed = nothing) = !ispressed(parent, op.x, waspressed)
+ispressed(parent, op::Exclusively, waspressed = nothing) = ispressed(events(parent), op, waspressed)
+ispressed(e::Events, op::Exclusively, waspressed::Union{Mouse.Button, Keyboard.Button}) = op.x == union(e.keyboardstate, e.mousebuttonstate, waspressed)
+ispressed(e::Events, op::Exclusively, waspressed = nothing) = op.x == union(e.keyboardstate, e.mousebuttonstate)
 
 # collections
-ispressed(parent, set::Set) = all(x -> ispressed(parent, x), set)
-ispressed(parent, set::Vector) = all(x -> ispressed(parent, x), set)
-ispressed(parent, set::Tuple) = all(x -> ispressed(parent, x), set)
+ispressed(parent, set::Set, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
+ispressed(parent, set::Vector, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
+ispressed(parent, set::Tuple, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
