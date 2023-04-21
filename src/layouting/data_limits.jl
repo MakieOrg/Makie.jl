@@ -217,6 +217,24 @@ function data_limits(plot::Mesh{<:Tuple{<:GeometryBasics.Mesh}})
     return Rect3f(mini, maxi .- mini)
 end
 
+function data_limits(plot::Mesh{<:Tuple{Vector{<:GeometryBasics.Mesh}}})
+    minmaxs = [bbox_mesh(_mesh.position) for _mesh in plot.mesh[]]
+    dim = length(minmaxs[1][1])
+    mini, maxi = minmaxs[1]
+    for (minj, maxj) in minmaxs
+        for d in 1:dim
+            if minj[d] < mini[d]
+               mini[d] = minj[d]
+            elseif maxj[d] > maxi[d]
+               maxi[d] = maxj[d]
+            end
+        end
+    end
+    mini = to_ndim(Vec3f, mini, 0f0)
+    maxi = to_ndim(Vec3f, maxi, 0f0)
+    return Rect3f(mini, maxi .- mini)
+end
+
 function data_limits(plot::Heatmap)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
@@ -249,4 +267,3 @@ function bbox_mesh(coords)
     end
     return (mini,maxi)
 end
-
