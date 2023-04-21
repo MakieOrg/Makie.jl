@@ -129,5 +129,5 @@ void main(){
         color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
     {{light_calc}}
-    write2framebuffer(color, o_id);
+    write2framebuffer(vec4(color.rgb, 1), o_id);
 }

@@ -78,6 +78,9 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     return nothing
 end
 
+Makie.to_color(x::Texture) = x
+GLAbstraction.Texture(x::Texture; kw...) = x
+
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)

@@ -216,6 +216,8 @@ function empty_screen(debugging::Bool; reuse=true)
     ]
     resolution = (10, 10)
     window = try
+        share = isempty(ALL_SCREENS) ? GLFW.Window(C_NULL) : first(ALL_SCREENS).glscreen
+        @show share
         GLFW.Window(
             resolution = resolution,
             windowhints = windowhints,
@@ -223,6 +225,7 @@ function empty_screen(debugging::Bool; reuse=true)
             focus = false,
             fullscreen = false,
             debugging = debugging,
+            share=share
         )
     catch e
         @warn("""
@@ -313,6 +316,18 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     apply_config!(screen, config)
 end
 
+function replace_processor!(screen, postprocessor, idx)
+    fb = screen.framebuffer
+    shader_cache = screen.shader_cache
+    post = screen.postprocessors[idx]
+    if post.constructor !== postprocessor
+        destroy!(screen.postprocessors[idx])
+        screen.postprocessors[idx] = postprocessor(fb, shader_cache)
+    end
+    return
+end
+
+
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
@@ -326,20 +341,10 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
         GLFW.SetWindowMonitor(glw, config.monitor)
     end
 
-    function replace_processor!(postprocessor, idx)
-        fb = screen.framebuffer
-        shader_cache = screen.shader_cache
-        post = screen.postprocessors[idx]
-        if post.constructor !== postprocessor
-            destroy!(screen.postprocessors[idx])
-            screen.postprocessors[idx] = postprocessor(fb, shader_cache)
-        end
-        return
-    end
 
-    replace_processor!(config.ssao ? ssao_postprocessor : empty_postprocessor, 1)
-    replace_processor!(config.oit ? OIT_postprocessor : empty_postprocessor, 2)
-    replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
+    replace_processor!(screen, config.ssao ? ssao_postprocessor : empty_postprocessor, 1)
+    replace_processor!(screen, config.oit ? OIT_postprocessor : empty_postprocessor, 2)
+    replace_processor!(screen, config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
     # Set the config
     screen.config = config
 
@@ -646,7 +651,7 @@ end
 """
     depthbuffer(screen::Screen)
 
-Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.  
+Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.
 
 A depth buffer is used to determine which plot's contents should be shown at each pixel.
 Usage:
