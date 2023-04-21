@@ -160,7 +160,7 @@ You can for example directly register javascript function that get run on change
 
 \begin{showhtml}{}
 ```julia
-using JSServe: onjs
+using JSServe
 
 App() do session::Session
     s1 = Slider(1:100)
@@ -187,7 +187,7 @@ But while this isn't in place, logging the the returned object makes it pretty e
 
 \begin{showhtml}{}
 ```julia
-using JSServe: onjs, evaljs, on_document_load
+using JSServe
 using WGLMakie
 
 App() do session::Session
