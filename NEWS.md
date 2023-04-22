@@ -2,6 +2,8 @@
 
 ## master
 
+- Add `loop` option for GIF outputs when recording videos with `record` [#2891](https://github.com/MakieOrg/Makie.jl/pull/2891)
+
 ## v0.19.4
 
 - Added export of `hidezdecorations!` from MakieLayout [#2821](https://github.com/MakieOrg/Makie.jl/pull/2821).
