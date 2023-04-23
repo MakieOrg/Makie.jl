@@ -1376,3 +1376,70 @@ function update_state_before_display!(ax::Axis)
     reset_limits!(ax)
     return
 end
+
+function show_attribute_docs(type, symbol)
+    docs, examples = attribute_docs(type, symbol)
+    if !(examples isa Vector{Pair{String,String}})
+        error("Expected attribute examples of `$type` and `$symbol` to be Vector{Pair{String,String}}, was `$(typeof(examples))`")
+    end
+    display(Markdown.parse("# Attribute docs: `$type` `$symbol`"))
+    println()
+    display(docs)
+    println()
+    for (i, (name, example)) in enumerate(examples)
+        display(md"### Example $i: $name")
+        display(Markdown.parse("```julia\n" * example * "\n```"))
+        fig = eval(Meta.parseall(example))
+        if !(fig isa FigureLike)
+            error("Expected $type's $symbol attribute example $name to return a FigureLike. Returned a $(typeof(fig)) instead.")
+        end
+        Label(fig[begin-1, :], rich(rich("$type.$symbol ", color = :slategray4, font = :bold), "Example $i "), tellwidth = false)
+        display(fig)
+    end
+    return
+end
+
+function repl_docstring(type::Symbol, attr::Symbol, docs, examples::Vector{Pair{String,String}})
+    io = IOBuffer()
+
+    println(" ")
+    println(io, docs)
+    println(io)
+
+    for (i, (name, example)) in enumerate(examples)
+        println(io, "**Example $i**: $name")
+        println(io, "```julia")
+        println(io, example)
+        println(io, "```")
+        println(io)
+    end
+
+    Markdown.parse(String(take!(io)))
+end
+
+attribute_docs(type, symbol::Symbol) = attribute_docs(type, Val(symbol))
+
+function attribute_docs(::Type{Axis}, ::Val{:xticks})
+    docs = md"""
+    Controls what numerical tick values are calculated for the x axis.
+    If `xticks` doesn't already include tick labels, the
+    final labels will depend on `xtickformat` as well.
+    """
+
+    examples = [
+        "Common tick types" => """
+        fig = Figure()
+        Axis(fig[1, 1], xticks = 1:10)
+        Axis(fig[2, 1], xticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+        Axis(fig[3, 1], xticks = WilkinsonTicks(5))
+        fig
+        """,
+    ]
+
+    docs, examples
+end
+
+function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
+    docs, examples = attribute_docs(t, s)
+    repl_docstring(nameof(t), s, docs, examples)
+end
