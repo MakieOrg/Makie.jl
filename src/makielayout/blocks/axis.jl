@@ -1417,7 +1417,19 @@ function repl_docstring(type::Symbol, attr::Symbol, docs, examples::Vector{Pair{
     Markdown.parse(String(take!(io)))
 end
 
-attribute_docs(type, symbol::Symbol) = attribute_docs(type, Val(symbol))
+function attribute_docs(type, symbol::Symbol)
+    if !is_attribute(type, symbol)
+        error("`$symbol` is not an attribute of type `$type`")
+    end
+    try
+        return attribute_docs(type, Val(symbol))
+    catch e
+        if e isa MethodError && e.f === attribute_docs
+            return nothing
+        end
+        rethrow(e)
+    end
+end
 
 function attribute_docs(::Type{Axis}, ::Val{:xticks})
     docs = md"""
@@ -1441,13 +1453,11 @@ end
 
 # overrides `?Axis.xticks` and similar lookups in the REPL
 function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
-    try
-        docs, examples = attribute_docs(t, s)
-    catch e
-        if e isa MethodError && e.f === attribute_docs
-            return Markdown.parse("No docs defined for attribute `$s` of type `$t`")
-        end
-        rethrow(e)
+    x = attribute_docs(t, s)
+    if x === nothing
+        return Markdown.parse("No docs defined for attribute `$s` of type `$t`")
+    else
+        docs, examples = x
+        return repl_docstring(nameof(t), s, docs, examples)
     end
-    repl_docstring(nameof(t), s, docs, examples)
 end
