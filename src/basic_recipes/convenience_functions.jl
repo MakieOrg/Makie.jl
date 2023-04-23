@@ -1,9 +1,9 @@
 """
     showlibrary(lib::Symbol)::Scene
 
-Shows all colour gradients in the given library.
-Returns a Scene with these colour gradients arranged
-as horizontal colourbars.
+Shows all color gradients in the given library.
+Returns a Scene with these color gradients arranged
+as horizontal colorbars.
 """
 function showlibrary(lib::Symbol)::Scene
     cgrads = sort(PlotUtils.cgradients(lib))
