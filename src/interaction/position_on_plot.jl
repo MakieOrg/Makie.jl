@@ -55,6 +55,8 @@ function ray_at_cursor(scene::Scene, ::RelativeCamera)
 end
 
 ray_at_cursor(scene::Scene, cam) = _ray_at_cursor(scene, cam)
+
+# This method should always work 
 function _ray_at_cursor(scene::Scene, cam = scene.camera_controls)
     inv_view_proj = inv(camera(scene).projectionview[])
     mpos = events(scene).mouseposition[]

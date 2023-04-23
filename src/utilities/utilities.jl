@@ -390,5 +390,6 @@ function extract_keys(attributes, keys)
 end
 
 # Scalar - Vector getindex
-sv_getindex(v::Vector, i::Integer) = v[i]
-sv_getindex(x, i::Integer) = x
+sv_getindex(v::AbstractVector, i::Integer) = v[i]
+sv_getindex(x, ::Integer) = x
+sv_getindex(x::VecTypes, ::Integer) = x

@@ -520,7 +520,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     if haskey(plot, :inspector_label)
         tt.text[] = plot[:inspector_label][](plot, idx, typeof(p0)(pos))
     else
-        tt.text[] = position2string(eltypetype(plot[1][])(pos))
+        tt.text[] = position2string(eltype(plot[1][])(pos))
     end
     tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
@@ -661,7 +661,9 @@ function show_imagelike(inspector, plot, name, edge_based)
                     scene, position, color = a._color,
                     visible = a.indicator_visible,
                     inspectable = false,
-                    marker=:rect, markersize = map(r -> 3r, a.range),
+                    # TODO switch to Rect with 2r-1 or 2r-2 markersize to have 
+                    # just enough space to always detect the underlying image
+                    marker=:rect, markersize = map(r -> 2r, a.range), 
                     strokecolor = a.indicator_color,
                     strokewidth = a.indicator_linewidth
                 )
@@ -829,7 +831,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
     return show_data(inspector, plot, div(idx+1, 2), nothing)
 end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
-    a = inspector.plot.attributes
+    a = inspector.attributes
     tt = inspector.plot
     pos = plot[1][][idx]
     mpos = Point2f(mouseposition_px(inspector.root))
