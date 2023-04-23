@@ -444,3 +444,41 @@ function contenttable()
         end
     end
 end
+
+
+function lx_attrdocs(lxc, _)
+    type = getproperty(Makie, Symbol(Franklin.stent(lxc.braces[1])))
+
+    attrkeys = sort(collect(keys(Makie.default_attribute_values(type, nothing))))
+
+    io = IOBuffer()
+
+    for attrkey in attrkeys
+        println(io, "## $attrkey")
+
+        x = Makie.attribute_docs(type, attrkey)
+        if x === nothing
+            println(io)
+        else
+            docs, examples = x
+            println(io)
+            println(docs)
+            for (name, code) in examples
+                println(io, "### Example: $name")
+                println(io, "\\begin{examplefigure}{svg = true}")
+                println(io, "```julia")
+                println(io, "using CairoMakie")
+                println(io, "CairoMakie.activate!() # hide")
+                println(io, code)
+                println(io, "```")
+                println(io, "\\end{examplefigure}")
+                println(io)
+            end
+        end
+        
+        println(io)
+    end
+
+    return String(take!(io))
+end
+

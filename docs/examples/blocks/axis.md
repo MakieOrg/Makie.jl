@@ -2,6 +2,11 @@
 
 # Axis
 
+
+## Reference
+
+\attrdocs{Axis}
+
 ## Creating an Axis
 
 The `Axis` is a 2D axis that works well with automatic layouts.
