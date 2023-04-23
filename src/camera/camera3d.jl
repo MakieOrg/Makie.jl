@@ -62,8 +62,8 @@ Controls include any kind of hotkey setting.
 
 - `zoom_in_key   = Keyboard.u` sets the key for zooming into the scene (translate eyeposition towards lookat).
 - `zoom_out_key  = Keyboard.o` sets the key for zooming out of the scene (translate eyeposition away from lookat).
-- `increase_fov_key = Keyboard.page_up` sets the key for increasing the fov.
-- `decrease_fov_key = Keyboard.page_down` sets the key for increasing the fov.
+- `increase_fov_key = Keyboard.b` sets the key for increasing the fov.
+- `decrease_fov_key = Keyboard.n` sets the key for decreasing the fov.
 
 - `pan_left_key  = Keyboard.j` sets the key for rotations around the screens vertical axis.
 - `pan_right_key = Keyboard.l` sets the key for rotations around the screens vertical axis.
@@ -75,7 +75,8 @@ Controls include any kind of hotkey setting.
 - `fix_x_key = Keyboard.x` sets the key for fixing translations and rotations to the (world/plot) x-axis.
 - `fix_y_key = Keyboard.y` sets the key for fixing translations and rotations to the (world/plot) y-axis.
 - `fix_z_key = Keyboard.z` sets the key for fixing translations and rotations to the (world/plot) z-axis.
-- `reset = Keyboard.home` sets the key for fully resetting the camera. This equivalent to setting `lookat = Vec3f(0)`, `upvector = Vec3f(0, 0, 1)`, `eyeposition = Vec3f(3)` and then calling `center!(scene)`.
+- `reset = Keyboard.left_control & Mouse.left` sets the key for resetting the camera. This equivalent to calling `center!(scene)`.
+- `reposition_button = Keyboard.left_alt & Mouse.left` sets the key for focusing the camera on a plot object.
 
 - `translation_button = Mouse.right` sets the mouse button for drag-translations. (up/down/left/right)
 - `scroll_mod = true` sets an additional modifier button for scroll-based zoom. (true being neutral)
@@ -254,9 +255,21 @@ function Camera3D(scene::Scene; kwargs...)
 end
 
 # These imitate the old camera
+"""
+    cam3d!(scene[; kwargs...])
+
+Creates a `Camera3D` with `zoom_shift_lookat = true` and `fixed_axis = true`. 
+For more information, see [`Camera3D``](@ref)
+"""
 cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...) =
     Camera3D(scene, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
 
+"""
+    cam3d_cad!(scene[; kwargs...])
+
+Creates a `Camera3D` with `cad = true`, `zoom_shift_lookat = false` and 
+`fixed_axis = false`. For more information, see [`Camera3D``](@ref)
+"""
 cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...) =
     Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
 

@@ -376,6 +376,8 @@ Furthermore you can wrap any of the above in `Exclusively` to discard matches wh
 - `hotkey = Keyboard.left_control & Keyboard.a` is equivalent to `(Keyboard.left_control, Keyboard.a)`
 - `hotkey = (Keyboard.left_control | Keyboard.right_control) & Keyboard.a` allows either left or right control with a.
 
+Note that the way we used `ispressed` above, the condition will be true for "press" and "repeat" events. You can further restrict to one or the other by checking `event.action`. If you wish to react to a "release" event, you will need to pass `event.key`/`event.button` as a third argument to `ispressed(fig, hotkey, event.key)`. This will tell `ispressed` to assume the key or button is pressed if it is part of the hotkey.
+
 ## Interactive Widgets
 
 Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can learn about in the \myreflink{Blocks} section.

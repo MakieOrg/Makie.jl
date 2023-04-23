@@ -1,19 +1,25 @@
 # Cameras
 
-A `Camera` is simply a viewport through which the Scene is visualized.  `Makie` offers 2D and 3D projections, and 2D plots can be projected in 3D!
+A `Camera` is simply a viewport through which the Scene is visualized. `Makie` offers 2D and 3D projections, and 2D plots can be projected in 3D!
 
-To specify the camera you want to use for your Scene, you can set the `camera` attribute.  Currently, we offer four types of camera:
+To specify the camera you want to use for your Scene, you can set the `camera` attribute. Currently, we offer the following cameras/constructors
 
 \apilink{campixel!}
+\apilink{cam_relative!}
 \apilink{cam2d!}
-`cam3d!`
-`cam3d_cad!`
+\apilink{Camera3D}
+\apilink{cam3d!}
+\apilink{cam3d_cad!}
 
 which will mutate the camera of the Scene into the specified type.
 
 ## Pixel Camera
 
 The pixel camera (\apilink{campixel!(scene)}) projects the scene in pixel space, i.e. each integer step in the displayed data will correspond to one pixel. There are no controls for this camera. The clipping limits are set to `(-10_000, 10_000)`.
+
+## Relative Camera
+
+The relative camera (\apilink{cam_relative!(scene)}) projects the scene into a 0..1 by 0..1 space. There are no controls for this camera. The clipping limits are set to `(-10_000, 10_000)`.
 
 ## 2D Camera
 
@@ -29,6 +35,8 @@ Note that this camera is not used by `Axis`. It is used, by default, for 2D `LSc
 ## 3D Camera
 
 {{doc Camera3D}}
+
+`cam3d!` and `cam3d_cad!` but create a `Camera3D` with some specific options.
 
 ## Example - Visualizing the cameras view box
 

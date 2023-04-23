@@ -11,14 +11,23 @@ end
 """
     cam2d!(scene::SceneLike, kwargs...)
 
-Creates a 2D camera for the given Scene.
+Creates a 2D camera for the given `scene`. The camera implements zooming by 
+scrolling and translation using mouse drag. It also implements rectangle 
+selections.
+
+## Keyword Arguments
+
+- `zoomspeed = 0.1f0` sets the zoom speed.
+- `zoombutton = true` sets a button (combination) which needs to be pressed to enable zooming. By default no button needs to be pressed.
+- `panbutton = Mouse.right` sets the button used to translate the camera. This must include a mouse button.
+- `selectionbutton = (Keyboard.space, Mouse.left)` sets the button used for rectangle selection. This must include a mouse button.
 """
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Attributes(
             area = Observable(Rectf(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
-            zoombutton = nothing,
+            zoombutton = true,
             panbutton = Mouse.right,
             selectionbutton = (Keyboard.space, Mouse.left),
             padding = 0.001,
@@ -318,7 +327,9 @@ end
 """
     campixel!(scene; nearclip=-1000f0, farclip=1000f0)
 
-Creates a pixel-level camera for the `Scene`.  No controls!
+Creates a pixel camera for the given `scene`. This means that the positional 
+data of a plot will be interpreted in pixel units. This camera does not feature
+controls.
 """
 function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     disconnect!(camera(scene))
@@ -338,7 +349,8 @@ struct RelativeCamera <: AbstractCamera end
 """
     cam_relative!(scene)
 
-Creates a pixel-level camera for the `Scene`.  No controls!
+Creates a camera for the given `scene` which maps the scene area to a 0..1 by 
+0..1 range. This camera does not feature controls.
 """
 function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
