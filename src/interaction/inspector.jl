@@ -924,45 +924,28 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    qs = extrema(child[1][])
-    ps = extrema(child[2][])
+    a0, a1 = extrema(child[1][])
+    b0, b1 = extrema(child[2][])
     data = child[3][]
     T = child.transformation.model[]
 
-    vs = [ # clockwise
-        Point3f(T * Point4f(qs[1], ps[1], 0, 1)),
-        Point3f(T * Point4f(qs[1], ps[2], 0, 1)),
-        Point3f(T * Point4f(qs[2], ps[2], 0, 1)),
-        Point3f(T * Point4f(qs[2], ps[1], 0, 1))
-    ]
+    # Transform the Ray rather than the Rect here to avoid using a Rect3f
+    rect = Rect2f(a0, b0, a1, b1)
+    ray = transform(inv(T), ray_at_cursor(scene))
+    p = ray_rect_intersection(rect, ray) # in heatmap space (with z = normal of heatmap)
 
-    ray = ray_at_cursor(scene)
-    pos = Point3f(NaN)
-    pos = ray_triangle_intersection(vs[1], vs[2], vs[3], ray)
-    if isnan(pos)
-        pos = ray_triangle_intersection(vs[3], vs[4], vs[1], ray)
-    end
-
-    if !isnan(pos)
-        child_idx = findfirst(isequal(child), plot.plots)
-        if child_idx == 2
-            x = pos[2]; y = pos[3]
-        elseif child_idx == 3
-            x = pos[1]; y = pos[3]
-        else
-            x = pos[1]; y = pos[2]
-        end
-        i = clamp(round(Int, (x - qs[1]) / (qs[2] - qs[1]) * size(data, 1) + 0.5), 1, size(data, 1))
-        j = clamp(round(Int, (y - ps[1]) / (ps[2] - ps[1]) * size(data, 2) + 0.5), 1, size(data, 2))
+    if !isnan(p)
+        i = clamp(round(Int, (p[1] - a0) / (a1 - a0) * size(data, 1) + 0.5), 1, size(data, 1))
+        j = clamp(round(Int, (p[2] - b0) / (b1 - b0) * size(data, 2) + 0.5), 1, size(data, 2))
         val = data[i, j]
 
         tt[1][] = proj_pos
         if haskey(plot, :inspector_label)
-            tt.text[] = plot[:inspector_label][](plot, (i, j), pos)
+            tt.text[] = plot[:inspector_label][](plot, (i, j), p)
         else
             tt.text[] = @sprintf(
                 "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
-                pos[1], pos[2], pos[3], val
+                p[1], p[2], p[3], val
             )
         end
         tt.visible[] = true

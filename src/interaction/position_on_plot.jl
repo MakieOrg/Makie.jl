@@ -83,6 +83,13 @@ function _ray_at_cursor(scene::Scene, cam = scene.camera_controls)
 end
 
 
+function transform(M::Mat4f, ray::Ray)
+    p4d = M * to_ndim(Point4f, ray.origin, 1f0)
+    dir = normalize(M[Vec(1,2,3), Vec(1,2,3)] * ray.direction)
+    return Ray(p4d[Vec(1,2,3)] / p4d[4], dir)
+end
+
+
 ##############################################
 
 
