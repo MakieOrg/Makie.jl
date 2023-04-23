@@ -1436,10 +1436,18 @@ function attribute_docs(::Type{Axis}, ::Val{:xticks})
         """,
     ]
 
-    docs, examples
+    return docs, examples
 end
 
+# overrides `?Axis.xticks` and similar lookups in the REPL
 function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
-    docs, examples = attribute_docs(t, s)
+    try
+        docs, examples = attribute_docs(t, s)
+    catch e
+        if e isa MethodError && e.f === attribute_docs
+            return Markdown.parse("No docs defined for attribute `$s` of type `$t`")
+        end
+        rethrow(e)
+    end
     repl_docstring(nameof(t), s, docs, examples)
 end
