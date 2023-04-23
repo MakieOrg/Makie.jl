@@ -2,7 +2,8 @@
 
 ## master
 
-- Made some adjustments to the 3D camera (switched back from fov to location based zoom, split hotkeys from other options & minor QoL changes) [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
+- Improvements to 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
+- Fixed some errors/problems with DataInspector [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
 
 ## v0.19.4
 
