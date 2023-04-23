@@ -136,20 +136,20 @@ function point_in_quad_parameter(
 
     # Our initial guess is that P is in the center of the quad (in terms of AB and DC)
     f = 0.5
-
-    for i in 0:iterations
+    AB = B - A
+    DC = C - D
+    for _ in 0:iterations
         # vector between top and bottom point of the current line
         dir = (D + f * (C - D)) - (A + f * (B - A))
-        DC = C - D
-        AB = B - A
         # solves P + _ * dir = A + f1 * (B - A) (intersection point of ray & line)
         f1, _ = inv(Mat2f(AB..., dir...)) * (P - A)
         f2, _ = inv(Mat2f(DC..., dir...)) * (P - D)
 
         # next fraction estimate should be between f1 and f2
         # adding 2f to this helps avoid jumping between low and high values
+        old_f = f
         f = 0.25 * (2f + f1 + f2)
-        if abs(f2 - f1) < epsilon
+        if abs(old_f - f) < epsilon
             return f
         end
     end
@@ -986,7 +986,8 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
         if a.enable_indicators[]
             model = plot.model[]
 
-            if inspector.selection != plot || isempty(inspector.temp_plots)
+            # Why does this sometimes create 2+ plots
+            if inspector.selection != plot || (length(inspector.temp_plots) != 1)
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
                     scene, [P1, P2], model = model, 
