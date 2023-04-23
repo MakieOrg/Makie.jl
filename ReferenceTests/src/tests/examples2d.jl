@@ -676,6 +676,37 @@ end
     f
 end
 
+@reference_test "contour labels 2D" begin
+    paraboloid = (x, y) -> 10(x^2 + y^2)
+
+    x = range(-4, 4; length = 40)
+    y = range(-4, 4; length = 60)
+    z = paraboloid.(x, y')
+
+    fig, ax, hm = heatmap(x, y, z)
+    Colorbar(fig[1, 2], hm)
+
+    contour!(
+        ax, x, y, z;
+        color = :red, levels = 0:20:100, labels = true,
+        labelsize = 15, labelfont = :bold, labelcolor = :orange,
+    )
+    fig
+end
+
+@reference_test "contour labels 3D" begin
+    fig = Figure()
+    Axis3(fig[1, 1])
+
+    xs = ys = range(-.5, .5; length = 50)
+    zs = @. √(xs^2 + ys'^2)
+
+    levels = .025:.05:.475
+    contour3d!(-zs; levels = -levels, labels = true, color = :blue)
+    contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
+    fig
+end
+
 @reference_test "marker offset in data space" begin
     f = Figure()
     ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
