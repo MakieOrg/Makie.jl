@@ -462,7 +462,8 @@ function lx_attrdocs(lxc, _)
         else
             docs, examples = x
             println(io)
-            println(docs)
+            println(io, docs)
+            println(io)
             for (name, code) in examples
                 println(io, "### Example: $name")
                 println(io, "\\begin{examplefigure}{svg = true}")
