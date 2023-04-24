@@ -454,7 +454,7 @@ function lx_attrdocs(lxc, _)
     io = IOBuffer()
 
     for attrkey in attrkeys
-        println(io, "## $attrkey")
+        println(io, "### $attrkey")
 
         x = Makie.attribute_docs(type, attrkey)
         if x === nothing
@@ -465,7 +465,7 @@ function lx_attrdocs(lxc, _)
             println(io, docs)
             println(io)
             for (name, code) in examples
-                println(io, "### Example: $name")
+                println(io, "#### Example: $name")
                 println(io, "\\begin{examplefigure}{svg = true}")
                 println(io, "```julia")
                 println(io, "using CairoMakie")
