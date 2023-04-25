@@ -456,7 +456,7 @@ function lx_attrdocs(lxc, _)
     for attrkey in attrkeys
 
         docs = get(Makie._attribute_docs(type), attrkey, nothing)
-        examples = get(Makie.attribute_examples(type), attrkey, Example[])
+        examples = get(Makie.attribute_examples(type), attrkey, Makie.Example[])
 
         println(io, "### $attrkey")
         println(io)
