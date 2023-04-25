@@ -304,7 +304,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls * _mean(to_value(linewidth))
+            data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
             data[:fast] = false
 
             pvm = map(*, data[:projectionview], data[:model])
