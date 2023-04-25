@@ -1377,13 +1377,35 @@ function attribute_examples(::Type{Axis})
             Example(
                 name = "Common tick types",
                 code = """
-                fig = Figure()
-                Axis(fig[1, 1], xticks = 1:10)
-                Axis(fig[2, 1], xticks = (1:2:9, ["A", "B", "C", "D", "E"]))
-                Axis(fig[3, 1], xticks = WilkinsonTicks(5))
-                fig
-                """
+                    fig = Figure()
+                    Axis(fig[1, 1], xticks = 1:10)
+                    Axis(fig[2, 1], xticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+                    Axis(fig[3, 1], xticks = WilkinsonTicks(5))
+                    fig
+                    """
             )
-        ]
+        ],
+        :aspect => [
+            Example(
+                name = "Common aspect ratios",
+                code = """
+                    using FileIO
+
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing")
+                    ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()")
+                    ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)")
+                    ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)")
+                    
+                    img = rotr90(load(assetpath("cow.png")))
+                    for ax in [ax1, ax2, ax3, ax4]
+                        image!(ax, img)
+                    end
+
+                    f
+                    """
+            )
+        ],
     )
 end

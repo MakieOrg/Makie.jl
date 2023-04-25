@@ -378,7 +378,24 @@ end
         topspinecolor::RGBAf = :black
         "The color of the right axis spine."
         rightspinecolor::RGBAf = :black
-        "The forced aspect ratio of the axis. `nothing` leaves the axis unconstrained, `DataAspect()` forces the same ratio as the ratio in data limits between x and y axis, `AxisAspect(ratio)` sets a manual ratio."
+        """
+        Controls the forced aspect ratio of the axis.
+
+        The default `nothing` will not constrain the aspect ratio.
+        The axis area will span the available width and height in the layout.
+
+        `DataAspect()` reduces the effective axis size within the available layout space
+        so that the axis aspect ratio width/height matches that of the data limits.
+        For example, if the x limits range from 0 to 300 and the y limits from 100 to 250, `DataAspect()` will result
+        in an aspect ratio of `(300 - 0) / (250 - 100) = 2`.
+        This can be useful when plotting images, because the image will be displayed unsquished.
+
+        `AxisAspect(ratio)` reduces the effective axis size within the available layout space
+        so that the axis aspect ratio width/height matches `ratio`.
+
+        Note that both `DataAspect` and `AxisAspect` can result in excess whitespace around the axis.
+        To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting. 
+        """
         aspect = nothing
         "The vertical alignment of the axis within its suggested bounding box."
         valign = :center
