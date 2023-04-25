@@ -563,13 +563,17 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String},
     Markdown.parse(String(take!(io)))
 end
 
+function attribute_examples(b::Type{<:Block})
+    Dict{Symbol,Vector{Example}}()
+end
+
 # overrides `?Axis.xticks` and similar lookups in the REPL
 function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     if !is_attribute(t, s)
         return Markdown.parse("`$s` is not an attribute of type `$t`. Type `?$t` in the REPL to see the list of available attributes.")
     end
     docs = get(_attribute_docs(t), s, nothing)
-    examples = get(attribute_examples(Axis), s, Example[])
+    examples = get(attribute_examples(t), s, Example[])
     return repl_docstring(nameof(t), s, docs, examples)
 end
 
