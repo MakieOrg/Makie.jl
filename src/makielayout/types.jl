@@ -447,7 +447,16 @@ end
         backgroundcolor::RGBAf = :white
         "Controls if the ylabel's rotation is flipped."
         flip_ylabel::Bool = false
-        "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
+        """
+        If `autolimitaspect` is set to a number, the limits of the axis
+        will autoadjust such that the ratio of the limits to the axis size equals
+        that number.
+
+        For example, if the axis size is 100 x 200, then with `autolimitaspect = 1`,
+        the autolimits will also have a ratio of 1 to 2. The setting `autolimitaspect = 1`
+        is the complement to `aspect = AxisAspect(1)`, but while `aspect` changes the axis
+        size, `autolimitaspect` changes the limits to achieve the desired ratio.
+        """
         autolimitaspect = nothing
         "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
         limits = (nothing, nothing)

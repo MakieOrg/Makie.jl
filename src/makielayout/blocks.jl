@@ -541,10 +541,12 @@ Base.@kwdef struct Example
     code::String
 end
 
-function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String}, examples::Vector{Example})
+function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String}, examples::Vector{Example}, default_str)
     io = IOBuffer()
 
-    println(" ") # gap line
+    println(io, "Default value: `$default_str`")
+    println(io)
+
     if docs === nothing
         println(io, "No docstring defined for `$attr`.")
     else
@@ -555,6 +557,9 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String},
     for (i, example) in enumerate(examples)
         println(io, "**Example $i**: $(example.name)")
         println(io, "```julia")
+        # println(io)
+        # println(io, "# run in the REPL via Makie.example($type, :$attr, $i)")
+        # println(io)
         println(io, example.code)
         println(io, "```")
         println(io)
@@ -562,6 +567,15 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String},
 
     Markdown.parse(String(take!(io)))
 end
+
+# function example(type::Type{<:Block}, attr::Symbol, i::Int)
+#     examples = get(attribute_examples(type), attr, Example[])
+#     if !(1 <= i <= length(examples))
+#         error("Invalid example number for attribute $attr of type $type.")
+#     end
+#     display(eval(Meta.parseall(examples[i].code)))
+#     return
+# end
 
 function attribute_examples(b::Type{<:Block})
     Dict{Symbol,Vector{Example}}()
@@ -574,6 +588,8 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     end
     docs = get(_attribute_docs(t), s, nothing)
     examples = get(attribute_examples(t), s, Example[])
-    return repl_docstring(nameof(t), s, docs, examples)
+    default_expr = default_attribute_values(t, nothing)[s]
+    default_str = repr(default_expr)
+    return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
 

@@ -1407,5 +1407,22 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :autolimitaspect => [
+            Example(
+                name = "Using `autolimitaspect`",
+                code = """
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], autolimitaspect = nothing)
+                    ax2 = Axis(f[1, 2], autolimitaspect = 1)
+                    
+                    for ax in [ax1, ax2]
+                        lines!(ax, 0..10, sin)
+                    end
+
+                    f
+                    """
+            )
+        ],
     )
 end
