@@ -79,7 +79,9 @@ app = JSServe.App() do session
         r = deg2rad(degree)
         pointlight.position[] = Vec3f(sin(r)*10, cos(r)*10, 15)
     end
-    JSServe.record_states(session, DOM.div(light_rotation, shininess, fig))
+    # TODO get back record_states
+    # JSServe.record_states(session, DOM.div(light_rotation, shininess, fig))
+    return DOM.div(light_rotation, shininess, fig)
 end
 app
 ```
