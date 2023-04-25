@@ -461,7 +461,7 @@ function lx_attrdocs(lxc, _)
 
         println(io, "### $attrkey")
         println(io)
-        println(io, "Default value: ", default_str)
+        println(io, "Default value: `default_str`")
         println(io)
         
         if docs === nothing
