@@ -50,6 +50,7 @@ import FileIO
 import SparseArrays
 import TriplotBase
 import MiniQhull
+import DelaunayTriangulation as DelTri 
 import Setfield
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints

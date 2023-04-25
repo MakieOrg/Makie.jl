@@ -14,7 +14,9 @@ and vertical positions `ys`.
 - `mode = :normal` sets the way in which a vector of levels is interpreted, if it's set to `:relative`, each number is interpreted as a fraction between the minimum and maximum values of `zs`. For example, `levels = 0.1:0.1:1.0` would exclude the lower 10% of data.
 - `extendlow = nothing`. This sets the color of an optional additional band from `minimum(zs)` to the lowest value in `levels`. If it's `:auto`, the lower end of the colormap is picked and the remaining colors are shifted accordingly. If it's any color representation, this color is used. If it's `nothing`, no band is added.
 - `extendhigh = nothing`. This sets the color of an optional additional band from the highest value of `levels` to `maximum(zs)`. If it's `:auto`, the high end of the colormap is picked and the remaining colors are shifted accordingly. If it's any color representation, this color is used. If it's `nothing`, no band is added.
-- `triangulation = DelaunayTriangulation()`. The mode with which the points in `xs` and `ys` are triangulated. Passing `DelaunayTriangulation()` performs a delaunay triangulation. You can also pass a preexisting triangulation as an `AbstractMatrix{<:Int}` with size (3, n), where each column specifies the vertex indices of one triangle.
+- `triangulation = DelaunayTriangulation()`. The mode with which the points in `xs` and `ys` are triangulated. Passing `DelaunayTriangulation()` performs a Delaunay triangulation. You can also pass a preexisting triangulation as an `AbstractMatrix{<:Int}` with size (3, n), where each column specifies the vertex indices of one triangle. 
+- `boundary_nodes = nothing`: Boundary constraints for the triangulation, in case the triangulation is constructed from DelaunayTriangulation()` above. Boundary nodes should match the specification in DelaunayTriangulation.jl. Note that these are not used if a triangulation is manually provided.
+- `edges = nothing`: Constrained edges for the triangulation, in case the triangulation is constructed from DelaunayTriangulation()` above. The edges should not intersect each other edge at an interior. Note that these are not used if a triangulation is manually provided.
 
 ### Generic
 
@@ -41,7 +43,9 @@ $(ATTRIBUTES)
         nan_color = :transparent,
         inspectable = theme(scene, :inspectable),
         transparency = false,
-        triangulation = DelaunayTriangulation()
+        triangulation = DelaunayTriangulation(),
+        boundary_nodes = nothing, 
+        edges = nothing,
     )
 end
 
@@ -117,7 +121,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
     polys = Observable(PolyType[])
     colors = Observable(Float64[])
 
-    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high, triangulation)
+    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high, triangulation, boundary_nodes, edges)
         empty!(polys[])
         empty!(colors[])
 
@@ -131,7 +135,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        trianglelist = compute_triangulation(triangulation, xs, ys)
+        trianglelist = compute_triangulation(triangulation, xs, ys, edges, boundary_nodes)
         filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
 
         levelcenters = (highs .+ lows) ./ 2
@@ -154,10 +158,10 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
         return
     end
 
-    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high, c.triangulation)
+    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high, c.triangulation, c.boundary_nodes, c.edges)
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[], c.triangulation[])
+    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[], c.triangulation[], c.boundary_nodes[], c.edges[])
 
     poly!(c,
         polys,
@@ -175,12 +179,14 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
     )
 end
 
-function compute_triangulation(::DelaunayTriangulation, xs, ys)
-    vertices = [xs'; ys']
-    return MiniQhull.delaunay(vertices)
+function compute_triangulation(::DelaunayTriangulation, xs, ys, edges=nothing, boundary_nodes=nothing)
+    vertices = convert(Matrix{Float64}, [xs'; ys']) # ExactPredicates can't use F32
+    tri = DelTri.triangulate(vertices; edges, boundary_nodes, check_arguments=false, randomise=false) 
+    T = [T[j] for T in DelTri.each_solid_triangle(tri), j in 1:3]'
+    return T
 end
 
-function compute_triangulation(triangulation::AbstractMatrix{<:Int}, xs, ys)
+function compute_triangulation(triangulation::AbstractMatrix{<:Int}, xs, ys, edges=nothing, boundary_nodes=nothing)
     if size(triangulation, 1) != 3
         throw(ArgumentError("Triangulation matrix must be of size (3, n) but is of size $(size(triangulation))."))
     end

@@ -74,6 +74,75 @@ f
 ```
 \end{examplefigure}
 
+Constrained triangulations can also be used by passing boundary nodes or edges as keyword arguments into `tricontourf`, rather than having to identify the triangles manually as above. The form of the boundary nodes should conform with the specification in DelaunayTriangulation.jl. For example, the above annulus could have been plotted as follows.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+
+using Random
+Random.seed!(123)
+
+n = 20
+angles = range(0, 2pi, length = n+1)[1:end-1]
+x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
+y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
+z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.*randn.()
+
+inner = [n:-1:1; n] # clockwise inner 
+outer = [range(n+1, 2n); n+1] # counter-clockwise outer
+boundary_nodes = [[outer], [inner]]
+f, ax, _ = tricontourf(x, y, z; boundary_nodes)
+scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+f
+```
+\end{examplefigure}
+
+Boundary nodes make it possible to support more complicated regions, possibly with holes, than is possible by only providing points themselves.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie, DelaunayTriangulation
+CairoMakie.activate!() # hide 
+
+## Start by defining the boundaries, and then convert to the appropriate interface 
+curve_1 = [
+    [(0.0, 0.0), (5.0, 0.0), (10.0, 0.0), (15.0, 0.0), (20.0, 0.0), (25.0, 0.0)],
+    [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
+    [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
+    [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
+] # outer-most boundary: counter-clockwise  
+curve_2 = [
+    [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
+    [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
+    [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
+] # inner boundary: clockwise 
+curve_3 = [
+    [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
+    (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
+] # this is inside curve_2, so it's counter-clockwise 
+curves = [curve_1, curve_2, curve_3]
+points = [
+    (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
+    (23.0, 23.0), (22.6, 19.0), (23.8, 17.8), (22.0, 14.0), (22.0, 11.0),
+    (24.0, 6.0), (23.0, 2.0), (19.0, 1.0), (16.0, 3.0), (10.0, 1.0), (11.0, 3.0),
+    (6.0, 2.0), (6.2, 3.0), (2.0, 3.0), (2.6, 6.2), (2.0, 8.0), (2.0, 11.0),
+    (5.0, 12.0), (2.0, 17.0), (3.0, 19.0), (6.0, 18.0), (6.5, 14.5),
+    (13.0, 19.0), (13.0, 12.0), (16.0, 8.0), (9.8, 8.0), (7.5, 6.0),
+    (12.0, 13.0), (19.0, 15.0)
+]
+boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
+
+## Extract the x, y 
+x = getx.(points)
+y = gety.(points)
+z = (x .- 1) .* (y .+ 1) 
+f, ax, _ = tricontourf(x, y, z, boundary_nodes = boundary_nodes, levels = 30)
+f
+```
+\end{examplefigure}
+
 #### Relative mode
 
 Sometimes it's beneficial to drop one part of the range of values, usually towards the outer boundary.
