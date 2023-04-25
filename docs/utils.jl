@@ -455,8 +455,8 @@ function lx_attrdocs(lxc, _)
 
     for attrkey in attrkeys
 
-        docs = get(_attribute_docs(type), attrkey, nothing)
-        examples = get(attribute_examples(type), attrkey, Example[])
+        docs = get(Makie._attribute_docs(type), attrkey, nothing)
+        examples = get(Makie.attribute_examples(type), attrkey, Example[])
 
         println(io, "### $attrkey")
         println(io)
@@ -467,7 +467,7 @@ function lx_attrdocs(lxc, _)
             println(io, docs)
         end
         println(io)
-        
+
         for example in examples
             use_svg = (example.backend === :CairoMakie) && example.svg
             option_bracket = use_svg ? "{svg = true}" : "{}"
