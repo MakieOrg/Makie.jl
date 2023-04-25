@@ -11,12 +11,6 @@ function topoint(x::AbstractArray{<:Tuple{P,P}}) where {P<:Point}
     return topoint(reinterpret(P, x))
 end
 
-array2color(colors::AbstractArray{<:Colorant}, _, _, _) = RGBAf.(colors)
-function array2color(colors, cmap, crange, cscale)
-    cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
-    return Makie.interpolated_getindex.((cmap,), apply_scale(cscale, colors), (apply_scale(cscale, crange),))
-end
-
 function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
     # Potentially per instance attributes
     positions = lift(plot[1], transform_func_obs(plot), get(plot, :space, :data)) do points, trans, space
@@ -54,7 +48,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
             uniforms[Symbol("$(k)_end")] = attribute
         else
             if attribute[] isa AbstractVector{<:Number} && haskey(plot, :colorrange)
-                attribute = lift(array2color, attribute, plot.colormap, plot.colorrange, plot.colorscale)
+                attribute = lift(array2color, attribute, plot.colormap, plot.colorrange)
             end
             per_instance[Symbol("$(k)_start")] = Buffer(lift(x -> x[startr[]], attribute))
             per_instance[Symbol("$(k)_end")] = Buffer(lift(x -> x[endr[]], attribute))

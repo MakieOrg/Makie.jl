@@ -9,7 +9,7 @@ import Cairo
 using Makie: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
 using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using Makie: @info, @get_attribute, Combined, MakieScreen
-using Makie: to_value, to_colormap, extrema_nan, apply_scale
+using Makie: to_value, to_colormap, extrema_nan
 using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 using Makie: numbers_to_colors

@@ -11,13 +11,7 @@ function handle_color!(uniform_dict, instance_dict)
               color isa AbstractVector{<:Colorant} ||
               color === nothing
         delete!(uniform_dict, :colormap)
-        delete!(uniform_dict, :colorscale)
     elseif color isa AbstractArray{<:Real}
-        if haskey(uniform_dict, :colorscale)
-            colorscale = pop!(uniform_dict, :colorscale)
-            udict[:color] = c = apply_scale(colorscale, color)
-            uniform_dict[:colorrange] = Vec2f(Makie.distinct_extrema_nan(c))
-        end
         uniform_dict[:color_getter] = """
             vec4 get_color(){
                 vec2 norm = get_colorrange();

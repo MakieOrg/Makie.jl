@@ -152,13 +152,13 @@ function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
 end
 
 function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    Makie.@get_attribute attributes (colormap, colorrange, colorscale, nan_color, lowclip, highclip)
+    Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+
     nan_color = Makie.to_color(nan_color)
     lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
     highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
 
-    colorrange = apply_scale(colorscale, colorrange)
-    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in apply_scale(colorscale, img)]
+    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
 end
 
 to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
@@ -224,7 +224,7 @@ function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
 end
 
 function per_face_colors(
-        color, colormap, colorscale, colorrange, matcap, faces, normals, uv,
+        color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing
@@ -242,18 +242,16 @@ function per_face_colors(
         if color isa AbstractVector{<: Colorant}
             return FaceIterator(color, faces)
         elseif color isa AbstractArray{<: Number}
-            scaled_colorrange = apply_scale(colorscale, colorrange)
-            low, high = extrema(scaled_colorrange)
+            low, high = extrema(colorrange)
             cvec = map(color[:]) do c
-                scaled_c = apply_scale(colorscale, c)
-                if isnan(scaled_c) && nan_color !== nothing
+                if isnan(c) && nan_color !== nothing
                     return nan_color
-                elseif scaled_c < low && lowclip !== nothing
+                elseif c < low && lowclip !== nothing
                     return lowclip
-                elseif scaled_c > high && highclip !== nothing
+                elseif c > high && highclip !== nothing
                     return highclip
                 else
-                    Makie.interpolated_getindex(colormap, scaled_c, scaled_colorrange)
+                    Makie.interpolated_getindex(colormap, c, colorrange)
                 end
             end
             return FaceIterator(cvec, faces)
