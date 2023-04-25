@@ -138,7 +138,7 @@ edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 x = getx.(points)
 y = gety.(points)
 z = (x .- 1) .* (y .+ 1) 
-f, ax, _ = tricontourf(x, y, z, boundary_nodes = boundary_nodes, levels = 30)
+f, ax, _ = tricontourf(x, y, z, boundary_nodes = boundary_nodes, edges = edges, levels = 30)
 f
 ```
 \end{examplefigure}
