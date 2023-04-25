@@ -456,20 +456,27 @@ function lx_attrdocs(lxc, _)
     for attrkey in attrkeys
         println(io, "### $attrkey")
 
-        x = Makie.attribute_docs(type, attrkey)
-        if x === nothing
+        docs = get(_attribute_docs(type), attrkey, nothing)
+        examples = get(attribute_examples(type), attrkey, Example[])
+        if  === nothing
             println(io)
         else
             docs, examples = x
             println(io)
-            println(io, docs)
+            if docs === nothing
+                println(io, "No docstring defined for attribute `$attrkey`.")
+            else
+                println(io, docs)
+            end
             println(io)
-            for (name, code) in examples
-                println(io, "#### Example: $name")
-                println(io, "\\begin{examplefigure}{svg = true}")
+            for example in examples
+                use_svg = (example.backend === :CairoMakie) && example.svg
+                option_bracket = use_svg ? "{svg = true}" : "{}"
+                println(io, "#### Example: $(example.name)")
+                println(io, "\\begin{examplefigure}$option_bracket")
                 println(io, "```julia")
-                println(io, "using CairoMakie")
-                println(io, "CairoMakie.activate!() # hide")
+                println(io, "using $(example.backend)")
+                println(io, "$(example.backend).activate!() # hide")
                 println(io, code)
                 println(io, "```")
                 println(io, "\\end{examplefigure}")
