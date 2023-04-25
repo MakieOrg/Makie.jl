@@ -108,7 +108,6 @@ end
 ############################################################################
 
 function _chosen_limits(rz, ax)
-
     r = positivize(Rect2f(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
@@ -144,7 +143,8 @@ function _selection_vertices(ax_scene, outer, inner)
 end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
-
+    # only rectangle zoom if modifier is pressed (defaults to true)
+    ispressed(ax.scene, r.modifier) || return Consume(false)
     # TODO: actually, the data from the mouse event should be transformed already
     # but the problem is that these mouse events are generated all the time
     # and outside of log axes, you would quickly run into domain errors
