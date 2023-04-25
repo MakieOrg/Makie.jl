@@ -396,7 +396,11 @@ end
         xautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
-        "The xticks."
+        """
+        Controls what numerical tick values are calculated for the x axis.
+        If `xticks` doesn't already include tick labels, the
+        final labels will depend on `xtickformat` as well.
+        """
         xticks = Makie.automatic
         "Format for xticks."
         xtickformat = Makie.automatic
