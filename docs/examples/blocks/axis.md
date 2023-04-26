@@ -2,11 +2,6 @@
 
 # Axis
 
-
-## Reference
-
-\attrdocs{Axis}
-
 ## Creating an Axis
 
 The `Axis` is a 2D axis that works well with automatic layouts.
@@ -1020,3 +1015,8 @@ register_interaction!(ax, :left_and_right, MyInteraction(false, false))
 
 Some interactions might have more complex state involving plot objects that need to be setup or removed.
 For those purposes, you can overload the methods `registration_setup!(parent, interaction)` and `deregistration_cleanup!(parent, interaction)` which are called during registration and deregistration, respectively.
+
+
+## Attributes
+
+\attrdocs{Axis}
