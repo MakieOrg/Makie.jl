@@ -86,7 +86,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
                 :lightposition, :material,
-                :inspector_label, :inspector_hover, :inspector_clear, :inspectable
+                :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
+                        :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
+                        :calculated_colors
             ))
         end
 
@@ -183,15 +185,25 @@ end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
-function handle_intensities!(attributes)
-    if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
-        c = pop!(attributes, :color)
-        attributes[:intensity] = lift(x-> convert(Vector{Float32}, x), c)
+
+function handle_intensities!(attributes, plot)
+    color = plot.calculated_colors
+    if color[] isa Makie.ColorMap
+        attributes[:intensity] = lift(el32convert, color[].color)
+        attributes[:color_map] = color[].colormap
+        attributes[:color_norm] = map(Vec2f, color[].colorrange)
+        attributes[:nan_color] = color[].nan_color
+        attributes[:highclip] = Makie.highclip(color[])
+        attributes[:lowclip] = Makie.lowclip(color[])
+        attributes[:color] = nothing
     else
+        attributes[:color] = color
         delete!(attributes, :intensity)
         delete!(attributes, :color_map)
         delete!(attributes, :color_norm)
+        delete!(attributes, :colorscale)
     end
+    return
 end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
@@ -250,7 +262,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             end
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
-            handle_intensities!(gl_attributes)
+            handle_intensities!(gl_attributes, x)
             if x isa MeshScatter
                 if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
                     gl_attributes[:image] = gl_attributes[:color]
@@ -301,7 +313,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             end
         end
 
-        handle_intensities!(data)
+        handle_intensities!(data, x)
         return draw_lines(screen, positions, data)
     end
 end
@@ -322,13 +334,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)
         positions = apply_transform(transform_func_obs(x), positions, space)
-        if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
-            c = pop!(data, :color)
-            data[:color] = el32convert(c)
-        else
-            delete!(data, :color_map)
-            delete!(data, :color_norm)
-        end
+        handle_intensities!(data, x)
         connect_camera!(x, data, scene.camera)
 
         return draw_linesegments(screen, positions, data)

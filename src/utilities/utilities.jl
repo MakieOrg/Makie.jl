@@ -278,23 +278,6 @@ function to_vector(x::ClosedInterval, len, T)
     range(a, stop=b, length=len)
 end
 
-"""
-A colorsampler maps numnber values from a certain range to values of a colormap
-```
-x = ColorSampler(colormap, (0.0, 1.0))
-x[0.5] # returns color at half point of colormap
-```
-"""
-struct ColorSampler{Data <: AbstractArray}
-    colormap::Data
-    color_range::Tuple{Float64,Float64}
-end
-
-function Base.getindex(cs::ColorSampler, value::Number)
-    return interpolated_getindex(cs.colormap, value, cs.color_range)
-end
-
-
 # This function was copied from GR.jl,
 # written by Josef Heinen.
 """

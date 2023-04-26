@@ -227,7 +227,7 @@ function per_face_colors(
         color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
-    if matcap !== nothing
+    if !isnothing(matcap)
         wsize = reverse(size(matcap))
         wh = wsize .- 1
         cvec = map(normals) do n
@@ -243,7 +243,7 @@ function per_face_colors(
             return FaceIterator(color, faces)
         elseif color isa AbstractArray{<: Number}
             low, high = extrema(colorrange)
-            cvec = map(color[:]) do c
+            cvec = map(color) do c
                 if isnan(c) && nan_color !== nothing
                     return nan_color
                 elseif c < low && lowclip !== nothing
@@ -258,7 +258,7 @@ function per_face_colors(
         elseif color isa Makie.AbstractPattern
             # let next level extend and fill with CairoPattern
             return color
-        elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
+        elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
             wsize = reverse(size(color))
             wh = wsize .- 1
             cvec = map(uv) do uv

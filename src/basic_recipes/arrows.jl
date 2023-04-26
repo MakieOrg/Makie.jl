@@ -101,7 +101,6 @@ function _circle(origin, r, normal, N)
     GeometryBasics.Mesh(meta(coords; normals=normals), faces)
 end
 
-
 convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
 function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
@@ -208,7 +207,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker=marker_tail,
             markersize = msize,
-            color = line_c, colormap = colormap, colorscale = colorscale, 
+            color = line_c, colormap = colormap, colorscale = colorscale,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
@@ -219,7 +218,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker=marker_head,
             markersize = markersize,
-            color = arrow_c, colormap = colormap, colorscale = colorscale, 
+            color = arrow_c, colormap = colormap, colorscale = colorscale,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,

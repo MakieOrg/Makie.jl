@@ -729,9 +729,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     highclip = get_color_attr(plot, :highclip)
     nan_color = get_color_attr(plot, :nan_color)
 
-    cols = per_face_colors(
-        color, colormap, colorrange, nothing, fs, nothing, uv,
-        lowclip, highclip, nan_color)
+    cols = per_face_colors(color, nothing, fs, nothing, uv, plot)
 
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
