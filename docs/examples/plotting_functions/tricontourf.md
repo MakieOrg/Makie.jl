@@ -90,7 +90,7 @@ y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
 z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.*randn.()
 
 inner = [n:-1:1; n] # clockwise inner 
-outer = [range(n+1, 2n); n+1] # counter-clockwise outer
+outer = [(n+1):(2n); n+1] # counter-clockwise outer
 boundary_nodes = [[outer], [inner]]
 f, ax, _ = tricontourf(x, y, z; boundary_nodes)
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
