@@ -53,6 +53,19 @@ function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real
     map(x -> elconvert(Float32, x), (x, y, z))
 end
 
+function Makie.convert_arguments(::Type{<:Tricontourf}, tri::T, z::AbstractVector{<:Real}) where {T <: DelTri.Triangulation}
+    n = DelTri.num_points(tri)
+    x = zeros(Float32, n)
+    y = zeros(Float32, n)
+    for i in DelTri.each_point_index(tri)
+        p = DelTri.get_point(tri, i)
+        x[i] = DelTri.getx(p)
+        y[i] = DelTri.gety(p)
+    end
+    triangles = [V[j] for V in DelTri.each_solid_triangle(tri), j in 1:3]'
+    return PlotSpec{Tricontourf}(x, y, z; triangulation = triangles)
+end
+
 function compute_contourf_colormap(levels, cmap, elow, ehigh)
     levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
     n = length(levels_scaled)

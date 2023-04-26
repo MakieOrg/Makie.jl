@@ -143,6 +143,33 @@ f
 ```
 \end{examplefigure}
 
+You can also provide a `Triangulation` object itself from DelaunayTriangulation.jl into `tricontourf`.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie, DelaunayTriangulation
+CairoMakie.activate!() # hide 
+
+using Random
+Random.seed!(1234)
+
+θ = [LinRange(0, 2π * (1 - 1/19), 20); 0]
+xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
+cx = 0.0
+for i in 1:2
+    push!(xy, [[(cx + cos(θ), sin(θ)) for θ in θ]])
+    push!(xy, [[(cx + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
+    cx += 3.0
+end
+boundary_nodes, points = convert_boundary_points_to_indices(xy)
+tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
+z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)]
+
+f, ax, tr = tricontourf(tri, z, colormap = :matter)
+f
+```
+\end{examplefigure}
+
 #### Relative mode
 
 Sometimes it's beneficial to drop one part of the range of values, usually towards the outer boundary.
