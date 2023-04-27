@@ -588,8 +588,7 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     end
     docs = get(_attribute_docs(t), s, nothing)
     examples = get(attribute_examples(t), s, Example[])
-    default_expr = default_attribute_values(t, nothing)[s]
-    default_str = repr(default_expr)
+    default_str = Makie.attribute_default_expressions(t)[s]
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
 
