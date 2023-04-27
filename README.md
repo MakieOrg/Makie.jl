@@ -1,5 +1,10 @@
 <div align="center">
-    <img src="https://raw.githubusercontent.com/MakieOrg/Makie.jl/master/assets/makie_logo_canvas.svg" alt="Makie.jl">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" 
+        srcset="/assets/makie_logo_canvas_dark.svg" >
+      <img alt="Makie.jl logo" 
+        src="/assets/makie_logo_canvas.svg" >
+    </picture>
 </div>
 
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
