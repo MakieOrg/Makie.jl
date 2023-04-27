@@ -459,7 +459,7 @@ function lx_attrdocs(lxc, _)
         examples = get(Makie.attribute_examples(type), attrkey, Makie.Example[])
         default_str = repr(Makie.default_attribute_values(type, nothing)[attrkey])
 
-        println(io, "### $attrkey")
+        println(io, "### `$attrkey`")
         println(io)
         println(io, "Default value: `$default_str`")
         println(io)
