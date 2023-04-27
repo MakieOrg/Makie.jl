@@ -79,7 +79,7 @@ To run the tests, you also should add:
 ```julia
 ]dev dev/Makie/ReferenceTests
 ```
-For more info about ReferenceTests, check out its [README](./ReferenceTests/README.md)
+For more info about ReferenceTests, check out its [README](./ReferenceUpdater/README.md)
 
 # Quick start
 
