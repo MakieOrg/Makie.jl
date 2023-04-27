@@ -85,6 +85,7 @@ using WGLMakie
 using JSServe, Markdown
 Page(exportable=true, offline=true) # for Franklin, you still need to configure
 WGLMakie.activate!()
+Makie.inline!(true) # Make sure to inline plots into Documenter output!
 scatter(1:4, color=1:4)
 ```
 \end{showhtml}
@@ -313,25 +314,6 @@ You may have noticed, styling isn't really amazing right now.
 The good news is, that one can use the whole mighty power of the CSS/HTML universe.
 If it wasn't clear so far, JSServe allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
 
-\begin{showhtml}{}
-```julia
-using Colors
-using JSServe: rows
-
-App() do session::Session
-
-    hue_slider = Slider(0:360)
-    color_swatch = DOM.div(class="h-6 w-6 p-2 m-2 rounded shadow")
-
-    onjs(session, hue_slider.value, js"""function (hue){
-        $(color_swatch).style.backgroundColor = "hsl(" + hue + ",60%,50%)"
-    }""")
-
-    return DOM.div(JSServe.TailwindCSS, rows(hue_slider, color_swatch))
-end
-```
-\end{showhtml}
-
 Tailwind is quite a amazing and has a great documentation especially for CSS beginners:
 https://tailwindcss.com/docs/
 
@@ -358,7 +340,27 @@ rows(args...; class="") = DOM.div(JSServe.TailwindCSS, args..., class=class * " 
 
 JSServe will then make sure, that `JSServe.TailwindCSS` is loaded, and will only load it once!
 
-Finally, lets create a styled, reusable card componenent:
+
+Note, that JSServe.TailwindDashboard already defines something like the above `rows`:
+
+\begin{showhtml}{}
+```julia
+using Colors
+using JSServe
+import JSServe.TailwindDashboard as D
+
+App() do session::Session
+    hue_slider = Slider(0:360)
+    color_swatch = DOM.div(class="h-6 w-6 p-2 m-2 rounded shadow")
+    onjs(session, hue_slider.value, js"""function (hue){
+        $(color_swatch).style.backgroundColor = "hsl(" + hue + ",60%,50%)"
+    }""")
+    return D.FlexRow(hue_slider, color_swatch)
+end
+```
+\end{showhtml}
+
+With this, we can create a styled, reusable card componenent:
 
 \begin{showhtml}{}
 ```julia
