@@ -536,7 +536,8 @@ convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)
 
 Base.@kwdef struct Example
     name::String
-    backend::Symbol = :CairoMakie
+    backend::Symbol = :CairoMakie # the backend that is used for rendering
+    backend_using::Symbol = backend # the backend that is shown for `using` (for CairoMakie-rendered plots of interactive stuff that should show `using GLMakie`)
     svg::Bool = true # only for CairoMakie
     code::String
 end
