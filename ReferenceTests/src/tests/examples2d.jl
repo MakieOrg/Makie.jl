@@ -676,6 +676,73 @@ end
     f
 end
 
+@reference_test "tricontourf with boundary nodes" begin
+    n = 20
+    angles = range(0, 2pi, length = n+1)[1:end-1]
+    x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
+    y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
+    z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.* RNG.randn.()
+
+    inner = [n:-1:1; n] # clockwise inner 
+    outer = [(n+1):(2n); n+1] # counter-clockwise outer
+    boundary_nodes = [[outer], [inner]]
+    f, ax, _ = tricontourf(x, y, z; boundary_nodes)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    f
+end
+
+@reference_test "tricontourf with boundary nodes and edges" begin
+    curve_1 = [
+    [(0.0, 0.0), (5.0, 0.0), (10.0, 0.0), (15.0, 0.0), (20.0, 0.0), (25.0, 0.0)],
+    [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
+    [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
+    [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
+    ]  
+    curve_2 = [
+        [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
+        [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
+        [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
+    ] 
+    curve_3 = [
+        [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
+        (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
+    ] 
+    curves = [curve_1, curve_2, curve_3]
+    points = [
+        (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
+        (23.0, 23.0), (22.6, 19.0), (23.8, 17.8), (22.0, 14.0), (22.0, 11.0),
+        (24.0, 6.0), (23.0, 2.0), (19.0, 1.0), (16.0, 3.0), (10.0, 1.0), (11.0, 3.0),
+        (6.0, 2.0), (6.2, 3.0), (2.0, 3.0), (2.6, 6.2), (2.0, 8.0), (2.0, 11.0),
+        (5.0, 12.0), (2.0, 17.0), (3.0, 19.0), (6.0, 18.0), (6.5, 14.5),
+        (13.0, 19.0), (13.0, 12.0), (16.0, 8.0), (9.8, 8.0), (7.5, 6.0),
+        (12.0, 13.0), (19.0, 15.0)
+    ]
+    boundary_nodes, points = DelTri.convert_boundary_points_to_indices(curves; existing_points=points)
+    edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
+
+    x = DelTri.getx.(points)
+    y = DelTri.gety.(points)
+    z = (x .- 1) .* (y .+ 1) 
+    f, ax, _ = tricontourf(x, y, z, boundary_nodes = boundary_nodes, edges = edges, levels = 30)
+    f
+end
+
+@reference_test "tricontourf with provided triangulation" begin
+    θ = [LinRange(0, 2π * (1 - 1/19), 20); 0]
+    xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
+    cx = [0.0, 3.0]
+    for i in 1:2
+        push!(xy, [[(cx[i] + cos(θ), sin(θ)) for θ in θ]])
+        push!(xy, [[(cx[i] + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
+    end
+    boundary_nodes, points = DelTri.convert_boundary_points_to_indices(xy)
+    tri = DelTri.triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
+    z = [(x - 3/2)^2 + y^2 for (x, y) in DelTri.each_point(tri)]
+
+    f, ax, tr = tricontourf(tri, z, colormap = :matter)
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
