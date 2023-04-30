@@ -164,11 +164,7 @@ void main(void)
     // Compute required amount of buffering
     float sprite_from_viewport_scale = 1.0 / viewport_from_sprite_scale;
     float bbox_buf = sprite_from_viewport_scale *
-                     (// Hack!! antialiasing is disabled for RECTANGLE==1 for now
-                      // because it's used for boxplots where the sprites are
-                      // long and skinny (violating assumption 1 above)
-                      (shape == 1 ? 0.0 : ANTIALIAS_RADIUS) +
-                      max(glow_width, 0) + max(stroke_width, 0));
+        (ANTIALIAS_RADIUS + max(glow_width, 0) + max(stroke_width, 0));
     // Compute xy bounding box of billboard (in model space units) after
     // buffering and associated bounding box of uv coordinates.
     vec2 bbox_radius_buf = bbox_signed_radius + sign(bbox_signed_radius)*bbox_buf;
