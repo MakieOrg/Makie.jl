@@ -139,7 +139,7 @@ end
 """
 function record(func, figlike::FigureLike, path::AbstractString; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike; format=format, kw_args...)
+    io = Record(func, figlike; format=format, visible=true, kw_args...)
     save(path, io)
 end
 
