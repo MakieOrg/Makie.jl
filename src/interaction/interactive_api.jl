@@ -212,6 +212,7 @@ given `scene`.
 By default uses the `scene` that the mouse is currently hovering over.
 """
 mouseposition(x) = mouseposition(get_scene(x))
+
 function mouseposition(scene::Scene = hovered_scene())
     return to_world(scene, Float64.(mouseposition_px(scene)))
 end

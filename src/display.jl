@@ -178,6 +178,13 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     show(io, scene)
 end
 
+# VSCode per default displays an object as markdown as well.
+# Which, without throwing a method error, would show a plot 2 times from within the display system.
+# This can lead to hangs e.g. for WGLMakie, where there is only one plotpane/browser, which then one waits on
+function Base.show(io::IO, m::MIME"text/markdown", fig::FigureLike)
+    throw(MethodError(show, io, m, fig))
+end
+
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
     if !ALWAYS_INLINE_PLOTS[]
         # If we always want to open a window, we call display manually here
