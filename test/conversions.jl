@@ -21,7 +21,7 @@ end
 @testset "changing input types" begin
     input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
     f, ax, pl = mesh(input)
-    m = Makie._triangle_mesh(Circle(Point2(0.0), 1.0))
+    m = Makie._triangle_mesh(Circle(Point2f(0), 1f0))
     input[] = m
     @test pl[1][] == m
 end
@@ -29,29 +29,29 @@ end
 @testset "to_vertices" begin
     X1 = [Point(rand(3)...) for i = 1:10]
     V1 = to_vertices(X1)
-    @test X1[7][1] == V1[7][1]
+    @test Float32(X1[7][1]) == V1[7][1]
 
     X2 = [tuple(rand(3)...) for i = 1:10]
     V2 = to_vertices(X2)
-    @test X2[7][1] == V2[7][1]
+    @test Float32(X2[7][1]) == V2[7][1]
 
     X4 = rand(2,10)
     V4 = to_vertices(X4)
-    @test X4[1,7] == V4[7][1]
+    @test Float32(X4[1,7]) == V4[7][1]
     @test V4[7][3] == 0
 
     X5 = rand(3,10)
     V5 = to_vertices(X5)
-    @test X5[1,7] == V5[7][1]
+    @test Float32(X5[1,7]) == V5[7][1]
 
     X6 = rand(10,2)
     V6 = to_vertices(X6)
-    @test X6[7,1] == V6[7][1]
+    @test Float32(X6[7,1]) == V6[7][1]
     @test V6[7][3] == 0
 
     X7 = rand(10,3)
     V7 = to_vertices(X7)
-    @test X7[7,1] == V7[7][1]
+    @test Float32(X7[7,1]) == V7[7][1]
 end
 
 @testset "functions" begin

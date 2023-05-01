@@ -1,10 +1,74 @@
+# For tracing function call order, probably delete later?
+
+macro trace(expr)
+    if expr.head in (Symbol("="), :function)
+        name = _to_typed_name(expr.args[1])
+        file = " in " * string(__source__.file) * ':'
+        line = string(__source__.line) * '\n'
+        code = quote
+            begin
+                printstyled($name, bold = true)
+                printstyled($file, color = :light_black)
+                printstyled($line, bold = true)
+                $(expr.args[2])
+            end
+        end
+        out = Expr(
+            expr.head,     # function or =
+            esc(expr.args[1]),  # function name w/ args
+            esc(code)
+        )
+        return out
+    end
+    return expr
+end
+
+function _to_typed_name(e::Expr)
+    if e.head == :where
+        _to_typed_name(e.args[1])
+    elseif e.head == :call
+        if length(e.args) > 1 && e.args[2] isa Expr && e.args[2].head == :parameters
+            args = join(_to_type.(e.args[3:end]), ", ")
+            kwargs = join(_to_type.(e.args[2].args), ", ")
+            return string(e.args[1]) * "(" * args * "; " * kwargs * ")"
+        else
+            args = join(_to_type.(e.args[2:end]), ", ")
+            return string(e.args[1]) * "(" * args * ")"
+        end
+    else
+        dump(e)
+        return "ERROR"
+    end
+end
+
+_to_type(s::Symbol) = "::Any"
+function _to_type(e::Expr)
+    if e.head == Symbol("::")
+        return "::" * string(e.args[end])
+    elseif e.head == Symbol("...")
+        return _to_type(e.args[1]) * "..."
+    elseif e.head == :parameters # keyword args
+        return _to_type(e.args[1])
+    elseif e.head == :kw # default value
+        return _to_type(e.args[1])
+    else
+        dump(e)
+        error("Failed to parse expression.")
+        return ""
+    end
+end
+
+
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
+
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
+const NativeFloat = Union{Float64, Float32}
+const NativePoint = Point{N, T} where {N, T <: NativeFloat}
 
 # if no plot type based conversion is defined, we try using a trait
-function convert_arguments(T::PlotFunc, args...; kw...)
+@trace function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T)
     try
         convert_arguments(ct, args...; kw...)
@@ -39,7 +103,7 @@ end
 
 # in case no trait matches we try to convert each individual argument
 # and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments_individually(T::PlotFunc, args...)
+@trace function convert_arguments_individually(T::PlotFunc, args...)
     # convert each single argument until it doesn't change type anymore
     single_converted = recursively_convert_argument.(args)
     # if the type of args hasn't changed this function call didn't help and we error
@@ -65,16 +129,24 @@ end
 ################################################################################
 
 # if no specific conversion is defined, we don't convert
-convert_single_argument(x) = x
+@trace convert_single_argument(x) = x
 
 # replace missings with NaNs
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
-    [ismissing(x) ? NaN : convert(Float64, x) for x in a]
+@trace function convert_single_argument(a::AbstractArray{<:Union{Missing, T}}) where {T <: NativeFloat}
+    nan = T(NaN)
+    [ismissing(x) ? nan : x for x in a]
+end
+@trace function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
+    [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
 end
 
 # same for points
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
-    [ismissing(x) ? Point{N, Float64}(NaN) : Point{N, Float64}(x) for x in a]
+@trace function convert_single_argument(a::AbstractArray{<:Union{Missing, T}}) where {T <: NativePoint}
+    nan = T(NaN)
+    [ismissing(x) ? nan : T(x) for x in a]
+end
+@trace function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
+    [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
 end
 
 ################################################################################
@@ -84,23 +156,23 @@ end
 """
 Wrap a single point or equivalent object in a single-element array.
 """
-function convert_arguments(::PointBased, x::Real, y::Real)
-    ([Point2(x, y)],)
+@trace function convert_arguments(::PointBased, x::Real, y::Real)
+    ([native_type(x, y)],)
 end
 
-function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
-    ([Point3(x, y, z)],)
+@trace function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
+    ([native_type(x, y, z)],)
 end
 
-function convert_arguments(::PointBased, position::VecTypes{N, T}) where {T <: Number, N}
-    ([convert(Point{N, T}, position)],)
+@trace function convert_arguments(::PointBased, position::VecTypes{N, T}) where {T <: Number, N}
+    ([native_type(position)],)
 end
 
-function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {T <: Number, N}
-    (elconvert(Point{N, T}, positions),)
+@trace function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N}}) where N
+    (native_type.(positions),)
 end
 
-function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
+@trace function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
     # TODO figure out a good subarray solution
     (positions,)
 end
@@ -109,7 +181,7 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+@trace function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3.(x, y', z)),)
 end
 """
@@ -119,7 +191,7 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3.(x, y, z),)
+@trace convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3.(x, y, z),)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -127,17 +199,15 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point3f, x))
+@trace convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point3f, x))
 
-function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
-    (to_vertices(pos),)
+@trace function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
+    (to_vertices(pos),) # NOTE: This currently ends up as Float32
 end
 
-function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real})
-    (Point2.(x, y),)
+@trace function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real})
+    (native_type.(x, y),)
 end
-
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3e.(x, y, z),)
 
 """
     convert_arguments(P, y)::Vector
@@ -146,7 +216,7 @@ an arbitrary `x` axis.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
+@trace convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -157,10 +227,10 @@ from `x` and `y`.
 `P` is the plot Type (it is optional).
 """
 #convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
-function convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector)
+@trace function convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector)
     return convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
 end
-convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
+@trace convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
 
 """
@@ -170,31 +240,31 @@ Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::PointBased, x::Rect2{T}) where T
+@trace function convert_arguments(P::PointBased, x::Rect2{T}) where T
     # TODO fix the order of decompose
     return convert_arguments(P, decompose(Point2{T}, x)[[1, 2, 4, 3]])
 end
 
-function convert_arguments(P::PointBased, mesh::AbstractMesh) # TODO
-    return convert_arguments(P, decompose(Point3e, mesh))
+@trace function convert_arguments(P::PointBased, mesh::AbstractMesh) # TODO
+    return convert_arguments(P, decompose(Point3f, mesh))
 end
 
-function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
+@trace function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
     # TODO FaceView should be natively supported by backends!
     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 end
 
-function convert_arguments(P::PointBased, rect::Rect3{T}) where T
+@trace function convert_arguments(P::PointBased, rect::Rect3{T}) where T
     return (decompose(Point3{T}, rect),)
 end
 
-function convert_arguments(P::Type{<: LineSegments}, rect::Rect3{T}) where T
+@trace function convert_arguments(P::Type{<: LineSegments}, rect::Rect3{T}) where T
     f = decompose(LineFace{Int}, rect)
     p = connect(decompose(Point3{T}, rect), f)
     return convert_arguments(P, p)
 end
 
-function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where T
+@trace function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where T
     points = unique(decompose(Point3{T}, rect))
     push!(points, Point3{T}(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
@@ -205,7 +275,7 @@ end
 
 Takes an input `LineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::LineString)
+@trace function convert_arguments(PB::PointBased, linestring::LineString)
     return convert_arguments(PB, decompose(Point, linestring))
 end
 
@@ -214,7 +284,7 @@ end
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
+@trace function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
     arr = copy(convert_arguments(PB, linestring[1])[1])
     T = eltype(arr)
     for ls in 2:length(linestring)
@@ -230,7 +300,7 @@ end
 
 Takes an input `Polygon` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, pol::Polygon)
+@trace function convert_arguments(PB::PointBased, pol::Polygon)
     arr = copy(convert_arguments(PB, pol.exterior)[1])
     T = eltype(arr)
     push!(arr, arr[1]) # close exterior
@@ -252,7 +322,7 @@ end
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
+@trace function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
     arr = copy(convert_arguments(PB, mp[1])[1])
     T = eltype(arr)
     for p in 2:length(mp)
@@ -262,7 +332,7 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPoly
     return (arr,)
 end
 
-function convert_arguments(::PointBased, b::BezierPath)
+@trace function convert_arguments(::PointBased, b::BezierPath)
     b2 = replace_nonfreetype_commands(b)
     points = Point2f[]
     last_point = Point2f(NaN)
@@ -336,16 +406,12 @@ whether they represent edges or centers of the heatmap bins.
 If they are centers, convert to edges. Convert eltypes to `Float32` and return
 outputs as a `Tuple`.
 """
-function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
+@trace function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
     _x, _y, _z = adjust_axes(SL, x, y, z)
-    return elconvert(Float64, _x), elconvert(Float64, _y), el32convert(_z)
+    return convert_single_argument(_x), convert_single_argument(_y), el32convert(_z) # TODO convert_single_argument for z too?
 end
-# function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-#     _x, _y, _z = adjust_axes(SL, x, y, z)
-#     return elconvert(Float64, _x), elconvert(Float64, _y), el32convert(_z)
-# end
 
-convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
+@trace convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -354,7 +420,7 @@ Takes 2 ClosedIntervals's `x`, `y`, and an AbstractMatrix `z`, and converts the 
 linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+@trace function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
@@ -366,17 +432,17 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
+@trace function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = size(data)
     convert_arguments(sl, 0 .. n, 0 .. m, el32convert(data))
 end
 
-function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
-    n, m = Float64.(size(data))
-    convert_arguments(ds, edges(1.0:n), edges(1.0:m), el32convert(data))
+@trace function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
+    n, m = Float32.(size(data))
+    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
 end
 
-function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
+@trace function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
     if !(length(x) == length(y) == length(z))
         error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
     end
@@ -409,7 +475,7 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+@trace function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
     if !applicable(f, x[1], y[1])
         error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
     end
@@ -431,12 +497,12 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
+@trace function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
     n, m, k = T.(size(data))
     return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
 end
 
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
+@trace function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
     return (x, y, z, el32convert(data))
 end
 """
@@ -446,7 +512,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
+@trace function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
     (x, y, z, el32convert(i))
 end
 
@@ -459,7 +525,7 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+@trace function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
@@ -474,7 +540,7 @@ end
 #                                <:Lines                                       #
 ################################################################################
 
-function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
+@trace function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
     # TODO fix the order of decompose
     points = decompose(Point2{T}, x)
     return (points[[1, 2, 4, 3, 1]],)
@@ -488,12 +554,12 @@ end
 Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
 """
-function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where 
+@trace function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where 
         E <: Union{Pair{A, A}, Tuple{A, A}} where A <: VecTypes{N, T} where {N, T}
     (reinterpret(Point{N, T}, positions),)
 end
 
-function convert_arguments(::Type{<: LineSegments}, x::Rect2{T}) where T
+@trace function convert_arguments(::Type{<: LineSegments}, x::Rect2{T}) where T
     # TODO fix the order of decompose
     points = decompose(Point2{T}, x)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
@@ -521,7 +587,7 @@ Takes an input `AbstractString` `x` and converts it to a string.
 Takes real vectors x, y, z and constructs a mesh out of those, under the assumption that
 every 3 points form a triangle.
 """
-function convert_arguments(
+@trace function convert_arguments(
         T::Type{<:Mesh},
         x::RealVector, y::RealVector, z::RealVector
     )
@@ -533,7 +599,7 @@ end
 Takes an input mesh and a vector `xyz` representing the vertices of the mesh, and
 creates indices under the assumption, that each triplet in `xyz` forms a triangle.
 """
-function convert_arguments(
+@trace function convert_arguments(
         MT::Type{<:Mesh},
         xyz::AbstractVector
     )
@@ -542,7 +608,7 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
+@trace function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
         n = normals(mesh)
@@ -561,29 +627,24 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
     end
 end
 
-function convert_arguments(
+@trace function convert_arguments(
         MT::Type{<:Mesh},
         meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     )
     return (meshes,)
 end
 
-function convert_arguments(
+@trace function convert_arguments(
         MT::Type{<:Mesh},
         xyz::Union{AbstractPolygon{2, T}, AbstractVector{<: AbstractPoint{2, T}}}
     ) where T
-    return (GeometryBasics.mesh(
-        xyz; pointtype = Point{2, T}, facetype = GeometryBasics.GLTriangleFace
-    ), )
+    return convert_arguments(MT, triangle_mesh(xyz))
 end
 
-function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T}
+@trace function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.mesh(
-        geom; pointtype = Point{N, T}, uv = Vec2f, normaltype = Vec3f,
-        facetype = GeometryBasics.GLTriangleFace
-    ), )
+    return (GeometryBasics.uv_normal_mesh(geom),)
 end
 
 """
@@ -592,7 +653,7 @@ end
 Takes real vectors x, y, z and constructs a triangle mesh out of those, using the
 faces in `indices`, which can be integers (every 3 -> one triangle), or GeometryBasics.NgonFace{N, <: Integer}.
 """
-function convert_arguments(
+@trace function convert_arguments(
         T::Type{<: Mesh},
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
@@ -607,11 +668,11 @@ Takes `vertices` and `indices`, and creates a triangle mesh out of those.
 See [`to_vertices`](@ref) and [`to_triangles`](@ref) for more information about
 accepted types.
 """
-function convert_arguments(MT::Type{<:Mesh}, vertices::AbstractArray, indices::AbstractArray)
+@trace function convert_arguments(MT::Type{<:Mesh}, vertices::AbstractArray, indices::AbstractArray)
     return convert_arguments(MT, to_vertices(vertices), to_triangles(indices))
 end
 
-function convert_arguments(
+@trace function convert_arguments(
         ::Type{<:Mesh}, pos::AbstractVector{VT}, faces::AbstractVector{GLTriangleFace}
     ) where {N, T, VT <: VecTypes{N, T}}
     _points = to_ndim.(Point{3, T}, pos, T(0))
@@ -624,12 +685,12 @@ end
 #                             Function Conversions                             #
 ################################################################################
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
+@trace function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
     ptype = plottype(P, Lines)
     to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
 end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
+@trace function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     ptype = plottype(P, Lines)
     to_plotspec(ptype, convert_arguments(ptype, x, y))
@@ -658,7 +719,7 @@ function tryrange(F, vec)
 end
 
 # OffsetArrays conversions
-function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
+@trace function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
   x1, y1 = wm.offsets .+ 1
   nx, ny = size(wm)
   x = range(x1, length = nx)
@@ -707,6 +768,14 @@ function el32convert(mesh::GeometryBasics.Mesh, positions = mesh.position)
 end
 
 
+@trace native_type(x::NativeFloat) = x
+# @trace native_type(x::VecTypes{N, T}) where {N, T <: NativeFloat} = reinterpret(Point{N, T}, x) # crashes precompile?
+@trace native_type(x::VecTypes{N, T}) where {N, T <: NativeFloat} = Point{N, T}(x)
+@trace native_type(x::Real) = Float32(x)
+@trace native_type(x::VecTypes{N}) where N = Point{N, Float32}(x)
+@trace native_type(x::Real, y::Real) = Point2(native_type(x), native_type(y))
+@trace native_type(x::Real, y::Real, z::Real) = Point3(native_type(x), native_type(y), native_type(z))
+
 
 """
     to_triangles(indices)
@@ -742,7 +811,7 @@ end
     to_vertices(v)
 
 Converts a representation of vertices `v` to its canonical representation as a
-`Vector{Point3{T}}`. `v` can be:
+`Vector{Point3f}`. `v` can be:
 
 - An `AbstractVector` of 3-element `Tuple`s or `StaticVector`s,
 
@@ -754,18 +823,14 @@ Converts a representation of vertices `v` to its canonical representation as a
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
 """
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
-    return reinterpret(Point3{T}, verts)
+    return T != Float32 ? Point3f.(verts) : reinterpret(Point3f, verts)
 end
 
-function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
-    to_vertices(to_ndim.(Point{3, T}, verts, 0.0))
+@trace function to_vertices(verts::AbstractVector{<: VecTypes})
+    to_ndim.(Point3f, verts, 0.0)
 end
 
-function to_vertices(verts::AbstractVector{<: VecTypes})
-    to_ndim.(Point{3, Float64}, verts, 0.0)
-end
-
-function to_vertices(verts::AbstractMatrix{<: Real})
+@trace function to_vertices(verts::AbstractMatrix{<: Real})
     if size(verts, 1) in (2, 3)
         to_vertices(verts, Val(1))
     elseif size(verts, 2) in (2, 3)
@@ -775,23 +840,23 @@ function to_vertices(verts::AbstractMatrix{<: Real})
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Real
+@trace function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Real
     N = size(verts, 1)
-    if N == 3
-        reinterpret(Point{N, T}, elconvert(T, vec(verts)))
+    if T == Float32 && N == 3
+        reinterpret(Point3f, elconvert(T, vec(verts)))
     else
         let N = Val(N), lverts = verts
             broadcast(1:size(verts, 2), N) do vidx, n
-                to_ndim(Point3{T}, ntuple(i-> lverts[i, vidx], n), 0.0)
+                to_ndim(Point3f, ntuple(i-> lverts[i, vidx], n), 0.0)
             end
         end
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Real
+@trace function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Real
     let N = Val(size(verts, 2)), lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
-            to_ndim(Point3{T}, ntuple(i-> lverts[vidx, i], n), 0.0)
+            to_ndim(Point3f, ntuple(i-> lverts[vidx, i], n), 0.0)
         end
     end
 end
