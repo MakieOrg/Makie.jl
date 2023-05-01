@@ -155,7 +155,7 @@ an arbitrary `x` axis.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
+convert_arguments(P::PointBased, y::AbstractVector{<: Number}) = convert_arguments(P, keys(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -165,11 +165,12 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-#convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
-function convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector)
+function convert_arguments(P::PointBased, x::ClosedInterval, y::AbstractVector{<: Number})
     return convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
 end
-convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
+function convert_arguments(P::PointBased, x::AbstractVector{<: Number}, y::ClosedInterval)
+    return convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
+end
 
 
 """
