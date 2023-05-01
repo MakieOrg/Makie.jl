@@ -188,7 +188,7 @@ But while this isn't in place, logging the the returned object makes it pretty e
 
 \begin{showhtml}{}
 ```julia
-using JSServe
+using JSServe: on_document_load
 using WGLMakie
 
 App() do session::Session
