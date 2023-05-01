@@ -364,3 +364,64 @@ end
 # Scalar - Vector getindex
 sv_getindex(v::Vector, i::Integer) = v[i]
 sv_getindex(x, i::Integer) = x
+
+
+# For tracing function call order, probably delete later?
+
+macro trace(expr)
+    if expr.head in (Symbol("="), :function)
+        name = _to_typed_name(expr.args[1])
+        file = " in " * string(__source__.file) * ':'
+        line = string(__source__.line) * '\n'
+        code = quote
+            begin
+                printstyled($name, bold = true)
+                printstyled($file, color = :light_black)
+                printstyled($line, bold = true)
+                $(expr.args[2])
+            end
+        end
+        out = Expr(
+            expr.head,     # function or =
+            esc(expr.args[1]),  # function name w/ args
+            esc(code)
+        )
+        return out
+    end
+    return expr
+end
+
+function _to_typed_name(e::Expr)
+    if e.head == :where
+        _to_typed_name(e.args[1])
+    elseif e.head == :call
+        if length(e.args) > 1 && e.args[2] isa Expr && e.args[2].head == :parameters
+            args = join(_to_type.(e.args[3:end]), ", ")
+            kwargs = join(_to_type.(e.args[2].args), ", ")
+            return string(e.args[1]) * "(" * args * "; " * kwargs * ")"
+        else
+            args = join(_to_type.(e.args[2:end]), ", ")
+            return string(e.args[1]) * "(" * args * ")"
+        end
+    else
+        dump(e)
+        return "ERROR"
+    end
+end
+
+_to_type(s::Symbol) = "::Any"
+function _to_type(e::Expr)
+    if e.head == Symbol("::")
+        return "::" * string(e.args[end])
+    elseif e.head == Symbol("...")
+        return _to_type(e.args[1]) * "..."
+    elseif e.head == :parameters # keyword args
+        return _to_type(e.args[1])
+    elseif e.head == :kw # default value
+        return _to_type(e.args[1])
+    else
+        dump(e)
+        error("Failed to parse expression.")
+        return ""
+    end
+end
