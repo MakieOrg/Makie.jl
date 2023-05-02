@@ -191,11 +191,13 @@ import .ShadeYourData
         post = identity,
         method = ShadeYourData.AggThreads(),
         colormap = theme(scene, :colormap),
+        colorrange = automatic,
         binfactor = 1,
     )
 end
 
 conversion_trait(::Type{<: DataShader}) = PointBased()
+
 
 function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
     scene = parent_scene(p)
@@ -211,26 +213,23 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
         xmax, ymax = maximum(lims)
         ShadeYourData.Canvas(xmin, xmax, xsize, ymin, ymax, ysize)
     end
-
     points = p[1]
-
-    sorted_points = lift(points) do data
-        sort(data, by = x -> (x[1], x[2]))
-    end
-
+    # optimize `data_limits` to be only calculated on changed data
+    p._boundingbox = lift(x-> FRect3D(FRect2D(x)), points)
     xrange = Observable(0f0..1f0)
     yrange = Observable(0f0..1f0)
-    
+
     pixels = Observable(Float32[0; 0;; 1; 1])
-    onany(canvas, p.agg, p.post, p.method, sorted_points) do canvas, agg, post, method, sorted_points
+    onany(canvas, p.agg, p.post, p.method, points) do canvas, agg, post, method, points
         xrange.val = canvas.xmin .. canvas.xmax
         yrange.val = canvas.ymin .. canvas.ymax
-        pixels[] = float(post(ShadeYourData.aggregate(canvas, sorted_points; op=agg, method)))
+        pixels[] = float(post(ShadeYourData.aggregate(canvas, points; op=agg, method)))
+        return
     end
-    heatmap!(p, xrange, yrange, pixels, colormap = p.colormap)
+    heatmap!(p, xrange, yrange, pixels; colorrange=p.colorrange, colormap = p.colormap)
     return p
 end
 
 function Makie.data_limits(p::DataShader{Tuple{Vector{Point2f}}})
-    FRect3D(FRect2D(p[1][]))
+    return p._boundingbox[]
 end
