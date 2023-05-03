@@ -237,19 +237,17 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
     xrange = Observable(0f0..1f0)
     yrange = Observable(0f0..1f0)
 
-
     # use resizable buffer vectors for aggregation
     aggbuffer = zeros(Float32, 0)
     pixelbuffer = zeros(Float32, canvas[].xsize * canvas[].ysize)
     pixels = Observable{Matrix{Float32}}()
 
-
-    onany(canvas, p.agg, p.post, p.method, points) do canvas, agg, post, method, points
-        xrange.val = canvas.xmin .. canvas.xmax
-        yrange.val = canvas.ymin .. canvas.ymax
-
+    function update_pixels(canvas, agg, post, method, points)
+        agg, post, method = (p.agg[], p.post[], p.method[])
         w = canvas.xsize
         h = canvas.ysize
+        xrange.val = canvas.xmin .. canvas.xmax
+        yrange.val = canvas.ymin .. canvas.ymax
 
         n_threads(::ShadeYourData.AggSerial) = 1
         n_threads(::ShadeYourData.AggThreads) = Threads.nthreads()
@@ -274,10 +272,9 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
         pixels[] = post(pixelbuffer_reshaped)
         return
     end
-
-    notify(canvas)
-
-    heatmap!(p, xrange, yrange, pixels; colorrange=p.colorrange, colormap = p.colormap)
+    onany_latest(update_pixels, canvas, p.agg, p.post, p.method)
+    update_pixels(canvas[], p.agg[], p.post[], p.method[], points)
+    image!(p, xrange, yrange, pixels; colorrange=p.colorrange, colormap = p.colormap)
     return p
 end
 
