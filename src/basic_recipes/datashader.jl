@@ -243,7 +243,6 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
     pixels = Observable{Matrix{Float32}}()
 
     function update_pixels(canvas, agg, post, method, points)
-        agg, post, method = (p.agg[], p.post[], p.method[])
         w = canvas.xsize
         h = canvas.ysize
         xrange.val = canvas.xmin .. canvas.xmax
