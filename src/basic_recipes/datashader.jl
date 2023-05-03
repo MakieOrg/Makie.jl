@@ -55,10 +55,13 @@ abstract type AggMethod end
 struct AggSerial <: AggMethod end
 struct AggThreads <: AggMethod end
 
-aggregate(c::Canvas, points; op::AggOp=AggCount(), method::AggMethod=AggSerial()) =
-    _aggregate(c, op, method, points)
+function aggregate!(aggbuffer, pixelbuffer, c::Canvas, points; op::AggOp=AggCount(), method::AggMethod=AggSerial())
+    fill!(aggbuffer, null(op))
+    _aggregate!(aggbuffer, pixelbuffer, c, op, method, points)
+    return
+end
 
-function _aggregate(c::Canvas, op::AggOp, ::AggSerial, points)
+function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::Canvas, op::AggOp, ::AggSerial, points)
     xmin, xmax = xlims(c)
     ymin, ymax = ylims(c)
     xsize, ysize = size(c)
@@ -66,7 +69,13 @@ function _aggregate(c::Canvas, op::AggOp, ::AggSerial, points)
     ymax > ymin || error("require ymax > ymin")
     xscale = xsize / (xmax - xmin)
     yscale = ysize / (ymax - ymin)
-    out = fill(null(op), xsize, ysize)
+
+    @assert length(aggbuffer) == xsize * ysize
+    @assert length(pixelbuffer) == xsize * ysize
+    @assert eltype(aggbuffer) === typeof(null(op))
+
+    # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
+    out = Base.ReshapedArray(aggbuffer, (xsize, ysize), ())
     @inbounds for point in points
         x = point[1]
         y = point[2]
@@ -84,10 +93,11 @@ function _aggregate(c::Canvas, op::AggOp, ::AggSerial, points)
         end
         nothing
     end
-    map(x->value(op, x), out)
+    map!(x->value(op, x), pixelbuffer, aggbuffer)
+    return
 end
 
-function _aggregate(c::Canvas, op::AggOp, ::AggThreads, points)
+function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::Canvas, op::AggOp, ::AggThreads, points)
     xmin, xmax = xlims(c)
     ymin, ymax = ylims(c)
     xsize, ysize = size(c)
@@ -95,8 +105,16 @@ function _aggregate(c::Canvas, op::AggOp, ::AggThreads, points)
     ymax > ymin || error("require ymax > ymin")
     xscale = xsize / (xmax - xmin)
     yscale = ysize / (ymax - ymin)
+
     # each thread reduces some of the data separately
-    out = fill(null(op), Threads.nthreads(), xsize, ysize)
+    @assert length(aggbuffer) == Threads.nthreads() * xsize * ysize
+    @assert length(pixelbuffer) == xsize * ysize
+    @assert eltype(aggbuffer) === typeof(null(op))
+
+    # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
+    out = Base.ReshapedArray(aggbuffer, (Threads.nthreads(), xsize, ysize), ())
+    out2 = Base.ReshapedArray(pixelbuffer, (xsize, ysize), ())
+
     @threads for idx in eachindex(points)
         t = Threads.threadid()
         p = @inbounds points[idx]
@@ -116,17 +134,17 @@ function _aggregate(c::Canvas, op::AggOp, ::AggThreads, points)
         end
     end
     # reduce along the thread dimension
-    out2 = fill(null(op), xsize, ysize)
     for j in 1:ysize
         for i in 1:xsize
             @inbounds val = out[1,i,j]
             for t in 2:Threads.nthreads()
                 @inbounds val = merge(op, val, out[t,i,j])
             end
-            @inbounds out2[i,j] = val
+            # update the value in out2 directly in this loop
+            @inbounds out2[i,j] = value(op, val)
         end
     end
-    map(x->value(op, x), out2)
+    return
 end
 
 const DEFAULT_SPREAD_MASKS = Matrix{Bool}[
@@ -189,7 +207,7 @@ import .ShadeYourData
     Theme(
         agg = ShadeYourData.AggCount(),
         post = identity,
-        method = ShadeYourData.AggThreads(),
+        method = ShadeYourData.AggSerial(),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         binfactor = 1,
@@ -219,13 +237,46 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
     xrange = Observable(0f0..1f0)
     yrange = Observable(0f0..1f0)
 
-    pixels = Observable(Float32[0; 0;; 1; 1])
+
+    # use resizable buffer vectors for aggregation
+    aggbuffer = zeros(Float32, 0)
+    pixelbuffer = zeros(Float32, canvas[].xsize * canvas[].ysize)
+    pixels = Observable{Matrix{Float32}}()
+
+
     onany(canvas, p.agg, p.post, p.method, points) do canvas, agg, post, method, points
         xrange.val = canvas.xmin .. canvas.xmax
         yrange.val = canvas.ymin .. canvas.ymax
-        pixels[] = float(post(ShadeYourData.aggregate(canvas, points; op=agg, method)))
+
+        w = canvas.xsize
+        h = canvas.ysize
+
+        n_threads(::ShadeYourData.AggSerial) = 1
+        n_threads(::ShadeYourData.AggThreads) = Threads.nthreads()
+        n_elements = w * h * n_threads(method)
+
+        # if aggbuffer has the appropriate element type for the current aggregation scheme
+        # we can reuse it
+        if eltype(aggbuffer) === typeof(ShadeYourData.null(agg))
+            resize!(aggbuffer, n_elements)
+        # otherwise we allocate a new array
+        else
+            aggbuffer = fill(ShadeYourData.null(agg), n_elements)
+        end
+
+        resize!(pixelbuffer, w * h)
+
+        ShadeYourData.aggregate!(aggbuffer, pixelbuffer, canvas, points; op=agg, method)
+
+        # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
+        pixelbuffer_reshaped = Base.ReshapedArray(pixelbuffer, (canvas.xsize, canvas.ysize), ())
+
+        pixels[] = post(pixelbuffer_reshaped)
         return
     end
+
+    notify(canvas)
+
     heatmap!(p, xrange, yrange, pixels; colorrange=p.colorrange, colormap = p.colormap)
     return p
 end
