@@ -10,7 +10,7 @@ function zlims! end
 Set the x-axis label for the given Scene.
 Defaults to using the current Scene.
 """
-function xlabel!(scene, xlabel::AbstractString)
+function xlabel!(scene::Scene, xlabel::AbstractString)
     axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     scene[OldAxis][:names][:axisnames][] = (xlabel, scene[OldAxis][:names][:axisnames][][2:end]...)
@@ -23,7 +23,7 @@ end
 Set the y-axis label for the given Scene.
 Defaults to using the current Scene.
 """
-function ylabel!(scene, ylabel::AbstractString)
+function ylabel!(scene::Scene, ylabel::AbstractString)
     axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     if axis isa Axis3D
@@ -42,7 +42,7 @@ Defaults to using the current Scene.
 !!! warning
     The Scene must have an Axis3D.  If not, then this function will error.
 """
-function zlabel!(scene, zlabel::AbstractString)
+function zlabel!(scene::Scene, zlabel::AbstractString)
     axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     @assert axis isa Axis3D "The scene does not have a z-axis"

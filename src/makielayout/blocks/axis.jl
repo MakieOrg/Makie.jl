@@ -1321,6 +1321,32 @@ function limits!(args...)
     limits!(current_axis(), args...)
 end
 
+"""
+    xlabel!([ax,] xlabel)
+
+Set the x-axis label for the given Axis.
+Defaults to using the current Axis.
+"""
+function xlabel!(ax::Union{Axis, Axis3}, xlabel::AbstractString)
+    ax.xlabel = xlabel
+end
+
+xlabel!(figure::Figure, xlabel::AbstractString) = xlabel!(current_axis(figure), xlabel)
+xlabel!(xlabel::AbstractString) = xlabel!(current_axis(), xlabel)
+
+"""
+    ylabel!([ax,] ylabel)
+
+Set the y-axis label for the given Axis.
+Defaults to using the current Axis.
+"""
+function ylabel!(ax::Union{Axis, Axis3}, ylabel::AbstractString)
+    ax.ylabel = ylabel
+end
+
+ylabel!(figure::Figure, ylabel::AbstractString) = ylabel!(current_axis(figure), ylabel)
+ylabel!(ylabel::AbstractString) = ylabel!(current_axis(), ylabel)
+
 function Base.delete!(ax::Axis, plot::AbstractPlot)
     delete!(ax.scene, plot)
     ax

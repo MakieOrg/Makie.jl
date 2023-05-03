@@ -923,3 +923,18 @@ function limits!(ax::Axis3, rect::Rect3)
     Makie.ylims!(ax, ymin, ymax)
     Makie.zlims!(ax, zmin, zmax)
 end
+
+"""
+    zlabel!([ax,] zlabel)
+
+Set the z-axis label for the given Axis3.
+Defaults to using the current Axis3.
+"""
+function zlabel!(ax::Axis3, zlabel::AbstractString)
+    ax.zlabel = zlabel
+    return
+end
+
+zlabel!(figure::Figure, zlabel::AbstractString) = zlabel!(current_axis(figure), zlabel)
+zlabel!(zlabel::AbstractString) = zlabel!(current_axis(), zlabel)
+
