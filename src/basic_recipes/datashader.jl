@@ -272,8 +272,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
         pixels[] = post(pixelbuffer_reshaped)
         return
     end
-    onany_latest(update_pixels, canvas, p.agg, p.post, p.method)
-    update_pixels(canvas[], p.agg[], p.post[], p.method[], points)
+    onany_latest(update_pixels, canvas, p.agg, p.post, p.method, points)
+    update_pixels(canvas[], p.agg[], p.post[], p.method[], points[])
     image!(p, xrange, yrange, pixels; colorrange=p.colorrange, colormap = p.colormap)
     return p
 end
