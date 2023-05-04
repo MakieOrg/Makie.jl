@@ -62,11 +62,11 @@ end
 # without scenelike, use current axis of current figure
 
 function plot!(P::PlotFunc, args...; kw_attributes...)
-    ax = try 
-      current_axis(current_figure())
-    catch
-      error("Argument to current_axis is of type Nothing")
+    figure = current_figure()
+    if figure === nothing
+      error("Argument to function current_axis is of type nothing") 
     end
+    ax = current_axis(figure)
     isnothing(ax) && error("There is no current axis to plot into.")
     plot!(P, ax, args...; kw_attributes...)
 end
