@@ -937,7 +937,7 @@ struct LegendEntry
     attributes::Attributes
 end
 
-const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
+const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
     entrygroups::Observable{Vector{EntryGroup}}
