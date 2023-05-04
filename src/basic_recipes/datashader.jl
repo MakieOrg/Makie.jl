@@ -272,7 +272,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
 
         resize!(pixelbuffer, w * h)
 
-        @time ShadeYourData.aggregate!(aggbuffer, pixelbuffer, canvas, points; op=agg, method)
+        ShadeYourData.aggregate!(aggbuffer, pixelbuffer, canvas, points; op=agg, method)
         # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
         pixelbuffer_reshaped = Base.ReshapedArray(pixelbuffer, (canvas.xsize, canvas.ysize), ())
 
