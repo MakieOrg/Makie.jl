@@ -1,3 +1,7 @@
+################################################################################
+#                        Transformation matrix builders                        #
+################################################################################
+
 function scalematrix(s::Vec{3, T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
@@ -238,6 +242,83 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
+################################################################################
+#                              Projection methods                              #
+################################################################################
+
+########################################
+#           Efficient matmul           #
+########################################
+
+# The following code is just handwritten matrix multiplication.
+# Could theoretically be optimized, but the idea was more to cut 
+# down on `to_ndim`, which avoids allocations and dimension changes.
+
+# As an example (and a benchmark), 
+# ```julia
+# using Makie, BenchmarkTools
+# f, a, p = scatter(randn(Point2f, 1_000_000)) # scatter 1M random points
+# @benchmark Makie.project(camera(scene), )
+
+# using Symbolics
+# mat = Makie.Mat4(Symbolics.variable.(("mat",), 1:16))
+# 
+# mat * Point4(Symbolics.variable.(("point",), 1:4))
+
+"""
+    apply_matrix(mat::Mat4, point::Point; dim4 = 1f0)::Point3f
+
+Transform a point by a matrix, i.e., ``mat * point``. 
+
+`point` may be a `Point2` or a `Point3`.
+
+This is an efficient implementation because the matrix multiplication 
+is written out by hand, avoiding unnecessary allocations and dimension changes.
+
+Always returns a Point3f.
+"""
+function apply_matrix(mat::Mat4{<: Number}, point::T; dim4 = 1f0) where {T <: VecTypes{2, <: Number}}
+    # NOTE: this is the 2d case.
+
+    # First, compute the fourth dimension transformation, since we 
+    # will divide the other dimensions by it.
+    # Here, we know that the fourth dimension of the point must have value 1,
+    # so we are able to write the matrix multiplication out and obtain quite a bit of 
+    # efficiency that way.
+    transformed_dim4 = mat[4]*point[1] + mat[8]*point[2] #=+ mat[12]*point[3]=# + mat[16] * dim4# * point[4]
+    # Now, we perform the written-out matrix multiplication.
+    # For Point2f, the 3rd dimension will always be 0 by definition, so we can skip 
+    # those calculations which involve that dimension.
+    return Point3f(
+        (mat[1] * point[1] + mat[5]*point[2] + #=mat[9]*point[3] +=# mat[13]*dim4 #= * point[4] =#)/transformed_dim4,
+        (#=mat[10]*point₃ +=# mat[14]*dim4 #=*point[4]=# + mat[2]*point[1] + mat[6]*point[2])/transformed_dim4,
+        (mat[3]*point[1] + mat[7]*point[2] #=+ mat[11]*point[3]=# + mat[15]*dim4 #=*point[4]=#)/transformed_dim4,
+    )
+end
+
+function apply_matrix(mat::Mat4{<: Number}, point::T; dim4 = 1f0) where {T <: VecTypes{3, <: Number}}
+    # NOTE: this is the 3d case.
+
+    # First, compute the fourth dimension transformation, since we 
+    # will divide the other dimensions by it.
+    # Here, we know that the fourth dimension of the point must have value 1,
+    # so we are able to write the matrix multiplication out and obtain quite a bit of 
+    # efficiency that way.
+    transformed_dim4 = mat[4]*point[1] + mat[8]*point[2] + mat[12]*point[3] + mat[16] * dim4# * point[4]
+    # Now, we perform the written-out matrix multiplication.
+    return Point3f(
+        (mat[1] * point[1] + mat[5]*point[2] + mat[9]*point[3] + mat[13]*dim4#= * point[4] =#)/transformed_dim4,
+        (mat[10]*point[3] + mat[14]*dim4#=*point[4]=# + mat[2]*point[1] + mat[6]*point[2])/transformed_dim4,
+        (mat[3]*point[1] + mat[7]*point[2] + mat[11]*point[3] + mat[15]*dim4#=*point[4]=#)/transformed_dim4,
+    )
+end
+
+apply_matrix(mat::Mat4{<: Number}, point::Point4{<: Number}) = mat * point
+
+########################################
+#               to_world               #
+########################################
+
 function to_world(scene::Scene, point::T) where T <: StaticVector
     cam = scene.camera
     x = to_world(
@@ -278,6 +359,11 @@ function to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
+########################################
+#               project                #
+########################################
+
+# Projects from scene dataspace to pixel space (I think)
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
     area = pixelarea(scene)[]
@@ -292,26 +378,21 @@ function project(scene::Scene, point::T) where T<:StaticVector
 end
 
 function project(matrix::Mat4f, p::T, dim4 = 1.0) where T <: VecTypes
-    p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
-    p = matrix * p
+    p = apply_matrix(matrix, p; dim4)
     to_ndim(T, p, 0.0)
 end
 
 function project(proj_view::Mat4f, resolution::Vec2, point::Point)
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = proj_view * p4d
-    p = (clip ./ clip[4])[Vec(1, 2)]
-    p = Vec2f(p[1], p[2])
+    p = Vec2f(apply_matrix(proj_view, point)[Vec2{Int}(1, 2)])
     return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
 end
 
 function project_point2(mat4::Mat4, point2::Point2)
-    Point2f(mat4 * to_ndim(Point4f, to_ndim(Point3f, point2, 0), 1))
+    Point2f(apply_matrix(mat4, point2))
 end
 
 function transform(model::Mat4, x::T) where T
-    x4d = to_ndim(Vec4f, x, 0.0)
-    to_ndim(T, model * x4d, 0.0)
+    to_ndim(T, apply_matrix(model, x; dim4 = 0.0), 0.0)
 end
 
 # project between different coordinate systems/spaces
@@ -348,7 +429,13 @@ function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
     input_space === output_space && return to_ndim(Point3f, pos, 0)
     clip_from_input = space_to_clip(cam, input_space)
     output_from_clip = clip_to_space(cam, output_space)
-    p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
-    transformed = output_from_clip * clip_from_input * p4d
+    transformed = apply_matrix(output_from_clip * clip_from_input, pos)
     return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
+end
+
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos::AbstractArray{<: VecTypes{<: Number}})
+    input_space === output_space && return to_ndim.(Point3f, pos, 0)
+    clip_from_input = space_to_clip(cam, input_space)
+    output_from_clip = clip_to_space(cam, output_space)
+    return apply_matrix.((output_from_clip * clip_from_input,), pos)
 end
