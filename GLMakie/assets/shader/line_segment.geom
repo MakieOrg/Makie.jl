@@ -50,7 +50,7 @@ void set_clip(WorldAxisLimits planes, int idx){
     gl_ClipDistance[5] = gl_in[idx].gl_ClipDistance[5];
 };
 
-void emit_vertex(vec2 position, vec2 uv, int index)
+void emit_vertex(vec3 position, vec2 uv, int index)
 {
     vec4 inpos = gl_in[index].gl_Position;
     f_uv = uv;
