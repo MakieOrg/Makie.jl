@@ -429,8 +429,7 @@ function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
     input_space === output_space && return to_ndim(Point3f, pos, 0)
     clip_from_input = space_to_clip(cam, input_space)
     output_from_clip = clip_to_space(cam, output_space)
-    transformed = apply_matrix(output_from_clip * clip_from_input, pos)
-    return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
+    return apply_matrix(output_from_clip * clip_from_input, pos)
 end
 
 function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos::AbstractArray{<: VecTypes{<: Number}})
