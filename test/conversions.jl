@@ -78,6 +78,11 @@ end
     p = convert_arguments(Makie.PointBased(), ls)
     @test p[1] == pts
 
+    pts_empty = Point2f[]
+    ls_empty = LineString(pts_empty)
+    p_empty = convert_arguments(Makie.PointBased(), ls_empty)
+    @test p_empty[1] == pts_empty
+
     pts1 = [Point(5, 2), Point(4,8), Point(2, 8), Point(5, 2)]
     ls1 = LineString(pts1)
     lsa = [ls, ls1]
@@ -90,6 +95,10 @@ end
     @test p2[1][1:4] == pts
     @test p2[1][6:9] == pts1
 
+    mls_emtpy = MultiLineString([LineString(pts_empty)])
+    p_empty = convert_arguments(Makie.PointBased(), mls_emtpy)
+    @test p_empty[1] == pts_empty
+
     pol_e = Polygon(ls)
     p3_e = convert_arguments(Makie.PointBased(), pol_e)
     @test p3_e[1][1:end-1] == pts # for poly we repeat last point
@@ -98,6 +107,10 @@ end
     p3 = convert_arguments(Makie.PointBased(), pol)
     @test p3[1][1:4] == pts
     @test p3[1][7:10] == pts1
+
+    pol_emtpy = Polygon(pts_empty)
+    p_empty = convert_arguments(Makie.PointBased(), pol_emtpy)
+    @test p_empty[1] == pts_empty
 
     pts2 = Point{2, Int}[(5, 1), (3, 3), (4, 8), (1, 2), (5, 1)]
     pts3 = Point{2, Int}[(2, 2), (2, 3),(3, 4), (2, 2)]
@@ -114,6 +127,10 @@ end
     @test p4[1][14:18] == pts2
     @test p4[1][21:24] == pts3
     @test p4[1][27:31] == pts4
+
+    mpol_emtpy = MultiPolygon(typeof(pol_emtpy)[])
+    p_empty = convert_arguments(Makie.PointBased(), mpol_emtpy)
+    @test p_empty[1] == pts_empty
 end
 
 using Makie: check_line_pattern, line_diff_pattern

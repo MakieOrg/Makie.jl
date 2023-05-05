@@ -211,7 +211,16 @@ end
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    arr = copy(convert_arguments(PB, linestring[1])[1])
+    if length(linestring) > 0
+        converted = convert_arguments(PB, linestring[1])
+        if length(converted) > 0
+            arr = copy(converted[1])
+        else
+            arr = Point2f[]
+        end
+    else
+        arr = Point2f[]
+    end
     for ls in 2:length(linestring)
         push!(arr, Point2f(NaN))
         append!(arr, convert_arguments(PB, linestring[ls])[1])
@@ -226,15 +235,25 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    arr = copy(convert_arguments(PB, pol.exterior)[1])
-    push!(arr, arr[1]) # close exterior
+    converted = convert_arguments(PB, pol.exterior)
+    if length(converted) > 0
+        arr = copy(converted[1])
+        if length(arr) > 0
+            push!(arr, arr[1]) # close exterior
+        end
+    else
+        arr = Point2f[]
+    end
     if !isempty(pol.interiors)
         push!(arr, Point2f(NaN))
         for interior in pol.interiors
-            inter = convert_arguments(PB, interior)[1]
-            append!(arr, inter)
-            # close interior + separate!
-            push!(arr, inter[1], Point2f(NaN))
+            converted = convert_arguments(PB, interior)
+            if length(converted) > 0
+                inter = converted[1]
+                append!(arr, inter)
+                # close interior + separate!
+                push!(arr, inter[1], Point2f(NaN))
+            end
         end
     end
     return (arr,)
@@ -247,10 +266,22 @@ end
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = copy(convert_arguments(PB, mp[1])[1])
+    if length(mp) > 0
+        converted = convert_arguments(PB, mp[1])
+        if length(converted) > 0
+            arr = copy(converted[1])
+        else
+            arr = Point2f[]
+        end
+    else
+        arr = Point2f[]
+    end
     for p in 2:length(mp)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, mp[p])[1])
+        converted = convert_arguments(PB, mp[p])
+        if length(converted) > 0
+            push!(arr, Point2f(NaN))
+            append!(arr, converted[1])
+        end
     end
     return (arr,)
 end
