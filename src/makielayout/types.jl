@@ -141,11 +141,12 @@ mutable struct RectangleZoom
     from::Union{Nothing, Point2f}
     to::Union{Nothing, Point2f}
     rectnode::Observable{Rect2f}
+    modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false)
+function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)))
+                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
@@ -468,7 +469,8 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, Observable(ax.scene), ax.finallimits, r.rectnode)
+    selection_vertices = lift(_selection_vertices, ax.blockscene, Observable(ax.scene), ax.finallimits,
+                              r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
@@ -910,6 +912,8 @@ end
         direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
+        "Speed of scrolling in large Menu lists."
+        scroll_speed = 15.0
     end
 end
 
@@ -933,7 +937,7 @@ struct LegendEntry
     attributes::Attributes
 end
 
-const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
+const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
     entrygroups::Observable{Vector{EntryGroup}}

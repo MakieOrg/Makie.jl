@@ -8,7 +8,7 @@ using Colors
 using ShaderAbstractions
 using LinearAlgebra
 using GeometryBasics
-using ImageMagick
+using PNGFiles
 using FreeTypeAbstraction
 
 using JSServe: Session
@@ -22,7 +22,7 @@ using ShaderAbstractions: InstancedProgram
 using GeometryBasics: StaticVector
 
 import Makie.FileIO
-using Makie: get_texture_atlas, SceneSpace, Pixel
+using Makie: get_texture_atlas, SceneSpace, Pixel, Automatic
 using Makie: attribute_per_char, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
@@ -42,6 +42,7 @@ include("meshes.jl")
 include("imagelike.jl")
 include("picking.jl")
 
+const LAST_INLINE = Base.RefValue{Union{Automatic, Bool}}(Makie.automatic)
 
 """
     WGLMakie.activate!(; screen_config...)
@@ -53,7 +54,20 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; screen_config...)
+function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config...)
+    if inline isa Automatic
+        # Figure out if there is a display system that can show plots as html
+        can_show_html = JSServe.has_html_display()
+        if !can_show_html
+            JSServe.browser_display()
+            Makie.inline!(false) # browser display is like opening a window, so needs inline = false
+        else
+            Makie.inline!(true) # we show it via the display system
+        end
+    else
+        Makie.inline!(inline)
+    end
+    LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
     return
@@ -73,6 +87,8 @@ function __init__()
     Makie.font_render_callback!(atlas) do sd, uv
         TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
     end
+    DISABLE_JS_FINALZING[] = false
+    return
 end
 
 # re-export Makie, including deprecated names

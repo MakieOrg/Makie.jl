@@ -1,4 +1,4 @@
-using SnoopPrecompile
+using PrecompileTools
 
 macro compile(block)
     return quote
@@ -15,16 +15,21 @@ macro compile(block)
             s = serialize_scene(scene)
             JSServe.SerializedMessage(session, Dict(:data => s))
             close(session)
-            nothing
+            return nothing
         end
     end
 end
 
 let
-    @precompile_all_calls begin
+    @compile_workload begin
+        DISABLE_JS_FINALZING[] = true # to not start cleanup task
         WGLMakie.activate!()
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
+        Makie._current_figure[] = nothing
+        Observables.clear(TEXTURE_ATLAS)
+        TEXTURE_ATLAS[] = Float32[]
+        nothing
     end
 end

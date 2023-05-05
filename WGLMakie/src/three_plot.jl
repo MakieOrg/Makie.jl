@@ -59,7 +59,9 @@ function three_display(session::Session, scene::Scene; screen_config...)
         $(done_init).notify(true)
     })
     """)
-
+    on(session, done_init) do val
+        window_open[] = true
+    end
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
     return three, wrapper, done_init

@@ -59,7 +59,7 @@ labels = []
 inputs = []
 refresh = Observable(nothing)
 for (key, (obs, input)) in pairs(sliders)
-    push!(labels, Label(fig, string(key); align=:left))
+    push!(labels, Label(fig, string(key); justification=:left))
     push!(inputs, input)
     on(obs) do value
         @show key value

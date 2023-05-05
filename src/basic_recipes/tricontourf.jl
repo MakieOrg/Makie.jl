@@ -93,26 +93,24 @@ end
 function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real},<:AbstractVector{<:Real}}})
     xs, ys, zs = c[1:3]
 
-    c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
-        _get_isoband_levels(Val(mode), levels, vec(zs))
+    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
+        return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c._computed_levels) do levels
-        minimum(levels), maximum(levels)
-    end
-    computed_colormap = lift(compute_contourf_colormap, c._computed_levels, c.colormap, c.extendlow,
+    colorrange = lift(extrema_nan, c, c._computed_levels)
+    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
     map!(compute_lowcolor, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c.extendlow)
+    is_extended_low = lift(!isnothing, c, c.extendlow)
 
     highcolor = Observable{RGBAf}()
     map!(compute_highcolor, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c.extendhigh)
+    is_extended_high = lift(!isnothing, c, c.extendhigh)
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
@@ -145,7 +143,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
             if isempty(pointvecs)
                 continue
             end
-            
+
             for pointvec in pointvecs
                 p = Makie.Polygon(pointvec)
                 push!(polys[], p)
@@ -156,7 +154,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high, c.triangulation)
+    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high, c.triangulation)
     # onany doesn't get called without a push, so we call
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[], c.triangulation[])
