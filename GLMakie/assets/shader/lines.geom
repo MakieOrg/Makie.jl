@@ -46,15 +46,6 @@ vec3 screen_space(vec4 vertex)
     return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
 }
 
-// should be noticably faster than branching if true_val and false_val are
-// easy to calculate
-float ifelse(bool condition, float true_val, float false_val){
-    return float(condition) * (true_val - false_val) + false_val;
-}
-float ifelse(float condition, float true_val, float false_val){
-    return condition * (true_val - false_val) + false_val;
-}
-
 void set_clip(Nothing planes, int idx){ return; };
 void set_clip(WorldAxisLimits planes, int idx){
     gl_ClipDistance[0] = gl_in[idx].gl_ClipDistance[0];
