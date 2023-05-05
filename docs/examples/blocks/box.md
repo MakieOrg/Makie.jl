@@ -20,3 +20,7 @@ rects = fig[1:4, 1:6] = [
 fig
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{Box}

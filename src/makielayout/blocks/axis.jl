@@ -2,16 +2,10 @@ function block_docs(::Type{Axis})
     """
     A 2D axis which can be plotted into.
 
-    ## Constructors
+    **Constructors**
 
     ```julia
     Axis(fig_or_scene; palette = nothing, kwargs...)
-    ```
-
-    ## Examples
-
-    ```julia
-    ax = Axis(fig[1, 1])
     ```
     """
 end
@@ -1375,4 +1369,60 @@ defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
 function update_state_before_display!(ax::Axis)
     reset_limits!(ax)
     return
+end
+
+function attribute_examples(::Type{Axis})
+    Dict(
+        :xticks => [
+            Example(
+                name = "Common tick types",
+                code = """
+                    fig = Figure()
+                    Axis(fig[1, 1], xticks = 1:10)
+                    Axis(fig[2, 1], xticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+                    Axis(fig[3, 1], xticks = WilkinsonTicks(5))
+                    fig
+                    """
+            )
+        ],
+        :aspect => [
+            Example(
+                name = "Common aspect ratios",
+                code = """
+                    using FileIO
+
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing")
+                    ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()")
+                    ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)")
+                    ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)")
+                    
+                    img = rotr90(load(assetpath("cow.png")))
+                    for ax in [ax1, ax2, ax3, ax4]
+                        image!(ax, img)
+                    end
+
+                    f
+                    """
+            )
+        ],
+        :autolimitaspect => [
+            Example(
+                name = "Using `autolimitaspect`",
+                code = """
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], autolimitaspect = nothing)
+                    ax2 = Axis(f[1, 2], autolimitaspect = 1)
+                    
+                    for ax in [ax1, ax2]
+                        lines!(ax, 0..10, sin)
+                    end
+
+                    f
+                    """
+            )
+        ],
+    )
 end

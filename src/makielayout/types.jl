@@ -378,7 +378,24 @@ end
         topspinecolor::RGBAf = :black
         "The color of the right axis spine."
         rightspinecolor::RGBAf = :black
-        "The forced aspect ratio of the axis. `nothing` leaves the axis unconstrained, `DataAspect()` forces the same ratio as the ratio in data limits between x and y axis, `AxisAspect(ratio)` sets a manual ratio."
+        """
+        Controls the forced aspect ratio of the axis.
+
+        The default `nothing` will not constrain the aspect ratio.
+        The axis area will span the available width and height in the layout.
+
+        `DataAspect()` reduces the effective axis size within the available layout space
+        so that the axis aspect ratio width/height matches that of the data limits.
+        For example, if the x limits range from 0 to 300 and the y limits from 100 to 250, `DataAspect()` will result
+        in an aspect ratio of `(300 - 0) / (250 - 100) = 2`.
+        This can be useful when plotting images, because the image will be displayed unsquished.
+
+        `AxisAspect(ratio)` reduces the effective axis size within the available layout space
+        so that the axis aspect ratio width/height matches `ratio`.
+
+        Note that both `DataAspect` and `AxisAspect` can result in excess whitespace around the axis.
+        To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting. 
+        """
         aspect = nothing
         "The vertical alignment of the axis within its suggested bounding box."
         valign = :center
@@ -396,7 +413,11 @@ end
         xautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
-        "The xticks."
+        """
+        Controls what numerical tick values are calculated for the x axis.
+        If `xticks` doesn't already include tick labels, the
+        final labels will depend on `xtickformat` as well.
+        """
         xticks = Makie.automatic
         "Format for xticks."
         xtickformat = Makie.automatic
@@ -426,7 +447,16 @@ end
         backgroundcolor::RGBAf = :white
         "Controls if the ylabel's rotation is flipped."
         flip_ylabel::Bool = false
-        "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
+        """
+        If `autolimitaspect` is set to a number, the limits of the axis
+        will autoadjust such that the ratio of the limits to the axis size equals
+        that number.
+
+        For example, if the axis size is 100 x 200, then with `autolimitaspect = 1`,
+        the autolimits will also have a ratio of 1 to 2. The setting `autolimitaspect = 1`
+        is the complement to `aspect = AxisAspect(1)`, but while `aspect` changes the axis
+        size, `autolimitaspect` changes the limits to achieve the desired ratio.
+        """
         autolimitaspect = nothing
         "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
         limits = (nothing, nothing)
