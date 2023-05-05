@@ -86,19 +86,18 @@ end
 
 function polypath(ctx, polygon)
     ext = decompose(Point2f, polygon.exterior)
+    Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_EVEN_ODD)
     Cairo.move_to(ctx, ext[1]...)
     for point in ext[2:end]
         Cairo.line_to(ctx, point...)
     end
     Cairo.close_path(ctx)
-
     interiors = decompose.(Point2f, polygon.interiors)
     for interior in interiors
         # Cairo needs to have interiors counter clockwise
         n = length(interior)
-        range = sign(area(interior)) == 1 ? (n:-1:1) : (1:n)
-        Cairo.move_to(ctx, interior[range[1]]...)
-        for idx in range[2:end]
+        Cairo.move_to(ctx, interior[1]...)
+        for idx in 2:n
             point = interior[idx]
             Cairo.line_to(ctx, point...)
         end
