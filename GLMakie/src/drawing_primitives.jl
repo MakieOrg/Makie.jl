@@ -266,6 +266,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
         else
             handle_intensities!(gl_attributes)
             if x isa MeshScatter
+                if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+                    gl_attributes[:image] = gl_attributes[:color]
+                end
                 return draw_mesh_particle(screen, (marker, positions), gl_attributes)
             else
                 return draw_scatter(screen, (marker, positions), gl_attributes)
@@ -287,13 +290,30 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         space = get!(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(x, data, scene.camera)
         transform_func = transform_func_obs(x)
-        
-        ls = to_value(linestyle)
 
-        data[:fast] = isnothing(ls)
-        positions = apply_transform(transform_func, positions, space)
-        data[:pattern] = isnothing(ls) ? ls : ls * _mean(to_value(gl_attributes[:thickness]))
-            
+        ls = to_value(linestyle)
+        if isnothing(ls)
+            data[:pattern] = ls
+            data[:fast] = true
+            positions = apply_transform(transform_func, positions, space)
+        else
+            linewidth = gl_attributes[:thickness]
+            data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
+            data[:fast] = false
+
+            pvm = map(*, data[:projectionview], data[:model])
+            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
+                transformed = apply_transform(f, ps, space)
+                output = Vector{Point3f}(undef, length(transformed))
+                scale = Vec3f(res[1], res[2], 1f0)
+                for i in eachindex(transformed)
+                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
+                    output[i] = scale .* Point3f(clip) ./ clip[4]
+                end
+                output
+            end
+        end
+
         handle_intensities!(data)
         return draw_lines(screen, positions, data)
     end

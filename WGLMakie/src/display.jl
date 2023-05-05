@@ -24,7 +24,7 @@ function JSServe.jsrender(session::Session, scene::Scene)
     screen = Screen(c, true, scene)
     screen.session = session
     Makie.push_screen!(scene, screen)
-    on(on_init) do i
+    on(session, on_init) do i
         mark_as_displayed!(screen, scene)
     end
     return canvas
@@ -93,7 +93,7 @@ for M in WEB_MIMES
                 screen.session = session
                 three, canvas, init_obs = three_display(session, scene)
                 Makie.push_screen!(scene, screen)
-                on(init_obs) do _
+                on(session, init_obs) do _
                     put!(screen.three, three)
                     mark_as_displayed!(screen, scene)
                     return
@@ -119,11 +119,22 @@ function Base.size(screen::Screen)
 end
 
 function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=nothing)::Union{Nothing, ThreeDisplay}
-    if screen.display !== true
-        isnothing(error) && return nothing
-        Base.error("Screen hasn't displayed anything, so can't get three context!")
+    function throw_error(status)
+        if !isnothing(error)
+            message = "Can't get three: $(status)\n$(error)"
+            Base.error(message)
+        end
     end
-    isnothing(screen.session) && return nothing
+    if screen.display !== true
+        throw_error("Screen hasn't displayed yet, so can't get connection to three")
+        return nothing
+    end
+    if isnothing(screen.session)
+        throw_error("Screen has no session. Not yet displayed?"); return nothing
+    end
+    if !(screen.session.status in (JSServe.RENDERED, JSServe.DISPLAYED, JSServe.OPEN))
+        throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status)"); return nothing
+    end
     tstart = time()
     result = nothing
     while true
@@ -137,8 +148,8 @@ function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=
         end
     end
     # Throw error if error message specified
-    if isnothing(result) && !isnothing(error)
-        Base.error(error)
+    if isnothing(result)
+        throw_error("Timed out waiting $(timeout)s for session to get initilize")
     end
     return result
 end
@@ -172,7 +183,7 @@ function Base.display(screen::Screen, scene::Scene; kw...)
     app = App() do session, request
         screen.session = session
         three, canvas, done_init = three_display(session, scene)
-        on(done_init) do _
+        on(session, done_init) do _
             put!(screen.three, three)
             mark_as_displayed!(screen, scene)
             return
@@ -203,7 +214,7 @@ function session2image(session::Session, scene::Scene)
     picture_base64 = JSServe.evaljs_value(session, to_data; timeout=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)
-    return ImageMagick.load_(bytes)
+    return PNGFiles.load(IOBuffer(bytes))
 end
 
 function Makie.colorbuffer(screen::Screen)
@@ -212,6 +223,31 @@ function Makie.colorbuffer(screen::Screen)
     end
     three = get_three(screen; error="Not able to show scene in a browser")
     return session2image(three.session, screen.scene)
+end
+
+
+function insert_scene!(disp, screen::Screen, scene::Scene)
+    if js_uuid(scene) in screen.displayed_scenes
+        return true
+    else
+        scene_ser = serialize_scene(scene)
+        parent = scene.parent
+        parent_uuid = js_uuid(parent)
+        insert_scene!(disp, screen, parent) # make sure parent is also already displayed
+        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
+        evaljs_value(disp.session, js"""
+        $(WGL).then(WGL=> {
+            const parent = WGL.find_scene($(parent_uuid));
+            if (!parent) {
+                throw new Error($(err))
+            }
+            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
+            parent.scene_children.push(new_scene);
+        })
+        """)
+        mark_as_displayed!(screen, scene)
+        return false
+    end
 end
 
 function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
@@ -234,20 +270,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
         # We serialize the whole scene (containing `plot` as well),
         # since, we should only get here if scene is newly created and this is the first plot we insert!
         @assert scene.plots[1] == plot
-        scene_ser = serialize_scene(scene)
-        parent_uuid = js_uuid(parent)
-        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
-        evaljs_value(disp.session, js"""
-        $(WGL).then(WGL=> {
-            const parent = WGL.find_scene($(parent_uuid));
-            if (!parent) {
-                throw new Error($(err))
-            }
-            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
-            parent.scene_children.push(new_scene);
-        })
-        """)
-        mark_as_displayed!(screen, scene)
+        insert_scene!(disp, screen, scene)
     end
     return
 end
