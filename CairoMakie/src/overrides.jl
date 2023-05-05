@@ -66,7 +66,6 @@ end
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
-
 function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
@@ -95,8 +94,12 @@ function polypath(ctx, polygon)
 
     interiors = decompose.(Point2f, polygon.interiors)
     for interior in interiors
-        Cairo.move_to(ctx, interior[1]...)
-        for point in interior[2:end]
+        # Cairo needs to have interiors counter clockwise
+        n = length(interior)
+        range = sign(area(interior)) == 1 ? (n:-1:1) : (1:n)
+        Cairo.move_to(ctx, interior[range[1]]...)
+        for idx in range[2:end]
+            point = interior[idx]
             Cairo.line_to(ctx, point...)
         end
         Cairo.close_path(ctx)
