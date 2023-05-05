@@ -211,19 +211,12 @@ end
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    if length(linestring) > 0
-        converted = convert_arguments(PB, linestring[1])
-        if length(converted) > 0
-            arr = copy(converted[1])
-        else
-            arr = Point2f[]
+    arr = Point2f[]; n = length(linestring)
+    for idx in 1:n
+        append!(arr, convert_arguments(PB, linestring[idx])[1])
+        if idx != n # don't add NaN at the end
+            push!(arr, Point2f(NaN))
         end
-    else
-        arr = Point2f[]
-    end
-    for ls in 2:length(linestring)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, linestring[ls])[1])
     end
     return (arr,)
 end
@@ -235,25 +228,17 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    converted = convert_arguments(PB, pol.exterior)
-    if length(converted) > 0
-        arr = copy(converted[1])
-        if length(arr) > 0
-            push!(arr, arr[1]) # close exterior
-        end
-    else
-        arr = Point2f[]
+    converted = convert_arguments(PB, pol.exterior)[1] # this should always be a Tuple{<: Vector{Point}}
+    arr = copy(converted)
+    if !isempty(arr) && arr[1] != arr[end]
+        push!(arr, arr[1]) # close exterior
     end
-    if !isempty(pol.interiors)
+    for interior in pol.interiors
         push!(arr, Point2f(NaN))
-        for interior in pol.interiors
-            converted = convert_arguments(PB, interior)
-            if length(converted) > 0
-                inter = converted[1]
-                append!(arr, inter)
-                # close interior + separate!
-                push!(arr, inter[1], Point2f(NaN))
-            end
+        inter = convert_arguments(PB, interior)[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, inter)
+        if !isempty(inter) && inter[1] != inter[end]
+            push!(arr, inter[1]) # close interior
         end
     end
     return (arr,)
@@ -266,21 +251,13 @@ end
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    if length(mp) > 0
-        converted = convert_arguments(PB, mp[1])
-        if length(converted) > 0
-            arr = copy(converted[1])
-        else
-            arr = Point2f[]
-        end
-    else
-        arr = Point2f[]
-    end
-    for p in 2:length(mp)
-        converted = convert_arguments(PB, mp[p])
-        if length(converted) > 0
+    arr = Point2f[]
+    n = length(mp)
+    for idx in 1:n
+        converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, converted)
+        if idx != n # don't add NaN at the end
             push!(arr, Point2f(NaN))
-            append!(arr, converted[1])
         end
     end
     return (arr,)
