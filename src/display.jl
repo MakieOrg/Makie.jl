@@ -106,6 +106,8 @@ Displays the figurelike in a window or the browser, depending on the backend.
 
 The parameters for `screen_config` are backend dependend,
 see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
+
+`backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
 """
 function Base.display(figlike::FigureLike; backend=current_backend(), update=true, screen_config...)
     if ismissing(backend)
@@ -364,6 +366,7 @@ Returns the content of the given scene or screen rasterised to a Matrix of
 Colors. The return type is backend-dependent, but will be some form of RGB
 or RGBA.
 
+- `backend::Module`: A module which is a Makie backend.  For example, `backend = GLMakie`, `backend = CairoMakie`, etc.
 - `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
