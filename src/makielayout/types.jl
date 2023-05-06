@@ -141,11 +141,12 @@ mutable struct RectangleZoom
     from::Union{Nothing, Point2f}
     to::Union{Nothing, Point2f}
     rectnode::Observable{Rect2f}
+    modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false)
+function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)))
+                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
@@ -936,7 +937,7 @@ struct LegendEntry
     attributes::Attributes
 end
 
-const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
+const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
     entrygroups::Observable{Vector{EntryGroup}}
