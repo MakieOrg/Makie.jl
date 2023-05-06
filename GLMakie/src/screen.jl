@@ -438,7 +438,6 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
         screen.requires_update = true
         on(_ -> screen.requires_update = true, scene.visible)
         on(_ -> screen.requires_update = true, scene.backgroundcolor)
-        on(_ -> screen.requires_update = true, scene.px_area)
         # TODO 
         # - trigger on scene.clear but that's not an observable
         # - maybe lighting?
