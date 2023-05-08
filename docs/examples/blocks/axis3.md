@@ -140,3 +140,7 @@ end
 f
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{Axis3}

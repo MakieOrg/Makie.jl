@@ -52,6 +52,7 @@ import TriplotBase
 import MiniQhull
 import DelaunayTriangulation as DelTri 
 import Setfield
+import REPL
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
