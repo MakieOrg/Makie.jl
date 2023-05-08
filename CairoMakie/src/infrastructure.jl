@@ -68,6 +68,23 @@ by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot
 """
 is_cairomakie_atomic_plot(plot::Combined) = isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
 
+"""
+    check_parent_plots(f, plot::Combined)::Bool
+Returns whether the plot's parent tree satisfies the predicate `f`.
+`f` must return a `Bool` and take a plot as its only argument.
+"""
+function check_parent_plots(f, plot::Combined)
+    if f(plot)
+        check_parent_plots(f, parent(plot))
+    else
+        return false
+    end
+end
+
+function check_parent_plots(f, scene::Scene)
+    return true
+end
+
 function prepare_for_scene(screen::Screen, scene::Scene)
 
     # get the root area to correct for its pixel size when translating
