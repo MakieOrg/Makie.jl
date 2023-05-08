@@ -2,7 +2,7 @@ using CUDA, GLMakie, NVTX
 using GLMakie.GLAbstraction
 # from https://discourse.julialang.org/t/cuarray-glmakie/52461/11?u=maleadt
 
-function plot(; T=Float32, N=1024, resolution=(800, 600))
+function cu_plot(; T=Float32, N=1024, resolution=(800, 600))
     t = CUDA.rand(T, N)
     X = CUDA.rand(T, N)
 
@@ -65,4 +65,4 @@ function plot(; T=Float32, N=1024, resolution=(800, 600))
     return
 end
 
-plot()
+cu_plot()
