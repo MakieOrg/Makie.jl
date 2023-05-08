@@ -51,6 +51,7 @@ import SparseArrays
 import TriplotBase
 import MiniQhull
 import Setfield
+import REPL
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
