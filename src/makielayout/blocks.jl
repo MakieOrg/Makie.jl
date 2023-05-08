@@ -152,9 +152,9 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             # then default value
             d = quote
                 if haskey($sceneattrsym, $key)
-                    $sceneattrsym[$key][] # only use value of theme entry
+                    to_value($sceneattrsym[$key]) # only use value of theme entry
                 elseif haskey($curthemesym, $key)
-                    $curthemesym[$key][] # only use value of theme entry
+                    to_value($curthemesym[$key]) # only use value of theme entry
                 else
                     $default
                 end
