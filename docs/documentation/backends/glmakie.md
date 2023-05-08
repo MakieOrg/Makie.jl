@@ -73,3 +73,12 @@ Troubleshooting:
 2.) WSL has some problems with passing through localhost, so one may need to use: `export DISPLAY=192.168.178.31:0`, with the local ip of the pcs network adapter, which runs VcXsrv
 
 3.) One may need `mv /opt/julia-1.5.2/lib/julia/libstdc++.so.6 /opt/julia-1.5.2/lib/julia/libcpp.backup`, another form of [GLFW#198](https://github.com/JuliaGL/GLFW.jl/issues/198)
+
+## Using GPU data without copying
+
+If your data is already on the GPU, and you are using CUDA.jl, you can easily wrap a `GLMakie.GLAbstractions.GLBuffer` in a `CUArray`, perform computations, and pass that directly to `scatter!`.
+
+An example lies [here](https://github.com/MakieOrg/Makie.jl/GLMakie/experiments/cuda_interop.jl).
+
+!!! note
+    This only works with CUDA.jl and CuArrays for now!  You might be able to do this with other GPUArray packages, but they have not been tested.
