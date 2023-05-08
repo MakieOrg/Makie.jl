@@ -717,11 +717,11 @@ end
         (13.0, 19.0), (13.0, 12.0), (16.0, 8.0), (9.8, 8.0), (7.5, 6.0),
         (12.0, 13.0), (19.0, 15.0)
     ]
-    boundary_nodes, points = DelTri.convert_boundary_points_to_indices(curves; existing_points=points)
+    boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
     edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
-    x = DelTri.getx.(points)
-    y = DelTri.gety.(points)
+    x = getx.(points)
+    y = gety.(points)
     z = (x .- 1) .* (y .+ 1) 
     f, ax, _ = tricontourf(x, y, z, boundary_nodes = boundary_nodes, edges = edges, levels = 30)
     f
@@ -735,9 +735,9 @@ end
         push!(xy, [[(cx[i] + cos(θ), sin(θ)) for θ in θ]])
         push!(xy, [[(cx[i] + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
     end
-    boundary_nodes, points = DelTri.convert_boundary_points_to_indices(xy)
-    tri = DelTri.triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
-    z = [(x - 3/2)^2 + y^2 for (x, y) in DelTri.each_point(tri)]
+    boundary_nodes, points = convert_boundary_points_to_indices(xy)
+    tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
+    z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)]
 
     f, ax, tr = tricontourf(tri, z, colormap = :matter)
     f
