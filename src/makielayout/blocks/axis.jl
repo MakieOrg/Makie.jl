@@ -1424,5 +1424,39 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :title => [
+            Example(
+                name = "Title variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], title = "Title")
+                    Axis(f[2, 1], title = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], title = rich(
+                        "Rich text title",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ],
+        :subtitle => [
+            Example(
+                name = "Subtitle variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], title = "Title", subtitle = "Subtitle")
+                    Axis(f[2, 1], title = "Title", subtitle = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], title = "Title", subtitle = rich(
+                        "Rich text subtitle",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ]
     )
 end

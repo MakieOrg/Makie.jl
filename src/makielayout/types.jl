@@ -206,7 +206,10 @@ end
         xlabel = ""
         "The ylabel string."
         ylabel = ""
-        "The axis title string."
+        """
+        The content of the axis title.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         title = ""
         "The font family of the title."
         titlefont = :bold
@@ -222,7 +225,10 @@ end
         titlecolor::RGBAf = @inherit(:textcolor, :black)
         "The axis title line height multiplier."
         titlelineheight::Float64 = 1
-        "The axis subtitle string."
+        """
+        The content of the axis subtitle.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         subtitle = ""
         "The font family of the subtitle."
         subtitlefont = :regular
