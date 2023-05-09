@@ -481,7 +481,26 @@ end
         size, `autolimitaspect` changes the limits to achieve the desired ratio.
         """
         autolimitaspect = nothing
-        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
+        """
+        Can be used to manually specify which axis limits are desired.
+
+        The `limits` attribute cannot be used to read out the actual limits of the axis.
+        The value of `limits` does not change when interactively zooming and panning and the axis can be reset
+        accordingly using the function `reset_limits!`.
+
+        The function `autolimits!` resets the value of `limits` to `(nothing, nothing)` and adjusts the axis limits according
+        to the extents of the plots added to the axis.
+        
+        The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, high)` where each value
+        can be a real number or `nothing`.
+        It can also be a tuple `(x, y)` where `x` and `y` can be `nothing` or a tuple `(low, high)`.
+        In all cases, `nothing` means that the respective limit values will be automatically determined.
+
+        Automatically determined limits are also influenced by `xautolimitmargin` and `yautolimitmargin`.
+        
+        The convenience functions `xlims!` and `ylims!` allow to set only the x or y part of `limits`.
+        The function `limits!` is another option to set both x and y simultaneously.
+        """
         limits = (nothing, nothing)
         "The align mode of the axis in its parent GridLayout."
         alignmode = Inside()
