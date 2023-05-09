@@ -29,6 +29,9 @@ applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
     `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
     is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
     valid when `format` is `"mp4"` or `"webm"`.
+
+- `extra_options = \`\``: A `Cmd` which is passed directly to ffmpeg, appended at the end of the command string.  
+This can be dangerous, so use with care!
 """
 struct VideoStreamOptions
     format::String
@@ -40,10 +43,12 @@ struct VideoStreamOptions
     loglevel::String
     input::String
     rawvideo::Bool
+    
+    extra_options::Cmd
 
     function VideoStreamOptions(
             format::AbstractString, framerate::Real, compression, profile,
-            pixel_format, loglevel::String, input::String, rawvideo::Bool=true)
+            pixel_format, loglevel::String, input::String, rawvideo::Bool=true, extra_options::Cmd)
         
         if !isa(framerate, Integer)
             @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
@@ -92,11 +97,11 @@ struct VideoStreamOptions
         if !(loglevel in loglevels)
             error("loglevel needs to be one of $(loglevels)")
         end
-        return new(format, framerate, compression, profile, pixel_format, loglevel, input, rawvideo)
+        return new(format, framerate, compression, profile, pixel_format, loglevel, input, rawvideo, extra_options)
     end
 end
 
-function VideoStreamOptions(; format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet", input="pipe:0", rawvideo=true)
+function VideoStreamOptions(; format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet", input="pipe:0", rawvideo=true, extra_options=``)
     return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loglevel, input, rawvideo)
 end
 
@@ -168,7 +173,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
         error("Video type $(format) not known")
     end
 
-    return `$(ffmpeg_prefix) $(ffmpeg_options)`
+    return `$(ffmpeg_prefix) $(ffmpeg_options) $(extra_options)`
 end
 
 
@@ -191,17 +196,18 @@ Returns a `VideoStream` which can pipe new frames into the ffmpeg process with f
 When done, use [`save(path, stream)`](@ref) to write the video out to a file.
 
 # Arguments
-
-## Video options
-
-$(Base.doc(VideoStreamOptions))
-
+    
 ## Backend options
 
 * `backend=current_backend()`: backend used to record frames
 * `visible=false`: make window visible or not
 * `connect=false`: connect window events or not
 * `screen_config...`: See `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options that can be passed and forwarded to the backend.
+
+## Video options
+
+$(Base.doc(VideoStreamOptions))
+
 """
 function VideoStream(fig::FigureLike;
         format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet",
