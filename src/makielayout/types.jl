@@ -535,9 +535,9 @@ end
         """
         The scaling function for the x axis.
 
-        Can be any invertible function, predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt` and `logit`.
-        To use a custom function, you have to define methods for `Makie.inverse_transform`,
+        Can be any invertible function, some predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
         
         If the scaling function is only defined over a limited interval,
@@ -554,9 +554,9 @@ end
         """
         The scaling function for the y axis.
 
-        Can be any invertible function, predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt` and `logit`.
-        To use a custom function, you have to define methods for `Makie.inverse_transform`,
+        Can be any invertible function, some predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
         
         If the scaling function is only defined over a limited interval,
