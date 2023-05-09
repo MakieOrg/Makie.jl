@@ -94,7 +94,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     esc(q)
 end
 
-_defaultstring(x) = string(x)
+_defaultstring(x) = string(MacroTools.striplines(x))
 _defaultstring(x::String) = repr(x)
 
 function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
