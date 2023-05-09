@@ -202,9 +202,15 @@ end
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
     @attributes begin
-        "The xlabel string."
+        """
+        The content of the x axis label.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         xlabel = ""
-        "The ylabel string."
+        """
+        The content of the y axis label.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         ylabel = ""
         """
         The content of the axis title.
@@ -222,7 +228,7 @@ end
         """
         The horizontal alignment of the title.
         The subtitle always follows this alignment setting.
-        
+
         Options are `:center`, `:left` or `:right`.
         """
         titlealign::Symbol = :center

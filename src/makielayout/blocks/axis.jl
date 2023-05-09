@@ -1471,6 +1471,40 @@ function attribute_examples(::Type{Axis})
                     f
                     """
             )
-        ]
+        ],
+        :xlabel => [
+            Example(
+                name = "X label variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], xlabel = "X Label")
+                    Axis(f[2, 1], xlabel = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], xlabel = rich(
+                        "X Label",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ],
+        :ylabel => [
+            Example(
+                name = "Y label variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], ylabel = "Y Label")
+                    Axis(f[2, 1], ylabel = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], ylabel = rich(
+                        "Y Label",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ],
     )
 end
