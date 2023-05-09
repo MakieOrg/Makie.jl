@@ -19839,6 +19839,7 @@ function insert_plot(scene_id, plot_data) {
     });
 }
 function delete_plots(scene_id, plot_uuids) {
+    console.log(`deleting plots!: ${plot_uuids}`);
     const scene = find_scene(scene_id);
     const plots = find_plots(plot_uuids);
     plots.forEach((p)=>{
@@ -20242,7 +20243,7 @@ function render_scene(scene, picking = false) {
     if (!scene.visible.value) {
         return true;
     }
-    renderer.autoClear = scene.clearscene;
+    renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t)=>t / pixelRatio1);
@@ -20515,10 +20516,7 @@ function pick_sorted(scene, xy, range) {
     const { picking_target  } = scene.screen;
     const { width , height  } = picking_target;
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
-        return [
-            null,
-            0
-        ];
+        return null;
     }
     const x0 = Math.max(1, xy[0] - range);
     const y0 = Math.max(1, xy[1] - range);
@@ -20528,7 +20526,7 @@ function pick_sorted(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
     if (selected.length == 0) {
-        return [];
+        return null;
     }
     const plot_matrix = plot_data.data;
     const distances = selected.map((x)=>range ^ 2);

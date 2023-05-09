@@ -104,18 +104,15 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
-    if pattern !== nothing
+    if to_value(pattern) !== nothing
         if !isa(pattern, Texture)
-            if !isa(pattern, Vector)
+            if !isa(to_value(pattern), Vector)
                 error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
             end
-            tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
+            tex = GLAbstraction.Texture(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
             data[:pattern] = tex
         end
-        data[:pattern_length] = Float32((last(pattern) - first(pattern)))
-        @gen_defaults! data begin
-            maxlength = const_lift(last, lastlen)
-        end
+        data[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
     end
 
     data[:intensity] = intensity_convert(intensity, vertex)
