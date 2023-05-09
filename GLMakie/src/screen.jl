@@ -106,7 +106,7 @@ mutable struct ScreenConfig
     end
 end
 
-const LAST_INLINE = Ref(false)
+const LAST_INLINE = Ref{Union{Makie.Automatic, Bool}}(Makie.automatic)
 
 """
     GLMakie.activate!(; screen_config...)
@@ -646,7 +646,7 @@ end
 """
     depthbuffer(screen::Screen)
 
-Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.  
+Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.
 
 A depth buffer is used to determine which plot's contents should be shown at each pixel.
 Usage:

@@ -85,6 +85,7 @@ using WGLMakie
 using JSServe, Markdown
 Page(exportable=true, offline=true) # for Franklin, you still need to configure
 WGLMakie.activate!()
+Makie.inline!(true) # Make sure to inline plots into Documenter output!
 scatter(1:4, color=1:4)
 ```
 \end{showhtml}
@@ -160,7 +161,7 @@ You can for example directly register javascript function that get run on change
 
 \begin{showhtml}{}
 ```julia
-using JSServe: onjs
+using JSServe
 
 App() do session::Session
     s1 = Slider(1:100)
@@ -187,7 +188,7 @@ But while this isn't in place, logging the the returned object makes it pretty e
 
 \begin{showhtml}{}
 ```julia
-using JSServe: onjs, evaljs, on_document_load
+using JSServe: on_document_load
 using WGLMakie
 
 App() do session::Session
