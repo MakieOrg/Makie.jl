@@ -456,9 +456,15 @@ end
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
         yaxisposition::Symbol = :left
-        "Controls if the x spine is limited to the furthest tick marks or not."
+        """
+        If `true`, limits the x axis spine's extent to the outermost major tick marks.
+        Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
+        """
         xtrimspine::Union{Bool, Tuple{Bool,Bool}}  = false
-        "Controls if the y spine is limited to the furthest tick marks or not."
+        """
+        If `true`, limits the y axis spine's extent to the outermost major tick marks.
+        Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
+        """
         ytrimspine::Union{Bool, Tuple{Bool,Bool}} = false
         "The background color of the axis."
         backgroundcolor::RGBAf = :white

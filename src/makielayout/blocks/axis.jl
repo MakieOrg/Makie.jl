@@ -1426,7 +1426,7 @@ function attribute_examples(::Type{Axis})
         ],
         :title => [
             Example(
-                name = "Title variants",
+                name = "`title` variants",
                 code = """
                     f = Figure()
                                         
@@ -1443,7 +1443,7 @@ function attribute_examples(::Type{Axis})
         ],
         :titlealign => [
             Example(
-                name = "Title align variants",
+                name = "`titlealign` variants",
                 code = """
                     f = Figure()
                                         
@@ -1457,7 +1457,7 @@ function attribute_examples(::Type{Axis})
         ],
         :subtitle => [
             Example(
-                name = "Subtitle variants",
+                name = "`subtitle` variants",
                 code = """
                     f = Figure()
                                         
@@ -1474,7 +1474,7 @@ function attribute_examples(::Type{Axis})
         ],
         :xlabel => [
             Example(
-                name = "X label variants",
+                name = "`xlabel` variants",
                 code = """
                     f = Figure()
                                         
@@ -1491,7 +1491,7 @@ function attribute_examples(::Type{Axis})
         ],
         :ylabel => [
             Example(
-                name = "Y label variants",
+                name = "`ylabel` variants",
                 code = """
                     f = Figure()
                                         
@@ -1501,6 +1501,52 @@ function attribute_examples(::Type{Axis})
                         "Y Label",
                         subscript(" with subscript", color = :slategray)
                     ))
+
+                    f
+                    """
+            )
+        ],
+        :xtrimspine => [
+            Example(
+                name = "`xtrimspine` variants",
+                code = """
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], xtrimspine = false)
+                    ax2 = Axis(f[2, 1], xtrimspine = true)
+                    ax3 = Axis(f[3, 1], xtrimspine = (true, false))
+                    ax4 = Axis(f[4, 1], xtrimspine = (false, true))
+
+                    for ax in [ax1, ax2, ax3, ax4]
+                        ax.xgridvisible = false
+                        ax.ygridvisible = false
+                        ax.rightspinevisible = false
+                        ax.topspinevisible = false
+                        xlims!(ax, 0.5, 5.5)
+                    end
+
+                    f
+                    """
+            )
+        ],
+        :ytrimspine => [
+            Example(
+                name = "`ytrimspine` variants",
+                code = """
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], ytrimspine = false)
+                    ax2 = Axis(f[1, 2], ytrimspine = true)
+                    ax3 = Axis(f[1, 3], ytrimspine = (true, false))
+                    ax4 = Axis(f[1, 4], ytrimspine = (false, true))
+
+                    for ax in [ax1, ax2, ax3, ax4]
+                        ax.xgridvisible = false
+                        ax.ygridvisible = false
+                        ax.rightspinevisible = false
+                        ax.topspinevisible = false
+                        ylims!(ax, 0.5, 5.5)
+                    end
 
                     f
                     """
