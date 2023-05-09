@@ -435,7 +435,13 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
-        on(_ -> screen.requires_update = true, scene.visible)
+        screen.requires_update = true
+        onany(
+            (_, _, _, _, _, _) -> screen.requires_update = true,
+            scene,
+            scene.visible, scene.backgroundcolor, scene.clear,
+            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius
+        )
         return id
     end
     for elem in scene.plots
