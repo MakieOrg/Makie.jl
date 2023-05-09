@@ -219,7 +219,12 @@ end
         titlegap::Float64 = 4f0
         "Controls if the title is visible."
         titlevisible::Bool = true
-        "The horizontal alignment of the title."
+        """
+        The horizontal alignment of the title.
+        The subtitle always follows this alignment setting.
+        
+        Options are `:center`, `:left` or `:right`.
+        """
         titlealign::Symbol = :center
         "The color of the title"
         titlecolor::RGBAf = @inherit(:textcolor, :black)

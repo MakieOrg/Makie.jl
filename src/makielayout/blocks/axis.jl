@@ -1441,6 +1441,20 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :titlealign => [
+            Example(
+                name = "Title align variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], titlealign = :left, title = "Left aligned title")
+                    Axis(f[2, 1], titlealign = :center, title = "Center aligned title")
+                    Axis(f[3, 1], titlealign = :right, title = "Right aligned title")
+
+                    f
+                    """
+            )
+        ],
         :subtitle => [
             Example(
                 name = "Subtitle variants",
