@@ -21,7 +21,7 @@ Base.:(==)(a::Canvas, b::Canvas) = size(a)==size(b) && xlims(a)==xlims(b) && yli
 
 abstract type AggOp end
 
-update(a::AggOp, x, args...) = merge(a, x, embed(a, args...))
+@inline update(a::AggOp, x, args...) = merge(a, x, embed(a, args...))
 
 struct AggCount{T} <: AggOp end
 AggCount() = AggCount{Int}()
@@ -67,8 +67,10 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
     xsize, ysize = size(c)
     xmax > xmin || error("require xmax > xmin")
     ymax > ymin || error("require ymax > ymin")
-    xscale = xsize / (xmax - xmin)
-    yscale = ysize / (ymax - ymin)
+    xwidth = xmax - xmin
+    xscale = xsize / (xwidth + eps(xwidth))
+    ywidth = ymax - ymin
+    yscale = ysize / (ywidth + eps(ywidth))
 
     @assert length(aggbuffer) == xsize * ysize
     @assert length(pixelbuffer) == xsize * ysize
@@ -84,14 +86,13 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
         end
         xmin ≤ x ≤ xmax || continue
         ymin ≤ y ≤ ymax || continue
-        i = clamp(1+floor(Int, xscale*(x-xmin)), 1, xsize)
-        j = clamp(1+floor(Int, yscale*(y-ymin)), 1, ysize)
+        i = 1 + floor(Int, xscale*(x-xmin))
+        j = 1 + floor(Int, yscale*(y-ymin))
         if length(point) == 2 # should compile away
             out[i,j] = update(op, out[i,j])
         elseif length(point) == 3
             out[i,j] = update(op, out[i,j], z)
         end
-        nothing
     end
     map!(x->value(op, x), pixelbuffer, aggbuffer)
     return
@@ -103,8 +104,11 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
     xsize, ysize = size(c)
     xmax > xmin || error("require xmax > xmin")
     ymax > ymin || error("require ymax > ymin")
-    xscale = xsize / (xmax - xmin)
-    yscale = ysize / (ymax - ymin)
+    # by adding eps to width we can use the scaling factor plus floor directly to compute the bin indices
+    xwidth = xmax - xmin
+    xscale = xsize / (xwidth + eps(xwidth))
+    ywidth = ymax - ymin
+    yscale = ysize / (ywidth + eps(ywidth))
 
     # each thread reduces some of the data separately
     @assert length(aggbuffer) == Threads.nthreads() * xsize * ysize
@@ -112,33 +116,38 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
     @assert eltype(aggbuffer) === typeof(null(op))
 
     # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-    out = Base.ReshapedArray(aggbuffer, (Threads.nthreads(), xsize, ysize), ())
+    out = Base.ReshapedArray(aggbuffer, (xsize, ysize, Threads.nthreads()), ())
     out2 = Base.ReshapedArray(pixelbuffer, (xsize, ysize), ())
+    n = length(points)
+    chunks = round.(Int, range(1, n, length = Threads.nthreads()+1))
 
-    @threads for idx in eachindex(points)
-        t = Threads.threadid()
-        p = @inbounds points[idx]
-        x = p[1]
-        y = p[2]
-        if length(p) > 2 # should compile away
-            z = p[3]
-        end
-        xmin ≤ x ≤ xmax || continue
-        ymin ≤ y ≤ ymax || continue
-        i = clamp(1+floor(Int, xscale*(x-xmin)), 1, xsize)
-        j = clamp(1+floor(Int, yscale*(y-ymin)), 1, ysize)
-        if length(p) == 2 # should compile away
-            @inbounds out[t,i,j] = update(op, out[t,i,j])
-        elseif length(p) == 3
-            @inbounds out[t,i,j] = update(op, out[t,i,j], z)
+    @threads for t in 1:Threads.nthreads()
+        from = chunks[t]
+        to = chunks[t+1]
+        for idx in from:to
+            p = @inbounds points[idx]
+            x = p[1]
+            y = p[2]
+            if length(p) > 2 # should compile away
+                z = p[3]
+            end
+            xmin ≤ x ≤ xmax || continue
+            ymin ≤ y ≤ ymax || continue
+            i = 1 + floor(Int, xscale*(x-xmin))
+            j = 1 + floor(Int, yscale*(y-ymin))
+            if length(p) == 2 # should compile away
+                @inbounds out[i,j,t] = update(op, out[i,j,t])
+            elseif length(p) == 3
+                @inbounds out[i,j,t] = update(op, out[i,j,t], z)
+            end
         end
     end
     # reduce along the thread dimension
     for j in 1:ysize
         for i in 1:xsize
-            @inbounds val = out[1,i,j]
+            @inbounds val = out[i,j,1]
             for t in 2:Threads.nthreads()
-                @inbounds val = merge(op, val, out[t,i,j])
+                @inbounds val = merge(op, val, out[i,j,t])
             end
             # update the value in out2 directly in this loop
             @inbounds out2[i,j] = value(op, val)
@@ -264,7 +273,6 @@ function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
         resize!(pixelbuffer, w * h)
 
         ShadeYourData.aggregate!(aggbuffer, pixelbuffer, canvas, points; op=agg, method)
-
         # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
         pixelbuffer_reshaped = Base.ReshapedArray(pixelbuffer, (canvas.xsize, canvas.ysize), ())
 
