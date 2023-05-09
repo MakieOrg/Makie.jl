@@ -783,28 +783,6 @@ f
 ```
 \end{examplefigure}
 
-## Changing x and y axis position
-
-By default, the x axis is at the bottom, and the y axis at the left side.
-You can change this with the attributes `xaxisposition = :top` and `yaxisposition = :right`.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-
-f = Figure()
-
-for i in 1:2, j in 1:2
-    Axis(
-        f[i, j],
-        limits = (0, 5, 0, 5),
-        xaxisposition = (i == 1 ? :top : :bottom),
-        yaxisposition = (j == 1 ? :left : :right))
-end
-
-f
-```
-\end{examplefigure}
 ## Creating a twin axis
 
 There is currently no dedicated function to do this, but you can simply add an Axis on top of another, then hide everything but the second axis.

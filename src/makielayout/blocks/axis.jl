@@ -1552,5 +1552,31 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :xaxisposition => [
+            Example(
+                name = "`xaxisposition` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], xaxisposition = :bottom)
+                    Axis(f[1, 2], xaxisposition = :top)
+                    
+                    f
+                    """
+            )
+        ],
+        :yaxisposition => [
+            Example(
+                name = "`yaxisposition` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], yaxisposition = :left)
+                    Axis(f[2, 1], yaxisposition = :right)
+                    
+                    f
+                    """
+            )
+        ],
     )
 end
