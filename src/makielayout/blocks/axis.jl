@@ -1597,5 +1597,43 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :yscale => [
+            Example(
+                name = "`yscale` variants",
+                code = """
+                    f = Figure()
+                    
+                    for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
+                        row, col = fldmod1(i, 3)
+                        Axis(f[row, col], yscale = scale, title = string(scale),
+                            yminorticksvisible = true, yminorgridvisible = true,
+                            yminorticks = IntervalsBetween(5))
+                    
+                        lines!(range(0.01, 0.99, length = 200))
+                    end
+                    
+                    f
+                    """
+            )
+        ],
+        :xscale => [
+            Example(
+                name = "`xscale` variants",
+                code = """
+                    f = Figure()
+                    
+                    for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
+                        row, col = fldmod1(i, 2)
+                        Axis(f[row, col], xscale = scale, title = string(scale),
+                            xminorticksvisible = true, xminorgridvisible = true,
+                            xminorticks = IntervalsBetween(5))
+                    
+                        lines!(range(0.01, 0.99, length = 200), 1:200)
+                    end
+                    
+                    f
+                    """
+            )
+        ],
     )
 end

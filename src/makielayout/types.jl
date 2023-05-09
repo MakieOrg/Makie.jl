@@ -532,9 +532,43 @@ end
         yminortickcolor::RGBAf = :black
         "The tick locator for the y minor ticks"
         yminorticks = IntervalsBetween(2)
-        "The x axis scale"
+        """
+        The scaling function for the x axis.
+
+        Can be any invertible function, predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt` and `logit`.
+        To use a custom function, you have to define methods for `Makie.inverse_transform`,
+        `Makie.defaultlimits` and `Makie.defined_interval`.
+        
+        If the scaling function is only defined over a limited interval,
+        no plot object may have a source datum that lies outside of that range.
+        For example, there may be no x value lower than or equal to 0 when `log`
+        is selected for `xscale`. What matters are the source data, not the user-selected
+        limits, because all data have to be transformed, irrespective of whether they
+        lie inside or outside of the current limits.
+        
+        The axis scale may affect tick finding and formatting, depending
+        on the values of `xticks` and `xtickformat`.
+        """
         xscale = identity
-        "The y axis scale"
+        """
+        The scaling function for the y axis.
+
+        Can be any invertible function, predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt` and `logit`.
+        To use a custom function, you have to define methods for `Makie.inverse_transform`,
+        `Makie.defaultlimits` and `Makie.defined_interval`.
+        
+        If the scaling function is only defined over a limited interval,
+        no plot object may have a source datum that lies outside of that range.
+        For example, there may be no y value lower than or equal to 0 when `log`
+        is selected for `yscale`. What matters are the source data, not the user-selected
+        limits, because all data have to be transformed, irrespective of whether they
+        lie inside or outside of the current limits.
+        
+        The axis scale may affect tick finding and formatting, depending
+        on the values of `yticks` and `ytickformat`.
+        """
         yscale = identity
     end
 end
