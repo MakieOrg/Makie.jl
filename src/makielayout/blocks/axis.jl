@@ -1614,7 +1614,31 @@ function attribute_examples(::Type{Axis})
                     
                     f
                     """
-            )
+            ),
+            Example(
+                name = "Pseudo-log scales",
+                code = """
+                    f = Figure()
+                    
+                    ax1 = Axis(f[1, 1],
+                        yscale = Makie.pseudolog10,
+                        title = "Pseudolog scale",
+                        yticks = [-100, -10, -1, 0, 1, 10, 100]
+                    )
+
+                    ax2 = Axis(f[2, 1],
+                        yscale = Makie.Symlog10(10.0),
+                        title = "Symlog10 with linear scaling between -10 and 10",
+                        yticks = [-100, -10, 0, 10, 100]
+                    )
+
+                    for ax in [ax1, ax2]
+                        lines!(ax, -100:0.1:100)
+                    end
+                                        
+                    f
+                    """
+            ),
         ],
         :xscale => [
             Example(
@@ -1633,7 +1657,31 @@ function attribute_examples(::Type{Axis})
                     
                     f
                     """
-            )
+            ),
+            Example(
+                name = "Pseudo-log scales",
+                code = """
+                    f = Figure()
+                    
+                    ax1 = Axis(f[1, 1],
+                        xscale = Makie.pseudolog10,
+                        title = "Pseudolog scale",
+                        xticks = [-100, -10, -1, 0, 1, 10, 100]
+                    )
+
+                    ax2 = Axis(f[1, 2],
+                        xscale = Makie.Symlog10(10.0),
+                        title = "Symlog10 with linear scaling\nbetween -10 and 10",
+                        xticks = [-100, -10, 0, 10, 100]
+                    )
+
+                    for ax in [ax1, ax2]
+                        lines!(ax, -100:0.1:100, -100:0.1:100)
+                    end
+                                        
+                    f
+                    """
+            ),
         ],
     )
 end
