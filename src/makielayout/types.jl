@@ -432,13 +432,43 @@ end
         yautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
         """
         Controls what numerical tick values are calculated for the x axis.
-        If `xticks` doesn't already include tick labels, the
-        final labels will depend on `xtickformat` as well.
+
+        To determine tick values and labels, Makie first calls `Makie.get_ticks(xticks, xscale, xtickformat, xmin, xmax)`.
+        If there is no special method defined for the current combination of
+        ticks, scale and formatter which returns both tick values and labels at once,
+        then the numerical tick values will be determined using
+        `xtickvalues = Makie.get_tickvalues(xticks, xscale, xmin, xmax)` after which the labels are determined using
+        `Makie.get_ticklabels(xtickformat, xtickvalues)`.
+
+        Common objects that can be used as ticks are:
+        - A vector of numbers
+        - A tuple with two vectors `(numbers, labels)`
+        - `WilkinsonTicks`, the default tick finder for linear ticks
+        - `LinearTicks`, an alternative tick finder for linear ticks
+        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
         """
         xticks = Makie.automatic
         "Format for xticks."
         xtickformat = Makie.automatic
-        "The yticks."
+        """
+        Controls what numerical tick values are calculated for the y axis.
+
+        To determine tick values and labels, Makie first calls `Makie.get_ticks(yticks, yscale, ytickformat, ymin, ymax)`.
+        If there is no special method defined for the current combination of
+        ticks, scale and formatter which returns both tick values and labels at once,
+        then the numerical tick values will be determined using
+        `ytickvalues = Makie.get_tickvalues(yticks, yscale, ymin, ymax)` after which the labels are determined using
+        `Makie.get_ticklabels(ytickformat, ytickvalues)`.
+
+        Common objects that can be used as ticks are:
+        - A vector of numbers
+        - A tuple with two vectors `(numbers, labels)`
+        - `WilkinsonTicks`, the default tick finder for linear ticks
+        - `LinearTicks`, an alternative tick finder for linear ticks
+        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        """
         yticks = Makie.automatic
         "Format for yticks."
         ytickformat = Makie.automatic
