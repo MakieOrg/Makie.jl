@@ -442,14 +442,27 @@ end
 
         Common objects that can be used as ticks are:
         - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)`
+        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
         - `WilkinsonTicks`, the default tick finder for linear ticks
         - `LinearTicks`, an alternative tick finder for linear ticks
         - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
         - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
         """
         xticks = Makie.automatic
-        "Format for xticks."
+        """
+        The formatter for the ticks on the x axis.
+        
+        Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
+        `Makie.get_ticklabels(xtickformat, xtickvalues)` is called. If there is a special method defined,
+        tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
+        docstring for `xticks` for more information.
+        
+        Common objects that can be used for tick formatting are:
+        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+          that can be plotted by the `text` primitive.
+        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        """
         xtickformat = Makie.automatic
         """
         Controls what numerical tick values are calculated for the y axis.
@@ -463,14 +476,27 @@ end
 
         Common objects that can be used as ticks are:
         - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)`
+        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
         - `WilkinsonTicks`, the default tick finder for linear ticks
         - `LinearTicks`, an alternative tick finder for linear ticks
         - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
         - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
         """
         yticks = Makie.automatic
-        "Format for yticks."
+        """
+        The formatter for the ticks on the y axis.
+        
+        Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
+        `Makie.get_ticklabels(ytickformat, ytickvalues)` is called. If there is a special method defined,
+        tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
+        docstring for `yticks` for more information.
+        
+        Common objects that can be used for tick formatting are:
+        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+          that can be plotted by the `text` primitive.
+        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        """
         ytickformat = Makie.automatic
         "The button for panning."
         panbutton::Makie.Mouse.Button = Makie.Mouse.right

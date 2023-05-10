@@ -1695,5 +1695,37 @@ function attribute_examples(::Type{Axis})
                     """
             ),
         ],
+        :xtickformat => [
+            Example(
+                name = "`xtickformat` variants",
+                code = """
+                    f = Figure(figure_padding = 50)
+                    
+                    Axis(f[1, 1], xtickformat = values -> ["\$(value)kg" for value in values])
+                    Axis(f[2, 1], xtickformat = "{:.2f}ms")
+                    Axis(f[3, 1], xtickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
+                    Axis(f[4, 1], xtickformat = values -> [rich("\$value", superscript("XY", color = :red))
+                                                           for value in values])
+                    
+                    f
+                    """
+            )
+        ],
+        :ytickformat => [
+            Example(
+                name = "`ytickformat` variants",
+                code = """
+                    f = Figure()
+                    
+                    Axis(f[1, 1], ytickformat = values -> ["\$(value)kg" for value in values])
+                    Axis(f[1, 2], ytickformat = "{:.2f}ms")
+                    Axis(f[1, 3], ytickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
+                    Axis(f[1, 4], ytickformat = values -> [rich("\$value", superscript("XY", color = :red))
+                                                           for value in values])
+                    
+                    f
+                    """
+            )
+        ],
     )
 end
