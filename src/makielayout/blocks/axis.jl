@@ -1729,7 +1729,7 @@ function attribute_examples(::Type{Axis})
         ],
         :xticksmirrored => [
             Example(
-                name = "`xticksmirrored` variants",
+                name = "`xticksmirrored` on and off",
                 code = """
                     f = Figure()
                     
@@ -1742,12 +1742,42 @@ function attribute_examples(::Type{Axis})
         ],
         :yticksmirrored => [
             Example(
-                name = "`yticksmirrored` variants",
+                name = "`yticksmirrored` on and off",
                 code = """
                     f = Figure()
                     
                     Axis(f[1, 1], yticksmirrored = false, yminorticksvisible = true)
                     Axis(f[2, 1], yticksmirrored = true, yminorticksvisible = true)
+                    
+                    f
+                    """
+            )
+        ],
+        :xminorticks => [
+            Example(
+                name = "`xminorticks` variants",
+                code = """
+                    f = Figure()
+                    
+                    kwargs = (; xminorticksvisible = true, xminorgridvisible = true)
+                    Axis(f[1, 1]; xminorticks = IntervalsBetween(2), kwargs...)
+                    Axis(f[2, 1]; xminorticks = IntervalsBetween(5), kwargs...)
+                    Axis(f[3, 1]; xminorticks = [1, 2, 3, 4], kwargs...)
+                    
+                    f
+                    """
+            )
+        ],
+        :yminorticks => [
+            Example(
+                name = "`yminorticks` variants",
+                code = """
+                    f = Figure()
+                    
+                    kwargs = (; yminorticksvisible = true, yminorgridvisible = true)
+                    Axis(f[1, 1]; yminorticks = IntervalsBetween(2), kwargs...)
+                    Axis(f[1, 2]; yminorticks = IntervalsBetween(5), kwargs...)
+                    Axis(f[1, 3]; yminorticks = [1, 2, 3, 4], kwargs...)
                     
                     f
                     """

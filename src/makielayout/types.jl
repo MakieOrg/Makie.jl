@@ -574,7 +574,14 @@ end
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
         xminortickcolor::RGBAf = :black
-        "The tick locator for the x minor ticks"
+        """
+        The tick locator for the minor ticks of the x axis.
+
+        Common objects that can be used are:
+        - `IntervalsBetween`, divides the space between two adjacent major ticks into `n` intervals
+          for `n-1` minor ticks
+        - A vector of numbers
+        """
         xminorticks = IntervalsBetween(2)
         "Controls if minor ticks on the y axis are visible"
         yminorticksvisible::Bool = false
@@ -586,7 +593,14 @@ end
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
         yminortickcolor::RGBAf = :black
-        "The tick locator for the y minor ticks"
+        """
+        The tick locator for the minor ticks of the y axis.
+
+        Common objects that can be used are:
+        - `IntervalsBetween`, divides the space between two adjacent major ticks into `n` intervals
+          for `n-1` minor ticks
+        - A vector of numbers
+        """
         yminorticks = IntervalsBetween(2)
         """
         The scaling function for the x axis.
