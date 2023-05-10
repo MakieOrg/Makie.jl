@@ -1727,5 +1727,31 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :xticksmirrored => [
+            Example(
+                name = "`xticksmirrored` variants",
+                code = """
+                    f = Figure()
+                    
+                    Axis(f[1, 1], xticksmirrored = false, xminorticksvisible = true)
+                    Axis(f[1, 2], xticksmirrored = true, xminorticksvisible = true)
+                    
+                    f
+                    """
+            )
+        ],
+        :yticksmirrored => [
+            Example(
+                name = "`yticksmirrored` variants",
+                code = """
+                    f = Figure()
+                    
+                    Axis(f[1, 1], yticksmirrored = false, yminorticksvisible = true)
+                    Axis(f[2, 1], yticksmirrored = true, yminorticksvisible = true)
+                    
+                    f
+                    """
+            )
+        ],
     )
 end
