@@ -1,6 +1,6 @@
-module ShadeYourData
-
 # originally from https://github.com/cjdoris/ShadeYourData.jl
+
+module PixelAggregation
 
 import Base.Threads: @threads
 import Makie: Makie, FRect3D, lift, (..)
@@ -55,13 +55,17 @@ abstract type AggMethod end
 struct AggSerial <: AggMethod end
 struct AggThreads <: AggMethod end
 
-function aggregate!(aggbuffer, pixelbuffer, c::Canvas, points; op::AggOp=AggCount(), method::AggMethod=AggSerial())
+function aggregate!(aggbuffer, pixelbuffer, c::Canvas, points, local_op, point_func; op::AggOp=AggCount(), method::AggMethod=AggSerial())
     fill!(aggbuffer, null(op))
-    _aggregate!(aggbuffer, pixelbuffer, c, op, method, points)
-    return
+    return aggregation_implementation!(method, aggbuffer, pixelbuffer, c, op, points, local_op, point_func)
 end
 
-function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::Canvas, op::AggOp, ::AggSerial, points)
+function aggregation_implementation!(
+        ::AggSerial,
+        aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
+        c::Canvas, op::AggOp,
+        points, local_op, point_func)
+
     xmin, xmax = xlims(c)
     ymin, ymax = ylims(c)
     xsize, ysize = size(c)
@@ -78,27 +82,42 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
 
     # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
     out = Base.ReshapedArray(aggbuffer, (xsize, ysize), ())
+
     @inbounds for point in points
-        x = point[1]
-        y = point[2]
-        if length(point) > 2 # should compile away
-            z = point[3]
+        p = point_func(point)
+        x = p[1]
+        y = p[2]
+        if length(p) > 2 # should compile away
+            z = p[3]
         end
         xmin ≤ x ≤ xmax || continue
         ymin ≤ y ≤ ymax || continue
         i = 1 + floor(Int, xscale*(x-xmin))
         j = 1 + floor(Int, yscale*(y-ymin))
-        if length(point) == 2 # should compile away
+        if length(p) == 2 # should compile away
             out[i,j] = update(op, out[i,j])
-        elseif length(point) == 3
+        elseif length(p) == 3
             out[i,j] = update(op, out[i,j], z)
         end
     end
-    map!(x->value(op, x), pixelbuffer, aggbuffer)
-    return
+
+    mini, maxi = Inf, -Inf
+    map!(pixelbuffer, aggbuffer) do x
+        final_value = local_op(value(op, x))
+        if isfinite(final_value)
+            mini = min(final_value, mini)
+            maxi = max(final_value, maxi)
+        end
+        return final_value
+    end
+    return (mini, maxi)
 end
 
-function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::Canvas, op::AggOp, ::AggThreads, points)
+function aggregation_implementation!(
+        ::AggThreads,
+        aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
+        c::Canvas, op::AggOp,
+        points, local_op, point_func)
     xmin, xmax = xlims(c)
     ymin, ymax = ylims(c)
     xsize, ysize = size(c)
@@ -125,7 +144,7 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
         from = chunks[t]
         to = chunks[t+1]
         for idx in from:to
-            p = @inbounds points[idx]
+            p = @inbounds point_func(points[idx])
             x = p[1]
             y = p[2]
             if length(p) > 2 # should compile away
@@ -143,6 +162,7 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
         end
     end
     # reduce along the thread dimension
+    mini, maxi = Inf, -Inf
     for j in 1:ysize
         for i in 1:xsize
             @inbounds val = out[i,j,1]
@@ -150,141 +170,219 @@ function _aggregate!(aggbuffer::AbstractVector, pixelbuffer::AbstractVector, c::
                 @inbounds val = merge(op, val, out[i,j,t])
             end
             # update the value in out2 directly in this loop
-            @inbounds out2[i,j] = value(op, val)
+            final_value = local_op(value(op, val))
+            if isfinite(final_value)
+                mini = min(final_value, mini)
+                maxi = max(final_value, maxi)
+            end
+            @inbounds out2[i, j] = final_value
         end
     end
-    return
+    return (mini, maxi)
 end
 
-const DEFAULT_SPREAD_MASKS = Matrix{Bool}[
-    ones(Int, 1, 1),
-    [0 1 0; 1 1 1; 0 1 0],
-    [1 1 1; 1 1 1; 1 1 1],
-    [0 0 1 0 0; 0 1 1 1 0; 1 1 1 1 1; 0 1 1 1 0; 0 0 1 0 0],
-    [0 1 1 1 0; 1 1 1 1 1; 1 1 1 1 1; 1 1 1 1 1; 0 1 1 1 0],
-    [1 1 1 1 1; 1 1 1 1 1; 1 1 1 1 1; 1 1 1 1 1; 1 1 1 1 1],
-]
 
-function spread(img::AbstractMatrix, r::Integer; masks=DEFAULT_SPREAD_MASKS, opts...)
-    Base.require_one_based_indexing(masks)
-    spread(img, masks[r+1]; opts...)
-end
-
-function spread(img::AbstractMatrix, w::AbstractMatrix; op=max)
-    Base.require_one_based_indexing(img, w)
-    wsz = size(w)
-    all(isodd, wsz) || error("weights must have odd size in each dimension")
-    r = map(x->fld(x,2), wsz)
-    sz = size(img)
-    out = zeros(typeof(zero(eltype(img))*zero(eltype(w))), size(img)...)
-    for j in -r[2]:r[2]
-        for i in -r[1]:r[1]
-            wt = w[r[1]+1+i,r[2]+1+j]
-            vout = @view out[i ≥ 0 ? (1+i:end) : (1:end+i), j ≥ 0 ? (j+1:end) : (1:end+j)]
-            vimg = @view img[i ≥ 0 ? (1:end-i) : (1-i:end), j ≥ 0 ? (1:end-j) : (1-j:end)]
-            vout .= op.(vout, vimg .* Ref(wt))
-        end
-    end
-    out
-end
-
-function autospread(img::AbstractMatrix; masks=DEFAULT_SPREAD_MASKS, rmax=length(masks)-1, thresh=0.5, opts...)
-    Base.require_one_based_indexing(img, masks)
-    0 ≤ rmax < length(masks) || error("rmax out of range")
-    n₀ = count(x->!iszero(x), img)
-    out = spread(img, masks[1]; opts...)
-    for r in 1:rmax
-        mask = masks[r+1]
-        s = count(x->!iszero(x), mask)
-        newout = spread(img, mask; opts...)
-        n = count(x->!iszero(x), newout)
-        n < thresh * s * n₀ && break
-        # out = newout
-        # linearly interpolate between out and newout depending on where n is in the
-        # interval [thresh * s * n₀, s * n₀]
-        p = (n / (s * n₀) - thresh) / (1 - thresh)
-        out = @. p * newout + (1 - p) * out
-    end
-    return out
-end
+export AggAny, AggCount, AggMean, AggSum, AggSerial, AggThreads
 
 end
 
-import .ShadeYourData
+using ..PixelAggregation
 
-@recipe(DataShader) do scene
+function equalize_histogram(matrix; nbins=256 * 256)
+    h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins=nbins)
+    h_eq = normalize(h_eq; mode=:density)
+    cdf = cumsum(h_eq.weights)
+    cdf = cdf / cdf[end]
+    edg = h_eq.edges[1]
+    # TODO is this the correct linear interpolation?
+    return Makie.interpolated_getindex.((cdf,), matrix, (Vec2f(first(edg), last(edg)),))
+end
+
+"""
+    datashader(points::AbstractVector{<: Point})
+
+Points can be any array type supporting iteration & getindex, including memory mapped arrays.
+If you have x + y coordinates seperated and want to avoid conversion + copy, consider using:
+```Julia
+using Makie.StructArrays
+points = StructArray{Point2f}((x, y))
+datashader(points)
+```
+Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower then just copying it into a new array.
+
+For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -t8` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+
+## Attributes
+
+### Specific to `DataShader`
+
+- `agg = AggCount()` can be `AggCount()`, `AggAny()` or `AggMean()`. User extendable by overloading:
+
+
+    ```Julia
+        struct MyAgg{T} <: Makie.AggOp end
+        MyAgg() = MyAgg{Float64}()
+        Makie.PixelAggregation.null(::MyAgg{T}) where {T} = zero(T)
+        Makie.PixelAggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
+        Makie.PixelAggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
+        Makie.PixelAggregation.value(::MyAgg{T}, x::T) where {T} = x
+    ```
+
+- `method = AggThreads()` can be `AggThreads()` or `AggSerial()`.
+- `async_latest::Bool = true` will calculate aggregation in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in documenter.
+
+- `global_post::Function = Makie.equalize_histogram` function which gets called on the whole aggregation array before display (`global_post(final_aggregation_result)`).
+- `local_post::Function = identity` function which gets call on each element after aggregation (`map!(x-> local_post(x), final_aggregation_result)`).
+
+- `point_func::Function = identity` function which gets applied to every point before aggregating it.
+- `binfactor::Number = 1` factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a corser image.
+- `show_timings::Bool = false` show how long it takes to aggregate each frame.
+- `interpolate::Bool = true` If the resulting image should be displayed interpolated.
+
+### Generic
+
+- `visible::Bool = true` sets whether the plot will be rendered or not.
+- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
+- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+- `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
+- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
+- `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
+- `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
+- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
+- `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
+- `space::Symbol = :data` sets the transformation space for the plot
+"""
+@recipe(DataShader, points) do scene
     Theme(
-        agg = ShadeYourData.AggCount(),
-        post = identity,
-        method = ShadeYourData.AggSerial(),
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
+
+        agg = AggCount(),
+        method = AggThreads(),
+        async_latest = true,
+        # Defaults to equalize_histogram
+        # just set to automatic, so that if one sets local_post, one doesn't do equalize_histogram on top of things.
+        global_post = automatic,
+        local_post = identity,
+
+        point_func = identity,
         binfactor = 1,
+        show_timings = false,
+
+        colormap = theme(scene, :colormap),
+        colorrange = automatic
     )
 end
 
 conversion_trait(::Type{<: DataShader}) = PointBased()
 
+function fast_bb(points, f)
+    N = length(points)
+    NT = Threads.nthreads()
+    slices = ceil(Int, N / NT)
+    offset = 1
+    results = fill(Point2f(0), NT, 2)
+    Threads.@threads for i in 1:NT
+        start = ((i - 1) * slices + 1)
+        stop = min(length(points), i * slices)
+        pmin, pmax = extrema(Rect2f(view(points, start:stop)))
+        results[i, 1] = f(pmin)
+        results[i, 2] = f(pmax)
+    end
+    return Rect3f(Rect2f(vec(results)))
+end
 
-function Makie.plot!(p::DataShader{<: Tuple{<: Vector{<: Point}}})
+function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
-    # transf = transform_func_obs(scene)
 
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
-    px_area = lift(identity, p, scene.px_area)
+    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
+    px_area = lift(identity, p, scene.px_area; ignore_equal_values=true)
 
-    canvas = lift(limits, px_area, p.binfactor) do lims, pxarea, binfactor
+    canvas = lift(limits, px_area, p.binfactor; ignore_equal_values=true) do lims, pxarea, binfactor
         binfactor isa Int || error("Bin factor $binfactor is not an Int.")
         xsize, ysize = round.(Int, Makie.widths(pxarea) ./ binfactor)
         xmin, ymin = minimum(lims)
         xmax, ymax = maximum(lims)
-        ShadeYourData.Canvas(xmin, xmax, xsize, ymin, ymax, ysize)
+        return PixelAggregation.Canvas(xmin, xmax, xsize, ymin, ymax, ysize)
     end
-    points = p[1]
+
     # optimize `data_limits` to be only calculated on changed data
-    p._boundingbox = lift(x-> FRect3D(FRect2D(x)), points)
-    xrange = Observable(0f0..1f0)
-    yrange = Observable(0f0..1f0)
+    p._boundingbox = lift(fast_bb, p.points, p.point_func)
+
+    xrange = Observable((canvas[].xmin .. canvas[].xmax); ignore_equal_values=true)
+    yrange = Observable((canvas[].ymin .. canvas[].ymax); ignore_equal_values=true)
 
     # use resizable buffer vectors for aggregation
     aggbuffer = zeros(Float32, 0)
     pixelbuffer = zeros(Float32, canvas[].xsize * canvas[].ysize)
     pixels = Observable{Matrix{Float32}}()
-
-    function update_pixels(canvas, agg, post, method, points)
+    colorrange = Observable(Vec2f(0, 1))
+    on(p, p.colorrange; update=true) do crange
+        if crange isa Tuple || crange isa Vec2
+            colorrange[] = Vec2f(crange)
+        end
+    end
+    # TODO move this out into a function one can directly call without going through the recipe
+    # to just get Matrix{<: Float} -> Matrix{<: Colorant}
+    function update_pixels(canvas, agg, global_post, local_post, method, points, point_func)
+        tstart = time()
         w = canvas.xsize
         h = canvas.ysize
         xrange.val = canvas.xmin .. canvas.xmax
         yrange.val = canvas.ymin .. canvas.ymax
 
-        n_threads(::ShadeYourData.AggSerial) = 1
-        n_threads(::ShadeYourData.AggThreads) = Threads.nthreads()
+        n_threads(::AggSerial) = 1
+        n_threads(::AggThreads) = Threads.nthreads()
         n_elements = w * h * n_threads(method)
 
         # if aggbuffer has the appropriate element type for the current aggregation scheme
         # we can reuse it
-        if eltype(aggbuffer) === typeof(ShadeYourData.null(agg))
+        if eltype(aggbuffer) === typeof(PixelAggregation.null(agg))
             resize!(aggbuffer, n_elements)
-        # otherwise we allocate a new array
         else
-            aggbuffer = fill(ShadeYourData.null(agg), n_elements)
+            # otherwise we allocate a new array
+            aggbuffer = fill(PixelAggregation.null(agg), n_elements)
         end
 
         resize!(pixelbuffer, w * h)
 
-        ShadeYourData.aggregate!(aggbuffer, pixelbuffer, canvas, points; op=agg, method)
+        mini_maxi = PixelAggregation.aggregate!(aggbuffer, pixelbuffer, canvas, points, local_post,
+                                                point_func; op=agg, method)
         # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
         pixelbuffer_reshaped = Base.ReshapedArray(pixelbuffer, (canvas.xsize, canvas.ysize), ())
 
-        pixels[] = post(pixelbuffer_reshaped)
+        if global_post === automatic
+            _global_post = local_post === identity ? equalize_histogram : identity
+        else
+            _global_post = global_post
+        end
+
+        pixels[] = _global_post(pixelbuffer_reshaped)
+
+        if _global_post !== identity && p.colorrange[] isa Automatic
+            colorrange[] = Vec2f(extrema(pixels[]))
+        elseif _global_post === identity && p.colorrange[] isa Automatic
+            colorrange[] = Vec2f(mini_maxi)
+        end
+        elapsed = time() - tstart
+        if p.show_timings[]
+            println("aggregation took $(round(elapsed; digits=5))s")
+        end
         return
     end
-    onany_latest(update_pixels, canvas, p.agg, p.post, p.method, points)
-    update_pixels(canvas[], p.agg[], p.post[], p.method[], points[])
-    image!(p, xrange, yrange, pixels; colorrange=p.colorrange, colormap = p.colormap)
+    @show p.async_latest[]
+    if p.async_latest[]
+        onany_latest(update_pixels, canvas, p.agg, p.global_post, p.local_post, p.method, p.points, p.point_func;
+                 update=true)
+    else
+        onany(update_pixels, canvas, p.agg, p.global_post, p.local_post, p.method, p.points[], p.point_func)
+        update_pixels(canvas[], p.agg[], p.global_post[], p.local_post[], p.method[], p.points[], p.point_func[])
+    end
+    image!(p, xrange, yrange, pixels; colorrange=colorrange, colormap = p.colormap)
     return p
 end
 
-function Makie.data_limits(p::DataShader{Tuple{Vector{Point2f}}})
+function Makie.data_limits(p::DataShader{<: Tuple{<:AbstractVector{<:Point}}})
     return p._boundingbox[]
 end

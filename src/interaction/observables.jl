@@ -45,8 +45,8 @@ end
 
 function on_latest(f, observable; update=false, spawn=false)
     # How does one create a finished task??
-    last_task = @async nothing
-    yield()
+    last_task = nothing
+    has_changed = Threads.Atomic{Bool}(false)
     function run_f(new_value)
         try
             f(new_value)
@@ -55,21 +55,28 @@ function on_latest(f, observable; update=false, spawn=false)
         end
         # Since we skip updates completely while executing the above `f`
         # We need to check after finishing, if the value has changed!
-        # If != is too expensive or ill defined, we could use a flag `has_changed`
-        # But `!=` is more correct, considering, that one could arrive at an old value.
-        # For async_latest, `f` is considered to be side effect free anyways
-        if new_value != observable[]
+        # `==` can be pretty expensive or ill defined, so we use a flag `has_changed`
+        # But `==` would be better, considering, that one could arrive at an old value.
+        # This should be configurable, but since async_latest is needed for working on big data as input
+        # we assume for now that `==` is prohibitive as the default
+        if has_changed[]
+            has_changed[] = false
             run_f(observable[]) # needs to recursive
         end
     end
     return on(observable; update=update) do new_value
-        if istaskdone(last_task)
+        if isnothing(last_task)
+            # run first task in sync
+            last_task = update ? (@async f(observable[])) : @async(nothing)
+            wait(last_task)
+        elseif istaskdone(last_task)
             if spawn
                 last_task = Threads.@spawn run_f(new_value)
             else
                 last_task = Threads.@async run_f(new_value)
             end
         else
+            has_changed[] = true
             return # Do nothing if working
         end
     end
