@@ -60,61 +60,6 @@ f
 ```
 \end{examplefigure}
 
-## Minor ticks and grids
-
-You can show minor ticks and grids by setting `x/yminorticksvisible = true` and `x/yminorgridvisible = true` which are off by default.
-You can set size, color, width, align etc. like for the normal ticks, but there are no labels.
-The `x/yminorticks` attributes control how minor ticks are computed given major ticks and axis limits.
-For that purpose you can create your own minortick type and overload `Makie.get_minor_tickvalues(minorticks, tickvalues, vmin, vmax)`.
-
-The default minor tick type is `IntervalsBetween(n, mirror = true)` where `n` gives the number of intervals each gap between major ticks is divided into with minor ticks, and `mirror` decides if outside of the major ticks there are more minor ticks with the same intervals as the adjacent gaps.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
-theme = Attributes(
-    Axis = (
-        xminorticksvisible = true,
-        yminorticksvisible = true,
-        xminorgridvisible = true,
-        yminorgridvisible = true,
-    )
-)
-
-fig = with_theme(theme) do
-    fig = Figure()
-    axs = [Axis(fig[fldmod1(n, 2)...],
-        title = "IntervalsBetween($(n+1))",
-        xminorticks = IntervalsBetween(n+1),
-        yminorticks = IntervalsBetween(n+1)) for n in 1:4]
-    fig
-end
-
-fig
-```
-\end{examplefigure}
-
-Minor ticks can also be given as an `AbstractVector` of real numbers.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
-lines(1..10, sin, axis = (
-    yminorgridvisible = true,
-    yminorticksvisible = true,
-    yminorticks = -0.9:0.1:0.9,
-    yticks = [-1, 1],
-))
-```
-\end{examplefigure}
-
-
 ## Hiding Axis spines and decorations
 
 You can hide all axis elements manually, by setting their specific visibility attributes to `false`, like
