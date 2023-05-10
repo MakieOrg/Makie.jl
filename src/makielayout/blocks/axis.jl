@@ -1385,6 +1385,18 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :yticks => [
+            Example(
+                name = "Common tick types",
+                code = """
+                    fig = Figure()
+                    Axis(fig[1, 1], yticks = 1:10)
+                    Axis(fig[1, 2], yticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+                    Axis(fig[1, 3], yticks = WilkinsonTicks(5))
+                    fig
+                    """
+            )
+        ],
         :aspect => [
             Example(
                 name = "Common aspect ratios",
