@@ -202,11 +202,20 @@ end
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
     @attributes begin
-        "The xlabel string."
+        """
+        The content of the x axis label.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         xlabel = ""
-        "The ylabel string."
+        """
+        The content of the y axis label.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         ylabel = ""
-        "The axis title string."
+        """
+        The content of the axis title.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         title = ""
         "The font family of the title."
         titlefont = :bold
@@ -216,13 +225,21 @@ end
         titlegap::Float64 = 4f0
         "Controls if the title is visible."
         titlevisible::Bool = true
-        "The horizontal alignment of the title."
+        """
+        The horizontal alignment of the title.
+        The subtitle always follows this alignment setting.
+
+        Options are `:center`, `:left` or `:right`.
+        """
         titlealign::Symbol = :center
         "The color of the title"
         titlecolor::RGBAf = @inherit(:textcolor, :black)
         "The axis title line height multiplier."
         titlelineheight::Float64 = 1
-        "The axis subtitle string."
+        """
+        The content of the axis subtitle.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         subtitle = ""
         "The font family of the subtitle."
         subtitlefont = :regular
@@ -415,15 +432,71 @@ end
         yautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
         """
         Controls what numerical tick values are calculated for the x axis.
-        If `xticks` doesn't already include tick labels, the
-        final labels will depend on `xtickformat` as well.
+
+        To determine tick values and labels, Makie first calls `Makie.get_ticks(xticks, xscale, xtickformat, xmin, xmax)`.
+        If there is no special method defined for the current combination of
+        ticks, scale and formatter which returns both tick values and labels at once,
+        then the numerical tick values will be determined using
+        `xtickvalues = Makie.get_tickvalues(xticks, xscale, xmin, xmax)` after which the labels are determined using
+        `Makie.get_ticklabels(xtickformat, xtickvalues)`.
+
+        Common objects that can be used as ticks are:
+        - A vector of numbers
+        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+        - `WilkinsonTicks`, the default tick finder for linear ticks
+        - `LinearTicks`, an alternative tick finder for linear ticks
+        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
         """
         xticks = Makie.automatic
-        "Format for xticks."
+        """
+        The formatter for the ticks on the x axis.
+        
+        Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
+        `Makie.get_ticklabels(xtickformat, xtickvalues)` is called. If there is a special method defined,
+        tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
+        docstring for `xticks` for more information.
+        
+        Common objects that can be used for tick formatting are:
+        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+          that can be plotted by the `text` primitive.
+        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        """
         xtickformat = Makie.automatic
-        "The yticks."
+        """
+        Controls what numerical tick values are calculated for the y axis.
+
+        To determine tick values and labels, Makie first calls `Makie.get_ticks(yticks, yscale, ytickformat, ymin, ymax)`.
+        If there is no special method defined for the current combination of
+        ticks, scale and formatter which returns both tick values and labels at once,
+        then the numerical tick values will be determined using
+        `ytickvalues = Makie.get_tickvalues(yticks, yscale, ymin, ymax)` after which the labels are determined using
+        `Makie.get_ticklabels(ytickformat, ytickvalues)`.
+
+        Common objects that can be used as ticks are:
+        - A vector of numbers
+        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+        - `WilkinsonTicks`, the default tick finder for linear ticks
+        - `LinearTicks`, an alternative tick finder for linear ticks
+        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        """
         yticks = Makie.automatic
-        "Format for yticks."
+        """
+        The formatter for the ticks on the y axis.
+        
+        Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
+        `Makie.get_ticklabels(ytickformat, ytickvalues)` is called. If there is a special method defined,
+        tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
+        docstring for `yticks` for more information.
+        
+        Common objects that can be used for tick formatting are:
+        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+          that can be plotted by the `text` primitive.
+        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        """
         ytickformat = Makie.automatic
         "The button for panning."
         panbutton::Makie.Mouse.Button = Makie.Mouse.right
@@ -439,9 +512,15 @@ end
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
         yaxisposition::Symbol = :left
-        "Controls if the x spine is limited to the furthest tick marks or not."
+        """
+        If `true`, limits the x axis spine's extent to the outermost major tick marks.
+        Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
+        """
         xtrimspine::Union{Bool, Tuple{Bool,Bool}}  = false
-        "Controls if the y spine is limited to the furthest tick marks or not."
+        """
+        If `true`, limits the y axis spine's extent to the outermost major tick marks.
+        Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
+        """
         ytrimspine::Union{Bool, Tuple{Bool,Bool}} = false
         "The background color of the axis."
         backgroundcolor::RGBAf = :white
@@ -458,7 +537,26 @@ end
         size, `autolimitaspect` changes the limits to achieve the desired ratio.
         """
         autolimitaspect = nothing
-        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
+        """
+        Can be used to manually specify which axis limits are desired.
+
+        The `limits` attribute cannot be used to read out the actual limits of the axis.
+        The value of `limits` does not change when interactively zooming and panning and the axis can be reset
+        accordingly using the function `reset_limits!`.
+
+        The function `autolimits!` resets the value of `limits` to `(nothing, nothing)` and adjusts the axis limits according
+        to the extents of the plots added to the axis.
+        
+        The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, high)` where each value
+        can be a real number or `nothing`.
+        It can also be a tuple `(x, y)` where `x` and `y` can be `nothing` or a tuple `(low, high)`.
+        In all cases, `nothing` means that the respective limit values will be automatically determined.
+
+        Automatically determined limits are also influenced by `xautolimitmargin` and `yautolimitmargin`.
+        
+        The convenience functions `xlims!` and `ylims!` allow to set only the x or y part of `limits`.
+        The function `limits!` is another option to set both x and y simultaneously.
+        """
         limits = (nothing, nothing)
         "The align mode of the axis in its parent GridLayout."
         alignmode = Inside()
@@ -476,7 +574,14 @@ end
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
         xminortickcolor::RGBAf = :black
-        "The tick locator for the x minor ticks"
+        """
+        The tick locator for the minor ticks of the x axis.
+
+        Common objects that can be used are:
+        - `IntervalsBetween`, divides the space between two adjacent major ticks into `n` intervals
+          for `n-1` minor ticks
+        - A vector of numbers
+        """
         xminorticks = IntervalsBetween(2)
         "Controls if minor ticks on the y axis are visible"
         yminorticksvisible::Bool = false
@@ -488,11 +593,52 @@ end
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
         yminortickcolor::RGBAf = :black
-        "The tick locator for the y minor ticks"
+        """
+        The tick locator for the minor ticks of the y axis.
+
+        Common objects that can be used are:
+        - `IntervalsBetween`, divides the space between two adjacent major ticks into `n` intervals
+          for `n-1` minor ticks
+        - A vector of numbers
+        """
         yminorticks = IntervalsBetween(2)
-        "The x axis scale"
+        """
+        The scaling function for the x axis.
+
+        Can be any invertible function, some predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
+        `Makie.defaultlimits` and `Makie.defined_interval`.
+        
+        If the scaling function is only defined over a limited interval,
+        no plot object may have a source datum that lies outside of that range.
+        For example, there may be no x value lower than or equal to 0 when `log`
+        is selected for `xscale`. What matters are the source data, not the user-selected
+        limits, because all data have to be transformed, irrespective of whether they
+        lie inside or outside of the current limits.
+        
+        The axis scale may affect tick finding and formatting, depending
+        on the values of `xticks` and `xtickformat`.
+        """
         xscale = identity
-        "The y axis scale"
+        """
+        The scaling function for the y axis.
+
+        Can be any invertible function, some predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
+        `Makie.defaultlimits` and `Makie.defined_interval`.
+        
+        If the scaling function is only defined over a limited interval,
+        no plot object may have a source datum that lies outside of that range.
+        For example, there may be no y value lower than or equal to 0 when `log`
+        is selected for `yscale`. What matters are the source data, not the user-selected
+        limits, because all data have to be transformed, irrespective of whether they
+        lie inside or outside of the current limits.
+        
+        The axis scale may affect tick finding and formatting, depending
+        on the values of `yticks` and `ytickformat`.
+        """
         yscale = identity
     end
 end
