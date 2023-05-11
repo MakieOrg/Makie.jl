@@ -99,6 +99,25 @@ end
 
 wait_for_display(screen) = nothing
 
+function has_mime_display(mime)
+    for display in Base.Multimedia.displays
+        # Ugh, why would textdisplay say it supports HTML??
+        display isa TextDisplay && continue
+        displayable(display, mime) && return true
+    end
+    return false
+end
+
+can_show_inline(::Missing) = false # no backend
+function can_show_inline(Backend)
+    for mime in [MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
+        if backend_showable(Backend.Screen, mime)
+            return has_mime_display(mime)
+        end
+    end
+    return false
+end
+
 """
     Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
 
@@ -119,14 +138,23 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
         In that case, try `]build GLMakie` and watch out for any warnings.
         """)
     end
-
-    if ALWAYS_INLINE_PLOTS[] == true
+    inline = ALWAYS_INLINE_PLOTS[]
+    # We show inline if explicitely requested or if automatic and we can actually show something inline!
+    if (inline === true || inline === automatic) && can_show_inline(backend)
         Core.invoke(display, Tuple{Any}, figlike)
         # In WGLMakie, we need to wait for the display being done
         screen = getscreen(get_scene(figlike))
         wait_for_display(screen)
         return screen
     else
+        if inline === true
+            @warn """
+
+                Makie.inline!(do_inline) was set to true, but we didn't detect a display that can show the plot,
+                so we aren't inlining the plot and try to show the plot in a window.
+                If this wasn't set on purpose, call `Makie.inline!()` to restore the default.
+            """
+        end
         scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene; screen_config...)
