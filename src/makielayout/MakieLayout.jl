@@ -33,6 +33,7 @@ include("blocks/legend.jl")
 include("blocks/scene.jl")
 include("blocks/menu.jl")
 include("blocks/textbox.jl")
+include("blocks/viewport.jl")
 
 export Axis
 export Axis3

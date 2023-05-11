@@ -234,13 +234,14 @@ cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwa
     Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
 
 function deselect_all_cameras!(scene)
-    cam = cameracontrols(scene)
-    cam isa Camera3D && (cam.attributes.selected[] = false)
+    deselect_camera!(cameracontrols(scene))
     for child in scene.children
         deselect_all_cameras!(child)
     end
     nothing
 end
+deselect_camera!(cam::Camera3D) = cam.attributes.selected[] = false
+deselect_camera!(::AbstractCamera) = nothing
 
 
 function add_translation!(scene, cam::Camera3D)

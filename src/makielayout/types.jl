@@ -1411,3 +1411,31 @@ end
         zautolimitmargin = (0.05, 0.05)
     end
 end
+
+@Block Viewport3DController begin
+    @attributes begin
+        # Controller specific
+        "Sets the background color on the viewport controller."
+        backgroundcolor = :transparent
+        "Sets the outline color of the (x, y, z) labels."
+        strokecolor = (:black, :black, :black)
+        "Sets the (inner) color of the (x, y, z) labels."
+        fontcolor = (:white, :white, :white)
+
+        # Layouting
+        "The height setting of the scene."
+        height = nothing
+        "The width setting of the scene."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The horizontal alignment of the scene in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the scene in its suggested bounding box."
+        valign = :center
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
+    end
+end
