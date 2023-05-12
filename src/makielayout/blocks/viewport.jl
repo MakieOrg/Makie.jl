@@ -1,3 +1,15 @@
+# Forwarded from Camera pr
+
+struct Ray
+    origin::Point3f
+    direction::Vec3f
+end
+
+
+################################################################################
+
+
+
 # Mesh generation
 function Rhombicuboctahedron(; center = Point3f(0), radius = 1f0)
     o = 1 / (1 + sqrt(2))
@@ -68,22 +80,25 @@ end
 
 # Simplified/Modified from Camera3D to make sure updates work correctly
 struct ViewportControllerCamera <: AbstractCamera
-    # eyeposition::Observable{Vec3f}
-    # lookat::Observable{Vec3f}
-    # upvector::Observable{Vec3f}
     phi::Observable{Float32}
     theta::Observable{Float32}
     attributes::Attributes
 end
 
-function ViewportControllerCamera(scene::Scene, axis)
+function ViewportControllerCamera(scene::Scene, axis; kwargs...)
+    kwdict = Dict(kwargs)
     attr = Attributes(
         fov = 45.0,
         projectiontype = Makie.Perspective,
         rotationspeed = 1.0,
         click_timeout = 0.3,
         selected = false,
+        # step = 2pi / 16
+        step = get(kwdict, :step, 2pi/16)
+        # phi_steps = 16,
+        # theta_steps = 16
     )
+    # merge!(attr, Attributes(kwargs)) # doesn't replace?
 
     if axis isa Axis3
         cam = ViewportControllerCamera(
@@ -132,8 +147,7 @@ end
 deselect_camera!(cam::ViewportControllerCamera) = cam.attributes.selected[] = false
 
 function add_rotation!(scene, cam::ViewportControllerCamera, axis)
-    rotationspeed = cam.attributes[:rotationspeed]
-    timeout = cam.attributes[:click_timeout]
+    @extract cam.attributes (rotationspeed, click_timeout, step)
     drag_state = RefValue((false, Vec2f(0), time()))
     e = events(scene)
 
@@ -146,33 +160,63 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
                 return Consume(true)
             elseif event.action == Mouse.release && active
                 dt = time() - last_time
-                if dt < timeout[]
+                if dt < click_timeout[]
                     # do click stuff
                     p, idx = Makie.pick(scene)
-                    if p isa Text
-                        phi, theta = [
-                            (pi, 0), (pi, 0), (0, 0), 
-                            (-pi/2, 0), (-pi/2, 0), (pi/2, 0), 
-                            (cam.phi[], -pi/2), (cam.phi[], -pi/2), (cam.phi[], pi/2)
-                        ][idx]
-                        update_cam!(scene, cam, phi, theta)
-                        update_camera!(axis, cam.phi[], cam.theta[])
-                    elseif p isa Mesh
-                        face_idx = p[1][].index[idx]
-                        phi, theta = [
-                            (cam.phi[], -pi/2),
-                            (3pi/4, -pi/4), (1pi/4, -pi/4), (7pi/4, -pi/4), (5pi/4, -pi/4),
-                            (pi/2, -pi/4), (0, -pi/4), (-pi/2, -pi/4), (-pi, -pi/4),
-                            (3pi/4, 0), (2pi/4, 0), (pi/4, 0), (0, 0), 
-                            (7pi/4, 0), (6pi/4, 0), (5pi/4, 0), (pi, 0),
-                            (pi/2, pi/4), (pi, pi/4), (3pi/2, pi/4), (0, pi/4),
-                            (5pi/4, pi/4), (7pi/4, pi/4), (pi/4, pi/4), (3pi/4, pi/4),
-                            (cam.phi[], pi/2)
-                        ][face_idx]
-                        @info "From Click: $phi, $theta"
+                    if p isa Mesh
+                        ray = ray_at_cursor(scene, cam)
+                        # ray = p + tv, Sphere: x² + y² + z² = r²
+                        # Solve resulting quadratic equation
+                        a = dot(ray.direction, ray.direction)
+                        b = 2 * dot(ray.origin, ray.direction)
+                        c = dot(ray.origin, ray.origin) - 1 # radius 1
+                        # @info a, b, c
+                        t1 = (-b + sqrt(b*b - 4*a*c)) / (2*a)
+                        t2 = (-b - sqrt(b*b - 4*a*c)) / (2*a) # <- this one, always
+                        # @info t1, t2
+                        p = ray.origin + t2 * ray.direction
+
+                        # to spherical
+                        theta = asin(p[3]) 
+                        if abs(p[3]) > 0.999
+                            phi = 0.0
+                        else
+                            p = p[Vec(1,2)]
+                            p = p / norm(p)
+                            phi = mod(2pi + atan(p[2], p[1]), 2pi)
+                        end
+
+                        # snapping
+                        phi   = step[] * round(phi / step[])
+                        theta = step[] * round(theta / step[])
+
                         update_cam!(scene, cam, phi, theta)
                         update_camera!(axis, cam.phi[], cam.theta[])
                     end
+                    # if p isa Text
+                    #     phi, theta = [
+                    #         (pi, 0), (pi, 0), (0, 0), 
+                    #         (-pi/2, 0), (-pi/2, 0), (pi/2, 0), 
+                    #         (cam.phi[], -pi/2), (cam.phi[], -pi/2), (cam.phi[], pi/2)
+                    #     ][idx]
+                    #     update_cam!(scene, cam, phi, theta)
+                    #     update_camera!(axis, cam.phi[], cam.theta[])
+                    # elseif p isa Mesh
+                    #     face_idx = p[1][].index[idx]
+                    #     phi, theta = [
+                    #         (cam.phi[], -pi/2),
+                    #         (3pi/4, -pi/4), (1pi/4, -pi/4), (7pi/4, -pi/4), (5pi/4, -pi/4),
+                    #         (pi/2, -pi/4), (0, -pi/4), (-pi/2, -pi/4), (-pi, -pi/4),
+                    #         (3pi/4, 0), (2pi/4, 0), (pi/4, 0), (0, 0), 
+                    #         (7pi/4, 0), (6pi/4, 0), (5pi/4, 0), (pi, 0),
+                    #         (pi/2, pi/4), (pi, pi/4), (3pi/2, pi/4), (0, pi/4),
+                    #         (5pi/4, pi/4), (7pi/4, pi/4), (pi/4, pi/4), (3pi/4, pi/4),
+                    #         (cam.phi[], pi/2)
+                    #     ][face_idx]
+                    #     @info "From Click: $phi, $theta"
+                    #     update_cam!(scene, cam, phi, theta)
+                    #     update_camera!(axis, cam.phi[], cam.theta[])
+                    # end
                 else
                     # do drag stuff
                     mousepos = mouseposition_px(scene)
@@ -226,7 +270,7 @@ function update_cam!(scene::Scene, cam::ViewportControllerCamera, phi::Real, the
     print(dphi, " -> ")
     dphi = ifelse(dphi > pi, dphi - 2pi, dphi)
     println(dphi)
-    if !(-pi/2 <= dphi <= pi/2)
+    if !(-1.1pi/2 <= dphi <= 1.1pi/2)
         cam.phi[]   = mod(phi + pi, 2pi)
         cam.theta[] = mod(pi - theta, 2pi)
     else
@@ -319,6 +363,44 @@ function update_camera!(lscene::LScene, phi, theta)
     return
 end
 
+function spherical_to_cartesian(phi, theta, radius = 1f0)
+    return radius * Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+end
+
+function cartesian_to_spherical(v::Vec3f)
+
+end
+
+################################################################################
+
+
+function ray_at_cursor(scene::Scene, cam::ViewportControllerCamera)
+    phi = cam.phi[]; theta = cam.theta[]
+    viewdir = - Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+    eyepos = - 3f0 * viewdir
+    theta += pi/2
+    up = Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+
+    u_z = normalize(viewdir)
+    u_x = normalize(cross(u_z, up))
+    u_y = normalize(cross(u_x, u_z))
+    
+    px_width, px_height = widths(scene.px_area[])
+    aspect = px_width / px_height
+    rel_pos = 2 .* mouseposition_px(scene) ./ (px_width, px_height) .- 1
+
+    if cam.attributes.projectiontype[] === Perspective
+        dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) * 
+                tand(0.5 * cam.attributes.fov[]) + u_z
+        return Ray(eyepos, normalize(dir))
+    else
+        # Orthographic has consistent direction, but not starting point
+        origin = norm(viewdir) * (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y)
+        return Ray(origin, normalize(viewdir))
+    end
+end
+
+
 
 ################################################################################
 ### Create Block
@@ -331,32 +413,61 @@ Viewport3DController(x, axis::Union{LScene, Axis3}; kwargs...) = Viewport3DContr
 function initialize_block!(controller::Viewport3DController; axis)
     blockscene = controller.blockscene
 
+    scene_region = map(blockscene, controller.layoutobservables.computedbbox) do bb
+        mini = minimum(bb); ws = widths(bb)
+        center = mini + 0.5 * ws
+        w = min(ws[1], ws[2])
+        return round_to_IRect2D(Rect2(center .- 0.5 * w, Vec2(w)))
+    end
+
     scene = Scene(
         blockscene, 
-        px_area = lift(round_to_IRect2D, blockscene, controller.layoutobservables.computedbbox), 
-        # backgroundcolor = controller.backgroundcolor,
+        px_area = scene_region, 
+        # backgroundcolor = (:yellow, 0.3),
         clear = true
     )
 
-    m = Rhombicuboctahedron()
-    mesh!(scene, m, transparency = false)
-    text!(scene,
-        1.05 .* Point3f[(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1)],
-        text = ["-X", "X", "-Y", "Y", "-Z", "Z"],
-        align = (:center, :center),
-        rotation = [
-            Makie.qrotation(Vec3f(1, 0, 0), pi/2) * Makie.qrotation(Vec3f(0, 1, 0), -pi/2),
-            Makie.qrotation(Vec3f(1, 0, 0), -pi/2) * Makie.qrotation(Vec3f(0, 1, 0), pi/2),
-            Makie.qrotation(Vec3f(0, 1, 0), 0) * Makie.qrotation(Vec3f(1, 0, 0), -3pi/2),
-            Makie.qrotation(Vec3f(1, 0, 0), pi/2),
-            Makie.qrotation(Vec3f(1, 0, 0), pi),
-            Makie.qrotation(Vec3f(1, 0, 0), 0),
-        ],
-        markerspace = :data, fontsize = 0.4, color = :white,
-        strokewidth = 0.1, strokecolor = :black, transparency = false
+    # m = Rhombicuboctahedron()
+    texture = let
+        url = "https://raw.githubusercontent.com/linuxgurugamer/NavBallTextureChanger/master/GameData/NavBallTextureChanger/PluginData/Skins/Trekky0623_DIF.png"
+        FileIO.load(Base.download(url))
+    end
+
+    m = uv_normal_mesh(Tesselation(Sphere(Point3f(0), 1f0), 50))
+    @info length(coordinates(m))
+    mp = mesh!(scene, m, color = texture, transparency = false)
+    rotate!(mp, Vec3f(0, 0, 1), pi)
+
+    step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
+    step_index = Observable(3)
+    cam = ViewportControllerCamera(
+        scene, axis, step = map(i -> 2pi / step_choices[i], step_index)
     )
 
-    ViewportControllerCamera(scene, axis)
+    # mark center
+    scatter!(
+        scene, Point3f(0, 0, -1), space = :clip,
+        marker = '⊹', markersize = 50, color = :black,
+        # marker = '⌖', markersize = 30, color = :black,
+        # marker = Rect, markersize = 20, color = :transparent,
+        # strokewidth = 4, strokecolor = :black
+    )
+
+    # info on step size
+    text!(
+        scene, 
+        Point2f(0.9), space = :clip, align = (:right, :top),
+        text = map(i -> "Steps:\n$(step_choices[i])\n$(360/step_choices[i])°", step_index),
+    )
+
+    on(scene, events(scene).scroll) do e
+        if is_mouseinside(scene)
+            idx = trunc(Int, step_index[] - sign(e[2]))
+            if 0 < idx <= length(step_choices) && (idx != step_index[])
+                step_index[] = idx
+            end
+        end
+    end
 
     return
 end
