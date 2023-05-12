@@ -10,69 +10,6 @@ end
 
 
 
-# Mesh generation
-function Rhombicuboctahedron(; center = Point3f(0), radius = 1f0)
-    o = 1 / (1 + sqrt(2))
-    ps = radius .* Point3f[
-        (-o, -o, -1), (-o, o, -1), (o, o, -1), (o, -o, -1),
-        (-1, o, -o), (-o, 1, -o), (o, 1, -o), (1, o, -o), 
-            (1, -o, -o), (o, -1, -o), (-o, -1, -o), (-1, -o, -o),
-        (-1, o, o), (-o, 1, o), (o, 1, o), (1, o, o), 
-            (1, -o, o), (o, -1, o), (-o, -1, o), (-1, -o, o),
-        (-o, -o, 1), (-o, o, 1), (o, o, 1), (o, -o, 1),
-    ] .+ (center,)
-    QF = QuadFace
-    TF = TriangleFace
-    faces = [
-        # bottom quad
-        QF(1, 2, 3, 4), 
-    
-        # bottom triangles
-        TF(2, 5, 6), TF(3, 7, 8), TF(4, 9, 10), TF(1, 11, 12),
-    
-        # bottom diag quads
-        QF(3, 2, 6, 7), QF(4, 3, 8, 9), QF(1, 4, 10, 11), QF(2, 1, 12, 5), 
-            
-        # quad ring
-        QF(13, 14, 6, 5), QF(14, 15, 7, 6), QF(15, 16, 8, 7), QF(16, 17, 9, 8),
-        QF(17, 18, 10, 9), QF(18, 19, 11, 10), QF(19, 20, 12, 11), QF(20, 13, 5, 12),
-    
-        # top diag quads
-        QF(22, 23, 15, 14), QF(21, 22, 13, 20), QF(24, 21, 19, 18), QF(23, 24, 17, 16), 
-    
-        # top triangles
-        TF(21, 20, 19), TF(24, 18, 17), TF(23, 16, 15), TF(22, 14, 13),
-    
-        # top
-        QF(21, 24, 23, 22)
-    ]
-    
-    remapped_ps = Point3f[]
-    remapped_fs = AbstractFace[]
-    remapped_cs = RGBf[]
-    remapped_index = Int[]
-    for (idx, f) in enumerate(faces)
-        i = length(remapped_ps)
-        append!(remapped_ps, ps[f])
-        push!(remapped_fs, length(f) == 3 ? TF(i+1, i+2, i+3) : QF(i+1, i+2, i+3, i+4))
-        c = RGBf(abs.(mean(ps[f]))...)
-        append!(remapped_cs, (c for _ in f))
-        append!(remapped_index, [idx for _ in f])
-    end
-    
-    _faces = decompose(GLTriangleFace, remapped_fs)
-    return GeometryBasics.Mesh(
-        meta(
-            remapped_ps; 
-            normals = normals(remapped_ps, _faces), 
-            color = remapped_cs,
-            index = remapped_index
-        ), 
-        _faces
-    )
-end
-
-
 ################################################################################
 ### Camera setup
 ################################################################################
@@ -93,10 +30,7 @@ function ViewportControllerCamera(scene::Scene, axis; kwargs...)
         rotationspeed = 1.0,
         click_timeout = 0.3,
         selected = false,
-        # step = 2pi / 16
         step = get(kwdict, :step, 2pi/16)
-        # phi_steps = 16,
-        # theta_steps = 16
     )
     # merge!(attr, Attributes(kwargs)) # doesn't replace?
 
@@ -170,10 +104,7 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
                         a = dot(ray.direction, ray.direction)
                         b = 2 * dot(ray.origin, ray.direction)
                         c = dot(ray.origin, ray.origin) - 1 # radius 1
-                        # @info a, b, c
-                        t1 = (-b + sqrt(b*b - 4*a*c)) / (2*a)
                         t2 = (-b - sqrt(b*b - 4*a*c)) / (2*a) # <- this one, always
-                        # @info t1, t2
                         p = ray.origin + t2 * ray.direction
 
                         # to spherical
@@ -193,30 +124,6 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
                         update_cam!(scene, cam, phi, theta)
                         update_camera!(axis, cam.phi[], cam.theta[])
                     end
-                    # if p isa Text
-                    #     phi, theta = [
-                    #         (pi, 0), (pi, 0), (0, 0), 
-                    #         (-pi/2, 0), (-pi/2, 0), (pi/2, 0), 
-                    #         (cam.phi[], -pi/2), (cam.phi[], -pi/2), (cam.phi[], pi/2)
-                    #     ][idx]
-                    #     update_cam!(scene, cam, phi, theta)
-                    #     update_camera!(axis, cam.phi[], cam.theta[])
-                    # elseif p isa Mesh
-                    #     face_idx = p[1][].index[idx]
-                    #     phi, theta = [
-                    #         (cam.phi[], -pi/2),
-                    #         (3pi/4, -pi/4), (1pi/4, -pi/4), (7pi/4, -pi/4), (5pi/4, -pi/4),
-                    #         (pi/2, -pi/4), (0, -pi/4), (-pi/2, -pi/4), (-pi, -pi/4),
-                    #         (3pi/4, 0), (2pi/4, 0), (pi/4, 0), (0, 0), 
-                    #         (7pi/4, 0), (6pi/4, 0), (5pi/4, 0), (pi, 0),
-                    #         (pi/2, pi/4), (pi, pi/4), (3pi/2, pi/4), (0, pi/4),
-                    #         (5pi/4, pi/4), (7pi/4, pi/4), (pi/4, pi/4), (3pi/4, pi/4),
-                    #         (cam.phi[], pi/2)
-                    #     ][face_idx]
-                    #     @info "From Click: $phi, $theta"
-                    #     update_cam!(scene, cam, phi, theta)
-                    #     update_camera!(axis, cam.phi[], cam.theta[])
-                    # end
                 else
                     # do drag stuff
                     mousepos = mouseposition_px(scene)
@@ -251,7 +158,6 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
     end
 end
 
-# function rotate_cam!(scene, cam::ViewportControllerCamera, angles::VecTypes, axis)
 function rotate_cam!(scene, cam::ViewportControllerCamera, dphi::Real, dtheta::Real, axis)
     @info dphi, dtheta
     cam.theta[] = mod(cam.theta[] + dtheta, 2pi)
@@ -286,10 +192,9 @@ function update_cam!(scene::Scene, cam::ViewportControllerCamera)
 
     phi = cam.phi[]; theta = cam.theta[]
     @info "update mat: $phi, $theta"
-    eyeposition = 3f0 * Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+    eyeposition = spherical_to_cartesian(phi, theta, 3f0)
     lookat = Vec3f(0)
-    theta += pi/2
-    upvector = Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+    upvector = spherical_to_cartesian(phi, theta + pi/2)
 
     view = Makie.lookat(eyeposition, lookat, upvector)
 
@@ -354,10 +259,9 @@ end
 
 function update_camera!(lscene::LScene, phi, theta)
     cam = cameracontrols(lscene.scene)
-    dir = Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+    dir = spherical_to_cartesian(phi, theta)
     viewdir = cam.eyeposition[] - cam.lookat[]
-    theta += pi/2
-    upvector = Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+    upvector = spherical_to_cartesian(phi, theta + pi/2)
     eyepos = cam.lookat[] + norm(viewdir) * dir
     update_cam!(lscene.scene, cam, eyepos, cam.lookat[], upvector)
     return
@@ -450,10 +354,7 @@ function initialize_block!(controller::Viewport3DController; axis)
     # mark center
     scatter!(
         scene, Point3f(0, 0, -1), space = :clip,
-        marker = '⊹', markersize = 50, color = :black,
-        # marker = '⌖', markersize = 30, color = :black,
-        # marker = Rect, markersize = 20, color = :transparent,
-        # strokewidth = 4, strokecolor = :black
+        marker = '⊹', markersize = 80, color = :black,
     )
 
     # info on step size
@@ -462,6 +363,14 @@ function initialize_block!(controller::Viewport3DController; axis)
         Point2f(0.9), space = :clip, align = (:right, :top),
         text = map(i -> "Steps:\n$(step_choices[i])\n$(360/step_choices[i])°", step_index),
     )
+
+    # sphere background
+    bg = scatter!(
+        scene, [Point2f(0) for _ in 1:3], space = :clip, 
+        marker = Circle, markersize = [1.8, 1.77, 1.73], markerspace = :clip,
+        color = [:black, :gray, :black], fxaa = true
+    )
+    translate!(bg, 0, 0, 1)
 
     on(scene, events(scene).scroll) do e
         if is_mouseinside(scene)
