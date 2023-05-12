@@ -2,6 +2,7 @@
 
 ## master
 
+- Added a tutorial to the docs about creating a marginal histogram plot [#1851](https://github.com/MakieOrg/Makie.jl/pull/1851).
 - Fixed incorrect line depth in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
 - Fixed incorrect line alpha in dense lines in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
 - Change `scene.clear` to an observable and make changes in `Scene` Observables trigger renders in GLMakie [#2929](https://github.com/MakieOrg/Makie.jl/pull/2929)
