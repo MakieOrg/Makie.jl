@@ -430,7 +430,10 @@ function initialize_block!(controller::Viewport3DController; axis)
     # m = Rhombicuboctahedron()
     texture = let
         url = "https://raw.githubusercontent.com/linuxgurugamer/NavBallTextureChanger/master/GameData/NavBallTextureChanger/PluginData/Skins/Trekky0623_DIF.png"
-        FileIO.load(Base.download(url))
+        path = Base.download(url)
+        img = FileIO.load(path)
+        rm(path)
+        img
     end
 
     m = uv_normal_mesh(Tesselation(Sphere(Point3f(0), 1f0), 50))
