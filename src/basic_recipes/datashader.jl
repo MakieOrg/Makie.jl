@@ -250,23 +250,39 @@ function aggregation_implementation!(
         end
     end
     # reduce along the thread dimension
-    mini, maxi = Inf, -Inf
-    for j in 1:ysize
-        for i in 1:xsize
-            @inbounds val = out[i,j,1]
-            for t in 2:Threads.nthreads()
-                @inbounds val = merge(op, val, out[i,j,t])
+    if ValueType <: Number
+        mini, maxi = Inf, -Inf
+        for j in 1:ysize
+            for i in 1:xsize
+                @inbounds val = out[i,j,1]
+                for t in 2:Threads.nthreads()
+                    @inbounds val = merge(op, val, out[i,j,t])
+                end
+                # update the value in out2 directly in this loop
+                final_value = local_op(value(op, val))
+                if isfinite(final_value)
+                    mini = min(final_value, mini)
+                    maxi = max(final_value, maxi)
+                end
+                @inbounds out2[i, j] = final_value
             end
-            # update the value in out2 directly in this loop
-            final_value = local_op(value(op, val))
-            if isfinite(final_value)
-                mini = min(final_value, mini)
-                maxi = max(final_value, maxi)
-            end
-            @inbounds out2[i, j] = final_value
         end
+        return (mini, maxi)
+    else
+        mini, maxi = Inf, -Inf
+        for j in 1:ysize
+            for i in 1:xsize
+                @inbounds val = out[i,j,1]
+                for t in 2:Threads.nthreads()
+                    @inbounds val = merge(op, val, out[i,j,t])
+                end
+                # update the value in out2 directly in this loop
+                final_value = local_op(value(op, val))
+                @inbounds out2[i, j] = final_value
+            end
+        end
+        return (0, 1)
     end
-    return (mini, maxi)
 end
 
 
@@ -359,13 +375,16 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
         show_timings = false,
 
         colormap = theme(scene, :colormap),
-        colorrange = automatic
+        colorrange = automatic,
+        lowclip = to_color(:black),
+        highclip = nothing,
+        nan_color = :transparent
     )
 end
 
 conversion_trait(::Type{<: DataShader}) = PointBased()
 
-function fast_bb(points, f)
+function fast_bb(points::AbstractArray{<: Point2}, f)
     N = length(points)
     NT = Threads.nthreads()
     slices = ceil(Int, N / NT)
@@ -380,6 +399,8 @@ function fast_bb(points, f)
     end
     return Rect3f(Rect2f(vec(results)))
 end
+
+fast_bb(points::AbstractArray{<: Point3}, f) = fast_bb(to_ndim.(Point2f, points, 0), f)
 
 function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
@@ -402,9 +423,18 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     yrange = Observable((canvas[].ymin .. canvas[].ymax); ignore_equal_values=true)
 
     # use resizable buffer vectors for aggregation
-    aggbuffer = zeros(Float32, 0)
-    pixelbuffer = zeros(Float32, canvas[].xsize * canvas[].ysize)
-    pixels = Observable{Matrix{Float32}}()
+
+    # first - get the null type of the aggregator
+    # TODO: this means that the aggregator type can't be changed!
+    null_agg = PixelAggregation.null(p.agg[])
+    # then get the type of the final result
+    value_agg = PixelAggregation.value(p.agg[], null_agg)
+    # now, construct the resizable buffers
+    aggbuffer = fill(null_agg, 0)
+    pixelbuffer = fill(value_agg, canvas[].xsize * canvas[].ysize)
+    pixels = Observable{Matrix{typeof(value_agg)}}()
+
+    # handle colorrange - ideally, we should go from 0 to 1, with `lowclip` defined.
     colorrange = Observable(Vec2f(0, 1))
     on(p, p.colorrange; update=true) do crange
         if crange isa Tuple || crange isa Vec2
@@ -449,9 +479,19 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         pixels[] = _global_post(pixelbuffer_reshaped)
 
         if _global_post !== identity && p.colorrange[] isa Automatic
-            colorrange[] = Vec2f(extrema(pixels[]))
+            cmin, cmax = extrema(pixels[])
+            colorrange[] = if cmin < 0
+                Vec2f(cmin, cmax)
+            else
+                Vec2f(1, cmax)
+            end
         elseif _global_post === identity && p.colorrange[] isa Automatic
-            colorrange[] = Vec2f(mini_maxi)
+            cmin, cmax = mini_maxi
+            colorrange[] = if cmin < 0
+                Vec2f(cmin, cmax)
+            else
+                Vec2f(1, cmax)
+            end
         end
         elapsed = time() - tstart
         if p.show_timings[]
@@ -467,7 +507,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         onany(update_pixels, canvas, p.agg, p.global_post, p.local_post, p.method, p.points[], p.point_func)
         update_pixels(canvas[], p.agg[], p.global_post[], p.local_post[], p.method[], p.points[], p.point_func[])
     end
-    image!(p, xrange, yrange, pixels; colorrange=colorrange, colormap = p.colormap)
+    image!(p, xrange, yrange, pixels; colorrange=colorrange, colormap = p.colormap, lowclip = p.lowclip, highclip = p.highclip, nan_color = p.nan_color)
     return p
 end
 
