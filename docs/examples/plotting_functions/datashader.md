@@ -77,6 +77,90 @@ fig
 ```
 \end{examplefigure}
 
+### Color compositing
+
+#### Color palette aggregation
+
+This method basically performs an online color mean, using the `z` coordinate in Point3f input as an index to a color palette.  This could potentially be extended to color gradients as well.
+
+The palette is constructed as a struct with two fields: `palette`, which is a vector of colors, and `null_color` which is a single color which serves as the initial color, e.g. black, white or transparent.
+Here are the docs:
+```
+    AggColorPalette(palette::Vector{ColorType} = Makie.wong_colors(), null_color = zero(ColorType))
+
+Aggregation operation which computes the colorimetric mean of values in a bin.
+
+By default, this operates in RGB space using the Wong color palette.  However, 
+the intrepid user can specify their own color space by converting the input palette
+into e.g. `Lab` or `XYZ` space.
+
+We personally recommend using `Lab` (CIELAB) space, since addition there is actual color composition.
+```
+
+For a quick example with two neighbouring normal distributions, 2 million points,
+\begin{examplefigure}
+```julia
+normaldist = randn(Point2f, 1_000_000)
+ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
+ds2 = to_ndim.(Point3f, normaldist .+ (Point2f(1, 0),), 2)
+datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(), global_post = identity, async_latest = false)
+```
+\end{examplefigure}
+We can also use a white background:
+\begin{examplefigure}{svg=true}
+```julia
+normaldist = randn(Point2f, 1_000_000)
+ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
+ds2 = to_ndim.(Point3f, normaldist .+ (Point2f(1, 0),), 2)
+datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Colors.ALab{Float32}}(Makie.wong_colors(), colorant"transparent"), global_post = identity, async_latest = false)
+```
+\end{examplefigure}
+and a transparent one:
+\begin{examplefigure}{svg=true}
+```julia
+normaldist = randn(Point2f, 1_000_000)
+ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
+ds2 = to_ndim.(Point3f, normaldist .+ (Point2f(1, 0),), 2)
+datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Colors.ALab{Float32}}(Makie.wong_colors(), colorant"white"), global_post = identity, async_latest = false)
+```
+\end{examplefigure}
+
+#### RGBA v/s LAB compositing
+The difference is actually quite a lot between RGB and LAB compositing!
+\begin{examplefigure}{svg=true}
+```julia
+normaldist = randn(Point2f, 1_000_000)
+ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
+ds2 = to_ndim.(Point3f, normaldist .+ (Point2f(1, 0),), 2)
+with_theme(theme_dark()) do
+    fig = Figure(resolution = (800, 1600))
+    titles = ("RGBA", "LAB")
+    axs = [Axis(fig[i, j]; title = titles[i], titlesize = 60) for i in 1:2, j in (1,)]
+    hidedecorations!.(axs)
+    datashader!(axs[1], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(to_color.([:red, :blue]), to_color(:black)), global_post = identity, async_latest = false)
+    datashader!(axs[2], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Makie.Colors.Lab{Float32}}(to_color.([:red, :blue]), to_color(:black)), global_post = identity, async_latest = false)
+    fig
+end
+```
+\end{examplefigure}
+and in light theme,
+\begin{examplefigure}{svg=true}
+```julia
+normaldist = randn(Point2f, 1_000_000)
+ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
+ds2 = to_ndim.(Point3f, normaldist .+ (Point2f(1, 0),), 2)
+with_theme(Makie.minimal_default) do
+    fig = Figure(resolution = (800, 1600))
+    titles = ("RGBA", "LAB")
+    axs = [Axis(fig[i, j]; title = titles[i], titlesize = 60) for i in 1:2, j in (1,)]
+    hidedecorations!.(axs)
+    datashader!(axs[1], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(to_color.([:red, :blue]), to_color(:white)), global_post = identity, async_latest = false)
+    datashader!(axs[2], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Makie.Colors.ALab{Float32}}(to_color.([:red, :blue]), to_color(:transparent)), global_post = identity, async_latest = false)
+    fig
+end
+```
+\end{examplefigure}
+
 ### Bigger examples
 
 Timings in the comments are from running this on a 32gb Ryzen 5800H laptop.
