@@ -1349,11 +1349,16 @@ end
         valign = :center
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
-        "The elevation angle of the camera"
+        "The elevation (up / down) angle of the camera. Possible values are between -pi/2 (looking from the bottom up) and +pi/2 (looking from the top down)."
         elevation = pi/8
-        "The azimuth angle of the camera"
+        "The azimuth (left / right) angle of the camera. "
         azimuth = 1.275 * pi
-        "A number between 0 and 1, where 0 is orthographic, and 1 full perspective"
+        """
+        This setting offers a simple scale from 0 to 1, where 0 looks like an orthographic projection (no perspective)
+        and 1 is a strong perspective look. For most data visualization applications, perspective should
+        be avoided because it makes interpreting the data correctly harder. It can be of use, however,
+        if aesthetics are more important than neutral presentation.
+        """
         perspectiveness = 0f0
         """
         Controls the lengths of the three axes relative to each other.

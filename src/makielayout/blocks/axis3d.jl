@@ -984,5 +984,21 @@ function attribute_examples(::Type{Axis3})
                     """
             ),
         ],
+        :perspectiveness => [
+            Example(
+                name = "`perspectiveness` variants",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
+                        ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
+                            title = ":perspectivness = \$(perspectiveness)")
+                        hidedecorations!(ax)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
     )
 end
