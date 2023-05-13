@@ -98,7 +98,7 @@ We personally recommend using `Lab` (CIELAB) space, since addition there is actu
 ```
 
 For a quick example with two neighbouring normal distributions, 2 million points,
-\begin{examplefigure}
+\begin{examplefigure}{svg=true}
 ```julia
 normaldist = randn(Point2f, 1_000_000)
 ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
