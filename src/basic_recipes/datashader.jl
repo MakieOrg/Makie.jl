@@ -543,15 +543,44 @@ function Makie.data_limits(p::DataShader{<: Tuple{<:AbstractVector{<:Point}}})
     return p._boundingbox[]
 end
 
+
+# # Color palette aggregation
+# As seen in Datashader!
+
+# This method basically performs an online color mean, using the `z` coordinate in Point3f input as an index to a color palette.  This could potentially be extended to color gradients as well.
+
+# The palette is constructed as a struct with two fields: `palette`, which is a vector of colors, and `null_color` which is a single color which serves as the initial color, e.g. black, white or transparent.
+# Here are the docs:
+# ```
+#     AggColorPalette(palette::Vector{ColorType} = Makie.wong_colors(), null_color = zero(ColorType))
+
+# Aggregation operation which computes the colorimetric mean of values in a bin.
+
+# By default, this operates in RGB space using the Wong color palette.  However, 
+# the intrepid user can specify their own color space by converting the input palette
+# into e.g. `Lab` or `XYZ` space.
+
+# We personally recommend using `Lab` (CIELAB) space, since addition there is actual color composition.
+# ```
+
+# For a quick example with two neighbouring normal distributions, 2 million points,
 # ```julia
 # normaldist = randn(Point2f, 1_000_000)
 # ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
 # ds2 = to_ndim.(Point3f, normaldist .+ (Point2f(1, 0),), 2)
-# datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(Makie.to_color.([:red, :blue])), global_post = identity, async_latest = false)
+# datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(), global_post = identity, async_latest = false)
+# ```
+# We can also use a white background:
+# ```julia
+# datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Colors.ALab{Float32}}(Makie.wong_colors(), colorant"transparent"), global_post = identity, async_latest = false)
+# ```
+# and a transparent one:
+# ```julia
+# datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Colors.ALab{Float32}}(Makie.wong_colors(), colorant"white"), global_post = identity, async_latest = false)
 # ```
 
-# # RGBA v/s LAB compositing
-# The difference is actually quite a lot!
+# ## RGBA v/s LAB compositing
+# The difference is actually quite a lot between RGB and LAB compositing!
 # ```julia
 # with_theme(theme_dark()) do
 #     fig = Figure(resolution = (800, 1600))
