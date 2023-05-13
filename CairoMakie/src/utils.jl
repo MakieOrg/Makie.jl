@@ -115,7 +115,19 @@ function rgbatuple(c)
     return rgbatuple(colorant)
 end
 
-to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
+function to_uint32_color(c) 
+    pc = premultiplied_rgba(c)
+
+    reinterpret(
+        UInt32, 
+        ARGB32(
+            Colors.clamp01(red(pc)),
+            Colors.clamp01(green(pc)),
+            Colors.clamp01(blue(pc)),
+            Colors.clamp01(alpha(pc)),
+        )
+    )
+end
 
 ########################################
 #        Common color utilities        #
