@@ -923,3 +923,112 @@ function limits!(ax::Axis3, rect::Rect3)
     Makie.ylims!(ax, ymin, ymax)
     Makie.zlims!(ax, zmin, zmax)
 end
+
+function attribute_examples(::Type{Axis3})
+    Dict(
+        :aspect => [
+            Example(
+                name = "Three-tuple aspects",
+                code = """
+                    fig = Figure()
+                    
+                    Axis3(fig[1, 1], aspect = (1, 1, 1), title = "aspect = (1, 1, 1)")
+                    Axis3(fig[1, 2], aspect = (2, 1, 1), title = "aspect = (2, 1, 1)")
+                    Axis3(fig[2, 1], aspect = (1, 2, 1), title = "aspect = (1, 2, 1)")
+                    Axis3(fig[2, 2], aspect = (1, 1, 2), title = "aspect = (1, 1, 2)")
+
+                    fig
+                    """
+            ),
+            Example(
+                name = "`:data` and `:equal` aspects",
+                code = """
+                    using FileIO
+
+                    fig = Figure()
+
+                    brain = load(assetpath("brain.stl"))
+                    
+                    ax1 = Axis3(fig[1, 1], aspect = :equal, title = "aspect = :equal")
+                    ax2 = Axis3(fig[1, 2], aspect = :data, title = "aspect = :data")
+
+                    for ax in [ax1, ax2]
+                        mesh!(ax, brain, color = :gray80)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :viewmode => [
+            Example(
+                name = "`viewmode` variants",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
+                        for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
+
+                            Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
+
+                            # show the extent of each cell using a box
+                            Box(fig[i, j], strokewidth = 0, color = :gray95)
+
+                            ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
+                            hidedecorations!(ax)
+
+                        end
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :perspectiveness => [
+            Example(
+                name = "`perspectiveness` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
+                        ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
+                            title = ":perspectiveness = \$(perspectiveness)")
+                        hidedecorations!(ax)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :azimuth => [
+            Example(
+                name = "`azimuth` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
+                        Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
+                            title = "azimuth = \$(azimuth)π", viewmode = :fit)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :elevation => [
+            Example(
+                name = "`elevation` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
+                        Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
+                            title = "elevation = \$(elevation)π", viewmode = :fit)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+    )
+end
