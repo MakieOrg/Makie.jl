@@ -157,7 +157,7 @@ void main(void)
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = abs(o_w.z);
+    float sprite_from_u_scale = min(abs(o_w.z), abs(o_w.w));
     f_viewport_from_u_scale = viewport_from_sprite_scale * sprite_from_u_scale;
     f_distancefield_scale = get_distancefield_scale(distancefield);
 
