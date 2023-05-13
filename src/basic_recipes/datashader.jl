@@ -117,6 +117,34 @@ embed(::AggMean{T}, x) where {T} = (convert(T,x), oneunit(T))
 merge(::AggMean{T}, x::Tuple{T,T}, y::Tuple{T,T}) where {T} = (x[1]+y[1], x[2]+y[2])
 value(::AggMean{T}, x::Tuple{T,T}) where {T} = float(x[1]) / float(x[2])
 
+"""
+    AggColorPalette(palette::Vector{ColorType} = Makie.wong_colors(), null_color = zero(ColorType))
+
+Aggregation operation which computes the colorimetric mean of values in a bin.
+
+By default, this operates in RGB space using the Wong color palette.  However, 
+the intrepid user can specify their own color space by converting the input palette
+into e.g. `Lab` or `XYZ` space.
+
+We personally recommend using `Lab` (CIELAB) space, since addition there is actual color composition.
+"""
+struct AggColorPalette{ColorType <: Colors.Colorant} <: AggOp
+    palette::Vector{ColorType}
+    null_color::ColorType
+    AggColorPalette{T}(palette::Vector{T}, null_color = zero(T)) where {T <: Colors.Colorant} = new{T}(palette, T(null_color))
+end
+# define some constructors
+AggColorPalette() = AggColorPalette{Makie.Colors.Lab{Float32}}(Makie.wong_colors(), zero(Makie.Colors.XYZ))
+AggColorPalette(palette::Vector{T}, null_color = zero(T)) where {T <: Colors.Colorant} = AggColorPalette{T}(convert.((T,), palette), convert(T, null_color))
+AggColorPalette{T1}(palette::Vector{T2}, null_color = zero(T)) where {T1 <: Colors.Colorant, T2 <: Union{Colors.Colorant, Symbol, String}} = AggColorPalette{T1}(convert.((T1,), palette), convert(T1, null_color))
+# implement the AggOp API
+null(agg::AggColorPalette{ColorType}) where ColorType = (agg.null_color, 1)
+embed(agg::AggColorPalette{ColorType}, z) where ColorType = (agg.palette[round(Int, z)], 1)
+merge(::AggColorPalette{ColorType}, x::Tuple{ColorType, Int}, y::Tuple{ColorType, Int}) where ColorType = begin
+    total = x[2] + y[2]
+    (Makie.Colors.weighted_color_mean(x[2]/total, x[1], y[1]), total)
+end
+value(::AggColorPalette{ColorType}, x::Tuple{ColorType, Int}) where ColorType = x[1]
 
 """
     abstract type AggMethod
@@ -200,12 +228,12 @@ function aggregation_implementation!(
     end
     return (mini, maxi)
 end
-
+# TODO: lift type of pixbuf, and return (0, 1) colorrange if it's not a number
 function aggregation_implementation!(
         ::AggThreads,
-        aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
+        aggbuffer::AbstractVector, pixelbuffer::AbstractVector{ValueType},
         c::Canvas, op::AggOp,
-        points, local_op, point_func)
+        points, local_op, point_func) where ValueType
     xmin, xmax = xlims(c)
     ymin, ymax = ylims(c)
     xsize, ysize = size(c)
@@ -409,7 +437,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     px_area = lift(identity, p, scene.px_area; ignore_equal_values=true)
 
     canvas = lift(limits, px_area, p.binfactor; ignore_equal_values=true) do lims, pxarea, binfactor
-        binfactor isa Int || error("Bin factor $binfactor is not an Int.")
+        # binfactor isa Int || error("Bin factor $binfactor is not an Int.")
         xsize, ysize = round.(Int, Makie.widths(pxarea) ./ binfactor)
         xmin, ymin = minimum(lims)
         xmax, ymax = maximum(lims)
@@ -514,3 +542,36 @@ end
 function Makie.data_limits(p::DataShader{<: Tuple{<:AbstractVector{<:Point}}})
     return p._boundingbox[]
 end
+
+# ```julia
+# normaldist = randn(Point2f, 1_000_000)
+# ds1 = to_ndim.(Point3f, normaldist .+ (Point2f(-1, 0),), 1)
+# ds2 = to_ndim.(Point3f, normaldist .+ (Point2f(1, 0),), 2)
+# datashader(vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(Makie.to_color.([:red, :blue])), global_post = identity, async_latest = false)
+# ```
+
+# # RGBA v/s LAB compositing
+# The difference is actually quite a lot!
+# ```julia
+# with_theme(theme_dark()) do
+#     fig = Figure(resolution = (800, 1600))
+#     titles = ("RGBA", "LAB")
+#     axs = [Axis(fig[i, j]; title = titles[i], titlesize = 60) for i in 1:2, j in (1,)]
+#     hidedecorations!.(axs)
+#     datashader!(axs[1], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(to_color.([:red, :blue]), to_color(:black)), global_post = identity, async_latest = false)
+#     datashader!(axs[2], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Makie.Colors.Lab{Float32}}(to_color.([:red, :blue]), to_color(:black)), global_post = identity, async_latest = false)
+#     fig
+# end
+# ```
+# and in light theme,
+# ```julia
+# with_theme(Makie.minimal_default) do
+#     fig = Figure(resolution = (800, 1600))
+#     titles = ("RGBA", "LAB")
+#     axs = [Axis(fig[i, j]; title = titles[i], titlesize = 60) for i in 1:2, j in (1,)]
+#     hidedecorations!.(axs)
+#     datashader!(axs[1], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette(to_color.([:red, :blue]), to_color(:white)), global_post = identity, async_latest = false)
+#     datashader!(axs[2], vcat(ds1, ds2); agg = Makie.PixelAggregation.AggColorPalette{Makie.Colors.ALab{Float32}}(to_color.([:red, :blue]), to_color(:transparent)), global_post = identity, async_latest = false)
+#     fig
+# end
+# ```
