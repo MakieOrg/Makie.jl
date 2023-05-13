@@ -60,6 +60,7 @@ flat out vec4 f_glow_color;
 flat out uvec2 f_id;
 out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
+flat out vec2 f_sprite_scale;
 
 uniform mat4 projection, view, model;
 
@@ -88,6 +89,7 @@ void emit_vertex(vec4 vertex, vec2 uv)
     f_stroke_color    = g_stroke_color[0];
     f_glow_color      = g_glow_color[0];
     f_id              = g_id[0];
+    f_sprite_scale    = g_offset_width[0].zw;
     EmitVertex();
 }
 

@@ -37,6 +37,7 @@ flat in uvec2           f_id;
 flat in int             f_primitive_index;
 in vec2                 f_uv; // f_uv.{x,y} are in the interval [-a, 1+a]
 flat in vec4            f_uv_texture_bbox;
+flat in vec2            f_sprite_scale;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
@@ -68,12 +69,14 @@ float circle(vec2 uv){
     return 0.5-length(uv-vec2(0.5));
 }
 float rectangle(vec2 uv){
-    vec2 d = max(-uv, uv-vec2(1));
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(-uv, uv-vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
 float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
-    vec2 d = max(tl-uv, uv-br);
-    return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(tl-uv, uv-br);
+    return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))) - s.x * tl.x);
 }
 
 void fill(vec4 fillcolor, Nothing image, vec2 uv, float infill, inout vec4 color){
