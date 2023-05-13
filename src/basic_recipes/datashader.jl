@@ -3,8 +3,20 @@
 module PixelAggregation
 
 import Base.Threads: @threads
-import Makie: Makie, FRect3D, lift, (..)
+import Makie: Makie, FRect3D, lift, (..), Colors
+using Makie.DocStringExtensions
 
+"""
+    struct Canvas{T}
+    Canvas(xmin::T, xmax::T, xsize::Int, ymin::T, ymax::T, ysize::Int)
+
+This represents a canvas on which to draw.  
+It holds a representation of a Rect2f in the x/y min/max variables, 
+and the size of the canvas in the x/y size variables.
+
+## Fields
+$(FIELDS)
+"""
 struct Canvas{T}
     xmin :: T
     xmax :: T
@@ -19,10 +31,44 @@ xlims(c::Canvas) = (c.xmin, c.xmax)
 ylims(c::Canvas) = (c.ymin, c.ymax)
 Base.:(==)(a::Canvas, b::Canvas) = size(a)==size(b) && xlims(a)==xlims(b) && ylims(a)==ylims(b)
 
+"""
+    abstract type AggOp
+
+Abstract type for aggregation operations. These are used to aggregate
+values in a bin. The `update` function is called for each value in a bin,
+and the `value` function is called to get the final value for the bin.
+
+!!! note
+    This lives in the `Makie.PixelAggregation` module, and should be used as such.
+
+## API
+
+Any aggregation operation must be a subtype of `AggOp`, and must implement
+the following methods:
+- `null(::MyAggOpp)`: return the null value for the aggregation operation.
+- `embed(::MyAggOpp)`: return the one value for the aggregation operation.
+- `merge(::MyAggOpp, x, y)`: merge `x` and `y`, which are both of the type which 
+  `null` and `embed` return, and return the result.
+- `value(::MyAggOpp, x)`: return the final value for the aggregation operation.  
+   For example, a mean may aggregate a sum and count of values, then divide them in `value`.
+- `update(::MyAggOpp, x, args...)`: update the aggregation operation with a new value `x` 
+   and any additional arguments `args...`.  A fallback implementation is defined, so you don't
+   usually need to define this.  The fallback is `update(a::AggOp, x, args...) = merge(a, x, embed(a, args...))`.
+
+## Built-in aggregation operations
+See [`AggCount`](@ref), [`AggAny`](@ref), [`AggSum`](@ref), and [`AggMean`](@ref).
+"""
 abstract type AggOp end
 
 @inline update(a::AggOp, x, args...) = merge(a, x, embed(a, args...))
 
+"""
+    AggCount()
+
+Aggregation operation which counts the number of values in a bin.
+
+See the [`AggOp`](@ref) documentation for more information on how to use this.
+"""
 struct AggCount{T} <: AggOp end
 AggCount() = AggCount{Int}()
 null(::AggCount{T}) where {T} = zero(T)
@@ -30,12 +76,26 @@ embed(::AggCount{T}) where {T} = oneunit(T)
 merge(::AggCount{T}, x::T, y::T) where {T} = x + y
 value(::AggCount{T}, x::T) where {T} = x
 
+"""
+    AggAny()
+
+Aggregation operation which returns `true` if any value exists in a bin.
+
+See the [`AggOp`](@ref) documentation for more information on how to use this.
+"""
 struct AggAny <: AggOp end
 null(::AggAny) = false
 embed(::AggAny) = true
 merge(::AggAny, x::Bool, y::Bool) = x | y
 value(::AggAny, x::Bool) = x
 
+"""
+    AggSum()
+
+Aggregation operation which sums values in a bin.
+
+See the [`AggOp`](@ref) documentation for more information on how to use this.
+"""
 struct AggSum{T} <: AggOp end
 AggSum() = AggSum{Float64}()
 null(::AggSum{T}) where {T} = zero(T)
@@ -43,6 +103,13 @@ embed(::AggSum{T}, x) where {T} = convert(T, x)
 merge(::AggSum{T}, x::T, y::T) where {T} = x + y
 value(::AggSum{T}, x::T) where {T} = x
 
+"""
+    AggMean()
+
+Aggregation operation which computes the mean of values in a bin.
+
+See the [`AggOp`](@ref) documentation for more information on how to use this.
+"""
 struct AggMean{T} <: AggOp end
 AggMean() = AggMean{Float64}()
 null(::AggMean{T}) where {T} = (zero(T), zero(T))
@@ -50,6 +117,27 @@ embed(::AggMean{T}, x) where {T} = (convert(T,x), oneunit(T))
 merge(::AggMean{T}, x::Tuple{T,T}, y::Tuple{T,T}) where {T} = (x[1]+y[1], x[2]+y[2])
 value(::AggMean{T}, x::Tuple{T,T}) where {T} = float(x[1]) / float(x[2])
 
+
+"""
+    abstract type AggMethod
+
+Abstract type for aggregation methods.
+
+These indicate whether to use serial processing, threads, etc.
+
+## Available methods
+- [`AggSerial`](@ref): Serial aggregation on 1 CPU thread
+- [`AggThreads`](@ref): Parallel aggregation on multiple CPU threads, 
+  specifically `Threads.nthreads()` threads.  This uses Julia's native 
+  threading semantics.  In order to control the number of threads used, 
+  you must start Julia with `julia -t N` where `N` is the number of threads to use.
+
+!!! note
+    This lives in the `Makie.PixelAggregation` module, and should be used as such.
+
+## Future work
+- GPU aggregation: One could pretty easily define a method, perhaps in an extension package which works on the GPU using CUDA.jl or AMDGPU.jl.
+"""
 abstract type AggMethod end
 
 struct AggSerial <: AggMethod end
