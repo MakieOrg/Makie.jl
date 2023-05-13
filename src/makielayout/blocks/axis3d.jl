@@ -986,14 +986,44 @@ function attribute_examples(::Type{Axis3})
         ],
         :perspectiveness => [
             Example(
-                name = "`perspectiveness` variants",
+                name = "`perspectiveness` values",
                 code = """
                     fig = Figure()
                     
                     for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
                         ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
-                            title = ":perspectivness = \$(perspectiveness)")
+                            title = ":perspectiveness = \$(perspectiveness)")
                         hidedecorations!(ax)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :azimuth => [
+            Example(
+                name = "`azimuth` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
+                        Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
+                            title = "azimuth = \$(azimuth)π", viewmode = :fit)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :elevation => [
+            Example(
+                name = "`elevation` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
+                        Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
+                            title = "elevation = \$(elevation)π", viewmode = :fit)
                     end
 
                     fig

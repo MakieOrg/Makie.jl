@@ -1351,7 +1351,12 @@ end
         alignmode = Inside()
         "The elevation (up / down) angle of the camera. Possible values are between -pi/2 (looking from the bottom up) and +pi/2 (looking from the top down)."
         elevation = pi/8
-        "The azimuth (left / right) angle of the camera. "
+        """
+        The azimuth (left / right) angle of the camera.
+
+        At `azimuth = 0`, the camera looks at the axis from a point on the positive x axis, and rotates to the right from there
+        with increasing values. At the default value 1.275π, the x axis goes to the right and the y axis to the left.
+        """
         azimuth = 1.275 * pi
         """
         This setting offers a simple scale from 0 to 1, where 0 looks like an orthographic projection (no perspective)
