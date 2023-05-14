@@ -471,7 +471,8 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function Legend(fig_or_scene,
+function initialize_block!(
+        leg::Legend,
         contents::AbstractVector,
         labels::AbstractVector,
         title = nothing;
@@ -482,10 +483,10 @@ function Legend(fig_or_scene,
     end
 
     entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
-    entries = [LegendEntry(label, content, legend) for (content, label) in zip(contents, labels)]
+    initialize_block!(leg, entrygroups; kwargs...)
+    entries = [LegendEntry(label, content, leg) for (content, label) in zip(contents, labels)]
     entrygroups[] = [(title, entries)]
-    legend
+    leg
 end
 
 
@@ -506,7 +507,8 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function Legend(fig_or_scene,
+function initialize_block!(
+        leg::Legend,
         contentgroups::AbstractVector{<:AbstractVector},
         labelgroups::AbstractVector{<:AbstractVector},
         titles::AbstractVector;
@@ -518,11 +520,11 @@ function Legend(fig_or_scene,
 
 
     entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
-    entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]
+    initialize_block!(leg, entrygroups; kwargs...)
+    entries = [[LegendEntry(l, pg, leg) for (l, pg) in zip(labelgroup, contentgroup)]
         for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
     entrygroups[] = [(t, en) for (t, en) in zip(titles, entries)]
-    legend
+    leg
 end
 
 
@@ -535,10 +537,11 @@ attribute `label` set.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
-    plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
+function initialize_block!(leg::Legend, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+    plots, labels = get_labeled_plots(axis, merge = to_value(merge), unique = to_value(unique))
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
-    Legend(fig_or_scene, plots, labels, title; kwargs...)
+    initialize_block!(leg, plots, labels, title; kwargs...)
+    leg
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
