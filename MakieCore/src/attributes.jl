@@ -25,11 +25,39 @@ node_any(@nospecialize(obj)) = isa(obj, Observable{Any}) ? obj :
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
-Attributes(; kw_args...) = Attributes(Dict{Symbol, Observable}(node_pairs(kw_args)))
+Attributes(; kw_args...) = Attributes(getfield(kw_args, :data))
+# intercept kwarg calls and avoid any further specialization than necessary
+function Core.kwcall(@nospecialize(nt::NamedTuple), ::Type{Attributes})
+    att = Attributes(Dict{Symbol, Observable}())
+    # this iteration scheme is supposed to cause less specialization for different namedtuples
+    names = fieldnames(typeof(nt))
+    for name in names
+        att[name] = node_any(value_convert((getfield(nt, name))))
+    end
+    return att
+end
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))
-Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
-Attributes(nt::NamedTuple) = Attributes(; nt...)
+function Attributes(@nospecialize pairs::Iterators.Pairs)
+    nt = getfield(pairs, :data)
+    att = Attributes(Dict{Symbol, Observable}())
+    # this iteration scheme is supposed to cause less specialization for different namedtuples
+    names = fieldnames(typeof(nt))
+    for name in names
+        att[name] = node_any(value_convert((getfield(nt, name))))
+    end
+    return att
+end
+function Attributes(@nospecialize nt::NamedTuple)
+    att = Attributes(Dict{Symbol, Observable}())
+    # this iteration scheme is supposed to cause less specialization for different namedtuples
+    names = fieldnames(typeof(nt))
+    for name in names
+        att[name] = node_any(value_convert((getfield(nt, name))))
+    end
+    return att
+end
+Attributes(a::Attributes) = a
 attributes(x::Attributes) = getfield(x, :attributes)
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
