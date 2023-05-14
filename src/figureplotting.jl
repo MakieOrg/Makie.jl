@@ -72,6 +72,8 @@ function plot!(@nospecialize(P::PlotFunc), @nospecialize args...; kw_attributes.
 end
 
 function plot!(@nospecialize(P::PlotFunc), attr::Attributes, @nospecialize args...)
+    _disallow_keyword(:axis, attr)
+    _disallow_keyword(:figure, attr)
     figure = current_figure()
     isnothing(figure) && error("There is no current figure to plot into.")
     ax = current_axis(figure)
@@ -125,6 +127,8 @@ function plot!(@nospecialize(P::PlotFunc), gp::GridPosition, @nospecialize args.
 end
 
 function plot!(@nospecialize(P::PlotFunc), kwattr::Attributes, gp::GridPosition, @nospecialize args...)
+    _disallow_keyword(:axis, kwattr)
+    _disallow_keyword(:figure, kwattr)
     c = contents(gp, exact = true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
