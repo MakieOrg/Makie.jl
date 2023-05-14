@@ -1,4 +1,8 @@
-Label(x, text; kwargs...) = Label(x; text = text, kwargs...)
+# Label(x, text; kwargs...) = Label(x; text = text, kwargs...)
+function initialize_block!(l::Label, text)
+    l.text = text
+    initialize_block!(l)
+end
 
 function initialize_block!(l::Label)
 
