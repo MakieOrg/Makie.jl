@@ -157,19 +157,19 @@ function plot(@nospecialize(P::PlotFunc), attr::Attributes, axisattr::Attributes
 
     fig = get_top_parent(gsp)
 
-    if haskey(axis, :type)
-        axtype = to_value(axis.type)
-        pop!(axis, :type)
-        ax = axtype(fig; axis...)
+    if haskey(axisattr, :type)
+        axtype = to_value(axisattr.type)
+        pop!(axisattr, :type)
+        ax = axtype(fig; axisattr...)
     else
         proxyscene = Scene()
         plot!(proxyscene, P, attr, args...)
 
         if is2d(proxyscene)
-            ax = Axis(fig, axisattr)
+            ax = Axis(axisattr, fig)
         else
             axisattr = merge!(axisattr, Attributes((; scenekw = (camera = automatic,))))
-            ax = LScene(fig, axisattr)
+            ax = LScene(axisattr, fig)
         end
     end
 
