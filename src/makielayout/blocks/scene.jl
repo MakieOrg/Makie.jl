@@ -1,9 +1,8 @@
 function Makie.plot!(
         lscene::LScene, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+        attributes::Makie.Attributes, args...)
 
-    plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
+    plot = Makie.plot!(lscene.scene, P, attributes, args...)
     notify(lscene.scene.theme.limits)
     center!(lscene.scene)
     plot

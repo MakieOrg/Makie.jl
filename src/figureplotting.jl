@@ -28,50 +28,63 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
-function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
+function plot(@nospecialize(P::PlotFunc), @nospecialize(args...); axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
 
     _validate_nt_like_keyword(axis, "axis")
     _validate_nt_like_keyword(figure, "figure")
 
-    fig = Figure(; figure...)
+    axisattr = Attributes(axis)
+    figureattr = Attributes(figure)
+    kwattr = Attributes(kw_attributes)
 
-    axis = Dict(pairs(axis))
-    if haskey(axis, :type)
-        axtype = axis[:type]
-        pop!(axis, :type)
-        ax = axtype(fig; axis...)
+    plot(P, axisattr, figureattr, kwattr, args...)
+end
+
+function plot(@nospecialize(P::PlotFunc), axisattr::Attributes, figureattr::Attributes, kwattr::Attributes, @nospecialize args...)
+    fig = Figure(figureattr)
+
+    if haskey(axisattr, :type)
+        axtype = to_value(axisattr.type)
+        pop!(axisattr, :type)
+        ax = axtype(fig, axisattr)
     else
         proxyscene = Scene()
-        attrs = Attributes(kw_attributes)
-        delete!(attrs, :show_axis)
-        delete!(attrs, :limits)
-        plot!(proxyscene, P, attrs, args...)
+        delete!(kwattr, :show_axis)
+        delete!(kwattr, :limits)
+        plot!(proxyscene, P, kwattr, args...)
         if is2d(proxyscene)
-            ax = Axis(fig; axis...)
+            ax = Axis(axisattr, fig)
         else
-            ax = LScene(fig; axis...)
+            ax = LScene(axisattr, fig)
         end
         empty!(proxyscene)
     end
 
     fig[1, 1] = ax
-    p = plot!(ax, P, Attributes(kw_attributes), args...)
+    p = plot!(ax, P, kwattr, args...)
     FigureAxisPlot(fig, ax, p)
 end
 
 # without scenelike, use current axis of current figure
 
-function plot!(P::PlotFunc, args...; kw_attributes...)
+function plot!(@nospecialize(P::PlotFunc), @nospecialize args...; kw_attributes...)
+    plot!(P, Attributes(kw_attributes), args...)
+end
+
+function plot!(@nospecialize(P::PlotFunc), attr::Attributes, @nospecialize args...)
     figure = current_figure()
     isnothing(figure) && error("There is no current figure to plot into.")
     ax = current_axis(figure)
     isnothing(ax) && error("There is no current axis to plot into.")
-    plot!(P, ax, args...; kw_attributes...)
+    plot!(ax, P, attr, args...)
 end
 
-function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
-
+function plot(@nospecialize(P::PlotFunc), gp::GridPosition, @nospecialize(args...); axis = NamedTuple(), kwargs...)
     _validate_nt_like_keyword(axis, "axis")
+    plot(P, Attributes(axis), Attributes(kwargs), gp, args...)
+end
+
+function plot(@nospecialize(P::PlotFunc), axisattr::Attributes, kwattr::Attributes, gp::GridPosition, @nospecialize args...)
 
     f = get_top_parent(gp)
 
@@ -87,40 +100,47 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
         """)
     end
 
-    axis = Dict(pairs(axis))
-
-    if haskey(axis, :type)
-        axtype = axis[:type]
-        pop!(axis, :type)
-        ax = axtype(f; axis...)
+    if haskey(axisattr, :type)
+        axtype = to_value(axisattr[:type])
+        pop!(axisattr, :type)
+        ax = axtype(f, axisattr)
     else
         proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
+        plot!(proxyscene, P, kwattr, args...)
         if is2d(proxyscene)
-            ax = Axis(f; axis...)
+            ax = Axis(axisattr, f)
         else
-            ax = LScene(f; axis...)
+            ax = LScene(axisattr, f)
         end
     end
 
     gp[] = ax
-    p = plot!(P, ax, args...; kwargs...)
+    p = plot!(ax, P, kwattr, args...)
     AxisPlot(ax, p)
 end
 
-function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
+function plot!(@nospecialize(P::PlotFunc), gp::GridPosition, @nospecialize args...; kwargs...)
+    kwattr = Attributes(kwargs)
+    plot!(P, kwattr, gp, args...)
+end
 
+function plot!(@nospecialize(P::PlotFunc), kwattr::Attributes, gp::GridPosition, @nospecialize args...)
     c = contents(gp, exact = true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
-    plot!(P, ax, args...; kwargs...)
+    plot!(ax, P, kwattr, args...)
 end
 
-function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
-
+function plot(@nospecialize(P::PlotFunc), gsp::GridSubposition, @nospecialize args...; axis = NamedTuple(), kwargs...)
     _validate_nt_like_keyword(axis, "axis")
+    axisattr = Attributes(axis)
+    attr = Attributes(kwargs)
+    plot(P, attr, axisattr, gsp, args...)
+end
+
+function plot(@nospecialize(P::PlotFunc), attr::Attributes, axisattr::Attributes, gsp::GridSubposition, @nospecialize args...)
 
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
     c = contents(gsp, exact = true)
@@ -137,25 +157,24 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
 
     fig = get_top_parent(gsp)
 
-    axis = Dict(pairs(axis))
-
     if haskey(axis, :type)
-        axtype = axis[:type]
+        axtype = to_value(axis.type)
         pop!(axis, :type)
         ax = axtype(fig; axis...)
     else
         proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
+        plot!(proxyscene, P, attr, args...)
 
         if is2d(proxyscene)
-            ax = Axis(fig; axis...)
+            ax = Axis(fig, axisattr)
         else
-            ax = LScene(fig; axis..., scenekw = (camera = automatic,))
+            axisattr = merge!(axisattr, Attributes((; scenekw = (camera = automatic,))))
+            ax = LScene(fig, axisattr)
         end
     end
 
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
-    p = plot!(P, ax, args...; kwargs...)
+    p = plot!(ax, P, attr, args...)
     AxisPlot(ax, p)
 end
 

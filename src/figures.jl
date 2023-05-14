@@ -64,10 +64,14 @@ to_rectsides(n::Number) = to_rectsides((n, n, n, n))
 to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
 
 function Figure(; kwargs...)
+    kwattr = Attributes(kwargs)
+    Figure(kwattr)
+end
 
-    kwargs_dict = Dict(kwargs)
-    padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
-    scene = Scene(; camera=campixel!, kwargs_dict...)
+function Figure(attr::Attributes)
+
+    padding = pop!(attr, :figure_padding, theme(:figure_padding))
+    scene = Scene(; camera=campixel!, attr...)
     padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, scene, padding)
 

@@ -249,8 +249,12 @@ function extract_attributes!(body)
 end
 
 # intercept all block constructors and divert to _block(T, ...)
-function (::Type{T})(args...; kwargs...) where {T<:Block}
-    _block(T, args...; kwargs...)
+function (t::Type{T})(@nospecialize args...; kwargs...) where {T<:Block}
+    t(Attributes(kwargs), args...)
+end
+
+function (::Type{T})(attr::Attributes, @nospecialize args...) where {T<:Block}
+    _block(T, attr, args...)
 end
 
 can_be_current_axis(x) = false
@@ -258,35 +262,34 @@ can_be_current_axis(x) = false
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = get_top_parent(gp.parent)
 
-function _block(T::Type{<:Block},
-        gp::Union{GridPosition, GridSubposition}, args...; kwargs...)
+function _block(T::Type{<:Block}, attr::Attributes,
+        gp::Union{GridPosition, GridSubposition}, @nospecialize args...)
 
     top_parent = get_top_parent(gp)
     if top_parent === nothing
         error("Found nothing as the top parent of this GridPosition. A GridPosition or GridSubposition needs to be connected to the top layout of a Figure, Scene or comparable object, either directly or through nested GridLayouts in order to plot into it.")
     end
-    b = gp[] = _block(T, top_parent, args...; kwargs...)
+    b = gp[] = _block(T, attr, top_parent, args...)
     b
 end
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
-        args...; bbox = nothing, kwargs...)
+function _block(T::Type{<:Block}, attr::Attributes, fig_or_scene::Union{Figure, Scene},
+    @nospecialize args...)
 
-    # first sort out all user kwargs that correspond to block attributes
-    kwdict = Dict(kwargs)
-
-    if haskey(kwdict, :textsize)
+    if haskey(attr, :textsize)
         throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
 
-    attribute_kwargs = Dict{Symbol, Any}()
-    for (key, value) in kwdict
+    bbox = to_value(get(attr, :bbox, nothing))
+
+    attribute_kwargs = Attributes()
+    for (key, value) in attr
         if is_attribute(T, key)
-            attribute_kwargs[key] = pop!(kwdict, key)
+            attribute_kwargs[key] = pop!(attr, key)
         end
     end
     # the non-attribute kwargs will be passed to the block later
-    non_attribute_kwargs = kwdict
+    non_attribute_kwargs = attr
 
     topscene = get_topscene(fig_or_scene)
     # retrieve the default attributes for this block given the scene theme

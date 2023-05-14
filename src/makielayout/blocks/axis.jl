@@ -158,7 +158,6 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-
     blockscene = ax.blockscene
 
     elements = Dict{Symbol, Any}()
@@ -778,18 +777,15 @@ end
 
 function Makie.plot!(
         la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+        attributes::Makie.Attributes, args...)
 
-    allattrs = merge(attributes, Attributes(kw_attributes))
+    _disallow_keyword(:axis, attributes)
+    _disallow_keyword(:figure, attributes)
 
-    _disallow_keyword(:axis, allattrs)
-    _disallow_keyword(:figure, allattrs)
+    cycle = get_cycle_for_plottype(attributes, P)
+    add_cycle_attributes!(attributes, P, cycle, la.cycler, la.palette)
 
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
+    plot = Makie.plot!(la.scene, P, attributes, args...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
@@ -804,7 +800,7 @@ end
 is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)
 is_open_or_any_parent(::Nothing) = false
 
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
+function Makie.plot!(@nospecialize(P::Makie.PlotFunc), ax::Axis, @nospecialize(args...); kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
     Makie.plot!(ax, P, attributes, args...)
 end
