@@ -356,6 +356,7 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
+    default = to_value(default)
     if default === nothing
         m.i_selected[] = 0
     elseif default isa Integer
