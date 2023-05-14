@@ -280,7 +280,7 @@ function _block(@nospecialize(T::Type{<:Block}), attr::Attributes, fig_or_scene:
         throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
 
-    bbox = to_value(get(attr, :bbox, nothing))
+    bbox = to_value(pop!(attr, :bbox, nothing))
 
     attribute_kwargs = Attributes()
     for (key, value) in attr
