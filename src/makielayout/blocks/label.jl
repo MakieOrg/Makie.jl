@@ -1,6 +1,6 @@
 # Label(x, text; kwargs...) = Label(x; text = text, kwargs...)
 function initialize_block!(l::Label, text)
-    l.text = text
+    setfield!(l, :text, convert(Observable{Any}, text))
     initialize_block!(l)
 end
 
