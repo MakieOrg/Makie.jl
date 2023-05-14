@@ -273,7 +273,7 @@ function _block(T::Type{<:Block}, attr::Attributes,
     b
 end
 
-function _block(T::Type{<:Block}, attr::Attributes, fig_or_scene::Union{Figure, Scene},
+function _block(@nospecialize(T::Type{<:Block}), attr::Attributes, fig_or_scene::Union{Figure, Scene},
     @nospecialize args...)
 
     if haskey(attr, :textsize)
