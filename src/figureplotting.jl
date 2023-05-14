@@ -46,7 +46,7 @@ function plot(@nospecialize(P::PlotFunc), axisattr::Attributes, figureattr::Attr
     if haskey(axisattr, :type)
         axtype = to_value(axisattr.type)
         pop!(axisattr, :type)
-        ax = axtype(fig, axisattr)
+        ax = axtype(axisattr, fig)
     else
         proxyscene = Scene()
         delete!(kwattr, :show_axis)
