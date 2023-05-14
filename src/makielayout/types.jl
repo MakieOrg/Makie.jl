@@ -1349,15 +1349,47 @@ end
         valign = :center
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
-        "The elevation angle of the camera"
+        "The elevation (up / down) angle of the camera. Possible values are between -pi/2 (looking from the bottom up) and +pi/2 (looking from the top down)."
         elevation = pi/8
-        "The azimuth angle of the camera"
+        """
+        The azimuth (left / right) angle of the camera.
+
+        At `azimuth = 0`, the camera looks at the axis from a point on the positive x axis, and rotates to the right from there
+        with increasing values. At the default value 1.275π, the x axis goes to the right and the y axis to the left.
+        """
         azimuth = 1.275 * pi
-        "A number between 0 and 1, where 0 is orthographic, and 1 full perspective"
+        """
+        This setting offers a simple scale from 0 to 1, where 0 looks like an orthographic projection (no perspective)
+        and 1 is a strong perspective look. For most data visualization applications, perspective should
+        be avoided because it makes interpreting the data correctly harder. It can be of use, however,
+        if aesthetics are more important than neutral presentation.
+        """
         perspectiveness = 0f0
-        "Aspects of the 3 axes with each other"
+        """
+        Controls the lengths of the three axes relative to each other.
+
+        Options are:
+          - A three-tuple of numbers, which sets the relative lengths of the x, y and z axes directly
+          - `:data` which sets the length ratios equal to the limit ratios of the axes. This results in an "unsquished" look
+            where a cube in data space looks like a cube and not a cuboid.
+          - `:equal` which is a shorthand for `(1, 1, 1)`
+        """
         aspect = (1.0, 1.0, 2/3) # :data :equal
-        "The view mode which affects the final projection. `:fit` results in the projection that always fits the limits into the viewport, invariant to rotation. `:fitzoom` keeps the x/y ratio intact but stretches the view so the corners touch the scene viewport. `:stretch` scales separately in both x and y direction to fill the viewport, which can distort the `aspect` that is set."
+        """
+        The view mode affects the final projection of the axis by fitting the axis cuboid into the available
+        space in different ways.
+
+          - `:fit` uses a fixed scaling such that a tight sphere around the cuboid touches the frame edge.
+            This means that the scaling doesn't change when rotating the axis (the apparent size
+            of the axis stays the same), but not all available space is used.
+            The chosen `aspect` is maintained using this setting.
+          - `:fitzoom` uses a variable scaling such that the closest cuboid corner touches the frame edge.
+            When rotating the axis, the apparent size of the axis changes which can result in a "pumping" visual effect.
+            The chosen `aspect` is also maintained using this setting.
+          - `:stretch` pulls the cuboid corners to the frame edges such that the available space is filled completely.
+            The chosen `aspect` is not maintained using this setting, so `:stretch` should not be used
+            if a particular aspect is needed.
+        """
         viewmode = :fitzoom # :fit :fitzoom :stretch
         "The background color"
         backgroundcolor = :transparent
