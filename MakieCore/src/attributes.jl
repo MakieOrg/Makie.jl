@@ -26,15 +26,17 @@ node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_conv
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
 Attributes(; kw_args...) = Attributes(getfield(kw_args, :data))
-# intercept kwarg calls and avoid any further specialization than necessary
-function Core.kwcall(@nospecialize(nt::NamedTuple), ::Type{Attributes})
-    att = Attributes(Dict{Symbol, Observable}())
-    # this iteration scheme is supposed to cause less specialization for different namedtuples
-    names = fieldnames(typeof(nt))
-    for name in names
-        att[name] = node_any(value_convert((getfield(nt, name))))
+@static if VERSION >= v"1.9"
+    # intercept kwarg calls and avoid any further specialization than necessary
+    function Core.kwcall(@nospecialize(nt::NamedTuple), ::Type{Attributes})
+        att = Attributes(Dict{Symbol, Observable}())
+        # this iteration scheme is supposed to cause less specialization for different namedtuples
+        names = fieldnames(typeof(nt))
+        for name in names
+            att[name] = node_any(value_convert((getfield(nt, name))))
+        end
+        return att
     end
-    return att
 end
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))
