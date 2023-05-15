@@ -105,7 +105,7 @@ function plot(@nospecialize(P::PlotFunc), axisattr::Attributes, kwattr::Attribut
     if haskey(axisattr, :type)
         axtype = to_value(axisattr[:type])
         pop!(axisattr, :type)
-        ax = axtype(f, axisattr)
+        ax = axtype(axisattr, f)
     else
         proxyscene = Scene()
         plot!(proxyscene, P, kwattr, args...)
