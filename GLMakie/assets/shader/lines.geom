@@ -639,9 +639,8 @@ void draw_solid_line(bool isvalid[4])
     vec2 n2 = vec2(-v2.y, v2.x);
 
     // determine stretching of AA border due to linewidth change
-    vec2 edge_v = segment_length * v1.xy + (g_thickness[2] - g_thickness[1]) * n1;
-    vec2 edge_n = vec2(-edge_v.y, edge_v.x);
-    float edge_scale = length(edge_n) / dot(edge_n, n1);
+    float temp = (g_thickness[2] - g_thickness[1]) / segment_length;
+    float edge_scale = sqrt(1 + temp * temp);
 
     // linewidth with padding for anti aliasing (used for geometry)
     float thickness_aa1 = g_thickness[1] + edge_scale * AA_THICKNESS;
