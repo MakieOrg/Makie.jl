@@ -204,6 +204,39 @@ function ViewportControllerCamera(scene::Scene, axis; kwargs...)
 end
 deselect_camera!(cam::ViewportControllerCamera) = cam.attributes.selected[] = false
 
+function _hovered_angles(scene, cam, step)
+    mp = events(scene).mouseposition[]
+    selections = Makie.pick(scene, Rect2i(mp .- 2, Vec2(5)))
+    if any(pidx -> pidx[1] isa Mesh, selections)
+        ray = ray_at_cursor(scene, cam)
+        # ray = p + tv, Sphere: x² + y² + z² = r²
+        # Solve resulting quadratic equation
+        a = dot(ray.direction, ray.direction)
+        b = 2 * dot(ray.origin, ray.direction)
+        c = dot(ray.origin, ray.origin) - 1 # radius 1
+        # goes below 0 only because rect pick may trigger outside sphere
+        t2 = (-b - sqrt(max(0, b*b - 4*a*c))) / (2*a) 
+        p = ray.origin + t2 * ray.direction
+
+        # to spherical
+        theta = asin(p[3]) 
+        if abs(p[3]) > 0.999
+            phi = 0.0
+        else
+            p = p[Vec(1,2)]
+            p = p / norm(p)
+            phi = mod(2pi + atan(p[2], p[1]), 2pi)
+        end
+
+        # snapping
+        phi   = step * round(phi / step)
+        theta = step * round(theta / step)
+        return phi, theta
+    else
+        return NaN, NaN
+    end
+end
+
 function add_rotation!(scene, cam::ViewportControllerCamera, axis)
     @extract cam.attributes (rotationspeed, click_timeout, step)
     drag_state = RefValue((false, Vec2f(0), time()))
@@ -220,31 +253,8 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
                 dt = time() - last_time
                 if dt < click_timeout[]
                     # do click stuff
-                    p, idx = Makie.pick(scene)
-                    if p isa Mesh
-                        ray = ray_at_cursor(scene, cam)
-                        # ray = p + tv, Sphere: x² + y² + z² = r²
-                        # Solve resulting quadratic equation
-                        a = dot(ray.direction, ray.direction)
-                        b = 2 * dot(ray.origin, ray.direction)
-                        c = dot(ray.origin, ray.origin) - 1 # radius 1
-                        t2 = (-b - sqrt(b*b - 4*a*c)) / (2*a) # <- this one, always
-                        p = ray.origin + t2 * ray.direction
-
-                        # to spherical
-                        theta = asin(p[3]) 
-                        if abs(p[3]) > 0.999
-                            phi = 0.0
-                        else
-                            p = p[Vec(1,2)]
-                            p = p / norm(p)
-                            phi = mod(2pi + atan(p[2], p[1]), 2pi)
-                        end
-
-                        # snapping
-                        phi   = step[] * round(phi / step[])
-                        theta = step[] * round(theta / step[])
-
+                    phi, theta = _hovered_angles(scene, cam, step[])
+                    if !isnan(phi)
                         update_cam!(scene, cam, phi, theta)
                         update_camera!(axis, cam.phi[], cam.theta[])
                     end
@@ -472,23 +482,26 @@ function initialize_block!(controller::Viewport3DController; axis)
 
     step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
     step_index = Observable(3)
-    cam = ViewportControllerCamera(
-        scene, axis, step = map(i -> 2pi / step_choices[i], step_index)
-    )
-
-    # mark center
-    # scatter!(
-    #     scene, Point3f(0, 0, -1), space = :clip,
-    #     # marker = '⊹', markersize = 80, color = :black,
-    #     marker = Circle, markersize = 30, color = :transparent,
-    #     strokewidth = 2, strokecolor = :black, fxaa=true
-    # )
+    step = map(i -> 2pi / step_choices[i], step_index)
+    cam = ViewportControllerCamera(scene, axis, step = step)
 
     # info on step size
+    timeout = Observable(-0.05)
+    on(timeout) do remaining
+        @info remaining
+        @async if remaining >= 0.0
+            sleep(0.05)
+            timeout[] -= 0.05
+        end
+    end
+
     text!(
         scene, 
         Point2f(0.9), space = :clip, align = (:right, :top),
-        text = map(i -> "Steps:\n$(step_choices[i])\n$(360/step_choices[i])°", step_index),
+        text = map(i -> "$(360/step_choices[i])°", step_index),
+        fontsize = 20, color = map(a -> (:black, a), timeout), 
+        strokewidth = 2, strokecolor = map(a -> (:white, a), timeout), 
+        visible = map(remaining -> remaining > 0, timeout)
     )
 
     # sphere background
@@ -506,13 +519,78 @@ function initialize_block!(controller::Viewport3DController; axis)
     )
     translate!(bg, 0, 0, 1)
 
+    # Mark selectable region
+    phi_theta = Observable(Point2f(0, 0))
+    region = map(phi_theta, step) do phi_theta, step
+        r = 1.01
+        if abs(phi_theta[2]) < pi/2 - 0.0001
+            phi0 = phi_theta[1] - 0.5step
+            phi1 = phi_theta[1] + 0.5step
+            theta0 = phi_theta[2] - 0.5step
+            theta1 = phi_theta[2] + 0.5step
+            return vcat(
+                spherical_to_cartesian.(range(phi0, phi1, length = 50), theta0, r),
+                spherical_to_cartesian.(phi1, range(theta0, theta1, length = 50), r),
+                spherical_to_cartesian.(range(phi1, phi0, length = 50), theta1, r),
+                spherical_to_cartesian.(phi0, range(theta1, theta0, length = 50), r)
+            )
+        else
+            return spherical_to_cartesian.(range(0, 2pi, length=100), phi_theta[2] - 0.5step, r)
+        end
+    end
+    lp = lines!(
+        scene, region, 
+        color = :white, linewidth = 1, 
+        # strokecolor = :black, strokewidth = 1,
+        visible = false, fxaa = true#, depth_shift = -0.001
+    )
+
+    # Update angular step
     on(scene, events(scene).scroll) do e
         if is_mouseinside(scene)
             idx = trunc(Int, step_index[] - sign(e[2]))
             if 0 < idx <= length(step_choices) && (idx != step_index[])
                 step_index[] = idx
+                if timeout.val < 0.0
+                    timeout[] = 3.0
+                else
+                    timeout.val = 3.0
+                end
+                if is_mouseinside(scene)
+                    phi, theta = _hovered_angles(scene, cam, step[])
+                    if !isnan(phi)
+                        phi_theta[] = (phi, theta)
+                    end
+                end
             end
         end
+    end
+
+    # Update angles for selectable region
+    on(scene, events(scene).mouseposition, priority = 1) do _
+        if is_mouseinside(scene)
+            phi, theta = _hovered_angles(scene, cam, step[])
+            if !isnan(phi)
+                phi_theta[] = (phi, theta)
+                lp.visible[] = true
+                return Consume(false)
+            end
+        end
+        lp.visible[] = false
+        return Consume(false)
+    end
+
+    on(scene, scene.camera.projectionview) do _
+        if is_mouseinside(scene)
+            phi, theta = _hovered_angles(scene, cam, step[])
+            if !isnan(phi)
+                phi_theta[] = (phi, theta)
+                lp.visible[] = true
+                return Consume(false)
+            end
+        end
+        lp.visible[] = false
+        return Consume(false)
     end
 
     return
