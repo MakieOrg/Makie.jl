@@ -54,7 +54,8 @@ excludes = Set([
     "scatter with stroke",
     "scatter with glow",
     "lines and linestyles",
-    "Textured meshscatter" # not yet implemented
+    "Textured meshscatter", # not yet implemented
+    "BezierPath marker stroke", # not yet implemented
 ])
 Makie.inline!(Makie.automatic)
 
