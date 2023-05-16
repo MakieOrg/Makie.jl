@@ -201,7 +201,8 @@ function bezier_ngon(n, radius, angle)
         for a in range(0, 2pi, length = n+1)[1:end-1]]
     BezierPath([
         MoveTo(points[1]);
-        LineTo.(points[2:end])
+        LineTo.(points[2:end]);
+        ClosePath()
     ])
 end
 
@@ -212,7 +213,8 @@ function bezier_star(n, inner_radius, outer_radius, angle)
         for (i, a) in enumerate(range(0, 2pi, length = 2n+1)[1:end-1])]
     BezierPath([
         MoveTo(points[1]);
-        LineTo.(points[2:end])
+        LineTo.(points[2:end]);
+        ClosePath()
     ])
 end
 
