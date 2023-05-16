@@ -13,7 +13,7 @@ facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
 
 
 function array2color(colors, cmap, crange)
-    cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
+    cmap = to_colormap(cmap)
     return Makie.interpolated_getindex.((cmap,), colors, (crange,))
 end
 
