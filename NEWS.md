@@ -2,6 +2,8 @@
 
 ## master
 
+- Fix incomplete stroke with some Bezier markers [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
+
 ## v0.19.5
 
 - Add `loop` option for GIF outputs when recording videos with `record` [#2891](https://github.com/MakieOrg/Makie.jl/pull/2891).
