@@ -8,7 +8,131 @@ end
 
 ################################################################################
 
+################################################################################
+### Texture generation
+################################################################################
 
+
+function generate_navball_texture(;
+        top_color = Makie.wong_colors(1)[1],
+        bottom_color = Makie.wong_colors(1)[2],
+        majortick_linewidth = 8, minortick_linewidth = 2,
+        minorticklength = 0.01, majorticklength = 0.02,
+        ticklabelpad = 0.005,
+        resolution = (1800, 900),
+        fontsize = 30,
+        linecolor = :black,
+        filename = Makie.assetpath("navball_texture.png")
+    )
+
+    # Scaling due to shrinking circumference
+    scaling(z) = min(1e6, 1.0 / cos(z * pi/2))
+
+    parent = Scene(resolution = resolution, backgroundcolor = top_color, clear = true)
+    Scene(parent, px_area = Observable(Rect2i(0, 450, 1800, 450)), backgroundcolor = bottom_color, clear = true)
+    scene = Scene(parent, backgroundcolor = :transparent, clear = false)
+
+    # main north-south lines
+    zs = range(-1, 1, length = 301)
+    for x in (-1.0, -0.5, 0.0, 0.5, 1.0)
+        lines!(
+            scene, fill(x, length(zs)), zs, linewidth = majortick_linewidth * scaling.(zs), 
+            #fxaa = fxaa, 
+            color = linecolor
+        )
+    end
+
+    # equator
+    lines!(scene, [-1.1, 1.1], [0.0, 0.0], linewidth = majortick_linewidth, color = linecolor)
+
+    # Minor lines
+    zs = range(-1, 1, length = 301)
+    for x in (-0.75, -0.25, 0.25, 0.75)
+        lines!(
+            scene, fill(x, length(zs)), zs, linewidth = minortick_linewidth * scaling.(zs), 
+            color = linecolor
+        )
+    end
+    for z in (-0.5, 0.5)
+        lines!(scene, [-1, 1], [z, z], linewidth = minortick_linewidth, color = linecolor)
+    end
+
+    # Major Ticks
+    zs = range(-1, 1, length=19)[2:end-1]
+    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
+    ps = [Point2f(x+dx*scaling(z), z) for z in zs for x in xs for dx in (-majorticklength, majorticklength)]
+    linesegments!(scene, ps, color = linecolor, linewidth = minortick_linewidth)
+
+    zs = vcat(range(-1, 0, length=10)[3:end-1], range(0, 1, length=10)[2:end-2])
+    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
+    ps = [Point2f(x - (majorticklength + ticklabelpad) * scaling(z), z) for z in zs for x in xs]
+    text!(
+        scene, ps,
+        text = [string(z) for z in vcat(-70:10:-10, 10:10:70) for x in xs],
+        color = :white, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
+        strokecolor = :black, strokewidth = 2,
+        align = (:left, :center),
+    )
+
+    zs = vcat(range(-1, 0, length=10)[3:end-1], range(0, 1, length=10)[2:end-2])
+    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
+    ps = [Point2f(x - (majorticklength + ticklabelpad) * scaling(z), z) for z in zs for x in xs]
+    text!(
+        scene, ps,
+        text = [string(z) for z in vcat(-70:10:-10, 10:10:70) for x in xs],
+        color = :white, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
+        strokecolor = :black, strokewidth = 2,
+        align = (:right, :center)
+    )
+
+    zs = range(-1, 1, length=19)[[2, 18]]
+    xs = (-0.75, -0.25, 0.25, 0.75)
+    ps = [Point2f(x, z) for z in zs for x in xs]
+    text!(
+        scene, ps,
+        text = [string(z) for z in (-80, 80) for x in xs],
+        color = :white, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
+        strokecolor = :black, strokewidth = 2,
+        align = (:center, :center)
+    )
+    
+    # Minor Ticks
+    zs = range(-1, 1, length=37)[2:2:end-1]
+    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
+    ps = [Point2f(x+dx*scaling(z), z) for z in zs for x in xs for dx in (-minorticklength, minorticklength)]
+    linesegments!(
+        scene, ps, color = linecolor, linewidth = minortick_linewidth#, fxaa = fxaa
+    )
+
+    # Labels
+    horizontal_labels = ("-X", "225", "-Y", "315", "X", "45", "Y", "135", "-X")
+    text!(
+        scene, 
+        [Point2f(x, 0) for x in range(-1, 1, length = 9)],
+        text = [str for str in horizontal_labels],
+        color = :white, fontsize = fontsize,
+        align = (:center, :center),
+        strokecolor = :black, strokewidth = 2
+    )
+    text!(
+        scene, 
+        [Point2f(x, z) for x in range(-1, 1, length = 9) for z in (-0.5, 0.5)],
+        text = [str for str in horizontal_labels for z in 1:2],
+        color = :white, fontsize = fontsize * Vec2f(scaling(0.5), 1),
+        align = (:center, :center),
+        strokecolor = :black, strokewidth = 2,
+    )
+
+    # Frame
+    linesegments!(
+        scene, [-1, 1, -1, 1], [1, 1, -1, -1], 
+        color = linecolor, linewidth = 2*majortick_linewidth#, fxaa = fxaa
+    )
+
+    Makie.save(filename, parent)
+
+    return parent
+end
 
 ################################################################################
 ### Camera setup
@@ -333,16 +457,17 @@ function initialize_block!(controller::Viewport3DController; axis)
 
     # m = Rhombicuboctahedron()
     texture = let
-        url = "https://raw.githubusercontent.com/linuxgurugamer/NavBallTextureChanger/master/GameData/NavBallTextureChanger/PluginData/Skins/Trekky0623_DIF.png"
-        path = Base.download(url)
+        # url = "https://raw.githubusercontent.com/linuxgurugamer/NavBallTextureChanger/master/GameData/NavBallTextureChanger/PluginData/Skins/Trekky0623_DIF.png"
+        # path = Base.download(url)
+        path = Makie.assetpath("navball_texture.png")
         img = FileIO.load(path)
-        rm(path)
+        # rm(path)
         img
     end
 
     m = uv_normal_mesh(Tesselation(Sphere(Point3f(0), 1f0), 50))
-    @info length(coordinates(m))
-    mp = mesh!(scene, m, color = texture, transparency = false)
+    # @info length(coordinates(m))
+    mp = mesh!(scene, m, color = texture, transparency = false, fxaa=!false)
     rotate!(mp, Vec3f(0, 0, 1), pi)
 
     step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
@@ -352,10 +477,12 @@ function initialize_block!(controller::Viewport3DController; axis)
     )
 
     # mark center
-    scatter!(
-        scene, Point3f(0, 0, -1), space = :clip,
-        marker = '⊹', markersize = 80, color = :black,
-    )
+    # scatter!(
+    #     scene, Point3f(0, 0, -1), space = :clip,
+    #     # marker = '⊹', markersize = 80, color = :black,
+    #     marker = Circle, markersize = 30, color = :transparent,
+    #     strokewidth = 2, strokecolor = :black, fxaa=true
+    # )
 
     # info on step size
     text!(
@@ -365,10 +492,17 @@ function initialize_block!(controller::Viewport3DController; axis)
     )
 
     # sphere background
+    # bg = scatter!(
+    #     scene, [Point2f(0) for _ in 1:3], space = :clip, 
+    #     marker = Circle, markersize = [1.8, 1.77, 1.73], markerspace = :clip,
+    #     color = [:black, :gray, :black], fxaa = true
+    # )
+    # translate!(bg, 0, 0, 1)
     bg = scatter!(
-        scene, [Point2f(0) for _ in 1:3], space = :clip, 
-        marker = Circle, markersize = [1.8, 1.77, 1.73], markerspace = :clip,
-        color = [:black, :gray, :black], fxaa = true
+        scene, Point2f(0), space = :clip, 
+        marker = Circle, markersize = 1.73, markerspace = :clip,
+        color = :green, fxaa = true,
+        glowcolor = :green, glowwidth = 5
     )
     translate!(bg, 0, 0, 1)
 
