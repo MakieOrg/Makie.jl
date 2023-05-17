@@ -479,7 +479,7 @@ end
 
 function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
     # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-    path_width = widths(Makie.bbox(path))
+    path_width = maximum(widths(Makie.bbox(path)))
     return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* path_width
 end
 
@@ -505,7 +505,9 @@ end
 
 function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
     bb = bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb))
+    _origin = origin(bb) ./ widths(bb) * maximum(widths(bb))
+    half_widths = 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) * maximum(widths(bb))
+    pad_offset = _origin .- half_widths
     return markersize .* pad_offset
 end
 

@@ -499,7 +499,8 @@ function render_path(path, bitmap_size_px = 256)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    path_unit_square = fit_to_unit_square(path_replaced, false)
+    path_unit_square = fit_to_unit_square(path_replaced, true)
+    
 
     path_transformed = Makie.scale(
         path_unit_square,
