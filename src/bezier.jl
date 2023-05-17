@@ -492,25 +492,23 @@ function render_path(path, bitmap_size_px = 256)
     # in the outline, 1 unit = 1/64px
     scale_factor = bitmap_size_px * 64
 
-    # we transform the path into the unit square and we can
-    # scale and translate this to a 4096x4096 grid, which is 64px x 64px
-    # when rendered to bitmap
+    # We transform the path into a rectangle of size (aspect, 1) or (1, aspect)
+    # such that aspect ≤ 1. We then scale that rectangle up to a size of 4096 by 
+    # 4096 * aspect, which results in at most a 64px by 64px bitmap
 
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    path_unit_square = fit_to_unit_square(path_replaced, true)
-    
+    aspect = widths(bbox(path)) / maximum(widths(bbox(path)))
+    path_unit_rect = fit_to_bbox(path_replaced, Rect2f(Point2f(0), aspect))
 
-    path_transformed = Makie.scale(
-        path_unit_square,
-        scale_factor,
-    )
+    path_transformed = Makie.scale(path_unit_rect, scale_factor)
 
     outline_ref = make_outline(path_transformed)
 
-    w = bitmap_size_px
-    h = bitmap_size_px
+    # Adjust bitmap size to match path aspect
+    w = ceil(Int, bitmap_size_px * aspect[1])
+    h = ceil(Int, bitmap_size_px * aspect[2])
     pitch = w * 1 # 8 bit gray
     pixelbuffer = zeros(UInt8, h * pitch)
     bitmap_ref = Ref{FT_Bitmap}()

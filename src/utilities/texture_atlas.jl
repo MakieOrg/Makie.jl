@@ -70,7 +70,7 @@ function Base.show(io::IO, atlas::TextureAtlas)
     println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
 
-const SERIALIZATION_FORMAT_VERSION = "v1"
+const SERIALIZATION_FORMAT_VERSION = "v2"
 
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
@@ -479,8 +479,7 @@ end
 
 function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
     # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-    path_width = maximum(widths(Makie.bbox(path)))
-    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* path_width
+    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* widths(Makie.bbox(path))
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, markersize)
@@ -505,9 +504,7 @@ end
 
 function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
     bb = bbox(bp)
-    _origin = origin(bb) ./ widths(bb) * maximum(widths(bb))
-    half_widths = 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) * maximum(widths(bb))
-    pad_offset = _origin .- half_widths
+    pad_offset = origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) * widths(bb)
     return markersize .* pad_offset
 end
 
