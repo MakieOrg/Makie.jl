@@ -25,43 +25,18 @@ end
 Adds a screen to the scene and registeres a clean up event when screen closes.
 Also, makes sure that always just one screen is active for on scene.
 """
-function push_screen!(scene::Scene, screen::MakieScreen)
-    if length(scene.current_screens) == 1 && scene.current_screens[1] === screen
-        # Nothing todo here, already displayed on screen
-        return
+function push_screen!(scene::Scene, screen::T) where {T<:MakieScreen}
+    if !(screen in scene.current_screens)
+        # If screen isn't already part of this scene, we make sure
+        # that the screen only has one screen per type
+        of_same_type = filter(x -> x isa T, scene.current_screens) # collect all of same type
+        foreach(x -> delete_screen!(scene, x), of_same_type)
+        # Now we can push the screen :)
+        push!(scene.current_screens, screen)
     end
-    # Else we delete all other screens, only one screen per scene is allowed!!
-    while !isempty(scene.current_screens)
-        delete_screen!(scene, pop!(scene.current_screens))
-    end
-
-    # Now we push the screen :)
-    push!(scene.current_screens, screen)
-    deregister = nothing
-    deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
-        # when screen closes, it should set the scene isopen event to false
-        # so that's when we can remove the screen
-        if !is_open
-            close(screen)
-            delete_screen!(scene, screen)
-            # deregister itself after letting other listeners run
-            if !isnothing(deregister)
-                off(deregister)
-
-                # if there are multiple listeners removing this one will skip the
-                # second one (now first). To fix this we run the listener manually here
-                callbacks = listeners(events(scene).window_open)
-                if length(callbacks) > 0
-                    result = Base.invokelatest(callbacks[1][2], is_open)
-                    if result isa Consume && result.x
-                        # if the second listener consumes we need to consume here
-                        # to avoid executing the third (now second).
-                        return Consume(true)
-                    end
-                end
-            end
-        end
-        return Consume(false)
+    # Now only thing left is to make sure all children also have the screen!
+    for children in scene.children
+        push_screen!(children, screen)
     end
     return
 end
@@ -107,7 +82,7 @@ function merge_screen_config(::Type{Config}, screen_config_kw) where Config
 end
 
 
-const ALWAYS_INLINE_PLOTS = Ref{Bool}(false)
+const ALWAYS_INLINE_PLOTS = Ref{Union{Automatic, Bool}}(automatic)
 
 """
     inline!(inline=true)
@@ -118,8 +93,29 @@ Only case Makie always shows the plot inside the plotpane is when using VSCode e
 If you want to always force inlining the plot into the plotpane, set `inline!(true)` (E.g. when run in the VSCode REPL).
 In other cases `inline!(true/false)` won't do anything.
 """
-function inline!(inline=true)
+function inline!(inline=automatic)
     ALWAYS_INLINE_PLOTS[] = inline
+end
+
+wait_for_display(screen) = nothing
+
+function has_mime_display(mime)
+    for display in Base.Multimedia.displays
+        # Ugh, why would textdisplay say it supports HTML??
+        display isa TextDisplay && continue
+        displayable(display, mime) && return true
+    end
+    return false
+end
+
+can_show_inline(::Missing) = false # no backend
+function can_show_inline(Backend)
+    for mime in [MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
+        if backend_showable(Backend.Screen, mime)
+            return has_mime_display(mime)
+        end
+    end
+    return false
 end
 
 """
@@ -129,6 +125,8 @@ Displays the figurelike in a window or the browser, depending on the backend.
 
 The parameters for `screen_config` are backend dependend,
 see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
+
+`backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
 """
 function Base.display(figlike::FigureLike; backend=current_backend(), update=true, screen_config...)
     if ismissing(backend)
@@ -140,9 +138,23 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
         In that case, try `]build GLMakie` and watch out for any warnings.
         """)
     end
-    if ALWAYS_INLINE_PLOTS[]
+    inline = ALWAYS_INLINE_PLOTS[]
+    # We show inline if explicitely requested or if automatic and we can actually show something inline!
+    if (inline === true || inline === automatic) && can_show_inline(backend)
         Core.invoke(display, Tuple{Any}, figlike)
+        # In WGLMakie, we need to wait for the display being done
+        screen = getscreen(get_scene(figlike))
+        wait_for_display(screen)
+        return screen
     else
+        if inline === true
+            @warn """
+
+                Makie.inline!(do_inline) was set to true, but we didn't detect a display that can show the plot,
+                so we aren't inlining the plot and try to show the plot in a window.
+                If this wasn't set on purpose, call `Makie.inline!()` to restore the default.
+            """
+        end
         scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene; screen_config...)
@@ -164,13 +176,29 @@ function Base.display(screen::MakieScreen, figlike::FigureLike; update=true, dis
     return screen
 end
 
+# This isn't particularly nice,
+# But, for `Makie.inline!(false)`, we want to show a plot in a gui regardless
+# of an enabled plotpane or not
+# Since VSCode doesn't call any display/show method for Figurelike if we return
+# `showable(mime, fig) == false`, we need to return `showable(mime, figlike) == true`
+# For some vscode displayable mime, even for `Makie.inline!(false)` when we want to display in our own window.
+# Only diagnostic can be used for this, since other mimes expect something to be shown afterall and
+# therefore will look broken in the plotpane if we dont print anything to the IO.
+# I tried `throw(MethodError(...))` as well, but with plotpane enabled + showable == true,
+# VScode doesn't catch that method error.
+const MIME_TO_TRICK_VSCODE = MIME"application/vnd.julia-vscode.diagnostics"
+
 function _backend_showable(mime::MIME{SYM}) where SYM
+    if ALWAYS_INLINE_PLOTS[] == false
+        return mime isa MIME_TO_TRICK_VSCODE
+    end
     Backend = current_backend()
     if ismissing(Backend)
         return Symbol("text/plain") == SYM
     end
     return backend_showable(Backend.Screen, mime)
 end
+
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 
 # need to define this to resolve ambiguoity issue
@@ -195,14 +223,27 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     show(io, scene)
 end
 
+# VSCode per default displays an object as markdown as well.
+# Which, without throwing a method error, would show a plot 2 times from within the display system.
+# This can lead to hangs e.g. for WGLMakie, where there is only one plotpane/browser, which then one waits on
+function Base.show(io::IO, m::MIME"text/markdown", fig::FigureLike)
+    throw(MethodError(show, io, m, fig))
+end
+
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
+    if ALWAYS_INLINE_PLOTS[] == false && m isa MIME_TO_TRICK_VSCODE
+        # We use this mime to display the figure in a window here.
+        # See declaration of MIME_TO_TRICK_VSCODE for more info
+        display(figlike)
+        return () # this is a diagnostic vscode mime, so we can just return nothing
+    end
     scene = get_scene(figlike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
     update_state_before_display!(figlike)
-    screen = getscreen(backend, scene, io, m)
+    screen = getscreen(backend, scene, io, m; visible=false)
     backend_show(screen, io, m, scene)
-    return
+    return screen
 end
 
 format2mime(::Type{FileIO.format"PNG"}) = MIME("image/png")
@@ -321,11 +362,34 @@ end
 
 function apply_screen_config! end
 
+"""
+    getscreen(scene::Scene)
+
+Gets the current screen a scene is associated with.
+Returns nothing if not yet displayed on a screen.
+"""
+function getscreen(scene::Scene, backend=current_backend())
+    isempty(scene.current_screens) && return nothing # stop search
+    idx = findfirst(scene.current_screens) do screen
+        parentmodule(typeof(screen)) === backend
+    end
+    isnothing(idx) && return nothing
+    # TODO, when would we actually want to get a specific screen?
+    return scene.current_screens[idx]
+end
+
+getscreen(scene::SceneLike, backend=current_backend()) = getscreen(get_scene(scene), backend)
+
 function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; screen_config...)
-    screen = getscreen(scene)
+    screen = getscreen(scene, backend)
     config = Makie.merge_screen_config(backend.ScreenConfig, screen_config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
-        return apply_screen_config!(screen, config, scene, args...)
+        new_screen = apply_screen_config!(screen, config, scene, args...)
+        if new_screen !== screen
+            # Apply config is allowed to recreate a screen, but that means we need to delete the old one:
+            delete_screen!(scene, screen)
+        end
+        return new_screen
     end
     if ismissing(backend)
         error("""
@@ -345,6 +409,7 @@ Returns the content of the given scene or screen rasterised to a Matrix of
 Colors. The return type is backend-dependent, but will be some form of RGB
 or RGBA.
 
+- `backend::Module`: A module which is a Makie backend.  For example, `backend = GLMakie`, `backend = CairoMakie`, etc.
 - `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion

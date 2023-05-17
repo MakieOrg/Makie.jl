@@ -211,10 +211,12 @@ end
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    arr = copy(convert_arguments(PB, linestring[1])[1])
-    for ls in 2:length(linestring)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, linestring[ls])[1])
+    arr = Point2f[]; n = length(linestring)
+    for idx in 1:n
+        append!(arr, convert_arguments(PB, linestring[idx])[1])
+        if idx != n # don't add NaN at the end
+            push!(arr, Point2f(NaN))
+        end
     end
     return (arr,)
 end
@@ -226,15 +228,17 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    arr = copy(convert_arguments(PB, pol.exterior)[1])
-    push!(arr, arr[1]) # close exterior
-    if !isempty(pol.interiors)
+    converted = convert_arguments(PB, pol.exterior)[1] # this should always be a Tuple{<: Vector{Point}}
+    arr = copy(converted)
+    if !isempty(arr) && arr[1] != arr[end]
+        push!(arr, arr[1]) # close exterior
+    end
+    for interior in pol.interiors
         push!(arr, Point2f(NaN))
-        for interior in pol.interiors
-            inter = convert_arguments(PB, interior)[1]
-            append!(arr, inter)
-            # close interior + separate!
-            push!(arr, inter[1], Point2f(NaN))
+        inter = convert_arguments(PB, interior)[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, inter)
+        if !isempty(inter) && inter[1] != inter[end]
+            push!(arr, inter[1]) # close interior
         end
     end
     return (arr,)
@@ -247,12 +251,53 @@ end
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = copy(convert_arguments(PB, mp[1])[1])
-    for p in 2:length(mp)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, mp[p])[1])
+    arr = Point2f[]
+    n = length(mp)
+    for idx in 1:n
+        converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, converted)
+        if idx != n # don't add NaN at the end
+            push!(arr, Point2f(NaN))
+        end
     end
     return (arr,)
+end
+
+function convert_arguments(::PointBased, b::BezierPath)
+    b2 = replace_nonfreetype_commands(b)
+    points = Point2f[]
+    last_point = Point2f(NaN)
+    last_moveto = false
+
+    function poly3(t, p0, p1, p2, p3)
+        Point2f((1-t)^3 .* p0 .+ t*p1*(3*(1-t)^2) + p2*(3*(1-t)*t^2) .+ p3*t^3)
+    end
+
+    for command in b2.commands
+        if command isa MoveTo
+            last_point = command.p
+            last_moveto = true
+        elseif command isa LineTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            push!(points, command.p)
+            last_point = command.p
+            last_moveto = false
+        elseif command isa CurveTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            last_moveto = false
+            for t in range(0, 1, length = 30)[2:end]
+                push!(points, poly3(t, last_point, command.c1, command.c2, command.p))
+            end
+            last_point = command.p
+        end
+    end
+    return (points,)
 end
 
 
@@ -504,7 +549,13 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
         end
     end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    # If already correct eltypes for GL, we can pass the mesh through as is
+    if eltype(metafree(coordinates(mesh))) == Point{N, Float32} && eltype(faces(mesh)) == GLTriangleFace
+        return (mesh,)
+    else
+        # Else, we need to convert it!
+        return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    end
 end
 
 function convert_arguments(
@@ -794,9 +845,9 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
 #     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-# 
+#
 # [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-convert_attribute(A::AbstractVector, ::key"linestyle") = A
+convert_attribute(A::AbstractVector, ::key"linestyle") = [float(x - A[1]) for x in A]
 
 # A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
@@ -1285,3 +1336,6 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
+
+convert_attribute(value, ::key"diffuse") = Vec3f(value)
+convert_attribute(value, ::key"specular") = Vec3f(value)

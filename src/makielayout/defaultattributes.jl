@@ -1,6 +1,6 @@
 function inherit(scene, attr::Symbol, default_value)
     if haskey(scene.theme, attr)
-        lift(identity, scene.theme[attr])
+        Observable(to_value(scene.theme[attr]))
     else
         inherit(scene.parent, attr, default_value)
     end

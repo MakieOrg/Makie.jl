@@ -4,7 +4,7 @@ function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
 
-    on(ax.protrusions) do prot
+    on(blockscene, ax.protrusions) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
     end
     notify(ax.protrusions)
@@ -12,7 +12,7 @@ function initialize_block!(ax::Axis3)
     finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
     setfield!(ax, :finallimits, finallimits)
 
-    scenearea = lift(round_to_IRect2D, ax.layoutobservables.computedbbox)
+    scenearea = lift(round_to_IRect2D, blockscene, ax.layoutobservables.computedbbox)
 
     scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
     ax.scene = scene
@@ -23,38 +23,39 @@ function initialize_block!(ax::Axis3)
     mi2 = Observable(0 <= mod1(ax.azimuth[], 2pi) < pi)
     mi3 = Observable(ax.elevation[] > 0)
 
-    on(ax.azimuth) do x
+    on(scene, ax.azimuth) do x
         b = !(pi/2 <= mod1(x, 2pi) < 3pi/2)
         mi1.val == b || (mi1[] = b)
         return
     end
-    on(ax.azimuth) do x
+    on(scene, ax.azimuth) do x
         b = 0 <= mod1(x, 2pi) < pi
         mi2.val == b || (mi2[] = b)
         return
     end
-    on(ax.elevation) do x
+    on(scene, ax.elevation) do x
         mi3.val == (x > 0) || (mi3[] = x > 0)
         return
     end
 
-    matrices = lift(calculate_matrices, finallimits, scene.px_area, ax.elevation, ax.azimuth, ax.perspectiveness, ax.aspect, ax.viewmode)
+    matrices = lift(calculate_matrices, scene, finallimits, scene.px_area, ax.elevation, ax.azimuth,
+                    ax.perspectiveness, ax.aspect, ax.viewmode)
 
-    on(matrices) do (view, proj, eyepos)
+    on(scene, matrices) do (view, proj, eyepos)
         cam = camera(scene)
         Makie.set_proj_view!(cam, proj, view)
         cam.eyeposition[] = eyepos
     end
 
-    ticknode_1 = lift(finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
+    ticknode_1 = lift(scene, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
         tl = get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
     end
 
-    ticknode_2 = lift(finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
+    ticknode_2 = lift(scene, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
         tl = get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
     end
 
-    ticknode_3 = lift(finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
+    ticknode_3 = lift(scene, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
         tl = get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
@@ -76,7 +77,7 @@ function initialize_block!(ax::Axis3)
     zticks, zticklabels, zlabel =
         add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth)
 
-    titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
+    titlepos = lift(scene, scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
 
         x = if align === :center
             a.origin[1] + a.widths[1] / 2
@@ -93,7 +94,7 @@ function initialize_block!(ax::Axis3)
         Point2(x, yoffset)
     end
 
-    titlealignnode = lift(ax.titlealign) do align
+    titlealignnode = lift(scene, ax.titlealign) do align
         (align, :bottom)
     end
 
@@ -117,7 +118,7 @@ function initialize_block!(ax::Axis3)
     keysevents = Observable(KeysEvent(Set()))
     setfield!(ax, :keysevents, keysevents)
 
-    on(scene.events.scroll) do s
+    on(scene, scene.events.scroll) do s
         if is_mouseinside(scene)
             ax.scrollevents[] = ScrollEvent(s[1], s[2])
             return Consume(true)
@@ -125,18 +126,18 @@ function initialize_block!(ax::Axis3)
         return Consume(false)
     end
 
-    on(scene.events.keyboardbutton) do e
+    on(scene, scene.events.keyboardbutton) do e
         ax.keysevents[] = KeysEvent(scene.events.keyboardstate)
         return Consume(false)
     end
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(ax.limits) do lims
+    on(scene, ax.limits) do lims
         reset_limits!(ax)
     end
 
-    on(ax.targetlimits) do lims
+    on(scene, ax.targetlimits) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
         ax.finallimits[] = lims
@@ -152,9 +153,9 @@ function initialize_block!(ax::Axis3)
         return Consume(false)
     end
 
-    on(process_event, ax.mouseeventhandle.obs)
-    on(process_event, ax.scrollevents)
-    on(process_event, ax.keysevents)
+    on(process_event, scene, ax.mouseeventhandle.obs)
+    on(process_event, scene, ax.scrollevents)
+    on(process_event, scene, ax.keysevents)
 
     register_interaction!(ax,
         :dragrotate,
@@ -471,7 +472,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     tickvalues = @lift($ticknode[1])
     ticklabels = @lift($ticknode[2])
 
-    tick_segments = lift(limits, tickvalues, miv, min1, min2,
+    tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
             scene.camera.projectionview, scene.px_area) do lims, ticks, miv, min1, min2,
                 pview, pxa
         f1 = !min1 ? minimum(lims)[d1] : maximum(lims)[d1]
@@ -503,7 +504,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     # we are going to transform the 3d tick segments into 2d of the topscene
     # because otherwise they
     # be cut when they extend beyond the scene boundary
-    tick_segments_2dz = lift(tick_segments, scene.camera.projectionview, scene.px_area) do ts, _, _
+    tick_segments_2dz = lift(topscene, tick_segments, scene.camera.projectionview, scene.px_area) do ts, _, _
         map(ts) do p1_p2
             to_topscene_z_2d.(p1_p2, Ref(scene))
         end
@@ -514,7 +515,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
 
-    labels_positions = lift(scene.px_area, scene.camera.projectionview,
+    labels_positions = lift(topscene, scene.px_area, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
@@ -533,7 +534,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         v::Vector{Tuple{String, Point2f}}
     end
 
-    align = lift(miv, min1, min2) do mv, m1, m2
+    align = lift(topscene, miv, min1, min2) do mv, m1, m2
         if dim == 1
             (mv ⊻ m1 ? :right : :left, m2 ? :top : :bottom)
         elseif dim == 2
@@ -554,7 +555,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     label_rotation = Observable(0f0)
     label_align = Observable((:center, :top))
 
-    onany(
+    onany(topscene,
             scene.px_area, scene.camera.projectionview, limits, miv, min1, min2,
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign)
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign
@@ -625,11 +626,11 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     notify(attr(:labelalign))
 
-    label = text!(topscene, attr(:label),
+    label = text!(topscene, label_position,
+        text = attr(:label),
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
         font = attr(:labelfont),
-        position = label_position,
         rotation = label_rotation,
         align = label_align,
         visible = attr(:labelvisible),
@@ -921,4 +922,113 @@ function limits!(ax::Axis3, rect::Rect3)
     Makie.xlims!(ax, xmin, xmax)
     Makie.ylims!(ax, ymin, ymax)
     Makie.zlims!(ax, zmin, zmax)
+end
+
+function attribute_examples(::Type{Axis3})
+    Dict(
+        :aspect => [
+            Example(
+                name = "Three-tuple aspects",
+                code = """
+                    fig = Figure()
+                    
+                    Axis3(fig[1, 1], aspect = (1, 1, 1), title = "aspect = (1, 1, 1)")
+                    Axis3(fig[1, 2], aspect = (2, 1, 1), title = "aspect = (2, 1, 1)")
+                    Axis3(fig[2, 1], aspect = (1, 2, 1), title = "aspect = (1, 2, 1)")
+                    Axis3(fig[2, 2], aspect = (1, 1, 2), title = "aspect = (1, 1, 2)")
+
+                    fig
+                    """
+            ),
+            Example(
+                name = "`:data` and `:equal` aspects",
+                code = """
+                    using FileIO
+
+                    fig = Figure()
+
+                    brain = load(assetpath("brain.stl"))
+                    
+                    ax1 = Axis3(fig[1, 1], aspect = :equal, title = "aspect = :equal")
+                    ax2 = Axis3(fig[1, 2], aspect = :data, title = "aspect = :data")
+
+                    for ax in [ax1, ax2]
+                        mesh!(ax, brain, color = :gray80)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :viewmode => [
+            Example(
+                name = "`viewmode` variants",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
+                        for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
+
+                            Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
+
+                            # show the extent of each cell using a box
+                            Box(fig[i, j], strokewidth = 0, color = :gray95)
+
+                            ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
+                            hidedecorations!(ax)
+
+                        end
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :perspectiveness => [
+            Example(
+                name = "`perspectiveness` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
+                        ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
+                            title = ":perspectiveness = \$(perspectiveness)")
+                        hidedecorations!(ax)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :azimuth => [
+            Example(
+                name = "`azimuth` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
+                        Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
+                            title = "azimuth = \$(azimuth)π", viewmode = :fit)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :elevation => [
+            Example(
+                name = "`elevation` values",
+                code = """
+                    fig = Figure()
+                    
+                    for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
+                        Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
+                            title = "elevation = \$(elevation)π", viewmode = :fit)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+    )
 end

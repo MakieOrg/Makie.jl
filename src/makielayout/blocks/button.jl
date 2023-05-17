@@ -4,34 +4,34 @@ function initialize_block!(b::Button)
 
     textpos = Observable(Point2f(0, 0))
 
-    subarea = lift(b.layoutobservables.computedbbox) do bbox
+    subarea = lift(scene, b.layoutobservables.computedbbox) do bbox
         round_to_IRect2D(bbox)
     end
     subscene = Scene(scene, subarea, camera=campixel!)
 
     # buttonrect is without the left bottom offset of the bbox
-    buttonrect = lift(b.layoutobservables.computedbbox) do bbox
+    buttonrect = lift(scene, b.layoutobservables.computedbbox) do bbox
         BBox(0, width(bbox), 0, height(bbox))
     end
 
-    on(buttonrect) do rect
+    on(scene, buttonrect) do rect
         textpos[] = Point2f(left(rect) + 0.5f0 * width(rect), bottom(rect) + 0.5f0 * height(rect))
     end
 
-    roundedrectpoints = lift(roundedrectvertices, buttonrect, b.cornerradius, b.cornersegments)
+    roundedrectpoints = lift(roundedrectvertices, scene, buttonrect, b.cornerradius, b.cornersegments)
 
     mousestate = Observable(:out)
 
     bcolors = (; out = b.buttoncolor, active = b.buttoncolor_active, hover = b.buttoncolor_hover)
     bcolor = Observable{RGBColors}()
-    map!((s,_...)-> to_color(bcolors[s][]), bcolor, mousestate, values(bcolors)...)
+    map!((s, _...) -> to_color(bcolors[s][]), scene, bcolor, mousestate, values(bcolors)...)
 
     button = poly!(subscene, roundedrectpoints, strokewidth = b.strokewidth, strokecolor = b.strokecolor,
         color = bcolor, inspectable = false)
 
     lcolors = (; out = b.labelcolor, active = b.labelcolor_active, hover = b.labelcolor_hover)
     lcolor = Observable{RGBColors}()
-    map!((s,_...)-> to_color(lcolors[s][]), lcolor, mousestate, values(lcolors)...)
+    map!((s, _...) -> to_color(lcolors[s][]), scene, lcolor, mousestate, values(lcolors)...)
 
     labeltext = text!(subscene, textpos, text = b.label, fontsize = b.fontsize, font = b.font,
         color = lcolor, align = (:center, :center), markerspace = :data, inspectable = false)
@@ -39,7 +39,7 @@ function initialize_block!(b::Button)
     # move text in front of background to be sure it's not occluded
     translate!(labeltext, 0, 0, 1)
 
-    onany(b.label, b.fontsize, b.font, b.padding) do label, fontsize, font, padding
+    onany(scene, b.label, b.fontsize, b.font, b.padding) do label, fontsize, font, padding
         textbb = Rect2f(boundingbox(labeltext))
         autowidth = width(textbb) + padding[1] + padding[2]
         autoheight = height(textbb) + padding[3] + padding[4]

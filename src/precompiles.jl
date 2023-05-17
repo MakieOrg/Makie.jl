@@ -1,21 +1,23 @@
-using SnoopPrecompile
+using PrecompileTools
 
 macro compile(block)
     return quote
         let
             $(esc(block))
+            return nothing
         end
     end
 end
 
 let
-    @precompile_all_calls begin
+    @compile_workload begin
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
         empty!(FONT_CACHE)
         empty!(_default_font)
         empty!(_alternative_fonts)
+        Makie._current_figure[] = nothing
     end
     nothing
 end
