@@ -12,6 +12,13 @@ function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"col
     )
 end
 
+struct WorldAxisLimits
+    min::Vec3f
+    max::Vec3f
+end
+
+Makie.convert_attribute(r::Rect3, ::key"clip_planes") = WorldAxisLimits(minimum(r), maximum(r))
+
 gpuvec(x) = GPUVector(GLBuffer(x))
 
 to_range(x, y) = to_range.((x, y))
@@ -89,6 +96,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable
             ))
         end
+        
+        get!(filtered, :clip_planes, scene.theme[:clip_planes]) 
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
@@ -96,6 +105,10 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end)
+
+        # TODO make things work down the line with `Observable{Any}`
+        clip = pop!(gl_attributes, :clip_planes)
+        gl_attributes[:clip_planes] = map!(identity, Observable(clip[]), clip)
 
         pointlight = Makie.get_point_light(scene)
         if !isnothing(pointlight)
@@ -110,6 +123,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
 
         robj = robj_func(gl_attributes)
 
+        # TODO Does this even do anything? This is after `assemble_shader`...
         !haskey(gl_attributes, :ssao) && (robj[:ssao] = Observable(false))
         screen.cache2plot[robj.id] = x
         robj
@@ -242,7 +256,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             # connect camera
             connect_camera!(x, gl_attributes, cam, get(gl_attributes, :space, :data))
             filter!(gl_attributes) do (k, v,)
-                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview, :visible)
+                k in (:clip_planes, :color_map, :color, :color_norm, :scale, :model, :projectionview, :visible)
             end
             if !(gl_attributes[:color][] isa AbstractVector{<: Number})
                 delete!(gl_attributes, :color_norm)
@@ -278,28 +292,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         transform_func = transform_func_obs(x)
 
         ls = to_value(linestyle)
+        data[:fast] = isnothing(ls)
         if isnothing(ls)
             data[:pattern] = ls
-            data[:fast] = true
-
-            positions = apply_transform(transform_func, positions, space)
         else
-            linewidth = gl_attributes[:thickness]
-            data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
-            data[:fast] = false
-
-            pvm = map(*, data[:projectionview], data[:model])
-            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
-                transformed = apply_transform(f, ps, space)
-                output = Vector{Point3f}(undef, length(transformed))
-                scale = Vec3f(res[1], res[2], 1f0)
-                for i in eachindex(transformed)
-                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                    output[i] = scale .* Point3f(clip) ./ clip[4]
-                end
-                output
-            end
+            data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, gl_attributes[:thickness])
         end
+        positions = apply_transform(transform_func, positions, space)
 
         handle_intensities!(data)
         return draw_lines(screen, positions, data)

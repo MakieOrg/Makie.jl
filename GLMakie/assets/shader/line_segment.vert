@@ -5,6 +5,10 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+struct WorldAxisLimits{
+    vec3 min, max;
+};
+
 in float lastlen;
 {{vertex_type}} vertex;
 {{thickness_type}} thickness;
@@ -16,6 +20,7 @@ in float lastlen;
 uniform mat4 projectionview, model;
 uniform uint objectid;
 uniform float depth_shift;
+{{clip_planes_type}} clip_planes;
 
 out uvec2 g_id;
 out vec4 g_color;
@@ -36,6 +41,8 @@ vec4 to_color(float color, sampler1D color_map, vec2 color_norm, int index){
     return color_lookup(color, color_map, color_norm);
 }
 
+void set_clip(Nothing planes, vec4 world_pos);
+void set_clip(WorldAxisLimits planes, vec4 world_pos);
 
 void main()
 {
@@ -43,6 +50,8 @@ void main()
     g_id = uvec2(objectid, index+1);
     g_color = to_color(color, color_map, color_norm, index);
     g_thickness = thickness;
-    gl_Position = projectionview * model * to_vec4(vertex);
+    vec4 world_pos = model * to_vec4(vertex);
+    set_clip(clip_planes, world_pos);
+    gl_Position = projectionview * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 }

@@ -6,6 +6,10 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+struct WorldAxisLimits{
+    vec3 min, max;
+};
+
 {{define_fast_path}}
 
 layout(lines_adjacency) in;
@@ -29,6 +33,7 @@ out vec3 o_normal;
 uniform vec2 resolution;
 uniform float pattern_length;
 uniform sampler1D pattern_sections;
+{{clip_planes_type}} clip_planes;
 
 float px2uv = 0.5 / pattern_length;
 
@@ -40,6 +45,18 @@ vec3 screen_space(vec4 vertex)
 {
     return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
 }
+
+void set_clip(Nothing planes, int idx){ return; };
+void set_clip(WorldAxisLimits planes, int idx){
+    gl_ClipDistance[0] = gl_in[idx].gl_ClipDistance[0];
+    gl_ClipDistance[1] = gl_in[idx].gl_ClipDistance[1];
+    gl_ClipDistance[2] = gl_in[idx].gl_ClipDistance[2];
+    gl_ClipDistance[3] = gl_in[idx].gl_ClipDistance[3];
+    gl_ClipDistance[4] = gl_in[idx].gl_ClipDistance[4];
+    gl_ClipDistance[5] = gl_in[idx].gl_ClipDistance[5];
+};
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Emit Vertex Methods
@@ -56,6 +73,7 @@ void emit_vertex(vec3 position, vec2 uv, int index)
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
     f_id        = g_id[index];
     f_thickness = g_thickness[index];
+    set_clip(clip_planes, index);
     EmitVertex();
 }
 
@@ -315,10 +333,10 @@ void draw_patterned_line(bool isvalid[4])
 
     // get the four vertices passed to the shader
     // without FAST_PATH the conversions happen on the CPU
-    vec3 p0 = gl_in[0].gl_Position.xyz; // start of previous segment
-    vec3 p1 = gl_in[1].gl_Position.xyz; // end of previous segment, start of current segment
-    vec3 p2 = gl_in[2].gl_Position.xyz; // end of current segment, start of next segment
-    vec3 p3 = gl_in[3].gl_Position.xyz; // end of next segment
+    vec3 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
+    vec3 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
+    vec3 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
+    vec3 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
 
     // linewidth with padding for anti aliasing
     float thickness_aa1 = g_thickness[1] + AA_THICKNESS;

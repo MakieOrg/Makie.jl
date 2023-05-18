@@ -49,6 +49,7 @@ in vec3 g_position[];
 in vec4 g_rotation[];
 in vec4 g_offset_width[];
 in uvec2 g_id[];
+in float g_clipDistance[];
 
 flat out int  f_primitive_index;
 flat out float f_viewport_from_u_scale;
@@ -80,6 +81,7 @@ void emit_vertex(vec4 vertex, vec2 uv)
 {
     gl_Position       = vertex;
     gl_Position.z     += gl_Position.w * depth_shift;
+    gl_ClipDistance[0] = g_clipDistance[0];
     f_uv              = uv;
     f_uv_texture_bbox = g_uv_texture_bbox[0];
     f_primitive_index = g_primitive_index[0];

@@ -203,6 +203,7 @@ gl_convert(s::Nothing) = s
 isa_gl_struct(x::AbstractArray) = false
 isa_gl_struct(x::NATIVE_TYPES) = false
 isa_gl_struct(x::Colorant) = false
+isa_gl_struct(x::Observable) = isa_gl_struct(x[])
 function isa_gl_struct(x::T) where T
     !isconcretetype(T) && return false
     if T <: Tuple
@@ -214,13 +215,25 @@ end
 function gl_convert_struct(x::T, uniform_name::Symbol) where T
     if isa_gl_struct(x)
         return Dict{Symbol, Any}(map(fieldnames(x)) do name
-            (Symbol("$uniform_name.$name") => gl_convert(getfield(x, name)))
+            Symbol("$uniform_name.$name") => gl_convert(getfield(x, name))
         end)
     else
         error("can't convert $x to a OpenGL type. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
     end
 end
 
+function gl_convert_struct(x::Observable, uniform_name::Symbol)
+    if isa_gl_struct(x[])
+        gl_convert_struct(x, x[], uniform_name)
+    else
+        error("can't convert $(x[]) to a OpenGL type. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
+    end
+end
+function gl_convert_struct(obs::Observable, val::T, uniform_name::Symbol) where T
+    return Dict{Symbol, Any}(map(fieldnames(T)) do name
+        Symbol("$uniform_name.$name") => map(x -> gl_convert(getfield(x, name)), obs)
+    end)
+end
 
 # native types don't need convert!
 gl_convert(a::T) where {T <: NATIVE_TYPES} = a
