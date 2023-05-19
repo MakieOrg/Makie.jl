@@ -48,6 +48,7 @@ $(ATTRIBUTES)
         color = theme(scene, :patchcolor),
         linestyle = :solid,
         scale_to = nothing,
+        linewidth = default_theme(scene, Lines)[:linewidth],
     )
 end
 
@@ -74,10 +75,10 @@ function Makie.plot!(plot::StepHist)
     end
     attr = copy(plot.attributes)
     # Don't pass stephist attributes to the stairs primitive
-    pop!(attr, :weights)
-    pop!(attr, :normalization)
-    pop!(attr, :scale_to)
-    pop!(attr, :bins)
+    delete!(attr, :weights)
+    delete!(attr, :normalization)
+    delete!(attr, :scale_to)
+    delete!(attr, :bins)
     # plot the values, not the observables, to be in control of updating
     stairs!(plot, points[]; attr..., color=color)
 end
