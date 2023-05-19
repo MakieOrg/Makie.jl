@@ -10,7 +10,7 @@ All style attributes are the same as for `LineSegments`.
     Theme(;
         xautolimits = false,
         yautolimits = false,
-        default_theme(LineSegments, scene)...,
+        default_theme(scene, LineSegments)...,
         cycle = :color,
     )
 end
