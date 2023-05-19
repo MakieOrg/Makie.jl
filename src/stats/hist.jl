@@ -137,7 +137,9 @@ $(ATTRIBUTES)
         label_font = theme(scene, :font),
         label_size = 20,
         label_formatter = bar_label_formatter,
-        direction = :x,
+        direction = :y,
+        strokecolor = default_theme(scene, BarPlot)[:strokecolor], # TODO: this doesn't change with a BarPlot key in the theme?
+        strokewidth = default_theme(scene, BarPlot)[:strokewidth], # TODO: this doesn't change with a BarPlot key in the theme?
     )
 end
 
@@ -182,11 +184,12 @@ function Makie.plot!(plot::Hist)
     end
     # plot the values, not the observables, to be in control of updating
 
+    barattrs = copy(plot.attributes)
     for key in [:bins, :normalization, :over_background_color, :over_bar_color, :scale_to, :weights]
-        delete!(plot.attributes, key)
+        delete!(barattrs, key)
     end
 
-    bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
+    bp = barplot!(plot, points[]; width = widths[], gap = 0, barattrs..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(plot, widths) do w
