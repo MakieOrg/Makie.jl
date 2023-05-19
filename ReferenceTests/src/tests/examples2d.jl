@@ -47,7 +47,7 @@ end
 
 @reference_test "Arrows on hemisphere" begin
     s = Sphere(Point3f(0), 0.9f0)
-    fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
+    fig, ax, meshplot = mesh(s)
     pos = decompose(Point3f, s)
     dirs = decompose_normals(s)
     arrows!(ax, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
