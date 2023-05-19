@@ -157,7 +157,8 @@ Available algorithms are:
         space = :data,
         diffuse=0.4,
         specular=0.2,
-        shininess=32.0f0
+        shininess=32.0f0,
+        enable_depth=true
     )
 end
 

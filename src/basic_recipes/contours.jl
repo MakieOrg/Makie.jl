@@ -158,7 +158,6 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     pop!(attr, :linestyle)
     pop!(attr, :linewidth)
     pop!(attr, :alpha)
-    pop!(attr, :enable_depth)
     volume!(plot, attr, x, y, z, volume)
 end
 
