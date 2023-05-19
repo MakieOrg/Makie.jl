@@ -27,6 +27,7 @@ Furthermore the same attributes as for `barplot` are supported.
         final_color=plot_color(:grey90, 0.5),
         final_gap=automatic,
         final_dodge_gap=0,
+        color=default_theme(scene, BarPlot)[:color],
     )
 end
 
@@ -67,10 +68,15 @@ function Makie.plot!(p::Waterfall)
         )
     end
 
+    barattrs = copy(p.attributes)
+    for key in [:direction_color, :final_color, :final_dodge_gap, :final_gap, :marker_neg, :marker_pos, :show_direction, :show_final]
+        delete!(barattrs, key)
+    end
+
     barplot!(
         p,
         lift(x -> x.xy, p, fromto);
-        p.attributes...,
+        barattrs...,
         fillto=lift(x -> x.fillto, p, fromto),
         stack=automatic,
     )
