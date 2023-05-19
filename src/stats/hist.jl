@@ -136,7 +136,8 @@ $(ATTRIBUTES)
         label_offset = 5,
         label_font = theme(scene, :font),
         label_size = 20,
-        label_formatter = bar_label_formatter
+        label_formatter = bar_label_formatter,
+        direction = :x,
     )
 end
 
@@ -180,6 +181,11 @@ function Makie.plot!(plot::Hist)
         x === :values ? :y : x
     end
     # plot the values, not the observables, to be in control of updating
+
+    for key in [:bins, :normalization, :over_background_color, :over_bar_color, :scale_to, :weights]
+        delete!(plot.attributes, key)
+    end
+
     bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
