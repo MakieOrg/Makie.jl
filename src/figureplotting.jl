@@ -72,6 +72,7 @@ end
 function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
     _validate_nt_like_keyword(axis, "axis")
+    _disallow_keyword(:figure, kwargs)
 
     f = get_top_parent(gp)
 
@@ -121,6 +122,7 @@ end
 function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
 
     _validate_nt_like_keyword(axis, "axis")
+    _disallow_keyword(:figure, kwargs)
 
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
     c = contents(gsp, exact = true)
