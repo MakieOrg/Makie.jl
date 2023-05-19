@@ -104,6 +104,9 @@ paired with the scatter plot so the default is to not show them)
 
         color = theme(scene, :patchcolor),
         cycle = [:color => :patchcolor],
+        title = "",
+        xlabel = "",
+        ylabel = "",
     )
 end
 
