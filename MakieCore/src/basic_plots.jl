@@ -360,6 +360,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         diffuse = 0.4,
         specular = 0.2,
         shininess = 32f0,
+        matcap = nothing,
     )
 end
 
