@@ -13,7 +13,7 @@ All style attributes are the same as for `Poly`.
         xautolimits = false,
         xmin = 0,
         xmax = 1,
-        default_theme(Poly, scene)...,
+        default_theme(scene, Poly)...,
         cycle = [:color => :patchcolor],
     )
     end
@@ -33,7 +33,7 @@ All style attributes are the same as for `Poly`.
         yautolimits = false,
         ymin = 0,
         ymax = 1,
-        default_theme(Poly, scene)...,
+        default_theme(scene, Poly)...,
         cycle = [:color => :patchcolor],
     )
 end
@@ -74,7 +74,12 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     notify(p[1])
 
-    poly!(p, rects; p.attributes...)
+    polyattrs = copy(p.attributes)
+    for key in [:xmin, :xmax, :ymin, :ymax]
+        delete!(polyattrs, key)
+    end
+
+    poly!(p, rects; polyattrs...)
     p
 end
 
