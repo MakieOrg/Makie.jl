@@ -84,7 +84,7 @@ function Makie.plot!(p::Union{HLines, VLines})
     notify(p[1])
 
     line_attributes = copy(p.attributes)
-    delete!.(line_attributes, (:ymin, :ymax, :yautolimits))
+    delete!.(line_attributes, (:xmin, :xmax, :ymin, :ymax, :yautolimits))
     linesegments!(p, line_attributes, points)
     p
 end
