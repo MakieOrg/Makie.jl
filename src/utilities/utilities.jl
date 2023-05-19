@@ -255,12 +255,33 @@ function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
 end
 
-function merged_get!(defaults::Function, key, scene::SceneLike, input::Attributes)
+function merged_get!(defaults::Function, key, scene::SceneLike, input::Attributes; allowlist::Set{Symbol} = Set{Symbol}())
     d = defaults()
     if haskey(theme(scene), key)
         # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
         # TODO have a mark that says "theme uncomplete" and only then get the defaults
         d = merge!(to_value(theme(scene, key)), d)
+    end
+    sd = setdiff(
+        keys(input),
+        keys(d),
+        allowlist
+    )
+    sd = setdiff(sd, )
+    if !isempty(sd)
+        error("""
+        Found attributes not in the defaults for $(key) or the general allowlist:
+            
+        $(join(sort(collect(sd)), ", ", " and "))
+
+        The default attributes for this call were:
+
+        $(isempty(keys(d)) ? "No entries available." : join(sort(collect(keys(d))), ", ", " and "))
+
+        The additional allowlist for this call was:
+
+        $(isempty(allowlist) ? "No entries available." : join(sort(collect(allowlist)), ", ", " and "))
+        """)
     end
     return merge!(input, d)
 end
