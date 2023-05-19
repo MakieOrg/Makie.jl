@@ -158,7 +158,8 @@ Available algorithms are:
         diffuse=0.4,
         specular=0.2,
         shininess=32.0f0,
-        enable_depth=true
+        enable_depth=true,
+        absorption=1.0,
     )
 end
 
