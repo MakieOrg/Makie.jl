@@ -99,6 +99,10 @@ function Base.getindex(fig::Figure, rows, cols, side = GridLayoutBase.Inner())
     fig.layout[rows, cols, side]
 end
 
+function Base.getindex(fig::Figure, index::CartesianIndex{2}, side = GridLayoutBase.Inner())
+    fig.layout[Tuple(index)[1], Tuple(index)[2], side]
+end
+
 function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
     fig.layout[rows, cols, side] = obj
     obj

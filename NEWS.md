@@ -2,6 +2,8 @@
 
 ## master
 
+- Add `CartesianIndex`-based indexing of `Figure`s [#2964](https://github.com/MakieOrg/Makie.jl/pull/2964)
+
 ## v0.19.5
 
 - Add `loop` option for GIF outputs when recording videos with `record` [#2891](https://github.com/MakieOrg/Makie.jl/pull/2891).
