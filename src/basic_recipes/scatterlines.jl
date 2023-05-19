@@ -24,6 +24,7 @@ $(ATTRIBUTES)
         marker = s_theme.marker,
         inspectable = theme(scene, :inspectable),
         cycle = [:color],
+        space = :data,
     )
 end
 
@@ -47,7 +48,8 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         linewidth = p.linewidth,
         colormap = p.colormap,
         colorrange = p.colorrange,
-        inspectable = p.inspectable
+        inspectable = p.inspectable,
+        space = p.space,
     )
     scatter!(p, p[1:N]...;
         color = real_markercolor,
@@ -57,6 +59,7 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         markersize = p.markersize,
         colormap = p.markercolormap,
         colorrange = p.markercolorrange,
-        inspectable = p.inspectable
+        inspectable = p.inspectable,
+        space = p.space,
     )
 end
