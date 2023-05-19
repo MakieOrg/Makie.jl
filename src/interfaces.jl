@@ -221,7 +221,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     plot_attributes = merged_get!(
         ()-> default_theme(scene, FinalType),
         plotsym(FinalType), scene, attributes;
-        allowlist = Set([:text, :xautolimits, :yautolimits, :zautolimits, :interpolate_in_fragment_shader])
+        allowlist = Set([:text, :xautolimits, :yautolimits, :zautolimits, :interpolate_in_fragment_shader, :label])
     )
 
     # Transformation is a field of the plot type, but can be given as an attribute
