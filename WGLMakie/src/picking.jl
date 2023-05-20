@@ -1,29 +1,29 @@
 
 function pick_native(screen::Screen, rect::Rect2i)
-    task = @async begin
-        (x, y) = minimum(rect)
-        (w, h) = widths(rect)
-        session = get_three(screen; error="Can't do picking!").session
-        scene = screen.scene
-        picking_data = JSServe.evaljs_value(session, js"""
-            Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
-        """)
-        w2, h2 = picking_data["size"]
-        @assert w2 == w && h2 == h
-        matrix = reshape(picking_data["data"], (w2, h2))
-
-        if isempty(matrix)
-            return Matrix{Tuple{Union{Nothing, AbstractPlot}, Int}}(undef, 0, 0)
-        else
-            all_children = Makie.flatten_plots(scene)
-            lookup = Dict(Pair.(js_uuid.(all_children), all_children))
-            return map(matrix) do (uuid, index)
-                !haskey(lookup, uuid) && return (nothing, 0)
-                return (lookup[uuid], Int(index) + 1)
-            end
+    (x, y) = minimum(rect)
+    (w, h) = widths(rect)
+    session = get_three(screen; error="Can't do picking!").session
+    scene = screen.scene
+    picking_data = JSServe.evaljs_value(session, js"""
+        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
+    """)
+    empty = Matrix{Tuple{Union{Nothing, AbstractPlot}, Int}}(undef, 0, 0)
+    if isnothing(picking_data)
+        return empty
+    end
+    w2, h2 = picking_data["size"]
+    @assert w2 == w && h2 == h
+    matrix = reshape(picking_data["data"], (w2, h2))
+    if isempty(matrix)
+        return empty
+    else
+        all_children = Makie.flatten_plots(scene)
+        lookup = Dict(Pair.(js_uuid.(all_children), all_children))
+        return map(matrix) do (uuid, index)
+            !haskey(lookup, uuid) && return (nothing, 0)
+            return (lookup[uuid], Int(index) + 1)
         end
     end
-    return fetch(task)
 end
 
 function plot_lookup(scene::Scene)
