@@ -132,6 +132,36 @@ function plotting_funcs(folder)
                 labels = true, labelsize = 25)
             f
         end,
+        makefig("contour3d") do
+            f = Figure()
+            ax = Axis3(f[1, 1])
+            function func(x, y)
+                r = sqrt(x^2 + y^2)
+                angwobble = (2 + 0.3 * sin(3 * atan(y, x) + 0.3 * r))
+                r * angwobble * 0.36
+            end
+            contour3d!(ax, -5:0.1:5, -5:0.1:5, func, levels = [1, 2, 3], linewidth = 6, color = [MAKIEBLUE, MAKIEYELLOW, MAKIERED],
+                labels = true, labelsize = 25)
+            f
+        end,
+        makefig("contourf") do
+            f = Figure()
+            ax = Axis(f[1, 1])
+            function func(x, y)
+                r = sqrt(x^2 + y^2)
+                angwobble = (2 + 0.3 * sin(3 * atan(y, x) + 0.3 * r))
+                r * angwobble * 0.36
+            end
+            contourf!(ax, -5:0.1:5, -5:0.1:5, func, levels = [0, 1, 2, 3], colormap = [MAKIEBLUE, MAKIEYELLOW, MAKIERED])
+            f
+        end,
+        makefig("density") do
+            f = Figure()
+            ax = Axis(f[1, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0.1))
+            data = [randn(50); randn(80) .+ 5] 
+            density!(ax, data, color = MAKIERED)
+            f
+        end,
         makefig("heatmap") do
             f = Figure()
             ax = Axis(f[1, 1])
