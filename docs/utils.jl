@@ -5,6 +5,7 @@ using FileIO
 using ImageTransformations
 using Colors
 using Pkg
+using CairoMakie
 
 ############################ Initialization ##############################
 
@@ -77,10 +78,10 @@ function env_examplefigure(com, _)
     # can later be used to assemble an overview page
     # for some reason franklin needs a pair as the content?
     pngsvec, _ = get!(Franklin.LOCAL_VARS, "examplefigures_png", String[] => Vector{String})
-    push!(pngsvec, pngfile)
+    # push!(pngsvec, pngfile)
 
     str = """
-    ```julia:example_figure
+    ```julia
     __result = begin # hide
         $code
     end # hide
@@ -492,3 +493,28 @@ function lx_attrdocs(lxc, _)
     return String(take!(io))
 end
 
+
+function hfun_plotting_functions_thumbnails()
+    file_location = locvar("fd_rpath")
+    pathparts = split(file_location, r"\\|/")
+    thumbnails_jl = joinpath(@__DIR__, pathparts[1:end-1]..., "plotting_functions.jl")
+    thumbnails_func = include(thumbnails_jl)
+
+    list = Base.invokelatest(
+        thumbnails_func,
+        joinpath(@__DIR__, "__site/", "assets", "examples", "plotting_functions")
+    )
+
+    function _make_html(entry)
+        name, filename = entry
+        return """
+        <a href="./$name">
+            <img src="/assets/examples/plotting_functions/$filename"/>
+        </a>
+        """
+    end
+
+    images = join(_make_html.(list))
+
+    return """<div class="thumbnail-list">$images</div>"""
+end

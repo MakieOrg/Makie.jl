@@ -820,3 +820,13 @@ button.copy-code:focus {
 .outdated-warning-overlay a:hover {
     color: #363636;
 }
+
+.thumbnail-list {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.thumbnail-list > * {
+    flex-basis: 25%;
+    display: flex;
+}
