@@ -75,6 +75,10 @@ void main(){
     // color.b = mod(f_uv.x, 1.0);
     // color.a = 0.2 + 0.8 * color.a;
 
+    // Debug: Show AA padding in red
+    // color.r = 1 - color.a;
+    // color.a = 0.5 + 0.5 * color.a;
+
     
     write2framebuffer(color, f_id);
 }
