@@ -205,8 +205,12 @@ end
 deselect_camera!(cam::ViewportControllerCamera) = cam.attributes.selected[] = false
 
 function _hovered_angles(scene, cam, step)
+    # Pick in a small region to allow picking past lines on the sphere
     mp = events(scene).mouseposition[]
-    selections = Makie.pick(scene, Rect2i(mp .- 2, Vec2(5)))
+    mini = max.(minimum(scene.px_area[]) .+ 1, mp .- 2)
+    maxi = min.(maximum(scene.px_area[]), mp .+ 2)
+    selections = Makie.pick(scene, Rect2i(mini, maxi-mini))
+
     if any(pidx -> pidx[1] isa Mesh, selections)
         ray = ray_at_cursor(scene, cam)
         # ray = p + tv, Sphere: x² + y² + z² = r²
@@ -219,7 +223,7 @@ function _hovered_angles(scene, cam, step)
         p = ray.origin + t2 * ray.direction
 
         # to spherical
-        theta = asin(p[3]) 
+        theta = asin(clamp(p[3], -1.0, 1.0)) 
         if abs(p[3]) > 0.999
             phi = 0.0
         else
@@ -243,7 +247,7 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
     e = events(scene)
 
     # drag start/stop
-    on(camera(scene), e.mousebutton) do event
+    on(camera(scene), e.mousebutton, priority = 100) do event
         if event.button == Mouse.left
             active, last_mousepos, last_time = drag_state[]
             if event.action == Mouse.press && is_mouseinside(scene) # && !active
@@ -276,7 +280,7 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
     end
 
     # in drag
-    on(camera(scene), e.mouseposition) do mp
+    on(camera(scene), e.mouseposition, priority = 100) do mp
         active, last_mousepos, last_time = drag_state[]
         if active && ispressed(scene, Mouse.left)
             mousepos = screen_relative(scene, mp)
@@ -446,10 +450,24 @@ end
 
 
 # Create Controller
-Viewport3DController(x, axis::Union{LScene, Axis3}; kwargs...) = Viewport3DController(x; axis = axis, kwargs...)
+function Viewport3DController(x, axis::Union{LScene, Axis3}; float::Bool, kwargs...)
+    Viewport3DController(x; axis = axis, float, bbox = axis.scene.px_area, kwargs...)
+end
+function Viewport3DController(x::Union{GridPosition, GridSubposition}, axis::Union{LScene, Axis3}; kwargs...)
+    Viewport3DController(x; axis = axis, float = false, kwargs...)
+end
 
-function initialize_block!(controller::Viewport3DController; axis)
+
+function initialize_block!(controller::Viewport3DController; axis::Union{LScene, Axis3}, float::Bool)
     blockscene = controller.blockscene
+
+    if float
+        @info "Floating"
+        # map!(round_to_IRect2D, controller.layoutobservables.suggestedbbox, axis.scene.px_area)
+        controller.halign[] = :right
+        controller.valign[] = :bottom
+        controller.layoutobservables.autosize[] = (150, 150)
+    end
 
     scene_region = map(blockscene, controller.layoutobservables.computedbbox) do bb
         mini = minimum(bb); ws = widths(bb)
@@ -546,7 +564,7 @@ function initialize_block!(controller::Viewport3DController; axis)
     )
 
     # Update angular step
-    on(scene, events(scene).scroll) do e
+    on(scene, events(scene).scroll, priority = 100) do e
         if is_mouseinside(scene)
             idx = trunc(Int, step_index[] - sign(e[2]))
             if 0 < idx <= length(step_choices) && (idx != step_index[])
@@ -563,11 +581,13 @@ function initialize_block!(controller::Viewport3DController; axis)
                     end
                 end
             end
+            return Consume(true)
         end
+        return Consume(false)
     end
 
     # Update angles for selectable region
-    on(scene, events(scene).mouseposition, priority = 1) do _
+    on(scene, events(scene).mouseposition, priority = 101) do _
         if is_mouseinside(scene)
             phi, theta = _hovered_angles(scene, cam, step[])
             if !isnan(phi)
@@ -580,7 +600,7 @@ function initialize_block!(controller::Viewport3DController; axis)
         return Consume(false)
     end
 
-    on(scene, scene.camera.projectionview) do _
+    on(scene, scene.camera.projectionview, priority = 100) do _
         if is_mouseinside(scene)
             phi, theta = _hovered_angles(scene, cam, step[])
             if !isnan(phi)

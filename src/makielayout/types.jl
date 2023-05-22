@@ -1424,9 +1424,9 @@ end
 
         # Layouting
         "The height setting of the scene."
-        height = nothing
+        height = Auto()
         "The width setting of the scene."
-        width = nothing
+        width = Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
