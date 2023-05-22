@@ -76,11 +76,14 @@ f
 
 Constrained triangulations can also be used by passing boundary nodes or edges as keyword arguments into `tricontourf`, rather than having to identify the triangles manually as above. The form of the boundary nodes should conform with the specification in DelaunayTriangulation.jl. For example, the above annulus could have been plotted as follows.
 
+By default, `tricontourf` performs unconstrained triangulations. Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) and passing the resulting triangulation as the first argument of `tricontourf`. For example, the above annulus could have been plotted as follows.
+
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie
-
+using CairoMakie, DelaunayTriangulation
+CairoMakie.activate!() # hide
 using Random
+
 Random.seed!(123)
 
 n = 20
@@ -92,7 +95,9 @@ z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.*randn.()
 inner = [n:-1:1; n] # clockwise inner 
 outer = [(n+1):(2n); n+1] # counter-clockwise outer
 boundary_nodes = [[outer], [inner]]
-f, ax, _ = tricontourf(x, y, z; boundary_nodes)
+points = [x'; y']
+tri = triangulate(points; boundary_nodes = boundary_nodes)
+f, ax, _ = tricontourf(tri, z)
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
@@ -135,15 +140,12 @@ boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_poi
 edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
 ## Extract the x, y 
-x = getx.(points)
-y = gety.(points)
-z = (x .- 1) .* (y .+ 1) 
-f, ax, _ = tricontourf(x, y, z, boundary_nodes = boundary_nodes, edges = edges, levels = 30)
+tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
+z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)] # note that each_point preserves the index order
+f, ax, _ = tricontourf(tri, z, levels = 30)
 f
 ```
 \end{examplefigure}
-
-You can also provide a `Triangulation` object itself from DelaunayTriangulation.jl into `tricontourf`.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -162,7 +164,7 @@ for i in 1:2
 end
 boundary_nodes, points = convert_boundary_points_to_indices(xy)
 tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
-z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)]
+z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)] # note that each_point preserves the index order
 
 f, ax, tr = tricontourf(tri, z, colormap = :matter)
 f

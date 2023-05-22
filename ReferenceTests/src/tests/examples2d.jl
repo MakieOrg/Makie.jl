@@ -686,7 +686,8 @@ end
     inner = [n:-1:1; n] # clockwise inner 
     outer = [(n+1):(2n); n+1] # counter-clockwise outer
     boundary_nodes = [[outer], [inner]]
-    f, ax, _ = tricontourf(x, y, z; boundary_nodes)
+    tri = DelaunayTriangulation.triangulate([x'; y'], boundary_nodes = boundary_nodes)
+    f, ax, _ = tricontourf(tri, z)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
     f
 end
@@ -720,10 +721,9 @@ end
     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
     edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
-    x = getx.(points)
-    y = gety.(points)
-    z = (x .- 1) .* (y .+ 1) 
-    f, ax, _ = tricontourf(x, y, z, boundary_nodes = boundary_nodes, edges = edges, levels = 30)
+    tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
+    z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)]
+    f, ax, _ = tricontourf(tri, z, levels = 30)
     f
 end
 
