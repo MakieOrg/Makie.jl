@@ -62,7 +62,7 @@ function draw_mesh_particle(screen, p, data)
         matcap = nothing => Texture
         fetch_pixel = false
         interpolate_in_fragment_shader = false
-        uv_scale = Vec2f(1)
+        uv_scale = Vec2f(1) => TextureBuffer
 
         instances = const_lift(length, position)
         shading = true

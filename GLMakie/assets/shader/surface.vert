@@ -51,6 +51,7 @@ uniform uint objectid;
 uniform vec2 uv_scale;
 flat out uvec2 o_id;
 out vec4 o_color;
+out vec2 o_uv_scale;
 out vec2 o_uv;
 
 void main()
@@ -63,6 +64,7 @@ void main()
     {{position_calc}}
 
     o_id = uvec2(objectid, index1D+1);
+    o_uv_scale = uv_scale;
     o_uv = index01 * uv_scale;
     vec3 normalvec = {{normal_calc}};
 
