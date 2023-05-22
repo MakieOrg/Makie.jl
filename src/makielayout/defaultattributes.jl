@@ -10,7 +10,7 @@ function inherit(::Nothing, attr::Symbol, default_value)
     default_value
 end
 
-inherit(scene, attr::NTuple{1, <: Symbol}, default_value) where N = inherit(scene, attr[begin], default_value)
+inherit(scene, attr::NTuple{1, <: Symbol}, default_value) = inherit(scene, attr[begin], default_value)
 
 
 function inherit(scene, attr::NTuple{N, <: Symbol}, default_value) where N

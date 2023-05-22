@@ -121,10 +121,10 @@ end
 
 # A function which redoes text layouting, to provide a bbox for arbitrary text.
 
-function text_bbox(textstring::AbstractString, textsize::Union{AbstractVector, Number}, font, align, rotation, justification, lineheight, word_wrap_width = -1)
+function text_bbox(textstring::AbstractString, fontsize::Union{AbstractVector, Number}, font, fonts, align, rotation, justification, lineheight, word_wrap_width = -1)
     glyph_collection = Makie.layout_text(
-            textstring, textsize,
-            font, align, rotation, justification, lineheight,
+            textstring, fontsize,
+            to_font(fonts, font), fonts, align, rotation, justification, lineheight,
             RGBAf(0,0,0,0), RGBAf(0,0,0,0), 0f0, word_wrap_width
         )
 
@@ -134,8 +134,9 @@ end
 function text_bbox(plot::Text)
     return text_bbox(
         plot.text[],
-        plot.textsize[],
+        plot.fontsize[],
         plot.font[],
+        plot.fonts,
         plot.align[],
         plot.rotation[],
         plot.justification[],
@@ -211,8 +212,9 @@ function Makie.initialize_block!(po::PolarAxis)
             # calculate text boundingboxes individually and select the maximum boundingbox
             text_bboxes = text_bbox.(
                 first.(θticklabelplot[1][]),
-                Ref(θticklabelplot.textsize[]),
+                Ref(θticklabelplot.fontsize[]),
                 θticklabelplot.font[],
+                θticklabelplot.fonts,
                 θticklabelplot.align[] isa Tuple ? Ref(θticklabelplot.align[]) : θticklabelplot.align[],
                 θticklabelplot.rotation[],
                 0.0,
@@ -316,7 +318,9 @@ function draw_axis!(po::PolarAxis)
         end
 
         θtextbboxes = text_bbox.(
-            _θticklabels, (po.θticklabelsize[],), (po.θticklabelfont[],), ((:center, :center),), 0f0, 0f0, 0f0, -1
+            _θticklabels, (po.θticklabelsize[],), 
+            (po.θticklabelfont[],), (theme(po.scene, :fonts),), 
+            ((:center, :center),), 0f0, 0f0, 0f0, -1
         )
 
         rtick_pos_lbl[] = tuple.(_rticklabels, project_to_pixelspace(po.scene, Point2f.(_rtickvalues, rtickangle)) .+ Ref(pixelarea.origin))
@@ -398,7 +402,7 @@ function draw_axis!(po::PolarAxis)
     # tick labels
     rticklabelplot = text!(
         po.blockscene, rtick_pos_lbl;
-        textsize = po.rticklabelsize,
+        fontsize = po.rticklabelsize,
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
         align = (:left, :bottom),
@@ -406,7 +410,7 @@ function draw_axis!(po::PolarAxis)
 
     θticklabelplot = text!(
         po.blockscene, θtick_pos_lbl;
-        textsize = po.θticklabelsize,
+        fontsize = po.θticklabelsize,
         font = po.θticklabelfont,
         color = po.θticklabelcolor,
         align = (:center, :center),

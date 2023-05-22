@@ -1670,11 +1670,11 @@ end
         "The title of the plot"
         title = " "
         "The gap between the title and the top of the axis"
-        titlegap = inherit(scene, (:Axis, :titlesize), inherit(scene, :fontsize, 16) / 2)
+        titlegap = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
         "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
         titlealign = :center
         "The fontsize of the title."
-        titlesize = inherit(scene, (:Axis, :titlesize), inherit(scene, :fontsize, 16) * 1.2)
+        titlesize = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
         "The font of the title."
         titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the title."
