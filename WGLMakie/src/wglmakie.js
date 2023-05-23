@@ -478,6 +478,7 @@ window.WGL = {
     create_scene,
     event2scene_pixel,
     on_next_insert,
+    register_popup,
 };
 
 export {
