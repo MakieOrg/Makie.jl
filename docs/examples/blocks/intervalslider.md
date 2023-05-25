@@ -56,3 +56,7 @@ scatter!(points, color = colors, colormap = [:black, :orange], strokewidth = 0)
 f
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{IntervalSlider}

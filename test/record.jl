@@ -58,6 +58,7 @@ mktempdir() do tempdir
                     warn_fmts=["mkv", "webm", "gif"],
                     no_warn_fmts=["mp4"],
                 ),
+                (:loop, 0, ["mkv", "webm", "mp4"], ["gif"]),
             ]
 
             for (kwarg, value, warn_fmts, no_warn_fmts) in warn_tests

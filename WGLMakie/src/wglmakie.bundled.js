@@ -20243,7 +20243,7 @@ function render_scene(scene, picking = false) {
     if (!scene.visible.value) {
         return true;
     }
-    renderer.autoClear = scene.clearscene;
+    renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t)=>t / pixelRatio1);

@@ -28,3 +28,8 @@ connect!(line2.visible, toggles[2].active)
 fig
 ```
 \end{examplefigure}
+
+
+## Attributes
+
+\attrdocs{Toggle}
