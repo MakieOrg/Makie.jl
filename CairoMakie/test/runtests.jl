@@ -186,7 +186,8 @@ excludes = Set([
     "fast pixel marker",
     "scatter with glow",
     "scatter with stroke",
-    "heatmaps & surface"
+    "heatmaps & surface",
+    "Textured meshscatter" # not yet implemented
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
