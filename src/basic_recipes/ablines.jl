@@ -26,7 +26,7 @@ function Makie.plot!(p::ABLines)
     points = Observable(Point2f[])
 
     onany(p, limits, p[1], p[2]) do lims, intercept, slope
-        inv = inverse_transform(transf)
+        # inv = inverse_transform(transf)
         empty!(points[])
         f(x) = x * b + a
         broadcast_foreach(intercept, slope) do intercept, slope

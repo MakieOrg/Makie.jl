@@ -121,6 +121,11 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
         empty!(polys[])
         empty!(colors[])
 
+        N = mapreduce(length, min, (xs, ys, zs))
+        xview = view(xs, 1:N)
+        yview = view(ys, 1:N)
+        zview = view(zs, 1:N)
+
         levels = copy(levels)
         # adjust outer levels to be inclusive
         levels[1] = prevfloat(levels[1])
@@ -131,8 +136,8 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        trianglelist = compute_triangulation(triangulation, xs, ys)
-        filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
+        trianglelist = compute_triangulation(triangulation, xview, yview)
+        filledcontours = filled_tricontours(xview, yview, zview, trianglelist, levels)
 
         levelcenters = (highs .+ lows) ./ 2
 

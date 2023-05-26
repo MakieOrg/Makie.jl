@@ -182,7 +182,7 @@ function plot!(p::StreamPlot)
         # (extreme) aspect ratios we need to project to pixel space and renormalize.
         scene = parent_scene(p)
         rotations = lift(p, scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
-            angles = map(data[1], data[2]) do pos, dir
+            angles = truncated_broadcast(data[1], data[2]) do pos, dir
                 pstart = project(scene, pos)
                 pstop = project(scene, pos + dir)
                 pdir = pstop - pstart

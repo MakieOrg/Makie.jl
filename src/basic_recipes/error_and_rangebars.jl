@@ -62,48 +62,48 @@ end
 ### conversions for errorbars
 
 function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_both)
-    xyerr = broadcast(x, y, error_both) do x, y, e
+    xyerr = truncated_broadcast(x, y, error_both) do x, y, e
         Vec4f(x, y, e, e)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
-    xyerr = broadcast(Vec4f, x, y, error_low, error_high)
+    xyerr = truncated_broadcast(Vec4f, x, y, error_low, error_high)
     (xyerr,)
 end
 
 
 function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2}})
-    xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
+    xyerr = truncated_broadcast(x, y, error_low_high) do x, y, (el, eh)
         Vec4f(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_both)
-    xyerr = broadcast(xy, error_both) do (x, y), e
+    xyerr = truncated_broadcast(xy, error_both) do (x, y), e
         Vec4f(x, y, e, e)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low, error_high)
-    xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
+    xyerr = truncated_broadcast(xy, error_low, error_high) do (x, y), el, eh
         Vec4f(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low_high::AbstractVector{<:VecTypes{2}})
-    xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
+    xyerr = truncated_broadcast(xy, error_low_high) do (x, y), (el, eh)
         Vec4f(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3}})
-    xyerr = broadcast(xy_error_both) do (x, y, e)
+    xyerr = truncated_broadcast(xy_error_both) do (x, y, e)
         Vec4f(x, y, e, e)
     end
     (xyerr,)
@@ -112,12 +112,12 @@ end
 ### conversions for rangebars
 
 function Makie.convert_arguments(::Type{<:Rangebars}, val, low, high)
-    val_low_high = broadcast(Vec3f, val, low, high)
+    val_low_high = truncated_broadcast(Vec3f, val, low, high)
     (val_low_high,)
 end
 
 function Makie.convert_arguments(::Type{<:Rangebars}, val, low_high)
-    val_low_high = broadcast(val, low_high) do val, (low, high)
+    val_low_high = truncated_broadcast(val, low_high) do val, (low, high)
         Vec3f(val, low, high)
     end
     (val_low_high,)

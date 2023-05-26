@@ -80,7 +80,9 @@ function glyph_collection(
         Vec2f[], Float32[], RGBAf[], RGBAf[], Float32[])
 
     # collect information about every character in the string
-    charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
+    # TODO - Is this worth collecting?
+    # charinfos = truncated_map(collect(c for c in str), collect(font_per_char), collect(fontscale_px)) do char, font, scale
+    charinfos = truncated_broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
         (
             char = char,
             font = font,
@@ -300,7 +302,8 @@ end
 _offset_to_vec(o::VecTypes) = to_ndim(Vec3f, o, 0)
 _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
-Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
+Base.length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
+Base.lastindex(x::ScalarOrVector) = length(x)
 
 function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection, offset, transfunc, space)
     p = apply_transform(transfunc, position, space)
@@ -314,7 +317,9 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
     scales = Vector{Vec2f}(undef, length(pos))
     uvs = Vector{Vec4f}(undef, length(pos))
 
-    for i in eachindex(pos)
+    # lengths = length.((pos, gc.glyphs, gc.fonts, gc.scales, gc.origins, off))
+    # for i in 1:min_above(lengths, 1)
+    for i in eachindex(gc.origins)
         glyph_bb, extent = FreeTypeAbstraction.metrics_bb(
             gc.glyphs[i], gc.fonts[i], gc.scales[i]
         )
@@ -356,6 +361,8 @@ function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphC
     k = 1
     for j in 1:M
         gc = gcs[j]
+        # lengths = length.((pos, gc.glyphs, gc.fonts, gc.scales, gc.origins, off))
+        # for i in 1:min_above(lengths, 1)
         for i in eachindex(gc.origins)
             glyph_bb, extent = FreeTypeAbstraction.metrics_bb(
                 gc.glyphs[i], gc.fonts[i], gc.scales[i]

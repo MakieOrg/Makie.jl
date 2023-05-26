@@ -29,7 +29,7 @@ yvector(x::AbstractMatrix, len) = x
 function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
     points_faces = lift(plot, plot[1:3]...) do x, y, z
         M, N = size(z)
-        points = vec(Point3f.(xvector(x, M), yvector(y, N), z))
+        points = vec(truncated_broadcast(Point3f, xvector(x, M), yvector(y, N), z))
         # Connect the vetices with faces, as one would use for a 2D Rectangle
         # grid with M,N grid points
         faces = decompose(LineFace{GLIndex}, Tesselation(Rect2(0, 0, 1, 1), (M, N)))

@@ -110,7 +110,7 @@ Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
 function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
-    (vec(Point3f.(x, y', z)),)
+    return (vec(truncated_broadcast(Point3f, x, y', z)),)
 end
 """
     convert_arguments(P, x, y, z)::(Vector)
@@ -119,7 +119,9 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f.(x, y, z),)
+function convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector)
+    return (truncated_broadcast(Point3f, x, y, z),)
+end
 
 """
     convert_arguments(P, x)::(Vector)
@@ -133,9 +135,9 @@ function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
-
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
+function convert_arguments(::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real})
+    return (truncated_broadcast(Point2f, x, y),)
+end
 
 """
     convert_arguments(P, y)::Vector
@@ -523,7 +525,7 @@ function convert_arguments(
         T::Type{<:Mesh},
         x::RealVector, y::RealVector, z::RealVector
     )
-    convert_arguments(T, Point3f.(x, y, z))
+    convert_arguments(T, truncated_broadcast(Point3f, x, y, z))
 end
 """
     convert_arguments(Mesh, xyz::AbstractVector)::GLNormalMesh
@@ -589,7 +591,7 @@ function convert_arguments(
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
     )
-    return convert_arguments(T, Point3f.(x, y, z), indices)
+    return convert_arguments(T, truncated_broadcast(Point3f, x, y, z), indices)
 end
 
 """

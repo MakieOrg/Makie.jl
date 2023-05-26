@@ -52,7 +52,7 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
     points = s[1]
 
     stemtuples = lift(s, points, s.offset) do ps, to
-        tuple.(ps, trunkpoint.(ps, to))
+        truncated_broadcast((p, o) -> tuple(p, trunkpoint(p, o)), ps, to)
     end
 
     trunkpoints = lift(st -> last.(st), s, stemtuples)

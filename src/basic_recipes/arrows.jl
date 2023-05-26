@@ -125,7 +125,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
     if N == 2
         headstart = lift(arrowplot, points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
-            map(points, dirs) do p1, dir
+            truncated_broadcast(points, dirs) do p1, dir
                 dir = n ? LinearAlgebra.normalize(dir) : dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = s .* dir
@@ -184,16 +184,17 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             markersize[] = to_3d_scale(ms)
             lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth
             if n
-                return broadcast((lw, ls) -> Vec3f(lw, lw, ls), lw, ls)
+                return truncated_broadcast((lw, ls) -> Vec3f(lw, lw, ls), lw, ls)
             else
-                return broadcast(lw, dirs, ls) do lw, dir, s
+                return truncated_broadcast(lw, dirs, ls) do lw, dir, s
                     return Vec3f(lw, lw, norm(dir) * s)
                 end
             end
         end
 
         start = lift(arrowplot, points, directions, align, lengthscale) do points, dirs, align, scales
-            return broadcast(points, dirs, scales) do p, dir, s
+            
+            return truncated_broadcast(points, dirs, scales) do p, dir, s
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = Vec3f(0)
                 else

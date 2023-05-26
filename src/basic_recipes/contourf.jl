@@ -102,6 +102,10 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         empty!(polys[])
         empty!(colors[])
 
+        # TODO - is this worth extracting?
+        Nx = min(length(xs), size(zs, 1))
+        Ny = min(length(ys), size(zs, 2))
+
         levels = copy(levels)
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
@@ -110,7 +114,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         highs = levels[2:end]
 
         # zs needs to be transposed to match rest of makie
-        isos = Isoband.isobands(xs, ys, zs', lows, highs)
+        isos = Isoband.isobands(view(xs, 1:Nx), view(ys, 1:Ny), view(zs, 1:Nx, 1:Ny)', lows, highs)
 
         levelcenters = (highs .+ lows) ./ 2
 

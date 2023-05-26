@@ -161,7 +161,7 @@ end
 
 function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip_labels_at, color_over_background, color_over_bar, label_formatter, label_offset)
     if bar_labels isa Symbol && bar_labels in (:x, :y)
-        bar_labels = map(xpositions, ypositions) do x, y
+        bar_labels = truncated_broadcast(xpositions, ypositions) do x, y
             if bar_labels === :x
                 label_formatter.(x)
             else
@@ -172,7 +172,7 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
     if bar_labels isa AbstractVector
         if length(bar_labels) == length(xpositions)
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background, color_over_bar, label_offset)
-            label_pos = map(xpositions, ypositions, bar_labels) do x, y, l
+            label_pos = truncated_broadcast(xpositions, ypositions, bar_labels) do x, y, l
                 return (string(l), in_y_direction ? Point2f(x, y) : Point2f(y, x))
             end
             return (label_pos, attributes...)

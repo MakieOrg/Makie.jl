@@ -34,7 +34,7 @@ end
 Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes, point2::VecTypes) = ([(Point2f(point1), Point2f(point2))],)
 Makie.convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real) = ([(Point2f(x1, y1), Point2f(x2, y2))],)
 function Makie.convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
-    points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
+    points = truncated_broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
         (Point2f(x1, y1), Point2f(x2, y2))
     end
     (points,)
