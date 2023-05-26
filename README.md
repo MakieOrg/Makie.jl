@@ -40,7 +40,7 @@ BibTeX entry:
   number = {65},
   pages = {3349},
   author = {Simon Danisch and Julius Krumbiegel},
-  title = {Makie.jl: Flexible high-performance data visualization for Julia},
+  title = {{Makie.jl}: Flexible high-performance data visualization for {Julia}},
   journal = {Journal of Open Source Software}
 }
 ```
