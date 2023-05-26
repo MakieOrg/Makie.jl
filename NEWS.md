@@ -2,7 +2,7 @@
 
 ## master
 
-- Fix incomplete stroke with some Bezier markers [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
+- Fix incomplete stroke with some Bezier markers in CairoMakie and blurry strokes in GLMakie [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
 - Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953)
 
 ## v0.19.5
