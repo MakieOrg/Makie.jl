@@ -35,7 +35,7 @@ export function render_scene(scene, picking = false) {
     if (!scene.visible.value) {
         return true;
     }
-    renderer.autoClear = scene.clearscene;
+    renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t) => t / pixelRatio);
@@ -374,7 +374,7 @@ export function pick_sorted(scene, xy, range) {
     const { width, height } = picking_target;
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
-        return [null, 0];
+        return null;
     }
 
     const x0 = Math.max(1, xy[0] - range);
@@ -386,7 +386,7 @@ export function pick_sorted(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
     if (selected.length == 0) {
-        return [];
+        return null;
     }
 
     const plot_matrix = plot_data.data;
@@ -412,7 +412,6 @@ export function pick_sorted(scene, xy, range) {
         (a, b) =>
             distances[a] < distances[b] ? -1 : (distances[b] < distances[a]) | 0
     );
-
     return sorted_indices.map((idx) => {
         const [plot, index] = selected[idx];
         return [plot.plot_uuid, index];
@@ -479,6 +478,7 @@ window.WGL = {
     create_scene,
     event2scene_pixel,
     on_next_insert,
+    register_popup,
 };
 
 export {
