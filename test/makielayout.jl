@@ -370,3 +370,9 @@ end
         [rich("some", subscript("entry"))],
         rich("title", color = :red, font = :bold_italic))
 end
+
+@testset "Legend for hist with labels" begin
+    f, ax, h = hist(randn(100), bar_labels = :y, label = "My histogram")
+    @test_nowarn axislegend()
+    f
+end
