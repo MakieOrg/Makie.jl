@@ -204,10 +204,17 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
     quote
         lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
         maxlen = maximum(lengths)
+        for N in lengths
+            if N > 1
+                maxlen = min(N, maxlen)
+            end
+        end
+
         any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
         if any_wrong_length
-            error("All non scalars need same length, Found lengths for each argument: $lengths, $(map(typeof, args))")
+            @debug "Maximum argument length has been truncated to $maxlen."
         end
+
         # skip if there's a zero length element (like an empty annotations collection, etc)
         # this differs from standard broadcasting logic in which all non-scalar shapes have to match
         0 in lengths && return
@@ -219,7 +226,6 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
         return
     end
 end
-
 
 """
     from_dict(::Type{T}, dict)
@@ -364,3 +370,77 @@ end
 # Scalar - Vector getindex
 sv_getindex(v::Vector, i::Integer) = v[i]
 sv_getindex(x, i::Integer) = x
+
+
+################################################################################
+### Truncated broadcast
+################################################################################
+
+
+function _regenerate(B::Base.Broadcast.Broadcasted{Style}; kwargs...) where Style
+    names = fieldnames(Base.Broadcast.Broadcasted)
+    dict = Dict(kwargs)
+    args = map(key -> get(dict, key, getfield(B, key)), names)
+    return Base.Broadcast.Broadcasted{Style}(args...)
+end
+
+"""
+    truncated_broadcast(f, args...)
+
+Works like `broadcast` but truncates each dimension to its largest common size.
+For example `broadcast(Point3f, 1:3, (1:2)', zeros(3, 3))` will produce a 3x2 
+Matrix{Point3f}, truncating the second dimension to `min(2, 3)`.
+
+For this `VecTypes` like `Point2f` are not considered array types but constants 
+instead. 
+"""
+function truncated_broadcast(f, args...)
+    B = Base.Broadcast.broadcasted(f, args...)
+
+    # custom truncating instantiate
+    axes = combine_axes(B.args...)
+
+    # master
+    # B = Base.Broadcast.Broadcasted(B.style, B.f, B.args, axes)
+    # v1.9
+    # B = Base.Broadcast.Broadcasted{_get_style(B)}(B.f, B.args, axes)
+    # Combined
+    B = _regenerate(B, axes = axes)
+
+    # execute broadcast
+    return copy(B)
+end
+
+# See base/broadcast.jl
+# Use custom `axes` here:
+@inline combine_axes(A, B...) = broadcast_shape(attr_broadcast_axes(A), combine_axes(B...))
+@inline combine_axes(A, B)    = broadcast_shape(attr_broadcast_axes(A), attr_broadcast_axes(B))
+combine_axes(A) = attr_broadcast_axes(A)
+
+# copied pipeline:
+broadcast_shape(shape::Tuple) = shape
+function broadcast_shape(shape::Tuple, shape1::Tuple, shapes::Tuple...)
+    broadcast_shape(_bcs(shape, shape1), shapes...)
+end
+
+_bcs(::Tuple{}, ::Tuple{}) = ()
+_bcs(::Tuple{}, newshape::Tuple) = (newshape[1], _bcs((), Base.tail(newshape))...)
+_bcs(shape::Tuple, ::Tuple{}) = (shape[1], _bcs(Base.tail(shape), ())...)
+function _bcs(shape::Tuple, newshape::Tuple)
+    return (_bcs1(shape[1], newshape[1]), _bcs(Base.tail(shape), Base.tail(newshape))...)
+end
+
+# Customized for truncation (this maybe incomplete)
+_bcs1(a::Integer, b::Integer) = a == 1 ? b : (b == 1 ? a : min(a, b))
+_bcs1(a::Integer, b) = a == 1 ? b : _bcs1(Base.OneTo(a), b)
+_bcs1(a, b::Integer) = _bcs1(b, a)
+function _bcs1(a::Base.OneTo, b::Base.OneTo) 
+    a.stop == 1 ? b : (b.stop == 1 ? a : Base.OneTo{Int}(min(a.stop, b.stop)))
+end
+_bcs1(a, b) = error("Cannot truncated $a and $b to the same length")
+
+attr_broadcast_axes(::NativeFont) = tuple()
+attr_broadcast_axes(::VecTypes) = tuple()
+attr_broadcast_axes(::AbstractPattern) = tuple()
+attr_broadcast_axes(x) = axes(x)
+attr_broadcast_axes(x::ScalarOrVector) = axes(x.sv)
