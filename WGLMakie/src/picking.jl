@@ -121,7 +121,7 @@ function JSServe.jsrender(session::Session, tt::ToolTip)
         $(scene).then(scene => {
             const plots_to_pick = new Set($(tt.plot_uuids));
             const callback = $(tt.callback);
-            register_popup($popup, scene, plots_to_pick, callback)
+            WGL.register_popup($popup, scene, plots_to_pick, callback)
         })
     """)
     return DOM.span(JSServe.jsrender(session, POPUP_CSS), popup)
