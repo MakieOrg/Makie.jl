@@ -6,26 +6,26 @@
 # which is fully compliant with the interface
 
 """
-    PolarAxisTransformation(θ_0::Float64, direction::Int)
+    PolarAxisTransformation(theta_0::Float64, direction::Int)
 
 This struct defines a general polar-to-cartesian transformation, i.e.,
 ```math
-(r, θ) -> (r \\cos(direction * (θ + θ_0)), r \\sin(direction * (θ + θ_0)))
+(r, theta) -> (r \\cos(direction * (theta + theta_0)), r \\sin(direction * (theta + theta_0)))
 ```
 
-where θ is assumed to be in radians.
+where theta is assumed to be in radians.
 
-`direction` should be either -1 or +1, and `θ_0` may be any value.
+`direction` should be either -1 or +1, and `theta_0` may be any value.
 """
 struct PolarAxisTransformation
-    θ_0::Float64
+    theta_0::Float64
     direction::Int
 end
 
 Base.broadcastable(x::PolarAxisTransformation) = (x,)
 
 function Makie.apply_transform(trans::PolarAxisTransformation, point::VecTypes{2, T}) where T <: Real
-    y, x = point[1] .* sincos((point[2] + trans.θ_0) * trans.direction)
+    y, x = point[1] .* sincos((point[2] + trans.theta_0) * trans.direction)
     return Point2f(x, y)
 end
 
@@ -79,7 +79,7 @@ end
 
 # Define its inverse (for interactivity)
 Makie.inverse_transform(trans::PolarAxisTransformation) = Makie.PointTrans{2}() do point
-    Point2f(hypot(point[1], point[2]), -trans.direction * (atan(point[2], point[1]) - trans.θ_0))
+    Point2f(hypot(point[1], point[2]), -trans.direction * (atan(point[2], point[1]) - trans.theta_0))
 end
 
 
@@ -213,7 +213,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
     Observables.connect!(
         po.scene.transformation.transform_func,
-        @lift(PolarAxisTransformation($(po.θ_0), $(po.direction)))
+        @lift(PolarAxisTransformation($(po.theta_0), $(po.direction)))
     )
 
     notify(po.limits)
@@ -226,16 +226,16 @@ function Makie.initialize_block!(po::PolarAxis)
     end
 
     # Outsource to `draw_axis` function
-    (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot) = 
+    (spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot) = 
         draw_axis!(po, axis_radius)
 
     # Handle protrusions
 
-    θticklabelprotrusions = Observable(GridLayoutBase.RectSides(0f0,0f0,0f0,0f0))
+    thetaticklabelprotrusions = Observable(GridLayoutBase.RectSides(0f0,0f0,0f0,0f0))
 
     old_input = Ref(Vector{Tuple{String, Point2f}}(undef, 0))
 
-    onany(θticklabelplot[1]) do input
+    onany(thetaticklabelplot[1]) do input
         # Only if the tick labels have changed, should we recompute the tick label
         # protrusions.
         # This should be changed by removing the call to `first`
@@ -247,18 +247,18 @@ function Makie.initialize_block!(po::PolarAxis)
             # px_area = pixelarea(scene)[]
             # calculate text boundingboxes individually and select the maximum boundingbox
             text_bboxes = text_bbox.(
-                first.(θticklabelplot[1][]),
-                Ref(θticklabelplot.fontsize[]),
-                θticklabelplot.font[],
-                θticklabelplot.fonts,
-                θticklabelplot.align[] isa Tuple ? Ref(θticklabelplot.align[]) : θticklabelplot.align[],
-                θticklabelplot.rotation[],
+                first.(thetaticklabelplot[1][]),
+                Ref(thetaticklabelplot.fontsize[]),
+                thetaticklabelplot.font[],
+                thetaticklabelplot.fonts,
+                thetaticklabelplot.align[] isa Tuple ? Ref(thetaticklabelplot.align[]) : thetaticklabelplot.align[],
+                thetaticklabelplot.rotation[],
                 0.0,
                 0.0,
-                θticklabelplot.word_wrap_width[]
+                thetaticklabelplot.word_wrap_width[]
             )
             maxbox = maximum(widths.(text_bboxes))
-            # box = data_limits(θticklabelplot)
+            # box = data_limits(thetaticklabelplot)
             # @show maxbox px_area
             # box = Rect2(
             #     to_ndim(Point2f, project_to_pixelspace(po.blockscene, box.origin), 0),
@@ -268,7 +268,7 @@ function Makie.initialize_block!(po::PolarAxis)
             old_input[] = input
 
 
-            θticklabelprotrusions[] = GridLayoutBase.RectSides(
+            thetaticklabelprotrusions[] = GridLayoutBase.RectSides(
                 maxbox[1],#max(0, left(box) - left(px_area)),
                 maxbox[1],#max(0, right(box) - right(px_area)),
                 maxbox[2],#max(0, bottom(box) - bottom(px_area)),
@@ -277,12 +277,12 @@ function Makie.initialize_block!(po::PolarAxis)
         end
     end
 
-    notify(θticklabelplot[1])
+    notify(thetaticklabelplot[1])
 
 
     # Set up the title position
-    title_position = lift(pixelarea(po.scene), po.titlegap, po.titlealign, θticklabelprotrusions) do area, titlegap, titlealign, θtlprot
-        calculate_polar_title_position(area, titlegap, titlealign, θtlprot)
+    title_position = lift(pixelarea(po.scene), po.titlegap, po.titlealign, thetaticklabelprotrusions) do area, titlegap, titlealign, thetatlprot
+        calculate_polar_title_position(area, titlegap, titlealign, thetatlprot)
     end
 
     titleplot = text!(
@@ -301,11 +301,11 @@ function Makie.initialize_block!(po::PolarAxis)
     # the protrusion when the position changes.
     title_update_obs = lift((x...) -> true, po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize)
     #
-    protrusions = lift(θticklabelprotrusions, title_update_obs) do θtlprot, _
+    protrusions = lift(thetaticklabelprotrusions, title_update_obs) do thetatlprot, _
         GridLayoutBase.RectSides(
-            θtlprot.left,
-            θtlprot.right,
-            θtlprot.bottom,
+            thetatlprot.left,
+            thetatlprot.right,
+            thetatlprot.bottom,
             (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(po.scene)[])),
         )
     end
@@ -322,7 +322,7 @@ function Makie.initialize_block!(po::PolarAxis)
 end
 
 function draw_axis!(po::PolarAxis, axis_radius)
-    θlims = (0, 2pi)
+    thetalims = (0, 2pi)
 
     rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
@@ -338,38 +338,38 @@ function draw_axis!(po::PolarAxis, axis_radius)
         _rtickpos = _rtickvalues .* (axis_radius / limits[2]) # we still need the values
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, rtickangle))
         
-        θs = LinRange(θlims..., sample_density)
-        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, θs) for r in _rtickpos])
+        thetas = LinRange(thetalims..., sample_density)
+        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
         
         _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
         _rminortickvalues .*= (axis_radius / limits[2])
-        rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, θs) for r in _rminortickvalues])
+        rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
 
         return
     end
     
-    θtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
-    θtick_align = Observable{Vector{Point2f}}()
-    θgridpoints = Observable{Vector{Point2f}}()
-    θminorgridpoints = Observable{Vector{Point2f}}()
+    thetatick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
+    thetatick_align = Observable{Vector{Point2f}}()
+    thetagridpoints = Observable{Vector{Point2f}}()
+    thetaminorgridpoints = Observable{Vector{Point2f}}()
 
     onany(
-            po.θticks, po.θminorticks, po.θtickformat, 
+            po.thetaticks, po.thetaminorticks, po.thetatickformat, 
             po.limits, axis_radius,
             # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
-        ) do θticks, θminorticks, θtickformat, limits, axis_radius #, pixelarea, trans, area
+        ) do thetaticks, thetaminorticks, thetatickformat, limits, axis_radius #, pixelarea, trans, area
         
-        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, 0, 2pi)
+        _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
         
-        # Since θ = 0 is at the same position as θ = 2π, we remove the last tick
+        # Since theta = 0 is at the same position as theta = 2π, we remove the last tick
         # iff the difference between the first and last tick is exactly 2π
         # This is a special case, since it's the only possible instance of colocation
-        if (_θtickvalues[end] - _θtickvalues[begin]) == 2π
-            pop!(_θtickvalues)
-            pop!(_θticklabels)
+        if (_thetatickvalues[end] - _thetatickvalues[begin]) == 2π
+            pop!(_thetatickvalues)
+            pop!(_thetaticklabels)
         end
         
-        θtick_align.val = map(_θtickvalues) do angle
+        thetatick_align.val = map(_thetatickvalues) do angle
             s, c = sincos(angle)
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
@@ -379,12 +379,12 @@ function draw_axis!(po::PolarAxis, axis_radius)
         px_gap = 10
         gap = 1.0 + px_gap / maximum(widths(po.overlay.px_area[]))
         
-        θtick_pos_lbl[] = tuple.(_θticklabels, Point2f.(gap * axis_radius, _θtickvalues))
+        thetatick_pos_lbl[] = tuple.(_thetaticklabels, Point2f.(gap * axis_radius, _thetatickvalues))
         
-        θgridpoints[] = [Point2f(r, θ) for θ in _θtickvalues for r in (0, axis_radius)]
+        thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (0, axis_radius)]
         
-        _θminortickvalues = Makie.get_minor_tickvalues(θminorticks, identity, _θtickvalues, θlims...)
-        θminorgridpoints[] = [Point2f(r, θ) for θ in _θminortickvalues for r in (0, axis_radius)]
+        _thetaminortickvalues = Makie.get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
+        thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in (0, axis_radius)]
 
         return
     end
@@ -394,8 +394,8 @@ function draw_axis!(po::PolarAxis, axis_radius)
     onany(po.sample_density, axis_radius
         ) do sample_density, axis_radius #, pixelarea, trans, area
         
-        θs = LinRange(θlims..., sample_density)
-        spinepoints[] = Point2f.(axis_radius, θs)
+        thetas = LinRange(thetalims..., sample_density)
+        spinepoints[] = Point2f.(axis_radius, thetas)
 
         return
     end
@@ -428,12 +428,12 @@ function draw_axis!(po::PolarAxis, axis_radius)
         visible = po.rgridvisible,
     )
 
-    θgridplot = linesegments!(
-        po.overlay, θgridpoints;
-        color = po.θgridcolor,
-        linestyle = po.θgridstyle,
-        linewidth = po.θgridwidth,
-        visible = po.θgridvisible,
+    thetagridplot = linesegments!(
+        po.overlay, thetagridpoints;
+        color = po.thetagridcolor,
+        linestyle = po.thetagridstyle,
+        linewidth = po.thetagridwidth,
+        visible = po.thetagridvisible,
     )
     # minor grids
     rminorgridplot = lines!(
@@ -444,12 +444,12 @@ function draw_axis!(po::PolarAxis, axis_radius)
         visible = po.rminorgridvisible,
     )
 
-    θminorgridplot = linesegments!(
-        po.overlay, θminorgridpoints;
-        color = po.θminorgridcolor,
-        linestyle = po.θminorgridstyle,
-        linewidth = po.θminorgridwidth,
-        visible = po.θminorgridvisible,
+    thetaminorgridplot = linesegments!(
+        po.overlay, thetaminorgridpoints;
+        color = po.thetaminorgridcolor,
+        linestyle = po.thetaminorgridstyle,
+        linewidth = po.thetaminorgridwidth,
+        visible = po.thetaminorgridvisible,
     )
     # tick labels
     rticklabelplot = text!(
@@ -460,12 +460,12 @@ function draw_axis!(po::PolarAxis, axis_radius)
         align = (:left, :bottom),
     )
 
-    θticklabelplot = text!(
-        po.overlay, θtick_pos_lbl;
-        fontsize = po.θticklabelsize,
-        font = po.θticklabelfont,
-        color = po.θticklabelcolor,
-        align = θtick_align,
+    thetaticklabelplot = text!(
+        po.overlay, thetatick_pos_lbl;
+        fontsize = po.thetaticklabelsize,
+        font = po.thetaticklabelfont,
+        color = po.thetaticklabelcolor,
+        align = thetatick_align,
     )
 
     clipcolor = lift(po.scene.backgroundcolor) do bgc
@@ -498,14 +498,14 @@ function draw_axis!(po::PolarAxis, axis_radius)
         visible = true, #po.clip,
     )
 
-    translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100)
+    translate!.((spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 100)
     translate!(clipplot, 0, 0, 99)
 
-    return (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot)
+    return (spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot)
 
 end
 
-function calculate_polar_title_position(area, titlegap, align, θaxisprotrusion)
+function calculate_polar_title_position(area, titlegap, align, thetaaxisprotrusion)
     x::Float32 = if align === :center
         area.origin[1] + area.widths[1] / 2
     elseif align === :left
@@ -522,7 +522,7 @@ function calculate_polar_title_position(area, titlegap, align, θaxisprotrusion)
     #     0f0
     # end
 
-    yoffset::Float32 = top(area) + titlegap + θaxisprotrusion.top #=+
+    yoffset::Float32 = top(area) + titlegap + thetaaxisprotrusion.top #=+
         subtitlespace=#
 
     return Point2f(x, yoffset)
@@ -597,13 +597,13 @@ end
 
 
 "Adjust the axis's scene's camera to conform to the given r-limits"
-function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real}, θlims::NTuple{2, <: Real} = (0.0, 2π))
+function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real}, thetalims::NTuple{2, <: Real} = (0.0, 2π))
     @assert limits[1] ≤ limits[2]
     scene = po.scene
     # We transform our limits to transformed space, since we can
     # operate linearly there
     # @show boundingbox(scene)
-    # target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., θlims...))
+    # target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., thetalims...))
     # @show target
     # area = scene.px_area[]
     # Makie.update_cam!(scene, target)

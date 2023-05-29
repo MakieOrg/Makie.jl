@@ -1613,7 +1613,7 @@ end
         "The direction of rotation.  Can be -1 (clockwise) or 1 (counterclockwise)."
         direction = 1
         "The initial angle offset.  This essentially rotates the axis."
-        θ_0 = 0f0
+        theta_0 = 0f0
         "The width of the spine."
         spinewidth = 2
         "The color of the spine."
@@ -1646,28 +1646,28 @@ end
         rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = π/8
-        "The specifier for the angular (`θ`) ticks, similar to `yticks` for a normal Axis."
-        θticks = MultiplesTicks(8, pi, "π") # MultiplesTicks(8, pi/180, "°") # MultiplesTicks(8, pi, "π")
-        "The specifier for the minor `θ` ticks."
-        θminorticks = IntervalsBetween(2)
-        "The color of the `θ` grid."
-        θgridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
-        "The linewidth of the `θ` grid."
-        θgridwidth = inherit(scene, (:Axis, :ygridwidth), 1)
-        "The linestyle of the `θ` grid."
-        θgridstyle = inherit(scene, (:Axis, :ygridstyle), nothing)
-        "Controls if the `θ` grid is visible."
-        θgridvisible = inherit(scene, (:Axis, :ygridvisible), true)
-        "The formatter for the `θ` ticks."
-        θtickformat = Makie.automatic
-        "The fontsize of the `θ` tick labels."
-        θticklabelsize = inherit(scene, (:Axis, :yticklabelsize), 16)
-        "The font of the `θ` tick labels."
-        θticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
-        "The color of the `θ` tick labels."
-        θticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
-        "Controls if the `θ` ticks are visible."
-        θticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
+        "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
+        thetaticks = MultiplesTicks(17, pi, "π") # MultiplesTicks(8, pi/180, "°") # MultiplesTicks(8, pi, "π")
+        "The specifier for the minor `theta` ticks."
+        thetaminorticks = IntervalsBetween(2)
+        "The color of the `theta` grid."
+        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
+        "The linewidth of the `theta` grid."
+        thetagridwidth = inherit(scene, (:Axis, :ygridwidth), 1)
+        "The linestyle of the `theta` grid."
+        thetagridstyle = inherit(scene, (:Axis, :ygridstyle), nothing)
+        "Controls if the `theta` grid is visible."
+        thetagridvisible = inherit(scene, (:Axis, :ygridvisible), true)
+        "The formatter for the `theta` ticks."
+        thetatickformat = Makie.automatic
+        "The fontsize of the `theta` tick labels."
+        thetaticklabelsize = inherit(scene, (:Axis, :yticklabelsize), 16)
+        "The font of the `theta` tick labels."
+        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the `theta` tick labels."
+        thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
+        "Controls if the `theta` ticks are visible."
+        thetaticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
         "The title of the plot"
         title = " "
         "The gap between the title and the top of the axis"
@@ -1690,14 +1690,14 @@ end
         rminorgridstyle = inherit(scene, (:Axis, :xminorgridstyle), nothing)
         "Controls if the `r` minor grid is visible."
         rminorgridvisible = inherit(scene, (:Axis, :xminorgridvisible), true)
-        "The color of the `θ` minor grid."
-        θminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
-        "The linewidth of the `θ` minor grid."
-        θminorgridwidth = inherit(scene, (:Axis, :yminorgridwidth), 1)
-        "The linestyle of the `θ` minor grid."
-        θminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
-        "Controls if the `θ` minor grid is visible."
-        θminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), true)
+        "The color of the `theta` minor grid."
+        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        "The linewidth of the `theta` minor grid."
+        thetaminorgridwidth = inherit(scene, (:Axis, :yminorgridwidth), 1)
+        "The linestyle of the `theta` minor grid."
+        thetaminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
+        "Controls if the `theta` minor grid is visible."
+        thetaminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), true)
         "The density at which grid lines are sampled."
         sample_density = 100
         "Controls whether to activate the nonlinear clip feature.  Note that this should not be used when the background is ultimately transparent."
