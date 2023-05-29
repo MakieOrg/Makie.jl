@@ -84,6 +84,32 @@ end
 
 
 ################################################################################
+### Camera Setup
+################################################################################
+
+
+# struct PolarAxisCamera
+#     data_origin::Observable{Point2f} # or axis, these should map into each other?
+#     data_radius::
+#     axis_radius
+#     rotation_angle
+    
+
+#     controls
+#         rotation_key
+#         zoom_key
+#         axis_translation_key (combo)
+#         axis_zoom_key (combo)
+#         data_reset # autolimits data to axis area
+#         axis_reset # fit axis into area
+#     settings
+#         zoom_speed
+#         rotation_speed
+
+# end
+
+
+################################################################################
 ### Space transformation
 ################################################################################
 
@@ -152,27 +178,56 @@ function Makie.initialize_block!(po::PolarAxis)
         return Rect(round.(Int, new_o), round.(Int, new_ws))
     end
 
-    po.scene = scene = Scene(po.blockscene, square, camera = cam2d!, backgroundcolor = RGBf(1, 1, 0.8), clear = true)
+    po.scene = Scene(
+        po.blockscene, square, backgroundcolor = RGBf(1, 1, 0.8), clear = true
+    )
 
-    # translate!(scene, 0, 0, -100)
+    po.overlay = Scene(po.scene, square, clear = false, backgroundcolor = :transparent)
+
+
+    # Camera information
+    axis_origin = map(r -> 0.5 * (minimum(r) + maximum(r)), square)
+    axis_radius = Observable(0.8) # TODO adjust to 
+
+    data_origin = Observable(Point2f(0))
+    on(events(po.scene).scroll, priority = 100) do scroll
+        if Makie.is_mouseinside(po.scene)
+            rlims!(po, po.limits[][2] * (1.1 ^ (-scroll[2])))
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    onany(po.scene, axis_radius, po.limits) do ar, lims
+        ratio = ar / lims[2]
+        camera(po.scene).view[] = Makie.scalematrix(Vec3f(ratio, ratio, 1))
+        return
+    end
+    camera(po.scene).view[] = Mat4f(I)
+    camera(po.scene).projection[] = Makie.orthographicprojection(-1f0, 1f0, -1f0, 1f0, -100f0, 100f0)
+
+    camera(po.overlay).view[] = Mat4f(I)
+    camera(po.overlay).projection[] = Makie.orthographicprojection(-1f0, 1f0, -1f0, 1f0, -100f0, 100f0)
+
+    # translate!(po.scene, 0, 0, -100)
 
     Observables.connect!(
-        scene.transformation.transform_func,
+        po.scene.transformation.transform_func,
         @lift(PolarAxisTransformation($(po.θ_0), $(po.direction)))
     )
 
     notify(po.limits)
 
 
-    # Whenever the limits change or the scene is resized,
+    # Whenever the limits change or the po.scene is resized,
     # update the camera.
-    onany(po.limits, scene.px_area) do lims, px_area
+    onany(po.limits, po.scene.px_area) do lims, px_area
         adjustcam!(po, lims, (0.0, 2π))
     end
 
     # Outsource to `draw_axis` function
     (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot) = 
-        draw_axis!(po)
+        draw_axis!(po, axis_radius)
 
     # Handle protrusions
 
@@ -226,7 +281,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
 
     # Set up the title position
-    title_position = lift(pixelarea(scene), po.titlegap, po.titlealign, θticklabelprotrusions) do area, titlegap, titlealign, θtlprot
+    title_position = lift(pixelarea(po.scene), po.titlegap, po.titlealign, θticklabelprotrusions) do area, titlegap, titlealign, θtlprot
         calculate_polar_title_position(area, titlegap, titlealign, θtlprot)
     end
 
@@ -251,7 +306,7 @@ function Makie.initialize_block!(po::PolarAxis)
             θtlprot.left,
             θtlprot.right,
             θtlprot.bottom,
-            (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(scene)[])),
+            (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(po.scene)[])),
         )
     end
 
@@ -266,7 +321,7 @@ function Makie.initialize_block!(po::PolarAxis)
     return
 end
 
-function draw_axis!(po::PolarAxis)
+function draw_axis!(po::PolarAxis, axis_radius)
     θlims = (0, 2pi)
 
     rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
@@ -274,18 +329,20 @@ function draw_axis!(po::PolarAxis)
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
 
     onany(
-            po.rticks, po.rminorticks,po.rtickformat,
-            po.rtickangle, po.limits, po.sample_density, 
+            po.rticks, po.rminorticks, po.rtickformat,
+            po.rtickangle, po.limits, axis_radius, po.sample_density, 
             # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
-        ) do rticks, rminorticks, rtickformat, rtickangle, limits, sample_density#, pixelarea, trans, area
+        ) do rticks, rminorticks, rtickformat, rtickangle, limits, axis_radius, sample_density#, pixelarea, trans, area
         
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, limits...)
-        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickvalues, rtickangle))
+        _rtickpos = _rtickvalues .* (axis_radius / limits[2]) # we still need the values
+        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, rtickangle))
         
         θs = LinRange(θlims..., sample_density)
-        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, θs) for r in _rtickvalues])
+        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, θs) for r in _rtickpos])
         
         _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
+        _rminortickvalues .*= (axis_radius / limits[2])
         rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, θs) for r in _rminortickvalues])
 
         return
@@ -298,11 +355,11 @@ function draw_axis!(po::PolarAxis)
 
     onany(
             po.θticks, po.θminorticks, po.θtickformat, 
-            po.limits,
+            po.limits, axis_radius,
             # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
-        ) do θticks, θminorticks, θtickformat, limits #, pixelarea, trans, area
+        ) do θticks, θminorticks, θtickformat, limits, axis_radius #, pixelarea, trans, area
         
-        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, θlims...)
+        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, 0, 2pi)
         
         # Since θ = 0 is at the same position as θ = 2π, we remove the last tick
         # iff the difference between the first and last tick is exactly 2π
@@ -320,27 +377,25 @@ function draw_axis!(po::PolarAxis)
         
         # TODO - think about this more carefully
         px_gap = 10
-        gap = 1.0 + px_gap / maximum(widths(po.scene.px_area[]))
+        gap = 1.0 + px_gap / maximum(widths(po.overlay.px_area[]))
         
-        θtick_pos_lbl[] = tuple.(_θticklabels, Point2f.(gap * limits[end], _θtickvalues))
+        θtick_pos_lbl[] = tuple.(_θticklabels, Point2f.(gap * axis_radius, _θtickvalues))
         
-        θgridpoints[] = [Point2f(r, θ) for θ in _θtickvalues for r in limits]
+        θgridpoints[] = [Point2f(r, θ) for θ in _θtickvalues for r in (0, axis_radius)]
         
         _θminortickvalues = Makie.get_minor_tickvalues(θminorticks, identity, _θtickvalues, θlims...)
-        θminorgridpoints[] = [Point2f(r, θ) for θ in _θminortickvalues for r in limits]
+        θminorgridpoints[] = [Point2f(r, θ) for θ in _θminortickvalues for r in (0, axis_radius)]
 
         return
     end
 
     spinepoints = Observable{Vector{Point2f}}()
 
-    onany(
-            po.limits, po.sample_density, 
-            # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
-        ) do limits, sample_density#, pixelarea, trans, area
+    onany(po.sample_density, axis_radius
+        ) do sample_density, axis_radius #, pixelarea, trans, area
         
         θs = LinRange(θlims..., sample_density)
-        spinepoints[] = Point2f.(limits[end], θs)
+        spinepoints[] = Point2f.(axis_radius, θs)
 
         return
     end
@@ -352,102 +407,95 @@ function draw_axis!(po::PolarAxis)
     #     adjustcam!(po, po.limits[])
     # end
 
-    notify(po.limits)
+    # TODO - compute this based on text bb (which would replace this trigger)
+    notify(axis_radius)
 
     # plot using the created observables
     # spine
     spineplot = lines!(
-        po.scene, spinepoints;
+        po.overlay, spinepoints;
         color = po.spinecolor,
         linestyle = po.spinestyle,
         linewidth = po.spinewidth,
         visible = po.spinevisible,
-        update_limits = false
     )
     # major grids
     rgridplot = lines!(
-        po.scene, rgridpoints;
+        po.overlay, rgridpoints;
         color = po.rgridcolor,
         linestyle = po.rgridstyle,
         linewidth = po.rgridwidth,
         visible = po.rgridvisible,
-        update_limits = false
     )
 
     θgridplot = linesegments!(
-        po.scene, θgridpoints;
+        po.overlay, θgridpoints;
         color = po.θgridcolor,
         linestyle = po.θgridstyle,
         linewidth = po.θgridwidth,
         visible = po.θgridvisible,
-        update_limits = false
     )
     # minor grids
     rminorgridplot = lines!(
-        po.scene, rminorgridpoints;
+        po.overlay, rminorgridpoints;
         color = po.rminorgridcolor,
         linestyle = po.rminorgridstyle,
         linewidth = po.rminorgridwidth,
         visible = po.rminorgridvisible,
-        update_limits = false
     )
 
     θminorgridplot = linesegments!(
-        po.scene, θminorgridpoints;
+        po.overlay, θminorgridpoints;
         color = po.θminorgridcolor,
         linestyle = po.θminorgridstyle,
         linewidth = po.θminorgridwidth,
         visible = po.θminorgridvisible,
-        update_limits = false
     )
     # tick labels
     rticklabelplot = text!(
-        po.scene, rtick_pos_lbl;
+        po.overlay, rtick_pos_lbl;
         fontsize = po.rticklabelsize,
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
         align = (:left, :bottom),
-        update_limits = false
     )
 
     θticklabelplot = text!(
-        po.scene, θtick_pos_lbl;
+        po.overlay, θtick_pos_lbl;
         fontsize = po.θticklabelsize,
         font = po.θticklabelfont,
         color = po.θticklabelcolor,
         align = θtick_align,
-        update_limits = false
-        # align = (:center, :center),
     )
 
-    clippoints = lift(spinepoints) do spinepoints
-        area = pixelarea(po.scene)[]
-        ext_points = Point2f[
-            (left(area), bottom(area)),
-            (right(area), bottom(area)),
-            (right(area), top(area)),
-            (left(area), top(area)),
-        ]
-        return GeometryBasics.Polygon(ext_points, [spinepoints])
-    end
-
-    clipcolor = lift(parent(po.blockscene).theme.backgroundcolor) do bgc
+    clipcolor = lift(po.scene.backgroundcolor) do bgc
+        return RGBAf(1, 0, 1, 0.5)
         bgc = to_color(bgc)
         if alpha(bgc) == 0f0
             return to_color(:white)
         else
-            return RGBf(red(bgc), blue(bgc), green(bgc))
+            return bgc
         end
     end
 
-    clipplot = poly!(
-        po.blockscene,
-        clippoints,
-        color = (:red, 0.5), #clipcolor,
-        space = :pixel,
-        strokewidth = 0,
-        visible = false, #po.clip,
-        update_limits = false
+    inverse_circle =  BezierPath([
+        MoveTo(Point( 1,  1)),
+        LineTo(Point( 1, -1)),
+        LineTo(Point(-1, -1)),
+        LineTo(Point(-1,  1)),
+        MoveTo(Point(1, 0)),
+        EllipticalArc(Point(0.0, 0), 0.5, 0.5, 0.0, 0.0, 2pi),
+        ClosePath(),
+    ])
+
+    # This shouldn't interfere with lines and text in GLMakie
+    clipplot = scatter!(
+        po.overlay,
+        Point2f(0),
+        color = clipcolor,
+        markersize = map((rect, radius) -> radius * minimum(widths(rect)), po.overlay.px_area, axis_radius),
+        marker = inverse_circle,
+        visible = true, #po.clip,
     )
 
     translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100)
@@ -480,9 +528,11 @@ function calculate_polar_title_position(area, titlegap, align, θaxisprotrusion)
     return Point2f(x, yoffset)
 end
 
-# allow it to be plotted to
-# the below causes a stack overflow
-# Makie.can_be_current_axis(po::PolarAxis) = true
+
+################################################################################
+### Plotting
+################################################################################
+
 
 function Makie.plot!(
     po::PolarAxis, P::Makie.PlotFunc,
@@ -511,16 +561,24 @@ function Makie.plot!(P::Makie.PlotFunc, po::PolarAxis, args...; kw_attributes...
     attributes = Makie.Attributes(kw_attributes)
     Makie.plot!(po, P, attributes, args...)
 end
-function Makie.autolimits!(po::PolarAxis)
-    lims3d = data_limits(po.scene, p -> !to_value(get(p.attributes, :update_limits, true)))
-    @info "limits = $lims3d"
-    po.limits[] = (0, maximum(lims3d)[1])
 
-    # projected_datalims = Makie.apply_transform(po.scene.transformation.transform_func[], datalims)
-    # @show projected_datalims
-    # @show po.limits[]
-    # adjustcam!(po, po.limits[])
-    # notify(po.limits)
+
+################################################################################
+### Limits and Camera
+################################################################################
+
+
+# TODO
+# - r lims should always start at 0 so drop rmin?
+
+function Makie.autolimits!(po::PolarAxis)
+    # lims3d = data_limits(po.scene, p -> !to_value(get(p.attributes, :update_limits, true)))
+    
+    # WTF, why does this include child scenes by default?
+    lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
+    @info lims3d
+    po.limits[] = (0, maximum(lims3d)[1])
+    return
 end
 
 function rlims!(po::PolarAxis, rs::NTuple{2, <: Real})
@@ -531,6 +589,12 @@ function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
     po.limits[] = (rmin, rmax)
 end
 
+function rlims!(po::PolarAxis, r::Real)
+    po.limits[] = (0, r)
+end
+
+
+
 
 "Adjust the axis's scene's camera to conform to the given r-limits"
 function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real}, θlims::NTuple{2, <: Real} = (0.0, 2π))
@@ -539,10 +603,10 @@ function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real}, θlims::NTuple{2,
     # We transform our limits to transformed space, since we can
     # operate linearly there
     # @show boundingbox(scene)
-    target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., θlims...))
+    # target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., θlims...))
     # @show target
-    area = scene.px_area[]
-    Makie.update_cam!(scene, target)
-    notify(scene.camera_controls.area)
+    # area = scene.px_area[]
+    # Makie.update_cam!(scene, target)
+    # notify(scene.camera_controls.area)
     return
 end

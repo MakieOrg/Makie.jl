@@ -1592,6 +1592,7 @@ end
 
 @Block PolarAxis begin
     scene::Scene
+    overlay::Scene
     @attributes begin
         "The height setting of the scene."
         height = nothing
@@ -1646,7 +1647,7 @@ end
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = π/8
         "The specifier for the angular (`θ`) ticks, similar to `yticks` for a normal Axis."
-        θticks = MultiplesTicks(12, π, "π")
+        θticks = MultiplesTicks(8, pi, "π") # MultiplesTicks(8, pi/180, "°") # MultiplesTicks(8, pi, "π")
         "The specifier for the minor `θ` ticks."
         θminorticks = IntervalsBetween(2)
         "The color of the `θ` grid."
