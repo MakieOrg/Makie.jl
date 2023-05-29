@@ -1,3 +1,7 @@
+################################################################################
+### Polar Transformation
+################################################################################
+
 # First, define the polar-to-cartesian transformation as a Makie transformation
 # which is fully compliant with the interface
 
@@ -78,45 +82,23 @@ Makie.inverse_transform(trans::PolarAxisTransformation) = Makie.PointTrans{2}() 
     Point2f(hypot(point[1], point[2]), -trans.direction * (atan(point[2], point[1]) - trans.θ_0))
 end
 
-# End transform code
+
+################################################################################
+### Space transformation
+################################################################################
+
 
 # Some useful code to transform from data (transformed) space to pixelspace
 
-function project_to_pixelspace(scene, point::VecTypes{N, T}) where {N, T}
+function project_to_pixelspace(scene, point::VT) where {N, T, VT <: VecTypes{N, T}}
     @assert N ≤ 3
-    return to_ndim(
-        typeof(point),
-        Makie.project(
-            # obtain the camera of the Scene which will project to its screenspace
-            camera(scene),
-            # go from dataspace (transformation applied to inputspace) to pixelspace
-            :data, :pixel,
-            # apply the transform to go from inputspace to dataspace
-            Makie.apply_transform(
-                scene.transformation.transform_func[],
-                point
-            )
-        ),
-        0.0
-    )
+    transformed = Makie.apply_transform(Makie.transform_func(scene), point)
+    return Makie.to_ndim(VT, Makie.project(scene, transformed), 0f0)
 end
 
-function project_to_pixelspace(scene, points::AbstractVector{Point{N, T}}) where {N, T}
-    to_ndim.(
-        (eltype(points),),
-        Makie.project.(
-            # obtain the camera of the Scene which will project to its screenspace
-            (Makie.camera(scene),),
-            # go from dataspace (transformation applied to inputspace) to pixelspace
-            (:data,), (:pixel,),
-            # apply the transform to go from inputspace to dataspace
-            Makie.apply_transform(
-                scene.transformation.transform_func[],
-                points
-            )
-        ),
-        (0.0,)
-    )
+function project_to_pixelspace(scene, points::AbstractVector{VT}) where {N, T, VT <: VecTypes{N, T}}
+    transformed = Makie.apply_transform(Makie.transform_func(scene), points)
+    return @. Makie.to_ndim(VT, Makie.project(scene, transformed), 0f0)
 end
 
 # A function which redoes text layouting, to provide a bbox for arbitrary text.
@@ -146,6 +128,12 @@ function text_bbox(plot::Text)
     )
 end
 
+
+################################################################################
+### Main Block Intialization
+################################################################################
+
+
 Makie.can_be_current_axis(ax::PolarAxis) = true
 
 function Makie.initialize_block!(po::PolarAxis)
@@ -161,13 +149,12 @@ function Makie.initialize_block!(po::PolarAxis)
         # center the scene
         diff = new_ws - ws
         new_o = cb.origin - 0.5diff
-        new_o =
-        Rect(round.(Int, new_o), round.(Int, new_ws))
+        return Rect(round.(Int, new_o), round.(Int, new_ws))
     end
 
-    scene = Scene(po.blockscene, square, camera = cam2d!, backgroundcolor = :transparent)
+    po.scene = scene = Scene(po.blockscene, square, camera = cam2d!, backgroundcolor = RGBf(1, 1, 0.8), clear = true)
 
-    translate!(scene, 0, 0, -100)
+    # translate!(scene, 0, 0, -100)
 
     Observables.connect!(
         scene.transformation.transform_func,
@@ -183,21 +170,15 @@ function Makie.initialize_block!(po::PolarAxis)
         adjustcam!(po, lims, (0.0, 2π))
     end
 
-
-    po.scene = scene
-
     # Outsource to `draw_axis` function
-    (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot) = draw_axis!(po)
+    (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot) = 
+        draw_axis!(po)
 
     # Handle protrusions
 
-    θticklabelprotrusions = Observable(GridLayoutBase.RectSides(
-        0f0,0f0,0f0,0f0
-        )
-    )
+    θticklabelprotrusions = Observable(GridLayoutBase.RectSides(0f0,0f0,0f0,0f0))
 
-    old_input = Ref(θticklabelplot[1][])
-    pop!(old_input[])
+    old_input = Ref(Vector{Tuple{String, Point2f}}(undef, 0))
 
     onany(θticklabelplot[1]) do input
         # Only if the tick labels have changed, should we recompute the tick label
@@ -240,7 +221,6 @@ function Makie.initialize_block!(po::PolarAxis)
             )
         end
     end
-
 
     notify(θticklabelplot[1])
 
@@ -287,28 +267,43 @@ function Makie.initialize_block!(po::PolarAxis)
 end
 
 function draw_axis!(po::PolarAxis)
+    θlims = (0, 2pi)
 
     rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
-    θtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
-
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
-    θgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
-
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
-    θminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
 
-    spinepoints = Observable{Vector{Point2f}}()
-
-    θlims = (0.0, 2π)
-
-    onany(po.rticks, po.θticks, po.rminorticks, po.θminorticks, po.rtickformat, po.θtickformat, po.rtickangle, po.limits, po.sample_density, po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area) do rticks, θticks, rminorticks, θminorticks, rtickformat, θtickformat, rtickangle, limits, sample_density, pixelarea, trans, area
-
-        rs = LinRange(limits..., sample_density)
-        θs = LinRange(θlims..., sample_density)
-
+    onany(
+            po.rticks, po.rminorticks,po.rtickformat,
+            po.rtickangle, po.limits, po.sample_density, 
+            # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
+        ) do rticks, rminorticks, rtickformat, rtickangle, limits, sample_density#, pixelarea, trans, area
+        
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, limits...)
-        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, θlims...)
+        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickvalues, rtickangle))
+        
+        θs = LinRange(θlims..., sample_density)
+        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, θs) for r in _rtickvalues])
+        
+        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
+        rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, θs) for r in _rminortickvalues])
 
+        return
+    end
+    
+    θtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
+    θtick_align = Observable{Vector{Point2f}}()
+    θgridpoints = Observable{Vector{Point2f}}()
+    θminorgridpoints = Observable{Vector{Point2f}}()
+
+    onany(
+            po.θticks, po.θminorticks, po.θtickformat, 
+            po.limits,
+            # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
+        ) do θticks, θminorticks, θtickformat, limits #, pixelarea, trans, area
+        
+        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, θlims...)
+        
         # Since θ = 0 is at the same position as θ = 2π, we remove the last tick
         # iff the difference between the first and last tick is exactly 2π
         # This is a special case, since it's the only possible instance of colocation
@@ -316,104 +311,113 @@ function draw_axis!(po::PolarAxis)
             pop!(_θtickvalues)
             pop!(_θticklabels)
         end
-
-        θtextbboxes = text_bbox.(
-            _θticklabels, (po.θticklabelsize[],), 
-            (po.θticklabelfont[],), (theme(po.scene, :fonts),), 
-            ((:center, :center),), 0f0, 0f0, 0f0, -1
-        )
-
-        rtick_pos_lbl[] = tuple.(_rticklabels, project_to_pixelspace(po.scene, Point2f.(_rtickvalues, rtickangle)) .+ Ref(pixelarea.origin))
-
-        θdiags = map(sqrt ∘ sum ∘ (x -> x .^ 2), widths.(θtextbboxes))
-
-        θgaps = θdiags ./ 2 .* (x -> Vec2f(cos(x), sin(x))).((_θtickvalues .+ trans.θ_0) .* trans.direction)
-
-        θtickpos = project_to_pixelspace(po.scene, Point2f.(limits[end], _θtickvalues)) .+ θgaps .+ Ref(pixelarea.origin)
-
-        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
+        
+        θtick_align.val = map(_θtickvalues) do angle
+            s, c = sincos(angle)
+            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
+            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+        end
+        
+        # TODO - think about this more carefully
+        px_gap = 10
+        gap = 1.0 + px_gap / maximum(widths(po.scene.px_area[]))
+        
+        θtick_pos_lbl[] = tuple.(_θticklabels, Point2f.(gap * limits[end], _θtickvalues))
+        
+        θgridpoints[] = [Point2f(r, θ) for θ in _θtickvalues for r in limits]
+        
         _θminortickvalues = Makie.get_minor_tickvalues(θminorticks, identity, _θtickvalues, θlims...)
+        θminorgridpoints[] = [Point2f(r, θ) for θ in _θminortickvalues for r in limits]
 
-        _rgridpoints = [project_to_pixelspace(po.scene, Point2f.(r, θs)) .+ Ref(pixelarea.origin) for r in _rtickvalues]
-        _θgridpoints = [project_to_pixelspace(po.scene, Point2f.(rs, θ)) .+ Ref(pixelarea.origin) for θ in _θtickvalues]
-
-        _rminorgridpoints = [project_to_pixelspace(po.scene, Point2f.(r, θs)) .+ Ref(pixelarea.origin) for r in _rminortickvalues]
-        _θminorgridpoints = [project_to_pixelspace(po.scene, Point2f.(rs, θ)) .+ Ref(pixelarea.origin) for θ in _θminortickvalues]
-
-        θtick_pos_lbl[] = tuple.(_θticklabels, θtickpos)
-
-        spinepoints[] = project_to_pixelspace(po.scene, Point2f.(limits[end], θs)) .+ Ref(pixelarea.origin)
-
-        rgridpoints[] = Makie.GeometryBasics.LineString.(_rgridpoints)
-        θgridpoints[] = Makie.GeometryBasics.LineString.(_θgridpoints)
-
-        rminorgridpoints[] = Makie.GeometryBasics.LineString.(_rminorgridpoints)
-        θminorgridpoints[] = Makie.GeometryBasics.LineString.(_θminorgridpoints)
-
+        return
     end
+
+    spinepoints = Observable{Vector{Point2f}}()
+
+    onany(
+            po.limits, po.sample_density, 
+            # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
+        ) do limits, sample_density#, pixelarea, trans, area
+        
+        θs = LinRange(θlims..., sample_density)
+        spinepoints[] = Point2f.(limits[end], θs)
+
+        return
+    end
+
+
+
 
     # on() do i
     #     adjustcam!(po, po.limits[])
     # end
 
-    notify(po.sample_density)
+    notify(po.limits)
 
     # plot using the created observables
     # spine
     spineplot = lines!(
-        po.blockscene, spinepoints;
+        po.scene, spinepoints;
         color = po.spinecolor,
         linestyle = po.spinestyle,
         linewidth = po.spinewidth,
-        visible = po.spinevisible
+        visible = po.spinevisible,
+        update_limits = false
     )
     # major grids
     rgridplot = lines!(
-        po.blockscene, rgridpoints;
+        po.scene, rgridpoints;
         color = po.rgridcolor,
         linestyle = po.rgridstyle,
         linewidth = po.rgridwidth,
-        visible = po.rgridvisible
+        visible = po.rgridvisible,
+        update_limits = false
     )
 
-    θgridplot = lines!(
-        po.blockscene, θgridpoints;
+    θgridplot = linesegments!(
+        po.scene, θgridpoints;
         color = po.θgridcolor,
         linestyle = po.θgridstyle,
         linewidth = po.θgridwidth,
-        visible = po.θgridvisible
+        visible = po.θgridvisible,
+        update_limits = false
     )
     # minor grids
     rminorgridplot = lines!(
-        po.blockscene, rminorgridpoints;
+        po.scene, rminorgridpoints;
         color = po.rminorgridcolor,
         linestyle = po.rminorgridstyle,
         linewidth = po.rminorgridwidth,
-        visible = po.rminorgridvisible
+        visible = po.rminorgridvisible,
+        update_limits = false
     )
 
-    θminorgridplot = lines!(
-        po.blockscene, θminorgridpoints;
+    θminorgridplot = linesegments!(
+        po.scene, θminorgridpoints;
         color = po.θminorgridcolor,
         linestyle = po.θminorgridstyle,
         linewidth = po.θminorgridwidth,
-        visible = po.θminorgridvisible
+        visible = po.θminorgridvisible,
+        update_limits = false
     )
     # tick labels
     rticklabelplot = text!(
-        po.blockscene, rtick_pos_lbl;
+        po.scene, rtick_pos_lbl;
         fontsize = po.rticklabelsize,
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
         align = (:left, :bottom),
+        update_limits = false
     )
 
     θticklabelplot = text!(
-        po.blockscene, θtick_pos_lbl;
+        po.scene, θtick_pos_lbl;
         fontsize = po.θticklabelsize,
         font = po.θticklabelfont,
         color = po.θticklabelcolor,
-        align = (:center, :center),
+        align = θtick_align,
+        update_limits = false
+        # align = (:center, :center),
     )
 
     clippoints = lift(spinepoints) do spinepoints
@@ -439,10 +443,11 @@ function draw_axis!(po::PolarAxis)
     clipplot = poly!(
         po.blockscene,
         clippoints,
-        color = clipcolor,
+        color = (:red, 0.5), #clipcolor,
         space = :pixel,
         strokewidth = 0,
-        visible = po.clip,
+        visible = false, #po.clip,
+        update_limits = false
     )
 
     translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100)
@@ -507,10 +512,12 @@ function Makie.plot!(P::Makie.PlotFunc, po::PolarAxis, args...; kw_attributes...
     Makie.plot!(po, P, attributes, args...)
 end
 function Makie.autolimits!(po::PolarAxis)
-    datalims = Rect2f(data_limits(po.scene))
+    lims3d = data_limits(po.scene, p -> !to_value(get(p.attributes, :update_limits, true)))
+    @info "limits = $lims3d"
+    po.limits[] = (0, maximum(lims3d)[1])
+
     # projected_datalims = Makie.apply_transform(po.scene.transformation.transform_func[], datalims)
     # @show projected_datalims
-    po.limits[] = (datalims.origin[1], datalims.origin[1] + datalims.widths[1])
     # @show po.limits[]
     # adjustcam!(po, po.limits[])
     # notify(po.limits)
