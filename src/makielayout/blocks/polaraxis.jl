@@ -224,10 +224,10 @@ function Makie.initialize_block!(po::PolarAxis)
     end
 
     # Outsource to `draw_axis` function
-    (spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot) = 
-        draw_axis!(po, axis_radius)
+    thetaticklabelplot = draw_axis!(po, axis_radius)
 
     # Handle protrusions
+    # TODO - what do these do again?
 
     thetaticklabelprotrusions = map(thetaticklabelplot.plots[1].plots[1][1]) do glyph_collections
         # get maximum size of tick label (each boundingbox represents a string without text.position applied)
@@ -243,7 +243,6 @@ function Makie.initialize_block!(po::PolarAxis)
     end
 
     onany(thetaticklabelprotrusions, po.thetaticklabelpad, po.overlay.px_area) do rectsides, pad, area
-        # radius = 1 - space_for_ticks / total_space_from_center
         space_from_center = 0.5 .* widths(area)
         space_for_ticks = 2pad .+ (rectsides.left, rectsides.bottom)
         space_for_axis = space_from_center .- space_for_ticks
@@ -502,6 +501,9 @@ function draw_axis!(po::PolarAxis, axis_radius)
         end
     end
 
+    # inner clip
+    # scatter shouldn't interfere with lines and text in GLMakie, so this should 
+    # look a bit cleaner
     inverse_circle =  BezierPath([
         MoveTo(Point( 1,  1)),
         LineTo(Point( 1, -1)),
@@ -512,21 +514,41 @@ function draw_axis!(po::PolarAxis, axis_radius)
         ClosePath(),
     ])
 
-    # This shouldn't interfere with lines and text in GLMakie
     clipplot = scatter!(
         po.overlay,
         Point2f(0),
         color = clipcolor,
         markersize = map((rect, radius) -> radius * widths(rect)[1], po.overlay.px_area, axis_radius),
         marker = inverse_circle,
-        visible = true, #po.clip,
+        visible = po.clip,
     )
 
+    # outer clip
+    # for when aspect ratios get extreme (> 2) or the axis very small
+    clippoints = let
+        v = 1000 # should keep `scene` covered up to this aspect ratio
+        exterior = Point2f[(-v, -v), (v, -v), (v, v), (-v, v)]
+        v = 0.99 # at edge of scattered marker (slightly less because of AA)
+        interior = Point2f[(-v, -v), (v, -v), (v, v), (-v, v)]
+        GeometryBasics.Polygon(exterior, [interior])
+    end
+
+    clipouter = poly!(
+        po.overlay,
+        clippoints,
+        color = (:green, 0.5), # clipcolor
+        visible = po.clip,
+        fxaa = false,
+        transformation = Transformation() # no polar pls thanks
+    )
+    on(axis_radius) do radius
+        scale!(clipouter, 2 * Vec3f(radius, radius, 1))
+    end
+
     translate!.((spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 100)
-    translate!(clipplot, 0, 0, 99)
+    translate!.((clipplot, clipouter), 0, 0, 99)
 
-    return (spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot)
-
+    return thetaticklabelplot
 end
 
 function calculate_polar_title_position(area, titlegap, align, thetaaxisprotrusion)
