@@ -165,31 +165,19 @@ Makie.can_be_current_axis(ax::PolarAxis) = true
 function Makie.initialize_block!(po::PolarAxis)
     cb = po.layoutobservables.computedbbox
 
-    square = lift(cb) do cb
-        # find the widths of the computed bbox
-        ws = widths(cb)
-        # get the minimum width
-        min_w = minimum(ws)
-        # the scene must be a square, so the width must be the same
-        new_ws = Vec2f(min_w, min_w)
-        # center the scene
-        diff = new_ws - ws
-        new_o = cb.origin - 0.5diff
-        return Rect(round.(Int, new_o), round.(Int, new_ws))
+    scenearea = lift(cb) do cb
+        return Rect(round.(Int, minimum(cb)), round.(Int, widths(cb)))
     end
 
     po.scene = Scene(
-        po.blockscene, square, backgroundcolor = RGBf(1, 1, 0.8), clear = true
+        po.blockscene, scenearea, backgroundcolor = RGBf(1, 1, 0.8), clear = true
     )
 
-    po.overlay = Scene(po.scene, square, clear = false, backgroundcolor = :transparent)
+    po.overlay = Scene(po.scene, scenearea, clear = false, backgroundcolor = :transparent)
 
 
     # Camera information
-    axis_origin = map(r -> 0.5 * (minimum(r) + maximum(r)), square)
-    axis_radius = Observable(0.8) # TODO adjust to 
-
-    data_origin = Observable(Point2f(0))
+    axis_radius = Observable(0.8)
     on(events(po.scene).scroll, priority = 100) do scroll
         if Makie.is_mouseinside(po.scene)
             rlims!(po, po.limits[][2] * (1.1 ^ (-scroll[2])))
@@ -203,12 +191,22 @@ function Makie.initialize_block!(po::PolarAxis)
         camera(po.scene).view[] = Makie.scalematrix(Vec3f(ratio, ratio, 1))
         return
     end
+
     camera(po.scene).view[] = Mat4f(I)
-    camera(po.scene).projection[] = Makie.orthographicprojection(-1f0, 1f0, -1f0, 1f0, -100f0, 100f0)
+    on(po.scene.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
+    end
 
     camera(po.overlay).view[] = Mat4f(I)
-    camera(po.overlay).projection[] = Makie.orthographicprojection(-1f0, 1f0, -1f0, 1f0, -100f0, 100f0)
-
+    on(po.overlay.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
+    end
     # translate!(po.scene, 0, 0, -100)
 
     Observables.connect!(
@@ -231,54 +229,26 @@ function Makie.initialize_block!(po::PolarAxis)
 
     # Handle protrusions
 
-    thetaticklabelprotrusions = Observable(GridLayoutBase.RectSides(0f0,0f0,0f0,0f0))
-
-    old_input = Ref(Vector{Tuple{String, Point2f}}(undef, 0))
-
-    onany(thetaticklabelplot[1]) do input
-        # Only if the tick labels have changed, should we recompute the tick label
-        # protrusions.
-        # This should be changed by removing the call to `first`
-        # when the call types are changed to the text, position=positions format
-        # introduced in #.
-        if length(old_input[]) == length(input) && all(first.(input) .== first.(old_input[]))
-            return
-        else
-            # px_area = pixelarea(scene)[]
-            # calculate text boundingboxes individually and select the maximum boundingbox
-            text_bboxes = text_bbox.(
-                first.(thetaticklabelplot[1][]),
-                Ref(thetaticklabelplot.fontsize[]),
-                thetaticklabelplot.font[],
-                thetaticklabelplot.fonts,
-                thetaticklabelplot.align[] isa Tuple ? Ref(thetaticklabelplot.align[]) : thetaticklabelplot.align[],
-                thetaticklabelplot.rotation[],
-                0.0,
-                0.0,
-                thetaticklabelplot.word_wrap_width[]
-            )
-            maxbox = maximum(widths.(text_bboxes))
-            # box = data_limits(thetaticklabelplot)
-            # @show maxbox px_area
-            # box = Rect2(
-            #     to_ndim(Point2f, project_to_pixelspace(po.blockscene, box.origin), 0),
-            #     to_ndim(Point2f, project_to_pixelspace(po.blockscene, box.widths), 0)
-            # )
-            # @show box
-            old_input[] = input
-
-
-            thetaticklabelprotrusions[] = GridLayoutBase.RectSides(
-                maxbox[1],#max(0, left(box) - left(px_area)),
-                maxbox[1],#max(0, right(box) - right(px_area)),
-                maxbox[2],#max(0, bottom(box) - bottom(px_area)),
-                maxbox[2],#max(0, top(box) - top(px_area))
-            )
+    thetaticklabelprotrusions = map(thetaticklabelplot.plots[1].plots[1][1]) do glyph_collections
+        # get maximum size of tick label (each boundingbox represents a string without text.position applied)
+        max_widths = Vec2f(0)
+        for gc in glyph_collections
+            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
+
+        max_width, max_height = max_widths
+        
+        GridLayoutBase.RectSides(max_width, max_width, max_height, max_height)
     end
 
-    notify(thetaticklabelplot[1])
-
+    onany(thetaticklabelprotrusions, po.thetaticklabelpad, po.overlay.px_area) do rectsides, pad, area
+        # radius = 1 - space_for_ticks / total_space_from_center
+        space_from_center = 0.5 .* widths(area)
+        space_for_ticks = 2pad .+ (rectsides.left, rectsides.bottom)
+        space_for_axis = space_from_center .- space_for_ticks
+        axis_radius[] = max(0, minimum(space_for_axis) / space_from_center[1])
+    end
 
     # Set up the title position
     title_position = lift(pixelarea(po.scene), po.titlegap, po.titlealign, thetaticklabelprotrusions) do area, titlegap, titlealign, thetatlprot
@@ -547,7 +517,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         po.overlay,
         Point2f(0),
         color = clipcolor,
-        markersize = map((rect, radius) -> radius * minimum(widths(rect)), po.overlay.px_area, axis_radius),
+        markersize = map((rect, radius) -> radius * widths(rect)[1], po.overlay.px_area, axis_radius),
         marker = inverse_circle,
         visible = true, #po.clip,
     )
