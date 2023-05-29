@@ -1666,6 +1666,8 @@ end
         thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `theta` tick labels."
         thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
+        "Padding of the `theta` ticks label."
+        thetaticklabelpad = 4f0
         "Controls if the `theta` ticks are visible."
         thetaticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
         "The title of the plot"

@@ -353,11 +353,68 @@ function draw_axis!(po::PolarAxis, axis_radius)
     thetagridpoints = Observable{Vector{Point2f}}()
     thetaminorgridpoints = Observable{Vector{Point2f}}()
 
+    # to avoid unneccessary updates we split this up into a couple parts
+    theta_value_labels = map(po.thetaticks, po.thetatickformat) do thetaticks, thetatickformat
+        
+        _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
+        
+        # Since theta = 0 is at the same position as theta = 2π, we remove the last tick
+        # iff the difference between the first and last tick is exactly 2π
+        # This is a special case, since it's the only possible instance of colocation
+        if (_thetatickvalues[end] - _thetatickvalues[begin]) == 2π
+            pop!(_thetatickvalues)
+            pop!(_thetaticklabels)
+        end
+
+        return (_thetatickvalues, _thetaticklabels)
+    end
+        
+    # align never updates alone so it doesn't need to trigger
+    # running this seperately from pos_lbl updates should allow us to resize
+    # without recomputing padding for ticks
+    on(theta_value_labels) do (_thetatickvalues, _)
+        thetatick_align.val = map(_thetatickvalues) do angle
+            s, c = sincos(angle)
+            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
+            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+        end
+        return
+    end
+
+    # only theta positions rely on the px_area of the scene for padding
     onany(
-            po.thetaticks, po.thetaminorticks, po.thetatickformat, 
-            po.limits, axis_radius,
+            theta_value_labels, po.thetaticklabelpad, axis_radius, po.overlay.px_area
+        ) do (_thetatickvalues, _thetaticklabels), px_pad, axis_radius, pixelarea
+
+        # transform px_pad to radial pad
+        w2, h2 = (0.5 .* widths(pixelarea)).^2
+        tick_positions = map(_thetatickvalues) do angle
+            s, c = sincos(angle)
+            pad_mult = 1.0 + px_pad / sqrt(w2 * c * c + h2 * s * s)
+            Point2f(pad_mult * axis_radius, angle)
+        end
+        
+        thetatick_pos_lbl[] = tuple.(_thetaticklabels, tick_positions)
+    end
+
+    # remainign grid lines
+    onany(
+            theta_value_labels, po.thetaminorticks, axis_radius
+        ) do (_thetatickvalues, _), thetaminorticks, axis_radius
+        
+        thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (0, axis_radius)]
+        
+        _thetaminortickvalues = Makie.get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
+        thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in (0, axis_radius)]
+
+        return
+    end
+
+    onany(
+            po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
+            axis_radius, po.overlay.px_area
             # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
-        ) do thetaticks, thetaminorticks, thetatickformat, limits, axis_radius #, pixelarea, trans, area
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, axis_radius, pixelarea #, pixelarea, trans, area
         
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
         
@@ -375,11 +432,15 @@ function draw_axis!(po::PolarAxis, axis_radius)
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
         
-        # TODO - think about this more carefully
-        px_gap = 10
-        gap = 1.0 + px_gap / maximum(widths(po.overlay.px_area[]))
+        # transform px_pad to radial pad
+        w2, h2 = (0.5 .* widths(pixelarea)).^2
+        tick_positions = map(_thetatickvalues) do angle
+            s, c = sincos(angle)
+            pad_mult = 1.0 + px_pad / sqrt(w2 * c * c + h2 * s * s)
+            Point2f(pad_mult * axis_radius, angle)
+        end
         
-        thetatick_pos_lbl[] = tuple.(_thetaticklabels, Point2f.(gap * axis_radius, _thetatickvalues))
+        thetatick_pos_lbl[] = tuple.(_thetaticklabels, tick_positions)
         
         thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (0, axis_radius)]
         
@@ -399,13 +460,6 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
         return
     end
-
-
-
-
-    # on() do i
-    #     adjustcam!(po, po.limits[])
-    # end
 
     # TODO - compute this based on text bb (which would replace this trigger)
     notify(axis_radius)
