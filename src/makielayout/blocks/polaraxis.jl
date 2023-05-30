@@ -84,78 +84,6 @@ end
 
 
 ################################################################################
-### Camera Setup
-################################################################################
-
-
-# struct PolarAxisCamera
-#     data_origin::Observable{Point2f} # or axis, these should map into each other?
-#     data_radius::
-#     axis_radius
-#     rotation_angle
-    
-
-#     controls
-#         rotation_key
-#         zoom_key
-#         axis_translation_key (combo)
-#         axis_zoom_key (combo)
-#         data_reset # autolimits data to axis area
-#         axis_reset # fit axis into area
-#     settings
-#         zoom_speed
-#         rotation_speed
-
-# end
-
-
-################################################################################
-### Space transformation
-################################################################################
-
-
-# Some useful code to transform from data (transformed) space to pixelspace
-
-function project_to_pixelspace(scene, point::VT) where {N, T, VT <: VecTypes{N, T}}
-    @assert N ≤ 3
-    transformed = Makie.apply_transform(Makie.transform_func(scene), point)
-    return Makie.to_ndim(VT, Makie.project(scene, transformed), 0f0)
-end
-
-function project_to_pixelspace(scene, points::AbstractVector{VT}) where {N, T, VT <: VecTypes{N, T}}
-    transformed = Makie.apply_transform(Makie.transform_func(scene), points)
-    return @. Makie.to_ndim(VT, Makie.project(scene, transformed), 0f0)
-end
-
-# A function which redoes text layouting, to provide a bbox for arbitrary text.
-
-function text_bbox(textstring::AbstractString, fontsize::Union{AbstractVector, Number}, font, fonts, align, rotation, justification, lineheight, word_wrap_width = -1)
-    glyph_collection = Makie.layout_text(
-            textstring, fontsize,
-            to_font(fonts, font), fonts, align, rotation, justification, lineheight,
-            RGBAf(0,0,0,0), RGBAf(0,0,0,0), 0f0, word_wrap_width
-        )
-
-    return Rect2f(Makie.boundingbox(glyph_collection, Point3f(0), Makie.to_rotation(rotation)))
-end
-
-function text_bbox(plot::Text)
-    return text_bbox(
-        plot.text[],
-        plot.fontsize[],
-        plot.font[],
-        plot.fonts,
-        plot.align[],
-        plot.rotation[],
-        plot.justification[],
-        plot.lineheight[],
-        RGBAf(0,0,0,0), RGBAf(0,0,0,0), 0f0,
-        plot.word_wrap_width[]
-    )
-end
-
-
-################################################################################
 ### Main Block Intialization
 ################################################################################
 
@@ -163,8 +91,9 @@ end
 Makie.can_be_current_axis(ax::PolarAxis) = true
 
 function Makie.initialize_block!(po::PolarAxis)
+    # Setup Scenes
+    
     cb = po.layoutobservables.computedbbox
-
     scenearea = lift(cb) do cb
         return Rect(round.(Int, minimum(cb)), round.(Int, widths(cb)))
     end
@@ -176,52 +105,16 @@ function Makie.initialize_block!(po::PolarAxis)
     po.overlay = Scene(po.scene, scenearea, clear = false, backgroundcolor = :transparent)
 
 
-    # Camera information
-    axis_radius = Observable(0.8)
-    on(events(po.scene).scroll, priority = 100) do scroll
-        if Makie.is_mouseinside(po.scene)
-            rlims!(po, po.limits[][2] * (1.1 ^ (-scroll[2])))
-            return Consume(true)
-        end
-        return Consume(false)
-    end
+    # Setup camera/limits
+    axis_radius = setup_camera_matrices!(po)
 
-    onany(po.scene, axis_radius, po.limits) do ar, lims
-        ratio = ar / lims[2]
-        camera(po.scene).view[] = Makie.scalematrix(Vec3f(ratio, ratio, 1))
-        return
-    end
-
-    camera(po.scene).view[] = Mat4f(I)
-    on(po.scene.px_area) do area
-        aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
-        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
-    end
-
-    camera(po.overlay).view[] = Mat4f(I)
-    on(po.overlay.px_area) do area
-        aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
-        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
-    end
-    # translate!(po.scene, 0, 0, -100)
-
+    # TODO - theta_0 should affect ticks?
     Observables.connect!(
         po.scene.transformation.transform_func,
         @lift(PolarAxisTransformation($(po.theta_0), $(po.direction)))
     )
 
-    notify(po.limits)
-
-
-    # Whenever the limits change or the po.scene is resized,
-    # update the camera.
-    onany(po.limits, po.scene.px_area) do lims, px_area
-        adjustcam!(po, lims, (0.0, 2π))
-    end
+    
 
     # Outsource to `draw_axis` function
     thetaticklabelplot = draw_axis!(po, axis_radius)
@@ -281,12 +174,6 @@ function Makie.initialize_block!(po::PolarAxis)
 
     connect!(po.layoutobservables.protrusions, protrusions)
 
-
-    # debug statements
-    # @show boundingbox(scene) data_limits(scene)
-    # Main.@infiltrate
-    # display(scene)
-
     return
 end
 
@@ -299,19 +186,18 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     onany(
             po.rticks, po.rminorticks, po.rtickformat,
-            po.rtickangle, po.limits, axis_radius, po.sample_density, 
-            # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
-        ) do rticks, rminorticks, rtickformat, rtickangle, limits, axis_radius, sample_density#, pixelarea, trans, area
+            po.rtickangle, po.target_radius, axis_radius, po.sample_density, 
+        ) do rticks, rminorticks, rtickformat, rtickangle, data_radius, axis_radius, sample_density
         
-        _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, limits...)
-        _rtickpos = _rtickvalues .* (axis_radius / limits[2]) # we still need the values
+        _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, 0, data_radius)
+        _rtickpos = _rtickvalues .* (axis_radius / data_radius) # we still need the values
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, rtickangle))
         
         thetas = LinRange(thetalims..., sample_density)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
         
-        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
-        _rminortickvalues .*= (axis_radius / limits[2])
+        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, 0, data_radius)
+        _rminortickvalues .*= (axis_radius / data_radius)
         rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
 
         return
@@ -592,13 +478,8 @@ function Makie.plot!(
 
     plot = Makie.plot!(po.scene, P, allattrs, args...)
 
-    autolimits!(po)
+    reset_limits!(po)
 
-    # # some area-like plots basically always look better if they cover the whole plot area.
-    # # adjust the limit margins in those cases automatically.
-    # needs_tight_limits(plot) && tightlimits!(po)
-
-    # reset_limits!(po)
     plot
 end
 
@@ -614,45 +495,68 @@ end
 ################################################################################
 
 
-# TODO
-# - r lims should always start at 0 so drop rmin?
+function setup_camera_matrices!(po::PolarAxis)
+    # Initialization
+    axis_radius = Observable(0.8)
+    init = Observable{Float64}(isnothing(po.radius[]) ? 10.0 : po.radius[])
+    setfield!(po, :target_radius, init)
+    on(_ -> reset_limits!(po), po.radius)
+    camera(po.overlay).view[] = Mat4f(I)
 
-function Makie.autolimits!(po::PolarAxis)
-    # lims3d = data_limits(po.scene, p -> !to_value(get(p.attributes, :update_limits, true)))
-    
-    # WTF, why does this include child scenes by default?
-    lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
-    @info lims3d
-    po.limits[] = (0, maximum(lims3d)[1])
+    # scroll to zoom
+    on(po.scene, events(po.scene).scroll, priority = 100) do scroll
+        if Makie.is_mouseinside(po.scene)
+            rlims!(po, po.target_radius[] * (1.1 ^ (-scroll[2])))
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # update view matrix
+    onany(po.scene, axis_radius, po.target_radius) do ar, radius
+        ratio = ar / radius
+        camera(po.scene).view[] = Makie.scalematrix(Vec3f(ratio, ratio, 1))
+        return
+    end
+
+    # update projection matrices
+    # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -100 ... 100)
+    on(po.scene.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
+    end
+
+    on(po.overlay.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
+    end
+
+    return axis_radius
+end
+
+function reset_limits!(po::PolarAxis)
+    if isnothing(po.radius[])
+        if !isempty(po.scene.plots)
+            # WTF, why does this include child scenes by default?
+            lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
+            @info lims3d
+            po.target_radius[] = maximum(lims3d)[1]
+        end
+    elseif po.target_radius[] != po.radius[]
+        po.target_radius[] = po.radius[]
+    end
     return
 end
 
-function rlims!(po::PolarAxis, rs::NTuple{2, <: Real})
-    po.limits[] = rs
-end
-
-function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
-    po.limits[] = (rmin, rmax)
+function autolimits!(po::PolarAxis)
+    po.radius[] = nothing
+    return
 end
 
 function rlims!(po::PolarAxis, r::Real)
-    po.limits[] = (0, r)
-end
-
-
-
-
-"Adjust the axis's scene's camera to conform to the given r-limits"
-function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real}, thetalims::NTuple{2, <: Real} = (0.0, 2π))
-    @assert limits[1] ≤ limits[2]
-    scene = po.scene
-    # We transform our limits to transformed space, since we can
-    # operate linearly there
-    # @show boundingbox(scene)
-    # target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., thetalims...))
-    # @show target
-    # area = scene.px_area[]
-    # Makie.update_cam!(scene, target)
-    # notify(scene.camera_controls.area)
-    return
+    po.radius[] = r
 end

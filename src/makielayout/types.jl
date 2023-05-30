@@ -1593,6 +1593,7 @@ end
 @Block PolarAxis begin
     scene::Scene
     overlay::Scene
+    target_radius::Observable{Float64}
     @attributes begin
         "The height setting of the scene."
         height = nothing
@@ -1608,11 +1609,11 @@ end
         valign = :center
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
-        "The numerical limits from center circle to outer radius"
-        limits::Tuple{Float32, Float32} = (0.0, 10.0)
-        "The direction of rotation.  Can be -1 (clockwise) or 1 (counterclockwise)."
+        "The maximum radius of the PolarAxis. This acts as the limit of the axis."
+        radius = nothing
+        "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
         direction = 1
-        "The initial angle offset.  This essentially rotates the axis."
+        "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
         theta_0 = 0f0
         "The width of the spine."
         spinewidth = 2
