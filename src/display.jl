@@ -59,7 +59,7 @@ function set_screen_config!(backend::Module, new_values)
     bkeys = keys(backend_defaults)
     for (k, v) in pairs(new_values)
         if !(k in bkeys)
-            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenCofig`")
+            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenConfig`")
         end
         backend_defaults[k] = v
     end
