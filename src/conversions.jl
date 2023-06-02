@@ -112,6 +112,11 @@ spanning z over the grid spanned by x y
 function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f.(x, y', z)),)
 end
+
+function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix)
+    return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 

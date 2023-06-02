@@ -89,13 +89,24 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         cmap = to_colormap(plot.colormap[])
         crange = plot.colorrange[]
         color_from_num = Makie.interpolated_getindex.((cmap,), color, (crange,))
-
         object_id = RPR.InputLookupMaterial(matsys)
         object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
 
         uv = object_id * Vec3f(0, 1/n_instances, 0)
 
         tex = RPR.Texture(matsys, collect(color_from_num'); uv = uv)
+
+        material.color = tex
+    elseif color isa AbstractMatrix{<:Number}
+        cmap = to_colormap(plot.colormap[])
+        crange = plot.colorrange[]
+        color_from_num = Makie.interpolated_getindex.((cmap,), color, (crange,))
+        object_id = RPR.InputLookupMaterial(matsys)
+        object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
+
+        uv = object_id * Vec3f(0, 1/n_instances, 0)
+
+        tex = RPR.Texture(matsys, color_from_num; uv=uv)
 
         material.color = tex
     elseif color isa Colorant

@@ -51,7 +51,7 @@ function on_latest(f, observable; update=false, spawn=false)
         try
             f(new_value)
         catch e
-            @warn "Error in f" exception=e
+            @warn "Error in f" exception=(e, Base.catch_backtrace())
         end
         # Since we skip updates completely while executing the above `f`
         # We need to check after finishing, if the value has changed!
