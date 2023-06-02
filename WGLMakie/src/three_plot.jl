@@ -55,6 +55,7 @@ function three_display(session::Session, scene::Scene; screen_config...)
     $(WGL).then(WGL => {
         // well.... not nice, but can't deal with the `Promise` in all the other functions
         window.WGLMakie = WGL
+        console.log(WGL)
         WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
         $(done_init).notify(true)
     })

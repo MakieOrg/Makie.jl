@@ -19793,6 +19793,195 @@ class MakieCamera {
         }
     }
 }
+const LINES_VERT = `#version 300 es
+precision mediump int;
+precision mediump float;
+precision mediump sampler2D;
+precision mediump sampler3D;
+// https://github.com/mrdoob/three.js/blob/dev/examples/jsm/lines/LineMaterial.js
+// https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
+// https://github.com/gameofbombs/pixi-candles/tree/master/src
+// https://github.com/wwwtyro/instanced-lines-demos/tree/master
+
+in vec2 uv;
+in vec3 position;
+in vec2 instanceStart;
+in vec2 instanceEnd;
+
+out vec2 vUv;
+
+uniform mat4 projectionview;
+uniform mat4 projection;
+uniform mat4 model;
+uniform mat4 view;
+
+uniform float linewidth;
+uniform vec2 resolution;
+
+vec4 screen_space(vec4 vertex)
+{
+    return vec4(vertex.xy * resolution, vertex.z, vertex.w) / vertex.w;
+}
+
+vec4 clip_space(vec4 screenspace) {
+    return vec4((screenspace.xy / resolution), screenspace.z, 1.0) * screenspace.w;
+}
+
+void main() {
+
+    // camera space
+    vec4 start = projectionview * model * vec4(instanceStart, 0.0, 1.0);
+    vec4 end = projectionview * model * vec4(instanceEnd, 0.0, 1.0);
+    vUv = uv;
+
+    // screenspace
+    vec4 ndcStart = screen_space(start);
+    vec4 ndcEnd = screen_space(end);
+
+
+    // direction
+    vec2 dir = ndcEnd.xy - ndcStart.xy;
+
+    // account for clip-space aspect ratio
+    dir = normalize(dir);
+
+    vec2 offset = vec2(dir.y, -dir.x); // orthogonal vector
+
+    // sign flip
+    if (position.x < 0.0)
+        offset *= -1.0;
+
+    // endcaps
+    if (position.y < 0.0) {
+        offset += -dir;
+    } else if (position.y > 1.0) {
+        offset += dir;
+    }
+
+    // adjust for linewidth
+    offset *= linewidth;
+
+
+
+    // select end
+    vec4 screen = (position.y < 0.5) ? ndcStart : ndcEnd;
+    screen.xy += offset;
+    gl_Position = clip_space(screen);
+}
+`;
+const LINES_FRAG = `#version 300 es
+precision mediump int;
+precision mediump float;
+precision mediump sampler2D;
+precision mediump sampler3D;
+
+out vec4 fragment_color;
+
+uniform vec3 diffuse;
+uniform float opacity;
+
+in vec2 vUv;
+
+
+void main() {
+
+    fragment_color = vec4(0,0,0, 1.0);
+}
+`;
+function create_line_material(uniforms) {
+    return new mod.RawShaderMaterial({
+        uniforms: deserialize_uniforms(uniforms),
+        vertexShader: LINES_VERT,
+        fragmentShader: LINES_FRAG,
+        transparent: true
+    });
+}
+function create_line_geometry(linepositions) {
+    const geometry = new mod.InstancedBufferGeometry();
+    const instance_positions = [
+        -1,
+        2,
+        0,
+        1,
+        2,
+        0,
+        -1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        -1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        -1,
+        0,
+        1,
+        -1,
+        0
+    ];
+    const uvs = [
+        -1,
+        2,
+        1,
+        2,
+        -1,
+        1,
+        1,
+        1,
+        -1,
+        -1,
+        1,
+        -1,
+        -1,
+        -2,
+        1,
+        -2
+    ];
+    const index = [
+        0,
+        2,
+        1,
+        2,
+        3,
+        1,
+        2,
+        4,
+        3,
+        4,
+        5,
+        3,
+        4,
+        6,
+        5,
+        6,
+        7,
+        5
+    ];
+    geometry.setIndex(index);
+    geometry.setAttribute("position", new mod.Float32BufferAttribute(instance_positions, 3));
+    geometry.setAttribute("uv", new mod.Float32BufferAttribute(uvs, 2));
+    const instanceBuffer = new mod.InstancedInterleavedBuffer(linepositions, 4, 1);
+    geometry.setAttribute("instanceStart", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 0));
+    geometry.setAttribute("instanceEnd", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 2));
+    geometry.boundingSphere = new mod.Sphere();
+    geometry.boundingSphere.radius = 10000000000000;
+    geometry.frustumCulled = false;
+    geometry.instanceCount = linepositions.length / 2;
+    return geometry;
+}
+function create_line(line_data) {
+    console.log(line_data);
+    const geometry = create_line_geometry(line_data.positions);
+    const material = create_line_material(line_data.uniforms);
+    console.log(geometry);
+    console.log(material);
+    return new mod.Mesh(geometry, material);
+}
 const scene_cache = {};
 const plot_cache = {};
 const TEXTURE_ATLAS = [
@@ -19907,6 +20096,9 @@ function deserialize_uniforms(data) {
     return result;
 }
 function deserialize_plot(data) {
+    if (data.plot_type === "lines") {
+        return create_line(data);
+    }
     let mesh;
     if ("instance_attributes" in data) {
         mesh = create_instanced_mesh(data);
@@ -20243,7 +20435,7 @@ function render_scene(scene, picking = false) {
     if (!scene.visible.value) {
         return true;
     }
-    renderer.autoClear = scene.clearscene.value;
+    renderer.autoClear = scene.clearscene;
     const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t)=>t / pixelRatio1);
