@@ -225,9 +225,9 @@ end
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    arr = convert_arguments(PB, linestring[1])[1]
-    nan = eltype(arr)(NaN)
     n = length(linestring)
+    arr = n > 0 ? convert_arguments(PB, linestring[1])[1] : Point2f[]
+    nan = eltype(arr)(NaN)
     for idx in 2:n
         push!(arr, nan)
         append!(arr, convert_arguments(PB, linestring[idx])[1])
@@ -266,8 +266,8 @@ end
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = convert_arguments(PB, mp[1])[1]
     n = length(mp)
+    arr = n > 0 ? convert_arguments(PB, mp[1])[1] : Point2f[]
     nan = eltype(arr)(NaN)
     for idx in 2:n
         push!(arr, nan)
