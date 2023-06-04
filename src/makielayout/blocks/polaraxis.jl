@@ -99,7 +99,7 @@ function Makie.initialize_block!(po::PolarAxis)
     end
 
     po.scene = Scene(
-        po.blockscene, scenearea, backgroundcolor = RGBf(1, 1, 0.8), clear = true
+        po.blockscene, scenearea, backgroundcolor = po.backgroundcolor, clear = true
     )
 
     po.overlay = Scene(po.scene, scenearea, clear = false, backgroundcolor = :transparent)
@@ -375,8 +375,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     # tick labels
     
-    clipcolor = map(po.blockscene, po.scene.backgroundcolor) do bgc
-        return RGBAf(1, 0, 1, 0.5)
+    clipcolor = map(po.blockscene, po.backgroundcolor) do bgc
         bgc = to_color(bgc)
         if alpha(bgc) == 0f0
             return to_color(:white)
@@ -447,7 +446,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
     clipouter = poly!(
         po.overlay,
         clippoints,
-        color = (:green, 0.5), # clipcolor
+        color = clipcolor,
         visible = po.clip,
         fxaa = false,
         transformation = Transformation() # no polar pls thanks
