@@ -2,16 +2,10 @@ function block_docs(::Type{Axis})
     """
     A 2D axis which can be plotted into.
 
-    ## Constructors
+    **Constructors**
 
     ```julia
     Axis(fig_or_scene; palette = nothing, kwargs...)
-    ```
-
-    ## Examples
-
-    ```julia
-    ax = Axis(fig[1, 1])
     ```
     """
 end
@@ -1374,4 +1368,419 @@ defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
 function update_state_before_display!(ax::Axis)
     reset_limits!(ax)
     return
+end
+
+function attribute_examples(::Type{Axis})
+    Dict(
+        :xticks => [
+            Example(
+                name = "Common tick types",
+                code = """
+                    fig = Figure()
+                    Axis(fig[1, 1], xticks = 1:10)
+                    Axis(fig[2, 1], xticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+                    Axis(fig[3, 1], xticks = WilkinsonTicks(5))
+                    fig
+                    """
+            )
+        ],
+        :yticks => [
+            Example(
+                name = "Common tick types",
+                code = """
+                    fig = Figure()
+                    Axis(fig[1, 1], yticks = 1:10)
+                    Axis(fig[1, 2], yticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+                    Axis(fig[1, 3], yticks = WilkinsonTicks(5))
+                    fig
+                    """
+            )
+        ],
+        :aspect => [
+            Example(
+                name = "Common aspect ratios",
+                code = """
+                    using FileIO
+
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing")
+                    ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()")
+                    ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)")
+                    ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)")
+                    
+                    img = rotr90(load(assetpath("cow.png")))
+                    for ax in [ax1, ax2, ax3, ax4]
+                        image!(ax, img)
+                    end
+
+                    f
+                    """
+            )
+        ],
+        :autolimitaspect => [
+            Example(
+                name = "Using `autolimitaspect`",
+                code = """
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], autolimitaspect = nothing)
+                    ax2 = Axis(f[1, 2], autolimitaspect = 1)
+                    
+                    for ax in [ax1, ax2]
+                        lines!(ax, 0..10, sin)
+                    end
+
+                    f
+                    """
+            )
+        ],
+        :title => [
+            Example(
+                name = "`title` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], title = "Title")
+                    Axis(f[2, 1], title = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], title = rich(
+                        "Rich text title",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ],
+        :titlealign => [
+            Example(
+                name = "`titlealign` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], titlealign = :left, title = "Left aligned title")
+                    Axis(f[2, 1], titlealign = :center, title = "Center aligned title")
+                    Axis(f[3, 1], titlealign = :right, title = "Right aligned title")
+
+                    f
+                    """
+            )
+        ],
+        :subtitle => [
+            Example(
+                name = "`subtitle` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], title = "Title", subtitle = "Subtitle")
+                    Axis(f[2, 1], title = "Title", subtitle = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], title = "Title", subtitle = rich(
+                        "Rich text subtitle",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ],
+        :xlabel => [
+            Example(
+                name = "`xlabel` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], xlabel = "X Label")
+                    Axis(f[2, 1], xlabel = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], xlabel = rich(
+                        "X Label",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ],
+        :ylabel => [
+            Example(
+                name = "`ylabel` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], ylabel = "Y Label")
+                    Axis(f[2, 1], ylabel = L"\\sum_i{x_i \\times y_i}")
+                    Axis(f[3, 1], ylabel = rich(
+                        "Y Label",
+                        subscript(" with subscript", color = :slategray)
+                    ))
+
+                    f
+                    """
+            )
+        ],
+        :xtrimspine => [
+            Example(
+                name = "`xtrimspine` variants",
+                code = """
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], xtrimspine = false)
+                    ax2 = Axis(f[2, 1], xtrimspine = true)
+                    ax3 = Axis(f[3, 1], xtrimspine = (true, false))
+                    ax4 = Axis(f[4, 1], xtrimspine = (false, true))
+
+                    for ax in [ax1, ax2, ax3, ax4]
+                        ax.xgridvisible = false
+                        ax.ygridvisible = false
+                        ax.rightspinevisible = false
+                        ax.topspinevisible = false
+                        xlims!(ax, 0.5, 5.5)
+                    end
+
+                    f
+                    """
+            )
+        ],
+        :ytrimspine => [
+            Example(
+                name = "`ytrimspine` variants",
+                code = """
+                    f = Figure()
+                                        
+                    ax1 = Axis(f[1, 1], ytrimspine = false)
+                    ax2 = Axis(f[1, 2], ytrimspine = true)
+                    ax3 = Axis(f[1, 3], ytrimspine = (true, false))
+                    ax4 = Axis(f[1, 4], ytrimspine = (false, true))
+
+                    for ax in [ax1, ax2, ax3, ax4]
+                        ax.xgridvisible = false
+                        ax.ygridvisible = false
+                        ax.rightspinevisible = false
+                        ax.topspinevisible = false
+                        ylims!(ax, 0.5, 5.5)
+                    end
+
+                    f
+                    """
+            )
+        ],
+        :xaxisposition => [
+            Example(
+                name = "`xaxisposition` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], xaxisposition = :bottom)
+                    Axis(f[1, 2], xaxisposition = :top)
+                    
+                    f
+                    """
+            )
+        ],
+        :yaxisposition => [
+            Example(
+                name = "`yaxisposition` variants",
+                code = """
+                    f = Figure()
+                                        
+                    Axis(f[1, 1], yaxisposition = :left)
+                    Axis(f[2, 1], yaxisposition = :right)
+                    
+                    f
+                    """
+            )
+        ],
+        :limits => [
+            Example(
+                name = "`limits` variants",
+                code = """
+                    f = Figure()
+                    
+                    ax1 = Axis(f[1, 1], limits = (nothing, nothing), title = "(nothing, nothing)")
+                    ax2 = Axis(f[1, 2], limits = (0, 4pi, -1, 1), title = "(0, 4pi, -1, 1)")
+                    ax3 = Axis(f[2, 1], limits = ((0, 4pi), nothing), title = "((0, 4pi), nothing)")
+                    ax4 = Axis(f[2, 2], limits = (nothing, 4pi, nothing, 1), title = "(nothing, 4pi, nothing, 1)")
+
+                    for ax in [ax1, ax2, ax3, ax4]
+                        lines!(ax, 0..4pi, sin)
+                    end
+                    
+                    f
+                    """
+            )
+        ],
+        :yscale => [
+            Example(
+                name = "`yscale` variants",
+                code = """
+                    f = Figure()
+                    
+                    for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
+                        row, col = fldmod1(i, 3)
+                        Axis(f[row, col], yscale = scale, title = string(scale),
+                            yminorticksvisible = true, yminorgridvisible = true,
+                            yminorticks = IntervalsBetween(5))
+                    
+                        lines!(range(0.01, 0.99, length = 200))
+                    end
+                    
+                    f
+                    """
+            ),
+            Example(
+                name = "Pseudo-log scales",
+                code = """
+                    f = Figure()
+                    
+                    ax1 = Axis(f[1, 1],
+                        yscale = Makie.pseudolog10,
+                        title = "Pseudolog scale",
+                        yticks = [-100, -10, -1, 0, 1, 10, 100]
+                    )
+
+                    ax2 = Axis(f[2, 1],
+                        yscale = Makie.Symlog10(10.0),
+                        title = "Symlog10 with linear scaling between -10 and 10",
+                        yticks = [-100, -10, 0, 10, 100]
+                    )
+
+                    for ax in [ax1, ax2]
+                        lines!(ax, -100:0.1:100)
+                    end
+                                        
+                    f
+                    """
+            ),
+        ],
+        :xscale => [
+            Example(
+                name = "`xscale` variants",
+                code = """
+                    f = Figure()
+                    
+                    for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
+                        row, col = fldmod1(i, 2)
+                        Axis(f[row, col], xscale = scale, title = string(scale),
+                            xminorticksvisible = true, xminorgridvisible = true,
+                            xminorticks = IntervalsBetween(5))
+                    
+                        lines!(range(0.01, 0.99, length = 200), 1:200)
+                    end
+                    
+                    f
+                    """
+            ),
+            Example(
+                name = "Pseudo-log scales",
+                code = """
+                    f = Figure()
+                    
+                    ax1 = Axis(f[1, 1],
+                        xscale = Makie.pseudolog10,
+                        title = "Pseudolog scale",
+                        xticks = [-100, -10, -1, 0, 1, 10, 100]
+                    )
+
+                    ax2 = Axis(f[1, 2],
+                        xscale = Makie.Symlog10(10.0),
+                        title = "Symlog10 with linear scaling\nbetween -10 and 10",
+                        xticks = [-100, -10, 0, 10, 100]
+                    )
+
+                    for ax in [ax1, ax2]
+                        lines!(ax, -100:0.1:100, -100:0.1:100)
+                    end
+                                        
+                    f
+                    """
+            ),
+        ],
+        :xtickformat => [
+            Example(
+                name = "`xtickformat` variants",
+                code = """
+                    f = Figure(figure_padding = 50)
+                    
+                    Axis(f[1, 1], xtickformat = values -> ["\$(value)kg" for value in values])
+                    Axis(f[2, 1], xtickformat = "{:.2f}ms")
+                    Axis(f[3, 1], xtickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
+                    Axis(f[4, 1], xtickformat = values -> [rich("\$value", superscript("XY", color = :red))
+                                                           for value in values])
+                    
+                    f
+                    """
+            )
+        ],
+        :ytickformat => [
+            Example(
+                name = "`ytickformat` variants",
+                code = """
+                    f = Figure()
+                    
+                    Axis(f[1, 1], ytickformat = values -> ["\$(value)kg" for value in values])
+                    Axis(f[1, 2], ytickformat = "{:.2f}ms")
+                    Axis(f[1, 3], ytickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
+                    Axis(f[1, 4], ytickformat = values -> [rich("\$value", superscript("XY", color = :red))
+                                                           for value in values])
+                    
+                    f
+                    """
+            )
+        ],
+        :xticksmirrored => [
+            Example(
+                name = "`xticksmirrored` on and off",
+                code = """
+                    f = Figure()
+                    
+                    Axis(f[1, 1], xticksmirrored = false, xminorticksvisible = true)
+                    Axis(f[1, 2], xticksmirrored = true, xminorticksvisible = true)
+                    
+                    f
+                    """
+            )
+        ],
+        :yticksmirrored => [
+            Example(
+                name = "`yticksmirrored` on and off",
+                code = """
+                    f = Figure()
+                    
+                    Axis(f[1, 1], yticksmirrored = false, yminorticksvisible = true)
+                    Axis(f[2, 1], yticksmirrored = true, yminorticksvisible = true)
+                    
+                    f
+                    """
+            )
+        ],
+        :xminorticks => [
+            Example(
+                name = "`xminorticks` variants",
+                code = """
+                    f = Figure()
+                    
+                    kwargs = (; xminorticksvisible = true, xminorgridvisible = true)
+                    Axis(f[1, 1]; xminorticks = IntervalsBetween(2), kwargs...)
+                    Axis(f[2, 1]; xminorticks = IntervalsBetween(5), kwargs...)
+                    Axis(f[3, 1]; xminorticks = [1, 2, 3, 4], kwargs...)
+                    
+                    f
+                    """
+            )
+        ],
+        :yminorticks => [
+            Example(
+                name = "`yminorticks` variants",
+                code = """
+                    f = Figure()
+                    
+                    kwargs = (; yminorticksvisible = true, yminorgridvisible = true)
+                    Axis(f[1, 1]; yminorticks = IntervalsBetween(2), kwargs...)
+                    Axis(f[1, 2]; yminorticks = IntervalsBetween(5), kwargs...)
+                    Axis(f[1, 3]; yminorticks = [1, 2, 3, 4], kwargs...)
+                    
+                    f
+                    """
+            )
+        ],
+    )
 end

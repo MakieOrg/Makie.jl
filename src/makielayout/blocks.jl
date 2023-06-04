@@ -54,9 +54,6 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     push!(fields_vector, constructor)
 
     q = quote
-        """
-        For information about attributes, use `attribute_help($($name))`.
-        """
         $structdef
 
         export $name
@@ -97,7 +94,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     esc(q)
 end
 
-_defaultstring(x) = string(x)
+_defaultstring(x) = string(MacroTools.striplines(x))
 _defaultstring(x::String) = repr(x)
 
 function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
@@ -118,11 +115,13 @@ function Docs.getdoc(@nospecialize T::Type{<:Block})
         """)
     else
         s = """
-        # `$T <: Block`
+        **`$T <: Block`**
 
         $(block_docs(T))
 
-        ## Attributes
+        **Attributes**
+
+        (type `?$T.x` in the REPL for more information about attribute `x`)
 
         $(_attribute_list(T))
         """
@@ -131,20 +130,8 @@ function Docs.getdoc(@nospecialize T::Type{<:Block})
 end
 
 function _attribute_list(T)
-    ks = sort(collect(keys(default_attribute_values(T, nothing))))
-    default_exprs = attribute_default_expressions(T)
-    layout_attrs = Set([:tellheight, :tellwidth, :height, :width,
-        :valign, :halign, :alignmode])
-    """
-
-    **$T attributes**:
-
-    $(join(["  - `$k`: $(_attribute_docs(T)[k]) Default: `$(default_exprs[k])`" for k in ks if k ∉ layout_attrs], "\n"))
-
-    **Layout attributes**:
-
-    $(join(["  - `$k`: $(_attribute_docs(T)[k]) Default: `$(default_exprs[k])`" for k in ks if k in layout_attrs], "\n"))
-    """
+    ks = sort(collect(keys(_attribute_docs(T))))
+    join(("`$k`" for k in ks), ", ")
 end
 
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
@@ -165,9 +152,9 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             # then default value
             d = quote
                 if haskey($sceneattrsym, $key)
-                    $sceneattrsym[$key][] # only use value of theme entry
+                    to_value($sceneattrsym[$key]) # only use value of theme entry
                 elseif haskey($curthemesym, $key)
-                    $curthemesym[$key][] # only use value of theme entry
+                    to_value($curthemesym[$key]) # only use value of theme entry
                 else
                     $default
                 end
@@ -180,16 +167,6 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
     :(Dict($(pairs...)))
 end
 
-function attribute_help(T)
-    println("Available attributes for $T (use attribute_help($T, key) for more information):")
-    foreach(sort(collect(keys(_attribute_docs(T))))) do key
-        println(key)
-    end
-end
-
-function attribute_help(T, key)
-    println(_attribute_docs(T)[key])
-end
 
 function extract_attributes!(body)
     i = findfirst(
@@ -556,3 +533,63 @@ convert_for_attribute(t::Any, x) = x
 convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
 convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)
+
+Base.@kwdef struct Example
+    name::String
+    backend::Symbol = :CairoMakie # the backend that is used for rendering
+    backend_using::Symbol = backend # the backend that is shown for `using` (for CairoMakie-rendered plots of interactive stuff that should show `using GLMakie`)
+    svg::Bool = true # only for CairoMakie
+    code::String
+end
+
+function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String}, examples::Vector{Example}, default_str)
+    io = IOBuffer()
+
+    println(io, "Default value: `$default_str`")
+    println(io)
+
+    if docs === nothing
+        println(io, "No docstring defined for `$attr`.")
+    else
+        println(io, docs)
+    end
+    println(io)
+
+    for (i, example) in enumerate(examples)
+        println(io, "**Example $i**: $(example.name)")
+        println(io, "```julia")
+        # println(io)
+        # println(io, "# run in the REPL via Makie.example($type, :$attr, $i)")
+        # println(io)
+        println(io, example.code)
+        println(io, "```")
+        println(io)
+    end
+
+    Markdown.parse(String(take!(io)))
+end
+
+# function example(type::Type{<:Block}, attr::Symbol, i::Int)
+#     examples = get(attribute_examples(type), attr, Example[])
+#     if !(1 <= i <= length(examples))
+#         error("Invalid example number for attribute $attr of type $type.")
+#     end
+#     display(eval(Meta.parseall(examples[i].code)))
+#     return
+# end
+
+function attribute_examples(b::Type{<:Block})
+    Dict{Symbol,Vector{Example}}()
+end
+
+# overrides `?Axis.xticks` and similar lookups in the REPL
+function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
+    if !is_attribute(t, s)
+        return Markdown.parse("`$s` is not an attribute of type `$t`. Type `?$t` in the REPL to see the list of available attributes.")
+    end
+    docs = get(_attribute_docs(t), s, nothing)
+    examples = get(attribute_examples(t), s, Example[])
+    default_str = Makie.attribute_default_expressions(t)[s]
+    return repl_docstring(nameof(t), s, docs, examples, default_str)
+end
+
