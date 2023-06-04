@@ -1705,5 +1705,7 @@ end
         sample_density = 100
         "Controls whether to activate the nonlinear clip feature.  Note that this should not be used when the background is ultimately transparent."
         clip = true
+        "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
+        reset_button = Keyboard.left_control & Mouse.left
     end
 end

@@ -520,10 +520,26 @@ function setup_camera_matrices!(po::PolarAxis)
     on(_ -> reset_limits!(po), po.blockscene, po.radius)
     camera(po.overlay).view[] = Mat4f(I)
 
+    e = events(po.scene)
+
     # scroll to zoom
-    on(po.blockscene, events(po.scene).scroll, priority = 100) do scroll
+    on(po.blockscene, e.scroll) do scroll
         if Makie.is_mouseinside(po.scene)
-            rlims!(po, po.target_radius[] * (1.1 ^ (-scroll[2])))
+            po.target_radius[] = po.target_radius[] *  (1.1 ^ (-scroll[2]))
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # Reset button
+    onany(po.blockscene, e.mousebutton, e.keyboardbutton) do e1, e2
+        if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) && 
+            (e1.action == Mouse.press) && (e2.action == Keyboard.press)
+            if ispressed(e, Keyboard.left_shift)
+                autolimits!(po)
+            else
+                reset_limits!(po)
+            end
             return Consume(true)
         end
         return Consume(false)
