@@ -1698,7 +1698,7 @@ end
         "The linestyle of the `r` minor grid."
         rminorgridstyle = inherit(scene, (:Axis, :xminorgridstyle), nothing)
         "Controls if the `r` minor grid is visible."
-        rminorgridvisible = inherit(scene, (:Axis, :xminorgridvisible), true)
+        rminorgridvisible = inherit(scene, (:Axis, :xminorgridvisible), false)
         "The color of the `theta` minor grid."
         thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
         "The linewidth of the `theta` minor grid."
@@ -1706,7 +1706,7 @@ end
         "The linestyle of the `theta` minor grid."
         thetaminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
         "Controls if the `theta` minor grid is visible."
-        thetaminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), true)
+        thetaminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), false)
         "The density at which grid lines are sampled."
         sample_density = 100
         "Controls whether to activate the nonlinear clip feature.  Note that this should not be used when the background is ultimately transparent."
