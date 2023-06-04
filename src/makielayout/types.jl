@@ -1643,6 +1643,10 @@ end
         rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `r` tick labels."
         rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
+        "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
+        rticklabelstrokewidth = 1.0
+        "The color of the outline of `r` ticks. By default this uses the background color."
+        rticklabelstrokecolor = automatic
         "Controls if the `r` ticks are visible."
         rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."

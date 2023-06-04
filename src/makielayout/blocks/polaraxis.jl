@@ -372,12 +372,30 @@ function draw_axis!(po::PolarAxis, axis_radius)
         linewidth = po.thetaminorgridwidth,
         visible = po.thetaminorgridvisible,
     )
+
     # tick labels
+    
+    clipcolor = map(po.blockscene, po.scene.backgroundcolor) do bgc
+        return RGBAf(1, 0, 1, 0.5)
+        bgc = to_color(bgc)
+        if alpha(bgc) == 0f0
+            return to_color(:white)
+        else
+            return bgc
+        end
+    end
+    
+    strokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
+        sc === automatic ? bg : Makie.to_color(sc)
+    end
+
     rticklabelplot = text!(
         po.overlay, rtick_pos_lbl;
         fontsize = po.rticklabelsize,
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
+        strokewidth = po.rticklabelstrokewidth,
+        strokecolor = strokecolor,
         align = (:left, :bottom),
     )
 
@@ -388,16 +406,6 @@ function draw_axis!(po::PolarAxis, axis_radius)
         color = po.thetaticklabelcolor,
         align = thetatick_align,
     )
-
-    clipcolor = map(po.blockscene, po.scene.backgroundcolor) do bgc
-        return RGBAf(1, 0, 1, 0.5)
-        bgc = to_color(bgc)
-        if alpha(bgc) == 0f0
-            return to_color(:white)
-        else
-            return bgc
-        end
-    end
 
     # inner clip
     # scatter shouldn't interfere with lines and text in GLMakie, so this should 
