@@ -4,7 +4,6 @@
 
 - Added a new Axis type, `PolarAxis`, which is an axis with a polar projection.  Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation.  Generally, its attributes are very similar to the usual `Axis` attributes, but `x` is replaced by `r` and `y` by `θ`.  It also inherits from the theme of `Axis` in this manner, so should work seamlessly with Makie themes. [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990)
 - `inherit` now has a new signature `inherit(scene, attrs::NTuple{N, Symbol}, default_value)`, allowing recipe authors to access nested attributes when trying to inherit from the parent Scene.  For example, one could inherit from `scene.Axis.yticks` by `inherit(scene, (:Axis, :yticks), $default_value)`. [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990)
-- Fixed `update_cam!(scene::Scene)` by changing the internal call to `limits` to a call to `boundingbox`. [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990)
 - Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953)
 
 ## v0.19.5
