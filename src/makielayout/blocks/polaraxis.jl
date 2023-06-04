@@ -94,7 +94,7 @@ function Makie.initialize_block!(po::PolarAxis)
     # Setup Scenes
     
     cb = po.layoutobservables.computedbbox
-    scenearea = lift(cb) do cb
+    scenearea = map(po.blockscene, cb) do cb
         return Rect(round.(Int, minimum(cb)), round.(Int, widths(cb)))
     end
 
@@ -135,7 +135,7 @@ function Makie.initialize_block!(po::PolarAxis)
         GridLayoutBase.RectSides(max_width, max_width, max_height, max_height)
     end
 
-    onany(thetaticklabelprotrusions, po.thetaticklabelpad, po.overlay.px_area) do rectsides, pad, area
+    onany(po.blockscene, thetaticklabelprotrusions, po.thetaticklabelpad, po.overlay.px_area) do rectsides, pad, area
         space_from_center = 0.5 .* widths(area)
         space_for_ticks = 2pad .+ (rectsides.left, rectsides.bottom)
         space_for_axis = space_from_center .- space_for_ticks
@@ -143,7 +143,9 @@ function Makie.initialize_block!(po::PolarAxis)
     end
 
     # Set up the title position
-    title_position = lift(pixelarea(po.scene), po.titlegap, po.titlealign, thetaticklabelprotrusions) do area, titlegap, titlealign, thetatlprot
+    title_position = map(
+            po.blockscene, pixelarea(po.scene), po.titlegap, po.titlealign, thetaticklabelprotrusions
+        ) do area, titlegap, titlealign, thetatlprot
         calculate_polar_title_position(area, titlegap, titlealign, thetatlprot)
     end
 
@@ -161,9 +163,13 @@ function Makie.initialize_block!(po::PolarAxis)
     # We only need to update the title protrusion calculation when some parameter
     # which affects the glyph collection changes.  But, we don't want to update
     # the protrusion when the position changes.
-    title_update_obs = lift((x...) -> true, po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize)
+    title_update_obs = map(
+        (x...) -> true, 
+        po.blockscene,
+        po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize
+    )
     #
-    protrusions = lift(thetaticklabelprotrusions, title_update_obs) do thetatlprot, _
+    protrusions = map(po.blockscene, thetaticklabelprotrusions, title_update_obs) do thetatlprot, _
         GridLayoutBase.RectSides(
             thetatlprot.left,
             thetatlprot.right,
@@ -185,6 +191,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
 
     onany(
+            po.blockscene,
             po.rticks, po.rminorticks, po.rtickformat,
             po.rtickangle, po.target_radius, axis_radius, po.sample_density, 
         ) do rticks, rminorticks, rtickformat, rtickangle, data_radius, axis_radius, sample_density
@@ -209,7 +216,9 @@ function draw_axis!(po::PolarAxis, axis_radius)
     thetaminorgridpoints = Observable{Vector{Point2f}}()
 
     # to avoid unneccessary updates we split this up into a couple parts
-    theta_value_labels = map(po.thetaticks, po.thetatickformat) do thetaticks, thetatickformat
+    theta_value_labels = map(
+            po.blockscene, po.thetaticks, po.thetatickformat
+        ) do thetaticks, thetatickformat
         
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
         
@@ -227,7 +236,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
     # align never updates alone so it doesn't need to trigger
     # running this seperately from pos_lbl updates should allow us to resize
     # without recomputing padding for ticks
-    on(theta_value_labels) do (_thetatickvalues, _)
+    on(po.blockscene, theta_value_labels) do (_thetatickvalues, _)
         thetatick_align.val = map(_thetatickvalues) do angle
             s, c = sincos(angle)
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
@@ -238,6 +247,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     # only theta positions rely on the px_area of the scene for padding
     onany(
+            po.blockscene,
             theta_value_labels, po.thetaticklabelpad, axis_radius, po.overlay.px_area
         ) do (_thetatickvalues, _thetaticklabels), px_pad, axis_radius, pixelarea
 
@@ -254,6 +264,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     # remainign grid lines
     onany(
+            po.blockscene,
             theta_value_labels, po.thetaminorticks, axis_radius
         ) do (_thetatickvalues, _), thetaminorticks, axis_radius
         
@@ -266,10 +277,10 @@ function draw_axis!(po::PolarAxis, axis_radius)
     end
 
     onany(
+            po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
             axis_radius, po.overlay.px_area
-            # po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, axis_radius, pixelarea #, pixelarea, trans, area
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, axis_radius, pixelarea
         
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
         
@@ -307,8 +318,9 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     spinepoints = Observable{Vector{Point2f}}()
 
-    onany(po.sample_density, axis_radius
-        ) do sample_density, axis_radius #, pixelarea, trans, area
+    onany(
+            po.blockscene, po.sample_density, axis_radius
+        ) do sample_density, axis_radius
         
         thetas = LinRange(thetalims..., sample_density)
         spinepoints[] = Point2f.(axis_radius, thetas)
@@ -377,7 +389,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         align = thetatick_align,
     )
 
-    clipcolor = lift(po.scene.backgroundcolor) do bgc
+    clipcolor = map(po.blockscene, po.scene.backgroundcolor) do bgc
         return RGBAf(1, 0, 1, 0.5)
         bgc = to_color(bgc)
         if alpha(bgc) == 0f0
@@ -400,11 +412,16 @@ function draw_axis!(po::PolarAxis, axis_radius)
         ClosePath(),
     ])
 
+    ms = map(
+        (rect, radius) -> radius * widths(rect)[1],
+        po.blockscene, po.overlay.px_area, axis_radius
+    )
+
     clipplot = scatter!(
         po.overlay,
         Point2f(0),
         color = clipcolor,
-        markersize = map((rect, radius) -> radius * widths(rect)[1], po.overlay.px_area, axis_radius),
+        markersize = ms,
         marker = inverse_circle,
         visible = po.clip,
     )
@@ -427,7 +444,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         fxaa = false,
         transformation = Transformation() # no polar pls thanks
     )
-    on(axis_radius) do radius
+    on(po.blockscene, axis_radius) do radius
         scale!(clipouter, 2 * Vec3f(radius, radius, 1))
     end
 
@@ -500,11 +517,11 @@ function setup_camera_matrices!(po::PolarAxis)
     axis_radius = Observable(0.8)
     init = Observable{Float64}(isnothing(po.radius[]) ? 10.0 : po.radius[])
     setfield!(po, :target_radius, init)
-    on(_ -> reset_limits!(po), po.radius)
+    on(_ -> reset_limits!(po), po.blockscene, po.radius)
     camera(po.overlay).view[] = Mat4f(I)
 
     # scroll to zoom
-    on(po.scene, events(po.scene).scroll, priority = 100) do scroll
+    on(po.blockscene, events(po.scene).scroll, priority = 100) do scroll
         if Makie.is_mouseinside(po.scene)
             rlims!(po, po.target_radius[] * (1.1 ^ (-scroll[2])))
             return Consume(true)
@@ -513,7 +530,7 @@ function setup_camera_matrices!(po::PolarAxis)
     end
 
     # update view matrix
-    onany(po.scene, axis_radius, po.target_radius) do ar, radius
+    onany(po.blockscene, axis_radius, po.target_radius) do ar, radius
         ratio = ar / radius
         camera(po.scene).view[] = Makie.scalematrix(Vec3f(ratio, ratio, 1))
         return
@@ -521,14 +538,14 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # update projection matrices
     # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -100 ... 100)
-    on(po.scene.px_area) do area
+    on(po.blockscene, po.scene.px_area) do area
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
         camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
     end
 
-    on(po.overlay.px_area) do area
+    on(po.blockscene, po.overlay.px_area) do area
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
@@ -559,4 +576,5 @@ end
 
 function rlims!(po::PolarAxis, r::Real)
     po.radius[] = r
+    return
 end
