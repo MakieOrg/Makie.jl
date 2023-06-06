@@ -107,9 +107,6 @@ function Mat4{ET}(q::Quaternion{T}) where {T, ET}
     )
 end
 
-concrete_type(::Type{Any}, ::Type{T}) where T = T
-concrete_type(::Type{T}, x) where T = T
-
 function Mat3{ET}(q::Quaternion{T}) where {T, ET}
     sx, sy, sz = 2q[4]*q[1], 2q[4]*q[2],  2q[4]*q[3]
     xx, xy, xz = 2q[1]^2,   2q[1]*q[2], 2q[1]*q[3]
