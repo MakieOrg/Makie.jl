@@ -23,22 +23,15 @@ function Makie.plot!(p::ABLines)
 
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
 
-    points = Observable(Point2f[])
-
-    onany(p, limits, p[1], p[2]) do lims, intercept, slope
-        inv = inverse_transform(transf)
-        empty!(points[])
-        f(x) = x * b + a
+    points = map(p, limits, p[1], p[2]) do lims, intercept, slope
+        points = sizehint!(Point2e[], 2length(slope))
         broadcast_foreach(intercept, slope) do intercept, slope
-            f(x) = intercept + slope * x
             xmin, xmax = first.(extrema(lims))
-            push!(points[], Point2f(xmin, f(xmin)))
-            push!(points[], Point2f(xmax, f(xmax)))
+            push!(points, Point2e(xmin, slope * xmin + intercept))
+            push!(points, Point2e(xmax, slope * xmax + intercept))
         end
-        notify(points)
+        return points
     end
-
-    notify(p[1])
 
     linesegments!(p, points; p.attributes...)
     p
