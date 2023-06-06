@@ -22,45 +22,43 @@ end
 
 conversion_trait(::Type{<:Stairs}) = PointBased()
 
-function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
+function Makie.plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
     points = p[1]
 
     steppoints = lift(p, points, p.step) do points, step
+        if !(step in (:pre, :post, :center))
+            error("Invalid step $step. Valid options are :pre, :post and :center")
+        end
+
+        s_points = Vector{eltype(points)}(undef, length(points) * 2 - (step !== :center))
+        s_points[1] = point = points[1]
+        
         if step === :pre
-            s_points = Vector{Point2f}(undef, length(points) * 2 - 1)
-            s_points[1] = point = points[1]
             for i in 1:length(points)-1
                 nextpoint = points[i + 1]
-                s_points[2i] = Point2f(point[1], nextpoint[2])
+                s_points[2i] = Point2(point[1], nextpoint[2])
                 s_points[2i + 1] = nextpoint
                 point = nextpoint
             end
-            s_points
         elseif step === :post
-            s_points = Vector{Point2f}(undef, length(points) * 2 - 1)
-            s_points[1] = point = points[1]
             for i in 1:length(points)-1
-                nextpoint = points[i+1]
-                s_points[2i] = Point2f(nextpoint[1], point[2])
+                nextpoint = points[i + 1]
+                s_points[2i] = Point2(nextpoint[1], point[2])
                 s_points[2i + 1] = nextpoint
                 point = nextpoint
             end
-            s_points
         elseif step === :center
-            s_points = Vector{Point2f}(undef, length(points) * 2)
-            s_points[1] = point = points[1]
             for i in 1:length(points)-1
                 nextpoint = points[i+1]
                 halfx = (point[1] + nextpoint[1]) / 2
-                s_points[2i] = Point2f(halfx, point[2])
-                s_points[2i + 1] = Point2f(halfx, nextpoint[2])
+                s_points[2i] = Point2(halfx, point[2])
+                s_points[2i + 1] = Point2(halfx, nextpoint[2])
                 point = nextpoint
             end
             s_points[end] = point
-            s_points
-        else
-            error("Invalid step $step. Valid options are :pre, :post and :center")
         end
+        
+        return s_points
     end
 
     lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] !== :step]...)
