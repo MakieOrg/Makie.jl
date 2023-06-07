@@ -36,7 +36,7 @@ end
 function calculated_attributes!(::Type{<: Spy}, plot)
 end
 
-function plot!(p::Spy)
+function Makie.plot!(p::Spy)
     rect = lift(p, p.x, p.y) do x, y
         xe = extrema(x)
         ye = extrema(y)
@@ -56,7 +56,7 @@ function plot!(p::Spy)
     xycol = lift(p, rect, p.z, markersize) do rect, z, markersize
         x, y, color = SparseArrays.findnz(z)
         points = map(x, y) do x, y
-            (((Point2f(x, y) .- 1) ./ Point2f(size(z) .- 1)) .*
+            (((Point2(x, y) .- 1) ./ Point2(size(z) .- 1)) .*
             widths(rect) .+ minimum(rect))
         end
         points, convert(Vector{Float32}, color)

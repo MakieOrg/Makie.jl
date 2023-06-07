@@ -208,14 +208,14 @@ end
 
 function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
     a, b = extrema(ranges[dim])
-    whalf = Float32(((b - a) / 2))
-    halfaxis = unit(Point{N, Float32}, dim) .* whalf
+    whalf = Float64(((b - a) / 2))
+    halfaxis = unit(Point{N, Float64}, dim) .* whalf
 
     origin .+ (halfaxis .+ (normalize(dir) * tgap))
 end
 
 _widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
-_widths(x) = Float32(maximum(x) - minimum(x))
+_widths(x) = Float64(maximum(x) - minimum(x))
 
 to3tuple(x::Tuple{Any}) = (x[1], x[1], x[1])
 to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
@@ -245,7 +245,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
 
     mini, maxi = first.(limits), last.(limits)
 
-    origin = Point{N, Float32}(min.(mini, first.(ranges)))
+    origin = Point{N, Float64}(min.(mini, first.(ranges)))
     limit_widths = max.(last.(ranges), maxi) .- origin
     % = minimum(limit_widths) / 100 # percentage
     tfontsize = (%) .* tfontsize
@@ -258,8 +258,8 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     tgap = 0.01limit_widths[offset_indices] .* tgap
 
     for i in 1:N
-        axis_vec = unit(Point{N, Float32}, i)
-        width = Float32(limit_widths[i])
+        axis_vec = unit(Point{N, Float64}, i)
+        width = Float64(limit_widths[i])
         stop = origin .+ (width .* axis_vec)
         if showaxis[i]
             append!(linebuffer, [origin, stop], color = axiscolors[i], linewidth = axislinewidth[i])
@@ -267,14 +267,14 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
         if showticks[i]
             range = ranges[i]
             j = offset_indices[i]
-            tickdir = unit(Vec{N, Float32}, j)
-            offset2 = Float32(limit_widths[j] + tgap[i]) * tickdir
+            tickdir = unit(Vec{N, Float64}, j)
+            offset2 = Float64(limit_widths[j] + tgap[i]) * tickdir
             for (j, tick) in enumerate(range)
                 labels = ticklabels[i]
                 if length(labels) >= j
                     str = labels[j]
                     if !isempty(str)
-                        startpos = (origin .+ ((Float32(tick - origin[i]) * axis_vec)) .+ offset2)
+                        startpos = (origin .+ ((Float64(tick - origin[i]) * axis_vec)) .+ offset2)
                         push!(
                             textbuffer, str, startpos,
                             color = ttextcolor[i], rotation = trotation[i],
@@ -301,10 +301,10 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
             thickness = gridthickness[i]
             for _j = (i + 1):(i + N - 1)
                 j = mod1(_j, N)
-                dir = unit(Point{N, Float32}, j)
+                dir = unit(Point{N, Float64}, j)
                 range = ranges[j]
                 for tick in range
-                    offset = Float32(tick - origin[j]) * dir
+                    offset = Float64(tick - origin[j]) * dir
                     append!(
                         linebuffer, [origin .+ offset, stop .+ offset],
                         color = c, linewidth = thickness
@@ -321,9 +321,9 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,
+    textbuffer = TextBuffer(axis, Point3e, transparency = true, markerspace = :data,
         inspectable = axis.inspectable, visible = axis.visible)
-    linebuffer = LinesegmentBuffer(axis, Point3, transparency = true, inspectable = axis.inspectable,
+    linebuffer = LinesegmentBuffer(axis, Point3e, transparency = true, inspectable = axis.inspectable,
         visible = axis.visible)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))

@@ -58,21 +58,22 @@ end
 Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
 
 function data_limits(hb::Hexbin)
-    bb = Rect3f(hb.plots[1][1][])
-    fn(num::Real) = Float32(num)
-    fn(tup::Union{Tuple,Vec2}) = Vec2f(tup...)
+    bb = Rect3(hb.plots[1][1][])
+    fn(num::Real) = Float64(num)
+    fn(tup::Union{Tuple,Vec2}) = Vec2(tup...)
 
     ms = 2 .* fn(hb.plots[1].markersize[])
     nw = widths(bb) .+ (ms..., 0.0f0)
     no = bb.origin .- ((ms ./ 2.0f0)..., 0.0f0)
 
-    return Rect3f(no, nw)
+    return Rect3(no, nw)
 end
 
 function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
 
-    points = Observable(Point2f[])
+    FT = floattype(xy)
+    points = Observable(Point2{FT}[])
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
 
@@ -142,7 +143,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
                     c = get(d, (ix, iy), 0)
-                    push!(points[], Point2f(_x, _y))
+                    push!(points[], Point2{FT}(_x, _y))
                     push!(count_hex[], scale(c))
                 end
             end
@@ -152,7 +153,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 if value >= threshold
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
-                    push!(points[], Point2f(_x, _y))
+                    push!(points[], Point2{FT}(_x, _y))
                     push!(count_hex[], scale(value))
                 end
             end

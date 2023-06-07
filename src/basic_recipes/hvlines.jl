@@ -41,8 +41,8 @@ end
 function projview_to_2d_limits(pv)
     xmin, xmax = minmax((((-1, 1) .- pv[1, 4]) ./ pv[1, 1])...)
     ymin, ymax = minmax((((-1, 1) .- pv[2, 4]) ./ pv[2, 2])...)
-    origin = Vec2f(xmin, ymin)
-    return Rect2f(origin, Vec2f(xmax, ymax) - origin)
+    origin = Vec2(xmin, ymin)
+    return Rect2(origin, Vec2(xmax, ymax) - origin)
 end
 
 function Makie.plot!(p::Union{HLines, VLines})
@@ -50,9 +50,10 @@ function Makie.plot!(p::Union{HLines, VLines})
     transf = transform_func_obs(scene)
 
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
-
-    points = Observable(Point2f[])
-
+    
+    ET = floattype(p[1])
+    points = Observable(Point2{ET}[])
+    
     mi = p isa HLines ? p.xmin : p.ymin
     ma = p isa HLines ? p.xmax : p.ymax
 
@@ -67,15 +68,15 @@ function Makie.plot!(p::Union{HLines, VLines})
                 x_ma = min_x + (max_x - min_x) * ma
                 x_mi = _apply_x_transform(inv, x_mi)
                 x_ma = _apply_x_transform(inv, x_ma)
-                push!(points[], Point2f(x_mi, val))
-                push!(points[], Point2f(x_ma, val))
+                push!(points[], Point2{ET}(x_mi, val))
+                push!(points[], Point2{ET}(x_ma, val))
             elseif p isa VLines
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
                 y_mi = _apply_y_transform(inv, y_mi)
                 y_ma = _apply_y_transform(inv, y_ma)
-                push!(points[], Point2f(val, y_mi))
-                push!(points[], Point2f(val, y_ma))
+                push!(points[], Point2{ET}(val, y_mi))
+                push!(points[], Point2{ET}(val, y_ma))
             end
         end
         notify(points)

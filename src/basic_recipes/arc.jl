@@ -21,11 +21,11 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(p::Arc)
+function Makie.plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(p, args...) do origin, radius, start_angle, stop_angle, resolution
         return map(range(start_angle, stop=stop_angle, length=resolution)) do angle
-            return origin .+ Point2f((cos(angle), sin(angle)) .* radius)
+            return origin .+ Point2((cos(angle), sin(angle)) .* radius)
         end
     end
     attr = Attributes(p)

@@ -90,8 +90,8 @@ function fit_qqplot(x, y; qqline = :none)
         throw(ArgumentError(msg))
     end
     h = qqbuild(x, y)
-    points = Point2f.(h.qx, h.qy)
-    qqline === :none && return points, Point2f[]
+    points = Point2.(h.qx, h.qy)
+    qqline === :none && return points, eltype(points)[]
     xs = collect(extrema(h.qx))
     if qqline === :identity
         ys = xs
@@ -103,7 +103,7 @@ function fit_qqplot(x, y; qqline = :none)
         slp = (quanty[2] - quanty[1]) / (quantx[2] - quantx[1])
         ys = @. quanty + slp * (xs - quantx)
     end
-    return points, Point2f.(xs, ys)
+    return points, eltype(points).(xs, ys)
 end
 
 # Fit distribution type, otherwise leave first argument unchanged

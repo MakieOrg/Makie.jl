@@ -75,12 +75,13 @@ conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v
 
-flip_xy(p::Point2f) = reverse(p)
+flip_xy(p::Point2) = reverse(p)
 flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
     args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
+    FT = floattype(plot[1], plot[2])
     signals = lift(
         plot,
         plot[1],
@@ -93,14 +94,14 @@ function Makie.plot!(plot::BoxPlot)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
         ww = whiskerwidth === :match ? boxwidth : whiskerwidth * boxwidth
-        outlier_points = Point2f[]
-        centers = Float32[]
-        medians = Float32[]
-        boxmin = Float32[]
-        boxmax = Float32[]
-        notchmin = Float32[]
-        notchmax = Float32[]
-        t_segments = Point2f[]
+        outlier_points = Point2{FT}[]
+        centers = FT[]
+        medians = FT[]
+        boxmin = FT[]
+        boxmax = FT[]
+        notchmin = FT[]
+        notchmax = FT[]
+        t_segments = Point2{FT}[]
         outlier_indices = Int[]
         T = color isa AbstractVector ? eltype(color) : typeof(color)
         boxcolor = T[]

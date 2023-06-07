@@ -67,21 +67,19 @@ to_lines(polygon) = convert_arguments(Lines, polygon)[1]
 to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
 function to_lines(meshes::AbstractVector)
-    line = Point2f[]
-    for (i, mesh) in enumerate(meshes)
+    # TODO: handle empty inputs better
+    line = isempty(meshes) ? Point2f[] : to_lines(meshes[1])
+    PT = eltype(line)
+    for mesh in view(meshes, 2:length(meshes))
         points = to_lines(mesh)
+        push!(line, PT(NaN))
         append!(line, points)
-        # push!(line, points[1])
-        # dont need to separate the last line segment
-        if i != length(meshes)
-            push!(line, Point2f(NaN))
-        end
     end
     return line
 end
 
-function to_lines(polygon::AbstractVector{<: VecTypes})
-    result = Point2f.(polygon)
+function to_lines(polygon::AbstractVector{<: VecTypes{2, T}}) where T
+    result = Point2{T}.(polygon)
     push!(result, polygon[1])
     return result
 end

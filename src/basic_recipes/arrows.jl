@@ -102,11 +102,11 @@ function _circle(origin, r, normal, N)
 end
 
 
-convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
+convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2.(x, y), Vec2.(u, v))
 function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
+    (vec(Point2.(x, y')), vec(Vec2.(u, v)))
 end
-convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
+convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3.(x, y, z), Vec3.(u, v, w))
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
@@ -130,9 +130,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = s .* dir
                 else
-                    shift = Vec2f(0)
+                    shift = zero(dir)
                 end
-                return Point2f(p1 .- shift) => Point2f(p1 .- shift .+ (dir .* s))
+                return Point2(p1 .- shift) => Point2(p1 .- shift .+ (dir .* s))
             end
         end
 
@@ -195,11 +195,11 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         start = lift(arrowplot, points, directions, align, lengthscale) do points, dirs, align, scales
             return broadcast(points, dirs, scales) do p, dir, s
                 if align in (:head, :lineend, :tailend, :headstart, :center)
-                    shift = Vec3f(0)
+                    shift = zero(dir)
                 else
                     shift = -s .* dir
                 end
-                return Point3f(p .- shift)
+                return Point3(p .- shift)
             end
         end
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)

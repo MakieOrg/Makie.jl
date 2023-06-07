@@ -57,7 +57,7 @@ function bar_rectangle(x, y, width, fillto, in_y_direction)
     ymin = min(fillto, y)
     ymax = max(fillto, y)
     w = abs(width)
-    rect = Rectf(x - (w / 2f0), ymin, w, ymax - ymin)
+    rect = Rect(x - (w / 2), ymin, w, ymax - ymin)
     return in_y_direction ? rect : flip(rect)
 end
 
@@ -173,7 +173,7 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
         if length(bar_labels) == length(xpositions)
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background, color_over_bar, label_offset)
             label_pos = map(xpositions, ypositions, bar_labels) do x, y, l
-                return (string(l), in_y_direction ? Point2f(x, y) : Point2f(y, x))
+                return (string(l), in_y_direction ? Point2(x, y) : Point2(y, x))
             end
             return (label_pos, attributes...)
         else
@@ -185,8 +185,8 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
 end
 
 function Makie.plot!(p::BarPlot)
-
-    labels = Observable(Tuple{String, Point2f}[])
+    FT = floattype(p[1])
+    labels = Observable(Tuple{String, Point2{FT}}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])
     label_colors = Observable(RGBAf[])

@@ -63,48 +63,48 @@ end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
-        Vec4f(x, y, e, e)
+        Vec4(x, y, e, e)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
-    xyerr = broadcast(Vec4f, x, y, error_low, error_high)
+    xyerr = broadcast(Vec4, x, y, error_low, error_high)
     (xyerr,)
 end
 
 
 function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2}})
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
-        Vec4f(x, y, el, eh)
+        Vec4(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_both)
     xyerr = broadcast(xy, error_both) do (x, y), e
-        Vec4f(x, y, e, e)
+        Vec4(x, y, e, e)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low, error_high)
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
-        Vec4f(x, y, el, eh)
+        Vec4(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low_high::AbstractVector{<:VecTypes{2}})
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
-        Vec4f(x, y, el, eh)
+        Vec4(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function Makie.convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3}})
     xyerr = broadcast(xy_error_both) do (x, y, e)
-        Vec4f(x, y, e, e)
+        Vec4(x, y, e, e)
     end
     (xyerr,)
 end
@@ -112,13 +112,13 @@ end
 ### conversions for rangebars
 
 function Makie.convert_arguments(::Type{<:Rangebars}, val, low, high)
-    val_low_high = broadcast(Vec3f, val, low, high)
+    val_low_high = broadcast(Vec3, val, low, high)
     (val_low_high,)
 end
 
 function Makie.convert_arguments(::Type{<:Rangebars}, val, low_high)
     val_low_high = broadcast(val, low_high) do val, (low, high)
-        Vec3f(val, low, high)
+        Vec3(val, low, high)
     end
     (val_low_high,)
 end
@@ -143,8 +143,8 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
     linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
         return map(x_y_low_high) do (x, y, l, h)
             in_y ?
-                (Point2f(x, y - l), Point2f(x, y + h)) :
-                (Point2f(x - l, y), Point2f(x + h, y))
+                (Point2(x, y - l), Point2(x, y + h)) :
+                (Point2(x - l, y), Point2(x + h, y))
         end
     end
 
@@ -169,8 +169,8 @@ function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTy
     linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
         return map(vlh) do (v, l, h)
             in_y ?
-                (Point2f(v, l), Point2f(v, h)) :
-                (Point2f(l, v), Point2f(h, v))
+                (Point2(v, l), Point2(v, h)) :
+                (Point2(l, v), Point2(h, v))
         end
     end
 
@@ -234,32 +234,21 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     plot
 end
 
-function scene_to_screen(pts, scene)
-    p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
-    p1m1 = Ref(scene.camera.projectionview[]) .* p4
-    projected = Ref(inv(scene.camera.pixel_space[])) .* p1m1
-    [Point2.(p[Vec(1, 2)]...) for p in projected]
-end
+scene_to_screen(pts::AbstractArray, scene) =  scene_to_screen.(pts, (scene,))
+screen_to_scene(pts::AbstractArray, scene) =  screen_to_scene.(pts, (scene,))
 
-function screen_to_scene(pts, scene)
-    p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
-    p1m1 = Ref(scene.camera.pixel_space[]) .* p4
-    projected = Ref(inv(scene.camera.projectionview[])) .* p1m1
-    [Point2.(p[Vec(1, 2)]...) for p in projected]
-end
-
-function scene_to_screen(p::T, scene) where T <: Point
-    p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
+function scene_to_screen(p::Point{N, T}, scene) where {N, T}
+    p4 = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), 1.0)
     p1m1 = scene.camera.projectionview[] * p4
     projected = inv(scene.camera.pixel_space[]) * p1m1
-    T(projected[Vec(1, 2)]...)
+    return Point{2, T}(projected[1], projected[2])
 end
 
-function screen_to_scene(p::T, scene) where T <: Point
-    p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
+function screen_to_scene(p::Point{N, T}, scene) where {N, T}
+    p4 = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), 1.0)
     p1m1 = scene.camera.pixel_space[] * p4
     projected = inv(scene.camera.projectionview[]) * p1m1
-    T(projected[Vec(1, 2)]...)
+    return Point{2, T}(projected[1], projected[2])
 end
 
 # ignore whiskers when determining data limits

@@ -46,7 +46,7 @@ $(ATTRIBUTES)
 end
 
 function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real})
-    map(x -> elconvert(Float32, x), (x, y, z))
+    return map(convert_single_argument, (x, y, z))
 end
 
 function compute_contourf_colormap(levels, cmap, elow, ehigh)
@@ -112,12 +112,13 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, c.extendhigh)
 
-    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
+    FT = floattype(xs, ys, zs)
+    PolyType = typeof(Polygon(Point2{FT}[], [Point2{FT}[]]))
 
     polys = Observable(PolyType[])
     colors = Observable(Float64[])
 
-    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high, triangulation)
+    function calculate_polys(xs, ys, zs, levels::Vector{<:AbstractFloat}, is_extended_low, is_extended_high, triangulation)
         empty!(polys[])
         empty!(colors[])
 
@@ -138,7 +139,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
 
         for (fc, lc) in zip(filledcontours, levelcenters)
             pointvecs = map(fc.polylines) do vecs
-                map(Point2f, vecs)
+                map(Point2{FT}, vecs)
             end
             if isempty(pointvecs)
                 continue

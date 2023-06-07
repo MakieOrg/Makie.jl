@@ -44,13 +44,13 @@ end
 
 function convert_arguments(::Type{<: Series}, x::AbstractVector, ys::AbstractMatrix)
     return (map(1:size(ys, 1)) do i
-        Point2f.(replace_missing.(x), replace_missing.(view(ys, i, :)))
+        Point2.(replace_missing.(x), replace_missing.(view(ys, i, :)))
     end,)
 end
 
 function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}}) where {X, Y}
     return (map(arg) do (x, y)
-        Point2f.(replace_missing.(x), replace_missing.(y))
+        Point2.(replace_missing.(x), replace_missing.(y))
     end,)
 end
 
@@ -60,7 +60,7 @@ end
 
 function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVector{<:Point2}})
     return (map(arg) do points
-        Point2f.(replace_missing.(first.(points)), replace_missing.(last.(points)))
+        Point2.(replace_missing.(first.(points)), replace_missing.(last.(points)))
     end,)
 end
 

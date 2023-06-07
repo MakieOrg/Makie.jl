@@ -22,7 +22,7 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(plot::Pie)
+function Makie.plot!(plot::Pie)
 
     values = plot[1]
 
@@ -46,18 +46,18 @@ function plot!(plot::Pie)
 
             # curve points
             points = map(LinRange(sta, en, nvertices)) do rad
-                Point2f(cos(rad + offset), sin(rad + offset)) .* radius
+                Point2(radius * cos(rad + offset), radius * sin(rad + offset))
             end
 
             # add inner points (either curve or one point)
             if inner_radius != 0
                 inner_points = map(LinRange(en, sta, nvertices)) do rad
-                    Point2f(cos(rad + offset), sin(rad + offset)) .* inner_radius
+                    Point2(inner_radius * cos(rad + offset), inner_radius * sin(rad + offset))
                 end
 
                 append!(points, inner_points)
             else
-                push!(points, Point2f(0, 0))
+                push!(points, eltype(points)(0, 0))
             end
 
             points

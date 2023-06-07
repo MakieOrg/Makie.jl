@@ -53,6 +53,7 @@ end
 function Makie.plot!(plot::CrossBar)
     args = @extract plot (width, dodge, n_dodge, gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
+    FT = floattype(plot[1], plot[2], plot[3], plot[4])
     signals = lift(
         plot,
         plot[1],
@@ -65,7 +66,7 @@ function Makie.plot!(plot::CrossBar)
         show_notch = show_notch && (nmin !== automatic && nmax !== automatic)
 
         # for horizontal crossbars just flip all components
-        fpoint, frect = Point2f, Rectf
+        fpoint, frect = Point2{FT}, Rect{2, FT}
         if orientation === :horizontal
             fpoint, frect = flip_xy ∘ fpoint, flip_xy ∘ frect
         end

@@ -4,10 +4,11 @@ function convert_arguments(P::PlotFunc, d::KernelDensity.UnivariateKDE)
 end
 
 function convert_arguments(::Type{<:Poly}, d::KernelDensity.UnivariateKDE)
-    points = Vector{Point2f}(undef, length(d.x) + 2)
-    points[1] = Point2f(d.x[1], 0)
-    points[2:end-1] .= Point2f.(d.x, d.density)
-    points[end] = Point2f(d.x[end], 0)
+    # d.density is always Float64
+    points = Vector{Point2e}(undef, length(d.x) + 2)
+    points[1] = Point2e(d.x[1], 0)
+    points[2:end-1] .= Point2e.(d.x, d.density)
+    points[end] = Point2e(d.x[end], 0)
     (points,)
 end
 
@@ -53,7 +54,7 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(plot::Density{<:Tuple{<:AbstractVector}})
+function Makie.plot!(plot::Density{<:Tuple{<:AbstractVector}})
     x = plot[1]
 
     lowerupper = lift(plot, x, plot.direction, plot.boundary, plot.offset,
@@ -67,11 +68,11 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         )
 
         if dir === :x
-            lowerv = Point2f.(k.x, offs)
-            upperv = Point2f.(k.x, offs .+ k.density)
+            lowerv = Point2.(k.x, offs)
+            upperv = Point2.(k.x, offs .+ k.density)
         elseif dir === :y
-            lowerv = Point2f.(offs, k.x)
-            upperv = Point2f.(offs .+ k.density, k.x)
+            lowerv = Point2.(offs, k.x)
+            upperv = Point2.(offs .+ k.density, k.x)
         else
             error("Invalid direction $dir, only :x or :y allowed")
         end
@@ -90,14 +91,13 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         end
     end
 
-    lower = Observable(Point2f[])
-    upper = Observable(Point2f[])
+    lower = Observable(first(lowerupper[]))
+    upper = Observable(last(lowerupper[]))
 
     on(plot, lowerupper) do (l, u)
         lower.val = l
         upper[] = u
     end
-    notify(lowerupper)
 
     colorobs = Observable{RGBColors}()
     map!(plot, colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir

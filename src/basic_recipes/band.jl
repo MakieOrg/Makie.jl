@@ -17,7 +17,7 @@ $(ATTRIBUTES)
     attr
 end
 
-convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
+convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2.(x, ylower), Point2.(x, yupper))
 
 function band_connect(n)
     ns = 1:n-1

@@ -48,24 +48,24 @@ end
 # _computed_extendhigh
 
 function _get_isoband_levels(levels::Int, mi, ma)
-    edges = Float32.(LinRange(mi, ma, levels+1))
+    return collect(LinRange(mi, ma, levels+1))
 end
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
-    edges = Float32.(levels)
+    edges = convert_single_argument(levels)
     @assert issorted(edges)
-    edges
+    return edges
 end
 
 conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
 
 function _get_isoband_levels(::Val{:normal}, levels, values)
-    _get_isoband_levels(levels, extrema_nan(values)...)
+    return _get_isoband_levels(levels, extrema_nan(values)...)
 end
 
 function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     mi, ma = extrema_nan(values)
-    Float32.(levels .* (ma - mi) .+ mi)
+    return convert_single_argument(levels .* (ma - mi) .+ mi)
 end
 
 
@@ -93,29 +93,31 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, highcolor)
 
-    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
+    PolyType = typeof(Polygon(Point2e[], [Point2e[]]))
 
     polys = Observable(PolyType[])
     colors = Observable(Float64[])
 
-    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
+    function calculate_polys(xs, ys, zs, levels::Vector{<:Real}, is_extended_low, is_extended_high)
         empty!(polys[])
         empty!(colors[])
 
         levels = copy(levels)
         @assert issorted(levels)
+
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
         lows = levels[1:end-1]
         highs = levels[2:end]
 
         # zs needs to be transposed to match rest of makie
-        isos = Isoband.isobands(xs, ys, zs', lows, highs)
+        # this converts each input to Float64 and always returns Float64's
+        isos = Isoband.isobands(xs, ys, zs', lows, highs) 
 
         levelcenters = (highs .+ lows) ./ 2
 
         for (i, (center, group)) in enumerate(zip(levelcenters, isos))
-            points = Point2f.(group.x, group.y)
+            points = Point2.(group.x, group.y)
             polygroups = _group_polys(points, group.id)
             for polygroup in polygroups
                 outline = polygroup[1]
@@ -180,7 +182,7 @@ function _group_polys(points, ids)
 
     # each group has first an outer polygon, and then its holes
     # TODO: don't specifically type this 2f0?
-    groups = Vector{Vector{Point2f}}[]
+    groups = Vector{Vector{Point2e}}[]
 
     # a dict that maps index in `polys` to index in `groups` for outer polys
     outerindex_groupdict = Dict{Int, Int}()

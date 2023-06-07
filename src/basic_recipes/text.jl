@@ -141,13 +141,13 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})    
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point{N, T}}}}}) where {N, T}
     strings_and_positions = plot[1]
 
     strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
 
     positions = Observable(
-        Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
+        Point3{T}[to_ndim(Point3{T}, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
     )
 
     attrs = plot.attributes
@@ -158,7 +158,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
     # update both text and positions together
     on(strings_and_positions) do str_pos
         strs = first.(str_pos)
-        poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
+        poss = to_ndim.(Ref(Point3{T}), last.(str_pos), 0)
 
         strings.val != strs && (strings[] = strs)
         positions.val != poss && (positions[] = poss)

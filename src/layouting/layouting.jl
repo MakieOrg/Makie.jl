@@ -302,9 +302,9 @@ _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
-function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection, offset, transfunc, space)
+function text_quads(atlas::TextureAtlas, position::VecTypes{N, T}, gc::GlyphCollection, offset, transfunc, space) where {N, T}
     p = apply_transform(transfunc, position, space)
-    pos = [to_ndim(Point3f, p, 0) for _ in gc.origins]
+    pos = [to_ndim(Point3{T}, p, 0) for _ in gc.origins]
 
     pad = atlas.glyph_padding / atlas.pix_per_glyph
     off = _offset_to_vec(offset)
@@ -325,6 +325,7 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
     end
 
     # pos is the (space) position given to text (with transfunc applied)
+    # (keep float type for further processing in the backend)
     # char_offsets are 3D offsets in marker space, including:
     #   - offsets passed to text
     #   - character origins (relative to the string origin pos)
@@ -335,9 +336,9 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
     return pos, char_offsets, quad_offsets, uvs, scales
 end
 
-function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc, space)
+function text_quads(atlas::TextureAtlas, position::Vector{<: VecTypes{N, T}}, gcs::Vector{<: GlyphCollection}, offset, transfunc, space) where {N, T}
     ps = apply_transform(transfunc, position, space)
-    pos = [to_ndim(Point3f, p, 0) for (p, gc) in zip(ps, gcs) for _ in gc.origins]
+    pos = [to_ndim(Point3{T}, p, 0) for (p, gc) in zip(ps, gcs) for _ in gc.origins]
 
     pad = atlas.glyph_padding / atlas.pix_per_glyph
     off = _offset_to_vec(offset)

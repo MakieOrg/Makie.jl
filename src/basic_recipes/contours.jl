@@ -56,49 +56,49 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
-angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
+angle(p1::VecTypes{2, T}, p2::VecTypes{2, T}) where T =
     atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
 
-function label_info(lev, vertices, col)
+function label_info(level, vertices::Vector{<: VecTypes{N, FT}}, color) where {N, FT}
     mid = ceil(Int, 0.5f0 * length(vertices))
-    pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
-    (
-        lev,
-        map(p -> to_ndim(Point3f, p, lev), Tuple(pts)),
-        col,
+    pts = (
+        to_ndim(Point3{FT}, vertices[max(firstindex(vertices), mid - 1)], level),
+        to_ndim(Point3{FT}, vertices[mid], level),
+        to_ndim(Point3{FT}, vertices[min(mid + 1, lastindex(vertices))], level)
     )
+    return (level, pts, color)
 end
 
-function contourlines(::Type{<: Contour}, contours, cols, labels)
-    points = Point2f[]
+function contourlines(::Type{<: Contour}, contours, cols, labels, FT::Type)
+    points = Point2{FT}[]
     colors = RGBA{Float32}[]
-    lev_pos_col = Tuple{Float32,NTuple{3,Point2f},RGBA{Float32}}[]
+    lev_pos_col = Tuple{FT, NTuple{3, Point2{FT}}, RGBA{Float32}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             append!(points, elem.vertices)
-            push!(points, Point2f(NaN32))
+            push!(points, Point2{FT}(NaN))
             append!(colors, fill(color, length(elem.vertices) + 1))
             labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
         end
     end
-    points, colors, lev_pos_col
+    return points, colors, lev_pos_col
 end
 
-function contourlines(::Type{<: Contour3d}, contours, cols, labels)
-    points = Point3f[]
+function contourlines(::Type{<: Contour3d}, contours, cols, labels, FT::Type)
+    points = Point3{FT}[]
     colors = RGBA{Float32}[]
-    lev_pos_col = Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[]
+    lev_pos_col = Tuple{FT, NTuple{3, Point3{FT}}, RGBA{Float32}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
-                push!(points, to_ndim(Point3f, p, c.level))
+                push!(points, to_ndim(Point3{FT}, p, c.level))
             end
-            push!(points, Point3f(NaN32))
+            push!(points, Point3{FT}(NaN))
             append!(colors, fill(color, length(elem.vertices) + 1))
             labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
         end
     end
-    points, colors, lev_pos_col
+    return points, colors, lev_pos_col
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -207,15 +207,16 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, plot, args..., levels)
+    FT = floattype(x, y, z, levels)
+
     cont_lines = lift(plot, x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
-        t = eltype(z)
         # Compute contours
-        xv, yv = to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t)
-        contours = Contours.contours(xv, yv, z,  convert(Vector{t}, levels))
-        contourlines(T, contours, level_colors, labels)
+        xv, yv = to_vector(x, size(z, 1), FT), to_vector(y, size(z, 2), FT)
+        contours = Contours.contours(xv, yv, z,  convert(Vector{FT}, levels))
+        contourlines(T, contours, level_colors, labels, FT)
     end
 
-    P = T <: Contour ? Point2f : Point3f
+    P = T <: Contour ? Point2{FT} : Point3{FT}
     scene = parent_scene(plot)
     space = plot.space[]
 
@@ -238,7 +239,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         col = texts.color.val; empty!(col)
         lbl = texts.text.val; empty!(lbl)
         for (lev, (p1, p2, p3), color) in lev_pos_col
-            rot_from_horz::Float32 = angle(project(scene, p1), project(scene, p3))
+            rot_from_horz = Float32(angle(project(scene, p1), project(scene, p3)))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
             rot_from_vert::Float32 = if abs(rot_from_horz) > 0.5f0 * π
@@ -270,7 +271,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         bb = bboxes[n]
         nlab = length(bboxes)
         masked = copy(segments)
-        nan = P(NaN32)
+        nan = P(NaN)
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
@@ -305,8 +306,8 @@ end
 function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     axes = (x[1], x[2])
     extremata = map(extrema∘to_value, axes)
-    minpoint = Point2f(first.(extremata)...)
+    minpoint = Point2(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
-    rect = Rect2f(minpoint, Vec2f(widths))
+    rect = Rect2(minpoint, Vec2(widths))
     return unique(decompose(Point, rect))
 end

@@ -6,6 +6,23 @@ const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 const NativeFloat = Union{Float64, Float32}
 const NativePoint = Point{N, T} where {N, T <: NativeFloat}
 
+floattype(::Type{Float64}) = Float64
+floattype(::Type{<: Real}) = Float32
+floattype(::T) where T <: Real = floattype(T)
+floattype(::VecTypes{N, T}) where {N, T <: Real} = floattype(T)
+floattype(::AbstractArray{T}) where T <: Real = floattype(T)
+floattype(::AbstractArray{VT}) where {N, T <: Real, VT <: VecTypes{N, T}} = floattype(T)
+floattype(::Rect{N, T}) where {N, T <: Real} = floattype(T)
+floattype(x::Observable) = floattype(x[])
+function floattype(a, others...)
+    if floattype(a) === Float64
+        return Float64
+    else
+        return floattype(others...)
+    end
+end
+
+
 # if no plot type based conversion is defined, we try using a trait
 function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T)

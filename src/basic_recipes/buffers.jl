@@ -4,17 +4,17 @@ efficiently append + push new values to them
 =#
 
 function LinesegmentBuffer(
-        scene::SceneLike, ::Type{Point{N}} = Point{2};
+        scene::SceneLike, ::Type{PT} = Point2f;
         color = RGBAf[], linewidth = Float32[],
         kw_args...
-    ) where N
+    ) where PT <: Point
     linesegments!(
-        scene, Point{N, Float32}[]; color = color,
+        scene, PT[]; color = color,
         linewidth = linewidth, kw_args...
     )
 end
 
-function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
+function append!(lsb::LineSegments, positions::Vector{<: Point}; color = :black, linewidth = 1.0)
     thickv = same_length_array(positions, linewidth, key"linewidth"())
     colorv = same_length_array(positions, color, key"color"())
     append!(lsb[1][], positions)
@@ -23,7 +23,7 @@ function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color 
     return
 end
 
-function push!(tb::LineSegments, positions::Point{N, Float32}; kw_args...) where N
+function push!(tb::LineSegments, positions::Point; kw_args...)
     append!(tb, [positions]; kw_args...)
 end
 
@@ -43,16 +43,16 @@ function finish!(lsb::LineSegments)
 end
 
 function TextBuffer(
-        scene::SceneLike, ::Type{Point{N}} = Point{2};
+        scene::SceneLike, ::Type{PT} = Point2f;
         rotation = [Quaternionf(0,0,0,1)],
         color = RGBAf[RGBAf(0,0,0,0)],
         fontsize = Float32[0],
         font = [defaultfont()],
         align = [Vec2f(0)],
         kw_args...
-    ) where N
+    ) where PT <: Point
     annotations!(
-        scene, String[" "], [Point{N, Float32}(0)];
+        scene, String[" "], [PT(0)];
         rotation = rotation,
         color = color,
         fontsize = fontsize,
@@ -82,17 +82,20 @@ function finish!(tb::Annotations)
 end
 
 
-function push!(tb::Annotations, text::String, position::VecTypes{N}; kw_args...) where N
-    append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
+function push!(
+        tb::Annotations{Tuple{Vector{Tuple{String, Point{N, T}}}}}, 
+        text::String, position::VecTypes{N}; kw_args...
+    ) where {N, T}
+    append!(tb, [(String(text), Point{N, T}(position))]; kw_args...)
 end
 
-function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
+function append!(tb::Annotations, text::Vector{String}, positions::Vector{<: Point}; kw_args...)
     text_positions = convert_argument(Annotations, text, positions)[1]
     append!(tb, text_positions; kw_args...)
     return
 end
 
-function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
+function append!(tb::Annotations, text_positions::Vector{Tuple{String, PT}}; kw_args...) where PT <: Point
     append!(tb[1][], text_positions)
     kw = Dict(kw_args)
     for key in (:color, :rotation, :fontsize, :font, :align)

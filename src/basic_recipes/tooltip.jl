@@ -70,8 +70,8 @@ Creates a tooltip pointing at `position` displaying the given `string`
     )
 end
 
-convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString) = (Point2f(x, y), str)
-convert_arguments(::Type{<: Tooltip}, x::Real, y::Real) = (Point2f(x, y),)
+convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString) = (Point2(x, y), str)
+convert_arguments(::Type{<: Tooltip}, x::Real, y::Real) = (Point2(x, y),)
 function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
     plot.attributes[:text]  = plot[2]
     tooltip!(plot, plot[1]; plot.attributes...)

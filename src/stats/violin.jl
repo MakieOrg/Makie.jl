@@ -47,17 +47,18 @@ function getuniquevalue(v::AbstractVector, idxs)
     return f
 end
 
-function plot!(plot::Violin)
+function Makie.plot!(plot::Violin)
     x, y = plot[1], plot[2]
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth, weights,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
+    FT = floattype(x, y)
     signals = lift(plot, x, y,
                    args...) do x, y, width, vside, color, show_median, n, bound, bw, w, limits, max_density,
                                dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all componentes
-        point_func = Point2f
+        point_func = Point2{FT}
         if orientation === :horizontal
             point_func = flip_xy ∘ point_func
         end
@@ -93,8 +94,8 @@ function plot!(plot::Violin)
             max_density
         end
 
-        vertices = Vector{Point2f}[]
-        lines = Pair{Point2f, Point2f}[]
+        vertices = Vector{Point2{FT}}[]
+        lines = Pair{Point2{FT}, Point2{FT}}[]
         colors = RGBA{Float32}[]
 
         for spec in specs

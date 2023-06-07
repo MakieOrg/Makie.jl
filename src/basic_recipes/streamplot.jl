@@ -43,8 +43,8 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, z
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
     zmin, zmax = extrema(zrange)
-    mini = Vec3f(xmin, ymin, zmin)
-    maxi = Vec3f(xmax, ymax, zmax)
+    mini = Vec3(xmin, ymin, zmin)
+    maxi = Vec3(xmax, ymax, zmax)
     return (f, Rect(mini, maxi .- mini))
 end
 
@@ -76,9 +76,9 @@ Links:
 function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0) where {N, T}
     resolution = to_ndim(Vec{N, Int}, resolutionND, last(resolutionND))
     mask = trues(resolution...) # unvisited squares
-    arrow_pos = Point{N, Float32}[]
+    arrow_pos = Point{N, T}[]
     arrow_dir = Vec{N, Float32}[]
-    line_points = Point{N, Float32}[]
+    line_points = Point{N, T}[]
     colors = Float64[]
     line_colors = Float64[]
     dt = Point{N, Float32}(stepsize)
@@ -121,7 +121,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
                 n_linepoints = 1
                 x = x0
                 ccur = c
-                push!(line_points, Point{N, Float32}(NaN), x)
+                push!(line_points, Point{N, T}(NaN), x)
                 push!(line_colors, 0.0, pnorm)
                 while x in limits && n_linepoints < maxsteps
                     point = apply_f(x, CallType)
@@ -158,9 +158,9 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
     )
 end
 
-function plot!(p::StreamPlot)
+function Makie.plot!(p::StreamPlot)
     data = lift(p, p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density) do f, limits, resolution, stepsize, maxsteps, density
-        P = if applicable(f, Point2f(0)) || applicable(f, Point3f(0))
+        P = if any(p -> applicable(f, p), (Point2f(0), Point3f(0), Point2e(0), Point3e(0)))
             Point
         else
             Number

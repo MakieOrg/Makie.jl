@@ -44,8 +44,9 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     limits = lift(projview_to_2d_limits, scene.camera.projectionview)
 
-    rects = Observable(Rect2f[])
-
+    ET = floattype(p[1], p[2])
+    rects = Observable(Rect2{ET}[])
+    
     mi = p isa HSpan ? p.xmin : p.ymin
     ma = p isa HSpan ? p.xmax : p.ymax
     
@@ -60,13 +61,13 @@ function Makie.plot!(p::Union{HSpan, VSpan})
                 x_ma = min_x + (max_x - min_x) * ma
                 x_mi = _apply_x_transform(inv, x_mi)
                 x_ma = _apply_x_transform(inv, x_ma)
-                push!(rects[], Rect2f(Point2f(x_mi, low), Vec2f(x_ma - x_mi, high - low)))
+                push!(rects[], Rect2{ET}(Point2(x_mi, low), Vec2(x_ma - x_mi, high - low)))
             elseif p isa VSpan
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
                 y_mi = _apply_y_transform(inv, y_mi)
                 y_ma = _apply_y_transform(inv, y_ma)
-                push!(rects[], Rect2f(Point2f(low, y_mi), Vec2f(high - low, y_ma - y_mi)))
+                push!(rects[], Rect2{ET}(Point2(low, y_mi), Vec2(high - low, y_ma - y_mi)))
             end
         end
         notify(rects)
