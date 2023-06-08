@@ -58,15 +58,19 @@ end
 Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
 
 function data_limits(hb::Hexbin)
-    bb = Rect3(hb.plots[1][1][])
+    data = hb.plots[1][1][]
+    FT = floattype(data)
+    bb = Rect3{FT}(data)
+    
     fn(num::Real) = Float64(num)
     fn(tup::Union{Tuple,Vec2}) = Vec2(tup...)
 
     ms = 2 .* fn(hb.plots[1].markersize[])
-    nw = widths(bb) .+ (ms..., 0.0f0)
-    no = bb.origin .- ((ms ./ 2.0f0)..., 0.0f0)
+    nw = widths(bb) .+ (ms..., 0)
+    no = bb.origin .- ((ms ./ 2)..., 0)
 
-    return Rect3(no, nw)
+    r = Rect3(no, nw)
+    return r
 end
 
 function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})

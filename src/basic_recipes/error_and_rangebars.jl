@@ -237,14 +237,14 @@ end
 scene_to_screen(pts::AbstractArray, scene) =  scene_to_screen.(pts, (scene,))
 screen_to_scene(pts::AbstractArray, scene) =  screen_to_scene.(pts, (scene,))
 
-function scene_to_screen(p::Point{N, T}, scene) where {N, T}
+function scene_to_screen(p::Point{N, T}, scene) where {N, T <: NativeFloat}
     p4 = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), 1.0)
     p1m1 = scene.camera.projectionview[] * p4
     projected = inv(scene.camera.pixel_space[]) * p1m1
     return Point{2, T}(projected[1], projected[2])
 end
 
-function screen_to_scene(p::Point{N, T}, scene) where {N, T}
+function screen_to_scene(p::Point{N, T}, scene) where {N, T <: NativeFloat}
     p4 = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), 1.0)
     p1m1 = scene.camera.pixel_space[] * p4
     projected = inv(scene.camera.projectionview[]) * p1m1

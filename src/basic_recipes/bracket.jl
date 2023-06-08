@@ -31,13 +31,20 @@ $(ATTRIBUTES)
     )
 end
 
-Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes, point2::VecTypes) = ([(Point2(point1), Point2(point2))],)
-Makie.convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real) = ([(Point2(x1, y1), Point2(x2, y2))],)
+function Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
+    FT = floattype(T1, T2)
+    return ([(Point2{FT}(point1), Point2{FT}(point2))],)
+end
+function Makie.convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)
+    FT = floattype(x1, y1, x2, y2) 
+    return ([(Point2{FT}(x1, y1), Point2{FT}(x2, y2))],)
+end
 function Makie.convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+    FT = floattype(x1, y1, x2, y2)
     points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
-        (Point2(x1, y1), Point2(x2, y2))
+        (Point2{FT}(x1, y1), Point2{FT}(x2, y2))
     end
-    (points,)
+    return (points,)
 end
 
 function Makie.plot!(pl::Bracket)

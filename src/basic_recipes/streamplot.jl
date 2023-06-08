@@ -36,7 +36,8 @@ end
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
-    return (f, Rect(xmin, ymin, xmax - xmin, ymax - ymin))
+    FT = floattype(xmin, xmax, ymin, ymax)
+    return (f, Rect{2, FT}(xmin, ymin, xmax - xmin, ymax - ymin))
 end
 
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, zrange)
@@ -45,11 +46,12 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, z
     zmin, zmax = extrema(zrange)
     mini = Vec3(xmin, ymin, zmin)
     maxi = Vec3(xmax, ymax, zmax)
-    return (f, Rect(mini, maxi .- mini))
+    FT = floattype(mini, maxi)
+    return (f, Rect{3, FT}(mini, maxi .- mini))
 end
 
-function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
-    return (f, limits)
+function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect{N, T}) where {N, T}
+    return (f, Rect{N, floattype(T)}(limits))
 end
 
 scatterfun(N) = N == 2 ? scatter! : meshscatter!

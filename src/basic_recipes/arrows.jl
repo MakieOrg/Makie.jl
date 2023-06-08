@@ -102,13 +102,20 @@ function _circle(origin, r, normal, N)
 end
 
 
-convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2.(x, y), Vec2.(u, v))
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    (vec(Point2.(x, y')), vec(Vec2.(u, v)))
+function convert_arguments(::Type{<: Arrows}, x, y, u, v)
+    FT = floattype(x, y, u, v)
+    return (Point2{FT}.(x, y), Vec2{FT}.(u, v))
 end
-convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3.(x, y, z), Vec3.(u, v, w))
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    FT = floattype(x, y, u, v)
+    return (vec(Point2{FT}.(x, y')), vec(Vec2{FT}.(u, v)))
+end
+function convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w)
+    FT = floattype(x, y, u, v)
+    return (Point3{FT}.(x, y, z), Vec3{FT}.(u, v, w))
+end
 
-function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
+function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
     @extract arrowplot (
         points, directions, colormap, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
@@ -132,7 +139,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
                 else
                     shift = zero(dir)
                 end
-                return Point2(p1 .- shift) => Point2(p1 .- shift .+ (dir .* s))
+                return Point2{T}(p1 .- shift) => Point2{T}(p1 .- shift .+ (dir .* s))
             end
         end
 
@@ -199,7 +206,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
                 else
                     shift = -s .* dir
                 end
-                return Point3(p .- shift)
+                return Point3{T}(p .- shift)
             end
         end
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
