@@ -35,7 +35,7 @@ export function render_scene(scene, picking = false) {
     if (!scene.visible.value) {
         return true;
     }
-    renderer.autoClear = scene.clearscene;
+    renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t) => t / pixelRatio);
@@ -374,7 +374,7 @@ export function pick_sorted(scene, xy, range) {
     const { width, height } = picking_target;
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
-        return [null, 0];
+        return null;
     }
 
     const x0 = Math.max(1, xy[0] - range);
@@ -386,7 +386,7 @@ export function pick_sorted(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
     if (selected.length == 0) {
-        return [];
+        return null;
     }
 
     const plot_matrix = plot_data.data;
@@ -412,7 +412,6 @@ export function pick_sorted(scene, xy, range) {
         (a, b) =>
             distances[a] < distances[b] ? -1 : (distances[b] < distances[a]) | 0
     );
-
     return sorted_indices.map((idx) => {
         const [plot, index] = selected[idx];
         return [plot.plot_uuid, index];
@@ -427,6 +426,41 @@ export function pick_native_uuid(scene, x, y, w, h) {
 export function pick_native_matrix(scene, x, y, w, h) {
     const [matrix, _] = pick_native(scene, x, y, w, h);
     return matrix;
+}
+
+export function register_popup(popup, scene, plots_to_pick, callback) {
+    if (!scene || !scene.screen) {
+        // scene not innitialized or removed already
+        return;
+    }
+    const { canvas } = scene.screen;
+    canvas.addEventListener("mousedown", (event) => {
+        if (!popup.classList.contains("show")) {
+            popup.classList.add("show");
+        }
+        popup.style.left = event.pageX + "px";
+        popup.style.top = event.pageY + "px";
+        const [x, y] = WGLMakie.event2scene_pixel(scene, event);
+        const [_, picks] = WGLMakie.pick_native(scene, x, y, 1, 1);
+        if (picks.length == 1) {
+            const [plot, index] = picks[0];
+            if (plots_to_pick.has(plot.plot_uuid)) {
+                const result = callback(plot, index);
+                if (typeof result === "string" || result instanceof String) {
+                    popup.innerText = result;
+                } else {
+                    popup.innerHTML = result;
+                }
+            }
+        } else {
+            popup.classList.remove("show");
+        }
+    });
+    canvas.addEventListener("keyup", (event) => {
+        if (event.key === "Escape") {
+            popup.classList.remove("show");
+        }
+    });
 }
 
 window.WGL = {
@@ -444,6 +478,7 @@ window.WGL = {
     create_scene,
     event2scene_pixel,
     on_next_insert,
+    register_popup,
 };
 
 export {

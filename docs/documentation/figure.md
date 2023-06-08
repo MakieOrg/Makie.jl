@@ -102,7 +102,7 @@ All nested GridLayouts that don't exist yet, but are needed for a nested plottin
 
 ## Figure padding
 
-You can change the amount of whitespace around the figure content with the keyword `figure_padding`.
+You can change the amount of whitespace (margin) around the figure content with the keyword `figure_padding`.
 This takes either a number for all four sides, or a tuple of four numbers for left, right, bottom, top.
 You can also theme this setting with `set_theme!(figure_padding = 30)`, for example.
 

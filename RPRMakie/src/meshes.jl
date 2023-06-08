@@ -92,6 +92,8 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         material.color = tex
     elseif color isa Colorant
         material.color = color
+    elseif color isa AbstractMatrix{<: Colorant}
+        material.color = color
     else
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
     end

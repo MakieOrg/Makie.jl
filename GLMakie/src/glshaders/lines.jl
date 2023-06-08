@@ -45,10 +45,10 @@ function gappy(x, ps)
     return last(ps) - x
 end
 function ticks(points, resolution)
-    # This is used to map a vector of `points` to a signed distance field. The 
+    # This is used to map a vector of `points` to a signed distance field. The
     # points mark transition between "on" and "off" section of the pattern.
 
-    # The output should be periodic so the signed distance field value 
+    # The output should be periodic so the signed distance field value
     # representing points[1] should be equal to the one representing points[end].
     # => range(..., length = resolution+1)[1:end-1]
 
@@ -104,21 +104,17 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
-
-    if pattern !== nothing
+    if to_value(pattern) !== nothing
         if !isa(pattern, Texture)
-            if !isa(pattern, Vector)
+            if !isa(to_value(pattern), Vector)
                 error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
             end
-            tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
+            tex = GLAbstraction.Texture(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
             data[:pattern] = tex
         end
-        data[:pattern_length] = Float32((last(pattern) - first(pattern)))
-        @gen_defaults! data begin
-            maxlength = const_lift(last, lastlen)
-        end
+        data[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
     end
-    
+
     data[:intensity] = intensity_convert(intensity, vertex)
     return assemble_shader(data)
 end
