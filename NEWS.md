@@ -2,7 +2,12 @@
 
 ## master
 
-- Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953)
+## v0.19.6
+
+- Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953).
+- Fix WGLMakie JS popup [#2976](https://github.com/MakieOrg/Makie.jl/pull/2976).
+- Fix legendelements when children have no elements [#2982](https://github.com/MakieOrg/Makie.jl/pull/2982).
+- Bump compat for StatsBase to 0.34 [#2915](https://github.com/MakieOrg/Makie.jl/pull/2915).
 
 ## v0.19.5
 
