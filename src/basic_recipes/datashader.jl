@@ -358,7 +358,10 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after aggregation happened
     p.canvas = canvas_with_aggregation
     on_func(canvas, p.points, p.point_func) do canvas, points, f
-        PixelAggregation.aggregate!(canvas, points; point_func=f, method=p.method[])
+        t = @elapsed PixelAggregation.aggregate!(canvas, points; point_func=f, method=p.method[])
+        if p.show_timings[]
+            println("Aggregation took $t seconds.")
+        end
         canvas_with_aggregation[] = canvas
         return
     end
