@@ -1,89 +1,4 @@
 ################################################################################
-### Polar Transformation
-################################################################################
-
-# First, define the polar-to-cartesian transformation as a Makie transformation
-# which is fully compliant with the interface
-
-"""
-    PolarAxisTransformation(theta_0::Float64, direction::Int)
-
-This struct defines a general polar-to-cartesian transformation, i.e.,
-```math
-(r, theta) -> (r \\cos(direction * (theta + theta_0)), r \\sin(direction * (theta + theta_0)))
-```
-
-where theta is assumed to be in radians.
-
-`direction` should be either -1 or +1, and `theta_0` may be any value.
-"""
-struct PolarAxisTransformation
-    theta_0::Float64
-    direction::Int
-end
-
-Base.broadcastable(x::PolarAxisTransformation) = (x,)
-
-function Makie.apply_transform(trans::PolarAxisTransformation, point::VecTypes{2, T}) where T <: Real
-    y, x = point[1] .* sincos((point[2] + trans.theta_0) * trans.direction)
-    return Point2f(x, y)
-end
-
-function Makie.apply_transform(f::PolarAxisTransformation, point::VecTypes{N2, T}) where {N2, T}
-    p_dim = to_ndim(Point2f, point, 0.0)
-    p_trans = Makie.apply_transform(f, p_dim)
-    if 2 < N2
-        p_large = ntuple(i-> i <= 2 ? p_trans[i] : point[i], N2)
-        return Point{N2, Float32}(p_large)
-    else
-        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
-    end
-end
-
-# Define a method to transform boxes from input space to transformed space
-function Makie.apply_transform(f::PolarAxisTransformation, r::Rect2{T}) where {T}
-    # TODO: once Proj4.jl is updated to PROJ 8.2, we can use
-    # proj_trans_bounds (https://proj.org/development/reference/functions.html#c.proj_trans_bounds)
-    N = 21
-    umin = vmin = T(Inf)
-    umax = vmax = T(-Inf)
-    xmin, ymin = minimum(r)
-    xmax, ymax = maximum(r)
-    # If ymax is 2π away from ymin, then the limits
-    # are a circle, meaning that we only need the max radius
-    # which is trivial to find.
-    # @show r
-    if abs(ymax - ymin) ≈ 2π
-        @assert xmin ≥ 0
-        rmax = xmax
-        # the diagonal of a square is sqrt(2) * side
-        # the radius of a circle inscribed within that square is side/2
-        mins = Point2f(-rmax)#Makie.apply_transform(f, Point2f(xmin, ymin))
-        maxs = Point2f(rmax*2)#Makie.apply_transform(f, Point2f(xmax - xmin, prevfloat(2f0π)))
-        @show(mins, maxs)
-        return Rect2f(mins,maxs)
-    end
-    for x in range(xmin, xmax; length = N)
-        for y in range(ymin, ymax; length = N)
-            u, v = Makie.apply_transform(f, Point(x, y))
-            umin = min(umin, u)
-            umax = max(umax, u)
-            vmin = min(vmin, v)
-            vmax = max(vmax, v)
-        end
-    end
-
-    return Rect(Vec2(umin, vmin), Vec2(umax-umin, vmax-vmin))
-end
-
-
-# Define its inverse (for interactivity)
-Makie.inverse_transform(trans::PolarAxisTransformation) = Makie.PointTrans{2}() do point
-    Point2f(hypot(point[1], point[2]), -trans.direction * (atan(point[2], point[1]) - trans.theta_0))
-end
-
-
-################################################################################
 ### Main Block Intialization
 ################################################################################
 
@@ -111,10 +26,8 @@ function Makie.initialize_block!(po::PolarAxis)
     # TODO - theta_0 should affect ticks?
     Observables.connect!(
         po.scene.transformation.transform_func,
-        @lift(PolarAxisTransformation($(po.theta_0), $(po.direction)))
+        @lift(Polar($(po.theta_0), $(po.direction)))
     )
-
-    
 
     # Outsource to `draw_axis` function
     thetaticklabelplot = draw_axis!(po, axis_radius)

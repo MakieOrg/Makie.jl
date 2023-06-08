@@ -386,6 +386,57 @@ function is_identity_transform(t)
 end
 
 
+################################################################################
+### Polar Transformation
+################################################################################
+
+"""
+    Polar(theta_0::Float64 = 0.0, direction::Int = +1)
+
+This struct defines a general polar-to-cartesian transformation, i.e.,
+```math
+(r, theta) -> (r \\cos(direction * (theta + theta_0)), r \\sin(direction * (theta + theta_0)))
+```
+
+where theta is assumed to be in radians.
+
+`direction` should be either -1 or +1, and `theta_0` may be any value.
+"""
+struct Polar
+    theta_0::Float64
+    direction::Int
+    Polar(theta_0 = 0.0, direction = +1) = new(theta_0, direction)
+end
+
+Base.broadcastable(x::Polar) = (x,)
+
+function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
+    y, x = point[1] .* sincos((point[2] + trans.theta_0) * trans.direction)
+    return Point2{T}(x, y)
+end
+
+# Point2 may get expanded to Point3. In that case we leave z untransformed
+function apply_transform(f::Polar, point::VecTypes{N2, T}) where {N2, T}
+    p_dim = to_ndim(Point2f, point, 0.0)
+    p_trans = apply_transform(f, p_dim)
+    if 2 < N2
+        p_large = ntuple(i-> i <= 2 ? p_trans[i] : point[i], N2)
+        return Point{N2, Float32}(p_large)
+    else
+        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
+    end
+end
+
+function inverse_transform(trans::Polar)
+    return Makie.PointTrans{2}() do point
+        typeof(point)(
+            hypot(point[1], point[2]), 
+            -trans.direction * (atan(point[2], point[1]) - trans.theta_0)
+        )
+    end
+end
+
+
 # this is a simplification which will only really work with non-rotated or
 # scaled scene transformations, but for 2D scenes this should work well enough.
 # and this way we can use the z-value as a means to shift the drawing order
