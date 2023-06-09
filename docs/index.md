@@ -1,6 +1,7 @@
-@def title = "Home"
+@def title = "Interactive visualizations and powerful plotting in Julia"
 @def order = 0
 @def frontpage = true
+@def description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live."
 
 # Welcome to Makie!
 
@@ -267,7 +268,7 @@ You can use the following BibTeX entry:
   number = {65},
   pages = {3349},
   author = {Simon Danisch and Julius Krumbiegel},
-  title = {Makie.jl: Flexible high-performance data visualization for Julia},
+  title = {{Makie.jl}: Flexible high-performance data visualization for {Julia}},
   journal = {Journal of Open Source Software}
 }
 ```

@@ -14,7 +14,7 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[
     return scene_uuids, plot_uuids
 end
 
-function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::IdDict)
+function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSourceContext)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     # This is a bit more complicated then it has to be, since evaljs / on_document_load
     # isn't guaranteed to run after plot initialization in an App... So, if we don't find any plots,
@@ -34,7 +34,7 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::IdDict)
     }))""", context)
 end
 
-function JSServe.print_js_code(io::IO, scene::Scene, context::IdDict)
+function JSServe.print_js_code(io::IO, scene::Scene, context::JSServe.JSSourceContext)
     JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
 end
 
@@ -51,19 +51,17 @@ function three_display(session::Session, scene::Scene; screen_config...)
     done_init = Observable(false)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = JSServe.Retain(TEXTURE_ATLAS)
-    setup = js"""
-    (wrapper)=>{
-        const canvas = $canvas;
-        $(WGL).then(WGL => {
-            // well.... not nice, but can't deal with the `Promise` in all the other functions
-            window.WGLMakie = WGL
-            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
-        })
+    evaljs(session, js"""
+    $(WGL).then(WGL => {
+        // well.... not nice, but can't deal with the `Promise` in all the other functions
+        window.WGLMakie = WGL
+        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
         $(done_init).notify(true)
-    }
-    """
-
-    JSServe.onload(session, wrapper, setup)
+    })
+    """)
+    on(session, done_init) do val
+        window_open[] = true
+    end
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
     return three, wrapper, done_init

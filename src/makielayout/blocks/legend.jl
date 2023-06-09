@@ -1,5 +1,5 @@
 function initialize_block!(leg::Legend,
-        entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}})
+        entry_groups::Observable{Vector{Tuple{Any, Vector{LegendEntry}}}})
 
     blockscene = leg.blockscene
 
@@ -10,13 +10,13 @@ function initialize_block!(leg::Legend,
     setfield!(leg, :_tellheight, real_tellheight)
     setfield!(leg, :_tellwidth, real_tellwidth)
 
-    legend_area = lift(round_to_IRect2D, leg.layoutobservables.computedbbox)
+    legend_area = lift(round_to_IRect2D, blockscene, leg.layoutobservables.computedbbox)
 
     scene = Scene(blockscene, blockscene.px_area, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
-    legendrect = @lift begin
-        enlarge($legend_area, -$(leg.margin)[1], -$(leg.margin)[2], -$(leg.margin)[3], -$(leg.margin)[4])
+    legendrect = lift(blockscene, legend_area, leg.margin) do la, lm
+        enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
     bg = poly!(scene,
@@ -33,13 +33,14 @@ function initialize_block!(leg::Legend,
     # true so the GridLayout doesn't update itself to save time
     manipulating_grid = Ref(false)
 
-    on(leg.padding) do p
+    on(blockscene, leg.padding) do p
         grid.alignmode = Outside(p...)
         relayout()
+        return
     end
 
     update_grid = Observable(true)
-    onany(update_grid, leg.margin) do _, margin
+    onany(blockscene, update_grid, leg.margin) do _, margin
         if manipulating_grid[]
             return
         end
@@ -48,6 +49,7 @@ function initialize_block!(leg::Legend,
         if !any(isnothing.((w, h)))
             leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
         end
+        return
     end
 
     # these arrays store all the plot objects that the legend entries need
@@ -144,14 +146,17 @@ function initialize_block!(leg::Legend,
         # which is at zero. this will not really work if the legend should be
         # above a 3d plot, but for now this hack is ok.
         translate!(scene, (0, 0, 10))
+        return
     end
 
-    onany(leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap, leg.titlegap,
+    onany(blockscene, leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap,
+          leg.titlegap,
             leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign) do args...
         relayout()
+        return
     end
 
-    on(entry_groups) do entry_groups
+    on(blockscene, entry_groups) do entry_groups
         # first delete all existing labels and patches
 
         for t in titletexts
@@ -208,7 +213,7 @@ function initialize_block!(leg::Legend,
 
                 # create the patch rectangle
                 rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
-                           width=lift(x -> x[1], e.patchsize), height=lift(x -> x[2], e.patchsize))
+                           width=lift(x -> x[1], blockscene, e.patchsize), height=lift(x -> x[2], blockscene, e.patchsize))
                 push!(erects, rect)
                 translate!(rect.blockscene, 0, 0, -5) # patches before background but behind legend elements (legend is at +10)
 
@@ -257,12 +262,13 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
     attrs = element.attributes
 
     fracpoints = attrs.markerpoints
-    points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
+    points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
         strokecolor = attrs.markerstrokecolor, inspectable = false)
-    [scat]
+
+    return [scat]
 end
 
 function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
@@ -270,21 +276,22 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     attrs = element.attributes
 
     fracpoints = attrs.linepoints
-    points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
+    points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
         linestyle = attrs.linestyle, inspectable = false)
-    [lin]
+
+    return [lin]
 end
 
 function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
-
     fracpoints = attrs.polypoints
-    points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
+    points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
         strokecolor = attrs.polystrokecolor, inspectable = false)
-    [pol]
+
+    return [pol]
 end
 
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
@@ -311,7 +318,7 @@ legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
 
-function LegendEntry(label::Optional{AbstractString}, contentelements::AbstractArray, legend; kwargs...)
+function LegendEntry(label, contentelements::AbstractArray, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -321,13 +328,16 @@ function LegendEntry(label::Optional{AbstractString}, contentelements::AbstractA
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label::Optional{AbstractString}, contentelement, legend; kwargs...)
+function LegendEntry(label, contentelement, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
     elems = legendelements(contentelement, legend)
+    if isempty(elems)
+        error("`legendelements` returned an empty list for content element of type $(typeof(contentelement)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
+    end
     LegendEntry(elems, attrs)
 end
 
@@ -381,9 +391,9 @@ function _rename_attributes!(T, a)
 end
 
 
-function scalar_lift(attr, default)
+function scalar_lift(plot, attr, default)
     observable = Observable{Any}()
-    map!(observable, attr, default) do at, def
+    map!(plot, observable, attr, default) do at, def
         Makie.is_scalar_attribute(at) ? at : def
     end
     return observable
@@ -391,42 +401,45 @@ end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
-        color = scalar_lift(plot.color, legend.linecolor),
-        linestyle = scalar_lift(plot.linestyle, legend.linestyle),
-        linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
+        color = scalar_lift(plot, plot.color, legend.linecolor),
+        linestyle = scalar_lift(plot, plot.linestyle, legend.linestyle),
+        linewidth = scalar_lift(plot, plot.linewidth, legend.linewidth))]
 end
 
 
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
-        color = scalar_lift(plot.color, legend.markercolor),
-        marker = scalar_lift(plot.marker, legend.marker),
-        markersize = scalar_lift(plot.markersize, legend.markersize),
-        strokewidth = scalar_lift(plot.strokewidth, legend.markerstrokewidth),
-        strokecolor = scalar_lift(plot.strokecolor, legend.markerstrokecolor),
+        color = scalar_lift(plot, plot.color, legend.markercolor),
+        marker = scalar_lift(plot, plot.marker, legend.marker),
+        markersize = scalar_lift(plot, plot.markersize, legend.markersize),
+        strokewidth = scalar_lift(plot, plot.strokewidth, legend.markerstrokewidth),
+        strokecolor = scalar_lift(plot, plot.strokecolor, legend.markerstrokecolor),
     )]
 end
 
 function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
     LegendElement[PolyElement(
-        color = scalar_lift(plot.color, legend.polycolor),
-        strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
-        strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
+        color = scalar_lift(plot, plot.color, legend.polycolor),
+        strokecolor = scalar_lift(plot, plot.strokecolor, legend.polystrokecolor),
+        strokewidth = scalar_lift(plot, plot.strokewidth, legend.polystrokewidth),
     )]
 end
 
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+    LegendElement[PolyElement(polycolor = scalar_lift(plot, plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack
 # those together as a simple fallback
 function legendelements(plot, legend)::Vector{LegendElement}
-    if isempty(plot.plots)
-        error("No child plot elements found in plot of type $(typeof(plot)) but also no `legendelements` method defined.")
-    end
-    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots])
+    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots], init = [])
+end
+
+# Text has no meaningful legend, but it contains a linesegments for latex applications
+# which can surface as a line in the final legend
+function legendelements(plot::Text, legend)::Vector{LegendElement}
+    []
 end
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
@@ -455,8 +468,8 @@ end
     Legend(
         fig_or_scene,
         contents::AbstractArray,
-        labels::AbstractArray{<:AbstractString},
-        title::Optional{<:AbstractString} = nothing;
+        labels::AbstractArray,
+        title = nothing;
         kwargs...)
 
 Create a legend from `contents` and `labels` where each label is associated to
@@ -465,9 +478,9 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `legendelements` method is defined.
 """
 function Legend(fig_or_scene,
-        contents::AbstractArray,
-        labels::AbstractArray{<:Optional{AbstractString}},
-        title::Optional{<:AbstractString} = nothing;
+        contents::AbstractVector,
+        labels::AbstractVector,
+        title = nothing;
         kwargs...)
 
     if length(contents) != length(labels)
@@ -486,9 +499,9 @@ end
 """
     Legend(
         fig_or_scene,
-        contentgroups::AbstractArray{<:AbstractArray},
-        labelgroups::AbstractArray{<:AbstractArray},
-        titles::AbstractArray{<:Optional{<:AbstractString}};
+        contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector},
+        titles::AbstractVector;
         kwargs...)
 
 Create a multi-group legend from `contentgroups`, `labelgroups` and `titles`.
@@ -500,9 +513,9 @@ element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`
 or any other object for which the `legendelements` method is defined.
 """
 function Legend(fig_or_scene,
-        contentgroups::AbstractArray{<:AbstractArray},
-        labelgroups::AbstractArray{<:AbstractArray},
-        titles::AbstractArray{<:Optional{<:AbstractString}};
+        contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector},
+        titles::AbstractVector;
         kwargs...)
 
     if !(length(titles) == length(contentgroups) == length(labelgroups))
@@ -588,11 +601,11 @@ The position can be a Symbol where the first letter controls the horizontal
 alignment and can be l, r or c, and the second letter controls the vertical
 alignment and can be t, b or c. Or it can be a tuple where the first
 element is set as the Legend's halign and the second element as its valign.
-                        
-With the keywords merge and unique you can control how plot objects with the 
-same labels are treated. If merge is true, all plot objects with the same 
-label will be layered on top of each other into one legend entry. If unique 
-is true, all plot objects with the same plot type and label will be reduced 
+
+With the keywords merge and unique you can control how plot objects with the
+same labels are treated. If merge is true, all plot objects with the same
+label will be layered on top of each other into one legend entry. If unique
+is true, all plot objects with the same plot type and label will be reduced
 to one occurrence.
 """
 function axislegend(ax, args...; position = :rt, kwargs...)

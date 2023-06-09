@@ -2,13 +2,13 @@ using GeometryBasics, RPRMakie
 using Colors, FileIO
 using Colors: N0f8
 
-image = begin
+img = begin
     radiance = 500
     lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
               PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
     fig = Figure(; resolution=(1500, 700))
     ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-    screen = Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
+    screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar)
 
     matsys = screen.matsys
     emissive = RPR.EmissiveMaterial(matsys)
@@ -24,7 +24,7 @@ image = begin
                  emissive plastic]
 
     mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
-    palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
+    palette = reshape(Makie.DEFAULT_PALETTES.color[][1:6], size(materials))
 
     for i in CartesianIndices(materials)
         x, y = Tuple(i)
@@ -46,4 +46,4 @@ image = begin
     colorbuffer(screen)
 end
 
-save("materials.png", image)
+save("materials.png", img)
