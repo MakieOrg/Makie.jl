@@ -1,4 +1,4 @@
-using SnoopPrecompile
+using PrecompileTools
 
 macro compile(block)
     return quote
@@ -21,7 +21,7 @@ macro compile(block)
 end
 
 let
-    @precompile_all_calls begin
+    @compile_workload begin
         DISABLE_JS_FINALZING[] = true # to not start cleanup task
         WGLMakie.activate!()
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))

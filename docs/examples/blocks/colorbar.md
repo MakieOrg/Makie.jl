@@ -66,3 +66,8 @@ Colorbar(fig[2, 2][1, 2], hm, ticks = -1:0.25:1)
 fig
 ```
 \end{examplefigure}
+
+
+## Attributes
+
+\attrdocs{Colorbar}

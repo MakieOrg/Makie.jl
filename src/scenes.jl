@@ -84,7 +84,7 @@ mutable struct Scene <: AbstractScene
     px_area::Observable{Rect2i}
 
     "Whether the scene should be cleared."
-    clear::Bool
+    clear::Observable{Bool}
 
     "The `Camera` associated with the Scene."
     camera::Camera
@@ -119,7 +119,7 @@ mutable struct Scene <: AbstractScene
             parent::Union{Nothing, Scene},
             events::Events,
             px_area::Observable{Rect2i},
-            clear::Bool,
+            clear::Observable{Bool},
             camera::Camera,
             camera_controls::AbstractCamera,
             transformation::Transformation,
@@ -217,7 +217,7 @@ end
 function Scene(;
         px_area::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
-        clear::Union{Automatic, Bool} = automatic,
+        clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
         transform_func=identity,
         camera::Union{Function, Camera, Nothing} = nothing,
         camera_controls::AbstractCamera = EmptyCamera(),
@@ -248,7 +248,9 @@ function Scene(;
 
     # if we have an opaque background, automatically set clear to true!
     if clear isa Automatic
-        clear = alpha(bg[]) == 1 ? true : false
+        clear = Observable(alpha(bg[]) == 1 ? true : false)
+    else
+        clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
@@ -318,7 +320,7 @@ function Scene(
     child = Scene(;
         events=events,
         px_area=child_px_area,
-        clear=clear,
+        clear=convert(Observable{Bool}, clear),
         camera=camera,
         camera_controls=camera_controls,
         parent=parent,

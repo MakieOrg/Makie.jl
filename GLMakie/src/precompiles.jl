@@ -1,4 +1,4 @@
-using SnoopPrecompile
+using PrecompileTools
 
 macro compile(block)
     return quote
@@ -11,9 +11,9 @@ macro compile(block)
 end
 
 let
-    @precompile_setup begin
+    @setup_workload begin
         x = rand(5)
-        @precompile_all_calls begin
+        @compile_workload begin
             GLMakie.activate!()
             screen = GLMakie.singleton_screen(false)
             close(screen)
