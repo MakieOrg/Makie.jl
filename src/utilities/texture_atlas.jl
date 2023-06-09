@@ -188,6 +188,8 @@ end
 const DEFAULT_FONT = NativeFont[]
 const ALTERNATIVE_FONTS = NativeFont[]
 const FONT_LOCK = Base.ReentrantLock()
+Base.@deprecate_binding _default_font DEFAULT_FONT
+Base.@deprecate_binding _alternative_fonts ALTERNATIVE_FONTS
 
 function defaultfont()
     lock(FONT_LOCK) do

@@ -28,6 +28,8 @@ get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
 const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
+Base.@deprecate_binding _current_figure CURRENT_FIGURE
+
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 
 "Returns the current active figure (or the last figure that got created)"

@@ -143,6 +143,9 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     end
     return result
 end
+# Use copy with no obs to quickly deepcopy
+fast_deepcopy(attributes) = merge_without_obs!(Attributes(), attributes)
+
 
 current_default_theme() = CURRENT_DEFAULT_THEME
 
@@ -156,7 +159,7 @@ as keyword arguments.
 function set_theme!(new_theme=Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
-        new_theme = merge_without_obs!(deepcopy(new_theme), MAKIE_DEFAULT_THEME)
+        new_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
         new_theme = merge!(Theme(kwargs), new_theme)
         merge!(CURRENT_DEFAULT_THEME, new_theme)
     end
@@ -181,7 +184,7 @@ end
 """
 function with_theme(f, theme = Theme(); kwargs...)
     lock(THEME_LOCK) do
-        previous_theme = merge_without_obs!(Attributes(), CURRENT_DEFAULT_THEME)
+        previous_theme = fast_deepcopy(CURRENT_DEFAULT_THEME)
         try
             set_theme!(theme; kwargs...)
             f()
