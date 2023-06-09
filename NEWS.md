@@ -8,6 +8,7 @@
 - Fix WGLMakie JS popup [#2976](https://github.com/MakieOrg/Makie.jl/pull/2976).
 - Fix legendelements when children have no elements [#2982](https://github.com/MakieOrg/Makie.jl/pull/2982).
 - Bump compat for StatsBase to 0.34 [#2915](https://github.com/MakieOrg/Makie.jl/pull/2915).
+- Improved thread safety [#2840](https://github.com/MakieOrg/Makie.jl/pull/2840).
 
 ## v0.19.5
 
