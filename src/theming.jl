@@ -15,7 +15,7 @@ function wong_colors(alpha = 1.0)
     return RGBAf.(colors, alpha)
 end
 
-const DEFAULT_PALETTES = (
+const DEFAULT_PALETTES = Attributes(
     color = wong_colors(1),
     patchcolor = wong_colors(0.8),
     marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],

@@ -110,7 +110,7 @@ function initialize_block!(ax::Axis3)
         inspectable = false)
 
     ax.cycler = Cycler()
-    ax.palette = Attributes(Makie.DEFAULT_PALETTES)
+    ax.palette = Makie.DEFAULT_PALETTES
 
     ax.mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))
@@ -931,7 +931,7 @@ function attribute_examples(::Type{Axis3})
                 name = "Three-tuple aspects",
                 code = """
                     fig = Figure()
-                    
+
                     Axis3(fig[1, 1], aspect = (1, 1, 1), title = "aspect = (1, 1, 1)")
                     Axis3(fig[1, 2], aspect = (2, 1, 1), title = "aspect = (2, 1, 1)")
                     Axis3(fig[2, 1], aspect = (1, 2, 1), title = "aspect = (1, 2, 1)")
@@ -948,7 +948,7 @@ function attribute_examples(::Type{Axis3})
                     fig = Figure()
 
                     brain = load(assetpath("brain.stl"))
-                    
+
                     ax1 = Axis3(fig[1, 1], aspect = :equal, title = "aspect = :equal")
                     ax2 = Axis3(fig[1, 2], aspect = :data, title = "aspect = :data")
 
@@ -965,7 +965,7 @@ function attribute_examples(::Type{Axis3})
                 name = "`viewmode` variants",
                 code = """
                     fig = Figure()
-                    
+
                     for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
                         for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
 
@@ -989,7 +989,7 @@ function attribute_examples(::Type{Axis3})
                 name = "`perspectiveness` values",
                 code = """
                     fig = Figure()
-                    
+
                     for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
                         ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
                             title = ":perspectiveness = \$(perspectiveness)")
@@ -1005,7 +1005,7 @@ function attribute_examples(::Type{Axis3})
                 name = "`azimuth` values",
                 code = """
                     fig = Figure()
-                    
+
                     for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
                         Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
                             title = "azimuth = \$(azimuth)π", viewmode = :fit)
@@ -1020,7 +1020,7 @@ function attribute_examples(::Type{Axis3})
                 name = "`elevation` values",
                 code = """
                     fig = Figure()
-                    
+
                     for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
                         Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
                             title = "elevation = \$(elevation)π", viewmode = :fit)

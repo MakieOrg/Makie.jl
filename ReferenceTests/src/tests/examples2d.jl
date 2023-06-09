@@ -243,7 +243,7 @@ end
 
     xs = 0:9        # data
     ys = zeros(10)
-    colors = Makie.DEFAULT_PALETTES.color
+    colors = Makie.DEFAULT_PALETTES.color[]
     plots = map(1:N) do i # plot lines
         lines!(ax,
             xs, ys;
