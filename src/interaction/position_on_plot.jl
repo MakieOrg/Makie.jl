@@ -226,16 +226,22 @@ function get_position(plot::Union{Heatmap, Image}, idx; apply_transform = true)
     end
 end
 
-function _get_position(plot::Mesh, idx)
+function get_position(plot::Mesh, idx; apply_transform = true)
     positions = coordinates(plot.mesh[])
-    ray = ray_at_cursor(parent_scene(plot))
+    ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
+    tf = transform_func(plot)
 
     for f in faces(plot.mesh[])
         if idx in f
-            p1, p2, p3 = positions[f]
+            p1, p2, p3 = Makie.apply_transform(tf, positions[f])
             pos = ray_triangle_intersection(p1, p2, p3, ray)
             if pos !== Point3f(NaN)
-                return pos
+                if apply_transform
+                    p4d = plot.model[] * to_ndim(Point3f, pos, 1)
+                    return Point3f(p4d) / p4d[4]
+                else
+                    return Makie.apply_transform(inverse_transform(tf), pos)
+                end
             end
         end
     end
@@ -289,7 +295,7 @@ end
 function get_position(plot::Volume, idx; apply_transform = true)
     min, max = Point3f.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
     ray = ray_at_cursor(parent_scene(plot))
-    
+
     if apply_transform
         min = apply_transform_and_model(plot, min)
         max = apply_transform_and_model(plot, max)

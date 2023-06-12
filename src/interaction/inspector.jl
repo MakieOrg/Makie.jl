@@ -968,12 +968,12 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
 end
 
 
-function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
+function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mesh)
     scene = parent_scene(plot)
     tt = inspector.plot
     a = inspector.attributes
 
-    pos = Point2f(mouseposition(scene))
+    pos = Point2f(get_position(mesh, idx, apply_transform = false)) #Point2f(mouseposition(scene))
     ps1 = plot.converted[1][]
     ps2 = plot.converted[2][]
 
@@ -994,23 +994,20 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
 
         # Draw the line
         if a.enable_indicators[]
-            model = plot.model[]
-
             # Why does this sometimes create 2+ plots
             if inspector.selection != plot || (length(inspector.temp_plots) != 1)
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
-                    scene, [P1, P2], model = model, 
+                    scene, [P1, P2], transformation = Transformation(plot.transformation),
                     color = a.indicator_color, strokewidth = a.indicator_linewidth, 
                     linestyle = a.indicator_linestyle,
-                    visible = a.indicator_visible, inspectable = false
+                    visible = a.indicator_visible, inspectable = false,
+                    depth_shift = -1f-3
                 )
-                translate!(p, Vec3f(0, 0, a.depth[]))
                 push!(inspector.temp_plots, p)
             elseif !isempty(inspector.temp_plots)
                 p = inspector.temp_plots[1]
                 p[1][] = [P1, P2]
-                p.model[] = model
             end
 
             a.indicator_visible[] = true
