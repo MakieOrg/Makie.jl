@@ -165,7 +165,7 @@ function shift_project(scene, plot, pos)
     project(
         camera(scene).projectionview[],
         Vec2f(widths(pixelarea(scene)[])),
-        apply_transform(transform_func(plot), pos, to_value(get(plot, :space, :data)))
+        pos
     ) .+ Vec2f(origin(pixelarea(scene)[]))
 end
 

@@ -292,7 +292,7 @@ function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
 end
 
 function apply_transform(f, data::AbstractArray)
-    map(point-> apply_transform(f, point), data)
+    map(point -> apply_transform(f, point), data)
 end
 
 function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2})
