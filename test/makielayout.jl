@@ -359,3 +359,20 @@ end
         @test isempty(d)
     end
 end
+
+@testset "Legend with rich text" begin
+    fig = Figure()
+    ax = Axis(fig[1,1])
+    l1 = lines!( 0..2π , sin )
+    @test_nowarn Legend(
+        fig[1,2],
+        [l1],
+        [rich("some", subscript("entry"))],
+        rich("title", color = :red, font = :bold_italic))
+end
+
+@testset "Legend for hist with labels" begin
+    f, ax, h = hist(randn(100), bar_labels = :y, label = "My histogram")
+    @test_nowarn axislegend()
+    f
+end

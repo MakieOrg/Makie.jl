@@ -4,8 +4,27 @@
 
 - Improvements to 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
 - Fixed some errors/problems with DataInspector [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
-- Fixed incorrect line depth in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
-- Fixed incorrect line alpha in dense lines in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
+
+## v0.19.6
+
+- Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953).
+- Fix WGLMakie JS popup [#2976](https://github.com/MakieOrg/Makie.jl/pull/2976).
+- Fix legendelements when children have no elements [#2982](https://github.com/MakieOrg/Makie.jl/pull/2982).
+- Bump compat for StatsBase to 0.34 [#2915](https://github.com/MakieOrg/Makie.jl/pull/2915).
+- Improved thread safety [#2840](https://github.com/MakieOrg/Makie.jl/pull/2840).
+
+## v0.19.5
+
+- Add `loop` option for GIF outputs when recording videos with `record` [#2891](https://github.com/MakieOrg/Makie.jl/pull/2891).
+- More fixes for line rendering in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843).
+- Fixed incorrect line alpha in dense lines in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843).
+- Change `scene.clear` to an observable and make changes in `Scene` Observables trigger renders in GLMakie [#2929](https://github.com/MakieOrg/Makie.jl/pull/2929).
+- Added contour labels [#2496](https://github.com/MakieOrg/Makie.jl/pull/2496).
+- Allow rich text to be used in Legends [#2902](https://github.com/MakieOrg/Makie.jl/pull/2902).
+- More support for zero length Geometries [#2917](https://github.com/MakieOrg/Makie.jl/pull/2917).
+- Make CairoMakie drawing for polygons with holes order independent [#2918](https://github.com/MakieOrg/Makie.jl/pull/2918).
+- Fixes for `Makie.inline!()`, allowing now for `Makie.inline!(automatic)` (default), which is better at automatically opening a window/ inlining a plot into plotpane when needed [#2919](https://github.com/MakieOrg/Makie.jl/pull/2919) [#2937](https://github.com/MakieOrg/Makie.jl/pull/2937).
+- Block/Axis doc improvements [#2940](https://github.com/MakieOrg/Makie.jl/pull/2940) [#2932](https://github.com/MakieOrg/Makie.jl/pull/2932) [#2894](https://github.com/MakieOrg/Makie.jl/pull/2894).
 
 ## v0.19.4
 
@@ -35,9 +54,9 @@
 - Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497).
 - Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
 - Fixed forced rasterization in CairoMakie svg files when polygons with colors specified as (color, alpha) tuples were used [#2535](https://github.com/MakieOrg/Makie.jl/pull/2535).
-- Do less copies of Observables in Attributes + plot pipeline [#2443](https://github.com/MakieOrg/Makie.jl/pull/2443). 
+- Do less copies of Observables in Attributes + plot pipeline [#2443](https://github.com/MakieOrg/Makie.jl/pull/2443).
 - Add Search Page and tweak Result Ordering [#2474](https://github.com/MakieOrg/Makie.jl/pull/2474).
-- Remove all global attributes from TextureAtlas implementation and fix julia#master [#2498](https://github.com/MakieOrg/Makie.jl/pull/2498). 
+- Remove all global attributes from TextureAtlas implementation and fix julia#master [#2498](https://github.com/MakieOrg/Makie.jl/pull/2498).
 - Use new JSServe, implement WGLMakie picking, improve performance and fix lots of WGLMakie bugs [#2428](https://github.com/MakieOrg/Makie.jl/pull/2428).
 
 ## v0.19.0

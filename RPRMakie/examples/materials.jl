@@ -24,7 +24,7 @@ img = begin
                  emissive plastic]
 
     mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
-    palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
+    palette = reshape(Makie.DEFAULT_PALETTES.color[][1:6], size(materials))
 
     for i in CartesianIndices(materials)
         x, y = Tuple(i)

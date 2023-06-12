@@ -540,7 +540,7 @@ end
 """
     get_ticks(ticks, scale, formatter, vmin, vmax)
 
-Base function that calls `get_tickvalues(ticks, vmin, max)` and
+Base function that calls `get_tickvalues(ticks, scale, vmin, max)` and
 `get_ticklabels(formatter, tickvalues)` and returns a tuple
 `(tickvalues, ticklabels)`.
 For custom ticks / formatter combinations, this method can be overloaded

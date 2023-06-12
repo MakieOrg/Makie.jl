@@ -211,10 +211,12 @@ end
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    arr = copy(convert_arguments(PB, linestring[1])[1])
-    for ls in 2:length(linestring)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, linestring[ls])[1])
+    arr = Point2f[]; n = length(linestring)
+    for idx in 1:n
+        append!(arr, convert_arguments(PB, linestring[idx])[1])
+        if idx != n # don't add NaN at the end
+            push!(arr, Point2f(NaN))
+        end
     end
     return (arr,)
 end
@@ -226,15 +228,17 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    arr = copy(convert_arguments(PB, pol.exterior)[1])
-    push!(arr, arr[1]) # close exterior
-    if !isempty(pol.interiors)
+    converted = convert_arguments(PB, pol.exterior)[1] # this should always be a Tuple{<: Vector{Point}}
+    arr = copy(converted)
+    if !isempty(arr) && arr[1] != arr[end]
+        push!(arr, arr[1]) # close exterior
+    end
+    for interior in pol.interiors
         push!(arr, Point2f(NaN))
-        for interior in pol.interiors
-            inter = convert_arguments(PB, interior)[1]
-            append!(arr, inter)
-            # close interior + separate!
-            push!(arr, inter[1], Point2f(NaN))
+        inter = convert_arguments(PB, interior)[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, inter)
+        if !isempty(inter) && inter[1] != inter[end]
+            push!(arr, inter[1]) # close interior
         end
     end
     return (arr,)
@@ -247,10 +251,14 @@ end
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = copy(convert_arguments(PB, mp[1])[1])
-    for p in 2:length(mp)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, mp[p])[1])
+    arr = Point2f[]
+    n = length(mp)
+    for idx in 1:n
+        converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, converted)
+        if idx != n # don't add NaN at the end
+            push!(arr, Point2f(NaN))
+        end
     end
     return (arr,)
 end
@@ -944,6 +952,7 @@ to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
 to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
+const FONT_CACHE_LOCK = Base.ReentrantLock()
 
 function load_font(filepath)
     font = FreeTypeAbstraction.try_load(filepath)
@@ -962,28 +971,30 @@ A font can either be specified by a file path, such as "folder/with/fonts/font.o
 or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.
 """
 function to_font(str::String)
-    get!(FONT_CACHE, str) do
-        # load default fonts without font search to avoid latency
-        if str == "default" || str == "TeX Gyre Heros Makie"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
-        elseif str == "TeX Gyre Heros Makie Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
-        # load fonts directly if they are given as font paths
-        elseif isfile(str)
-            return load_font(str)
+    lock(FONT_CACHE_LOCK) do
+        return get!(FONT_CACHE, str) do
+            # load default fonts without font search to avoid latency
+            if str == "default" || str == "TeX Gyre Heros Makie"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
+            elseif str == "TeX Gyre Heros Makie Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
+            # load fonts directly if they are given as font paths
+            elseif isfile(str)
+                return load_font(str)
+            end
+            # for all other cases, search for the best match on the system
+            fontpath = assetpath("fonts")
+            font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
+            if font === nothing
+                @warn("Could not find font $str, using TeX Gyre Heros Makie")
+                return to_font("TeX Gyre Heros Makie")
+            end
+            return font
         end
-        # for all other cases, search for the best match on the system
-        fontpath = assetpath("fonts")
-        font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
-        if font === nothing
-            @warn("Could not find font $str, using TeX Gyre Heros Makie")
-            return to_font("TeX Gyre Heros Makie")
-        end
-        return font
     end
 end
 to_font(x::Vector{String}) = to_font.(x)
