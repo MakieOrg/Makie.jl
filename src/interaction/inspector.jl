@@ -73,53 +73,6 @@ function closest_point_on_line(A::Point2f, B::Point2f, P::Point2f)
     A .+ AB * dot(AP, AB) / dot(AB, AB)
 end
 
-function view_ray(scene)
-    inv_projview = inv(camera(scene).projectionview[])
-    view_ray(inv_projview, events(scene).mouseposition[], pixelarea(scene)[])
-end
-function view_ray(inv_view_proj, mpos, area::Rect2)
-    # This figures out the camera view direction from the projectionview matrix (?)
-    # and computes a ray from a near and a far point.
-    # Based on ComputeCameraRay from ImGuizmo
-    mp = 2f0 .* (mpos .- minimum(area)) ./ widths(area) .- 1f0
-    v = inv_view_proj * Vec4f(0, 0, -10, 1)
-    reversed = v[3] < v[4]
-    near = reversed ? 1f0 - 1e-6 : 0f0
-    far = reversed ? 0f0 : 1f0 - 1e-6
-
-    origin = inv_view_proj * Vec4f(mp[1], mp[2], near, 1f0)
-    origin = origin[Vec(1, 2, 3)] ./ origin[4]
-
-    p = inv_view_proj * Vec4f(mp[1], mp[2], far, 1f0)
-    p = p[Vec(1, 2, 3)] ./ p[4]
-
-    dir = normalize(p .- origin)
-    return origin, dir
-end
-
-
-# These work in 2D and 3D
-function closest_point_on_line(A, B, origin, dir)
-    closest_point_on_line(
-        to_ndim(Point3f, A, 0),
-        to_ndim(Point3f, B, 0),
-        to_ndim(Point3f, origin, 0),
-        to_ndim(Vec3f, dir, 0)
-    )
-end
-function closest_point_on_line(A::Point3f, B::Point3f, origin::Point3f, dir::Vec3f)
-    # See:
-    # https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-    AB_norm = norm(B .- A)
-    u_AB = (B .- A) / AB_norm
-    u_dir = normalize(dir)
-    u_perp = normalize(cross(u_dir, u_AB))
-    # e_RD, e_perp defines a plane with normal n
-    n = normalize(cross(u_dir, u_perp))
-    t = dot(origin .- A, n) / dot(u_AB, n)
-    A .+ clamp(t, 0.0, AB_norm) * u_AB
-end
-
 function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6)
     # adjusted from ray_triangle_intersection
     AO = A .- P
@@ -132,39 +85,6 @@ function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6
     return (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
 end
 
-function ray_triangle_intersection(A, B, C, origin, dir, ϵ = 1e-6)
-    # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
-    AO = A .- origin
-    BO = B .- origin
-    CO = C .- origin
-    A1 = 0.5 * dot(cross(BO, CO), dir)
-    A2 = 0.5 * dot(cross(CO, AO), dir)
-    A3 = 0.5 * dot(cross(AO, BO), dir)
-
-    e = 1e-3
-    if (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
-        Point3f((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
-    else
-        Point3f(NaN)
-    end
-end
-
-
-### Surface positions
-########################################
-
-surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
-surface_x(xs, i, j, N) = xs[i]
-surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
-
-surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
-surface_y(ys, i, j, N) = ys[j]
-surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
-
-function surface_pos(xs, ys, zs, i, j)
-    N, M = size(zs)
-    Point3f(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
-end
 
 
 ### Mapping mesh vertex indices to Vector{Polygon} index
@@ -216,20 +136,20 @@ function point_in_quad_parameter(
 
     # Our initial guess is that P is in the center of the quad (in terms of AB and DC)
     f = 0.5
-
-    for i in 0:iterations
+    AB = B - A
+    DC = C - D
+    for _ in 0:iterations
         # vector between top and bottom point of the current line
         dir = (D + f * (C - D)) - (A + f * (B - A))
-        DC = C - D
-        AB = B - A
         # solves P + _ * dir = A + f1 * (B - A) (intersection point of ray & line)
         f1, _ = inv(Mat2f(AB..., dir...)) * (P - A)
         f2, _ = inv(Mat2f(DC..., dir...)) * (P - D)
 
         # next fraction estimate should be between f1 and f2
         # adding 2f to this helps avoid jumping between low and high values
+        old_f = f
         f = 0.25 * (2f + f1 + f2)
-        if abs(f2 - f1) < epsilon
+        if abs(old_f - f) < epsilon
             return f
         end
     end
@@ -586,9 +506,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     scene = parent_scene(plot)
 
     # cast ray from cursor into screen, find closest point to line
-    p0, p1 = plot[1][][idx-1:idx]
-    origin, dir = view_ray(scene)
-    pos = closest_point_on_line(p0, p1, origin, dir)
+    pos = get_position(plot, idx)
 
     proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -602,7 +520,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     if haskey(plot, :inspector_label)
         tt.text[] = plot[:inspector_label][](plot, idx, typeof(p0)(pos))
     else
-        tt.text[] = position2string(typeof(p0)(pos))
+        tt.text[] = position2string(eltype(plot[1][])(pos))
     end
     tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
@@ -668,38 +586,7 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    xs = plot[1][]
-    ys = plot[2][]
-    zs = plot[3][]
-    w, h = size(zs)
-    _i = mod1(idx, w); _j = div(idx-1, w)
-
-    # This isn't the most accurate so we include some neighboring faces
-    origin, dir = view_ray(scene)
-    pos = Point3f(NaN)
-    for i in _i-1:_i+1, j in _j-1:_j+1
-        (1 <= i <= w) && (1 <= j < h) || continue
-
-        if i - 1 > 0
-            pos = ray_triangle_intersection(
-                surface_pos(xs, ys, zs, i, j),
-                surface_pos(xs, ys, zs, i-1, j),
-                surface_pos(xs, ys, zs, i, j+1),
-                origin, dir
-            )
-        end
-
-        if i + 1 <= w && isnan(pos)
-            pos = ray_triangle_intersection(
-                surface_pos(xs, ys, zs, i, j),
-                surface_pos(xs, ys, zs, i, j+1),
-                surface_pos(xs, ys, zs, i+1, j+1),
-                origin, dir
-            )
-        end
-
-        isnan(pos) || break
-    end
+    pos = get_position(plot, idx)
 
     if !isnan(pos)
         tt[1][] = proj_pos
@@ -774,7 +661,9 @@ function show_imagelike(inspector, plot, name, edge_based)
                     scene, position, color = a._color,
                     visible = a.indicator_visible,
                     inspectable = false,
-                    marker=:rect, markersize = map(r -> 3r, a.range),
+                    # TODO switch to Rect with 2r-1 or 2r-2 markersize to have 
+                    # just enough space to always detect the underlying image
+                    marker=:rect, markersize = map(r -> 2r, a.range), 
                     strokecolor = a.indicator_color,
                     strokewidth = a.indicator_linewidth
                 )
@@ -942,7 +831,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
     return show_data(inspector, plot, div(idx+1, 2), nothing)
 end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
-    a = inspector.plot.attributes
+    a = inspector.attributes
     tt = inspector.plot
     pos = plot[1][][idx]
     mpos = Point2f(mouseposition_px(inspector.root))
@@ -1010,9 +899,9 @@ function show_poly(inspector, plot, idx, source)
             clear_temporary_plots!(inspector, plot)
 
             p = lines!(
-                scene, line_collection, color = a.indicator_color,
+                scene, line_collection, color = a.indicator_color, model = source.model,
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-                visible = a.indicator_visible, inspectable = false
+                visible = a.indicator_visible, inspectable = false, depth_shift = -1f-3
             )
             translate!(p, Vec3f(0, 0, a.depth[]-1))
             push!(inspector.temp_plots, p)
@@ -1035,45 +924,28 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    qs = extrema(child[1][])
-    ps = extrema(child[2][])
+    a0, a1 = extrema(child[1][])
+    b0, b1 = extrema(child[2][])
     data = child[3][]
     T = child.transformation.model[]
 
-    vs = [ # clockwise
-        Point3f(T * Point4f(qs[1], ps[1], 0, 1)),
-        Point3f(T * Point4f(qs[1], ps[2], 0, 1)),
-        Point3f(T * Point4f(qs[2], ps[2], 0, 1)),
-        Point3f(T * Point4f(qs[2], ps[1], 0, 1))
-    ]
+    # Transform the Ray rather than the Rect here to avoid using a Rect3f
+    rect = Rect2f(a0, b0, a1, b1)
+    ray = transform(inv(T), ray_at_cursor(scene))
+    p = ray_rect_intersection(rect, ray) # in heatmap space (with z = normal of heatmap)
 
-    origin, dir = view_ray(scene)
-    pos = Point3f(NaN)
-    pos = ray_triangle_intersection(vs[1], vs[2], vs[3], origin, dir)
-    if isnan(pos)
-        pos = ray_triangle_intersection(vs[3], vs[4], vs[1], origin, dir)
-    end
-
-    if !isnan(pos)
-        child_idx = findfirst(isequal(child), plot.plots)
-        if child_idx == 2
-            x = pos[2]; y = pos[3]
-        elseif child_idx == 3
-            x = pos[1]; y = pos[3]
-        else
-            x = pos[1]; y = pos[2]
-        end
-        i = clamp(round(Int, (x - qs[1]) / (qs[2] - qs[1]) * size(data, 1) + 0.5), 1, size(data, 1))
-        j = clamp(round(Int, (y - ps[1]) / (ps[2] - ps[1]) * size(data, 2) + 0.5), 1, size(data, 2))
+    if !isnan(p)
+        i = clamp(round(Int, (p[1] - a0) / (a1 - a0) * size(data, 1) + 0.5), 1, size(data, 1))
+        j = clamp(round(Int, (p[2] - b0) / (b1 - b0) * size(data, 2) + 0.5), 1, size(data, 2))
         val = data[i, j]
 
         tt[1][] = proj_pos
         if haskey(plot, :inspector_label)
-            tt.text[] = plot[:inspector_label][](plot, (i, j), pos)
+            tt.text[] = plot[:inspector_label][](plot, (i, j), p)
         else
             tt.text[] = @sprintf(
                 "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
-                pos[1], pos[2], pos[3], val
+                p[1], p[2], p[3], val
             )
         end
         tt.visible[] = true
@@ -1114,7 +986,8 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
         if a.enable_indicators[]
             model = plot.model[]
 
-            if inspector.selection != plot || isempty(inspector.temp_plots)
+            # Why does this sometimes create 2+ plots
+            if inspector.selection != plot || (length(inspector.temp_plots) != 1)
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
                     scene, [P1, P2], model = model, 
