@@ -165,12 +165,14 @@ end
 
 
 """
-    get_position(scene) = get_position(pick(scene))
-    get_position(plot, index)
+    get_position(scene; kwargs...) = get_position(pick(scene)...; kwargs...)
+    get_position(plot, index, apply_transform = true)
 
 Given the result of `pick(...)` this function returns a relevant position 
 for the given input. If `plot = nothing` (i.e pick did not find a plot)
-the function will return `Point3f(NaN)`.
+the function will return `Point3f(NaN)`. If `apply_transform = true` the 
+transform_func (e.g. `log`) and the model matrix (i.e. `translate!()`, 
+`scale!()` and `rotate!()`) will be applied to the output.
 
 For most plot types the returned position is interpolated to match up with the 
 cursor position exactly. Exceptions:
@@ -179,19 +181,52 @@ cursor position exactly. Exceptions:
 - `volume` returns a relevant position on its bounding box
 """
 get_position(scene::Scene) = get_position(pick(scene)...)
-get_position(plot::Union{Scatter, MeshScatter}, idx) = plot[1][][idx]
-
-function get_position(plot::Union{Lines, LineSegments}, idx)
-    p0, p1 = plot[1][][idx-1:idx]
-    return closest_point_on_line(p0, p1, ray_at_cursor(parent_scene(plot)))
+function get_position(plot::AbstractPlot, idx; apply_transform = true)
+    pos = to_ndim(Point3f, _get_position(plot, idx), 0f0)
+    if apply_transform && !isnan(pos)
+        return apply_transform_and_model(plot, pos)
+    else
+        return pos
+    end
 end
 
-function get_position(plot::Union{Heatmap, Image}, idx)
-    p0, p1 = Point2f.(extrema(plot.x[]), extrema(plot.y[]))
-    return ray_rect_intersection(Rect2f(p0, p1 - p0), ray_at_cursor(parent_scene(plot)))
+_get_position(plot::Union{Scatter, MeshScatter}, idx) = plot[1][][idx]
+
+function get_position(plot::Union{Lines, LineSegments}, idx; apply_transform = true)
+    p0, p1 = apply_transform_and_model(plot, plot[1][][idx-1:idx])
+
+    pos = closest_point_on_line(p0, p1, ray_at_cursor(parent_scene(plot)))
+    
+    if apply_transform
+        return pos
+    else
+        p4d = inv(plot.model[]) * to_ndim(Point4f, pos, 1f0)
+        p3d = p4d[Vec(1, 2, 3)] / p4d[4]
+        return Makie.apply_transform(inverse_transform(transform_func(plot)), p3d)
+    end
 end
 
-function get_position(plot::Mesh, idx)
+function get_position(plot::Union{Heatmap, Image}, idx; apply_transform = true)
+    # Heatmap and Image are always a Rect2f. The transform function is currently 
+    # not allowed to change this, so applying it should be fine. Applying the 
+    # model matrix may add a z component to the Rect2f, which we can't represent.
+    # So we instead inverse-transform the ray
+    p0, p1 = map(Point2f.(extrema(plot.x[]), extrema(plot.y[]))) do p
+        return Makie.apply_transform(transform_func(plot), p)
+    end
+    ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
+    pos = ray_rect_intersection(Rect2f(p0, p1 - p0), ray)
+    
+    if apply_transform
+        p4d = plot.model[] * to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+        return p4d[Vec(1, 2, 3)] / p4d[4]
+    else
+        pos = Makie.apply_transform(inverse_transform(transform_func(plot)), pos)
+        return to_ndim(Point3f, pos, 0)
+    end
+end
+
+function _get_position(plot::Mesh, idx)
     positions = coordinates(plot.mesh[])
     ray = ray_at_cursor(parent_scene(plot))
 
@@ -208,7 +243,7 @@ function get_position(plot::Mesh, idx)
     return Point3f(NaN)
 end
 
-function get_position(plot::Surface, idx)
+function get_position(plot::Surface, idx; apply_transform = true)
     xs = plot[1][]
     ys = plot[2][]
     zs = plot[3][]
@@ -216,25 +251,26 @@ function get_position(plot::Surface, idx)
     _i = mod1(idx, w); _j = div(idx-1, w)
 
     # This isn't the most accurate so we include some neighboring faces
-    ray = ray_at_cursor(parent_scene(plot))
+    ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
+    tf = transform_func(plot)
     pos = Point3f(NaN)
     for i in _i-1:_i+1, j in _j-1:_j+1
         (1 <= i <= w) && (1 <= j < h) || continue
 
         if i - 1 > 0
             pos = ray_triangle_intersection(
-                surface_pos(xs, ys, zs, i, j),
-                surface_pos(xs, ys, zs, i-1, j),
-                surface_pos(xs, ys, zs, i, j+1),
+                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j)),
+                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i-1, j)),
+                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j+1)),
                 ray
             )
         end
 
         if i + 1 <= w && isnan(pos)
             pos = ray_triangle_intersection(
-                surface_pos(xs, ys, zs, i, j),
-                surface_pos(xs, ys, zs, i, j+1),
-                surface_pos(xs, ys, zs, i+1, j+1),
+                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j)),
+                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j+1)),
+                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i+1, j+1)),
                 ray
             )
         end
@@ -242,13 +278,30 @@ function get_position(plot::Surface, idx)
         isnan(pos) || break
     end
 
-    return pos
+    if apply_transform
+        p4d = plot.model[] * to_ndim(Point4f, pos, 1)
+        return p4d[Vec(1, 2, 3)] / p4d[4]
+    else
+        return Makie.apply_transform(inverse_transform(tf), pos)
+    end
 end
 
-function get_position(plot::Volume, idx)
+function get_position(plot::Volume, idx; apply_transform = true)
     min, max = Point3f.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
-    return ray_rect_intersection(Rect3f(min, max .- min), ray_at_cursor(parent_scene(plot)))
+    ray = ray_at_cursor(parent_scene(plot))
+    
+    if apply_transform
+        min = apply_transform_and_model(plot, min)
+        max = apply_transform_and_model(plot, max)
+        return ray_rect_intersection(Rect3f(min, max .- min), ray)
+    else
+        min = Makie.apply_transform(transform_func(plot), min)
+        max = Makie.apply_transform(transform_func(plot), max)
+        ray = transform(inv(plot.model[]), ray)
+        pos = ray_rect_intersection(Rect3f(min, max .- min), ray)
+        return Makie.apply_transform(inverse_transform(plot), pos)
+    end
 end
 
-get_position(plot::Text, idx) = Point3f(NaN)
-get_position(plot::Nothing, idx) = Point3f(NaN)
+_get_position(plot::Text, idx) = Point3f(NaN)
+_get_position(plot::Nothing, idx) = Point3f(NaN)

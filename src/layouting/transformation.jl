@@ -206,6 +206,30 @@ transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 
 """
+    apply_transform_and_model(plot, pos, output_type = Point3f)
+    apply_transform_and_model(model, transfrom_func, pos, output_type = Point3f)
+
+
+Applies the transform function and model matrix (i.e. transformations from 
+`translate!`, `rotate!` and `scale!`) to the given input
+"""
+function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
+    return apply_transform_and_model(plot.model[], transform_func(plot), pos, output_type)
+end
+function apply_transform_and_model(model::Mat4f, f, pos::VecTypes, output_type = Point3f)
+    transformed = apply_transform(f, pos)
+    p4d = to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+    p4d = model * p4d
+    p4d = p4d ./ p4d[4]
+    return to_ndim(output_type, p4d, NaN)
+end
+function apply_transform_and_model(model::Mat4f, f, positions::Vector, output_type = Point3f)
+    return map(positions) do pos
+        apply_transform_and_model(model, f, pos, output_type)
+    end
+end
+
+"""
     apply_transform(f, data, space)
 Apply the data transform func to the data if the space matches one
 of the the transformation spaces (currently only :data is transformed)
