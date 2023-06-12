@@ -36,20 +36,17 @@ function ray_at_cursor(scene::Scene, cam::Camera3D)
     end
 end
 
-function ray_at_cursor(scene::Scene, ::Camera2D)
-    @info "TODO verify"
+function ray_at_cursor(scene::Scene, cam::Camera2D)
     rel_pos = mouseposition_px(scene) ./ widths(scene.px_area[])
     origin = minimum(cam.area[]) .+ rel_pos .* widths(cam.area[])
     return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
 end
 
 function ray_at_cursor(scene::Scene, ::PixelCamera)
-    @info "TODO verify"
     return Ray(to_ndim(Point3f, mouseposition_px(scene), 10_000f0), Vec3f(0,0,-1))
 end
 
 function ray_at_cursor(scene::Scene, ::RelativeCamera)
-    @info "TODO verify"
     origin = mouseposition_px(scene) ./ widths(scene.px_area[])
     return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
 end
