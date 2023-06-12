@@ -161,7 +161,9 @@ end
 ## Shifted projection
 ########################################
 
-function shift_project(scene, plot, pos)
+@deprecate shift_project(scene, plot, pos) shift_project(scene, pos) false
+
+function shift_project(scene, pos)
     project(
         camera(scene).projectionview[],
         Vec2f(widths(pixelarea(scene)[])),
@@ -421,7 +423,7 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     scene = parent_scene(plot)
 
     pos = get_position(plot, idx)
-    proj_pos = shift_project(scene, plot, pos)
+    proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if haskey(plot, :inspector_label)
@@ -488,7 +490,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     end
 
     pos = get_position(plot, idx)
-    proj_pos = shift_project(scene, plot, pos)
+    proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if haskey(plot, :inspector_label)
@@ -510,7 +512,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     # cast ray from cursor into screen, find closest point to line
     pos = get_position(plot, idx)
 
-    proj_pos = shift_project(scene, plot, pos)
+    proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
     tt.offset[] = ifelse(
@@ -804,7 +806,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     scene = parent_scene(plot)
 
     pos = apply_transform_and_model(plot, plot[1][][idx])
-    proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
+    proj_pos = shift_project(scene, to_ndim(Point3f, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
