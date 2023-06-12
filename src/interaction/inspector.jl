@@ -932,39 +932,34 @@ end
 function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Heatmap)
     a = inspector.attributes
     tt = inspector.plot
-    scene = parent_scene(plot)
+
+    pos = get_position(child, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
+
+    # Not on heatmap
+    if isnan(pos)
+        a.indicator_visible[] && (a.indicator_visible[] = false)
+        tt.visible[] = false
+        return true
+    end
+
+    i, j, val = _pixelated_getindex(child[1][], child[2][], child[3][], pos, true)
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
+    tt[1][] = proj_pos
+    
+    world_pos = apply_transform_and_model(child, pos)
 
-    a0, a1 = extrema(child[1][])
-    b0, b1 = extrema(child[2][])
-    data = child[3][]
-    T = child.transformation.model[]
-
-    # Transform the Ray rather than the Rect here to avoid using a Rect3f
-    rect = Rect2f(a0, b0, a1, b1)
-    ray = transform(inv(T), ray_at_cursor(scene))
-    p = ray_rect_intersection(rect, ray) # in heatmap space (with z = normal of heatmap)
-
-    if !isnan(p)
-        i = clamp(round(Int, (p[1] - a0) / (a1 - a0) * size(data, 1) + 0.5), 1, size(data, 1))
-        j = clamp(round(Int, (p[2] - b0) / (b1 - b0) * size(data, 2) + 0.5), 1, size(data, 2))
-        val = data[i, j]
-
-        tt[1][] = proj_pos
-        if haskey(plot, :inspector_label)
-            tt.text[] = plot[:inspector_label][](plot, (i, j), p)
-        else
-            tt.text[] = @sprintf(
-                "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
-                p[1], p[2], p[3], val
-            )
-        end
-        tt.visible[] = true
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, (i, j), world_pos)
     else
-        tt.visible[] = false
+        tt.text[] = @sprintf(
+            "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
+            world_pos[1], world_pos[2], world_pos[3], val
+        )
     end
+
+    tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
