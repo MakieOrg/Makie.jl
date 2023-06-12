@@ -378,3 +378,13 @@ end
 
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
+
+
+abstract type BooleanOperator end
+
+"""
+    IsPressedInputType
+
+Union containing possible input types for `ispressed`.
+"""
+const IsPressedInputType = Union{Bool, BooleanOperator, Mouse.Button, Keyboard.Button, Set, Vector, Tuple}

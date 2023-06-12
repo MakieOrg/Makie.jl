@@ -1,8 +1,8 @@
 struct Camera2D <: AbstractCamera
     area::Observable{Rect2f}
     zoomspeed::Observable{Float32}
-    zoombutton::Observable{ButtonTypes}
-    panbutton::Observable{Union{ButtonTypes, Vector{ButtonTypes}}}
+    zoombutton::Observable{IsPressedInputType}
+    panbutton::Observable{IsPressedInputType}
     padding::Observable{Float32}
     last_area::Observable{Vec{2, Int}}
     update_limits::Observable{Bool}

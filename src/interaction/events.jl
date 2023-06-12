@@ -75,8 +75,6 @@ function onpick end
 ################################################################################
 
 
-abstract type BooleanOperator end
-
 """
     And(left, right[, rest...])
 
