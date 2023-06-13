@@ -910,7 +910,6 @@ end
 end
 
 @reference_test "Log y-scale histogram (barplot)" begin
-    # make a gap in histogram as edge case
     hist(
         randn(10^6); 
         axis=(; yscale=log2)
