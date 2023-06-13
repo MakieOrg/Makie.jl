@@ -3,15 +3,17 @@ function bar_label_formatter(value::Number)
 end
 
 function bar_default_fillto(tf, ys, offset)
-    return offset
+    return ys, offset
 end
 
 # `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
 function bar_default_fillto(tf::Tuple, ys, offset)
     if tf[2] isa Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
-        return minimum(ys) / 2
+        # use the minimal non-zero y divided by 2 as lower bound for log scale
+        smart_fillto = minimum(y -> y<=0 ? oftype(y, Inf) : y, ys) / 2
+        return clamp.(ys, smart_fillto, Inf), smart_fillto
     else
-        return offset
+        return ys, offset
     end
 end
 
@@ -230,7 +232,7 @@ function Makie.plot!(p::BarPlot)
 
         if stack === automatic
             if fillto === automatic
-                fillto = bar_default_fillto(transformation, y, offset)
+                y, fillto = bar_default_fillto(transformation, y, offset)
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
