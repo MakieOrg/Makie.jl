@@ -2,6 +2,19 @@ function bar_label_formatter(value::Number)
     return string(round(value; digits=3))
 end
 
+function bar_default_fillto(tf, ys, offset)
+    return offset
+end
+
+# `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
+function bar_default_fillto(tf::Tuple, ys, offset)
+    if tf[2] isa Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
+        return minimum(ys) / 2
+    else
+        return offset
+    end
+end
+
 """
     barplot(x, y; kwargs...)
 
@@ -190,7 +203,7 @@ function Makie.plot!(p::BarPlot)
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])
     label_colors = Observable(RGBAf[])
-    function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, gap, dodge_gap, stack,
+    function calculate_bars(xy, fillto, offset, transformation, width, dodge, n_dodge, gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,
                             color_over_bar, label_formatter, label_offset)
 
@@ -217,7 +230,7 @@ function Makie.plot!(p::BarPlot)
 
         if stack === automatic
             if fillto === automatic
-                fillto = offset
+                fillto = bar_default_fillto(transformation, y, offset)
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
@@ -249,7 +262,7 @@ function Makie.plot!(p::BarPlot)
         return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.gap,
+    bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 
