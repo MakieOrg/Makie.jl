@@ -2,6 +2,21 @@ function bar_label_formatter(value::Number)
     return string(round(value; digits=3))
 end
 
+"""
+    bar_default_fillto(tf, ys, offset)::(ys, offset)
+
+Returns the default y-positions and offset positions for the given transform `tf`.  
+
+In order to customize this for your own transformation type, you can dispatch on 
+`tf`.
+
+Returns a Tuple of new y positions and offset arrays.
+
+## Arguments
+- `tf`: `plot.transformation.transform_func[]`. 
+- `ys`: The y-values passed to `barplot`.
+- `offset`: The `offset` parameter passed to `barplot`.
+"""
 function bar_default_fillto(tf, ys, offset)
     return ys, offset
 end
