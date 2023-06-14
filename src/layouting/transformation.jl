@@ -214,18 +214,22 @@ Applies the transform function and model matrix (i.e. transformations from
 `translate!`, `rotate!` and `scale!`) to the given input
 """
 function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
-    return apply_transform_and_model(plot.model[], transform_func(plot), pos, output_type)
+    return apply_transform_and_model(
+        plot.model[], transform_func(plot), pos, 
+        to_value(get(plot, :space, :data)), 
+        output_type
+    )
 end
-function apply_transform_and_model(model::Mat4f, f, pos::VecTypes, output_type = Point3f)
-    transformed = apply_transform(f, pos)
+function apply_transform_and_model(model::Mat4f, f, pos::VecTypes, space = :data, output_type = Point3f)
+    transformed = apply_transform(f, pos, space)
     p4d = to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
     p4d = model * p4d
     p4d = p4d ./ p4d[4]
     return to_ndim(output_type, p4d, NaN)
 end
-function apply_transform_and_model(model::Mat4f, f, positions::Vector, output_type = Point3f)
+function apply_transform_and_model(model::Mat4f, f, positions::Vector, space = :data, output_type = Point3f)
     return map(positions) do pos
-        apply_transform_and_model(model, f, pos, output_type)
+        apply_transform_and_model(model, f, pos, space, output_type)
     end
 end
 

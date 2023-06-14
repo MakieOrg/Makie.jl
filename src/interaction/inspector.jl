@@ -543,7 +543,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         points = point_iterator(plot)
         trans_func = transform_func(plot)
         model = plot.model[]
-        iter = iterate_transformed(points, model, plot.space[], trans_func)
+        iter = iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
         limits_from_transformed_points(iter)
     end
     proj_pos = Point2f(mouseposition_px(inspector.root))
@@ -877,7 +877,7 @@ end
 # backend handle picking colors from a colormap
 function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
     tt = inspector.plot
-    idx = show_poly(inspector, plot.plots[1], idx, source)
+    idx = show_poly(inspector, plot, plot.plots[1], idx, source)
     level = plot.plots[1].color[][idx]
 
     mpos = Point2f(mouseposition_px(inspector.root))
@@ -903,14 +903,13 @@ end
 #     return true
 # end
 
-function show_poly(inspector, plot, idx, source)
+function show_poly(inspector, plot, poly, idx, source)
     a = inspector.attributes
-    idx = vertexindex2poly(plot[1][], idx)
+    idx = vertexindex2poly(poly[1][], idx)
 
     if a.enable_indicators[]
-
-        line_collection = copy(convert_arguments(PointBased(), plot[1][][idx].exterior)[1])
-        for int in plot[1][][idx].interiors
+        line_collection = copy(convert_arguments(PointBased(), poly[1][][idx].exterior)[1])
+        for int in poly[1][][idx].interiors
             push!(line_collection, Point2f(NaN))
             append!(line_collection, convert_arguments(PointBased(), int)[1])
         end
@@ -920,11 +919,11 @@ function show_poly(inspector, plot, idx, source)
             clear_temporary_plots!(inspector, plot)
 
             p = lines!(
-                scene, line_collection, color = a.indicator_color, model = source.model,
+                scene, line_collection, color = a.indicator_color, 
+                transformation = Transformation(source),
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false, depth_shift = -1f-3
             )
-            translate!(p, Vec3f(0, 0, a.depth[]-1))
             push!(inspector.temp_plots, p)
 
         elseif !isempty(inspector.temp_plots)

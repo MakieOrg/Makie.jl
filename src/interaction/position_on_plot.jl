@@ -204,7 +204,7 @@ function get_position(plot::Union{Lines, LineSegments}, idx; apply_transform = t
     else
         p4d = inv(plot.model[]) * to_ndim(Point4f, pos, 1f0)
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
-        return Makie.apply_transform(inverse_transform(transform_func(plot)), p3d)
+        return Makie.apply_transform(inverse_transform(transform_func(plot)), p3d, get(plot, :space, :data))
     end
 end
 
@@ -213,8 +213,9 @@ function get_position(plot::Union{Heatmap, Image}, idx; apply_transform = true)
     # not allowed to change this, so applying it should be fine. Applying the 
     # model matrix may add a z component to the Rect2f, which we can't represent.
     # So we instead inverse-transform the ray
+    space = to_value(get(plot, :space, :data))
     p0, p1 = map(Point2f.(extrema(plot.x[]), extrema(plot.y[]))) do p
-        return Makie.apply_transform(transform_func(plot), p)
+        return Makie.apply_transform(transform_func(plot), p, space)
     end
     ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
     pos = ray_rect_intersection(Rect2f(p0, p1 - p0), ray)
@@ -223,7 +224,7 @@ function get_position(plot::Union{Heatmap, Image}, idx; apply_transform = true)
         p4d = plot.model[] * to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
     else
-        pos = Makie.apply_transform(inverse_transform(transform_func(plot)), pos)
+        pos = Makie.apply_transform(inverse_transform(transform_func(plot)), pos, space)
         return to_ndim(Point3f, pos, 0)
     end
 end
@@ -232,18 +233,19 @@ function get_position(plot::Mesh, idx; apply_transform = true)
     positions = coordinates(plot.mesh[])
     ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
     tf = transform_func(plot)
+    space = to_value(get(plot, :space, :data))
 
     for f in faces(plot.mesh[])
         if idx in f
             p1, p2, p3 = positions[f]
-            p1, p2, p3 = Makie.apply_transform.(tf, (p1, p2, p3))
+            p1, p2, p3 = Makie.apply_transform.(tf, (p1, p2, p3), space)
             pos = ray_triangle_intersection(p1, p2, p3, ray)
             if pos !== Point3f(NaN)
                 if apply_transform
                     p4d = plot.model[] * to_ndim(Point3f, pos, 1)
                     return Point3f(p4d) / p4d[4]
                 else
-                    return Makie.apply_transform(inverse_transform(tf), pos)
+                    return Makie.apply_transform(inverse_transform(tf), pos, space)
                 end
             end
         end
@@ -261,6 +263,7 @@ function get_position(plot::Surface, idx; apply_transform = true)
 
     ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
     tf = transform_func(plot)
+    space = to_value(get(plot, :space, :data))
     
     # This isn't the most accurate so we include some neighboring faces
     pos = Point3f(NaN)
@@ -273,7 +276,7 @@ function get_position(plot::Surface, idx; apply_transform = true)
             B = surface_pos(xs, ys, zs, i-1, j)
             C = surface_pos(xs, ys, zs, i, j+1)
             A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2f(p))
+                xy = Makie.apply_transform(tf, Point2f(p), space)
                 Point3f(xy[1], xy[2], p[3])
             end
             pos = ray_triangle_intersection(A, B, C, ray)
@@ -284,7 +287,7 @@ function get_position(plot::Surface, idx; apply_transform = true)
             B = surface_pos(xs, ys, zs, i,   j+1)
             C = surface_pos(xs, ys, zs, i+1, j+1)
             A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2f(p))
+                xy = Makie.apply_transform(tf, Point2f(p), space)
                 Point3f(xy[1], xy[2], p[3])
             end
             pos = ray_triangle_intersection(A, B, C, ray)
@@ -297,7 +300,8 @@ function get_position(plot::Surface, idx; apply_transform = true)
         p4d = plot.model[] * to_ndim(Point4f, pos, 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
     else
-        return Makie.apply_transform(inverse_transform(tf), pos)
+        xy = Makie.apply_transform(inverse_transform(tf), Point2f(pos), space)
+        return Point3f(xy[1], xy[2], pos[3])
     end
 end
 
@@ -310,11 +314,11 @@ function get_position(plot::Volume, idx; apply_transform = true)
         max = apply_transform_and_model(plot, max)
         return ray_rect_intersection(Rect3f(min, max .- min), ray)
     else
-        min = Makie.apply_transform(transform_func(plot), min)
-        max = Makie.apply_transform(transform_func(plot), max)
+        min = Makie.apply_transform(transform_func(plot), min, get(plot, :space, :data))
+        max = Makie.apply_transform(transform_func(plot), max, get(plot, :space, :data))
         ray = transform(inv(plot.model[]), ray)
         pos = ray_rect_intersection(Rect3f(min, max .- min), ray)
-        return Makie.apply_transform(inverse_transform(plot), pos)
+        return Makie.apply_transform(inverse_transform(plot), pos, get(plot, :space, :data))
     end
 end
 
