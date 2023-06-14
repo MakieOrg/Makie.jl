@@ -165,7 +165,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.elements = elements
 
     if palette === nothing
-        palette = haskey(blockscene.theme, :palette) ? deepcopy(blockscene.theme[:palette]) : copy(Makie.default_palettes)
+        palette = fast_deepcopy(haskey(blockscene.theme, :palette) ? blockscene.theme[:palette] : Makie.DEFAULT_PALETTES)
     end
     ax.palette = palette isa Attributes ? palette : Attributes(palette)
 
@@ -1404,12 +1404,12 @@ function attribute_examples(::Type{Axis})
                     using FileIO
 
                     f = Figure()
-                                        
+
                     ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing")
                     ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()")
                     ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)")
                     ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)")
-                    
+
                     img = rotr90(load(assetpath("cow.png")))
                     for ax in [ax1, ax2, ax3, ax4]
                         image!(ax, img)
@@ -1424,10 +1424,10 @@ function attribute_examples(::Type{Axis})
                 name = "Using `autolimitaspect`",
                 code = """
                     f = Figure()
-                                        
+
                     ax1 = Axis(f[1, 1], autolimitaspect = nothing)
                     ax2 = Axis(f[1, 2], autolimitaspect = 1)
-                    
+
                     for ax in [ax1, ax2]
                         lines!(ax, 0..10, sin)
                     end
@@ -1441,7 +1441,7 @@ function attribute_examples(::Type{Axis})
                 name = "`title` variants",
                 code = """
                     f = Figure()
-                                        
+
                     Axis(f[1, 1], title = "Title")
                     Axis(f[2, 1], title = L"\\sum_i{x_i \\times y_i}")
                     Axis(f[3, 1], title = rich(
@@ -1458,7 +1458,7 @@ function attribute_examples(::Type{Axis})
                 name = "`titlealign` variants",
                 code = """
                     f = Figure()
-                                        
+
                     Axis(f[1, 1], titlealign = :left, title = "Left aligned title")
                     Axis(f[2, 1], titlealign = :center, title = "Center aligned title")
                     Axis(f[3, 1], titlealign = :right, title = "Right aligned title")
@@ -1472,7 +1472,7 @@ function attribute_examples(::Type{Axis})
                 name = "`subtitle` variants",
                 code = """
                     f = Figure()
-                                        
+
                     Axis(f[1, 1], title = "Title", subtitle = "Subtitle")
                     Axis(f[2, 1], title = "Title", subtitle = L"\\sum_i{x_i \\times y_i}")
                     Axis(f[3, 1], title = "Title", subtitle = rich(
@@ -1489,7 +1489,7 @@ function attribute_examples(::Type{Axis})
                 name = "`xlabel` variants",
                 code = """
                     f = Figure()
-                                        
+
                     Axis(f[1, 1], xlabel = "X Label")
                     Axis(f[2, 1], xlabel = L"\\sum_i{x_i \\times y_i}")
                     Axis(f[3, 1], xlabel = rich(
@@ -1506,7 +1506,7 @@ function attribute_examples(::Type{Axis})
                 name = "`ylabel` variants",
                 code = """
                     f = Figure()
-                                        
+
                     Axis(f[1, 1], ylabel = "Y Label")
                     Axis(f[2, 1], ylabel = L"\\sum_i{x_i \\times y_i}")
                     Axis(f[3, 1], ylabel = rich(
@@ -1523,7 +1523,7 @@ function attribute_examples(::Type{Axis})
                 name = "`xtrimspine` variants",
                 code = """
                     f = Figure()
-                                        
+
                     ax1 = Axis(f[1, 1], xtrimspine = false)
                     ax2 = Axis(f[2, 1], xtrimspine = true)
                     ax3 = Axis(f[3, 1], xtrimspine = (true, false))
@@ -1546,7 +1546,7 @@ function attribute_examples(::Type{Axis})
                 name = "`ytrimspine` variants",
                 code = """
                     f = Figure()
-                                        
+
                     ax1 = Axis(f[1, 1], ytrimspine = false)
                     ax2 = Axis(f[1, 2], ytrimspine = true)
                     ax3 = Axis(f[1, 3], ytrimspine = (true, false))
@@ -1569,10 +1569,10 @@ function attribute_examples(::Type{Axis})
                 name = "`xaxisposition` variants",
                 code = """
                     f = Figure()
-                                        
+
                     Axis(f[1, 1], xaxisposition = :bottom)
                     Axis(f[1, 2], xaxisposition = :top)
-                    
+
                     f
                     """
             )
@@ -1582,10 +1582,10 @@ function attribute_examples(::Type{Axis})
                 name = "`yaxisposition` variants",
                 code = """
                     f = Figure()
-                                        
+
                     Axis(f[1, 1], yaxisposition = :left)
                     Axis(f[2, 1], yaxisposition = :right)
-                    
+
                     f
                     """
             )
@@ -1595,7 +1595,7 @@ function attribute_examples(::Type{Axis})
                 name = "`limits` variants",
                 code = """
                     f = Figure()
-                    
+
                     ax1 = Axis(f[1, 1], limits = (nothing, nothing), title = "(nothing, nothing)")
                     ax2 = Axis(f[1, 2], limits = (0, 4pi, -1, 1), title = "(0, 4pi, -1, 1)")
                     ax3 = Axis(f[2, 1], limits = ((0, 4pi), nothing), title = "((0, 4pi), nothing)")
@@ -1604,7 +1604,7 @@ function attribute_examples(::Type{Axis})
                     for ax in [ax1, ax2, ax3, ax4]
                         lines!(ax, 0..4pi, sin)
                     end
-                    
+
                     f
                     """
             )
@@ -1614,16 +1614,16 @@ function attribute_examples(::Type{Axis})
                 name = "`yscale` variants",
                 code = """
                     f = Figure()
-                    
+
                     for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
                         row, col = fldmod1(i, 3)
                         Axis(f[row, col], yscale = scale, title = string(scale),
                             yminorticksvisible = true, yminorgridvisible = true,
                             yminorticks = IntervalsBetween(5))
-                    
+
                         lines!(range(0.01, 0.99, length = 200))
                     end
-                    
+
                     f
                     """
             ),
@@ -1631,7 +1631,7 @@ function attribute_examples(::Type{Axis})
                 name = "Pseudo-log scales",
                 code = """
                     f = Figure()
-                    
+
                     ax1 = Axis(f[1, 1],
                         yscale = Makie.pseudolog10,
                         title = "Pseudolog scale",
@@ -1647,7 +1647,7 @@ function attribute_examples(::Type{Axis})
                     for ax in [ax1, ax2]
                         lines!(ax, -100:0.1:100)
                     end
-                                        
+
                     f
                     """
             ),
@@ -1657,16 +1657,16 @@ function attribute_examples(::Type{Axis})
                 name = "`xscale` variants",
                 code = """
                     f = Figure()
-                    
+
                     for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
                         row, col = fldmod1(i, 2)
                         Axis(f[row, col], xscale = scale, title = string(scale),
                             xminorticksvisible = true, xminorgridvisible = true,
                             xminorticks = IntervalsBetween(5))
-                    
+
                         lines!(range(0.01, 0.99, length = 200), 1:200)
                     end
-                    
+
                     f
                     """
             ),
@@ -1674,7 +1674,7 @@ function attribute_examples(::Type{Axis})
                 name = "Pseudo-log scales",
                 code = """
                     f = Figure()
-                    
+
                     ax1 = Axis(f[1, 1],
                         xscale = Makie.pseudolog10,
                         title = "Pseudolog scale",
@@ -1690,7 +1690,7 @@ function attribute_examples(::Type{Axis})
                     for ax in [ax1, ax2]
                         lines!(ax, -100:0.1:100, -100:0.1:100)
                     end
-                                        
+
                     f
                     """
             ),
@@ -1700,13 +1700,13 @@ function attribute_examples(::Type{Axis})
                 name = "`xtickformat` variants",
                 code = """
                     f = Figure(figure_padding = 50)
-                    
+
                     Axis(f[1, 1], xtickformat = values -> ["\$(value)kg" for value in values])
                     Axis(f[2, 1], xtickformat = "{:.2f}ms")
                     Axis(f[3, 1], xtickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
                     Axis(f[4, 1], xtickformat = values -> [rich("\$value", superscript("XY", color = :red))
                                                            for value in values])
-                    
+
                     f
                     """
             )
@@ -1716,13 +1716,13 @@ function attribute_examples(::Type{Axis})
                 name = "`ytickformat` variants",
                 code = """
                     f = Figure()
-                    
+
                     Axis(f[1, 1], ytickformat = values -> ["\$(value)kg" for value in values])
                     Axis(f[1, 2], ytickformat = "{:.2f}ms")
                     Axis(f[1, 3], ytickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
                     Axis(f[1, 4], ytickformat = values -> [rich("\$value", superscript("XY", color = :red))
                                                            for value in values])
-                    
+
                     f
                     """
             )
@@ -1732,10 +1732,10 @@ function attribute_examples(::Type{Axis})
                 name = "`xticksmirrored` on and off",
                 code = """
                     f = Figure()
-                    
+
                     Axis(f[1, 1], xticksmirrored = false, xminorticksvisible = true)
                     Axis(f[1, 2], xticksmirrored = true, xminorticksvisible = true)
-                    
+
                     f
                     """
             )
@@ -1745,10 +1745,10 @@ function attribute_examples(::Type{Axis})
                 name = "`yticksmirrored` on and off",
                 code = """
                     f = Figure()
-                    
+
                     Axis(f[1, 1], yticksmirrored = false, yminorticksvisible = true)
                     Axis(f[2, 1], yticksmirrored = true, yminorticksvisible = true)
-                    
+
                     f
                     """
             )
@@ -1758,12 +1758,12 @@ function attribute_examples(::Type{Axis})
                 name = "`xminorticks` variants",
                 code = """
                     f = Figure()
-                    
+
                     kwargs = (; xminorticksvisible = true, xminorgridvisible = true)
                     Axis(f[1, 1]; xminorticks = IntervalsBetween(2), kwargs...)
                     Axis(f[2, 1]; xminorticks = IntervalsBetween(5), kwargs...)
                     Axis(f[3, 1]; xminorticks = [1, 2, 3, 4], kwargs...)
-                    
+
                     f
                     """
             )
@@ -1773,12 +1773,12 @@ function attribute_examples(::Type{Axis})
                 name = "`yminorticks` variants",
                 code = """
                     f = Figure()
-                    
+
                     kwargs = (; yminorticksvisible = true, yminorgridvisible = true)
                     Axis(f[1, 1]; yminorticks = IntervalsBetween(2), kwargs...)
                     Axis(f[1, 2]; yminorticks = IntervalsBetween(5), kwargs...)
                     Axis(f[1, 3]; yminorticks = [1, 2, 3, 4], kwargs...)
-                    
+
                     f
                     """
             )

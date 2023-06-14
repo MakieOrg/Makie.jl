@@ -64,7 +64,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = deepcopy($(Makie).CURRENT_DEFAULT_THEME)
+            curdeftheme = fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
@@ -592,4 +592,3 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     default_str = Makie.attribute_default_expressions(t)[s]
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
-

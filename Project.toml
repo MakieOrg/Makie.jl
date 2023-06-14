@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.19.5"
+version = "0.19.6"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -95,7 +95,7 @@ Setfield = "1"
 Showoff = "0.3, 1.0.2"
 SignedDistanceFields = "0.4"
 StableHashTraits = "0.3"
-StatsBase = "0.31, 0.32, 0.33"
+StatsBase = "0.31, 0.32, 0.33, 0.34"
 StatsFuns = "0.9, 1.0"
 StructArrays = "0.3, 0.4, 0.5, 0.6"
 TriplotBase = "=0.1.0"
