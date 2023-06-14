@@ -2,6 +2,8 @@
 
 ## master
 
+- Fix DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002)
+
 ## v0.19.6
 
 - Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953).
