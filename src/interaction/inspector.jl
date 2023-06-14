@@ -449,11 +449,9 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     scene = parent_scene(plot)
 
     if a.enable_indicators[]
-        T = plot.model[] * transformationmatrix(
-            plot[1][][idx],
-            _to_scale(plot.markersize[], idx),
-            _to_rotation(plot.rotations[], idx)
-        )
+        translation = apply_transform_and_model(plot, plot[1][][idx])
+        rotation = _to_rotation(plot.rotations[], idx)
+        scale = _to_scale(plot.markersize[], idx)
 
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
@@ -468,9 +466,12 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
             bbox = Rect{3, Float32}(convert_attribute(
                 plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
             ))
+            T = Transformation(
+                identity; translation = translation, rotation = rotation, scale = scale
+            )
 
             p = wireframe!(
-                scene, bbox, model = T, color = a.indicator_color,
+                scene, bbox, transformation = T, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
@@ -481,8 +482,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
         elseif !isempty(inspector.temp_plots)
             p = inspector.temp_plots[1]
-            p.model[] = T
-
+            transform!(p, translation = translation, scale = scale, rotation = rotation)
         end
 
 
