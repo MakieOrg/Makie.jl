@@ -17,13 +17,15 @@ Returns a Tuple of new y positions and offset arrays.
 - `ys`: The y-values passed to `barplot`.
 - `offset`: The `offset` parameter passed to `barplot`.
 """
-function bar_default_fillto(tf, ys, offset)
+function bar_default_fillto(tf, ys, offset, in_y_direction)
     return ys, offset
 end
 
 # `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
-function bar_default_fillto(tf::Tuple, ys, offset)
-    if tf[2] isa Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
+function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
+    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
+    if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
+        # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
         # use the minimal non-zero y divided by 2 as lower bound for log scale
         smart_fillto = minimum(y -> y<=0 ? oftype(y, Inf) : y, ys) / 2
         return clamp.(ys, smart_fillto, Inf), smart_fillto
@@ -247,7 +249,7 @@ function Makie.plot!(p::BarPlot)
 
         if stack === automatic
             if fillto === automatic
-                y, fillto = bar_default_fillto(transformation, y, offset)
+                y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction)
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
