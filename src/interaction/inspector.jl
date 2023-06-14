@@ -554,7 +554,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
             end
 
             p = wireframe!(
-                scene, bbox, color = a.indicator_color,
+                scene, bbox, color = a.indicator_color, 
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
@@ -585,7 +585,6 @@ end
 function show_data(inspector::DataInspector, plot::Surface, idx)
     a = inspector.attributes
     tt = inspector.plot
-    scene = parent_scene(plot)
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)

@@ -26,7 +26,7 @@ function ray_at_cursor(scene::Scene, cam::Camera3D)
     aspect = px_width / px_height
     rel_pos = 2 .* mouseposition_px(scene) ./ (px_width, px_height) .- 1
 
-    if cam.settings.projectiontype[] === Perspective
+    if cam.attributes.projectiontype[] === Perspective
         dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) * tand(0.5 * cam.fov[]) + u_z
         return Ray(cam.eyeposition[], normalize(dir))
     else
@@ -109,6 +109,7 @@ end
 
 function ray_triangle_intersection(A::VecTypes{3}, B::VecTypes{3}, C::VecTypes{3}, ray::Ray, ϵ = 1e-6)
     # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
+    # Alternative: https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
     AO = A .- ray.origin
     BO = B .- ray.origin
     CO = C .- ray.origin
@@ -116,6 +117,7 @@ function ray_triangle_intersection(A::VecTypes{3}, B::VecTypes{3}, C::VecTypes{3
     A2 = 0.5 * dot(cross(CO, AO), ray.direction)
     A3 = 0.5 * dot(cross(AO, BO), ray.direction)
 
+    # all positive or all negative
     if (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
         return Point3f((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
     else
@@ -257,29 +259,35 @@ function get_position(plot::Surface, idx; apply_transform = true)
     w, h = size(zs)
     _i = mod1(idx, w); _j = div(idx-1, w)
 
-    # This isn't the most accurate so we include some neighboring faces
     ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
     tf = transform_func(plot)
+    
+    # This isn't the most accurate so we include some neighboring faces
     pos = Point3f(NaN)
     for i in _i-1:_i+1, j in _j-1:_j+1
         (1 <= i <= w) && (1 <= j < h) || continue
 
         if i - 1 > 0
-            pos = ray_triangle_intersection(
-                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j)),
-                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i-1, j)),
-                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j+1)),
-                ray
-            )
+            # transforms only apply to x and y coordinates of surfaces
+            A = surface_pos(xs, ys, zs, i,   j)
+            B = surface_pos(xs, ys, zs, i-1, j)
+            C = surface_pos(xs, ys, zs, i, j+1)
+            A, B, C = map((A, B, C)) do p
+                xy = Makie.apply_transform(tf, Point2f(p))
+                Point3f(xy[1], xy[2], p[3])
+            end
+            pos = ray_triangle_intersection(A, B, C, ray)
         end
 
         if i + 1 <= w && isnan(pos)
-            pos = ray_triangle_intersection(
-                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j)),
-                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i, j+1)),
-                Makie.apply_transform(tf, surface_pos(xs, ys, zs, i+1, j+1)),
-                ray
-            )
+            A = surface_pos(xs, ys, zs, i,   j)
+            B = surface_pos(xs, ys, zs, i,   j+1)
+            C = surface_pos(xs, ys, zs, i+1, j+1)
+            A, B, C = map((A, B, C)) do p
+                xy = Makie.apply_transform(tf, Point2f(p))
+                Point3f(xy[1], xy[2], p[3])
+            end
+            pos = ray_triangle_intersection(A, B, C, ray)
         end
 
         isnan(pos) || break
