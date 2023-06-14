@@ -233,7 +233,8 @@ function get_position(plot::Mesh, idx; apply_transform = true)
 
     for f in faces(plot.mesh[])
         if idx in f
-            p1, p2, p3 = Makie.apply_transform(tf, positions[f])
+            p1, p2, p3 = positions[f]
+            p1, p2, p3 = Makie.apply_transform.(tf, (p1, p2, p3))
             pos = ray_triangle_intersection(p1, p2, p3, ray)
             if pos !== Point3f(NaN)
                 if apply_transform

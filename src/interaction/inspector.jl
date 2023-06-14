@@ -339,8 +339,8 @@ function show_data_recursion(inspector, plot, idx)
             show_data(inspector, plot, idx)
         end
 
-        if processed
-            inspector.selection = plot
+        if processed && inspector.selection != plot
+            clear_temporary_plots!(inspector, plot)
         end
 
         return processed
@@ -361,8 +361,8 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
             show_data(inspector, plot, idx, source)
         end
 
-        if processed
-            inspector.selection = plot
+        if processed && inspector.selection != plot
+            clear_temporary_plots!(inspector, plot)
         end
 
         return processed
@@ -661,7 +661,6 @@ function show_imagelike(inspector, plot, name, edge_based)
         z
     end
 
-    position = apply_transform_and_model(plot, pos)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -671,9 +670,9 @@ function show_imagelike(inspector, plot, name, edge_based)
                     !(inspector.temp_plots[1] isa Scatter)
                 clear_temporary_plots!(inspector, plot)
                 p = scatter!(
-                    scene, position, color = a._color,
+                    scene, pos, color = a._color,
                     visible = a.indicator_visible,
-                    inspectable = false,
+                    inspectable = false, model = plot.model,
                     # TODO switch to Rect with 2r-1 or 2r-2 markersize to have 
                     # just enough space to always detect the underlying image
                     marker=:rect, markersize = map(r -> 2r, a.range), 
@@ -684,7 +683,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 push!(inspector.temp_plots, p)
             else
                 p = inspector.temp_plots[1]
-                p[1].val[1] = position
+                p[1].val[1] = pos
                 notify(p[1])
             end
         else
@@ -857,7 +856,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
 
     tt[1][] = mpos
     if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, idx, mpos)
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
     else
         tt.text[] = "Position:\n  $p\nDirection:\n  $v"
     end
@@ -1019,6 +1018,8 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
         if haskey(plot, :inspector_label)
             tt.text[] = plot[:inspector_label][](plot, right, (P1, P2))
         else
+            P1 = apply_transform_and_model(mesh, P1, Point2f)
+            P2 = apply_transform_and_model(mesh, P2, Point2f)
             tt.text[] = @sprintf("(%0.3f, %0.3f) .. (%0.3f, %0.3f)", P1[1], P1[2], P2[1], P2[2])
         end
         tt.visible[] = true
