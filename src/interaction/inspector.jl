@@ -422,7 +422,7 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    pos = get_position(plot, idx)
+    pos = position_on_plot(plot, idx)
     proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -489,7 +489,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         a.indicator_visible[] = true
     end
 
-    pos = get_position(plot, idx)
+    pos = position_on_plot(plot, idx)
     proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -510,7 +510,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     scene = parent_scene(plot)
 
     # cast ray from cursor into screen, find closest point to line
-    pos = get_position(plot, idx)
+    pos = position_on_plot(plot, idx)
 
     proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
@@ -597,7 +597,7 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    pos = get_position(plot, idx)
+    pos = position_on_plot(plot, idx)
 
     if !isnan(pos)
         tt[1][] = proj_pos
@@ -629,7 +629,7 @@ function show_imagelike(inspector, plot, name, edge_based)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    pos = get_position(plot, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
+    pos = position_on_plot(plot, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
 
     # Not on image/heatmap
     if isnan(pos)
@@ -940,7 +940,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     a = inspector.attributes
     tt = inspector.plot
 
-    pos = get_position(child, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
+    pos = position_on_plot(child, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
 
     # Not on heatmap
     if isnan(pos)
@@ -978,7 +978,7 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
     tt = inspector.plot
     a = inspector.attributes
 
-    pos = Point2f(get_position(mesh, idx, apply_transform = false)) #Point2f(mouseposition(scene))
+    pos = Point2f(position_on_plot(mesh, idx, apply_transform = false)) #Point2f(mouseposition(scene))
     ps1 = plot.converted[1][]
     ps2 = plot.converted[2][]
 

@@ -1,19 +1,31 @@
+################################################################################
+### Ray Generation
+################################################################################
+
 struct Ray
     origin::Point3f
     direction::Vec3f
 end
 
 """
-    ray_at_cursor(scenelike)
+    ray_at_cursor(fig/ax/scene)
 
 Returns a Ray into the scene starting at the current cursor position.
 """
 ray_at_cursor(x) = ray_at_cursor(get_scene(x))
 function ray_at_cursor(scene::Scene)
-    return ray_at_cursor(scene, cameracontrols(scene))
+    return Ray(scene, events(scene).mouseposition[])
 end
 
-function ray_at_cursor(scene::Scene, cam::Camera3D)
+"""
+    Ray(scene[, cam = cameracontrols(scene)], xy)
+
+Returns a `Ray` into the given `scene` passing through pixel position `xy`.
+"""
+Ray(scene::Scene, xy) = Ray(scene, cameracontrols(scene), xy)
+
+
+function Ray(scene::Scene, cam::Camera3D, xy::VecTypes{2})
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos
@@ -24,7 +36,7 @@ function ray_at_cursor(scene::Scene, cam::Camera3D)
     
     px_width, px_height = widths(scene.px_area[])
     aspect = px_width / px_height
-    rel_pos = 2 .* mouseposition_px(scene) ./ (px_width, px_height) .- 1
+    rel_pos = 2 .* xy ./ (px_width, px_height) .- 1
 
     if cam.attributes.projectiontype[] === Perspective
         dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) * tand(0.5 * cam.fov[]) + u_z
@@ -36,33 +48,32 @@ function ray_at_cursor(scene::Scene, cam::Camera3D)
     end
 end
 
-function ray_at_cursor(scene::Scene, cam::Camera2D)
-    rel_pos = mouseposition_px(scene) ./ widths(scene.px_area[])
+function Ray(scene::Scene, cam::Camera2D, xy::VecTypes{2})
+    rel_pos = xy ./ widths(scene.px_area[])
     origin = minimum(cam.area[]) .+ rel_pos .* widths(cam.area[])
     return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
 end
 
-function ray_at_cursor(scene::Scene, ::PixelCamera)
-    return Ray(to_ndim(Point3f, mouseposition_px(scene), 10_000f0), Vec3f(0,0,-1))
+function Ray(::Scene, ::PixelCamera, xy::VecTypes{2})
+    return Ray(to_ndim(Point3f, xy, 10_000f0), Vec3f(0,0,-1))
 end
 
-function ray_at_cursor(scene::Scene, ::RelativeCamera)
-    origin = mouseposition_px(scene) ./ widths(scene.px_area[])
+function Ray(scene::Scene, ::RelativeCamera, xy::VecTypes{2})
+    origin = xy ./ widths(scene.px_area[])
     return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
 end
 
-ray_at_cursor(scene::Scene, cam) = _ray_at_cursor(scene, cam)
+Ray(scene::Scene, cam, xy::VecTypes{2}) = ray_from_projectionview(scene, xy)
 
 # This method should always work 
-function _ray_at_cursor(scene::Scene, cam = scene.camera_controls)
+function ray_from_projectionview(scene::Scene, xy::VecTypes{2})
     inv_view_proj = inv(camera(scene).projectionview[])
-    mpos = events(scene).mouseposition[]
     area = pixelarea(scene)[]
 
     # This figures out the camera view direction from the projectionview matrix
     # and computes a ray from a near and a far point.
     # Based on ComputeCameraRay from ImGuizmo
-    mp = 2f0 .* (mpos .- minimum(area)) ./ widths(area) .- 1f0
+    mp = 2f0 .* (xy .- minimum(area)) ./ widths(area) .- 1f0
     v = inv_view_proj * Vec4f(0, 0, -10, 1)
     reversed = v[3] < v[4]
     near = reversed ? 1f0 - 1e-6 : 0f0
@@ -87,7 +98,9 @@ function transform(M::Mat4f, ray::Ray)
 end
 
 
-##############################################
+################################################################################
+### Ray - object intersections
+################################################################################
 
 
 # These work in 2D and 3D
@@ -146,45 +159,70 @@ function ray_rect_intersection(rect::Rect3f, ray::Ray)
     return Point3f(NaN)
 end
 
-### Surface positions
-########################################
 
-surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
-surface_x(xs, i, j, N) = xs[i]
-surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
+################################################################################
+### Ray casting (positions from ray-plot intersections)
+################################################################################
 
-surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
-surface_y(ys, i, j, N) = ys[j]
-surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
 
-function surface_pos(xs, ys, zs, i, j)
-    N, M = size(zs)
-    return Point3f(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
+"""
+    ray_assisted_pick(fig/ax/scene[, xy = events(fig/ax/scene).mouseposition[], apply_transform = true])
+
+This function performs a `pick` at the given pixel position `xy` and returns the
+picked `plot`, `index` and world or input space `position::Point3f`. It is equivalent to
+```
+plot, idx = pick(fig/ax/scene, xy)
+position = position_on_plot(plot, idx, Ray(parent_scene(plot), xy), apply_transform = true)
+```
+See [`position_on_plot`](@ref) for more information.
+"""
+function ray_assisted_pick(obj, xy = events(obj).mouseposition[]; apply_transform = true)
+    plot, idx = pick(get_scene(obj), xy)
+    pos = position_on_plot(
+        plot, idx, Ray(parent_scene(plot), xy), apply_transform = apply_transform
+    )
+    return (plot, idx, pos)
 end
 
 
-#################################################
-
-
 """
-    get_position(scene; kwargs...) = get_position(pick(scene)...; kwargs...)
-    get_position(plot, index, apply_transform = true)
+    position_on_plot(plot, index[, ray::Ray; apply_transform = true])
 
-Given the result of `pick(...)` this function returns a relevant position 
-for the given input. If `plot = nothing` (i.e pick did not find a plot)
-the function will return `Point3f(NaN)`. If `apply_transform = true` the 
-transform_func (e.g. `log`) and the model matrix (i.e. `translate!()`, 
-`scale!()` and `rotate!()`) will be applied to the output.
+This function calculates the world or input space position of a ray - plot 
+intersection with the result `plot, idx = pick(...)` and a ray cast from the 
+picked position. If there is no intersection `Point3f(NaN)` will be returned.
 
-For most plot types the returned position is interpolated to match up with the 
-cursor position exactly. Exceptions:
-- `scatter` and `meshscatter` return the position of the clicked marker/mesh
+This should be called as
+```
+plot, idx = pick(ax, px_pos)
+pos_in_ax = position_on_plot(plot, idx, Ray(ax, px_pos))
+```
+or more simply `plot, idx, pos_in_ax = ray_assisted_pick(ax, px_pos)`.
+
+You can switch between getting a position in world space (after applying 
+transformations like `log`, `translate!()`, `rotate!()` and `scale!()`) and 
+input space (the raw position data of the plot) by adjusting `apply_transform`.
+
+Note that `position_on_plot` is only implemented for primitive plot types, i.e. 
+the  possible return types of `pick`. Depending on the plot type the calculation 
+differs:
+- `scatter` and `meshscatter` return the position of the picked marker/mesh
 - `text` is excluded, always returning `Point3f(NaN)`
-- `volume` returns a relevant position on its bounding box
+- `volume` calculates the ray - rect intersection for its bounding box
+- `lines` and `linesegments` return the closest point on the line to the ray
+- `mesh` and `surface` check for ray-triangle intersections for every triangle containing the picked vertex
+- `image` and `heatmap` check for ray-rect intersection
 """
-get_position(scene::Scene) = get_position(pick(scene)...)
-function get_position(plot::AbstractPlot, idx; apply_transform = true)
-    pos = to_ndim(Point3f, _get_position(plot, idx), 0f0)
+function position_on_plot(plot::AbstractPlot, idx::Integer; apply_transform = true)
+    return position_on_plot(
+        plot, idx, ray_at_cursor(parent_scene(plot)); 
+        apply_transform = apply_transform
+    )
+end
+
+
+function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; apply_transform = true)
+    pos = to_ndim(Point3f, plot[1][][idx], 0f0)
     if apply_transform && !isnan(pos)
         return apply_transform_and_model(plot, pos)
     else
@@ -192,23 +230,22 @@ function get_position(plot::AbstractPlot, idx; apply_transform = true)
     end
 end
 
-_get_position(plot::Union{Scatter, MeshScatter}, idx) = plot[1][][idx]
-
-function get_position(plot::Union{Lines, LineSegments}, idx; apply_transform = true)
+function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply_transform = true)
     p0, p1 = apply_transform_and_model(plot, plot[1][][idx-1:idx])
 
-    pos = closest_point_on_line(p0, p1, ray_at_cursor(parent_scene(plot)))
+    pos = closest_point_on_line(p0, p1, ray)
     
     if apply_transform
         return pos
     else
         p4d = inv(plot.model[]) * to_ndim(Point4f, pos, 1f0)
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
-        return Makie.apply_transform(inverse_transform(transform_func(plot)), p3d, get(plot, :space, :data))
+        itf = inverse_transform(transform_func(plot))
+        return Makie.apply_transform(itf, p3d, get(plot, :space, :data))
     end
 end
 
-function get_position(plot::Union{Heatmap, Image}, idx; apply_transform = true)
+function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_transform = true)
     # Heatmap and Image are always a Rect2f. The transform function is currently 
     # not allowed to change this, so applying it should be fine. Applying the 
     # model matrix may add a z component to the Rect2f, which we can't represent.
@@ -217,7 +254,7 @@ function get_position(plot::Union{Heatmap, Image}, idx; apply_transform = true)
     p0, p1 = map(Point2f.(extrema(plot.x[]), extrema(plot.y[]))) do p
         return Makie.apply_transform(transform_func(plot), p, space)
     end
-    ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
+    ray = transform(inv(plot.model[]), ray)
     pos = ray_rect_intersection(Rect2f(p0, p1 - p0), ray)
     
     if apply_transform
@@ -229,9 +266,9 @@ function get_position(plot::Union{Heatmap, Image}, idx; apply_transform = true)
     end
 end
 
-function get_position(plot::Mesh, idx; apply_transform = true)
+function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
     positions = coordinates(plot.mesh[])
-    ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
+    ray = transform(inv(plot.model[]), ray)
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
 
@@ -254,14 +291,28 @@ function get_position(plot::Mesh, idx; apply_transform = true)
     return Point3f(NaN)
 end
 
-function get_position(plot::Surface, idx; apply_transform = true)
+# Handling indexing into different surface input types
+surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
+surface_x(xs, i, j, N) = xs[i]
+surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
+
+surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
+surface_y(ys, i, j, N) = ys[j]
+surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
+
+function surface_pos(xs, ys, zs, i, j)
+    N, M = size(zs)
+    return Point3f(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
+end
+
+function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     xs = plot[1][]
     ys = plot[2][]
     zs = plot[3][]
     w, h = size(zs)
     _i = mod1(idx, w); _j = div(idx-1, w)
 
-    ray = transform(inv(plot.model[]), ray_at_cursor(parent_scene(plot)))
+    ray = transform(inv(plot.model[]), ray)
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
     
@@ -305,9 +356,8 @@ function get_position(plot::Surface, idx; apply_transform = true)
     end
 end
 
-function get_position(plot::Volume, idx; apply_transform = true)
+function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
     min, max = Point3f.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
-    ray = ray_at_cursor(parent_scene(plot))
 
     if apply_transform
         min = apply_transform_and_model(plot, min)
@@ -322,5 +372,5 @@ function get_position(plot::Volume, idx; apply_transform = true)
     end
 end
 
-_get_position(plot::Text, idx) = Point3f(NaN)
-_get_position(plot::Nothing, idx) = Point3f(NaN)
+position_on_plot(plot::Text, args...; kwargs...) = Point3f(NaN)
+position_on_plot(plot::Nothing, args...; kwargs...) = Point3f(NaN)
