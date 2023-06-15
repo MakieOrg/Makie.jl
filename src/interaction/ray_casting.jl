@@ -14,13 +14,15 @@ Returns a Ray into the scene starting at the current cursor position.
 """
 ray_at_cursor(x) = ray_at_cursor(get_scene(x))
 function ray_at_cursor(scene::Scene)
-    return Ray(scene, events(scene).mouseposition[])
+    return Ray(scene, mouseposition_px(scene))
 end
 
 """
     Ray(scene[, cam = cameracontrols(scene)], xy)
 
-Returns a `Ray` into the given `scene` passing through pixel position `xy`.
+Returns a `Ray` into the given `scene` passing through pixel position `xy`. Note
+that the pixel position should be relative to the origin of the scene, as it is 
+when calling `mouseposition_px(scene)`.
 """
 Ray(scene::Scene, xy) = Ray(scene, cameracontrols(scene), xy)
 
@@ -130,6 +132,8 @@ function ray_triangle_intersection(A::VecTypes{3}, B::VecTypes{3}, C::VecTypes{3
     A2 = 0.5 * dot(cross(CO, AO), ray.direction)
     A3 = 0.5 * dot(cross(AO, BO), ray.direction)
 
+    @info A1, A2, A3
+
     # all positive or all negative
     if (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
         return Point3f((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
@@ -172,16 +176,17 @@ This function performs a `pick` at the given pixel position `xy` and returns the
 picked `plot`, `index` and world or input space `position::Point3f`. It is equivalent to
 ```
 plot, idx = pick(fig/ax/scene, xy)
-position = position_on_plot(plot, idx, Ray(parent_scene(plot), xy), apply_transform = true)
+ray = Ray(parent_scene(plot), xy .- minimum(pixelarea(parent_scene(plot))[]))
+position = position_on_plot(plot, idx, ray, apply_transform = true)
 ```
 See [`position_on_plot`](@ref) for more information.
 """
 function ray_assisted_pick(obj, xy = events(obj).mouseposition[]; apply_transform = true)
     plot, idx = pick(get_scene(obj), xy)
     isnothing(plot) && return (plot, idx, Point3f(NaN))
-    pos = position_on_plot(
-        plot, idx, Ray(parent_scene(plot), xy), apply_transform = apply_transform
-    )
+    scene = parent_scene(plot)
+    ray = Ray(scene, xy .- minimum(pixelarea(scene)[]))
+    pos = position_on_plot(plot, idx, ray, apply_transform = apply_transform)
     return (plot, idx, pos)
 end
 
@@ -196,7 +201,7 @@ picked position. If there is no intersection `Point3f(NaN)` will be returned.
 This should be called as
 ```
 plot, idx = pick(ax, px_pos)
-pos_in_ax = position_on_plot(plot, idx, Ray(ax, px_pos))
+pos_in_ax = position_on_plot(plot, idx, Ray(ax, px_pos .- minimum(pixelarea(ax.scene)[])))
 ```
 or more simply `plot, idx, pos_in_ax = ray_assisted_pick(ax, px_pos)`.
 
@@ -280,7 +285,7 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
             pos = ray_triangle_intersection(p1, p2, p3, ray)
             if pos !== Point3f(NaN)
                 if apply_transform
-                    p4d = plot.model[] * to_ndim(Point3f, pos, 1)
+                    p4d = plot.model[] * to_ndim(Point4f, pos, 1)
                     return Point3f(p4d) / p4d[4]
                 else
                     return Makie.apply_transform(inverse_transform(tf), pos, space)
@@ -288,6 +293,8 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
             end
         end
     end
+
+    @info "Did not find $idx"
 
     return Point3f(NaN)
 end
