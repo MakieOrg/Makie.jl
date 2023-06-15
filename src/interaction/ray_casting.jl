@@ -178,6 +178,7 @@ See [`position_on_plot`](@ref) for more information.
 """
 function ray_assisted_pick(obj, xy = events(obj).mouseposition[]; apply_transform = true)
     plot, idx = pick(get_scene(obj), xy)
+    isnothing(plot) && return (plot, idx, Point3f(NaN))
     pos = position_on_plot(
         plot, idx, Ray(parent_scene(plot), xy), apply_transform = apply_transform
     )
