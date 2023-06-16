@@ -193,7 +193,6 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         endpoints = [p for pair in pairs for p in pair]
 
         screenendpoints = plot_to_screen(plot, endpoints)
-        @info screenendpoints
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
             (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
