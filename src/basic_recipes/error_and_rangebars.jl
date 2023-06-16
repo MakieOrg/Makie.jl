@@ -235,10 +235,10 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     plot
 end
 
-function plot_to_screen(plot::AbstractPlot, points::AbstractVector)
+function plot_to_screen(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * plot.model[]
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
 
     return map(points) do p
         transformed = apply_transform(transform_func(plot), p, space)
@@ -247,19 +247,19 @@ function plot_to_screen(plot::AbstractPlot, points::AbstractVector)
     end
 end
 
-function plot_to_screen(plot::AbstractPlot, p::VecTypes)
+function plot_to_screen(plot, p::VecTypes)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * plot.model[]
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
     transformed = apply_transform(transform_func(plot), p, space)
     p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
     return Point2f(p4d) / p4d[4]
 end
 
-function screen_to_plot(plot::AbstractPlot, points::AbstractVector)
+function screen_to_plot(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    mvps = inv(plot.model[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    mvps = inv(transformationmatrix(plot)[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
     itf = inverse_transform(transform_func(plot))
 
     return map(points) do p
@@ -269,10 +269,10 @@ function screen_to_plot(plot::AbstractPlot, points::AbstractVector)
     end
 end
 
-function screen_to_plot(plot::AbstractPlot, p::VecTypes)
+function screen_to_plot(plot, p::VecTypes)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    mvps = inv(plot.model[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    mvps = inv(transformationmatrix(plot)[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
     pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p3 = Point3f(pre_transform) / pre_transform[4]
     return apply_transform(itf, p3, space)
