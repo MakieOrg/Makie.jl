@@ -84,6 +84,7 @@ function Makie.plot!(pl::Bracket)
         end
 
         notify(bp)
+        notify(textpoints)
     end
 
     notify(points)
