@@ -187,8 +187,8 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     scene = parent_scene(plot)
 
-    whiskers = lift(plot, linesegpairs, scene.camera.projectionview,
-        scene.camera.pixel_space, whiskerwidth) do pairs, _, _, whiskerwidth
+    whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
+        scene.camera.pixel_space, transform_func(plot), whiskerwidth) do pairs, _, _, _, _, whiskerwidth
 
         endpoints = [p for pair in pairs for p in pair]
 
