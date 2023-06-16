@@ -93,7 +93,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    @assert status == GL_FRAMEBUFFER_COMPLETE
+    @assert status == GL_FRAMEBUFFER_COMPLETE "Status returned as `$(status)`, is not `GL_FRAMEBUFFER_COMPLETE` (`$(GL_FRAMEBUFFER_COMPLETE)`)"
 
     fb_size_node = Observable(fb_size)
 
