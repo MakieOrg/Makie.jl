@@ -192,14 +192,15 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
         endpoints = [p for pair in pairs for p in pair]
 
-        screenendpoints = scene_to_screen(endpoints, scene)
+        screenendpoints = plot_to_screen(plot, endpoints)
+        @info screenendpoints
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
             (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
              sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
         end
 
-        screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
+        return [p for pair in screenendpoints_shifted_pairs for p in pair]
     end
     whiskercolors = Observable{RGBColors}()
     map!(plot, whiskercolors, color) do color
@@ -229,37 +230,49 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     linesegments!(
         plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
         visible = visible, colormap = colormap, colorrange = colorrange,
-        inspectable = inspectable, transparency = transparency
+        inspectable = inspectable, transparency = transparency, space = :pixel
     )
     plot
 end
 
-function scene_to_screen(pts, scene)
-    p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
-    p1m1 = Ref(scene.camera.projectionview[]) .* p4
-    projected = Ref(inv(scene.camera.pixel_space[])) .* p1m1
-    [Point2.(p[Vec(1, 2)]...) for p in projected]
+function plot_to_screen(plot::AbstractPlot, points::AbstractVector)
+    scene = parent_scene(plot)
+    pvm = scene.camera.projectionview[] * plot.model[]
+    px_dims = widths(scene.px_area[])
+    space = to_value(get(plot, :space, :data))
+    return map(points) do p
+        transformed = apply_transform(transform_func(plot), p, space)
+        return project(pvm, px_dims, transformed)
+    end
+end
+function plot_to_screen(plot::AbstractPlot, p::VecTypes)
+    scene = parent_scene(plot)
+    pvm = scene.camera.projectionview[] * plot.model[]
+    space = to_value(get(plot, :space, :data))
+    point = apply_transform(transform_func(plot), p, space)
+    return project(pvm, widths(scene.px_area[]), point)
 end
 
-function screen_to_scene(pts, scene)
-    p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
-    p1m1 = Ref(scene.camera.pixel_space[]) .* p4
-    projected = Ref(inv(scene.camera.projectionview[])) .* p1m1
-    [Point2.(p[Vec(1, 2)]...) for p in projected]
+function screen_to_plot(plot::AbstractPlot, points::AbstractVector)
+    scene = parent_scene(plot)
+    mvps = inv(scene.camera.projectionview[] * plot.model[]) * scene.camera.pixel_space[]
+    itf = inverse_transform(transform_func(plot))
+    space = to_value(get(plot, :space, :data))
+    return map(points) do p
+        p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
+        pre_transform = mvps * p4
+        p3 = Point3f(pre_transform) / pre_transform[4]
+        return apply_transform(itf, p3, space)
+    end
 end
-
-function scene_to_screen(p::T, scene) where T <: Point
+function screen_to_plot(plot::AbstractPlot, p::VecTypes)
+    scene = parent_scene(plot)
+    mvps = inv(scene.camera.projectionview[] * plot.model[]) * scene.camera.pixel_space[]
+    space = to_value(get(plot, :space, :data))
     p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-    p1m1 = scene.camera.projectionview[] * p4
-    projected = inv(scene.camera.pixel_space[]) * p1m1
-    T(projected[Vec(1, 2)]...)
-end
-
-function screen_to_scene(p::T, scene) where T <: Point
-    p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-    p1m1 = scene.camera.pixel_space[] * p4
-    projected = inv(scene.camera.projectionview[]) * p1m1
-    T(projected[Vec(1, 2)]...)
+    pre_transform = mvps * p4
+    p3 = Point3f(pre_transform) / pre_transform[4]
+    return apply_transform(inverse_transform(transform_func(plot)), p3, space)
 end
 
 # ignore whiskers when determining data limits
