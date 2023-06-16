@@ -236,43 +236,46 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 end
 
 function plot_to_screen(plot::AbstractPlot, points::AbstractVector)
-    scene = parent_scene(plot)
-    pvm = scene.camera.projectionview[] * plot.model[]
-    px_dims = widths(scene.px_area[])
+    cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * plot.model[]
+
     return map(points) do p
         transformed = apply_transform(transform_func(plot), p, space)
-        return project(pvm, px_dims, transformed)
+        p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+        return Point2f(p4d) / p4d[4]
     end
 end
+
 function plot_to_screen(plot::AbstractPlot, p::VecTypes)
-    scene = parent_scene(plot)
-    pvm = scene.camera.projectionview[] * plot.model[]
+    cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    point = apply_transform(transform_func(plot), p, space)
-    return project(pvm, widths(scene.px_area[]), point)
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * plot.model[]
+    transformed = apply_transform(transform_func(plot), p, space)
+    p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+    return Point2f(p4d) / p4d[4]
 end
 
 function screen_to_plot(plot::AbstractPlot, points::AbstractVector)
-    scene = parent_scene(plot)
-    mvps = inv(scene.camera.projectionview[] * plot.model[]) * scene.camera.pixel_space[]
-    itf = inverse_transform(transform_func(plot))
+    cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
+    mvps = inv(plot.model[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    itf = inverse_transform(transform_func(plot))
+
     return map(points) do p
-        p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-        pre_transform = mvps * p4
+        pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
         p3 = Point3f(pre_transform) / pre_transform[4]
         return apply_transform(itf, p3, space)
     end
 end
+
 function screen_to_plot(plot::AbstractPlot, p::VecTypes)
-    scene = parent_scene(plot)
-    mvps = inv(scene.camera.projectionview[] * plot.model[]) * scene.camera.pixel_space[]
+    cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-    pre_transform = mvps * p4
+    mvps = inv(plot.model[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p3 = Point3f(pre_transform) / pre_transform[4]
-    return apply_transform(inverse_transform(transform_func(plot)), p3, space)
+    return apply_transform(itf, p3, space)
 end
 
 # ignore whiskers when determining data limits
