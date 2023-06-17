@@ -1,5 +1,5 @@
 function initialize_block!(leg::Legend,
-        entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}})
+        entry_groups::Observable{Vector{Tuple{Any, Vector{LegendEntry}}}})
 
     blockscene = leg.blockscene
 
@@ -318,7 +318,7 @@ legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
 
-function LegendEntry(label::Optional{AbstractString}, contentelements::AbstractArray, legend; kwargs...)
+function LegendEntry(label, contentelements::AbstractArray, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -328,7 +328,7 @@ function LegendEntry(label::Optional{AbstractString}, contentelements::AbstractA
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label::Optional{AbstractString}, contentelement, legend; kwargs...)
+function LegendEntry(label, contentelement, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -462,8 +462,8 @@ end
     Legend(
         fig_or_scene,
         contents::AbstractArray,
-        labels::AbstractArray{<:AbstractString},
-        title::Optional{<:AbstractString} = nothing;
+        labels::AbstractArray,
+        title = nothing;
         kwargs...)
 
 Create a legend from `contents` and `labels` where each label is associated to
@@ -472,9 +472,9 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `legendelements` method is defined.
 """
 function Legend(fig_or_scene,
-        contents::AbstractArray,
-        labels::AbstractArray{<:Optional{AbstractString}},
-        title::Optional{<:AbstractString} = nothing;
+        contents::AbstractVector,
+        labels::AbstractVector,
+        title = nothing;
         kwargs...)
 
     if length(contents) != length(labels)
@@ -493,9 +493,9 @@ end
 """
     Legend(
         fig_or_scene,
-        contentgroups::AbstractArray{<:AbstractArray},
-        labelgroups::AbstractArray{<:AbstractArray},
-        titles::AbstractArray{<:Optional{<:AbstractString}};
+        contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector},
+        titles::AbstractVector;
         kwargs...)
 
 Create a multi-group legend from `contentgroups`, `labelgroups` and `titles`.
@@ -507,9 +507,9 @@ element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`
 or any other object for which the `legendelements` method is defined.
 """
 function Legend(fig_or_scene,
-        contentgroups::AbstractArray{<:AbstractArray},
-        labelgroups::AbstractArray{<:AbstractArray},
-        titles::AbstractArray{<:Optional{<:AbstractString}};
+        contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector},
+        titles::AbstractVector;
         kwargs...)
 
     if !(length(titles) == length(contentgroups) == length(labelgroups))

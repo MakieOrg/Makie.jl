@@ -98,7 +98,7 @@ function device_scaling_factor(surface::Cairo.CairoSurface, sc::ScreenConfig)
     return is_vector_backend(surface) ? sc.pt_per_unit : sc.px_per_unit
 end
 
-const LAST_INLINE = Ref(true)
+const LAST_INLINE = Ref{Union{Makie.Automatic,Bool}}(Makie.automatic)
 
 """
     CairoMakie.activate!(; screen_config...)

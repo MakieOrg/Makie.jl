@@ -152,7 +152,10 @@ function resize_to_layout!(fig::Figure)
 end
 
 function Base.empty!(fig::Figure)
+    screens = copy(fig.scene.current_screens)
     empty!(fig.scene)
+    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
+    append!(fig.scene.current_screens, screens)
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)

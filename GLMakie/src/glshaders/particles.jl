@@ -56,7 +56,7 @@ function draw_mesh_particle(screen, p, data)
         color_map = nothing => Texture
         color_norm = nothing
         intensity = nothing
-        image = nothing
+        image = nothing => Texture
         color = nothing => to_meshcolor
         vertex_color = Vec4f(1)
         matcap = nothing => Texture

@@ -170,7 +170,19 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         if isempty(count_hex[])
             (0, 1)
         else
-            (minimum(count_hex[]), maximum(count_hex[]))
+            mi, ma = extrema(count_hex[])
+            # if we have only one unique value (usually happens) when there are very few points
+            # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
+            # a singular colorrange error down the line.
+            if mi == ma
+                if ma == 0
+                    (0, 1)
+                else
+                    (0, ma)
+                end
+            else
+                (mi, ma)
+            end
         end
     end
 
