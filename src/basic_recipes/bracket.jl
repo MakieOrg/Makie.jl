@@ -107,10 +107,12 @@ function Makie.plot!(pl::Bracket)
         return text isa AbstractString ? [text] : text
     end
 
-    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, linestyle = pl.linestyle)
+    # Avoid scale!() / translate!() / rotate!() to affect these
+    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, 
+        linestyle = pl.linestyle, transformation = Transformation())
     text!(pl, textpoints, text = texts, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
-        justification = pl.justification)
+        justification = pl.justification, model = Mat4f(I))
     pl
 end
 

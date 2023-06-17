@@ -188,10 +188,9 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     scene = parent_scene(plot)
 
     whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
-        scene.camera.pixel_space, transform_func(plot), whiskerwidth) do pairs, _, _, _, _, whiskerwidth
+        scene.px_area, transform_func(plot), whiskerwidth) do pairs, _, _, _, _, whiskerwidth
 
         endpoints = [p for pair in pairs for p in pair]
-
         screenendpoints = plot_to_screen(plot, endpoints)
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
@@ -229,7 +228,8 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     linesegments!(
         plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
         visible = visible, colormap = colormap, colorrange = colorrange,
-        inspectable = inspectable, transparency = transparency, space = :pixel
+        inspectable = inspectable, transparency = transparency, space = :pixel,
+        model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
     )
     plot
 end
