@@ -2,6 +2,9 @@
 
 ## master
 
+- Scale errorbar whiskers and bracket correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
+- Update bracket when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
+
 ## v0.19.6
 
 - Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953).
