@@ -42,13 +42,6 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
 
-    get!(gl_attributes, :normalmatrix) do
-        return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
-            i = Vec(1, 2, 3)
-            return transpose(inv(v[i, i] * m[i, i]))
-        end
-    end
-
     # TODO we can probably get rid of these?
     get!(gl_attributes, :view) do
         return lift(plot, cam.view, space) do view, space
@@ -60,8 +53,15 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
             if space in (:data, :transformed, :world)
                 return Makie.space_to_space_matrix(cam, :eye => :clip)
             else
-                return MAkie.space_to_space_matrix(cam, space => :clip)
+                return Makie.space_to_space_matrix(cam, space => :clip)
             end
+        end
+    end
+
+    get!(gl_attributes, :normalmatrix) do
+        return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
+            i = Vec(1, 2, 3)
+            return transpose(inv(v[i, i] * m[i, i]))
         end
     end
 
