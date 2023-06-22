@@ -952,6 +952,7 @@ to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
 to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
+const FONT_CACHE_LOCK = Base.ReentrantLock()
 
 function load_font(filepath)
     font = FreeTypeAbstraction.try_load(filepath)
@@ -970,28 +971,30 @@ A font can either be specified by a file path, such as "folder/with/fonts/font.o
 or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.
 """
 function to_font(str::String)
-    get!(FONT_CACHE, str) do
-        # load default fonts without font search to avoid latency
-        if str == "default" || str == "TeX Gyre Heros Makie"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
-        elseif str == "TeX Gyre Heros Makie Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
-        # load fonts directly if they are given as font paths
-        elseif isfile(str)
-            return load_font(str)
+    lock(FONT_CACHE_LOCK) do
+        return get!(FONT_CACHE, str) do
+            # load default fonts without font search to avoid latency
+            if str == "default" || str == "TeX Gyre Heros Makie"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
+            elseif str == "TeX Gyre Heros Makie Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
+            # load fonts directly if they are given as font paths
+            elseif isfile(str)
+                return load_font(str)
+            end
+            # for all other cases, search for the best match on the system
+            fontpath = assetpath("fonts")
+            font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
+            if font === nothing
+                @warn("Could not find font $str, using TeX Gyre Heros Makie")
+                return to_font("TeX Gyre Heros Makie")
+            end
+            return font
         end
-        # for all other cases, search for the best match on the system
-        fontpath = assetpath("fonts")
-        font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
-        if font === nothing
-            @warn("Could not find font $str, using TeX Gyre Heros Makie")
-            return to_font("TeX Gyre Heros Makie")
-        end
-        return font
     end
 end
 to_font(x::Vector{String}) = to_font.(x)
