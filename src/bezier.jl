@@ -240,11 +240,14 @@ function BezierPath(poly::Polygon)
     return BezierPath(commands)
 end
 
-function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, keep_aspect = true)
+function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
     commands = parse_bezier_commands(svg)
     p = BezierPath(commands)
     if flipy
         p = scale(p, Vec(1, -1))
+    end
+    if flipx
+        p = scale(p, Vec(-1, 1))
     end
     if fit
         if bbox === nothing
