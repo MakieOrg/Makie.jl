@@ -3,6 +3,8 @@
 ## master
 
 - Fix DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002)
+- Scale errorbar whiskers and bracket correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
+- Update bracket when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
 
 ## v0.19.6
 
