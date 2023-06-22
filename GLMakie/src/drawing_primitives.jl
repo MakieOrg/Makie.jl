@@ -41,11 +41,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         # Overwrite these, user defined attributes shouldn't use those!
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
-    get!(gl_attributes, :view) do
-        return lift(plot, cam.view, space) do view, space
-            return is_data_space(space) ? view : Mat4f(I)
-        end
-    end
+
     get!(gl_attributes, :normalmatrix) do
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
@@ -53,15 +49,25 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         end
     end
 
+    # TODO we can probably get rid of these?
+    get!(gl_attributes, :view) do
+        return lift(plot, cam.view, space) do view, space
+            return space in (:data, :transformed, :world) ? view : Mat4f(I)
+        end
+    end
     get!(gl_attributes, :projection) do
         return lift(cam.projection, cam.pixel_space, space) do _, _, space
-            return Makie.space_to_clip(cam, space, false)
+            if space in (:data, :transformed, :world)
+                return Makie.space_to_space_matrix(cam, :eye => :clip)
+            else
+                return MAkie.space_to_space_matrix(cam, space => :clip)
+            end
         end
     end
 
     get!(gl_attributes, :projectionview) do
         return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_clip(cam, space, true)
+            Makie.space_to_space_matrix(cam, space => :clip)
         end
     end
 
@@ -223,7 +229,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             mspace = x.markerspace
             cam = scene.camera
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
-                return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
+                return Makie.space_to_space_matrix(cam, space => mspace)
             end
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
@@ -399,7 +405,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         cam = scene.camera
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-            Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
+            Makie.space_to_space_matrix(cam, s => ms)
         end
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)

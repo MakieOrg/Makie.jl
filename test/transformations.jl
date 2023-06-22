@@ -121,7 +121,8 @@ end
     scene = Scene(cam = cam3d!)
     scatter!(scene, [Point3f(-10), Point3f(10)])
     for space in vcat(spaces...)
-        @test Makie.clip_to_space(scene.camera, space) * Makie.space_to_clip(scene.camera, space) ≈ Mat4f(I)
+        @test Makie.space_to_space_matrix(scene, :clip => space) * 
+                Makie.space_to_space_matrix(scene.camera, space => :clip) ≈ Mat4f(I)
     end
 end
 

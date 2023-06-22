@@ -127,8 +127,12 @@ export px
 
 ########################################
 
-spaces() = (:data, :pixel, :relative, :clip)
+spaces() = (:data, :transformed, :world, :eye, :clip, :pixel, :relative)
+
 is_data_space(space) = space === :data
+is_transformed_space(space) = space === :transformed
+is_world_space(space) = space === :world
+is_eye_space(space) = space === :eye
+is_clip_space(space) = space === :clip
 is_pixel_space(space) = space === :pixel
 is_relative_space(space) = space === :relative
-is_clip_space(space) = space === :clip

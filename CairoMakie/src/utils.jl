@@ -8,10 +8,11 @@ function project_position(scene::Scene, transform_func::T, space, point, model::
     _project_position(scene, space, point, model, yflip)
 end
 
-function _project_position(scene::Scene, space, point, model, yflip::Bool)
+# TODO Makie.project instead
+function _project_position(scene, space, point, model, yflip)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
+    clip = Makie.space_to_space_matrix(scene, space => :clip) * model * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]

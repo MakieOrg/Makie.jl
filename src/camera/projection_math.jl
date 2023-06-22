@@ -314,41 +314,70 @@ function transform(model::Mat4, x::T) where T
     to_ndim(T, model * x4d, 0.0)
 end
 
-# project between different coordinate systems/spaces
-function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
-    if is_data_space(space)
-        return projectionview ? cam.projectionview[] : cam.projection[]
-    elseif is_pixel_space(space)
-        return cam.pixel_space[]
-    elseif is_relative_space(space)
-        return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
-    elseif is_clip_space(space)
+################################################################################
+### new projection code
+################################################################################
+
+
+"""
+    space_to_space_matrix(cam_or_scenelike, spaces::Pair)
+    space_to_space_matrix(cam_or_scenelike, input_space::Symbol, output_space::Symbol)
+
+Returns a matrix which transforms positional data from a given input space to a 
+given output space. Note that this does not include `plot.transformations`, i.e.
+the model matrix and transform function.
+"""
+function space_to_space_matrix(obj, space2space::Pair{Symbol, Symbol})
+    return space_to_space_matrix(camera(obj), space2space...)
+end
+
+function space_to_space_matrix(obj, input_space::Symbol, output_space::Symbol)
+    return space_to_space_matrix(camera(obj), Pair(input_space, output_space))
+end
+
+function space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
+    # identities
+    if s2s[1] === s2s[2]
         return Mat4f(I)
+    elseif s2s[1] in (:data, :transformed) && s2s[2] === :world
+        return Mat4f(I)
+    
+    # direct conversions (no calculations)
+    elseif s2s === Pair(:world, :eye)
+        return cam.view[]
+    elseif s2s === Pair(:eye, :clip)
+        return cam.projection[]
+    elseif s2s[1] in (:data, :transformed, :world) && s2s[2] === :clip
+        return cam.projectionview[]
+    elseif s2s === Pair(:pixel, :clip)
+        return cam.pixel_space[]
+    elseif s2s === Pair(:relative, :clip)
+        return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+
+    # simple inversions
+    elseif s2s === Pair(:clip, :relative)
+        return Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
+    elseif s2s === Pair(:clip, :pixel)
+        w, h = cam.resolution[]
+        return Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1)
+
+    # calculation neccessary
+    elseif s2s[1] === :clip
+        return inv(space_to_space_matrix(cam, Pair(s2s[2], s2s[1])))
+    elseif s2s[1] in spaces() && s2s[2] in space()
+        return space_to_space_matrix(cam, Pair(:clip, s2s[2])) * 
+                space_to_space_matrix(cam, Pair(s2s[1], :clip))
     else
         error("Space $space not recognized. Must be one of $(spaces())")
     end
 end
 
-function clip_to_space(cam::Camera, space::Symbol)
-    if is_data_space(space)
-        return inv(cam.projectionview[])
-    elseif is_pixel_space(space)
-        w, h = cam.resolution[]
-        return Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
-    elseif is_relative_space(space)
-        return Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
-    elseif is_clip_space(space)
-        return Mat4f(I)
-    else
-        error("Space $space not recognized. Must be one of $(spaces())")
-    end
-end
+@deprecate space_to_clip(cam, space, pv) space_to_space_matrix(cam, space, :clip) false
+@deprecate clip_to_space(cam, space) space_to_space_matrix(cam, :clip, space) false
 
 function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
     input_space === output_space && return to_ndim(Point3f, pos, 0)
-    clip_from_input = space_to_clip(cam, input_space)
-    output_from_clip = clip_to_space(cam, output_space)
     p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
-    transformed = output_from_clip * clip_from_input * p4d
+    transformed = space_to_space_matrix(cam, input_space, output_space) * p4d
     return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end

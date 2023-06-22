@@ -550,12 +550,12 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
     id = Mat4f(I)
 
+    # TODO project method for this
     glyph_pos = let
         transform_func = transformation.transform_func[]
         p = Makie.apply_transform(transform_func, position, space)
 
-        Makie.clip_to_space(scene.camera, markerspace) *
-        Makie.space_to_clip(scene.camera, space) *
+        Makie.space_to_space_matrix(scene, space => markerspace) *
         model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
     end
 
@@ -895,8 +895,9 @@ function draw_mesh3D(
         specular, shininess, faceculling
     )
     ctx = screen.context
-    view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
-    projection = Makie.space_to_clip(scene.camera, space, false)
+    @assert space in (:data, :transformed, :world)
+    view = scene.camera.view[]
+    projection = scene.camera.projection[]
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
