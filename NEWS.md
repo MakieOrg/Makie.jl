@@ -4,6 +4,8 @@
 
 - Improvements to 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
 - Fixed some errors/problems with DataInspector [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
+- Scale errorbar whiskers and bracket correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
+- Update bracket when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
 
 ## v0.19.6
 

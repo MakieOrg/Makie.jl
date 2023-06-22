@@ -337,6 +337,15 @@ end
     fig
 end
 
+@reference_test "Errorbars log scale" begin
+    x = 1:5
+    y = sin.(x) .+ 5
+    fig = Figure()
+    errorbars(fig[1, 1], x, y, y .- 1, y .+ 1; linewidth = 3, whiskerwidth = 20, axis = (; yscale = log10, xscale = log10))
+    errorbars(fig[1, 2], y, x, y .- 1, y .+ 1; linewidth = 3, whiskerwidth = 20, direction = :x, axis = (; yscale = log10, xscale = log10))
+    fig
+end
+
 @reference_test "Rangebars x y low high" begin
     vals = -1:0.1:1
 
