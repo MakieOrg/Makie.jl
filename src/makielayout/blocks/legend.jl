@@ -335,6 +335,9 @@ function LegendEntry(label, contentelement, legend; kwargs...)
     merge!(attrs, kwargattrs)
 
     elems = legendelements(contentelement, legend)
+    if isempty(elems)
+        error("`legendelements` returned an empty list for content element of type $(typeof(contentelement)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
+    end
     LegendEntry(elems, attrs)
 end
 
@@ -430,10 +433,13 @@ end
 # if there is no specific overload available, we go through the child plots and just stack
 # those together as a simple fallback
 function legendelements(plot, legend)::Vector{LegendElement}
-    if isempty(plot.plots)
-        error("No child plot elements found in plot of type $(typeof(plot)) but also no `legendelements` method defined.")
-    end
-    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots])
+    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots], init = [])
+end
+
+# Text has no meaningful legend, but it contains a linesegments for latex applications
+# which can surface as a line in the final legend
+function legendelements(plot::Text, legend)::Vector{LegendElement}
+    []
 end
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
