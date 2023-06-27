@@ -3,7 +3,7 @@
 ## master
 
 - Fix incomplete stroke with some Bezier markers in CairoMakie and blurry strokes in GLMakie [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
-- Fix broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953)
+- Adjusted scaling of scatter/text stroke, glow and anti-aliasing width under non-uniform 2D scaling (Vec2f markersize/fontsize) in GLMakie [#2950](https://github.com/MakieOrg/Makie.jl/pull/2950)
 - Scale errorbar whiskers and bracket correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
 - Update bracket when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
 
