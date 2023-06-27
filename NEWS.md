@@ -3,6 +3,7 @@
 ## master
 
 - Fix DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002)
+- Adjusted scaling of scatter/text stroke, glow and anti-aliasing width under non-uniform 2D scaling (Vec2f markersize/fontsize) in GLMakie [#2950](https://github.com/MakieOrg/Makie.jl/pull/2950)
 - Scale errorbar whiskers and bracket correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
 - Update bracket when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012)
 
