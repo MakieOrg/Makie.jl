@@ -24,7 +24,7 @@ Returns a `Ray` into the given `scene` passing through pixel position `xy`. Note
 that the pixel position should be relative to the origin of the scene, as it is 
 when calling `mouseposition_px(scene)`.
 """
-Ray(scene::Scene, xy) = Ray(scene, cameracontrols(scene), xy)
+Ray(scene::Scene, xy::VecTypes{2}) = Ray(scene, cameracontrols(scene), xy)
 
 
 function Ray(scene::Scene, cam::Camera3D, xy::VecTypes{2})
@@ -52,7 +52,10 @@ end
 
 function Ray(scene::Scene, cam::Camera2D, xy::VecTypes{2})
     rel_pos = xy ./ widths(scene.px_area[])
-    origin = minimum(cam.area[]) .+ rel_pos .* widths(cam.area[])
+    pv = scene.camera.projectionview[]
+    m = Vec2f(pv[1, 1], pv[2, 2])
+    b = Vec2f(pv[1, 4], pv[2, 4])
+    origin = (2 * rel_pos .- 1 - b) ./ m
     return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
 end
 
@@ -75,7 +78,7 @@ function ray_from_projectionview(scene::Scene, xy::VecTypes{2})
     # This figures out the camera view direction from the projectionview matrix
     # and computes a ray from a near and a far point.
     # Based on ComputeCameraRay from ImGuizmo
-    mp = 2f0 .* (xy .- minimum(area)) ./ widths(area) .- 1f0
+    mp = 2f0 .* xy ./ widths(area) .- 1f0
     v = inv_view_proj * Vec4f(0, 0, -10, 1)
     reversed = v[3] < v[4]
     near = reversed ? 1f0 - 1e-6 : 0f0
@@ -132,8 +135,6 @@ function ray_triangle_intersection(A::VecTypes{3}, B::VecTypes{3}, C::VecTypes{3
     A2 = 0.5 * dot(cross(CO, AO), ray.direction)
     A3 = 0.5 * dot(cross(AO, BO), ray.direction)
 
-    @info A1, A2, A3
-
     # all positive or all negative
     if (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
         return Point3f((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
@@ -161,6 +162,11 @@ function ray_rect_intersection(rect::Rect3f, ray::Ray)
         return ray.origin + possible_hit * ray.direction
     end
     return Point3f(NaN)
+end
+
+function is_point_on_ray(p::Point3f, ray::Ray)
+    diff = ray.origin - p
+    return abs(dot(diff, ray.direction)) ≈ abs(norm(diff))
 end
 
 
