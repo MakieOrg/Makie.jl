@@ -14,7 +14,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 #define ROUNDED_RECTANGLE 2
 #define DISTANCEFIELD     3
 #define TRIANGLE          4
-#define ELLIPSE           5 // maybe we can switch to this in draw_scatter?
+#define ELLIPSE           5
 
 #define M_SQRT_2          1.4142135
 
