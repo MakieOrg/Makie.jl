@@ -243,7 +243,7 @@ end
 
     xs = 0:9        # data
     ys = zeros(10)
-    colors = Makie.default_palettes.color[]
+    colors = Makie.DEFAULT_PALETTES.color[]
     plots = map(1:N) do i # plot lines
         lines!(ax,
             xs, ys;
@@ -334,6 +334,15 @@ end
     fig, ax, scatterplot = scatter(x, y)
     errorbars!(ax, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
     errorbars!(ax, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5, color = :red, direction = :x)
+    fig
+end
+
+@reference_test "Errorbars log scale" begin
+    x = 1:5
+    y = sin.(x) .+ 5
+    fig = Figure()
+    errorbars(fig[1, 1], x, y, y .- 1, y .+ 1; linewidth = 3, whiskerwidth = 20, axis = (; yscale = log10, xscale = log10))
+    errorbars(fig[1, 2], y, x, y .- 1, y .+ 1; linewidth = 3, whiskerwidth = 20, direction = :x, axis = (; yscale = log10, xscale = log10))
     fig
 end
 
@@ -945,7 +954,7 @@ end
         text = "Falling", offset = 10, orientation = :up, color = :purple, textcolor = :purple)
 
     bracket!(Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
-        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange, 
+        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange,
         fontsize = 30, textoffset = 30, width = 50)
     f
 end

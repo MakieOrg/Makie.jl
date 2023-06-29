@@ -243,7 +243,7 @@ scatter(1:5,
 #### Construction from svg path strings
 
 You can also create a bezier path from an [svg path specification string](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d#path_commands).
-You can automatically resize the path and flip the y-axis (svgs usually have a coordinate system where y increases downwards) with the keywords `fit` and `yflip`.
+You can automatically resize the path and flip the y- and x-axes (svgs usually have a coordinate system where y increases downwards) with the keywords `fit`, `yflip`, and `xflip`.
 By default, the bounding box for the fitted path is a square of width 1 centered on zero.
 You can pass a different bounding `Rect` with the `bbox` keyword argument.
 By default, the aspect of the path is left intact, and if it's not matching the new bounding box, the path is centered so it fits inside.
