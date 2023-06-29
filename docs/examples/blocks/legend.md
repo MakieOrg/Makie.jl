@@ -319,3 +319,6 @@ f
 ```
 \end{examplefigure}
 
+## Attributes
+
+\attrdocs{Legend}

@@ -55,3 +55,7 @@ Label(f[1, 3],
 f
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{Label}

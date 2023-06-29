@@ -10,7 +10,7 @@ function setup!(screen::Screen)
                 a = pixelarea(scene)[]
                 rt = (round.(Int, sf .* minimum(a))..., round.(Int, sf .* widths(a))...)
                 glViewport(rt...)
-                if scene.clear
+                if scene.clear[]
                     c = scene.backgroundcolor[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))

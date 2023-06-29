@@ -81,8 +81,8 @@ end
 to_cairo_antialias(aa::Int) = aa
 
 """
-* `px_per_unit = 2.0`: see [figure docs](https://docs.makie.org/stable/documentation/figure/).
-* `pt_per_unit = 0.75`: see [figure docs](https://docs.makie.org/stable/documentation/figure/).
+* `px_per_unit = 2.0`: see [figure docs](https://docs.makie.org/stable/documentation/figure_size/).
+* `pt_per_unit = 0.75`: see [figure docs](https://docs.makie.org/stable/documentation/figure_size/).
 * `antialias::Union{Symbol, Int} = :best`: antialias modus Cairo uses to draw. Applicable options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`.
 * `visible::Bool`: if true, a browser/image viewer will open to display rendered output.
 """
@@ -103,7 +103,7 @@ function device_scaling_factor(surface::Cairo.CairoSurface, sc::ScreenConfig)
     return is_vector_backend(surface) ? sc.pt_per_unit : sc.px_per_unit
 end
 
-const LAST_INLINE = Ref(true)
+const LAST_INLINE = Ref{Union{Makie.Automatic,Bool}}(Makie.automatic)
 
 """
     CairoMakie.activate!(; screen_config...)
