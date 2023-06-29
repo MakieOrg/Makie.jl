@@ -942,7 +942,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
     return show_data(inspector, plot, div(idx+1, 2), nothing)
 end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
-    a = inspector.plot.attributes
+    a = inspector.attributes
     tt = inspector.plot
     pos = plot[1][][idx]
     mpos = Point2f(mouseposition_px(inspector.root))
