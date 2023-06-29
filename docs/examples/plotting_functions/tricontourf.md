@@ -44,6 +44,8 @@ f
 
 #### Triangulation modes
 
+Manual triangulations can be passed as a 3xN matrix of integers, where each column of three integers specifies the indices of the corners of one triangle in the vector of points.
+
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
@@ -74,13 +76,14 @@ f
 ```
 \end{examplefigure}
 
-Constrained triangulations can also be used by passing boundary nodes or edges as keyword arguments into `tricontourf`, rather than having to identify the triangles manually as above. The form of the boundary nodes should conform with the specification in DelaunayTriangulation.jl. For example, the above annulus could have been plotted as follows.
-
-By default, `tricontourf` performs unconstrained triangulations. Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) and passing the resulting triangulation as the first argument of `tricontourf`. For example, the above annulus could have been plotted as follows.
+By default, `tricontourf` performs unconstrained triangulations.
+Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) and passing the resulting triangulation as the first argument of `tricontourf`.
+For example, the above annulus can also be plotted as follows:
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie, DelaunayTriangulation
+using CairoMakie
+using DelaunayTriangulation
 CairoMakie.activate!() # hide
 using Random
 
@@ -97,7 +100,8 @@ outer = [(n+1):(2n); n+1] # counter-clockwise outer
 boundary_nodes = [[outer], [inner]]
 points = [x'; y']
 tri = triangulate(points; boundary_nodes = boundary_nodes)
-f, ax, _ = tricontourf(tri, z)
+f, ax, _ = tricontourf(tri, z;
+    axis = (; aspect = 1, title = "Constrained triangulation\nvia DelaunayTriangulation.jl"))
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
@@ -107,7 +111,8 @@ Boundary nodes make it possible to support more complicated regions, possibly wi
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie, DelaunayTriangulation
+using CairoMakie
+using DelaunayTriangulation
 CairoMakie.activate!() # hide 
 
 ## Start by defining the boundaries, and then convert to the appropriate interface 
@@ -142,14 +147,15 @@ edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 ## Extract the x, y 
 tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
 z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)] # note that each_point preserves the index order
-f, ax, _ = tricontourf(tri, z, levels = 30)
+f, ax, _ = tricontourf(tri, z, levels = 30; axis = (; aspect = 1))
 f
 ```
 \end{examplefigure}
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie, DelaunayTriangulation
+using CairoMakie
+using DelaunayTriangulation
 CairoMakie.activate!() # hide 
 
 using Random
