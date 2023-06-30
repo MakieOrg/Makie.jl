@@ -364,7 +364,7 @@ function space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
     # calculation neccessary
     elseif s2s[1] === :clip
         return inv(space_to_space_matrix(cam, Pair(s2s[2], s2s[1])))
-    elseif s2s[1] in spaces() && s2s[2] in space()
+    elseif s2s[1] in spaces() && s2s[2] in spaces()
         return space_to_space_matrix(cam, Pair(:clip, s2s[2])) * 
                 space_to_space_matrix(cam, Pair(s2s[1], :clip))
     else
