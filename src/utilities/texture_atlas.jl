@@ -511,7 +511,7 @@ end
 
 function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
     bb = bbox(bp)
-    pad_offset = origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) * widths(bb)
+    pad_offset = origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb)
     return markersize .* pad_offset
 end
 
