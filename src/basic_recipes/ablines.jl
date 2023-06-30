@@ -21,6 +21,7 @@ function Makie.plot!(p::ABLines)
 
     is_identity_transform(transf) || throw(ArgumentError("ABLines is only defined for the identity transform, not $(typeof(transf))."))
 
+    # TODO - should we generalize?
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
 
     points = Observable(Point2f[])

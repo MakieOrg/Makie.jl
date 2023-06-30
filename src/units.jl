@@ -101,6 +101,7 @@ function Base.convert(::Type{<: Pixel}, scene::Scene, x::DIP)
     Pixel(number(dots))
 end
 
+# TODO: maybe we should hide this stuff as long as we're using `space` instead of units?
 function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Vec{2, <:Pixel})
     zero = to_world(scene, to_screen(scene, Point2f(0)))
     s = to_world(scene, to_screen(scene, number.(Point(x))))

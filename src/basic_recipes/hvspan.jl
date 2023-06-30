@@ -42,6 +42,7 @@ function Makie.plot!(p::Union{HSpan, VSpan})
     scene = Makie.parent_scene(p)
     transf = transform_func_obs(scene)
 
+    # TODO: switch to projecting?
     limits = lift(projview_to_2d_limits, scene.camera.projectionview)
 
     rects = Observable(Rect2f[])

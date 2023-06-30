@@ -238,81 +238,93 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
-function to_world(scene::Scene, point::T) where T <: StaticVector
-    cam = scene.camera
-    x = to_world(
-        point,
-        inv(transformationmatrix(scene)[]) *
-        inv(cam.view[]) *
-        inv(cam.projection[]),
-        T(widths(pixelarea(scene)[]))
-    )
-    Point2f(x[1], x[2])
-end
 
-w_component(x::Point) = 1.0
-w_component(x::Vec) = 0.0
+################################################################################
+### Old Projection code
+################################################################################
 
-function to_world(
-        p::StaticVector{N, T},
-        prj_view_inv::Mat4,
-        cam_res::StaticVector
-    ) where {N, T}
-    VT = typeof(p)
-    clip_space = ((VT(p) ./ VT(cam_res)) .* T(2)) .- T(1)
-    pix_space = Vec{4, T}(
-        clip_space[1],
-        clip_space[2],
-        T(0), w_component(p)
-    )
-    ws = prj_view_inv * pix_space
-    ws ./ ws[4]
-end
+# function to_world(scene::Scene, point::T) where T <: StaticVector
+#     cam = scene.camera
+#     x = to_world(
+#         point,
+#         inv(transformationmatrix(scene)[]) *
+#         inv(cam.view[]) *
+#         inv(cam.projection[]),
+#         T(widths(pixelarea(scene)[]))
+#     )
+#     Point2f(x[1], x[2])
+# end
 
-function to_world(
-        p::Vec{N, T},
-        prj_view_inv::Mat4,
-        cam_res::StaticVector
-    ) where {N, T}
-    to_world(Point(p), prj_view_inv, cam_res) .-
-        to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
-end
+# w_component(x::Point) = 1.0
+# w_component(x::Vec) = 0.0
 
-function project(scene::Scene, point::T) where T<:StaticVector
-    cam = scene.camera
-    area = pixelarea(scene)[]
-    # TODO, I think we need  .+ minimum(area)
-    # Which would be semi breaking at this point though, I suppose
-    return project(
-        cam.projectionview[] *
-        transformationmatrix(scene)[],
-        Vec2f(widths(area)),
-        Point(point)
-    )
-end
+# function to_world(
+#         p::StaticVector{N, T},
+#         prj_view_inv::Mat4,
+#         cam_res::StaticVector
+#     ) where {N, T}
+#     VT = typeof(p)
+#     clip_space = ((VT(p) ./ VT(cam_res)) .* T(2)) .- T(1)
+#     pix_space = Vec{4, T}(
+#         clip_space[1],
+#         clip_space[2],
+#         T(0), w_component(p)
+#     )
+#     ws = prj_view_inv * pix_space
+#     ws ./ ws[4]
+# end
 
-function project(matrix::Mat4f, p::T, dim4 = 1.0) where T <: VecTypes
-    p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
-    p = matrix * p
-    to_ndim(T, p, 0.0)
-end
+# function to_world(
+#         p::Vec{N, T},
+#         prj_view_inv::Mat4,
+#         cam_res::StaticVector
+#     ) where {N, T}
+#     to_world(Point(p), prj_view_inv, cam_res) .-
+#         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
+# end
 
-function project(proj_view::Mat4f, resolution::Vec2, point::Point)
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = proj_view * p4d
-    p = (clip ./ clip[4])[Vec(1, 2)]
-    p = Vec2f(p[1], p[2])
-    return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
-end
+# function project(scene::Scene, point::T) where T<:StaticVector
+#     cam = scene.camera
+#     area = pixelarea(scene)[]
+#     # TODO, I think we need  .+ minimum(area)
+#     # Which would be semi breaking at this point though, I suppose
+#     return project(
+#         cam.projectionview[] *
+#         transformationmatrix(scene)[],
+#         Vec2f(widths(area)),
+#         Point(point)
+#     )
+# end
 
-function project_point2(mat4::Mat4, point2::Point2)
-    Point2f(mat4 * to_ndim(Point4f, to_ndim(Point3f, point2, 0), 1))
-end
+# function project(matrix::Mat4f, p::T, dim4 = 1.0) where T <: VecTypes
+#     p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
+#     p = matrix * p
+#     to_ndim(T, p, 0.0)
+# end
 
-function transform(model::Mat4, x::T) where T
-    x4d = to_ndim(Vec4f, x, 0.0)
-    to_ndim(T, model * x4d, 0.0)
-end
+# function project(proj_view::Mat4f, resolution::Vec2, point::Point)
+#     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
+#     clip = proj_view * p4d
+#     p = (clip ./ clip[4])[Vec(1, 2)]
+#     p = Vec2f(p[1], p[2])
+#     return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
+# end
+
+# function project_point2(mat4::Mat4, point2::Point2)
+#     Point2f(mat4 * to_ndim(Point4f, to_ndim(Point3f, point2, 0), 1))
+# end
+
+# function transform(model::Mat4, x::T) where T
+#     x4d = to_ndim(Vec4f, x, 0.0)
+#     to_ndim(T, model * x4d, 0.0)
+# end
+
+# function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
+#     input_space === output_space && return to_ndim(Point3f, pos, 0)
+#     p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+#     transformed = space_to_space_matrix(cam, input_space, output_space) * p4d
+#     return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
+# end
 
 ################################################################################
 ### new projection code
@@ -320,22 +332,44 @@ end
 
 
 """
-    space_to_space_matrix(cam_or_scenelike, spaces::Pair)
-    space_to_space_matrix(cam_or_scenelike, input_space::Symbol, output_space::Symbol)
+    space_to_space_matrix(scenelike, spaces::Pair)
+    space_to_space_matrix(scenelike, input_space::Symbol, output_space::Symbol)
 
 Returns a matrix which transforms positional data from a given input space to a 
-given output space. Note that this does not include `plot.transformations`, i.e.
-the model matrix and transform function.
+given output space. This will not include the transform function, as it is not
+representable as a matrix, but will include the model matrix if applicable. 
+(I.e. this includes `scale!()`, `translate!()` and `rotate!()`.)
+
+If you wish to exclude the model matrix, call 
+`_space_to_space_matrix(camera(scenelike), ...)`.
 """
-function space_to_space_matrix(obj, space2space::Pair{Symbol, Symbol})
-    return space_to_space_matrix(camera(obj), space2space...)
-end
-
 function space_to_space_matrix(obj, input_space::Symbol, output_space::Symbol)
-    return space_to_space_matrix(camera(obj), Pair(input_space, output_space))
+    return space_to_space_matrix(obj, Pair(input_space, output_space))
 end
 
-function space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
+# this method does Axis -> Scene conversions
+function space_to_space_matrix(obj, space2space::Pair{Symbol, Symbol})
+    return space_to_space_matrix(get_scene(obj), space2space)
+end
+
+function space_to_space_matrix(scene_or_plot::SceneLike, s2s::Pair{Symbol, Symbol})
+    mat = _space_to_space_matrix(camera(scene_or_plot), s2s)
+    model = to_value(transformationmatrix(scene_or_plot))
+    if s2s[1] in (:data, :transformed)
+        return mat * model
+    elseif s2s[2] in (:data, :transformed)
+        return inv(model) * mat
+    else
+        return mat
+    end
+end
+
+# function space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
+#     @warn "No trans_func, no model"
+#     return _space_to_space_matrix(cam, s2s)
+# end
+
+function _space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
     # identities
     if s2s[1] === s2s[2]
         return Mat4f(I)
@@ -363,10 +397,10 @@ function space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
 
     # calculation neccessary
     elseif s2s[1] === :clip
-        return inv(space_to_space_matrix(cam, Pair(s2s[2], s2s[1])))
+        return inv(_space_to_space_matrix(cam, Pair(s2s[2], s2s[1])))
     elseif s2s[1] in spaces() && s2s[2] in spaces()
-        return space_to_space_matrix(cam, Pair(:clip, s2s[2])) * 
-                space_to_space_matrix(cam, Pair(s2s[1], :clip))
+        return _space_to_space_matrix(cam, Pair(:clip, s2s[2])) * 
+                _space_to_space_matrix(cam, Pair(s2s[1], :clip))
     else
         error("Space $space not recognized. Must be one of $(spaces())")
     end
@@ -375,9 +409,217 @@ end
 @deprecate space_to_clip(cam, space, pv) space_to_space_matrix(cam, space, :clip) false
 @deprecate clip_to_space(cam, space) space_to_space_matrix(cam, :clip, space) false
 
-function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
-    input_space === output_space && return to_ndim(Point3f, pos, 0)
-    p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
-    transformed = space_to_space_matrix(cam, input_space, output_space) * p4d
-    return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
+# For users/convenient project functions:
+
+"""
+    project(scenelike, pos[; input_space, output_space = :pixel, type = Point3f])
+
+Projects the given positional data from the space of the given plot, scene or 
+axis (`scenelike`) to pixel space. Optionally the input and output space can be
+changed via the respective keyword arguments.
+
+## Notes
+
+Depending on the `scenelike` object passed the context of what data,
+transformed, world and eye space is may change. A `scene` with a pixel-space 
+camera will yield different results than a `scene` with a 3D camera, for example.
+
+Transformations and the input space can be different between a plot and its 
+parent scene and also between child plots and their parent plots. In some cases
+you may also see varying results because of this.
+
+If this function projects to pixel space it returns the pixel positions relative
+to the scene most closely related to `scenelike` (i.e. the given scene or parent
+scene). If you want the pixel position relative to the screen/figure/window, you
+may need to add `minimum(pixelarea(scene))`. `project_to_screen` does this for
+you.
+"""
+function project(
+        plot::AbstractPlot, pos; 
+        input_space::Symbol = to_value(get(plot, :space, :data)), 
+        output_space::Symbol = :pixel, type = _point3_type(pos)
+    )
+
+    tf = transform_func(plot)
+    mat = space_to_space_matrix(plot, input_space => output_space)
+    return project(mat, tf, input_space, output_space, pos, type)
+end
+
+function project(
+        obj, pos; 
+        input_space::Symbol = :data, output_space::Symbol = :pixel,
+        type = _point3_type(pos)
+    )
+
+    tf = transform_func(get_scene(obj)) # this should error with a camera
+    mat = space_to_space_matrix(obj, input_space => output_space)
+    return project(mat, tf, input_space, output_space, pos, type)
+end
+
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos; type = _point3_type(pos))
+    @assert input_space !== :data "Cannot transform from :data space with just the camera."
+    @assert output_space !== :data "Cannot transform to :data space with just the camera."
+    mat = space_to_space_matrix(cam, input_space => output_space)
+    return project(mat, indentity, input_space, output_space, pos, type)
+end
+
+_point3_type(::VecTypes{N, T}) where {N, T} = Point3{T}
+_point3_type(::AbstractArray{<: VecTypes{N, T}}) where {N, T} = Point3{T}
+
+# Internal / Implementations
+
+"""
+    project(projection_matrix::Mat4f, transform_func, input_space::Symbol, output_space::Symbol, pos)
+
+Projects the given position or positions according to the given projection matrix,
+transform function and input space.
+
+For a simpler interface, use `project(scenelike, pos)`.
+"""
+function project(
+        mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
+        pos::AbstractArray{<: VecTypes{N, T}}, type = Point3{T}
+    ) where {N, T}
+    if input_space === output_space
+        return to_ndim.(type, pos, 0)
+    elseif output_space !== :data
+        return map(p -> project(mat, tf, input_space, p, type), pos)
+    else
+        itf = inverse_transform(tf)
+        return map(p -> inv_project(mat, itf, p, type), pos)
+    end
+end
+function project(
+        mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
+        pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
+    if input_space === output_space
+        return to_ndim(type, pos, 0)
+    elseif output_space !== :data
+        return project(mat, tf, input_space, pos, type)
+    else
+        itf = inverse_transform(tf)
+        return inv_project(mat, itf, pos, type)
+    end
+end
+
+
+function project(mat::Mat4, tf, space::Symbol, pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
+    return project(mat, apply_transform(tf, pos, space), type)
+end
+
+function inv_project(mat::Mat4f, itf, pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
+    p = project(mat, pos, type)
+    return apply_transform(itf, p)
+end
+
+function project(mat::Mat4, pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
+    # TODO is to_ndim slow? It alone seems to 
+    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
+    p4d = mat * p4d
+    return to_ndim(type, p4d[Vec(1,2,3)] ./ p4d[4], 1f0)
+end
+
+# TODO - should we use p4d[4] = 0 here?
+# function project(mat::Mat4, pos::Vec{N, T}, type = Vec3{T}) where {N, T}
+#     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, pos, 0), 1)
+#     p4d = mat * p4d
+#     return to_ndim(type, p4d[Vec(1,2,3)] ./ p4d[4], 1f0)
+# end
+
+
+# in-place version
+# function project!(target::AbstractArray, mat::Mat4f, tf, space::Symbol, pos::AbstractArray)
+#     resize!(target, length(pos))
+#     return map!(p -> project(mat, tf, space, p), target, pos)
+# end
+
+
+# Named project functions
+
+"""
+    project_to_world(scenelike[, input_space], pos)
+
+Transforms the given position(s) to world space, using the space of `scenelike`
+as the default input space.
+"""
+project_to_world(obj, pos) = project(obj, pos, output_space = :world)
+project_to_world(obj, input_space::Symbol, pos) = project(obj, pos, input_space = input_space, output_space = :world)
+
+@deprecate to_world project_to_world false
+
+"""
+    project_to_screen(scenelike[, input_space], pos)
+
+Transforms the given position(s) to (2D) screen/pixel space, using the space of 
+`scenelike` as the default input space. The returned positions will be relative
+to the screen/window/figure origin, rather than the (parent) scene.
+"""
+function project_to_screen(obj, pos)
+    scene = get_scene(obj)
+    offset = minimum(to_value(pixelarea(scene)))
+    return apply_offset!(project(obj, pos, type = Point2f), offset)
+end
+
+function project_to_screen(obj, input_space::Symbol, pos)
+    scene = get_scene(obj)
+    offset = minimum(to_value(pixelarea(scene)))
+    return apply_offset!(project(obj, pos, input_space = input_space, type = Point2f), offset)
+end
+
+function apply_offset!(pos::VT, off::VecTypes) where {VT <: VecTypes}
+    return pos + to_ndim(VT, off, 0)
+end
+
+function apply_offset!(pos::AbstractArray{VT}, off::VecTypes) where {VT}
+    off = to_ndim(VT, off, 0)
+    for i in eachindex(pos)
+        pos[i] = pos[i] + off
+    end
+    return pos
+end
+
+@deprecate shift_project(scene, plot, pos) project_to_screen(plot, pos) false
+
+"""
+    project_to_pixel(scenelike[, input_space], pos[; type = Point2f])
+
+Transforms the given position(s) to (2D) pixel space, using the space of `scenelike`
+as the default input space. The returned positions will be relative to the 
+scene derived from scenelike, not the screen/window/figure origin.
+
+This is equivalent to `project(scenelike, pos[; input_space], type = Point2f)`.
+"""
+project_to_pixel(obj, pos; type = Point2f) = project(obj, pos; type = type)
+function project_to_pixel(obj, input_space::Symbol, pos; type = Point2f)
+    return project(obj, pos, input_space = input_space, type = type)
+end
+
+# Helper function
+"""
+    projection_obs(plot)
+
+Returns an observable that triggers whenever the result of `project` could change
+"""
+function projection_obs(plot::AbstractPlot)
+    return lift(
+        (_, _, _, _, _, _) -> nothing,
+        plot,
+        camera(plot).view, 
+        camera(plot).projection,
+        get_scene(plot).px_area,
+        transformationmatrix(plot),
+        transform_func(plot),
+        get(plot, :space, Observable(:data)),
+    )
+end
+function projection_obs(scene::Scene)
+    return lift(
+        (_, _, _, _, _, _) -> nothing,
+        scene,
+        camera(scene).view, 
+        camera(scene).projection,
+        scene.px_area,
+        transformationmatrix(scene),
+        transform_func(scene)
+    )
 end

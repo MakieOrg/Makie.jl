@@ -115,6 +115,7 @@ function foreach_plot(f, plot::Combined)
     end
 end
 
+# TODO - may need some reorganization?
 function foreach_transformed(f, point_iterator, model, trans_func)
     for point in point_iterator
         point_t = apply_transform(trans_func, point)

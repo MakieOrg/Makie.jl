@@ -251,6 +251,13 @@ end
 
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
+function angle(p1::VecTypes{2, T}, p2::VecTypes{2, T}) where T
+    return atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+end
+function projected_angle(plot, p1, p2)
+    return angle(project_to_pixel(plot, p1), project_to_pixel(plot, p2))
+end
+
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
 end

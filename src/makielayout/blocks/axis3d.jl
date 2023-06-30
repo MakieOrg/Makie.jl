@@ -476,8 +476,7 @@ end
 # this function projects a point from a 3d subscene into the parent space with a really
 # small z value
 function to_topscene_z_2d(p3d, scene)
-    o = scene.px_area[].origin
-    p2d = Point2f(o + Makie.project(scene, p3d))
+    p2d = Makie.project_to_pixel(scene, p3d)
     # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
     # to clip into plot objects anymore
     Point3f(p2d..., -10000)
@@ -558,8 +557,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     map!(topscene, labels_positions, scene.px_area, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
-        o = pxa.origin
-
         points = map(ticksegs) do (tstart, tend)
             offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
             tend + offset
@@ -595,7 +592,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
-        o = pxa.origin
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -612,8 +608,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
         # project them into screen space
-        pp1 = Point2f(o + Makie.project(scene, p1))
-        pp2 = Point2f(o + Makie.project(scene, p2))
+        pp1 = Makie.project_to_pixel(scene, p1)
+        pp2 = Makie.project_to_pixel(scene, p2)
 
         # find the midpoint
         midpoint = (pp1 + pp2) ./ 2

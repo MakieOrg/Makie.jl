@@ -123,7 +123,6 @@ end
 
 function _selection_vertices(ax_scene, outer, inner)
     _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.px_area[])
     transf = Makie.transform_func(ax_scene)
     outer = positivize(Makie.apply_transform(transf, outer))
     inner = positivize(Makie.apply_transform(transf, inner))
@@ -139,7 +138,7 @@ function _selection_vertices(ax_scene, outer, inner)
     itr = _clamp(topright(inner), obl, otr)
     # We plot the selection vertices in blockscene, which is pixelspace, so we need to manually
     # project the points to the space of `ax.scene`
-    return [proj(obl), proj(obr), proj(otr), proj(otl), proj(ibl), proj(ibr), proj(itr), proj(itl)]
+    return project_to_screen(ax_scene, :transformed, [obl, obr, otr, otl, ibl, ibr, itr, itl])
 end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)

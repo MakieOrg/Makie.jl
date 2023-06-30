@@ -195,13 +195,8 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     @extract plot (whiskerwidth, color, linewidth, visible, colormap, colorscale, colorrange, inspectable, transparency)
 
-    scene = parent_scene(plot)
-
-    whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
-        scene.px_area, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
-
-        screenendpoints = plot_to_screen(plot, endpoints)
-
+    whiskers = lift(plot, linesegpairs, projection_obs(plot), whiskerwidth) do endpoints, _, whiskerwidth
+        screenendpoints = project_to_pixel(plot, endpoints)
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
             (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
             sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
@@ -241,49 +236,6 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
     )
     plot
-end
-
-function plot_to_screen(plot, points::AbstractVector)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    spvm = space_to_space_matrix(cam, space => :pixel) * transformationmatrix(plot)[]
-
-    return map(points) do p
-        transformed = apply_transform(transform_func(plot), p, space)
-        p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
-        return Point2f(p4d) / p4d[4]
-    end
-end
-
-function plot_to_screen(plot, p::VecTypes)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    spvm = space_to_space_matrix(cam, space => :pixel) * transformationmatrix(plot)[]
-    transformed = apply_transform(transform_func(plot), p, space)
-    p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
-    return Point2f(p4d) / p4d[4]
-end
-
-function screen_to_plot(plot, points::AbstractVector)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * space_to_space_matrix(cam, :pixel => space)
-    itf = inverse_transform(transform_func(plot))
-
-    return map(points) do p
-        pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-        p3 = Point3f(pre_transform) / pre_transform[4]
-        return apply_transform(itf, p3, space)
-    end
-end
-
-function screen_to_plot(plot, p::VecTypes)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * space_to_space_matrix(cam, :pixel => space)
-    pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-    p3 = Point3f(pre_transform) / pre_transform[4]
-    return apply_transform(itf, p3, space)
 end
 
 # ignore whiskers when determining data limits

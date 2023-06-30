@@ -43,9 +43,6 @@ end
 function Makie.plot!(pl::Bracket)
 
     points = pl[1]
-
-    scene = parent_scene(pl)
-
     textoffset_vec = Observable(Vec2f[])
     bp = Observable(BezierPath[])
     textpoints = Observable(Point2f[])
@@ -54,17 +51,16 @@ function Makie.plot!(pl::Bracket)
         return to === automatic ? Float32.(0.75 .* fs) : Float32.(to)
     end
 
-    onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
-          scene.px_area, pl.offset, pl.width, pl.orientation, realtextoffset,
-          pl.style) do points, _, _, _, _, offset, width, orientation, textoff, style
+    onany(pl, points, projection_obs(pl), pl.offset, pl.width, pl.orientation, realtextoffset,
+          pl.style) do points, _, offset, width, orientation, textoff, style
 
         empty!(bp[])
         empty!(textoffset_vec[])
         empty!(textpoints[])
 
         broadcast_foreach(points, offset, width, orientation, textoff, style) do (_p1, _p2), offset, width, orientation, textoff, style
-            p1 = plot_to_screen(pl, _p1)
-            p2 = plot_to_screen(pl, _p2)
+            p1 = project_to_pixel(pl, _p1)
+            p2 = project_to_pixel(pl, _p2)
 
             v = p2 - p1
             d1 = normalize(v)
