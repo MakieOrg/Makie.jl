@@ -1,11 +1,5 @@
 using GLMakie.Makie: getscreen
 
-function project_sp(scene, point)
-    point_px = Makie.project(scene, point)
-    offset = Point2f(minimum(pixelarea(scene)[]))
-    return point_px .+ offset
-end
-
 @testset "unit tests" begin
     GLMakie.closeall()
     @testset "Window handling" begin
@@ -73,14 +67,14 @@ end
         # force a full render to happen
         GLMakie.Makie.colorbuffer(screen)
         # test for pick a single data point (with idx > 65535)
-        point_px = project_sp(ax.scene, Point2f(N-1,N-1))
+        point_px = Makie.project_to_screen(ax.scene, Point2f(N-1,N-1))
         plot,idx = pick(ax.scene, point_px)
         @test idx == N-1
 
         # test for pick a rectangle of data points (also with some indices > 65535)
         rect = Rect2f(99990.5,99990.5,8,8)
-        origin_px = project_sp(ax.scene, Point(origin(rect)))
-        tip_px = project_sp(ax.scene, Point(origin(rect) .+ widths(rect)))
+        origin_px = Makie.project_to_screen(ax.scene, Point(origin(rect)))
+        tip_px = Makie.project_to_screen(ax.scene, Point(origin(rect) .+ widths(rect)))
         rect_px = Rect2i(round.(origin_px), round.(tip_px .- origin_px))
         picks = unique(pick(ax.scene, rect_px))
 

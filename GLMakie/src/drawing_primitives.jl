@@ -51,9 +51,9 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     get!(gl_attributes, :projection) do
         return lift(cam.projection, cam.pixel_space, space) do _, _, space
             if space in (:data, :transformed, :world)
-                return Makie.space_to_space_matrix(cam, :eye => :clip)
+                return Makie._space_to_space_matrix(cam, :eye => :clip)
             else
-                return Makie.space_to_space_matrix(cam, space => :clip)
+                return Makie._space_to_space_matrix(cam, space => :clip)
             end
         end
     end
@@ -67,7 +67,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
 
     get!(gl_attributes, :projectionview) do
         return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_space_matrix(cam, space => :clip)
+            Makie._space_to_space_matrix(cam, space => :clip)
         end
     end
 
@@ -206,8 +206,8 @@ pixel2world(scene, msize::Number) = pixel2world(scene, Point2f(msize))[1]
 
 function pixel2world(scene, msize::StaticVector{2})
     # TODO figure out why Vec(x, y) doesn't work correctly
-    p0 = Makie.to_world(scene, Point2f(0.0))
-    p1 = Makie.to_world(scene, Point2f(msize))
+    p0 = Makie.to_world(scene, :pixel, Point2f(0.0))
+    p1 = Makie.to_world(scene, :pixel, Point2f(msize))
     diff = p1 - p0
     return diff
 end
@@ -229,7 +229,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             mspace = x.markerspace
             cam = scene.camera
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
-                return Makie.space_to_space_matrix(cam, space => mspace)
+                return Makie._space_to_space_matrix(cam, space => mspace)
             end
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
@@ -405,7 +405,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         cam = scene.camera
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-            Makie.space_to_space_matrix(cam, s => ms)
+            Makie._space_to_space_matrix(cam, s => ms)
         end
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
