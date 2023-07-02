@@ -2,33 +2,21 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene::Scene, transform_func::T, space, point, model::Mat4, yflip::Bool = true) where T
-    # use transform func
-    point = Makie.apply_transform(transform_func, point, space)
-    _project_position(scene, space, point, model, yflip)
+"""
+    cairo_project(plot, pos[; yflip = true, kwargs...])
+
+Calls `Makie.project(plot, pos; kwargs...)` but returns 2D Points and optionally
+flips the y axis.
+"""
+function cairo_project(plot, pos; yflip = true, type = Point2f, kwargs...)
+    w, h = widths(Makie.pixelarea(Makie.get_scene(plot))[])
+    ps = Makie.project(plot, pos; type = type, kwargs...)
+    return yflip ? _yflip(ps, h) : ps
 end
 
-# TODO Makie.project instead
-function _project_position(scene, space, point, model, yflip)
-    res = scene.camera.resolution[]
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = Makie.space_to_space_matrix(scene, space => :clip) * model * p4d
-    @inbounds begin
-        # between -1 and 1
-        p = (clip ./ clip[4])[Vec(1, 2)]
-        # flip y to match cairo
-        p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
-        # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
-    end
-    # multiply with scene resolution for final position
-    return p_0_to_1 .* res
-end
-
-function project_position(scenelike, space, point, model, yflip::Bool = true)
-    scene = Makie.get_scene(scenelike)
-    project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
-end
+_yflip(p::VT, h) where {T <: Real, VT <: VecTypes{2, T}} = VT(p[1], h - p[2])
+_yflip(p::VT, h) where {T <: Real, VT <: VecTypes{3, T}} = VT(p[1], h - p[2], p[3])
+_yflip(ps::AbstractArray, h) = _yflip.(ps, h)
 
 function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
     project_scale(scene, space, Vec2f(s), model)
@@ -48,23 +36,23 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     end
 end
 
-function project_rect(scenelike, space, rect::Rect, model)
-    mini = project_position(scenelike, space, minimum(rect), model)
-    maxi = project_position(scenelike, space, maximum(rect), model)
-    return Rect(mini, maxi .- mini)
+function cairo_project(plot, rect::Rect; kwargs...)
+    mini = cairo_project(plot, minimum(rect); kwargs...)
+    maxi = cairo_project(plot, maximum(rect); kwargs...)
+    return Rect(Vec(mini), Vec(maxi .- mini))
 end
 
-function project_polygon(scenelike, space, poly::P, model) where P <: Polygon
+function cairo_project(plot, poly::P; type = Point2f, kwargs...) where P <: Polygon
     ext = decompose(Point2f, poly.exterior)
     interiors = decompose.(Point2f, poly.interiors)
     Polygon(
-        Point2f.(project_position.(Ref(scenelike), space, ext, Ref(model))),
-        [Point2f.(project_position.(Ref(scenelike), space, interior, Ref(model))) for interior in interiors],
+        cairo_project(plot, ext; type = type, kwargs...),
+        Vector{type}[cairo_project(plot, interior; type = type, kwargs...) for interior in interiors]
     )
 end
 
-function project_multipolygon(scenelike, space, multipoly::MP, model) where MP <: MultiPolygon
-    return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(model)))
+function cairo_project(plot, multipoly::MP; kwargs...) where MP <: MultiPolygon
+    return MultiPolygon(cairo_project.((plot, ), multipoly.polygons; kwargs...))
 end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)

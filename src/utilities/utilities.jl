@@ -242,6 +242,9 @@ function same_length_array(arr, value::Vector)
 end
 same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
 
+function to_ndim(T::Type{<: VecTypes}, vecs::AbstractArray{<: VecTypes}, fillval)
+    return map(vec -> to_ndim(T, vec, fillval), vecs)
+end
 function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
     T(ntuple(Val(N)) do i
         i > N2 && return ET(fillval)

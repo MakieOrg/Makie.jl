@@ -479,7 +479,7 @@ For a simpler interface, use `project(scenelike, pos)`.
 function project(
         mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
         pos::AbstractArray{<: VecTypes{N, T}}, type = Point3{T}
-    ) where {N, T}
+    ) where {N, T <: Real}
     if input_space === output_space
         return to_ndim.(type, pos, 0)
     elseif output_space !== :data
@@ -491,7 +491,7 @@ function project(
 end
 function project(
         mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
-        pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
+        pos::VecTypes{N, T}, type = Point3{T}) where {N, T <: Real}
     if input_space === output_space
         return to_ndim(type, pos, 0)
     elseif output_space !== :data

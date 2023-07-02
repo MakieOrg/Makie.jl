@@ -6,7 +6,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
     ctx = screen.context
-    model = primitive[:model][]
     positions = primitive[1][]
 
     isempty(positions) && return
@@ -27,8 +26,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         end
     end
 
-    space = to_value(get(primitive, :space, :data))
-    projected_positions = project_position.(Ref(scene), (Makie.transform_func(primitive),), Ref(space), positions, Ref(model))
+    projected_positions = cairo_project(primitive, positions)
 
     color = to_color(primitive.calculated_colors[])
 
@@ -51,7 +49,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     if primitive isa Lines && primitive.input_args[1][] isa BezierPath
-        return draw_bezierpath_lines(ctx, primitive.input_args[1][], scene, color, space, model, linewidth)
+        return draw_bezierpath_lines(ctx, primitive.input_args[1][], primitive, color, linewidth)
     end
 
     if color isa AbstractArray || linewidth isa AbstractArray
@@ -79,9 +77,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     nothing
 end
 
-function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
+function draw_bezierpath_lines(ctx, bezierpath::BezierPath, plot, color, linewidth)
     for c in bezierpath.commands
-        proj_comm = project_command(c, scene, space, model)
+        proj_comm = project_command(c, plot)
         path_command(ctx, proj_comm)
     end
     Cairo.set_source_rgba(ctx, rgbatuple(color)...)
@@ -90,23 +88,23 @@ function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space,
     return
 end
 
-function project_command(m::MoveTo, scene, space, model)
-    MoveTo(project_position(scene, space, m.p, model))
+function project_command(m::MoveTo, plot)
+    MoveTo(cairo_project(plot, m.p))
 end
 
-function project_command(l::LineTo, scene, space, model)
-    LineTo(project_position(scene, space, l.p, model))
+function project_command(l::LineTo, plot)
+    LineTo(cairo_project(plot, l.p))
 end
 
-function project_command(c::CurveTo, scene, space, model)
+function project_command(c::CurveTo, plot)
     CurveTo(
-        project_position(scene, space, c.c1, model),
-        project_position(scene, space, c.c2, model),
-        project_position(scene, space, c.p, model),
+        cairo_project(plot, c.c1),
+        cairo_project(plot, c.c2),
+        cairo_project(plot, c.p),
     )
 end
 
-project_command(c::ClosePath, scene, space, model) = c
+project_command(c::ClosePath, plot) = c
 
 function draw_single(primitive::Lines, ctx, positions)
     n = length(positions)
@@ -245,7 +243,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     Cairo.line_to(ctx, this_position...)
                     prev_continued = true
-                    
+
                     if i == lastindex(positions)
                         # this is the last element so stroke this
                         Cairo.set_line_width(ctx, this_linewidth)
@@ -301,19 +299,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     positions = primitive[1][]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f(I)
-
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
 
     colors = to_color(primitive.calculated_colors[])
 
     markerspace = to_value(get(primitive, :markerspace, :pixel))
-    space = to_value(get(primitive, :space, :data))
-
-    transfunc = Makie.transform_func(primitive)
-
     marker_conv = _marker_convert(marker)
 
-    draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker_conv, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+    draw_atomic_scatter(scene, ctx, primitive, colors, markersize, strokecolor, strokewidth, marker_conv, marker_offset, rotations, positions, size_model, font, markerspace)
 end
 
 # an array of markers is converted to string by itself, which is inconvenient for the iteration logic
@@ -322,15 +315,15 @@ _marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"(
 # image arrays need to be converted as a whole
 _marker_convert(marker::AbstractMatrix{<:Colorant}) = [ convert_attribute(marker, key"marker"(), key"scatter"()) ]
 
-function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+function draw_atomic_scatter(scene, ctx, plot, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, positions, size_model, font, markerspace)
     broadcast_foreach(positions, colors, markersize, strokecolor,
             strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
-        scale = project_scale(scene, markerspace, markersize, size_model)
-        offset = project_scale(scene, markerspace, mo, size_model)
+        scale = project_scale(scene, markerspace, markersize, size_model) # TODO
+        offset = project_scale(scene, markerspace, mo, size_model) # TODO
 
-        pos = project_position(scene, transfunc, space, point, model)
+        pos = cairo_project(plot, point)
         isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
@@ -505,14 +498,14 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
     ctx = screen.context
-    @get_attribute(primitive, (rotation, model, space, markerspace, offset))
+    @get_attribute(primitive, (rotation, model, markerspace, offset))
     position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
 
     draw_glyph_collection(
-        scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model, space, markerspace, offset, primitive.transformation
+        primitive, ctx, position, glyph_collection, remove_billboard(rotation),
+        markerspace, offset
     )
 
     nothing
@@ -520,22 +513,16 @@ end
 
 
 function draw_glyph_collection(
-        scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset, transformation
+        @nospecialize(plot), ctx, positions, glyph_collections::AbstractArray, rotation,
+        markerspace, offset
     )
 
-    # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
-    broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
-        markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
-
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation)
+    broadcast_foreach(positions, glyph_collections, rotation, markerspace, offset) do pos, glayout, ro, msp, off
+        draw_glyph_collection(plot, ctx, pos, glayout, ro, msp, off)
     end
 end
 
-_deref(x) = x
-_deref(x::Ref) = x[]
-
-function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets, transformation)
+function draw_glyph_collection(@nospecialize(plot), ctx, position, glyph_collection, rotation, markerspace, offsets)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -546,18 +533,16 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     strokewidths = glyph_collection.strokewidths
     strokecolors = glyph_collection.strokecolors
 
-    model = _deref(_model)
-    model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
-    id = Mat4f(I)
+    model33 = Makie.to_value(plot.model)[Vec(1, 2, 3), Vec(1, 2, 3)]
 
-    # TODO project method for this
-    glyph_pos = let
-        transform_func = transformation.transform_func[]
-        p = Makie.apply_transform(transform_func, position, space)
+    glyph_pos = Makie.project(plot, position, output_space = markerspace)
+    # let
+    #     transform_func = transformation.transform_func[]
+    #     p = Makie.apply_transform(transform_func, position, space)
 
-        Makie.space_to_space_matrix(scene, space => markerspace) *
-        model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
-    end
+    #     Makie.space_to_space_matrix(scene, space => markerspace) *
+    #     model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
+    # end
 
     Cairo.save(ctx)
 
@@ -577,7 +562,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
         # offsets and scale apply in markerspace
-        gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
+        gp3 = glyph_pos .+ model33 * (glyphoffset .+ p3_offset)
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
 
@@ -589,9 +574,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
         yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-        glyphpos = _project_position(scene, markerspace, gp3, id, true)
-        xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
-        yproj = _project_position(scene, markerspace, gp3 + model33 * yvec, id, true)
+        glyphpos = cairo_project(plot, gp3, input_space = markerspace)
+        xproj = cairo_project(plot, gp3 + model33 * xvec, input_space = markerspace)
+        yproj = cairo_project(plot, gp3 + model33 * yvec, input_space = markerspace)
 
         xdiff = xproj - glyphpos
         ydiff = yproj - glyphpos
@@ -691,7 +676,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     t = Makie.transform_func(primitive)
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    xy_aligned = let 
+    xy_aligned = let
         # Only allow scaling and translation
         pv = scene.camera.projectionview[]
         M = Mat4f(
@@ -715,12 +700,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
-    space = to_value(get(primitive, :space, :data))
-    xy = project_position(scene, space, Point2f(first.(imsize)), model)
-    xymax = project_position(scene, space, Point2f(last.(imsize)), model)
+    xy = cairo_project(primitive, Point2f(first.(imsize)))
+    xymax = cairo_project(primitive, Point2f(last.(imsize)))
     w, h = xymax .- xy
 
-    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform && 
+    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
         (interpolate || xy_aligned)
     use_fast_path = can_use_fast_path && !disable_fast_path
 
@@ -746,8 +730,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     else
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
-        space = to_value(get(primitive, :space, :data))
-        xys = project_position.(scene, (Makie.transform_func(primitive),), space, [Point2f(x, y) for x in xs, y in ys], (model,))
+        xys = cairo_project(primitive, [Point2f(x, y) for x in xs, y in ys])
         colors = to_color(primitive.calculated_colors[])
 
         # Note: xs and ys should have size ni+1, nj+1
@@ -816,24 +799,19 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     vs =  decompose(Point2f, mesh)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
-    model = plot.model[]::Mat4f
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
     cols = per_face_colors(color, nothing, fs, nothing, uv)
-    space = to_value(get(plot, :space, :data))::Symbol
-    transform_func = Makie.transform_func(plot)
-    return draw_mesh2D(scene, screen, cols, space, transform_func, vs, fs, model)
+    return draw_mesh2D(scene, screen, cols, vs, fs)
 end
 
-function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func,
-        vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
-
+function draw_mesh2D(plot, screen, per_face_cols, vs::Vector{Point2f}, fs::Vector{GLTriangleFace})
     ctx = screen.context
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
         pattern = Cairo.CairoPatternMesh()
-        t1, t2, t3 =  project_position.(scene, (transform_func,), space, vs[f], (model,)) #triangle points
+        t1, t2, t3 = cairo_project(plot, vs[f]) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1...)
@@ -861,7 +839,10 @@ end
 nan2zero(x) = !isnan(x) * x
 
 
-function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
+function draw_mesh3D(
+        scene, screen, attributes, mesh;
+        pos = Vec3f(0), scale = Vec3f(1f0), rotation = Makie.Quaternionf(0,0,0,1)
+    )
     # Priorize colors of the mesh if present
     @get_attribute(attributes, (color,))
 
@@ -883,35 +864,57 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     space = to_value(get(attributes, :space, :data))::Symbol
     func = Makie.transform_func(attributes)
     draw_mesh3D(
-        scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
-        model, shading::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Int
+        scene, screen,
+        meshpoints, meshfaces, meshnormals, per_face_col,
+        space, func, pos, scale, rotation, model,
+        shading::Bool, diffuse::Vec3f, specular::Vec3f, shininess::Float32,
+        faceculling::Int
     )
 end
 
 function draw_mesh3D(
-        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
-        model, shading, diffuse,
-        specular, shininess, faceculling
+        scene, screen,
+        # mesh data
+        meshpoints, meshfaces, meshnormals, per_face_col,
+        # transformation data
+        space, transform_func, pos::VecTypes{3}, scale::VecTypes{3}, rotation::Quaternion, model,
+        # lighting data
+        shading, diffuse, specular, shininess,
+        faceculling
     )
     ctx = screen.context
-    @assert space in (:data, :transformed, :world)
     view = scene.camera.view[]
-    projection = scene.camera.projection[]
-    i = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(view[i, i] * model[i, i]))
+    i3 = Vec(1, 2, 3)
+    normalmatrix = transpose(inv(view[i3, i3] * model[i3, i3]))
 
-    # Mesh data
-    # transform to view/camera space
+    # Mesh projection
 
-    # pass transform_func as argument to function, so that we get a function barrier
-    # and have `transform_func` be fully typed inside closure
-    vs = broadcast(meshpoints, (transform_func,)) do v, f
-        # Should v get a nan2zero?
-        v = Makie.apply_transform(f, v, space)
-        p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
-        view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
+    # For meshscatter - build a second model matrix from meshscatter position,
+    # scale (markersize) and rotation
+    pos = Makie.apply_transform(transform_func, pos, space)
+    T = Makie.transformationmatrix(pos, scale, rotation)
+
+    if shading
+        # With shading == true we need eye space positions for the light calculation.
+        # (The transform function only applies to meshpoints here, not pos.)
+        projection_matrix = Makie.space_to_space_matrix(scene, space => :eye)
+        vs = Makie.project(projection_matrix * T, transform_func, space, :eye, meshpoints, Point4f)
+        ts = cairo_project(scene, vs, input_space = :eye, type = Point3f)
+    else
+        # Without it we can go directly to pixel space.
+        projection_matrix = Makie.space_to_space_matrix(scene, space => :pixel)
+        w, h = widths(pixelarea(scene)[])
+        ts = Makie.project(projection_matrix * T, transform_func, space, :pixel, meshpoints, Point3f)
+        ts = _yflip(ts, h)
+        vs = Point4f[] # TODO is this needed for typing?
     end
+
+    # vs = broadcast(meshpoints, (transform_func,)) do v, f
+    #     # Should v get a nan2zero?
+    #     v = Makie.apply_transform(f, v, space)
+    #     p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
+    #     view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
+    # end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
     # Liight math happens in view/camera space
@@ -930,19 +933,19 @@ function draw_mesh3D(
         Vec3f(0)
     end
 
-    lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[Vec(1, 2, 3)]
+    lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[i3]
 
     # Camera to screen space
-    ts = map(vs) do v
-        clip = projection * v
-        @inbounds begin
-            p = (clip ./ clip[4])[Vec(1, 2)]
-            p_yflip = Vec2f(p[1], -p[2])
-            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
-        end
-        p = p_0_to_1 .* scene.camera.resolution[]
-        return Vec3f(p[1], p[2], clip[3])
-    end
+    # ts = map(vs) do v
+    #     clip = projection * v
+    #     @inbounds begin
+    #         p = (clip ./ clip[4])[Vec(1, 2)]
+    #         p_yflip = Vec2f(p[1], -p[2])
+    #         p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+    #     end
+    #     p = p_0_to_1 .* scene.camera.resolution[]
+    #     return Vec3f(p[1], p[2], clip[3])
+    # end
 
     # Approximate zorder
     average_zs = map(f -> average_z(ts, f), meshfaces)
@@ -1056,15 +1059,18 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     m = convert_attribute(marker, key"marker"(), key"meshscatter"())
     pos = primitive[1][]
-    # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(model)
-    view = scene.camera.view[]
 
-    zorder = sortperm(pos, by = p -> begin
-        p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
-        cam_pos = view * model * p4d
-        cam_pos[3] / cam_pos[4]
-    end, rev=false)
+    # For correct z-ordering we need to be in eye (camera), clip, pixel or
+    # relative space
+    if to_value(get(primitive, :space, :data)) in (:data, :transformed, :world)
+        zs = last.(Makie.project(primitive, pos, output_space = :eye))
+        zorder = sortperm(zs, rev = false)
+    elseif length(pos[1]) > 2
+        zs = getindex.(zs, 3)
+        zorder = sortperm(zs, rev = false)
+    else
+        zorder = eachindex(pos)
+    end
 
     color = to_color(primitive.calculated_colors[])
     submesh = Attributes(
@@ -1077,25 +1083,18 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     )
 
-    if !(rotations isa Vector)
-        R = Makie.rotationmatrix4(to_rotation(rotations))
-        submesh[:model] = model * R
-    end
-    scales = primitive[:markersize][]
     for i in zorder
         p = pos[i]
         if color isa AbstractVector
             submesh[:calculated_colors] = color[i]
         end
-        if rotations isa Vector
-            R = Makie.rotationmatrix4(to_rotation(rotations[i]))
-            submesh[:model] = model * R
-        end
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh, m, pos = p,
-            scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0)
+            scene, screen, submesh, m,
+            pos = p,
+            scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
+            rotation = rotations isa Vector ? to_rotation(rotations[i]) : to_rotation(rotations)
         )
     end
 

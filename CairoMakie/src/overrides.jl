@@ -30,7 +30,7 @@ end
 
 
 # in the rare case of per-vertex colors redirect to mesh drawing
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::AbstractArray, model, strokecolor, strokewidth)
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::AbstractArray, strokecolor, strokewidth)
     draw_poly_as_mesh(scene, screen, poly)
 end
 
@@ -38,14 +38,13 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
+    draw_poly(scene, screen, poly, points, color, strokecolor, strokestyle, poly.strokewidth[])
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokecolor, strokestyle, strokewidth)
-    space = to_value(get(poly, :space, :data))
-    points = project_position.(Ref(scene), space, points, Ref(model))
+        strokecolor, strokestyle, strokewidth)
+    points = cairo_project(poly, points)
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
@@ -75,10 +74,7 @@ end
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
 function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
-    model = poly.model[]
-    space = to_value(get(poly, :space, :data))
-    projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
-
+    projected_rects = cairo_project.((poly,), rects)
     color = to_cairo_color(poly.color[], poly)
 
     linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
@@ -127,10 +123,7 @@ draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scen
 draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
-    model = poly.model[]
-    space = to_value(get(poly, :space, :data))
-    projected_polys = project_polygon.(Ref(poly), space, polygons, Ref(model))
-
+    projected_polys = cairo_project.((poly,), polygons)
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
@@ -147,10 +140,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
-    model = poly.model[]
-    space = to_value(get(poly, :space, :data))
-    projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
-
+    projected_polys = cairo_project.((poly,), polygons)
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
@@ -183,9 +173,7 @@ function draw_plot(scene::Scene, screen::Screen,
         upperpoints = band[1][]
         lowerpoints = band[2][]
         points = vcat(lowerpoints, reverse(upperpoints))
-        model = band.model[]
-        space = to_value(get(band, :space, :data))
-        points = project_position.(Ref(scene), space, points, Ref(model))
+        points = cairo_project(band, points)
         Cairo.move_to(screen.context, points[1]...)
         for p in points[2:end]
             Cairo.line_to(screen.context, p...)
@@ -221,9 +209,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     colornumbers = pol.color[]
     colors = to_cairo_color(colornumbers, pol)
     polygons = pol[1][]
-    model = pol.model[]
-    space = to_value(get(pol, :space, :data))
-    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = cairo_project.((tric,), polygons)
 
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
