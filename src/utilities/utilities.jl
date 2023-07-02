@@ -150,6 +150,8 @@ end
 @inline getindex_value(x::Union{Dict,Attributes,AbstractPlot}, key::Symbol) = to_value(x[key])
 @inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 
+@inline get_value(obj, key, default) = to_value(get(obj, key, default))
+
 """
 usage @extractvalue scene (a, b, c, d)
 will become:

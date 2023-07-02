@@ -77,7 +77,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     nothing
 end
 
-function draw_bezierpath_lines(ctx, bezierpath::BezierPath, plot, color, linewidth)
+function draw_bezierpath_lines(ctx, bezierpath::BezierPath, @nospecialize(plot), color, linewidth)
     for c in bezierpath.commands
         proj_comm = project_command(c, plot)
         path_command(ctx, proj_comm)
@@ -88,15 +88,15 @@ function draw_bezierpath_lines(ctx, bezierpath::BezierPath, plot, color, linewid
     return
 end
 
-function project_command(m::MoveTo, plot)
+function project_command(m::MoveTo, @nospecialize(plot))
     MoveTo(cairo_project(plot, m.p))
 end
 
-function project_command(l::LineTo, plot)
+function project_command(l::LineTo, @nospecialize(plot))
     LineTo(cairo_project(plot, l.p))
 end
 
-function project_command(c::CurveTo, plot)
+function project_command(c::CurveTo, @nospecialize(plot))
     CurveTo(
         cairo_project(plot, c.c1),
         cairo_project(plot, c.c2),
@@ -104,9 +104,9 @@ function project_command(c::CurveTo, plot)
     )
 end
 
-project_command(c::ClosePath, plot) = c
+project_command(c::ClosePath, @nospecialize(plot)) = c
 
-function draw_single(primitive::Lines, ctx, positions)
+function draw_single(@nospecialize(primitive::Lines), ctx, positions)
     n = length(positions)
     @inbounds for i in 1:n
         p = positions[i]
@@ -128,7 +128,7 @@ function draw_single(primitive::Lines, ctx, positions)
     Cairo.new_path(ctx)
 end
 
-function draw_single(primitive::LineSegments, ctx, positions)
+function draw_single(@nospecialize(primitive::LineSegments), ctx, positions)
 
     @assert iseven(length(positions))
 
@@ -149,17 +149,22 @@ function draw_single(primitive::LineSegments, ctx, positions)
 end
 
 # if linewidth is not an array
-function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, dash)
+function draw_multi(@nospecialize(primitive), ctx, positions, colors::AbstractArray, linewidth, dash)
     draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors], dash)
 end
 
 # if color is not an array
-function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, dash)
+function draw_multi(@nospecialize(primitive), ctx, positions, color, linewidths::AbstractArray, dash)
     draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths, dash)
 end
 
-function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, dash)
-    @assert iseven(length(positions))
+function draw_multi(
+        @nospecialize(primitive::Union{Lines, LineSegments}), ctx, positions,
+        colors::AbstractArray, linewidths::AbstractArray, dash
+    )
+    if primitive isa LineSegments
+        @assert iseven(length(positions))
+    end
     @assert length(positions) == length(colors)
     @assert length(linewidths) == length(colors)
 
@@ -299,11 +304,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     positions = primitive[1][]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f(I)
-    font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
-
+    font = to_font(get_value(primitive, :font, Makie.defaultfont()))
     colors = to_color(primitive.calculated_colors[])
-
-    markerspace = to_value(get(primitive, :markerspace, :pixel))
+    markerspace = get_value(primitive, :markerspace, :pixel)
     marker_conv = _marker_convert(marker)
 
     draw_atomic_scatter(scene, ctx, primitive, colors, markersize, strokecolor, strokewidth, marker_conv, marker_offset, rotations, positions, size_model, font, markerspace)
@@ -315,7 +318,11 @@ _marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"(
 # image arrays need to be converted as a whole
 _marker_convert(marker::AbstractMatrix{<:Colorant}) = [ convert_attribute(marker, key"marker"(), key"scatter"()) ]
 
-function draw_atomic_scatter(scene, ctx, plot, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, positions, size_model, font, markerspace)
+function draw_atomic_scatter(
+        scene, ctx, @nospecialize(plot), colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotations, positions, size_model, font, markerspace
+    )
+
     broadcast_foreach(positions, colors, markersize, strokecolor,
             strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
@@ -669,7 +676,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
 
     # Debug attribute we can set to disable fastpath
     # probably shouldn't really be part of the interface
-    fast_path = to_value(get(primitive, :fast_path, true))
+    fast_path = get_value(primitive, :fast_path, true)
     disable_fast_path = !fast_path
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
@@ -790,7 +797,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         if !haskey(primitive, :faceculling)
             primitive[:faceculling] = Observable(-10)
         end
-        draw_mesh3D(scene, screen, primitive, mesh)
+        draw_mesh3D(scene, screen, primitive, primitive.attributes, mesh)
     end
     return nothing
 end
@@ -804,7 +811,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     return draw_mesh2D(scene, screen, cols, vs, fs)
 end
 
-function draw_mesh2D(plot, screen, per_face_cols, vs::Vector{Point2f}, fs::Vector{GLTriangleFace})
+function draw_mesh2D(@nospecialize(plot), screen, per_face_cols, vs::Vector{Point2f}, fs::Vector{GLTriangleFace})
     ctx = screen.context
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
@@ -840,7 +847,7 @@ nan2zero(x) = !isnan(x) * x
 
 
 function draw_mesh3D(
-        scene, screen, attributes, mesh;
+        scene, screen, @nospecialize(plot), attributes, mesh;
         pos = Vec3f(0), scale = Vec3f(1f0), rotation = Makie.Quaternionf(0,0,0,1)
     )
     # Priorize colors of the mesh if present
@@ -857,54 +864,51 @@ function draw_mesh3D(
 
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
-    @get_attribute(attributes, (shading, diffuse,
-        specular, shininess, faceculling))
+    @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling))
 
-    model = attributes.model[]::Mat4f
-    space = to_value(get(attributes, :space, :data))::Symbol
-    func = Makie.transform_func(attributes)
     draw_mesh3D(
-        scene, screen,
+        scene, screen, plot,
         meshpoints, meshfaces, meshnormals, per_face_col,
-        space, func, pos, scale, rotation, model,
+        pos, scale, rotation,
         shading::Bool, diffuse::Vec3f, specular::Vec3f, shininess::Float32,
         faceculling::Int
     )
 end
 
 function draw_mesh3D(
-        scene, screen,
+        scene, screen, @nospecialize(plot),
         # mesh data
         meshpoints, meshfaces, meshnormals, per_face_col,
         # transformation data
-        space, transform_func, pos::VecTypes{3}, scale::VecTypes{3}, rotation::Quaternion, model,
+        pos::VecTypes{3}, scale::VecTypes{3}, rotation::Quaternion,
         # lighting data
         shading, diffuse, specular, shininess,
         faceculling
     )
     ctx = screen.context
+    space = get_value(plot, :space, :data)
+    transform_func = Makie.transform_func(plot)
     view = scene.camera.view[]
     i3 = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(view[i3, i3] * model[i3, i3]))
 
     # Mesh projection
 
     # For meshscatter - build a second model matrix from meshscatter position,
-    # scale (markersize) and rotation
+    # scale (markersize) and rotation and combine with `model`
     pos = Makie.apply_transform(transform_func, pos, space)
     T = Makie.transformationmatrix(pos, scale, rotation)
 
     if shading
         # With shading == true we need eye space positions for the light calculation.
         # (The transform function only applies to meshpoints here, not pos.)
-        projection_matrix = Makie.space_to_space_matrix(scene, space => :eye)
-        vs = Makie.project(projection_matrix * T, transform_func, space, :eye, meshpoints, Point4f)
+        projection_matrix = Makie.space_to_space_matrix(plot, space => :eye)
+        vs = project(projection_matrix * T, transform_func, space, :eye, meshpoints, Point4f)
         ts = cairo_project(scene, vs, input_space = :eye, type = Point3f)
     else
         # Without it we can go directly to pixel space.
-        projection_matrix = Makie.space_to_space_matrix(scene, space => :pixel)
+        projection_matrix = Makie.space_to_space_matrix(plot, space => :pixel)
         w, h = widths(pixelarea(scene)[])
-        ts = Makie.project(projection_matrix * T, transform_func, space, :pixel, meshpoints, Point3f)
+        ts = project(projection_matrix * T, transform_func, space, :pixel, meshpoints, Point3f)
         ts = _yflip(ts, h)
         vs = Point4f[] # TODO is this needed for typing?
     end
@@ -916,6 +920,8 @@ function draw_mesh3D(
     #     view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     # end
 
+    model = plot.model[] * Makie.rotationmatrix4(rotation)
+    normalmatrix = transpose(inv(view[i3, i3] * model[i3, i3]))
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
     # Liight math happens in view/camera space
     pointlight = Makie.get_point_light(scene)
@@ -1035,7 +1041,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     if !haskey(primitive, :faceculling)
         primitive[:faceculling] = Observable(-10)
     end
-    draw_mesh3D(scene, screen, primitive, mesh)
+    draw_mesh3D(scene, screen, primitive, primitive.attributes, mesh)
     primitive[:color] = old
     return nothing
 end
@@ -1062,7 +1068,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     # For correct z-ordering we need to be in eye (camera), clip, pixel or
     # relative space
-    if to_value(get(primitive, :space, :data)) in (:data, :transformed, :world)
+    if get_value(primitive, :space, :data) in (:data, :transformed, :world)
         zs = last.(Makie.project(primitive, pos, output_space = :eye))
         zorder = sortperm(zs, rev = false)
     elseif length(pos[1]) > 2
@@ -1078,9 +1084,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         calculated_colors = color,
         shading=primitive.shading, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
-        faceculling=get(primitive, :faceculling, -10),
+        faceculling=get_value(primitive, :faceculling, -10),
         transformation=Makie.transformation(primitive)
-
     )
 
     for i in zorder
@@ -1091,7 +1096,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh, m,
+            scene, screen, primitive, submesh, m,
             pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
             rotation = rotations isa Vector ? to_rotation(rotations[i]) : to_rotation(rotations)

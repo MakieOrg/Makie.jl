@@ -436,7 +436,7 @@ you.
 """
 function project(
         plot::AbstractPlot, pos; 
-        input_space::Symbol = to_value(get(plot, :space, :data)), 
+        input_space::Symbol = get_value(plot, :space, :data),
         output_space::Symbol = :pixel, type = _point3_type(pos)
     )
 

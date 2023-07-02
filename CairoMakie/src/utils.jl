@@ -5,12 +5,12 @@
 """
     cairo_project(plot, pos[; yflip = true, kwargs...])
 
-Calls `Makie.project(plot, pos; kwargs...)` but returns 2D Points and optionally
+Calls `project(plot, pos; kwargs...)` but returns 2D Points and optionally
 flips the y axis.
 """
 function cairo_project(plot, pos; yflip = true, type = Point2f, kwargs...)
-    w, h = widths(Makie.pixelarea(Makie.get_scene(plot))[])
-    ps = Makie.project(plot, pos; type = type, kwargs...)
+    w, h = widths(pixelarea(Makie.get_scene(plot))[])
+    ps = project(plot, pos; type = type, kwargs...)
     return yflip ? _yflip(ps, h) : ps
 end
 
