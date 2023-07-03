@@ -2,6 +2,7 @@
 
 ## master
 
+- Fixed DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002)
 - Fix incomplete stroke with some Bezier markers in CairoMakie and blurry strokes in GLMakie [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
 - Added the ability to use custom triangulations from DelaunayTriangulation.jl [#2896](https://github.com/MakieOrg/Makie.jl/pull/2896).
 - Adjusted scaling of scatter/text stroke, glow and anti-aliasing width under non-uniform 2D scaling (Vec2f markersize/fontsize) in GLMakie [#2950](https://github.com/MakieOrg/Makie.jl/pull/2950).
