@@ -10,7 +10,5 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
     PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 fig = Figure(; resolution=(1000, 1000))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-Makie.volume!(ax, 0..3, 0..3.78, 0..3.18, brain, algorithm=:absorption, absorption=4.0)
-ax.scene |> display
-
-Makie.save("test.png", ax.scene; update=false, backend=RPRMakie, iterations=3, resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU1)
+Makie.volume!(ax, 0..3, 0..3.78, 0..3.18, brain, algorithm=:absorption, absorption=0.3)
+display(ax.scene; iterations=5000)
