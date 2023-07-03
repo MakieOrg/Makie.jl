@@ -80,9 +80,19 @@ function start_renderloop(three_scene) {
 function throttle_function(func, delay) {
     // Previously called time of the function
     let prev = 0;
-    return (...args) => {
+    // ID of queued future update
+    let future_id = undefined;
+    function inner_throttle(...args) {
         // Current called time of the function
         const now = new Date().getTime();
+
+        // If we had a queued run, clear it now, we're
+        // either going to execute now, or queue a new run.
+        if (future_id !== undefined) {
+            clearTimeout(future_id);
+            future_id = undefined;
+        }
+
         // If difference is greater than delay call
         // the function again.
         if (now - prev > delay) {
@@ -91,8 +101,15 @@ function throttle_function(func, delay) {
             // returning the function with the
             // array of arguments
             return func(...args);
+        } else {
+            // Otherwise, we want to queue this function call
+            // to occur at some later later time, so that it
+            // does not get lost; we'll schedule it so that it
+            // fires just a bit after our choke ends.
+            future_id = setTimeout(() => inner_throttle(...args), now - prev + 1);
         }
     };
+    return inner_throttle;
 }
 
 function threejs_module(canvas, comm, width, height) {
@@ -198,6 +215,25 @@ function threejs_module(canvas, comm, width, height) {
 
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
+
+    function resize_callback() {
+        var bodyStyle = window.getComputedStyle(document.body);
+        // Subtract padding that is added by VSCode
+        var width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) +
+                            parseInt(bodyStyle.marginLeft, 10)  + parseInt(bodyStyle.marginRight, 10);
+        var height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) +
+                             parseInt(bodyStyle.marginTop, 10)  + parseInt(bodyStyle.marginBottom, 10);
+        var width = (window.innerWidth - width_padding) * pixelRatio;
+        var height = (window.innerHeight - height_padding) * pixelRatio;
+
+        // Send the resize event to Julia
+        comm.notify({ resize: [width, height] });
+    }
+    const resize_callback_throttled = throttle_function(resize_callback, 100);
+    window.addEventListener("resize", (event) => resize_callback_throttled());
+
+    // Fire the resize event once at the start to auto-size our window
+    resize_callback_throttled();
 
     return renderer;
 }

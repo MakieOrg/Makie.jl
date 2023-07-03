@@ -8,6 +8,7 @@
 - Adjusted scaling of scatter/text stroke, glow and anti-aliasing width under non-uniform 2D scaling (Vec2f markersize/fontsize) in GLMakie [#2950](https://github.com/MakieOrg/Makie.jl/pull/2950).
 - Scaled `errorbar` whiskers and `bracket` correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012).
 - Updated `bracket` when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012).
+- Added auto-resizing functionality to WGLMakie plot figures [#3042](https://github.com/MakieOrg/Makie.jl/pull/3042)
 
 
 ## v0.19.6
