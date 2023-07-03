@@ -3,20 +3,19 @@
 ################################################################################
 
 """
-    cairo_project(plot, pos[; yflip = true, kwargs...])
+    cairo_project(plot, pos[; kwargs...])
 
-Calls `project(plot, pos; kwargs...)` but returns 2D Points and optionally
-flips the y axis.
+Calls `project(plot, pos; kwargs...)` and flips the y axis of the result.
 """
-function cairo_project(plot, pos; yflip = true, type = Point2f, kwargs...)
+function cairo_project(plot, pos; type = Point2f, kwargs...)
     w, h = widths(pixelarea(Makie.get_scene(plot))[])
     ps = project(plot, pos; type = type, kwargs...)
-    return yflip ? _yflip(ps, h) : ps
+    return yflip(ps, h)
 end
 
-_yflip(p::VT, h) where {T <: Real, VT <: VecTypes{2, T}} = VT(p[1], h - p[2])
-_yflip(p::VT, h) where {T <: Real, VT <: VecTypes{3, T}} = VT(p[1], h - p[2], p[3])
-_yflip(ps::AbstractArray, h) = _yflip.(ps, h)
+yflip(p::VT, h) where {T <: Real, VT <: VecTypes{2, T}} = VT(p[1], h - p[2])
+yflip(p::VT, h) where {T <: Real, VT <: VecTypes{3, T}} = VT(p[1], h - p[2], p[3])
+yflip(ps::AbstractArray, h) = yflip.(ps, h)
 
 function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
     project_scale(scene, space, Vec2f(s), model)

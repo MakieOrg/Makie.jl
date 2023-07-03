@@ -541,15 +541,7 @@ function draw_glyph_collection(@nospecialize(plot), ctx, position, glyph_collect
     strokecolors = glyph_collection.strokecolors
 
     model33 = Makie.to_value(plot.model)[Vec(1, 2, 3), Vec(1, 2, 3)]
-
     glyph_pos = Makie.project(plot, position, output_space = markerspace)
-    # let
-    #     transform_func = transformation.transform_func[]
-    #     p = Makie.apply_transform(transform_func, position, space)
-
-    #     Makie.space_to_space_matrix(scene, space => markerspace) *
-    #     model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
-    # end
 
     Cairo.save(ctx)
 
@@ -909,16 +901,9 @@ function draw_mesh3D(
         projection_matrix = Makie.space_to_space_matrix(plot, space => :pixel)
         w, h = widths(pixelarea(scene)[])
         ts = project(projection_matrix * T, transform_func, space, :pixel, meshpoints, Point3f)
-        ts = _yflip(ts, h)
+        ts = yflip(ts, h)
         vs = Point4f[] # TODO is this needed for typing?
     end
-
-    # vs = broadcast(meshpoints, (transform_func,)) do v, f
-    #     # Should v get a nan2zero?
-    #     v = Makie.apply_transform(f, v, space)
-    #     p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
-    #     view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
-    # end
 
     model = plot.model[] * Makie.rotationmatrix4(rotation)
     normalmatrix = transpose(inv(view[i3, i3] * model[i3, i3]))
@@ -940,18 +925,6 @@ function draw_mesh3D(
     end
 
     lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[i3]
-
-    # Camera to screen space
-    # ts = map(vs) do v
-    #     clip = projection * v
-    #     @inbounds begin
-    #         p = (clip ./ clip[4])[Vec(1, 2)]
-    #         p_yflip = Vec2f(p[1], -p[2])
-    #         p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
-    #     end
-    #     p = p_0_to_1 .* scene.camera.resolution[]
-    #     return Vec3f(p[1], p[2], clip[3])
-    # end
 
     # Approximate zorder
     average_zs = map(f -> average_z(ts, f), meshfaces)

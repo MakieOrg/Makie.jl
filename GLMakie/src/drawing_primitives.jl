@@ -42,7 +42,8 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
 
-    # TODO we can probably get rid of these?
+    # TODO should these be input -> eye and eye -> clip?
+    # They are used for lighting (check)
     get!(gl_attributes, :view) do
         return lift(plot, cam.view, space) do view, space
             return space in (:data, :transformed, :world) ? view : Mat4f(I)
