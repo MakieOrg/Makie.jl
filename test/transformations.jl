@@ -110,8 +110,12 @@ end
 end
 
 @testset "Coordinate Systems" begin
-    funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
-    spaces = [:data, :pixel, :relative, :clip]
+    funcs = [
+        Makie.is_data_space, Makie.is_transformed_space, Makie.is_world_space,
+        Makie.is_eye_space, Makie.is_clip_space,
+        Makie.is_pixel_space, Makie.is_relative_space
+    ]
+    spaces = [:data, :transformed, :world, :eye, :clip, :pixel, :relative]
     for (i, f) in enumerate(funcs)
         for j in 1:4
             @test f(spaces[j]) == (i == j)
@@ -122,7 +126,7 @@ end
     scatter!(scene, [Point3f(-10), Point3f(10)])
     for space in vcat(spaces...)
         @test Makie.space_to_space_matrix(scene, :clip => space) * 
-                Makie.space_to_space_matrix(scene.camera, space => :clip) ≈ Mat4f(I)
+                Makie.space_to_space_matrix(scene, space => :clip) ≈ Mat4f(I)
     end
 end
 
