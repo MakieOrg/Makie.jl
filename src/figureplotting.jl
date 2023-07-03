@@ -111,7 +111,9 @@ function create_figurelike(PlotType, attributes::Dict, args...)
 end
 
 function create_figurelike!(@nospecialize(PlotType), attributes::Dict, @nospecialize(args...))
-    ax = current_axis(current_figure())
+    figure = current_figure()
+    isnothing(figure) && error("There is no current figure to plot into.")
+    ax = current_axis(figure)
     isnothing(ax) && error("There is no current axis to plot into.")
     return ax, attributes, args
 end

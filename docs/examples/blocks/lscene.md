@@ -25,3 +25,7 @@ p = meshscatter!(lscene, randn(300, 3), color=:gray)
 fig
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{LScene}

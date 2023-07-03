@@ -54,29 +54,19 @@ end
     @test Float32(X7[7,1]) == V7[7][1]
 end
 
-@testset "functions" begin
-    x = -pi..pi
-    (xy,) = convert_arguments(Lines, x, sin)
-    @test xy[1][1] ≈ -pi
-    @test xy[end][1] ≈ pi
-    for (val, fval) in xy
-        @test fval ≈ sin(val) atol=1f-6
-    end
 
-    x = range(-pi, stop=pi, length=100)
-    (xy,) = convert_arguments(Lines, x, sin)
-    @test xy[1][1] ≈ -pi
-    @test xy[end][1] ≈ pi
-    for (val, fval) in xy
-        @test fval ≈ sin(val) atol=1f-6
-    end
-
-    pts = [Point(1, 2), Point(4,5), Point(10, 8), Point(1, 2)]
+@testset "GeometryBasics Lines & Polygons" begin
+    pts = [Point(1, 2), Point(4, 5), Point(10, 8), Point(1, 2)]
     ls = LineString(pts)
     p = convert_arguments(Makie.PointBased(), ls)
     @test p[1] == pts
 
-    pts1 = [Point(5, 2), Point(4,8), Point(2, 8), Point(5, 2)]
+    pts_empty = Point2f[]
+    ls_empty = LineString(pts_empty)
+    p_empty = convert_arguments(Makie.PointBased(), ls_empty)
+    @test p_empty[1] == pts_empty
+
+    pts1 = [Point(5, 2), Point(4, 8), Point(2, 8), Point(5, 2)]
     ls1 = LineString(pts1)
     lsa = [ls, ls1]
     p1 = convert_arguments(Makie.PointBased(), lsa)
@@ -88,18 +78,26 @@ end
     @test p2[1][1:4] == pts
     @test p2[1][6:9] == pts1
 
+    mls_emtpy = MultiLineString([LineString(pts_empty)])
+    p_empty = convert_arguments(Makie.PointBased(), mls_emtpy)
+    @test p_empty[1] == pts_empty
+
     pol_e = Polygon(ls)
     p3_e = convert_arguments(Makie.PointBased(), pol_e)
-    @test p3_e[1][1:end-1] == pts # for poly we repeat last point
+    @test p3_e[1][1:end] == pts # for poly we repeat last point
 
     pol = Polygon(ls, [ls1])
     p3 = convert_arguments(Makie.PointBased(), pol)
     @test p3[1][1:4] == pts
-    @test p3[1][7:10] == pts1
+    @test p3[1][6:9] == pts1
 
-    pts2 = Point{2, Int}[(5, 1), (3, 3), (4, 8), (1, 2), (5, 1)]
-    pts3 = Point{2, Int}[(2, 2), (2, 3),(3, 4), (2, 2)]
-    pts4 = Point{2, Int}[(2, 2), (3, 8),(5, 6), (3, 4), (2, 2)]
+    pol_emtpy = Polygon(pts_empty)
+    p_empty = convert_arguments(Makie.PointBased(), pol_emtpy)
+    @test p_empty[1] == pts_empty
+
+    pts2 = Point{2,Int}[(5, 1), (3, 3), (4, 8), (1, 2), (5, 1)]
+    pts3 = Point{2,Int}[(2, 2), (2, 3), (3, 4), (2, 2)]
+    pts4 = Point{2,Int}[(2, 2), (3, 8), (5, 6), (3, 4), (2, 2)]
     ls2 = LineString(pts2)
     ls3 = LineString(pts3)
     ls4 = LineString(pts4)
@@ -108,10 +106,34 @@ end
     p4 = convert_arguments(Makie.PointBased(), apol)
     mpol = MultiPolygon([pol, pol1])
     @test p4[1][1:4] == pts
-    @test p4[1][7:10] == pts1
-    @test p4[1][14:18] == pts2
-    @test p4[1][21:24] == pts3
-    @test p4[1][27:31] == pts4
+    @test p4[1][6:9] == pts1
+    @test p4[1][11:15] == pts2
+    @test p4[1][17:20] == pts3
+    @test p4[1][22:end] == pts4
+
+    mpol_emtpy = MultiPolygon(typeof(pol_emtpy)[])
+    p_empty = convert_arguments(Makie.PointBased(), mpol_emtpy)
+    @test p_empty[1] == pts_empty
+end
+
+@testset "functions" begin
+    x = -pi..pi
+    s = convert_arguments(Lines, x, sin)
+    xy = s.args[1]
+    @test xy[1][1] ≈ -pi
+    @test xy[end][1] ≈ pi
+    for (val, fval) in xy
+        @test fval ≈ sin(val) atol=1f-6
+    end
+
+    x = range(-pi, stop=pi, length=100)
+    s = convert_arguments(Lines, x, sin)
+    xy = s.args[1]
+    @test xy[1][1] ≈ -pi
+    @test xy[end][1] ≈ pi
+    for (val, fval) in xy
+        @test fval ≈ sin(val) atol=1f-6
+    end
 end
 
 using Makie: check_line_pattern, line_diff_pattern
