@@ -14,7 +14,7 @@ vertices = [
     0.0 0.0;
     1.0 0.0;
     1.0 1.0;
-    0.0 1.0;
+    0.25 0.75;
 ]
 
 faces = [
@@ -30,10 +30,48 @@ scene = mesh(vertices, faces, color = colors, shading = false)
 
 \begin{examplefigure}{}
 ```julia
+using GLMakie
+using Makie.GeometryBasics: GeometryBasics, TriangleFace
+GLMakie.activate!() # hide
+
+
+vertices = Point3f[
+    (cosd(0), sind(0), 0),
+    (cosd(120), sind(120), 0),
+    (cosd(240), sind(240), 0),
+    (0, 0, 1)
+]
+
+# The order of indices in each face is important for the direction of the
+# automatic normals created in `normal_mesh`. If your mesh doesn't seem to
+# be lit correctly, check that the normals do not point inwards.
+
+faces = [
+    TriangleFace(1, 2, 3),
+    TriangleFace(2, 3, 4),
+    TriangleFace(1, 4, 2),
+    TriangleFace(1, 4, 3),
+]
+
+msh = GeometryBasics.Mesh(vertices, faces)
+normal_msh = GeometryBasics.normal_mesh(vertices, faces)
+
+colors = [:red, :green, :blue, :orange]
+
+f = Figure()
+
+mesh(f[1, 1], msh; color = colors, axis = (; type = Axis3, aspect = :data, title = "No normals"))
+mesh(f[2, 1], normal_msh; color = colors, axis = (; type = Axis3, aspect = :data, title = "Automatic normals"))
+
+f
+```
+\end{examplefigure}
+
+\begin{examplefigure}{}
+```julia
 using FileIO
 using GLMakie
 GLMakie.activate!() # hide
-
 
 brain = load(assetpath("brain.stl"))
 
