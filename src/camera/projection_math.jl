@@ -348,7 +348,7 @@ may need to add `minimum(pixelarea(scene))`. `project_to_screen` does this for
 you.
 """
 function project(
-        plot::AbstractPlot, pos; 
+        @nospecialize(plot::AbstractPlot), pos; 
         input_space::Symbol = get_value(plot, :space, :data),
         output_space::Symbol = :pixel, target = _point3_target(pos)
     )
@@ -372,7 +372,7 @@ end
 function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos; target = _point3_target(pos))
     @assert input_space !== :data "Cannot transform from :data space with just the camera."
     @assert output_space !== :data "Cannot transform to :data space with just the camera."
-    mat = space_to_space_matrix(cam, input_space => output_space)
+    mat = _space_to_space_matrix(cam, input_space => output_space)
     return project(mat, indentity, input_space, output_space, pos, target)
 end
 
@@ -456,8 +456,12 @@ end
 Transforms the given position(s) to world space, using the space of `scenelike`
 as the default input space.
 """
-project_to_world(obj, pos) = project(obj, pos, output_space = :world)
-project_to_world(obj, input_space::Symbol, pos) = project(obj, pos, input_space = input_space, output_space = :world)
+@inline function project_to_world(@nospecialize(obj), pos)
+    return project(obj, pos, output_space = :world)
+end
+@inline function project_to_world(@nospecialize(obj), input_space::Symbol, pos)
+    return project(obj, pos, input_space = input_space, output_space = :world)
+end
 
 @deprecate to_world project_to_world false
 
@@ -468,13 +472,13 @@ Transforms the given position(s) to (2D) screen/pixel space, using the space of
 `scenelike` as the default input space. The returned positions will be relative
 to the screen/window/figure origin, rather than the (parent) scene.
 """
-function project_to_screen(obj, pos)
+function project_to_screen(@nospecialize(obj), pos)
     scene = get_scene(obj)
     offset = minimum(to_value(pixelarea(scene)))
     return apply_offset!(project(obj, pos, target = Point2f(0)), offset)
 end
 
-function project_to_screen(obj, input_space::Symbol, pos)
+function project_to_screen(@nospecialize(obj), input_space::Symbol, pos)
     scene = get_scene(obj)
     offset = minimum(to_value(pixelarea(scene)))
     return apply_offset!(project(obj, pos, input_space = input_space, target = Point2f(0)), offset)
@@ -503,8 +507,10 @@ scene derived from scenelike, not the screen/window/figure origin.
 
 This is equivalent to `project(scenelike, pos[; input_space], target = Point2f(0))`.
 """
-project_to_pixel(obj, pos; target = Point2f(0)) = project(obj, pos; target = target)
-function project_to_pixel(obj, input_space::Symbol, pos; target = Point2f(0))
+@inline function project_to_pixel(@nospecialize(obj), pos; target = Point2f(0))
+    return project(obj, pos; target = target)
+end
+@inline function project_to_pixel(@nospecialize(obj), input_space::Symbol, pos; target = Point2f(0))
     return project(obj, pos, input_space = input_space, target = target)
 end
 
@@ -514,7 +520,7 @@ end
 
 Returns an observable that triggers whenever the result of `project` could change
 """
-function projection_obs(plot::AbstractPlot)
+function projection_obs(@nospecialize(plot::AbstractPlot))
     return lift(
         (_, _, _, _, _, _) -> nothing,
         plot,

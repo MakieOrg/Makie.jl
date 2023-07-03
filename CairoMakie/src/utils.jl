@@ -7,7 +7,7 @@
 
 Calls `project(plot, pos; kwargs...)` and flips the y axis of the result.
 """
-function cairo_project(plot, pos; target = Point2f(0), kwargs...)
+function cairo_project(@nospecialize(plot), pos; target = Point2f(0), kwargs...)
     w, h = widths(pixelarea(Makie.get_scene(plot))[])
     ps = project(plot, pos; target = target, kwargs...)
     return yflip(ps, h)
@@ -35,13 +35,13 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     end
 end
 
-function cairo_project(plot, rect::Rect; kwargs...)
+function cairo_project(@nospecialize(plot), rect::Rect; kwargs...)
     mini = cairo_project(plot, minimum(rect); kwargs...)
     maxi = cairo_project(plot, maximum(rect); kwargs...)
     return Rect(Vec(mini), Vec(maxi .- mini))
 end
 
-function cairo_project(plot, poly::P; kwargs...) where P <: Polygon
+function cairo_project(@nospecialize(plot), poly::P; kwargs...) where P <: Polygon
     ext = decompose(Point2f, poly.exterior)
     interiors = decompose.(Point2f, poly.interiors)
     Polygon(
@@ -50,7 +50,7 @@ function cairo_project(plot, poly::P; kwargs...) where P <: Polygon
     )
 end
 
-function cairo_project(plot, multipoly::MP; kwargs...) where MP <: MultiPolygon
+function cairo_project(@nospecialize(plot), multipoly::MP; kwargs...) where MP <: MultiPolygon
     return MultiPolygon(cairo_project.((plot, ), multipoly.polygons; kwargs...))
 end
 
