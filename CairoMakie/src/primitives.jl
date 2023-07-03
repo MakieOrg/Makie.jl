@@ -894,15 +894,15 @@ function draw_mesh3D(
         # With shading == true we need eye space positions for the light calculation.
         # (The transform function only applies to meshpoints here, not pos.)
         projection_matrix = Makie.space_to_space_matrix(plot, space => :eye)
-        vs = project(projection_matrix * T, transform_func, space, :eye, meshpoints, Point4f)
-        ts = cairo_project(scene, vs, input_space = :eye, type = Point3f)
+        vs = project(projection_matrix * T, transform_func, space, :eye, meshpoints)
+        ts = cairo_project(scene, vs, input_space = :eye, target = Point3f(0))
     else
         # Without it we can go directly to pixel space.
         projection_matrix = Makie.space_to_space_matrix(plot, space => :pixel)
         w, h = widths(pixelarea(scene)[])
-        ts = project(projection_matrix * T, transform_func, space, :pixel, meshpoints, Point3f)
+        ts = project(projection_matrix * T, transform_func, space, :pixel, meshpoints)
         ts = yflip(ts, h)
-        vs = Point4f[] # TODO is this needed for typing?
+        vs = Point3f[] # TODO is this needed for typing?
     end
 
     model = plot.model[] * Makie.rotationmatrix4(rotation)
@@ -938,9 +938,9 @@ function draw_mesh3D(
 end
 
 function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
-    L = normalize(lightpos .- v[Vec(1,2,3)])
+    L = normalize(lightpos .- v)
     diff_coeff = max(dot(L, N), 0f0)
-    H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
+    H = normalize(L + normalize(-v))
     spec_coeff = max(dot(H, N), 0f0)^shininess
     c = RGBAf(c)
     # if this is one expression it introduces allocations??

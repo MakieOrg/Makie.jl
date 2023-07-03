@@ -254,6 +254,12 @@ function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {
     end)
 end
 
+function to_ndim(trg::VT, src::VecTypes{N2}) where {N, N2, VT <: VecTypes{N}}
+    VT(ntuple(Val(N)) do i
+        @inbounds i > N2 ? trg[i] : src[i]
+    end)
+end
+
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
 function angle(p1::VecTypes{2, T}, p2::VecTypes{2, T}) where T

@@ -325,7 +325,7 @@ end
 # For users/convenient project functions:
 
 """
-    project(scenelike, pos[; input_space, output_space = :pixel, type = Point3f])
+    project(scenelike, pos[; input_space, output_space = :pixel, target = Point3f(0)])
 
 Projects the given positional data from the space of the given plot, scene or 
 axis (`scenelike`) to pixel space. Optionally the input and output space can be
@@ -350,34 +350,34 @@ you.
 function project(
         plot::AbstractPlot, pos; 
         input_space::Symbol = get_value(plot, :space, :data),
-        output_space::Symbol = :pixel, type = _point3_type(pos)
+        output_space::Symbol = :pixel, target = _point3_target(pos)
     )
 
     tf = transform_func(plot)
     mat = space_to_space_matrix(plot, input_space => output_space)
-    return project(mat, tf, input_space, output_space, pos, type)
+    return project(mat, tf, input_space, output_space, pos, target)
 end
 
 function project(
         obj, pos; 
         input_space::Symbol = :data, output_space::Symbol = :pixel,
-        type = _point3_type(pos)
+        target = _point3_target(pos)
     )
 
     tf = transform_func(get_scene(obj)) # this should error with a camera
     mat = space_to_space_matrix(obj, input_space => output_space)
-    return project(mat, tf, input_space, output_space, pos, type)
+    return project(mat, tf, input_space, output_space, pos, target)
 end
 
-function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos; type = _point3_type(pos))
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos; target = _point3_target(pos))
     @assert input_space !== :data "Cannot transform from :data space with just the camera."
     @assert output_space !== :data "Cannot transform to :data space with just the camera."
     mat = space_to_space_matrix(cam, input_space => output_space)
-    return project(mat, indentity, input_space, output_space, pos, type)
+    return project(mat, indentity, input_space, output_space, pos, target)
 end
 
-_point3_type(::VecTypes{N, T}) where {N, T} = Point3{T}
-_point3_type(::AbstractArray{<: VecTypes{N, T}}) where {N, T} = Point3{T}
+_point3_target(::VecTypes{N, T}) where {N, T} = Point3{T}(0)
+_point3_target(::AbstractArray{<: VecTypes{N, T}}) where {N, T} = Point3{T}(0)
 
 # Internal / Implementations
 
@@ -391,52 +391,53 @@ For a simpler interface, use `project(scenelike, pos)`.
 """
 function project(
         mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
-        pos::AbstractArray{<: VecTypes{N, T}}, type = Point3{T}
+        pos::AbstractArray{<: VecTypes{N, T}}, target::VecTypes = Point3{T}(0)
     ) where {N, T <: Real}
     if input_space === output_space
-        return to_ndim.(type, pos, 0)
+        return to_ndim.((target,), pos)
     elseif output_space !== :data
-        return map(p -> project(mat, tf, input_space, p, type), pos)
+        return map(p -> project(mat, tf, input_space, p, target), pos)
     else
         itf = inverse_transform(tf)
-        return map(p -> inv_project(mat, itf, p, type), pos)
+        return map(p -> inv_project(mat, itf, p, target), pos)
     end
 end
 function project(
         mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
-        pos::VecTypes{N, T}, type = Point3{T}) where {N, T <: Real}
+        pos::VecTypes{N, T}, target = Point3{T}(0)) where {N, T <: Real}
     if input_space === output_space
-        return to_ndim(type, pos, 0)
+        return to_ndim(target, pos)
     elseif output_space !== :data
-        return project(mat, tf, input_space, pos, type)
+        return project(mat, tf, input_space, pos, target)
     else
         itf = inverse_transform(tf)
-        return inv_project(mat, itf, pos, type)
+        return inv_project(mat, itf, pos, target)
     end
 end
 
 
-function project(mat::Mat4, tf, space::Symbol, pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
-    return project(mat, apply_transform(tf, pos, space), type)
+function project(mat::Mat4, tf, space::Symbol, pos::VecTypes{N, T}, target = Point3{T}(0)) where {N, T}
+    return project(mat, apply_transform(tf, pos, space), target)
 end
 
-function inv_project(mat::Mat4f, itf, pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
-    p = project(mat, pos, type)
+function inv_project(mat::Mat4f, itf, pos::VecTypes{N, T}, target = Point3{T}(0)) where {N, T}
+    p = project(mat, pos, target)
     return apply_transform(itf, p)
 end
 
-function project(mat::Mat4, pos::VecTypes{N, T}, type = Point3{T}) where {N, T}
+function project(mat::Mat4, pos::VecTypes{N, T}, target = Point3{T}(0)) where {N, T}
     # TODO is to_ndim slow? It alone seems to 
-    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
+    # p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
+    p4d = to_ndim(Point4{T}(0,0,0,1), pos)
     p4d = mat * p4d
-    return to_ndim(type, p4d[Vec(1,2,3)] ./ p4d[4], 1f0)
+    return to_ndim(target, p4d[Vec(1,2,3)] ./ p4d[4])
 end
 
 # TODO - should we use p4d[4] = 0 here?
-# function project(mat::Mat4, pos::Vec{N, T}, type = Vec3{T}) where {N, T}
+# function project(mat::Mat4, pos::Vec{N, T}, target = Vec3{T}) where {N, T}
 #     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, pos, 0), 1)
 #     p4d = mat * p4d
-#     return to_ndim(type, p4d[Vec(1,2,3)] ./ p4d[4], 1f0)
+#     return to_ndim(target, p4d[Vec(1,2,3)] ./ p4d[4], 1f0)
 # end
 
 
@@ -470,13 +471,13 @@ to the screen/window/figure origin, rather than the (parent) scene.
 function project_to_screen(obj, pos)
     scene = get_scene(obj)
     offset = minimum(to_value(pixelarea(scene)))
-    return apply_offset!(project(obj, pos, type = Point2f), offset)
+    return apply_offset!(project(obj, pos, target = Point2f(0)), offset)
 end
 
 function project_to_screen(obj, input_space::Symbol, pos)
     scene = get_scene(obj)
     offset = minimum(to_value(pixelarea(scene)))
-    return apply_offset!(project(obj, pos, input_space = input_space, type = Point2f), offset)
+    return apply_offset!(project(obj, pos, input_space = input_space, target = Point2f(0)), offset)
 end
 
 function apply_offset!(pos::VT, off::VecTypes) where {VT <: VecTypes}
@@ -494,17 +495,17 @@ end
 @deprecate shift_project(scene, plot, pos) project_to_screen(plot, pos) false
 
 """
-    project_to_pixel(scenelike[, input_space], pos[; type = Point2f])
+    project_to_pixel(scenelike[, input_space], pos[; target = Point2f(0)])
 
 Transforms the given position(s) to (2D) pixel space, using the space of `scenelike`
 as the default input space. The returned positions will be relative to the 
 scene derived from scenelike, not the screen/window/figure origin.
 
-This is equivalent to `project(scenelike, pos[; input_space], type = Point2f)`.
+This is equivalent to `project(scenelike, pos[; input_space], target = Point2f(0))`.
 """
-project_to_pixel(obj, pos; type = Point2f) = project(obj, pos; type = type)
-function project_to_pixel(obj, input_space::Symbol, pos; type = Point2f)
-    return project(obj, pos, input_space = input_space, type = type)
+project_to_pixel(obj, pos; target = Point2f(0)) = project(obj, pos; target = target)
+function project_to_pixel(obj, input_space::Symbol, pos; target = Point2f(0))
+    return project(obj, pos, input_space = input_space, target = target)
 end
 
 # Helper function

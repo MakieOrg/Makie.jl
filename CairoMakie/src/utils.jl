@@ -7,9 +7,9 @@
 
 Calls `project(plot, pos; kwargs...)` and flips the y axis of the result.
 """
-function cairo_project(plot, pos; type = Point2f, kwargs...)
+function cairo_project(plot, pos; target = Point2f(0), kwargs...)
     w, h = widths(pixelarea(Makie.get_scene(plot))[])
-    ps = project(plot, pos; type = type, kwargs...)
+    ps = project(plot, pos; target = target, kwargs...)
     return yflip(ps, h)
 end
 
@@ -41,12 +41,12 @@ function cairo_project(plot, rect::Rect; kwargs...)
     return Rect(Vec(mini), Vec(maxi .- mini))
 end
 
-function cairo_project(plot, poly::P; type = Point2f, kwargs...) where P <: Polygon
+function cairo_project(plot, poly::P; kwargs...) where P <: Polygon
     ext = decompose(Point2f, poly.exterior)
     interiors = decompose.(Point2f, poly.interiors)
     Polygon(
-        cairo_project(plot, ext; type = type, kwargs...),
-        Vector{type}[cairo_project(plot, interior; type = type, kwargs...) for interior in interiors]
+        cairo_project(plot, ext; kwargs...),
+        Vector{Point2f}[cairo_project(plot, interior; kwargs...) for interior in interiors]
     )
 end
 
