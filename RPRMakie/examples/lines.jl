@@ -13,7 +13,8 @@ end
 
 begin
     fig = Figure(; resolution=(1000, 1000))
-    radiance = 500
+
+    radiance = 100
     lights = Makie.AbstractLight[PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
     ax = LScene(fig[1, 1]; scenekw=(; lights=lights), show_axis=false)
     points = Point3f[]
@@ -28,6 +29,6 @@ begin
     mat = (; emission_color=:red, emission_weight=Vec3f(5.0f0))
     meshscatter!(ax, points; material=mat)
     box!(ax, 5)
-    RPRMakie.activate!(plugin = RPR.Northstar, iterations = 100, resource = RPR.RPR_CREATION_FLAGS_ENABLE_GPU1)
+    RPRMakie.activate!(plugin = RPR.Northstar, iterations = 500, resource = RPR.GPU0)
     ax.scene |> display
 end

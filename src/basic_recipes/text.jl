@@ -57,7 +57,7 @@ function plot!(plot::Text)
 
     onany(linesegs, positions, sc.camera.projectionview, sc.px_area, 
             transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
-        pos_transf = scene_to_screen(apply_transform(transf, pos, space), sc)
+        pos_transf = plot_to_screen(plot, pos)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
             seg + attr_broadcast_getindex(pos_transf, index)
         end

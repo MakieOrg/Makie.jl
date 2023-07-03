@@ -42,3 +42,4 @@ record(ax.scene, "volume_cube.mp4"; backend = RPRMakie, iterations = 15, framera
 end
 
 Makie.save("test.png", ax.scene; update=false, backend=RPRMakie, iterations=3)
+

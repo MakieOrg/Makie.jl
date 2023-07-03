@@ -5,6 +5,7 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     c = cam_controls
     l, u, p, fov = c.lookat[], c.upvector[], c.eyeposition[], c.fov[]
     far, near, res = c.far[], c.near[], cam.resolution[]
+    fov = 45f0 # The current camera ignores fov updates
     new_vals = (; l, u, p, fov, far, near, res)
     new_vals == oldvals && return oldvals
     wd = norm(l - p)
