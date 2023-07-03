@@ -15,9 +15,9 @@ let
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
         empty!(FONT_CACHE)
-        empty!(_default_font)
-        empty!(_alternative_fonts)
-        Makie._current_figure[] = nothing
+        empty!(DEFAULT_FONT)
+        empty!(ALTERNATIVE_FONTS)
+        Makie.CURRENT_FIGURE[] = nothing
     end
     nothing
 end
