@@ -112,7 +112,7 @@ function throttle_function(func, delay) {
     return inner_throttle;
 }
 
-function threejs_module(canvas, comm, width, height) {
+function threejs_module(canvas, comm, width, height, resize_to_body) {
     let context = canvas.getContext("webgl2", {
         preserveDrawingBuffer: true,
     });
@@ -217,23 +217,30 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("focusout", contextmenu);
 
     function resize_callback() {
-        var bodyStyle = window.getComputedStyle(document.body);
+        const bodyStyle = window.getComputedStyle(document.body);
         // Subtract padding that is added by VSCode
-        var width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) +
-                            parseInt(bodyStyle.marginLeft, 10)  + parseInt(bodyStyle.marginRight, 10);
-        var height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) +
-                             parseInt(bodyStyle.marginTop, 10)  + parseInt(bodyStyle.marginBottom, 10);
-        var width = (window.innerWidth - width_padding) * pixelRatio;
-        var height = (window.innerHeight - height_padding) * pixelRatio;
+        const width_padding =
+            parseInt(bodyStyle.paddingLeft, 10) +
+            parseInt(bodyStyle.paddingRight, 10) +
+            parseInt(bodyStyle.marginLeft, 10) +
+            parseInt(bodyStyle.marginRight, 10);
+        const height_padding =
+            parseInt(bodyStyle.paddingTop, 10) +
+            parseInt(bodyStyle.paddingBottom, 10) +
+            parseInt(bodyStyle.marginTop, 10) +
+            parseInt(bodyStyle.marginBottom, 10);
+        const width = (window.innerWidth - width_padding) * pixelRatio;
+        const height = (window.innerHeight - height_padding) * pixelRatio;
 
         // Send the resize event to Julia
         comm.notify({ resize: [width, height] });
     }
-    const resize_callback_throttled = throttle_function(resize_callback, 100);
-    window.addEventListener("resize", (event) => resize_callback_throttled());
-
-    // Fire the resize event once at the start to auto-size our window
-    resize_callback_throttled();
+    if (resize_to_body) {
+        const resize_callback_throttled = throttle_function(resize_callback, 100);
+        window.addEventListener("resize", (event) => resize_callback_throttled());
+        // Fire the resize event once at the start to auto-size our window
+        resize_callback_throttled();
+    }
 
     return renderer;
 }
@@ -246,10 +253,17 @@ function create_scene(
     comm,
     width,
     height,
+    texture_atlas_obs,
     fps,
-    texture_atlas_obs
+    resize_to_body
 ) {
-    const renderer = threejs_module(canvas, comm, width, height);
+    const renderer = threejs_module(
+        canvas,
+        comm,
+        width,
+        height,
+        resize_to_body
+    );
     TEXTURE_ATLAS[0] = texture_atlas_obs;
 
     if (renderer) {

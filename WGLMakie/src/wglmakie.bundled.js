@@ -20295,7 +20295,7 @@ function throttle_function(func, delay) {
     }
     return inner_throttle;
 }
-function threejs_module(canvas, comm, width, height) {
+function threejs_module(canvas, comm, width, height, resize_to_body) {
     let context = canvas.getContext("webgl2", {
         preserveDrawingBuffer: true
     });
@@ -20392,13 +20392,15 @@ function threejs_module(canvas, comm, width, height) {
             ]
         });
     }
-    const resize_callback_throttled = throttle_function(resize_callback, 100);
-    window.addEventListener("resize", (event)=>resize_callback_throttled());
-    resize_callback_throttled();
+    if (resize_to_body) {
+        const resize_callback_throttled = throttle_function(resize_callback, 100);
+        window.addEventListener("resize", (event)=>resize_callback_throttled());
+        resize_callback_throttled();
+    }
     return renderer;
 }
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, texture_atlas_obs) {
-    const renderer = threejs_module(canvas, comm, width, height);
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, texture_atlas_obs, fps, resize_to_body) {
+    const renderer = threejs_module(canvas, comm, width, height, resize_to_body);
     TEXTURE_ATLAS[0] = texture_atlas_obs;
     if (renderer) {
         const camera = new mod.PerspectiveCamera(45, 1, 0, 100);

@@ -46,6 +46,7 @@ const WEB_MIMES = (
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
+    resize_to_body::Bool # false
 end
 
 """
