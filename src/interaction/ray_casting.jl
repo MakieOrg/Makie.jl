@@ -124,7 +124,6 @@ function closest_point_on_line(A::Point3f, B::Point3f, ray::Ray)
     return A .+ clamp(t, 0.0, AB_norm) * u_AB
 end
 
-
 function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::Ray, ϵ = 1e-6)
     return ray_triangle_intersection(
         to_ndim(Point3f, A, 0f0), to_ndim(Point3f, B, 0f0), to_ndim(Point3f, C, 0f0), 
@@ -306,7 +305,7 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
             end
         end
     end
-
+          
     @debug "Did not find intersection for index = $idx when casting a ray on mesh."
 
     return Point3f(NaN)
