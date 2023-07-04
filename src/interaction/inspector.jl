@@ -161,11 +161,13 @@ end
 ## Shifted projection
 ########################################
 
-function shift_project(scene, plot, pos)
+@deprecate shift_project(scene, plot, pos) shift_project(scene, pos) false
+
+function shift_project(scene, pos)
     project(
         camera(scene).projectionview[],
         Vec2f(widths(pixelarea(scene)[])),
-        apply_transform(transform_func(plot), pos, to_value(get(plot, :space, :data)))
+        pos
     ) .+ Vec2f(origin(pixelarea(scene)[]))
 end
 
@@ -337,8 +339,8 @@ function show_data_recursion(inspector, plot, idx)
             show_data(inspector, plot, idx)
         end
 
-        if processed
-            inspector.selection = plot
+        if processed && inspector.selection != plot
+            clear_temporary_plots!(inspector, plot)
         end
 
         return processed
@@ -359,8 +361,8 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
             show_data(inspector, plot, idx, source)
         end
 
-        if processed
-            inspector.selection = plot
+        if processed && inspector.selection != plot
+            clear_temporary_plots!(inspector, plot)
         end
 
         return processed
@@ -420,13 +422,14 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    proj_pos = shift_project(scene, plot, to_ndim(Point3f, plot[1][][idx], 0))
+    pos = position_on_plot(plot, idx)
+    proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, idx, plot[1][][idx])
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
     else
-        tt.text[] = position2string(plot[1][][idx])
+        tt.text[] = position2string(pos)
     end
     tt.offset[] = ifelse(
         a.apply_tooltip_offset[],
@@ -446,11 +449,9 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     scene = parent_scene(plot)
 
     if a.enable_indicators[]
-        T = transformationmatrix(
-            plot[1][][idx],
-            _to_scale(plot.markersize[], idx),
-            _to_rotation(plot.rotations[], idx)
-        )
+        translation = apply_transform_and_model(plot, plot[1][][idx])
+        rotation = _to_rotation(plot.rotations[], idx)
+        scale = _to_scale(plot.markersize[], idx)
 
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
@@ -465,9 +466,12 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
             bbox = Rect{3, Float32}(convert_attribute(
                 plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
             ))
+            T = Transformation(
+                identity; translation = translation, rotation = rotation, scale = scale
+            )
 
             p = wireframe!(
-                scene, bbox, model = T, color = a.indicator_color,
+                scene, bbox, transformation = T, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
@@ -478,21 +482,21 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
         elseif !isempty(inspector.temp_plots)
             p = inspector.temp_plots[1]
-            p.model[] = T
-
+            transform!(p, translation = translation, scale = scale, rotation = rotation)
         end
 
 
         a.indicator_visible[] = true
     end
 
-    proj_pos = shift_project(scene, plot, to_ndim(Point3f, plot[1][][idx], 0))
+    pos = position_on_plot(plot, idx)
+    proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, idx, plot[1][][idx])
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
     else
-        tt.text[] = position2string(plot[1][][idx])
+        tt.text[] = position2string(pos)
     end
     tt.visible[] = true
 
@@ -506,9 +510,8 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     scene = parent_scene(plot)
 
     # cast ray from cursor into screen, find closest point to line
-    pos = get_position(plot, idx)
-
-    proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
+    pos = position_on_plot(plot, idx)
+    proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 
     tt.offset[] = ifelse(
@@ -518,7 +521,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     )
 
     if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, idx, typeof(p0)(pos))
+        tt.text[] = plot[:inspector_label][](plot, idx, eltype(plot[1][])(pos))
     else
         tt.text[] = position2string(eltype(plot[1][])(pos))
     end
@@ -534,7 +537,14 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    bbox = boundingbox(plot)
+    # Manual boundingbox including transfunc
+    bbox = let
+        points = point_iterator(plot)
+        trans_func = transform_func(plot)
+        model = plot.model[]
+        iter = iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
+        limits_from_transformed_points(iter)
+    end
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -550,7 +560,8 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
             end
 
             p = wireframe!(
-                scene, bbox, color = a.indicator_color,
+                scene, bbox, color = a.indicator_color, 
+                transformation = Transformation(),
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
@@ -581,12 +592,11 @@ end
 function show_data(inspector::DataInspector, plot::Surface, idx)
     a = inspector.attributes
     tt = inspector.plot
-    scene = parent_scene(plot)
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    pos = get_position(plot, idx)
+    pos = position_on_plot(plot, idx)
 
     if !isnan(pos)
         tt[1][] = proj_pos
@@ -617,20 +627,22 @@ function show_imagelike(inspector, plot, name, edge_based)
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
-    mpos = mouseposition(scene)
 
-    if plot.interpolate[]
-        i, j, z = _interpolated_getindex(plot[1][], plot[2][], plot[3][], mpos)
-        x, y = mpos
-    else
-        i, j, z = _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
-        x = i; y = j
+    pos = position_on_plot(plot, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
+
+    # Not on image/heatmap
+    if isnan(pos)
+        a.indicator_visible[] = false
+        tt.visible[] = false
+        return true
     end
 
-    if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, (i, j), Point3f(mpos[1], mpos[2], z))
+    if plot.interpolate[]
+        i, j, z = _interpolated_getindex(plot[1][], plot[2][], plot[3][], pos)
+        x, y = pos
     else
-        tt.text[] = color2text(name, x, y, z)
+        i, j, z = _pixelated_getindex(plot[1][], plot[2][], plot[3][], pos, edge_based)
+        x = i; y = j
     end
 
     # in case we hover over NaN values
@@ -638,6 +650,12 @@ function show_imagelike(inspector, plot, name, edge_based)
         a.indicator_visible[] = false
         tt.visible[] = false
         return true
+    end
+
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, (i, j), Point3f(pos[1], pos[2], z))
+    else
+        tt.text[] = color2text(name, x, y, z)
     end
 
     a._color[] = if z isa AbstractFloat
@@ -649,43 +667,44 @@ function show_imagelike(inspector, plot, name, edge_based)
         z
     end
 
-    position = to_ndim(Point3f, mpos, 0)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
         if plot.interpolate[]
-            if inspector.selection != plot
+            if inspector.selection != plot || (length(inspector.temp_plots) != 1) || 
+                    !(inspector.temp_plots[1] isa Scatter)
                 clear_temporary_plots!(inspector, plot)
                 p = scatter!(
-                    scene, position, color = a._color,
+                    scene, pos, color = a._color,
                     visible = a.indicator_visible,
-                    inspectable = false,
+                    inspectable = false, model = plot.model,
                     # TODO switch to Rect with 2r-1 or 2r-2 markersize to have 
                     # just enough space to always detect the underlying image
                     marker=:rect, markersize = map(r -> 2r, a.range), 
                     strokecolor = a.indicator_color,
-                    strokewidth = a.indicator_linewidth
+                    strokewidth = a.indicator_linewidth,
+                    depth_shift = -1f-3
                 )
-                translate!(p, Vec3f(0, 0, a.depth[]-1))
                 push!(inspector.temp_plots, p)
-            elseif !isempty(inspector.temp_plots)
+            else
                 p = inspector.temp_plots[1]
-                p[1].val[1] = position
+                p[1].val[1] = pos
                 notify(p[1])
             end
         else
             bbox = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
-            if inspector.selection != plot
+            if inspector.selection != plot || (length(inspector.temp_plots) != 1) || 
+                    !(inspector.temp_plots[1] isa Wireframe)
                 clear_temporary_plots!(inspector, plot)
                 p = wireframe!(
-                    scene, bbox, color = a.indicator_color,
+                    scene, bbox, color = a.indicator_color, model = plot.model,
                     strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-                    visible = a.indicator_visible, inspectable = false
+                    visible = a.indicator_visible, inspectable = false,
+                    depth_shift = -1f-3
                 )
-                translate!(p, Vec3f(0, 0, a.depth[]-1))
                 push!(inspector.temp_plots, p)
-            elseif !isempty(inspector.temp_plots)
+            else
                 p = inspector.temp_plots[1]
                 p[1][] = bbox
             end
@@ -791,8 +810,8 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    pos = plot[1][][idx]
-    proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
+    pos = apply_transform_and_model(plot, plot[1][][idx])
+    proj_pos = shift_project(scene, to_ndim(Point3f, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
@@ -833,7 +852,8 @@ end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a = inspector.attributes
     tt = inspector.plot
-    pos = plot[1][][idx]
+    pos = apply_transform_and_model(plot, plot[1][][idx])
+
     mpos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, mpos)
 
@@ -842,7 +862,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
 
     tt[1][] = mpos
     if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, idx, mpos)
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
     else
         tt.text[] = "Position:\n  $p\nDirection:\n  $v"
     end
@@ -856,7 +876,7 @@ end
 # backend handle picking colors from a colormap
 function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
     tt = inspector.plot
-    idx = show_poly(inspector, plot.plots[1], idx, source)
+    idx = show_poly(inspector, plot, plot.plots[1], idx, source)
     level = plot.plots[1].color[][idx]
 
     mpos = Point2f(mouseposition_px(inspector.root))
@@ -882,14 +902,13 @@ end
 #     return true
 # end
 
-function show_poly(inspector, plot, idx, source)
+function show_poly(inspector, plot, poly, idx, source)
     a = inspector.attributes
-    idx = vertexindex2poly(plot[1][], idx)
+    idx = vertexindex2poly(poly[1][], idx)
 
     if a.enable_indicators[]
-
-        line_collection = copy(convert_arguments(PointBased(), plot[1][][idx].exterior)[1])
-        for int in plot[1][][idx].interiors
+        line_collection = copy(convert_arguments(PointBased(), poly[1][][idx].exterior)[1])
+        for int in poly[1][][idx].interiors
             push!(line_collection, Point2f(NaN))
             append!(line_collection, convert_arguments(PointBased(), int)[1])
         end
@@ -899,11 +918,11 @@ function show_poly(inspector, plot, idx, source)
             clear_temporary_plots!(inspector, plot)
 
             p = lines!(
-                scene, line_collection, color = a.indicator_color,
+                scene, line_collection, color = a.indicator_color, 
+                transformation = Transformation(source),
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-                visible = a.indicator_visible, inspectable = false
+                visible = a.indicator_visible, inspectable = false, depth_shift = -1f-3
             )
-            translate!(p, Vec3f(0, 0, a.depth[]-1))
             push!(inspector.temp_plots, p)
 
         elseif !isempty(inspector.temp_plots)
@@ -919,51 +938,46 @@ end
 function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Heatmap)
     a = inspector.attributes
     tt = inspector.plot
-    scene = parent_scene(plot)
+
+    pos = position_on_plot(child, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
+
+    # Not on heatmap
+    if isnan(pos)
+        a.indicator_visible[] && (a.indicator_visible[] = false)
+        tt.visible[] = false
+        return true
+    end
+
+    i, j, val = _pixelated_getindex(child[1][], child[2][], child[3][], pos, true)
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
+    tt[1][] = proj_pos
+    
+    world_pos = apply_transform_and_model(child, pos)
 
-    a0, a1 = extrema(child[1][])
-    b0, b1 = extrema(child[2][])
-    data = child[3][]
-    T = child.transformation.model[]
-
-    # Transform the Ray rather than the Rect here to avoid using a Rect3f
-    rect = Rect2f(a0, b0, a1, b1)
-    ray = transform(inv(T), ray_at_cursor(scene))
-    p = ray_rect_intersection(rect, ray) # in heatmap space (with z = normal of heatmap)
-
-    if !isnan(p)
-        i = clamp(round(Int, (p[1] - a0) / (a1 - a0) * size(data, 1) + 0.5), 1, size(data, 1))
-        j = clamp(round(Int, (p[2] - b0) / (b1 - b0) * size(data, 2) + 0.5), 1, size(data, 2))
-        val = data[i, j]
-
-        tt[1][] = proj_pos
-        if haskey(plot, :inspector_label)
-            tt.text[] = plot[:inspector_label][](plot, (i, j), p)
-        else
-            tt.text[] = @sprintf(
-                "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
-                p[1], p[2], p[3], val
-            )
-        end
-        tt.visible[] = true
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, (i, j), world_pos)
     else
-        tt.visible[] = false
+        tt.text[] = @sprintf(
+            "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
+            world_pos[1], world_pos[2], world_pos[3], val
+        )
     end
+
+    tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
 end
 
 
-function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
+function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mesh)
     scene = parent_scene(plot)
     tt = inspector.plot
     a = inspector.attributes
 
-    pos = Point2f(mouseposition(scene))
+    pos = Point2f(position_on_plot(mesh, idx, apply_transform = false)) #Point2f(mouseposition(scene))
     ps1 = plot.converted[1][]
     ps2 = plot.converted[2][]
 
@@ -984,23 +998,20 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
 
         # Draw the line
         if a.enable_indicators[]
-            model = plot.model[]
-
             # Why does this sometimes create 2+ plots
             if inspector.selection != plot || (length(inspector.temp_plots) != 1)
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
-                    scene, [P1, P2], model = model, 
+                    scene, [P1, P2], transformation = Transformation(plot.transformation),
                     color = a.indicator_color, strokewidth = a.indicator_linewidth, 
                     linestyle = a.indicator_linestyle,
-                    visible = a.indicator_visible, inspectable = false
+                    visible = a.indicator_visible, inspectable = false,
+                    depth_shift = -1f-3
                 )
-                translate!(p, Vec3f(0, 0, a.depth[]))
                 push!(inspector.temp_plots, p)
             elseif !isempty(inspector.temp_plots)
                 p = inspector.temp_plots[1]
                 p[1][] = [P1, P2]
-                p.model[] = model
             end
 
             a.indicator_visible[] = true
@@ -1012,6 +1023,8 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
         if haskey(plot, :inspector_label)
             tt.text[] = plot[:inspector_label][](plot, right, (P1, P2))
         else
+            P1 = apply_transform_and_model(mesh, P1, Point2f)
+            P2 = apply_transform_and_model(mesh, P2, Point2f)
             tt.text[] = @sprintf("(%0.3f, %0.3f) .. (%0.3f, %0.3f)", P1[1], P1[2], P2[1], P2[2])
         end
         tt.visible[] = true

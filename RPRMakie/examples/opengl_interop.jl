@@ -77,9 +77,10 @@ cam.lookat[] = Vec3f(0, 0, -1)
 cam.upvector[] = Vec3f(0, 0, 1)
 cam.fov[] = 30
 
-display(fig)
-
-context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
+GLMakie.activate!(inline=false)
+display(fig; inline=false, backend=GLMakie)
+RPRMakie.activate!(iterations=1, plugin=RPR.Northstar, resource=RPR.GPU0)
+context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh);
 
 # Change light parameters interactively
 begin

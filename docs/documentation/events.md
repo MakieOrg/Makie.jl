@@ -225,7 +225,7 @@ scene
 
 ## Point Picking
 
-Makie provides a function `pick(x[, position = events(x).mouseposition[]])` to get the plot displayed at a certain position with `x` being a `Figure`, `Axis`, `FigureAxisPlot` or `Scene`. This is currently a **GLMakie** only feature. The function returns a primitive plot and an index. The primitive plots are the base plots drawable in backends:
+Makie provides a function `pick(x[, position = events(x).mouseposition[]])` to get the plot displayed at a certain position with `x` being a `Figure`, `Axis`, `FigureAxisPlot` or `Scene`. The function returns a primitive plot and an index. The primitive plots are the base plots drawable in backends:
 
 - scatter
 - text

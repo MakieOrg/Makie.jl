@@ -206,7 +206,6 @@ function Camera3D(scene::Scene; kwargs...)
     on(camera(scene), events(scene).keyboardbutton) do event
         if event.action in (Keyboard.press, Keyboard.repeat) && cam.pulser[] == -1.0 &&
             cam.selected[] && any(key -> ispressed(scene, controls[key][]), keynames)
-
             cam.pulser[] = time()
             return Consume(true)
         end
@@ -435,16 +434,8 @@ function add_mouse_controls!(scene, cam::Camera3D)
 
             # reposition
             if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
-                plt, idx = pick(scene)
-                p = get_position(plt, idx)
-                
+                _, _, p = ray_assisted_pick(scene)
                 if p !== Point3f(NaN)
-                    # transform data -> world
-                    p = apply_transform(transform_func_obs(plt), p, get(plt, :space, :data))
-                    model = to_value(get(plt, :model, plt.transformation.model))
-                    p4d = model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
-                    p = p4d[Vec(1,2,3)] / p4d[4]
-                    
                     # if translation/rotation happens with on-click reposition, 
                     # try uncommenting this
                     # dragging[] = (false, false) 
