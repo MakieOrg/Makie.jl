@@ -32,4 +32,5 @@ using Makie: volume
     include("events.jl")
     include("text.jl")
     include("boundingboxes.jl")
+    include("ray_casting.jl")
 end
