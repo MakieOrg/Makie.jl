@@ -196,6 +196,7 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
+theme(::Nothing) = CURRENT_DEFAULT_THEME
 theme(::Nothing, key::Symbol) = theme(key)
 function theme(key::Symbol; default=nothing)
     if haskey(CURRENT_DEFAULT_THEME, key)
