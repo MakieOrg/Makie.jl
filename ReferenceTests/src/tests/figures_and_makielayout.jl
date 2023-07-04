@@ -130,6 +130,8 @@ end
 
     fig = Figure()
     ax = Axis3(fig[1, 1]; xtickformat = xs -> [L"%$x" for x in xs])
+    # check that switching to latex later also works
+    ax.ytickformat = xs -> [L"%$x" for x in xs]
 
     surface!(ax, xs, ys, zs)
     fig
