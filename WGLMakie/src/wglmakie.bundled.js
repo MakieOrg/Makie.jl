@@ -20380,11 +20380,11 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     canvas.addEventListener("contextmenu", (e)=>e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
     function resize_callback() {
-        var bodyStyle = window.getComputedStyle(document.body);
-        var width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
-        var height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) + parseInt(bodyStyle.marginTop, 10) + parseInt(bodyStyle.marginBottom, 10);
-        var width = (window.innerWidth - width_padding) * pixelRatio1;
-        var height = (window.innerHeight - height_padding) * pixelRatio1;
+        const bodyStyle = window.getComputedStyle(document.body);
+        const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
+        const height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) + parseInt(bodyStyle.marginTop, 10) + parseInt(bodyStyle.marginBottom, 10);
+        const width = (window.innerWidth - width_padding) * pixelRatio1;
+        const height = (window.innerHeight - height_padding) * pixelRatio1;
         comm.notify({
             resize: [
                 width,
