@@ -1,13 +1,3 @@
-# Forwarded from Camera pr
-
-struct Ray
-    origin::Point3f
-    direction::Vec3f
-end
-
-
-################################################################################
-
 ################################################################################
 ### Texture generation
 ################################################################################
@@ -204,6 +194,32 @@ function ViewportControllerCamera(scene::Scene, axis; kwargs...)
 end
 deselect_camera!(cam::ViewportControllerCamera) = cam.attributes.selected[] = false
 
+function Ray(scene::Scene, cam::ViewportControllerCamera, xy::VecTypes{2})
+    phi = cam.phi[]; theta = cam.theta[]
+    viewdir = - Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+    eyepos = - 3f0 * viewdir
+    theta += pi/2
+    up = Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
+
+    u_z = normalize(viewdir)
+    u_x = normalize(cross(u_z, up))
+    u_y = normalize(cross(u_x, u_z))
+
+    px_width, px_height = widths(scene.px_area[])
+    aspect = px_width / px_height
+    rel_pos = 2 .* xy ./ (px_width, px_height) .- 1
+
+    if cam.attributes.projectiontype[] === Perspective
+        dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) * 
+                tand(0.5 * cam.attributes.fov[]) + u_z
+        return Ray(eyepos, normalize(dir))
+    else
+        # Orthographic has consistent direction, but not starting point
+        origin = norm(viewdir) * (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y)
+        return Ray(origin, normalize(viewdir))
+    end
+end
+
 function _hovered_angles(scene, cam, step)
     # Pick in a small region to allow picking past lines on the sphere
     mp = events(scene).mouseposition[]
@@ -212,7 +228,7 @@ function _hovered_angles(scene, cam, step)
     selections = Makie.pick(scene, Rect2i(mini, maxi-mini))
 
     if any(pidx -> pidx[1] isa Mesh, selections)
-        ray = ray_at_cursor(scene, cam)
+        ray = Ray(scene, cam, mouseposition_px(scene))
         # ray = p + tv, Sphere: x² + y² + z² = r²
         # Solve resulting quadratic equation
         a = dot(ray.direction, ray.direction)
@@ -412,36 +428,6 @@ end
 function cartesian_to_spherical(v::Vec3f)
 
 end
-
-################################################################################
-
-
-function ray_at_cursor(scene::Scene, cam::ViewportControllerCamera)
-    phi = cam.phi[]; theta = cam.theta[]
-    viewdir = - Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
-    eyepos = - 3f0 * viewdir
-    theta += pi/2
-    up = Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
-
-    u_z = normalize(viewdir)
-    u_x = normalize(cross(u_z, up))
-    u_y = normalize(cross(u_x, u_z))
-    
-    px_width, px_height = widths(scene.px_area[])
-    aspect = px_width / px_height
-    rel_pos = 2 .* mouseposition_px(scene) ./ (px_width, px_height) .- 1
-
-    if cam.attributes.projectiontype[] === Perspective
-        dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) * 
-                tand(0.5 * cam.attributes.fov[]) + u_z
-        return Ray(eyepos, normalize(dir))
-    else
-        # Orthographic has consistent direction, but not starting point
-        origin = norm(viewdir) * (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y)
-        return Ray(origin, normalize(viewdir))
-    end
-end
-
 
 
 ################################################################################
