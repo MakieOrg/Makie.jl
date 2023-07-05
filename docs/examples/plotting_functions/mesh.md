@@ -34,7 +34,6 @@ using GLMakie
 using Makie.GeometryBasics: GeometryBasics, TriangleFace
 GLMakie.activate!() # hide
 
-
 vertices = Point3f[
     (cosd(0), sind(0), 0),
     (cosd(120), sind(120), 0),
@@ -47,21 +46,23 @@ vertices = Point3f[
 # be lit correctly, check that the normals do not point inwards.
 
 faces = [
-    TriangleFace(1, 2, 3),
-    TriangleFace(2, 3, 4),
-    TriangleFace(1, 4, 2),
-    TriangleFace(1, 4, 3),
+    GLTriangleFace(1, 2, 3),
+    GLTriangleFace(2, 3, 4),
+    GLTriangleFace(1, 4, 2),
+    GLTriangleFace(1, 4, 3),
 ]
 
-msh = GeometryBasics.Mesh(vertices, faces)
-normal_msh = GeometryBasics.normal_mesh(vertices, faces)
+msh = GeometryBasics.Mesh(vertices, faces) # mesh without normals
+# or normal_mesh(vertices, faces)
+normal_msh = GeometryBasics.normal_mesh(msh) # explicitely create mesh with normals
 
 colors = [:red, :green, :blue, :orange]
 
 f = Figure()
 
-mesh(f[1, 1], msh; color = colors, axis = (; type = Axis3, aspect = :data, title = "No normals"))
-mesh(f[2, 1], normal_msh; color = colors, axis = (; type = Axis3, aspect = :data, title = "Automatic normals"))
+# normals get generated automatically in the meshcall in both cases, since Makie@0.19.7
+mesh(f[1, 1], msh; color=colors, axis=(; type=Axis3, aspect=:data, title="No shading"), shading=false)
+mesh(f[2, 1], normal_msh; color=colors, axis=(; type=Axis3, aspect=:data, title="Automatic normals"))
 
 f
 ```

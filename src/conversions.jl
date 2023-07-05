@@ -543,10 +543,10 @@ end
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
-        n = normals(mesh)
+        n = decompose(Normal(Vec3f), mesh)
         # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
         if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
+            mesh = GeometryBasics.pointmeta(mesh; normals=n)
         end
     end
     # If already correct eltypes for GL, we can pass the mesh through as is
