@@ -88,8 +88,7 @@ nsteps = length(angles); #Number of animation steps
 translations = LinRange(0, total_translation, nsteps)
 s
 
-Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
-
+@time Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
     # Rotate right arm + hand
     for name in ["arm_left", "arm_right", "leg_left", "leg_right"]
         rotate!(figure[name], rotation_axes[name], angle)

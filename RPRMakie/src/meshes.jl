@@ -68,15 +68,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     instances = [marker]
     n_instances = length(positions)
     RPR.rprShapeSetObjectID(marker, 0)
-    material = if haskey(plot, :material)
-        if plot.material isa Attributes
-            RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
-        else
-            plot.material[]
-        end
-    else
-        RPR.DiffuseMaterial(matsys)
-    end
+    material = extract_material(matsys, plot)
     set!(marker, material)
     for i in 1:(n_instances-1)
         inst = RPR.Shape(context, marker)
