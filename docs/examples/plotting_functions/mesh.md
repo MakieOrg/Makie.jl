@@ -31,7 +31,7 @@ scene = mesh(vertices, faces, color = colors, shading = false)
 \begin{examplefigure}{}
 ```julia
 using GLMakie
-using Makie.GeometryBasics: GeometryBasics, TriangleFace
+using Makie.GeometryBasics: GeometryBasics, GLTriangleFace
 GLMakie.activate!() # hide
 
 vertices = Point3f[
