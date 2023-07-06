@@ -911,7 +911,7 @@ end
 
 @reference_test "Log y-scale histogram (barplot)" begin
     hist(
-        randn(10^6); 
+        RNG.randn(10^6); 
         axis=(; yscale=log2)
     )
     current_figure()
@@ -920,7 +920,7 @@ end
 @reference_test "Log y-scale histogram (barplot) with gap" begin
     # make a gap in histogram as edge case
     hist(
-        filter!(x-> x<0 || x > 1.5, randn(10^6)); 
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6)); 
         axis=(; yscale=log10)
     )
     current_figure()
