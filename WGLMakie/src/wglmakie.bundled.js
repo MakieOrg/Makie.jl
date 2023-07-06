@@ -20380,11 +20380,9 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("contextmenu", (e)=>e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
     function resize_callback() {
-        var bodyStyle = window.getComputedStyle(document.body);
-        var width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
-        var height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) + parseInt(bodyStyle.marginTop, 10) + parseInt(bodyStyle.marginBottom, 10);
-        var width = (window.innerWidth - width_padding) * pixelRatio1;
-        var height = (window.innerHeight - height_padding) * pixelRatio1;
+        var parent = canvas.parentElement;
+        var width = parent.clientWidth * pixelRatio1;
+        var height = parent.clientHeight * pixelRatio1;
         comm.notify({
             resize: [
                 width,
@@ -20394,6 +20392,14 @@ function threejs_module(canvas, comm, width, height) {
     }
     const resize_callback_throttled = throttle_function(resize_callback, 100);
     window.addEventListener("resize", (event)=>resize_callback_throttled());
+    if (document.body.hasAttribute("data-vscode-theme-name")) {
+        var parent_element = canvas.parentElement.parentElement;
+        while(parent_element != null){
+            parent_element.style.cssText += "width: 100%; height: 100%";
+            parent_element = parent_element.parentElement;
+        }
+        document.body.style.cssText += "box-sizing: border-box";
+    }
     resize_callback_throttled();
     return renderer;
 }

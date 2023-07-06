@@ -217,20 +217,30 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("focusout", contextmenu);
 
     function resize_callback() {
-        var bodyStyle = window.getComputedStyle(document.body);
-        // Subtract padding that is added by VSCode
-        var width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) +
-                            parseInt(bodyStyle.marginLeft, 10)  + parseInt(bodyStyle.marginRight, 10);
-        var height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) +
-                             parseInt(bodyStyle.marginTop, 10)  + parseInt(bodyStyle.marginBottom, 10);
-        var width = (window.innerWidth - width_padding) * pixelRatio;
-        var height = (window.innerHeight - height_padding) * pixelRatio;
+        var parent = canvas.parentElement;
+        var width = parent.clientWidth * pixelRatio;
+        var height = parent.clientHeight * pixelRatio;
 
         // Send the resize event to Julia
         comm.notify({ resize: [width, height] });
     }
     const resize_callback_throttled = throttle_function(resize_callback, 100);
     window.addEventListener("resize", (event) => resize_callback_throttled());
+
+    // VSCode adaptation: VSCode "helpfully" creates a `body` object for us, but it doesn't set `height: 100%`
+    // so when we try create the `div` that holds our `canvas`, its `height: 100%` style doesn't fill the whole
+    // plots pane.  To handle this, we manually insert `height: 100%` styles into the chain of elements between
+    // our canvas and the top-level `html` tag:
+    if (document.body.hasAttribute("data-vscode-theme-name")) {
+        var parent_element = canvas.parentElement.parentElement;
+        while (parent_element != null) {
+            parent_element.style.cssText += "width: 100%; height: 100%";
+            parent_element = parent_element.parentElement;
+        }
+
+        // Also set the body to `border-box` sizing so that we don't get a scrollbar at the bottom
+        document.body.style.cssText += "box-sizing: border-box";
+    }
 
     // Fire the resize event once at the start to auto-size our window
     resize_callback_throttled();
