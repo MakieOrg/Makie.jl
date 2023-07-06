@@ -3,7 +3,7 @@
       <source media="(prefers-color-scheme: dark)" 
         srcset="/assets/makie_logo_canvas_dark.svg" >
       <img alt="Makie.jl logo" 
-        src="/assets/makie_logo_canvas.svg" >
+        src="/assets/makie_logo_canvas.svg" width="400">
     </picture>
 </div>
 
