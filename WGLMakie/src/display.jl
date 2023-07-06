@@ -206,7 +206,7 @@ function session2image(session::Session, scene::Scene)
     to_data = js"""function (){
         return $(scene).then(scene => {
             const {renderer} = scene.screen
-            WGLMakie.render_scene(scene)
+            WGL.render_scene(scene)
             const img = renderer.domElement.toDataURL()
             return img
         })

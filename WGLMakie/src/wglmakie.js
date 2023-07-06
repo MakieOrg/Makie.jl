@@ -490,8 +490,8 @@ export function register_popup(popup, scene, plots_to_pick, callback) {
         }
         popup.style.left = event.pageX + "px";
         popup.style.top = event.pageY + "px";
-        const [x, y] = WGLMakie.event2scene_pixel(scene, event);
-        const [_, picks] = WGLMakie.pick_native(scene, x, y, 1, 1);
+        const [x, y] = event2scene_pixel(scene, event);
+        const [_, picks] = pick_native(scene, x, y, 1, 1);
         if (picks.length == 1) {
             const [plot, index] = picks[0];
             if (plots_to_pick.has(plot.plot_uuid)) {
@@ -529,6 +529,7 @@ window.WGL = {
     event2scene_pixel,
     on_next_insert,
     register_popup,
+    render_scene,
 };
 
 export {
@@ -545,5 +546,5 @@ export {
     delete_scenes,
     create_scene,
     event2scene_pixel,
-    on_next_insert
+    on_next_insert,
 };

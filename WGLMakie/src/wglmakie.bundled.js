@@ -20601,8 +20601,8 @@ function register_popup(popup, scene, plots_to_pick, callback) {
         }
         popup.style.left = event.pageX + "px";
         popup.style.top = event.pageY + "px";
-        const [x, y] = WGLMakie.event2scene_pixel(scene, event);
-        const [_, picks] = WGLMakie.pick_native(scene, x, y, 1, 1);
+        const [x, y] = event2scene_pixel(scene, event);
+        const [_, picks] = pick_native(scene, x, y, 1, 1);
         if (picks.length == 1) {
             const [plot, index] = picks[0];
             if (plots_to_pick.has(plot.plot_uuid)) {
@@ -20638,7 +20638,8 @@ window.WGL = {
     create_scene,
     event2scene_pixel,
     on_next_insert,
-    register_popup
+    register_popup,
+    render_scene
 };
 export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, event2scene_pixel as event2scene_pixel, on_next_insert as on_next_insert };
 export { render_scene as render_scene };
