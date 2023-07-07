@@ -1,4 +1,4 @@
-function scalematrix(s::Vec{3, T}) where T
+function scalematrix(s::VecTypes{3, T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         s[1],T0,  T0,  T0,
@@ -12,7 +12,7 @@ translationmatrix_x(x::T) where {T} = translationmatrix(Vec{3, T}(x, 0, 0))
 translationmatrix_y(y::T) where {T} = translationmatrix(Vec{3, T}(0, y, 0))
 translationmatrix_z(z::T) where {T} = translationmatrix(Vec{3, T}(0, 0, z))
 
-function translationmatrix(t::Vec{3, T}) where T
+function translationmatrix(t::VecTypes{3, T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         T1,  T0,  T0,  T0,
@@ -22,8 +22,10 @@ function translationmatrix(t::Vec{3, T}) where T
     )
 end
 
-rotate(angle, axis::Vec{3}) = rotationmatrix4(qrotation(convert(Array, axis), angle))
-rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
+rotate(angle, axis::VecTypes{3}) = rotationmatrix4(qrotation(convert(Array, axis), angle))
+function rotate(::Type{T}, angle::Number, axis::VecTypes{3}) where {T}
+    return rotate(T(angle), convert(Vec{3, T}, axis))
+end
 
 function rotationmatrix_x(angle::Number)
     T0, T1 = (0, 1)
