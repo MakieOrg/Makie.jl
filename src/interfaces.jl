@@ -188,20 +188,35 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     )
 
     # Transformation is a field of the plot type, but can be given as an attribute
-    trans = get(plot_attributes, :transformation, automatic)
+    trans = pop!(plot_attributes, :transformation, automatic)
+    transform_func = pop!(plot_attributes, :transform_func, automatic)
     transval = to_value(trans)
+    
     transformation = if transval === automatic
-        Transformation(scene)
+        Transformation(scene, transform_func = transform_func)
     elseif isa(transval, Transformation)
-        transval
+        if transform_func === automatic
+            transval
+        else
+            trans = Transformation(
+                transval.translation, transval.scale, transval.rotation, 
+                transval.model, transform_func
+            )
+            if isassigned(transval.parent)
+                trans.parent[] = transval.parent[]
+            end
+            trans
+        end
     else
-        t = Transformation(scene)
+        t = Transformation(scene, transform_func = transform_func)
         transform!(t, transval)
         t
     end
+
     replace_automatic!(plot_attributes, :model) do
         transformation.model
     end
+
     # create the plot, with the full attributes, the input signals, and the final signals.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
     calculated_attributes!(plot_obj)
