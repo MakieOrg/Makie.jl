@@ -42,3 +42,29 @@ function map_once(
     end
     lift(f, input, inputrest...)
 end
+
+"""
+    ObservableLocker([locked::Bool = false])
+
+Creates a callable struct which returns `Consume(true)` when locked and 
+`Consume(false)` when unlocked. This can be used to to avoid calling listeners
+of an Observable by adding it at high/maximum priority.
+"""
+mutable struct ObservableLocker
+    locked::Bool
+end
+ObservableLocker() = ObservableLocker(false)
+
+"""
+    attach_lock!(obs::AbstractObservable[, lock = ObservableLocker()])
+
+Creates an `ObservableLocker`, attaches it to the given observable and returns 
+it.
+"""
+function attach_lock!(obs::AbstractObservable, lock = ObservableLocker())
+    on(lock, obs, priority = typemax(Int))
+    return lock
+end
+(x::ObservableLocker)(@nospecialize(args...)) = Consume(x.locked)
+lock!(x::ObservableLocker) = x.locked = true
+unlock!(x::ObservableLocker) = x.locked = false

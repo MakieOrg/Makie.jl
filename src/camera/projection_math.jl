@@ -522,25 +522,23 @@ Returns an observable that triggers whenever the result of `project` could chang
 """
 function projection_obs(@nospecialize(plot::AbstractPlot))
     return lift(
-        (_, _, _, _, _, _) -> nothing,
+        (_, _, _, _, _) -> nothing,
         plot,
-        camera(plot).view, 
-        camera(plot).projection,
+        camera(plot).projectionview, 
         get_scene(plot).px_area,
         transformationmatrix(plot),
-        transform_func(plot),
+        transform_func_obs(plot),
         get(plot, :space, Observable(:data)),
     )
 end
 function projection_obs(scene::Scene)
     return lift(
-        (_, _, _, _, _, _) -> nothing,
+        (_, _, _, _) -> nothing,
         scene,
-        camera(scene).view, 
-        camera(scene).projection,
+        camera(scene).projectionview, 
         scene.px_area,
         transformationmatrix(scene),
-        transform_func(scene)
+        transform_func_obs(scene)
     )
 end
 

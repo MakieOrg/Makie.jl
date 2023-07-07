@@ -77,6 +77,8 @@ function Camera(px_area)
     view = Observable(Mat4f(I))
     proj = Observable(Mat4f(I))
     proj_view = map(*, proj, view)
+    # so we can avoid duplicate updates
+    attach_lock!(proj_view)
     return Camera(
         pixel_space,
         view,
@@ -89,11 +91,13 @@ function Camera(px_area)
 end
 
 function set_proj_view!(camera::Camera, projection, view)
-    # hack, to not double update projectionview
-    # TODO, this makes code doing on(view), not work correctly...
-    # But nobody should do that, right?
-    # GLMakie uses map on view
+    # Both view and projection trigger an update of projectionview which can 
+    # have rather expensive listeners. To avoid running those twice we block 
+    # them when updating view. 
+    lock = Observables.listeners(camera.projectionview)[1][2]::ObservableLocker
+    lock!(lock)
     camera.view[] = view
+    unlock!(lock)
     camera.projection[] = projection
 end
 
