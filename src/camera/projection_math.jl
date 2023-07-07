@@ -466,22 +466,22 @@ end
 @deprecate to_world project_to_world false
 
 """
-    project_to_screen(scenelike[, input_space], pos)
+    project_to_screen(scenelike[, input_space], pos[; target = Point2f(0)])
 
 Transforms the given position(s) to (2D) screen/pixel space, using the space of 
 `scenelike` as the default input space. The returned positions will be relative
 to the screen/window/figure origin, rather than the (parent) scene.
 """
-function project_to_screen(@nospecialize(obj), pos)
+function project_to_screen(@nospecialize(obj), pos; target = Point2f(0))
     scene = get_scene(obj)
     offset = minimum(to_value(pixelarea(scene)))
-    return apply_offset!(project(obj, pos, target = Point2f(0)), offset)
+    return apply_offset!(project(obj, pos, target = target), offset)
 end
 
-function project_to_screen(@nospecialize(obj), input_space::Symbol, pos)
+function project_to_screen(@nospecialize(obj), input_space::Symbol, pos; target = Point2f(0))
     scene = get_scene(obj)
     offset = minimum(to_value(pixelarea(scene)))
-    return apply_offset!(project(obj, pos, input_space = input_space, target = Point2f(0)), offset)
+    return apply_offset!(project(obj, pos, input_space = input_space, target = target), offset)
 end
 
 function apply_offset!(pos::VT, off::VecTypes) where {VT <: VecTypes}

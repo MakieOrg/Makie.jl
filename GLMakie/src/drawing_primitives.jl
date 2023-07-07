@@ -302,8 +302,14 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             linewidth = gl_attributes[:thickness]
             data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
             data[:fast] = false
-
-            positions = map(ps -> Makie.project(x, ps), positions)
+            
+            positions = map(Makie.projection_obs(x), positions) do _, ps
+                # The shader uses scaled pixel space
+                w, h = data[:resolution][]
+                mat = Makie.scalematrix(Vec3f(w, h, 1f0)) * 
+                    Makie.space_to_space_matrix(x, space[], :clip)
+                Makie.project(mat, transform_func[], space[], :other, ps)
+            end
         end
         return draw_lines(screen, positions, data)
     end
