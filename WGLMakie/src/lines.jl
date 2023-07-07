@@ -65,7 +65,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
 
     uniforms[:resolution] = to_value(scene.camera.resolution) # updates in JS
 
-    uniforms[:model] = plot.model
+    uniforms[:model] = Makie._get_model_obs(plot)
     uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
     positions = meta(Point2f[(0, -1), (0, 1), (1, -1), (1, 1)],
                      uv=Vec2f[(0, 0), (0, 0), (0, 0), (0, 0)])

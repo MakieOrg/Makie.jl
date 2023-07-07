@@ -543,3 +543,10 @@ function projection_obs(scene::Scene)
         transform_func(scene)
     )
 end
+
+# TODO
+# naming, do we keep this?
+function _get_model_obs(plot::AbstractPlot)
+    space = get(plot, :space, Observable(:data))
+    return map((s, m) -> s in (:data, :transformed) ? m : Mat4f(I), space, plot.model)
+end

@@ -39,7 +39,7 @@ const IGNORE_KEYS = Set([
     :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
     :lightposition, :cycle, :label, :inspector_clear, :inspector_hover,
-    :inspector_label
+    :inspector_label, :model
 ])
 
 function create_shader(scene::Scene, plot::MeshScatter)
@@ -66,6 +66,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         k in color_keys && continue
         uniform_dict[k] = lift_convert(k, v, plot)
     end
+    uniform_dict[:model] = Makie._get_model_obs(plot)
 
     handle_color!(plot, uniform_dict, per_instance, :color)
     handle_color_getter!(uniform_dict, per_instance)
@@ -163,7 +164,7 @@ function scatter_shader(scene::Scene, attributes, plot)
         k in color_keys && continue
         uniform_dict[k] = lift_convert(k, v, plot)
     end
-
+    uniform_dict[:model] = Makie._get_model_obs(plot)
     if !isnothing(marker)
         get!(uniform_dict, :shape_type) do
             return Makie.marker_to_sdf_shape(marker)
@@ -215,7 +216,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
-    attributes[:model] = plot.model
+    attributes[:model] = Makie._get_model_obs(plot)
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
     delete!(attributes, :uv_offset_width)
@@ -286,7 +287,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     plot_attributes.attributes[:calculated_colors] = uniform_color
 
     uniforms = Dict(
-        :model => plot.model,
+        :model => Makie._get_model_obs(plot),
         :shape_type => Observable(Cint(3)),
         :rotations => uniform_rotation,
         :pos => positions,

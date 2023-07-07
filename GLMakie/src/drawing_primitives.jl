@@ -113,8 +113,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
                 :lightposition, :material,
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
-                        :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
-                        :calculated_colors
+                :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
+                :calculated_colors
             ))
         end
 
@@ -124,6 +124,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end)
+
+        gl_attributes[:model] = Makie._get_model_obs(x)
 
         pointlight = Makie.get_point_light(scene)
         if !isnothing(pointlight)
@@ -301,17 +303,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
             data[:fast] = false
 
-            pvm = map(*, data[:projectionview], data[:model])
-            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
-                transformed = apply_transform(f, ps, space)
-                output = Vector{Point3f}(undef, length(transformed))
-                scale = Vec3f(res[1], res[2], 1f0)
-                for i in eachindex(transformed)
-                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                    output[i] = scale .* Point3f(clip) ./ clip[4]
-                end
-                output
-            end
+            positions = map(ps -> Makie.project(x, ps), positions)
         end
         return draw_lines(screen, positions, data)
     end

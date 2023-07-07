@@ -224,6 +224,8 @@ export class MakieCamera {
 
         // inverses
         this.pixel_space_inverse = new THREE.Uniform(Identity4x4());
+        // this.view_inverse = new THREE.Uniform(Identity4x4());
+        this.projection_inverse = new THREE.Uniform(Identity4x4());
         this.projectionview_inverse = new THREE.Uniform(Identity4x4());
 
         // Constant matrices
@@ -255,6 +257,8 @@ export class MakieCamera {
         const proj_view = mul(this.view.value, this.projection.value);
         this.projectionview.value = proj_view;
 
+        // this.view_inverse = this.view.clone().invert();
+        this.projection_inverse = this.projection.clone().invert(); 
         this.projectionview_inverse.value = proj_view.clone().invert();
 
         // update all existing preprojection matrices
@@ -276,8 +280,10 @@ export class MakieCamera {
 
     // TODO
     clip_to_space(space) {
-        if (space === "data") {
+        if (space === "data" || space === "transformed" || space === "world") {
             return this.projectionview_inverse.value;
+        } else if (space === "eye") {
+            return this.projection_inverse.value;
         } else if (space === "pixel") {
             return this.pixel_space_inverse.value;
         } else if (space === "relative") {
@@ -290,8 +296,10 @@ export class MakieCamera {
     }
 
     space_to_clip(space) {
-        if (space === "data") {
+        if (space === "data" || space === "transformed" || space === "world") {
             return this.projectionview.value;
+        } else if (space === "eye") {
+            return this.projection.value;
         } else if (space === "pixel") {
             return this.pixel_space.value;
         } else if (space === "relative") {

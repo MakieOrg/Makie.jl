@@ -61,7 +61,7 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
     get!(uniforms, :pattern, false)
-    get!(uniforms, :model, plot.model)
+    get!(uniforms, :model, Makie._get_model_obs(plot))
     get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
 
