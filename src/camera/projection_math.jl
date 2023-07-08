@@ -302,65 +302,61 @@ If you wish to exclude the model matrix, call
 `_space_to_space_matrix(camera(scenelike), ...)`.
 """
 function space_to_space_matrix(obj, input_space::Symbol, output_space::Symbol)
-    return space_to_space_matrix(obj, Pair(input_space, output_space))
+    return space_to_space_matrix(get_scene(obj), input_space, output_space)
 end
 
 # this method does Axis -> Scene conversions
-function space_to_space_matrix(obj, space2space::Pair{Symbol, Symbol})
-    return space_to_space_matrix(get_scene(obj), space2space)
+function space_to_space_matrix(obj, s2s::Pair{Symbol, Symbol})
+    return space_to_space_matrix(get_scene(obj), s2s[1], s2s[2])
 end
 
 function space_to_space_matrix(scene_or_plot::SceneLike, s2s::Pair{Symbol, Symbol})
-    mat = _space_to_space_matrix(camera(scene_or_plot), s2s)
+    space_to_space_matrix(scene_or_plot, s2s[1], s2s[2])
+end
+function space_to_space_matrix(scene_or_plot::SceneLike, input::Symbol, output::Symbol)
+    mat = _space_to_space_matrix(camera(scene_or_plot), input, output)
     model = to_value(transformationmatrix(scene_or_plot))
-    if s2s[1] in (:data, :transformed)
+    if input in (:data, :transformed)
         return mat * model
-    elseif s2s[2] in (:data, :transformed)
+    elseif output in (:data, :transformed)
         return inv(model) * mat
     else
         return mat
     end
 end
 
-# function space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
-#     @warn "No trans_func, no model"
-#     return _space_to_space_matrix(cam, s2s)
-# end
-
-function _space_to_space_matrix(cam::Camera, s2s::Pair{Symbol, Symbol})
+function _space_to_space_matrix(cam::Camera, input::Symbol, output::Symbol)
     # identities
-    if s2s[1] === s2s[2]
-        return Mat4f(I)
-    elseif s2s[1] in (:data, :transformed) && s2s[2] === :world
+    if input in (:data, :transformed, :world) && output in (:data, :transformed, :world)
         return Mat4f(I)
     
     # direct conversions (no calculations)
-    elseif s2s === Pair(:world, :eye)
+    elseif input === :world && output === :eye
         return cam.view[]
-    elseif s2s === Pair(:eye, :clip)
+    elseif input === :eye && output === :clip
         return cam.projection[]
-    elseif s2s[1] in (:data, :transformed, :world) && s2s[2] === :clip
+    elseif input in (:data, :transformed, :world) && output === :clip
         return cam.projectionview[]
-    elseif s2s === Pair(:pixel, :clip)
+    elseif input === :pixel && output === :clip
         return cam.pixel_space[]
-    elseif s2s === Pair(:relative, :clip)
+    elseif input === :relative && output === :clip
         return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
 
     # simple inversions
-    elseif s2s === Pair(:clip, :relative)
+    elseif input === :clip && output === :relative
         return Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
-    elseif s2s === Pair(:clip, :pixel)
+    elseif input === :clip && output === :pixel
         w, h = cam.resolution[]
         return Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1)
 
     # calculation neccessary
-    elseif s2s[1] === :clip
-        return inv(_space_to_space_matrix(cam, Pair(s2s[2], s2s[1])))
-    elseif s2s[1] in spaces() && s2s[2] in spaces()
-        return _space_to_space_matrix(cam, Pair(:clip, s2s[2])) * 
-                _space_to_space_matrix(cam, Pair(s2s[1], :clip))
+    elseif input === :clip
+        return inv(_space_to_space_matrix(cam, output, input))
+    elseif input in spaces() && output in spaces()
+        return _space_to_space_matrix(cam, :clip, output) * 
+                _space_to_space_matrix(cam, input, :clip)
     else
-        error("Space $space not recognized. Must be one of $(spaces())")
+        error("Space $input or $output not recognized. Must be one of $(spaces())")
     end
 end
 
