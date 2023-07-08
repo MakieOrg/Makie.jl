@@ -476,10 +476,10 @@ end
 # this function projects a point from a 3d subscene into the parent space with a really
 # small z value
 function to_topscene_z_2d(p3d, scene)
-    p2d = Makie.project_to_pixel(scene, p3d)
-    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
-    # to clip into plot objects anymore
-    Point3f(p2d..., -10000)
+    p2d = Makie.project_to_screen(scene, p3d)
+    # -10000 is the default minimum depth set in
+    # campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+    return Point3f(p2d..., -10000)
 end
 
 function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
@@ -607,9 +607,9 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         p1 = dpoint(minimum(lims)[dim], f1, f2)
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
-        # project them into screen space
-        pp1 = Makie.project_to_pixel(scene, p1)
-        pp2 = Makie.project_to_pixel(scene, p2)
+        # project them into global screen space
+        pp1 = Makie.project_to_screen(scene, p1)
+        pp2 = Makie.project_to_screen(scene, p2)
 
         # find the midpoint
         midpoint = (pp1 + pp2) ./ 2
