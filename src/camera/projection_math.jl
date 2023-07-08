@@ -56,6 +56,49 @@ function rotationmatrix_z(angle::Number)
 end
 
 """
+    decompose_transformation_matrix(matrix::Mat4)
+
+Attempts to decompose a matrix into a translation, scale and rotation. Note 
+that this will still return a result even if the matrix cannot be decomposed. 
+"""
+function decompose_transformation_matrix(model::Mat4{T}) where T
+    trans = model[Vec(1,2,3), 4]
+    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+    if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
+        scale = diag(m33)
+        rot = Quaternion{T}(0, 0, 0, 1)
+        return trans, scale, rot
+    else
+        scale = sqrt.(diag(m33 * m33'))
+        R = Diagonal(1 ./ scale) * m33
+
+        # inverse of Mat4(q::Quaternion)
+        xz = 0.5 * (R[1, 3] + R[3, 1])
+        sy = 0.5 * (R[1, 3] - R[3, 1])
+        yz = 0.5 * (R[2, 3] + R[3, 2])
+        sx = 0.5 * (R[3, 2] - R[2, 3])
+        xy = 0.5 * (R[1, 2] + R[2, 1])
+        sz = 0.5 * (R[2, 1] - R[1, 2])
+
+        m = max(abs(xy), abs(xz), abs(yz))
+        if abs(xy) == m
+            q4 = sqrt(0.5 * sx * sy / xy)
+        elseif abs(xz) == m
+            q4 = sqrt(0.5 * sx * sz / xz)
+        else
+            q4 = sqrt(0.5 * sy * sz / yz)
+        end
+
+        q1 = 0.5 * sx / q4
+        q2 = 0.5 * sy / q4
+        q3 = 0.5 * sz / q4
+        rot = Quaternion{T}(q1, q2, q3, q4)
+
+        return trans, scale, rot
+    end
+end
+
+"""
     Create view frustum
 
     Parameters
