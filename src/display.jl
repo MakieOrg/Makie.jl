@@ -191,7 +191,9 @@ const MIME_TO_TRICK_VSCODE = MIME"application/vnd.julia-vscode.diagnostics"
 
 function _backend_showable(mime::MIME{SYM}) where SYM
     if ALWAYS_INLINE_PLOTS[] == false
-        return mime isa MIME_TO_TRICK_VSCODE
+        if mime isa MIME_TO_TRICK_VSCODE
+            return true
+        end
     end
     Backend = current_backend()
     if ismissing(Backend)
