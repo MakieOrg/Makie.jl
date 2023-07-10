@@ -19555,12 +19555,13 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
     camera.position.set(...cam3d.eyeposition);
     camera.lookAt(center);
     function update() {
-        camera.updateProjectionMatrix();
-        camera.updateWorldMatrix();
         const view = camera.matrixWorldInverse;
         const projection = camera.projectionMatrix;
-        const [width, height] = makie_camera.resolution.value;
+        const [width, height] = cam3d.resolution.value;
         const [x, y, z] = camera.position;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        camera.updateWorldMatrix();
         makie_camera.update_matrices(view.elements, projection.elements, [
             width,
             height
@@ -19570,6 +19571,7 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             z
         ]);
     }
+    cam3d.resolution.on(update);
     function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
         let startDragX = null;
         let startDragY = null;
