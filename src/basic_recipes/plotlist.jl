@@ -1,3 +1,5 @@
+# Ideally we re-use Makie.PlotSpec, but right now we need a bit of special behaviour to make this work nicely.
+# If the implementation stabilizes, we should think about refactoring PlotSpec to work for both use cases, and then just have one PlotSpec type.
 struct PlotDescription{P<:AbstractPlot}
     args::Vector{Any}
     kwargs::Dict{Symbol, Any}
@@ -15,18 +17,17 @@ function PlotDescription{P}(args...; kwargs...) where {P<:AbstractPlot}
 end
 @specialize
 
-struct SpecType end
-function Base.getproperty(::SpecType, field::Symbol)
+struct SpecApi end
+function Base.getproperty(::SpecApi, field::Symbol)
     P = Combined{getfield(Makie, field)}
     return PlotDescription{P}
 end
 
-const PlotspecApi = SpecType()
+const PlotspecApi = SpecApi()
 
 # comparison based entirely of types inside args + kwargs
 compare_specs(a::PlotDescription{A}, b::PlotDescription{B}) where {A, B} = false
 function compare_specs(a::PlotDescription{T}, b::PlotDescription{T}) where {T}
-    typeof(a) == typeof(b) || return false
     length(a.args) == length(b.args) || return false
     all(i-> typeof(a.args[i]) == typeof(b.args[i]), 1:length(a.args)) || return false
 
@@ -39,7 +40,7 @@ function compare_specs(a::PlotDescription{T}, b::PlotDescription{T}) where {T}
 end
 
 function update_plot!(plot::AbstractPlot, spec::PlotDescription)
-    # Update args in cached `input_args` list
+    # Update args in plot `input_args` list
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
@@ -104,6 +105,14 @@ Makie.plottype(::Type{<: PlotList}, ::AbstractArray{<:PlotDescription}) = PlotLi
 # Since we directly plot into the parent scene (hacky), we need to overload these
 Makie.Base.insert!(screen::MakieScreen, scene::Scene, x::PlotList) = nothing
 
+# TODO, make this work with Cycling and also with convert_arguments returning
+# Vector{PlotDescription} so that one can write recipes like this:
+quote
+    Makie.convert_arguments(obj::MyType) = [
+        obj.lineplot ? P.lines(obj.args...; obj.kwargs...) : P.scatter(obj.args...; obj.kw...)
+    ]
+end
+
 function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotDescription}}})
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
@@ -135,7 +144,8 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotDescription}}}
             end
         end
         unused_plots = setdiff(1:length(cached_plots), used_plots)
-        # Next, delete all plots still extant in in `plots_to_delete`
+        # Next, delete all plots that we haven't used
+        # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
         for idx in unused_plots
             spec, plot = cached_plots[idx]
             delete!(scene, plot)
