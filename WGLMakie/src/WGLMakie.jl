@@ -55,18 +55,8 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 $(Base.doc(ScreenConfig))
 """
 function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config...)
-    if inline isa Automatic
-        # Figure out if there is a display system that can show plots as html
-        can_show_html = JSServe.has_html_display()
-        if !can_show_html
-            JSServe.browser_display()
-            Makie.inline!(false) # browser display is like opening a window, so needs inline = false
-        else
-            Makie.inline!(true) # we show it via the display system
-        end
-    else
-        Makie.inline!(inline)
-    end
+    JSServe.browser_display()
+    Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
