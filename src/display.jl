@@ -128,7 +128,8 @@ see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 
 `backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
 """
-function Base.display(figlike::FigureLike; backend=current_backend(), update=true, screen_config...)
+function Base.display(figlike::FigureLike; backend=current_backend(),
+                      inline=ALWAYS_INLINE_PLOTS[], update = true, screen_config...)
     if ismissing(backend)
         error("""
         No backend available!
@@ -138,7 +139,7 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
         In that case, try `]build GLMakie` and watch out for any warnings.
         """)
     end
-    inline = ALWAYS_INLINE_PLOTS[]
+
     # We show inline if explicitely requested or if automatic and we can actually show something inline!
     if (inline === true || inline === automatic) && can_show_inline(backend)
         Core.invoke(display, Tuple{Any}, figlike)
