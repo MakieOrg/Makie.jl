@@ -54,16 +54,17 @@ function Makie.plot!(pl::Bracket)
         return to === automatic ? Float32.(0.75 .* fs) : Float32.(to)
     end
 
-    onany(pl, points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset,
-          pl.style) do points, pv, offset, width, orientation, textoff, style
+    onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl), 
+          scene.px_area, pl.offset, pl.width, pl.orientation, realtextoffset,
+          pl.style) do points, _, _, _, _, offset, width, orientation, textoff, style
 
         empty!(bp[])
         empty!(textoffset_vec[])
         empty!(textpoints[])
 
         broadcast_foreach(points, offset, width, orientation, textoff, style) do (_p1, _p2), offset, width, orientation, textoff, style
-            p1 = scene_to_screen(_p1, scene)
-            p2 = scene_to_screen(_p2, scene)
+            p1 = plot_to_screen(pl, _p1)
+            p2 = plot_to_screen(pl, _p2)
 
             v = p2 - p1
             d1 = normalize(v)
@@ -83,6 +84,7 @@ function Makie.plot!(pl::Bracket)
         end
 
         notify(bp)
+        notify(textpoints)
     end
 
     notify(points)
@@ -105,10 +107,12 @@ function Makie.plot!(pl::Bracket)
         return text isa AbstractString ? [text] : text
     end
 
-    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, linestyle = pl.linestyle)
+    # Avoid scale!() / translate!() / rotate!() to affect these
+    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, 
+        linestyle = pl.linestyle, transformation = Transformation())
     text!(pl, textpoints, text = texts, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
-        justification = pl.justification)
+        justification = pl.justification, model = Mat4f(I))
     pl
 end
 

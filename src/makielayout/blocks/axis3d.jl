@@ -47,16 +47,19 @@ function initialize_block!(ax::Axis3)
         cam.eyeposition[] = eyepos
     end
 
-    ticknode_1 = lift(scene, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
-        tl = get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
+    ticknode_1 = Observable{Any}()
+    map!(scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
+        get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
     end
 
-    ticknode_2 = lift(scene, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
-        tl = get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
+    ticknode_2 = Observable{Any}()
+    map!(scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
+        get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
     end
 
-    ticknode_3 = lift(scene, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
-        tl = get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
+    ticknode_3 = Observable{Any}()
+    map!(scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
+        get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
     add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
@@ -110,7 +113,7 @@ function initialize_block!(ax::Axis3)
         inspectable = false)
 
     ax.cycler = Cycler()
-    ax.palette = copy(Makie.default_palettes)
+    ax.palette = Makie.DEFAULT_PALETTES
 
     ax.mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))
@@ -470,7 +473,10 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     d2 = dim2(dim)
 
     tickvalues = @lift($ticknode[1])
-    ticklabels = @lift($ticknode[2])
+    ticklabels = Observable{Any}()
+    map!(ticklabels, ticknode) do (values, labels)
+        labels
+    end
 
     tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
             scene.camera.projectionview, scene.px_area) do lims, ticks, miv, min1, min2,
@@ -515,7 +521,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
 
-    labels_positions = lift(topscene, scene.px_area, scene.camera.projectionview,
+    labels_positions = Observable{Any}()
+    map!(topscene, labels_positions, scene.px_area, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
@@ -530,8 +537,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
 
         N = min(length(ticklabs), length(points))
-        v = [(ticklabs[i], points[i]) for i in 1:N]
-        v::Vector{Tuple{String, Point2f}}
+        Tuple{Any,Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
     align = lift(topscene, miv, min1, min2) do mv, m1, m2
@@ -544,12 +550,12 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticklabels = text!(topscene, labels_positions, align = align,
+    ticklabels_text = text!(topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
-    translate!(ticklabels, 0, 0, 1000)
+    translate!(ticklabels_text, 0, 0, 1000)
 
     label_position = Observable(Point2f(0))
     label_rotation = Observable(0f0)
@@ -637,8 +643,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         inspectable = false
     )
 
-
-    return ticks, ticklabels, label
+    return ticks, ticklabels_text, label
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)
@@ -922,4 +927,113 @@ function limits!(ax::Axis3, rect::Rect3)
     Makie.xlims!(ax, xmin, xmax)
     Makie.ylims!(ax, ymin, ymax)
     Makie.zlims!(ax, zmin, zmax)
+end
+
+function attribute_examples(::Type{Axis3})
+    Dict(
+        :aspect => [
+            Example(
+                name = "Three-tuple aspects",
+                code = """
+                    fig = Figure()
+
+                    Axis3(fig[1, 1], aspect = (1, 1, 1), title = "aspect = (1, 1, 1)")
+                    Axis3(fig[1, 2], aspect = (2, 1, 1), title = "aspect = (2, 1, 1)")
+                    Axis3(fig[2, 1], aspect = (1, 2, 1), title = "aspect = (1, 2, 1)")
+                    Axis3(fig[2, 2], aspect = (1, 1, 2), title = "aspect = (1, 1, 2)")
+
+                    fig
+                    """
+            ),
+            Example(
+                name = "`:data` and `:equal` aspects",
+                code = """
+                    using FileIO
+
+                    fig = Figure()
+
+                    brain = load(assetpath("brain.stl"))
+
+                    ax1 = Axis3(fig[1, 1], aspect = :equal, title = "aspect = :equal")
+                    ax2 = Axis3(fig[1, 2], aspect = :data, title = "aspect = :data")
+
+                    for ax in [ax1, ax2]
+                        mesh!(ax, brain, color = :gray80)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :viewmode => [
+            Example(
+                name = "`viewmode` variants",
+                code = """
+                    fig = Figure()
+
+                    for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
+                        for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
+
+                            Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
+
+                            # show the extent of each cell using a box
+                            Box(fig[i, j], strokewidth = 0, color = :gray95)
+
+                            ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
+                            hidedecorations!(ax)
+
+                        end
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :perspectiveness => [
+            Example(
+                name = "`perspectiveness` values",
+                code = """
+                    fig = Figure()
+
+                    for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
+                        ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
+                            title = ":perspectiveness = \$(perspectiveness)")
+                        hidedecorations!(ax)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :azimuth => [
+            Example(
+                name = "`azimuth` values",
+                code = """
+                    fig = Figure()
+
+                    for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
+                        Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
+                            title = "azimuth = \$(azimuth)π", viewmode = :fit)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :elevation => [
+            Example(
+                name = "`elevation` values",
+                code = """
+                    fig = Figure()
+
+                    for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
+                        Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
+                            title = "elevation = \$(elevation)π", viewmode = :fit)
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+    )
 end
