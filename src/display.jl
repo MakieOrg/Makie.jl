@@ -110,7 +110,7 @@ end
 
 can_show_inline(::Missing) = false # no backend
 function can_show_inline(Backend)
-    for mime in [MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
+    for mime in [MIME"juliavscode/html"(), MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
         if backend_showable(Backend.Screen, mime)
             return has_mime_display(mime)
         end
