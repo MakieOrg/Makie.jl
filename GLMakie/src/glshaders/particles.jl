@@ -172,7 +172,7 @@ function draw_scatter(screen, (marker, position), data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
-    
+
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
@@ -191,7 +191,6 @@ function draw_scatter(screen, (marker, position), data)
             return shape
         end
     end
-
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -224,10 +223,12 @@ function draw_scatter(screen, (marker, position), data)
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
+
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)
     data[:len] = const_lift(length, position)
+
     return assemble_shader(data)
 end
 

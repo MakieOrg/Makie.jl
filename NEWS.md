@@ -54,7 +54,6 @@
 - Re-exported the `@colorant_str` (`colorant"..."`) macro from Colors.jl [#2726](https://github.com/MakieOrg/Makie.jl/pull/2726).
 - Speedup heatmaps in WGLMakie. [#2647](https://github.com/MakieOrg/Makie.jl/pull/2647)
 - Fix slow `data_limits` for recipes, which made plotting lots of data with recipes much slower [#2770](https://github.com/MakieOrg/Makie.jl/pull/2770).
->>>>>>> master
 
 ## v0.19.1
 

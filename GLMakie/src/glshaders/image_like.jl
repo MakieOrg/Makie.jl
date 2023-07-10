@@ -41,8 +41,6 @@ function draw_heatmap(screen, main, data::Dict)
         lowclip = RGBAf(0, 0, 0, 0)
         color_map = nothing => Texture
         color_norm = nothing
-        stroke_width::Float32 = 0.0f0
-        levels::Float32 = 0f0
         stroke_color = RGBA{Float32}(0,0,0,0)
         transparency = false
         shader = GLVisualizeShader(

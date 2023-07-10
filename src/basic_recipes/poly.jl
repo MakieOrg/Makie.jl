@@ -130,7 +130,7 @@ end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
-    color_node = plot.color
+    color_node = plot.calculated_colors
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
@@ -149,7 +149,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors}}()
 
-    map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
+    map!(plot, mesh_colors, color_node, num_meshes) do colors, num_meshes
         # one mesh per color
         c_converted = to_color(colors)
         if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)

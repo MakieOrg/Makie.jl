@@ -11,10 +11,6 @@ flat in uvec2 o_objectid;
 uniform sampler1D color_map;
 {{color_norm_type}} color_norm;
 
-uniform float stroke_width;
-uniform vec4 stroke_color;
-uniform float levels;
-
 uniform vec4 highclip;
 uniform vec4 lowclip;
 uniform vec4 nan_color;

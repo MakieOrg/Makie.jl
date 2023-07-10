@@ -6,9 +6,9 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[])
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
-    
+
     onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
                 ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
         ts = to_fontsize(ts)
@@ -33,10 +33,10 @@ function plot!(plot::Text)
         end
         func = push_args ∘ _get_glyphcollection_and_linesegments
         if str isa Vector
-            # If we have a Vector of strings, Vector arguments are interpreted 
+            # If we have a Vector of strings, Vector arguments are interpreted
             # as per string.
             broadcast_foreach(
-                func, 
+                func,
                 str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
             )
         else
@@ -55,7 +55,7 @@ function plot!(plot::Text)
 
     sc = parent_scene(plot)
 
-    onany(linesegs, positions, sc.camera.projectionview, sc.px_area, 
+    onany(linesegs, positions, sc.camera.projectionview, sc.px_area,
             transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
         pos_transf = plot_to_screen(plot, pos)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
@@ -141,7 +141,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})    
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
     strings_and_positions = plot[1]
 
     strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
@@ -343,7 +343,7 @@ function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
     stack = [GlyphState(0, 0, Vec2f(ts), _f, to_color(col))]
 
     lines = [GlyphInfo[]]
-    
+
     process_rt_node!(stack, lines, rt, fset)
 
     apply_lineheight!(lines, lh)
@@ -404,7 +404,7 @@ function apply_alignment_and_justification!(lines, ju, al)
     end
 
     fju = float_justification(ju, al)
-    
+
     for (i, line) in enumerate(lines)
         ju_offset = fju * (max_x - max_xs[i])
         for j in eachindex(line)

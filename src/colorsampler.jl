@@ -176,7 +176,7 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number},
     end
 end
 
-struct ColorMap{T<:AbstractArray{<:Number}}
+struct ColorMap{N, T<:AbstractArray{<:Number, N}}
     color::Observable{T}
     colormap::Observable{Vector{RGBAf}}
     scale::Observable{Function}
@@ -186,9 +186,12 @@ struct ColorMap{T<:AbstractArray{<:Number}}
     highclip::Observable{Union{Automatic, RGBAf}} # Defaults to last color in colormap
     nan_color::Observable{RGBAf}
     categorical::Observable{Bool}
+    # scaled attributes
+    colorrange_scaled::Observable{Vec2f}
+    color_scaled::Observable{Array{Float32, N}}
 end
 
-function assemble_colors(::T, color, plot) where {T<:AbstractArray{<:Number}}
+function assemble_colors(::T, color, plot) where {N, T<:AbstractArray{<:Number, N}}
     color_tight = convert(Observable{T}, color)
     colormap = Observable(RGBAf[]; ignore_equal_values=true)
     categorical = Observable(false)
@@ -221,10 +224,19 @@ function assemble_colors(::T, color, plot) where {T<:AbstractArray{<:Number}}
         return
     end
     nan_color = lift(to_color, plot.nan_color)
+    colorrange = Observable(Vec{2, Float64}(0); ignore_equal_values=true)
+
     colorrange = lift(color_tight, plot.colorrange; ignore_equal_values=true) do color, crange
         return crange isa Automatic ? Vec2{Float64}(distinct_extrema_nan(color)) : Vec2{Float64}(crange)
     end
-    return ColorMap(
+
+    colorrange_scaled = lift(colorrange, colorscale; ignore_equal_values=true) do range, scale
+        return Vec2f(apply_scale(scale, range))
+    end
+    color_scaled = lift(color_tight, colorscale; ignore_equal_values=true) do color, scale
+        return el32convert(apply_scale(scale, color))
+    end
+    return ColorMap{N, T}(
         color_tight,
         colormap,
         colorscale,
@@ -233,7 +245,9 @@ function assemble_colors(::T, color, plot) where {T<:AbstractArray{<:Number}}
         lowclip,
         highclip,
         nan_color,
-        categorical
+        categorical,
+        colorrange_scaled,
+        color_scaled
     )
 end
 
@@ -247,6 +261,13 @@ function assemble_colors(colortype, color, plot)
     end
 end
 
+function assemble_colors(::Number, color, plot)
+    plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value $intensity. Pass an explicit colorrange.")
+
+    cm = assemble_colors([0.5], lift(x -> [x], color), plot)
+    return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
+                      cm.nan_color)
+end
 
 highclip(cmap::ColorMap) = lift((cm, hc) -> hc isa Automatic ? last(cm) : hc, cmap.colormap, cmap.highclip)
 lowclip(cmap::ColorMap) = lift((cm, hc) -> hc isa Automatic ? first(cm) : hc, cmap.colormap, cmap.lowclip)
