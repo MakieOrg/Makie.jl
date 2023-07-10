@@ -1,156 +1,145 @@
+struct PlotDescription{P<:AbstractPlot}
+    args::Vector{Any}
+    kwargs::Dict{Symbol, Any}
+end
+
+@nospecialize
+function PlotDescription{P}(args...; kwargs...) where {P<:AbstractPlot}
+    kw = Dict{Symbol, Any}()
+    for (k, v) in kwargs
+        # convert eagerly, so that we have stable types for matching later
+        # E.g. so that PlotDescription(; color = :red) has the same type as PlotDescription(; color = RGBA(1, 0, 0, 1))
+        kw[k] = convert_attribute(v, Key{k}(), Key{plotkey(P)}())
+    end
+    return PlotDescription{P}(Any[args...], kw)
+end
+@specialize
+
+struct SpecType end
+function Base.getproperty(::SpecType, field::Symbol)
+    P = Combined{getfield(Makie, field)}
+    return PlotDescription{P}
+end
+
+const PlotspecApi = SpecType()
+
+# comparison based entirely of types inside args + kwargs
+compare_specs(a::PlotDescription{A}, b::PlotDescription{B}) where {A, B} = false
+function compare_specs(a::PlotDescription{T}, b::PlotDescription{T}) where {T}
+    typeof(a) == typeof(b) || return false
+    length(a.args) == length(b.args) || return false
+    all(i-> typeof(a.args[i]) == typeof(b.args[i]), 1:length(a.args)) || return false
+
+    length(a.kwargs) == length(b.kwargs) || return false
+    ka = keys(a.kwargs)
+    kb = keys(b.kwargs)
+    ka == kb || return false
+    all(k -> typeof(a.kwargs[k]) == typeof(b.kwargs[k]), ka) || return false
+    return true
+end
+
+function update_plot!(plot::AbstractPlot, spec::PlotDescription)
+    # Update args in cached `input_args` list
+    for i in eachindex(spec.args)
+        # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
+        # Which should guarantee, that args + kwargs have the same length and types!
+        arg_obs = plot.input_args[i]
+        if to_value(arg_obs) != spec.args[i] # only update if different
+            @debug("updating arg $i")
+            arg_obs[] = spec.args[i]
+        end
+    end
+    # Update attributes
+    for (attribute, new_value) in spec.kwargs
+        if plot[attribute][] != new_value # only update if different
+            @debug("updating kw $attribute")
+            plot[attribute] = new_value
+        end
+    end
+end
+
 """
     plotlist!(
         [
-            PlotSpec{SomePlotType}(args...; kwargs...),
-            PlotSpec{SomeOtherPlotType}(args...; kwargs...),
+            PlotDescription{SomePlotType}(args...; kwargs...),
+            PlotDescription{SomeOtherPlotType}(args...; kwargs...),
         ]
     )
 
-Plot a list of plotspecs, and dynamically replot based on the plot spec types.
-Also, dynamically update the argument values and attributes whenever a new one is passed in!
+Plots a list of PlotDescription's, which can be an observable, making it possible to create efficiently animated plots with the following API:
 
 ## Example
 ```julia
+using GLMakie
+import Makie.PlotspecApi as P
 
 fig = Figure()
 ax = Axis(fig[1, 1])
+plots = Observable([P.heatmap(0 .. 1, 0 .. 1, Makie.peaks()), P.lines(0 .. 1, sin.(0:0.01:1); color=:blue)])
+pl = plot!(ax, plots)
+display(fig)
 
-pl = plotlist!(
-    ax,
-    [PlotSpec{Lines}(0..1, sin.(0:0.01:1); color = :blue), PlotSpec{Heatmap}(0..1, 0..1, Makie.peaks(); transformation = (; translation = Vec3f(0, 0, -1)))]
-)
-
-fig
-
-pl[1][] = [PlotSpec{Lines}(0..1, sin.(0:0.01:1); color = :red), PlotSpec{Heatmap}(0..1, 0..1, Makie.peaks(); transformation = (; translation = Vec3f(0, 0, -1)))]
-
-fig
-
-pl[1][] = [
-    PlotSpec{Lines}(0..1, sin.(0:0.01:1); color = Makie.resample_cmap(:viridis, 101)), 
-    PlotSpec{Surface}(0..1, 0..1, Makie.peaks(); transformation = (; translation = Vec3f(0, 0, -1))),
-    PlotSpec{Poly}(Rect2f(0.45, 0.45, 0.1, 0.1)),
+# Updating the plot dynamically
+plots[] = [P.heatmap(0 .. 1, 0 .. 1, Makie.peaks()), P.lines(0 .. 1, sin.(0:0.01:1); color=:red)]
+plots[] = [
+    P.image(0 .. 1, 0 .. 1, Makie.peaks()),
+    P.poly(Rect2f(0.45, 0.45, 0.1, 0.1)),
+    P.lines(0 .. 1, sin.(0:0.01:1); linewidth=10, color=Makie.resample_cmap(:viridis, 101)),
 ]
 
-fig
-
-pl[1][] = [
-    PlotSpec{Surface}(0..1, 0..1, Makie.peaks(); colormap = :viridis, transformation = (; translation = Vec3f(0, 0, -1))),
+plots[] = [
+    P.surface(0..1, 0..1, Makie.peaks(); colormap = :viridis, translation = Vec3f(0, 0, -1)),
 ]
-
-fig
-
 ```
 """
-@recipe(PlotList) do scene
-    default_theme(scene)
+@recipe(PlotList, plotspecs) do scene
+    Attributes()
 end
 
-function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
-    # Cache the old PlotSpec types, so we can compare!
-    old_plotspec_types = Type{PlotSpec}[]
-    # 
-    cached_plots = AbstractPlot[]
+Makie.convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotDescription}) = (args,)
+Makie.plottype(::AbstractArray{<:PlotDescription}) = PlotList
+Makie.plottype(::Type{Any}, ::AbstractArray{<:PlotDescription}) = PlotList
+Makie.plottype(::Type{<: PlotList}, ::AbstractArray{<:PlotDescription}) = PlotList
 
-    lift(p[1]) do plotspecs
-        plotspec_types = typeof.(plotspecs)
-        types_unchanged = if length(plotspec_types) == length(old_plotspec_types)
-            # if the length is the same, check whether one of
-            # the types has changed.
-            println("Length same")
-            plotspec_types .== old_plotspec_types
-        elseif length(plotspec_types) < length(old_plotspec_types) # have to delete one or more plots
-            @show collect(length(old_plotspec_types):-1:(length(plotspec_types)+1))
-            for i in length(old_plotspec_types):-1:length(plotspec_types)
-                deleteat!(p.plots, i)
-                delete!(p, cached_plots[i])
-                cached_plots = cached_plots[begin:end-1]
-            end
-            println("Length less")
-            plotspec_types .== old_plotspec_types[1:length(plotspec_types)]
-        elseif length(plotspec_types) > length(old_plotspec_types) # have to add one or more plots
-            # first add the plots
-            println("Length more")
-            for i in (length(old_plotspec_types)+1):length(plotspec_types)
-                push!(cached_plots, plot!(p, plotspec_types[i].parameters[1], Attributes(plotspecs[i].kwargs), plotspecs[i].args...))
-            end
-            vcat(plotspec_types[1:length(old_plotspec_types)] .== old_plotspec_types, fill(false, length(plotspec_types) - length(old_plotspec_types)))
-        end
+# Since we directly plot into the parent scene (hacky), we need to overload these
+Makie.Base.insert!(screen::MakieScreen, scene::Scene, x::PlotList) = nothing
 
-        old_plotspec_types = plotspec_types
-        @show types_unchanged typeof.(cached_plots)
-        # If the types have changed, then we need to delete and replot certain plots.
-        if !(all(types_unchanged)) 
-            println("Found changed plottypes")
-            indices_to_renew = findall(==(false), types_unchanged)
-            for plot_ind in indices_to_renew
-                if length(cached_plots) ≥ plot_ind
-                    old_plot = cached_plots[plot_ind]
-                    delete!(p, old_plot)
-                    deleteat!(p.plots, plot_ind)
-                end
-                new_plot = plot!(p, plotspec_types[plot_ind].parameters[1], Attributes(plotspecs[plot_ind].kwargs), plotspecs[plot_ind].args...)
-                if length(cached_plots) ≥ plot_ind
-                    cached_plots[plot_ind] = new_plot # reorder and re-store the plot - this can probably be more efficient!
-                    _tmp = p.plots[plot_ind]
-                    p.plots[plot_ind] = new_plot
-                    p.plots[end] = _tmp
-                else # there is no cached_plots entry at this index - push it!
-                    push!(cached_plots, new_plot)
-                end
+function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotDescription}}})
+    # Cache plots here so that we aren't re-creating plots every time;
+    # if a plot still exists from last time, update it accordingly.
+    # If the plot is removed from `plotspecs`, we'll delete it from here
+    # and re-create it if it ever returns.
+    cached_plots = Pair{PlotDescription, Combined}[]
+    scene = Makie.parent_scene(p)
+    on(p.plotspecs; update=true) do plotspecs
+        used_plots = Set{Int}()
+        for plotspec in plotspecs
+            # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
+            idx = findfirst(x-> compare_specs(x[1], plotspec), cached_plots)
+            if isnothing(idx)
+                @debug("Creating new plot for spec")
+                # Create new plot, store it into our `cached_plots` dictionary
+                plot = plot!(scene,
+                    typeof(plotspec).parameters[1],
+                    Attributes(plotspec.kwargs),
+                    plotspec.args...,
+                )
+                push!(cached_plots, plotspec => plot)
+                push!(used_plots, length(cached_plots))
+            else
+                println("updating old plot with spec")
+                push!(used_plots, idx)
+                plot = cached_plots[idx][2]
+                update_plot!(plot, plotspec)
+                cached_plots[idx] = plotspec => plot
             end
         end
-
-        true_inds = findall(==(true), types_unchanged)
-        isnothing(true_inds) && return
-
-        for i in true_inds
-            ps = plotspecs[i]
-            cp = cached_plots[i]
-            for arg_index in eachindex(ps.args)
-                cp.input_args[arg_index].val = ps.args[arg_index]
-            end
-            for (attribute, new_value) in pairs(ps.kwargs)
-                update_attributes_inplace!(cp, attribute, new_value)
-            end
-            map(notify, cp.input_args) # notify all args, without broadcasting
-            map(_notify!, (getindex(cp, attr) for attr in keys(ps.kwargs))) # notify all accessed kwargs
+        unused_plots = setdiff(1:length(cached_plots), used_plots)
+        # Next, delete all plots still extant in in `plots_to_delete`
+        for idx in unused_plots
+            spec, plot = cached_plots[idx]
+            delete!(scene, plot)
         end
-
+        splice!(cached_plots, sort!(collect(unused_plots)))
     end
-
-end
-
-
-"""
-    update_attributes_inplace!(p::AbstractPlot, key::Symbol, new_value)
-    update_attributes_inplace!(attrs::Attributes, new_attrs::AttributesLike)
-    update_attributes_inplace!(obs::Observable, new_value)
-    
-This function updates the attributes of a plot silently and recursively.
-Here, silently means that the observable is not notified, and only the value is changed.
-"""
-function update_attributes_inplace!(p::AbstractPlot, key::Symbol, new_value)
-    return update_attributes_inplace!(getindex(p, key), new_value)
-end
-
-function update_attributes_inplace!(attrs::Attributes, new_attrs::Union{Attributes, NamedTuple, AbstractDict})
-    for key in keys(new_attrs)
-        if !haskey(attrs, key)
-            attrs[key] = new_attrs[key]
-        else
-            update_attributes_inplace!(attrs[key], new_attrs[key])
-        end
-    end
-end
-
-function update_attributes_inplace!(obs::Observable, new_value) 
-    obs.val = new_value
-end
-
-# TODO: make the below function an extension of Observables.notify
-"This function notifies attributes inplace and recursively."
-_notify!(obs::Observable) = notify(obs)
-_notify!(attrs::Attributes) = for (key, val) in attrs
-    _notify!(val)
 end

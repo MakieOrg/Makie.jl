@@ -118,6 +118,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj
 end
 
+Makie.Base.insert!(screen::GLMakie.Screen, scene::Scene, x::Makie.PlotList) = nothing
+
 function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     ShaderAbstractions.switch_context!(screen.glscreen)
     # poll inside functions to make wait on compile less prominent
