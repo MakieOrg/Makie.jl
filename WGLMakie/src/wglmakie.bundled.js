@@ -20319,6 +20319,9 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     renderer.setClearColor("#ffffff");
     renderer.setPixelRatio(pixelRatio1);
     renderer.setSize(width / pixelRatio1, height / pixelRatio1);
+    console.log(canvas);
+    console.log(width);
+    console.log(height);
     const mouse_callback = (x, y)=>comm.notify({
             mouseposition: [
                 x,
@@ -20382,15 +20385,14 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     canvas.addEventListener("contextmenu", (e)=>e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
     function resize_callback() {
-        const bodyStyle = window.getComputedStyle(document.body);
-        const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
-        const height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) + parseInt(bodyStyle.marginTop, 10) + parseInt(bodyStyle.marginBottom, 10);
-        const width = (window.innerWidth - width_padding) * pixelRatio1;
-        const height = (window.innerHeight - height_padding) * pixelRatio1;
+        const div = canvas.parentNode;
+        console.log(div);
+        console.log(div.offsetHeight * pixelRatio1);
+        console.log(div.offsetWidth * pixelRatio1);
         comm.notify({
             resize: [
-                width,
-                height
+                div.offsetWidth * pixelRatio1,
+                div.offsetHeight * pixelRatio1
             ]
         });
     }

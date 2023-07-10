@@ -142,7 +142,6 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     // `renderer.setSize` also updates `canvas` size
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width / pixelRatio, height / pixelRatio);
-
     const mouse_callback = (x, y) => comm.notify({ mouseposition: [x, y] });
     const notify_mouse_throttled = throttle_function(mouse_callback, 40);
 
@@ -217,23 +216,14 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     canvas.addEventListener("focusout", contextmenu);
 
     function resize_callback() {
-        const bodyStyle = window.getComputedStyle(document.body);
-        // Subtract padding that is added by VSCode
-        const width_padding =
-            parseInt(bodyStyle.paddingLeft, 10) +
-            parseInt(bodyStyle.paddingRight, 10) +
-            parseInt(bodyStyle.marginLeft, 10) +
-            parseInt(bodyStyle.marginRight, 10);
-        const height_padding =
-            parseInt(bodyStyle.paddingTop, 10) +
-            parseInt(bodyStyle.paddingBottom, 10) +
-            parseInt(bodyStyle.marginTop, 10) +
-            parseInt(bodyStyle.marginBottom, 10);
-        const width = (window.innerWidth - width_padding) * pixelRatio;
-        const height = (window.innerHeight - height_padding) * pixelRatio;
-
+        const div = canvas.parentNode;
         // Send the resize event to Julia
-        comm.notify({ resize: [width, height] });
+        comm.notify({
+            resize: [
+                div.offsetWidth * pixelRatio,
+                div.offsetHeight * pixelRatio,
+            ],
+        });
     }
     if (resize_to_body) {
         const resize_callback_throttled = throttle_function(resize_callback, 100);
