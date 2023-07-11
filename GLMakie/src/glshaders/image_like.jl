@@ -31,11 +31,11 @@ end
 """
 A matrix of Intensities will result in a contourf kind of plot
 """
-function draw_heatmap(screen, main, data::Dict)
+function draw_heatmap(screen, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
     @gen_defaults! data begin
-        intensity = main => Texture
+        intensity = nothing => Texture
         color_map = nothing => Texture
         color_norm = nothing
         transparency = false

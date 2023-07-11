@@ -38,6 +38,7 @@ function draw_mesh(screen, data::Dict)
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer
+        normals = nothing => GLBuffer
         shading = true
         backlight = 0f0
         vertex_color = nothing => GLBuffer

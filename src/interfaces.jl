@@ -25,8 +25,7 @@ function calculated_attributes!(T::Type{<: Mesh}, plot)
 end
 
 function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
-    plot[:color] = plot[3]
-    color_and_colormap!(plot)
+    color_and_colormap!(plot, plot[3])
 end
 
 function calculated_attributes!(::Type{<: Surface}, plot)

@@ -12,6 +12,23 @@ function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"col
     )
 end
 
+function Makie.el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
+    T32 = Makie.float32type(T)
+    T32 === T && return x
+    data = Makie.el32convert(x.data)
+    return Sampler{T32,N,typeof(data)}(
+        data, x.minfilter, x.magfilter,
+        x.repeat,
+        x.anisotropic,
+        x.color_swizzel,
+        ShaderAbstractions.ArrayUpdater(data, x.updates.update)
+    )
+end
+
+Makie.to_color(sampler::Sampler) = el32convert(sampler)
+
+Makie.assemble_colors(::Sampler, color, plot) =  Observable(el32convert(color[]))
+
 gpuvec(x) = GPUVector(GLBuffer(x))
 
 to_range(x, y) = to_range.((x, y))
@@ -98,6 +115,12 @@ function handle_intensities!(attributes, plot)
     return
 end
 
+function get_space(x)
+    is_fast_pixel = to_value(get(x, :marker, nothing)) isa FastPixel
+    is_fast_pixel && return x.space
+    return haskey(x, :markerspace) ? x.markerspace : x.space
+end
+
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
@@ -131,7 +154,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         gl_attributes[:track_updates] = screen.config.render_on_demand
 
         handle_intensities!(gl_attributes, x)
-        connect_camera!(x, gl_attributes, scene.camera, haskey(x, :markerspace) ? x.markerspace : x.space)
+        connect_camera!(x, gl_attributes, scene.camera, get_space(x))
 
         robj = robj_func(gl_attributes)
 
@@ -141,7 +164,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         robj
     end
     push!(screen, scene, robj)
-    robj
+    return robj
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Combined)
@@ -252,13 +275,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
         end
 
         if marker[] isa FastPixel
-            # connect camera
+            if haskey(gl_attributes, :intensity)
+                gl_attributes[:color] = pop!(gl_attributes, :intensity)
+            end
             filter!(gl_attributes) do (k, v,)
                 k in (:color_map, :color, :color_norm, :scale, :model, :projectionview, :visible)
-            end
-            if !(gl_attributes[:color][] isa AbstractVector{<: Number})
-                delete!(gl_attributes, :color_norm)
-                delete!(gl_attributes, :color_map)
             end
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
@@ -415,12 +436,12 @@ xy_convert(x::AbstractArray{Float32}, n) = copy(x)
 xy_convert(x::AbstractArray, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
-function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
-    return cached_robj!(screen, scene, x) do gl_attributes
-        t = Makie.transform_func_obs(x)
-        mat = x[3]
-        space = x.space # needs to happen before connect_camera! call
-        xypos = map(t, x[1], x[2], space) do t, x, y, space
+function draw_atomic(screen::Screen, scene::Scene, heatmap::Heatmap)
+    return cached_robj!(screen, scene, heatmap) do gl_attributes
+        t = Makie.transform_func_obs(heatmap)
+        mat = heatmap[3]
+        space = heatmap.space # needs to happen before connect_camera! call
+        xypos = map(t, heatmap[1], heatmap[2], space) do t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
@@ -448,13 +469,14 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
         end
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        if !(to_value(mat) isa ShaderAbstractions.Sampler)
-            tex = Texture(el32convert(mat), minfilter = interp)
+        intensity = haskey(gl_attributes, :intensity) ? pop!(gl_attributes, :intensity) : pop!(gl_attributes, :color)
+        if intensity isa ShaderAbstractions.Sampler
+            gl_attributes[:intensity] = to_value(intensity)
         else
-            tex = to_value(mat)
+            gl_attributes[:intensity] = Texture(el32convert(intensity); minfilter=interp)
         end
-        pop!(gl_attributes, :color)
-        return draw_heatmap(screen, tex, gl_attributes)
+
+        return draw_heatmap(screen, gl_attributes)
     end
 end
 
@@ -474,10 +496,12 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
             return 1.0f0 .- Vec2f(uv[2], uv[1])
         end
         gl_attributes[:shading] = false
+        _interp = to_value(pop!(gl_attributes, :interpolate, true))
+        interp = _interp ? :linear : :nearest
         if haskey(gl_attributes, :intensity)
-            gl_attributes[:image] = pop!(gl_attributes, :intensity)
+            gl_attributes[:image] = Texture(pop!(gl_attributes, :intensity); minfilter=interp)
         else
-            gl_attributes[:image] = pop!(gl_attributes, :color)
+            gl_attributes[:image] = Texture(pop!(gl_attributes, :color); minfilter=interp)
         end
         return draw_mesh(screen, gl_attributes)
     end
@@ -485,7 +509,8 @@ end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     # signals not supported for shading yet
-    gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
+    shading = to_value(pop!(gl_attributes, :shading))
+    gl_attributes[:shading] = shading
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
@@ -526,6 +551,9 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     gl_attributes[:faces] = lift(x-> decompose(GLTriangleFace, x), mesh)
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
+    end
+    if hasproperty(to_value(mesh), :normals) && shading
+        gl_attributes[:normals] = lift(decompose_normals, mesh)
     end
     return draw_mesh(screen, gl_attributes)
 end

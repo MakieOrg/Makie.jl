@@ -176,7 +176,7 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
     end
 end
 
-struct ColorMap{N, T<:AbstractArray{<:Number, N}}
+struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
     color::Observable{T}
     colormap::Observable{Vector{RGBAf}}
     scale::Observable{Function}
@@ -188,7 +188,7 @@ struct ColorMap{N, T<:AbstractArray{<:Number, N}}
     categorical::Observable{Bool}
     # scaled attributes
     colorrange_scaled::Observable{Vec2f}
-    color_scaled::Observable{Array{Float32, N}}
+    color_scaled::Observable{T2}
 end
 
 function assemble_colors(::T, color, plot) where {N, T<:AbstractArray{<:Number, N}}
@@ -236,7 +236,7 @@ function assemble_colors(::T, color, plot) where {N, T<:AbstractArray{<:Number, 
     color_scaled = lift(color_tight, colorscale; ignore_equal_values=true) do color, scale
         return el32convert(apply_scale(scale, color))
     end
-    return ColorMap{N, T}(
+    return ColorMap{N, T, typeof(color_scaled[])}(
         color_tight,
         colormap,
         colorscale,

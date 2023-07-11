@@ -102,7 +102,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Texture
-        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color        = nothing => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
