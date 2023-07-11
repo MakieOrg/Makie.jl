@@ -45,21 +45,19 @@ function three_display(session::Session, scene::Scene; screen_config...)
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
-    canvas = DOM.um("canvas"; tabindex="0")
-    wrapper = DOM.div(canvas)
+    canvas = DOM.m("canvas"; tabindex="0", style="display: block")
+    wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = JSServe.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
     $(WGL).then(WGL => {
-        // well.... not nice, but can't deal with the `Promise` in all the other functions
-        window.WGLMakie = WGL
-        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
+        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(ta), $(config.framerate), $(config.resize_to_body))
         $(done_init).notify(true)
     })
     """)
-    on(done_init) do val
+    on(session, done_init) do val
         window_open[] = true
     end
     connect_scene_events!(scene, comm)

@@ -92,6 +92,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
+    uniform_dict[:shading] = plot.shading
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
