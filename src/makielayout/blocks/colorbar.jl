@@ -26,27 +26,22 @@ function colorbar_check(keys, kwargs_keys)
 end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    colorbar_check((:colormap, :limits), keys(kwargs))
+    # colorbar_check((:colormap, :limits), keys(kwargs))
+    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa ColorMap
+        cmap = plot.calculated_colors[]
+        scale = cmap.scale
+    else
+        cmap = plot
+        scale = plot.colorscale
+    end
 
     Colorbar(
         fig_or_scene;
-        colormap = plot.colormap,
-        limits = plot.colorrange,
-        scale = plot.colorscale,
-        kwargs...
-    )
-end
-
-function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
-    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
-
-    Colorbar(
-        fig_or_scene;
-        colormap = heatmap.colormap,
-        limits = heatmap.colorrange,
-        highclip = heatmap.highclip,
-        lowclip = heatmap.lowclip,
-        scale = heatmap.colorscale,
+        colormap=cmap.colormap,
+        limits=cmap.colorrange,
+        scale=scale,
+        highclip=cmap.highclip,
+        lowclip=cmap.lowclip,
         kwargs...
     )
 end
@@ -167,7 +162,6 @@ function initialize_block!(cb::Colorbar)
     # this should solve most white-line issues
 
     # for categorical colormaps we make a number of rectangle polys
-
     rects_and_colors = lift(blockscene, barbox, cb.vertical, steps, cgradient, cb.scale,
                             limits) do bbox, v, steps, gradient, scale, lims
 
@@ -237,7 +231,7 @@ function initialize_block!(cb::Colorbar)
     end
 
     highclip_tri_color = lift(blockscene, cb.highclip) do hc
-        to_color(isnothing(hc) ? :transparent : hc)
+        to_color(hc isa Automatic || isnothing(hc) ? :transparent : hc)
     end
 
     highclip_tri_poly = poly!(blockscene, highclip_tri, color = highclip_tri_color,
@@ -259,7 +253,7 @@ function initialize_block!(cb::Colorbar)
     end
 
     lowclip_tri_color = lift(blockscene, cb.lowclip) do lc
-        to_color(isnothing(lc) ? :transparent : lc)
+        to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc)
     end
 
     lowclip_tri_poly = poly!(blockscene, lowclip_tri, color = lowclip_tri_color,

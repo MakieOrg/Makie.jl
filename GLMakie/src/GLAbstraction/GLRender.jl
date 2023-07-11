@@ -56,7 +56,7 @@ a lot of objects.
 """
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     renderobject.requires_update = false
-    
+
     if renderobject.visible
         renderobject.prerenderfunction()
         program = vertexarray.program

@@ -251,8 +251,12 @@ function assemble_colors(::T, color, plot) where {N, T<:AbstractArray{<:Number, 
     )
 end
 
+function to_color(c::ColorMap)
+    return numbers_to_colors(c.color_scaled[], c.colormap[], identity, c.colorrange_scaled[], lowclip(c)[], highclip(c)[], c.nan_color[])
+end
+
 function assemble_colors(colortype, color, plot)
-    return lift(plot, color, plot.alpha; ignore_equal_values=true) do color, a
+    return lift(plot, color, plot.alpha) do color, a
         if a < 1.0
             return broadcast(c-> RGBAf(Colors.color(c), Colors.alpha(c) * a), to_color(color))
         else

@@ -223,7 +223,6 @@ function draw_scatter(screen, (marker, position), data)
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
-
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)

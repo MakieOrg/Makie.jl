@@ -130,7 +130,6 @@ end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
-    color_node = plot.calculated_colors
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
@@ -147,15 +146,15 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         return Int[length(coordinates(m)) for m in meshes]
     end
 
-    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors}}()
+    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors, Float32}}()
 
-    map!(plot, mesh_colors, color_node, num_meshes) do colors, num_meshes
+    map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
-        c_converted = to_color(colors)
-        if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)
-            result = similar(c_converted, sum(num_meshes))
+        if colors isa AbstractVector && length(colors) == length(num_meshes)
+            ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)
+            result = similar(ccolors, float32type(ccolors), sum(num_meshes))
             i = 1
-            for (cs, len) in zip(c_converted, num_meshes)
+            for (cs, len) in zip(ccolors, num_meshes)
                 for j in 1:len
                     result[i] = cs
                     i += 1
@@ -167,7 +166,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         else
             # If we have colors per vertex, we need to interpolate in fragment shader
             attributes[:interpolate_in_fragment_shader] = true
-            return c_converted
+            return to_color(colors)
         end
     end
     attributes[:color] = mesh_colors

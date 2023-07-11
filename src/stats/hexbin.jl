@@ -19,14 +19,17 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 """
 @recipe(Hexbin) do scene
     return Attributes(;
-                      colormap=theme(scene, :colormap),
-                      colorscale=identity,
-                      colorrange=Makie.automatic,
-                      bins=20,
-                      cellsize=nothing,
-                      threshold=1,
-                      strokewidth=0,
-                      strokecolor=:black)
+        colormap=theme(scene, :colormap),
+        colorscale=identity,
+        colorrange=Makie.automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+        bins=20,
+        cellsize=nothing,
+        threshold=1,
+        strokewidth=0,
+        strokecolor=:black)
 end
 
 function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
@@ -94,7 +97,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         y_diff = yma - ymi
 
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy =
-            spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)                                                                     
+            spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -119,7 +122,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             is_grid1 = d1 < d2
 
             # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
-            
+
             id = if is_grid1
                 (
                     cld(dvx, 2),
@@ -193,6 +196,9 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     color=count_hex,
                     colormap=hb.colormap,
                     colorscale=hb.colorscale,
+                    lowclip=hb.lowclip,
+                    highclip=hb.highclip,
+                    nan_color=hb.nan_color,
                     marker=hexmarker,
                     markersize=markersize,
                     markerspace=:data,

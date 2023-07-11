@@ -277,7 +277,6 @@ end
 
 _mean(xs) = sum(xs) / length(xs) # skip Statistics import
 
-
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
@@ -455,7 +454,6 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
             tex = to_value(mat)
         end
         pop!(gl_attributes, :color)
-
         return draw_heatmap(screen, tex, gl_attributes)
     end
 end
@@ -483,13 +481,6 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
         end
         return draw_mesh(screen, gl_attributes)
     end
-end
-
-function update_positions(mesh::GeometryBasics.Mesh, positions)
-    points = coordinates(mesh)
-    attr = GeometryBasics.attributes(points)
-    delete!(attr, :position) # position == metafree(points)
-    return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
@@ -520,7 +511,13 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     end
 
     if haskey(gl_attributes, :intensity)
-        gl_attributes[:vertex_color] = pop!(gl_attributes, :intensity)
+        intensity = pop!(gl_attributes, :intensity)
+        if intensity[] isa Matrix
+            gl_attributes[:image] = Texture(intensity, minfilter = interp)
+        else
+            gl_attributes[:vertex_color] = intensity
+        end
+        gl_attributes[:color] = nothing
     end
 
     gl_attributes[:vertices] = lift(transfunc, mesh, space) do t, mesh, space

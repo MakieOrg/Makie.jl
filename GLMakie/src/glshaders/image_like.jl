@@ -36,12 +36,8 @@ function draw_heatmap(screen, main, data::Dict)
     to_opengl_mesh!(data, primitive)
     @gen_defaults! data begin
         intensity = main => Texture
-        nan_color = RGBAf(1, 0, 0, 1)
-        highclip = RGBAf(0, 0, 0, 0)
-        lowclip = RGBAf(0, 0, 0, 0)
         color_map = nothing => Texture
         color_norm = nothing
-        stroke_color = RGBA{Float32}(0,0,0,0)
         transparency = false
         shader = GLVisualizeShader(
             screen,
