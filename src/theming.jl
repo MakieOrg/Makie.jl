@@ -109,7 +109,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
 
     WGLMakie = Attributes(
-        framerate = 30.0
+        framerate = 30.0,
+        resize_to_body = false
     ),
 
     RPRMakie = Attributes(
