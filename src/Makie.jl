@@ -49,7 +49,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 import TriplotBase
-import DelaunayTriangulation as DelTri 
+import DelaunayTriangulation as DelTri
 import Setfield
 import REPL
 import MacroTools
@@ -331,6 +331,6 @@ export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatte
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
-# include("precompiles.jl")
+include("precompiles.jl")
 
 end # module

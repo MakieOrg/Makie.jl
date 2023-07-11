@@ -56,6 +56,6 @@ end
 
 Base.@deprecate set_window_config!(; screen_config...) GLMakie.activate!(; screen_config...)
 
-# include("precompiles.jl")
+include("precompiles.jl")
 
 end
