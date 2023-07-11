@@ -102,6 +102,9 @@ function connect_scene_events!(scene::Scene, comm::Observable)
                     e.keyboardbutton[] = KeyEvent(code_to_keyboard(keyup), Keyboard.release)
                 end
             end
+            @handle msg.resize begin
+                resize!(scene, tuple(resize...))
+            end
         catch err
             @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
         end
