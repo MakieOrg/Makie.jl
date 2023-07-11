@@ -110,7 +110,7 @@ function stack_grouped_from_to(i_stack, y, grp)
     from = Array{Float64}(undef, length(y))
     to   = Array{Float64}(undef, length(y))
 
-    last_pos = any(y .> 0)
+    last_pos = any(y .> 0) || all(y .== 0)
     is_pos = map(y) do v
         last_pos = iszero(v) ? last_pos : v > 0
     end
