@@ -151,11 +151,11 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primi
     return numbers_to_colors(numbers, colormap, colorscale, colorrange, lowclip, highclip, nan_color)
 end
 
-function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number},
+function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
                            colormap, colorscale, colorrange::Vec2,
                            lowclip::Union{Automatic,RGBAf},
                            highclip::Union{Automatic,RGBAf},
-                           nan_color::RGBAf)::Union{Vector{RGBAf},RGBAf}
+                           nan_color::RGBAf)::Union{Array{RGBAf, N},RGBAf} where {N}
     cmin, cmax = colorrange
     scaled_cmin = apply_scale(colorscale, cmin)
     scaled_cmax = apply_scale(colorscale, cmax)

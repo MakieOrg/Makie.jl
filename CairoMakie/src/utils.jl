@@ -122,7 +122,8 @@ to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 ########################################
 
 function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
-    return numbers_to_colors(colors, plot_object)
+    cmap = Makie.assemble_colors(colors, Observable(colors), plot_object)
+    return to_color(to_value(cmap))
 end
 
 function to_cairo_color(color::Makie.AbstractPattern, plot_object)
@@ -147,40 +148,10 @@ end
 #     Image/heatmap -> ARGBSurface     #
 ########################################
 
-function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    to_cairo_image(to_rgba_image(img, attributes), attributes)
-end
 
-function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+to_cairo_image(img::AbstractMatrix{<: Colorant}) =  to_cairo_image(to_uint32_color.(img))
 
-    nan_color = Makie.to_color(nan_color)
-    lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
-    highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
-
-    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
-end
-
-to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
-
-function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
-    vmin, vmax = colorrange
-    if isnan(pixel)
-        RGBAf(nan_color)
-    elseif pixel < vmin && !isnothing(lowclip)
-        RGBAf(lowclip)
-    elseif pixel > vmax && !isnothing(highclip)
-        RGBAf(highclip)
-    else
-        RGBAf(Makie.interpolated_getindex(colormap, pixel, colorrange))
-    end
-end
-
-function to_cairo_image(img::AbstractMatrix{<: Colorant}, attributes)
-    to_cairo_image(to_uint32_color.(img), attributes)
-end
-
-function to_cairo_image(img::Matrix{UInt32}, attributes)
+function to_cairo_image(img::Matrix{UInt32})
     # we need to convert from column-major to row-major storage,
     # therefore we permute x and y
     return Cairo.CairoARGBSurface(permutedims(img))
@@ -223,10 +194,8 @@ function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
     return color_or_nothing(to_value(get(attributes, attribute, nothing)))
 end
 
-function per_face_colors(
-        color, colormap, colorrange, matcap, faces, normals, uv,
-        lowclip=nothing, highclip=nothing, nan_color=nothing
-    )
+function per_face_colors(_color, matcap, faces, normals, uv)
+    color = to_color(_color)
     if !isnothing(matcap)
         wsize = reverse(size(matcap))
         wh = wsize .- 1
@@ -238,37 +207,21 @@ function per_face_colors(
         return FaceIterator(cvec, faces)
     elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
-    elseif color isa AbstractArray
-        if color isa AbstractVector{<: Colorant}
-            return FaceIterator(color, faces)
-        elseif color isa AbstractArray{<: Number}
-            low, high = extrema(colorrange)
-            cvec = map(color) do c
-                if isnan(c) && nan_color !== nothing
-                    return nan_color
-                elseif c < low && lowclip !== nothing
-                    return lowclip
-                elseif c > high && highclip !== nothing
-                    return highclip
-                else
-                    Makie.interpolated_getindex(colormap, c, colorrange)
-                end
-            end
-            return FaceIterator(cvec, faces)
-        elseif color isa Makie.AbstractPattern
-            # let next level extend and fill with CairoPattern
-            return color
-        elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
-            wsize = reverse(size(color))
-            wh = wsize .- 1
-            cvec = map(uv) do uv
-                x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
-                return color[end - (y - 1), x]
-            end
-            # TODO This is wrong and doesn't actually interpolate
-            # Inside the triangle sampling the color image
-            return FaceIterator(cvec, faces)
+    elseif color isa AbstractVector{<: Colorant}
+        return FaceIterator(color, faces)
+    elseif color isa Makie.AbstractPattern
+        # let next level extend and fill with CairoPattern
+        return color
+    elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
+        wsize = reverse(size(color))
+        wh = wsize .- 1
+        cvec = map(uv) do uv
+            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+            return color[end - (y - 1), x]
         end
+        # TODO This is wrong and doesn't actually interpolate
+        # Inside the triangle sampling the color image
+        return FaceIterator(cvec, faces)
     end
     error("Unsupported Color type: $(typeof(color))")
 end

@@ -609,8 +609,8 @@ end
 @reference_test "colorscale (scatter)" begin
     xs = range(0, 10; length = 30)
     ys = 0.5 .* sin.(xs)
-    markersize = range(5, 30; length = 30)
-    color = 1:30
+    color = (1:30) .^ 2
+    markersize = 100
     fig = Figure()
     scatter(fig[1, 1], xs, ys; markersize, color, colorscale = identity)
     scatter(fig[2, 1], xs, ys; markersize, color, colorscale = log10)
@@ -729,7 +729,7 @@ end
     y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
     z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.* RNG.randn.()
 
-    inner = [n:-1:1; n] # clockwise inner 
+    inner = [n:-1:1; n] # clockwise inner
     outer = [(n+1):(2n); n+1] # counter-clockwise outer
     boundary_nodes = [[outer], [inner]]
     tri = DelaunayTriangulation.triangulate([x'; y'], boundary_nodes = boundary_nodes)
@@ -744,16 +744,16 @@ end
     [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
     [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
     [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
-    ]  
+    ]
     curve_2 = [
         [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
         [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
         [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
-    ] 
+    ]
     curve_3 = [
         [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
         (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
-    ] 
+    ]
     curves = [curve_1, curve_2, curve_3]
     points = [
         (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
