@@ -74,7 +74,8 @@ function handle_intensities!(attributes, plot)
     color = plot.calculated_colors
     if color[] isa Makie.ColorMap
         attributes[:intensity] = color[].color_scaled
-        attributes[:color_map] = color[].colormap
+        interp = color[].categorical[] ? :nearest : :linear
+        attributes[:color_map] = Sampler(color[].colormap; minfilter=interp)
         attributes[:color_norm] = color[].colorrange_scaled
         attributes[:nan_color] = color[].nan_color
         attributes[:highclip] = Makie.highclip(color[])
