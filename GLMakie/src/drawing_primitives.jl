@@ -3,31 +3,6 @@ using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
 Makie.el32convert(x::GLAbstraction.Texture) = x
-Makie.convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
-function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
-    ShaderAbstractions.Sampler(
-        el32convert(s.data), minfilter = s.minfilter, magfilter = s.magfilter,
-        x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
-        anisotropic = s.anisotropic, color_swizzel = s.color_swizzel
-    )
-end
-
-function Makie.el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
-    T32 = Makie.float32type(T)
-    T32 === T && return x
-    data = Makie.el32convert(x.data)
-    return Sampler{T32,N,typeof(data)}(
-        data, x.minfilter, x.magfilter,
-        x.repeat,
-        x.anisotropic,
-        x.color_swizzel,
-        ShaderAbstractions.ArrayUpdater(data, x.updates.update)
-    )
-end
-
-Makie.to_color(sampler::Sampler) = el32convert(sampler)
-
-Makie.assemble_colors(::Sampler, color, plot) =  Observable(el32convert(color[]))
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 

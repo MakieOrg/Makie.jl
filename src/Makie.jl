@@ -37,6 +37,7 @@ using Statistics
 using MakieCore
 using OffsetArrays
 using Downloads
+using ShaderAbstractions
 
 import RelocatableFolders
 import StatsBase
