@@ -55,10 +55,10 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
     return
 end
 
-function draw_mesh(mscene::Scene, per_vertex, plot, uniforms)
+function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
     color = plot.calculated_colors
-    handle_color!(plot, uniforms, per_vertex; permute_tex=false)
+    handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
     get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
@@ -120,5 +120,5 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     attributes[:faces] = faces
     attributes[:positions] = positions
 
-    return draw_mesh(scene, attributes, plot, uniforms)
+    return draw_mesh(scene, attributes, plot, uniforms; permute_tex=false)
 end
