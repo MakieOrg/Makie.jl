@@ -276,9 +276,15 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         positions = handle_view(x[1], data)
         space = get!(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(x, data, scene.camera)
-        transform_func = transform_func_obs(x)
 
+        # Tweak things for px_per_unit
+        resolution = pop!(data, :resolution)
+        px_per_unit = data[:px_per_unit]
+        data[:resolution] = map((ppu, res) -> ppu .* res, px_per_unit, resolution)
+
+        transform_func = transform_func_obs(x)
         ls = to_value(linestyle)
+
         if isnothing(ls)
             data[:pattern] = ls
             data[:fast] = true
@@ -286,7 +292,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
+            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
+                ppu * _mean(lw) .* ls
+            end
             data[:fast] = false
 
             pvm = map(*, data[:projectionview], data[:model])
@@ -311,13 +319,16 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
+        px_per_unit = data[:px_per_unit]
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = nothing
             data[:fast] = true
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* _mean(to_value(linewidth))
+            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
+                ppu * _mean(lw) .* ls
+            end
             data[:fast] = false
         end
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
@@ -331,6 +342,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
             delete!(data, :color_norm)
         end
         connect_camera!(x, data, scene.camera)
+
+        # Tweak things for px_per_unit
+        resolution = pop!(data, :resolution)
+        data[:resolution] = map((ppu, res) -> ppu .* res, px_per_unit, resolution)
 
         return draw_linesegments(screen, positions, data)
     end
