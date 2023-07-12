@@ -191,7 +191,7 @@ struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
     color_scaled::Observable{T2}
 end
 
-function assemble_colors(::T, color, @nospecialize(plot)) where {N, T<:AbstractArray{<:Number, N}}
+function assemble_colors(::T, @nospecialize(color), @nospecialize(plot)) where {N, T<:AbstractArray{<:Number, N}}
     color_tight = convert(Observable{T}, color)
     colormap = Observable(RGBAf[]; ignore_equal_values=true)
     categorical = Observable(false)
@@ -268,7 +268,7 @@ end
 function assemble_colors(::Number, color, plot)
     plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value $intensity. Pass an explicit colorrange.")
 
-    cm = assemble_colors([0.5], lift(x -> [x], color), plot)
+    cm = assemble_colors([color[]], lift(x -> [x], color), plot)
     return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
                       cm.nan_color)
 end
