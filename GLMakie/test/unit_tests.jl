@@ -306,7 +306,6 @@ end
 
     # decrease the scale factor after-the-fact
     screen.scalefactor[] = 1
-    yield()
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
     # save images of different resolutions
