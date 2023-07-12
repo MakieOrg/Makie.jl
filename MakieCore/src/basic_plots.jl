@@ -657,9 +657,11 @@ end
 
         diffuse=0.4,
         specular=0.2,
-        shininess=32.0f0
+        shininess=32.0f0,
+        ssao = false
     )
 
+    default_theme!(attr)
     colormap_args!(attr, theme(scene, :colormap))
 
     attr[:fxaa] = automatic
