@@ -218,7 +218,7 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
 """
 @recipe(Surface, x, y, z) do scene
     attr = Attributes(;
-
+        color = nothing,
         backlight = 0f0,
         shading = true,
         invert_normals = false,
