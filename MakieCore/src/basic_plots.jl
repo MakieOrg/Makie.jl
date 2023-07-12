@@ -1,3 +1,28 @@
+default_theme(scene) = default_theme!(Attributes())
+
+function default_theme!(attr)
+    attr[:transformation] = automatic
+    attr[:model] = automatic
+    attr[:visible] = true
+    attr[:transparency] = false
+    attr[:overdraw] = false
+    attr[:ssao] = false
+    attr[:inspectable] = true
+    attr[:depth_shift] = 0.0f0
+    attr[:space] = :data
+    return attr
+end
+
+function colormap_args!(attr, colormap)
+    attr[:colormap] = colormap
+    attr[:colorscale] = identity
+    attr[:colorrange] = automatic
+    attr[:lowclip] = automatic
+    attr[:highclip] = automatic
+    attr[:nan_color] = :transparent
+    attr[:alpha] = 1.0
+    return attr
+end
 
 """
     `calculated_attributes!(trait::Type{<: AbstractPlot}, plot)`
@@ -42,20 +67,12 @@ Plots an image on range `x, y` (defaults to dimensions).
 - `space::Symbol = :data` sets the transformation space for the position of the image. See `Makie.spaces()` for possible inputs.
 """
 @recipe(Image, x, y, image) do scene
-    Attributes(;
-        default_theme(scene)...,
-        colormap = [:black, :white],
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha = 1.0,
+    attr = Attributes(;
         interpolate = true,
         fxaa = false,
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
+    default_theme!(attr)
+    return colormap_args!(attr, [:black, :white])
 end
 
 """
@@ -89,22 +106,15 @@ Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions)
 - `space::Symbol = :data` sets the transformation space for the position of the heatmap. See `Makie.spaces()` for possible inputs.
 """
 @recipe(Heatmap, x, y, values) do scene
-    Attributes(;
-        default_theme(scene)...,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha=1.0,
-        linewidth = 0.0,
+    attr = Attributes(;
+
         interpolate = false,
-        levels = 1,
+
+        linewidth = 0.0,
         fxaa = true,
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
+    default_theme!(attr)
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -151,26 +161,20 @@ Available algorithms are:
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 @recipe(Volume, x, y, z, volume) do scene
-    Attributes(;
-        default_theme(scene)...,
+    attr = Attributes(;
+
         algorithm = :mip,
         isovalue = 0.5,
         isorange = 0.05,
-        color = nothing,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = (0, 1),
-        lowclip=automatic,
-        highclip=automatic,
-        nan_color=:transparent,
-        alpha=1.0,
+
         fxaa = true,
-        inspectable = theme(scene, :inspectable),
-        space = :data,
+
         diffuse=0.4,
         specular=0.2,
         shininess=32.0f0
     )
+    default_theme!(attr, )
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -213,26 +217,19 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 @recipe(Surface, x, y, z) do scene
-    Attributes(;
-        default_theme(scene)...,
+    attr = Attributes(;
+
         backlight = 0f0,
-        color = nothing,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha=1.0,
         shading = true,
-        fxaa = true,
         invert_normals = false,
-        inspectable = theme(scene, :inspectable),
-        space = :data,
-        diffuse = 0.4,
-        specular = 0.2,
-        shininess = 32f0,
+        diffuse=0.4,
+        specular=0.2,
+        shininess=32.0f0,
+
+        fxaa = true,
     )
+    default_theme!(attr)
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -269,23 +266,17 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 - `space::Symbol = :data` sets the transformation space for line position. See `Makie.spaces()` for possible inputs.
 """
 @recipe(Lines, positions) do scene
-    Attributes(;
-        default_theme(scene)...,
-        linewidth = theme(scene, :linewidth),
+    attr = Attributes(;
+
         color = theme(scene, :linecolor),
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip=automatic,
-        highclip=automatic,
-        nan_color=:transparent,
-        alpha = 1.0,
+        linewidth = theme(scene, :linewidth),
+
         linestyle = nothing,
         fxaa = false,
         cycle = [:color],
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
+    default_theme!(attr, )
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -363,27 +354,21 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 @recipe(Mesh, mesh) do scene
-    Attributes(;
-        default_theme(scene)...,
+    attr = Attributes(;
         color = :black,
-        backlight = 0f0,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha = 1.0,
         interpolate = true,
-        shading = true,
+
         fxaa = true,
-        inspectable = theme(scene, :inspectable),
         cycle = [:color => :patchcolor],
-        space = :data,
+
+        shading = true,
+        backlight = 0f0,
         diffuse = 0.4,
         specular = 0.2,
         shininess = 32f0,
     )
+    default_theme!(attr)
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -427,16 +412,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 - `space::Symbol = :data` sets the transformation space for positions of markers. See `Makie.spaces()` for possible inputs.
 """
 @recipe(Scatter, positions) do scene
-    Attributes(;
-        default_theme(scene)...,
+    attr = Attributes(;
         color = theme(scene, :markercolor),
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha = 1.0,
 
         marker = theme(scene, :marker),
         markersize = theme(scene, :markersize),
@@ -448,15 +425,17 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 
         rotations = Billboard(),
         marker_offset = automatic,
+
         transform_marker = false, # Applies the plots transformation to marker
         distancefield = nothing,
         uv_offset_width = (0.0, 0.0, 0.0, 0.0),
-        space = :data,
         markerspace = :pixel,
+
         fxaa = false,
         cycle = [:color],
-        inspectable = theme(scene, :inspectable)
     )
+    default_theme!(attr)
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -503,30 +482,25 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 @recipe(MeshScatter, positions) do scene
-    Attributes(;
-        default_theme(scene)...,
+    attr = Attributes(;
         color = :black,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha = 1.0,
 
         marker = :Sphere,
         markersize = 0.1,
         rotations = 0.0,
-        backlight = 0f0,
         space = :data,
+
         shading = true,
-        fxaa = true,
-        inspectable = theme(scene, :inspectable),
-        cycle = [:color],
+        backlight = 0f0,
         diffuse = 0.4,
         specular = 0.2,
         shininess = 32f0,
+
+        fxaa = true,
+        cycle = [:color],
     )
+    default_theme!(attr)
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -568,19 +542,12 @@ Plots one or multiple texts passed via the `text` keyword.
 
 """
 @recipe(Text, positions) do scene
-    Attributes(;
-        default_theme(scene)...,
+    attr = Attributes(;
         color = theme(scene, :textcolor),
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha = 1.0,
 
         font = theme(scene, :font),
         fonts = theme(scene, :fonts),
+
         strokecolor = (:black, 0.0),
         strokewidth = 0,
         align = (:left, :bottom),
@@ -589,12 +556,13 @@ Plots one or multiple texts passed via the `text` keyword.
         position = (0.0, 0.0),
         justification = automatic,
         lineheight = 1.0,
-        space = :data,
         markerspace = :pixel,
+
         offset = (0.0, 0.0),
         word_wrap_width = -1,
-        inspectable = theme(scene, :inspectable)
     )
+    default_theme!(attr)
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 """
@@ -643,64 +611,60 @@ Plots polygons, which are defined by
 - `shading = false` enables lighting.
 """
 @recipe(Poly) do scene
-    Attributes(;
+    attr = Attributes(;
         color = theme(scene, :patchcolor),
-        visible = theme(scene, :visible),
-        strokecolor = theme(scene, :patchstrokecolor),
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        alpha = 1.0,
 
+        strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
+        linestyle = nothing,
+
         shading = false,
         fxaa = true,
-        linestyle = nothing,
-        overdraw = false,
-        transparency = false,
+
         cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
+    default_theme!(attr)
+    return colormap_args!(attr, theme(scene, :colormap))
 end
 
 @recipe(Wireframe) do scene
-    # default_theme(scene, LineSegments)
-    Attributes(;
-        default_theme(scene, LineSegments)...,
+    attr = Attributes(;
         depth_shift = -1f-5,
     )
+    return merge!(attr, default_theme(scene, LineSegments))
 end
 
 @recipe(Arrows, points, directions) do scene
-    attr = merge!(
-        default_theme(scene),
-        Attributes(
-            arrowhead = automatic,
-            arrowtail = automatic,
-            color = :black,
-            linecolor = automatic,
-            arrowsize = automatic,
-            linestyle = nothing,
-            align = :origin,
-            normalize = false,
-            lengthscale = 1f0,
-            colormap = theme(scene, :colormap),
-            colorscale = identity,
-            quality = 32,
-            inspectable = theme(scene, :inspectable),
-            markerspace = :pixel,
-            diffuse=0.4,
-            specular=0.2,
-            shininess=32.0f0
-        )
+    attr = Attributes(
+        color = :black,
+
+        arrowsize = automatic,
+        arrowhead = automatic,
+        arrowtail = automatic,
+
+        linecolor = automatic,
+        linestyle = nothing,
+        align = :origin,
+
+        normalize = false,
+        lengthscale = 1f0,
+
+        colorscale = identity,
+
+        quality = 32,
+        inspectable = theme(scene, :inspectable),
+        markerspace = :pixel,
+
+        diffuse=0.4,
+        specular=0.2,
+        shininess=32.0f0
     )
+
+    colormap_args!(attr, theme(scene, :colormap))
+
     attr[:fxaa] = automatic
     attr[:linewidth] = automatic
     # connect arrow + linecolor by default
     get!(attr, :arrowcolor, attr[:linecolor])
-    attr
+    return attr
 end

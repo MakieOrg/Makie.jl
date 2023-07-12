@@ -1,17 +1,3 @@
-function default_theme(scene)
-    return Attributes(
-        transformation = automatic,
-        model = automatic,
-        visible = true,
-        transparency = false,
-        overdraw = false,
-        ssao = false,
-        inspectable = true,
-        depth_shift = 0f0,
-        space = :data
-    )
-end
-
 function color_and_colormap!(plot, colors = plot.color)
     colors = assemble_colors(colors[], colors, plot)
     attributes(plot.attributes)[:calculated_colors] = colors
