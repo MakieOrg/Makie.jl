@@ -17,19 +17,21 @@ function converted_attribute(plot::AbstractPlot, key::Symbol)
     end
 end
 
-function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_color)
+function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_color; permute_tex=true)
     color = plot.calculated_colors
-
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
+
+    convert_text(x) = permute_tex ? lift(permutedims, x) : x
 
     if color[] isa Colorant
         uniforms[uniform_color_name] = color
     elseif color[] isa AbstractVector
         buffers[:color] = Buffer(color)
-    elseif color[] isa AbstractMatrix
-        uniforms[uniform_color_name] = Sampler(lift(permutedims, color); minfilter=minfilter)
-    elseif color[] isa AbstractPattern
+    elseif color[] isa Makie.AbstractPattern
         uniforms[:pattern] = true
+        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter=minfilter)
+    elseif color[] isa AbstractMatrix
+        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter=minfilter)
     elseif color[] isa Makie.ColorMap
         if color[].color_scaled[] isa AbstractMatrix
             uniforms[uniform_color_name] = Sampler(lift(permutedims, color[].color_scaled); minfilter=minfilter)
@@ -56,7 +58,7 @@ end
 function draw_mesh(mscene::Scene, per_vertex, plot, uniforms)
     filter!(kv -> !(kv[2] isa Function), uniforms)
     color = plot.calculated_colors
-    handle_color!(plot, uniforms, per_vertex)
+    handle_color!(plot, uniforms, per_vertex; permute_tex=false)
 
     get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
