@@ -279,7 +279,7 @@ function to_vector(x::ClosedInterval, len, T)
 end
 
 """
-A colorsampler maps numnber values from a certain range to values of a colormap
+A colorsampler maps number values from a certain range to values of a colormap
 ```
 x = ColorSampler(colormap, (0.0, 1.0))
 x[0.5] # returns color at half point of colormap
@@ -336,6 +336,80 @@ function surface_normals(x, y, z)
     return vec(map(normal, CartesianIndices(z)))
 end
 
+
+############################################################
+#            NaN-aware normal & mesh handling              #
+############################################################
+
+"""
+    nan_aware_orthogonal_vector(v1, v2, v3) where N
+
+Returns an un-normalized normal vector for the triangle formed by the three input points.
+Skips any combination of the inputs for which any point has a NaN component.
+"""
+function nan_aware_orthogonal_vector(v1, v2, v3)
+    (isnan(v1) || isnan(v2) || isnan(v3)) && return Vec3f(0)
+    return Vec3f(cross(v2 - v1, v3 - v1))
+end
+
+"""
+    nan_aware_normals(vertices::AbstractVector{<: Union{Point, PointMeta}}, faces::AbstractVector{F})
+
+Computes the normals of a mesh defined by `vertices` and `faces` (a vector of `GeometryBasics.NgonFace`) 
+which ignores all contributions from points with `NaN` components.  
+
+Equivalent in application to `GeometryBasics.normals`.
+"""
+function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+    normals_result = zeros(Vec3f, length(vertices))
+    free_verts = GeometryBasics.metafree.(vertices)
+
+    for face in faces
+
+        v1, v2, v3 = free_verts[face]
+        # we can get away with two edges since faces are planar.
+        n = nan_aware_orthogonal_vector(v1, v2, v3)
+
+        for i in 1:length(F)
+            fi = face[i]
+            normals_result[fi] = normals_result[fi] + n
+        end
+    end
+    normals_result .= GeometryBasics.normalize.(normals_result)
+    return normals_result
+end
+
+function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+    return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
+end
+
+
+function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D,T}}, faces::AbstractVector{F}) where {D,T,F<:NgonFace}
+    return nan_aware_normals(collect(GeometryBasics.metafree.(vertices)), faces)
+end
+
+function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
+    # crate a `Matrix{Point3}`
+    # ps = matrix_grid(identity, xs, ys, zs)
+    ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
+    # create valid tessellations (triangulations) for the mesh
+    # knowing that it is a regular grid makes this simple
+    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    # we use quad faces so that color handling is consistent
+    faces = decompose(QuadFace{Int}, rect)
+    # and remove quads that contain a NaN coordinate to avoid drawing triangles
+    faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
+    # create the uv (texture) vectors
+    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    # return a mesh with known uvs and normals.
+    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
+end
+
+
+############################################################
+#         Matrix grid method for surface handling          #
+############################################################
+
 """
     matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)::Vector{Point3f}
 
@@ -352,6 +426,10 @@ end
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
 end
+
+############################################################
+#                 Attribute key extraction                 #
+############################################################
 
 function extract_keys(attributes, keys)
     attr = Attributes()

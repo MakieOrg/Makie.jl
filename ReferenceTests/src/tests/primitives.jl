@@ -434,3 +434,17 @@ end
 
     scene
 end
+
+@reference_test "Surface with NaN points" begin
+    # prepare surface data
+    zs = [x^2 + y^2 for x in range(-2, 0, length=10), y in range(-2, 0, length=10)]
+    ns = copy(zs)
+    ns[4, 3:6] .= NaN
+    # plot surface
+    f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
+    # plot a wireframe so we can see what's going on, and in which cells.
+    m = Makie.surface2mesh(to_value.(p.converted)...)
+    scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
+    wireframe!(a, m, depth_shift = -1f-3, color = :black)
+    f
+end
