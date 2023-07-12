@@ -182,10 +182,13 @@ struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
     scale::Observable{Function}
     mapping::Observable{Union{Nothing, Vector{Float64}}}
     colorrange::Observable{Vec{2,Float64}}
+
     lowclip::Observable{Union{Automatic, RGBAf}} # Defaults to first color in colormap
     highclip::Observable{Union{Automatic, RGBAf}} # Defaults to last color in colormap
     nan_color::Observable{RGBAf}
+
     categorical::Observable{Bool}
+
     # scaled attributes
     colorrange_scaled::Observable{Vec2f}
     color_scaled::Observable{T2}
@@ -201,7 +204,7 @@ function assemble_colors(::T, @nospecialize(color), @nospecialize(plot)) where {
     function update_colors(cmap, a)
         colors = to_colormap(cmap)
         if a < 1.0
-            colors = map(c -> RGBAf(Colors.color(c), alpha(c) * a), cmap)
+            colors = map(c -> RGBAf(Colors.color(c), alpha(c) * a), colors)
         end
         colormap[] = colors
         categorical[] = cmap isa PlotUtils.CategoricalColorGradient

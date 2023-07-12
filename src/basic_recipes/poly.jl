@@ -11,19 +11,20 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
         plot, lift(triangle_mesh, plot, plot[1]),
-        color = plot[:color],
-        colormap = plot[:colormap],
-        colorscale = plot[:colorscale],
-        colorrange = plot[:colorrange],
-        lowclip = plot[:lowclip],
-        highclip = plot[:highclip],
-        nan_color = plot[:nan_color],
-        shading = plot[:shading],
-        visible = plot[:visible],
-        overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable],
-        transparency = plot[:transparency],
-        space = plot[:space]
+        color = plot.color,
+        colormap = plot.colormap,
+        colorscale = plot.colorscale,
+        colorrange=plot.colorrange,
+        alpha=plot.alpha,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        nan_color = plot.nan_color,
+        shading = plot.shading,
+        visible = plot.visible,
+        overdraw = plot.overdraw,
+        inspectable = plot.inspectable,
+        transparency = plot.transparency,
+        space = plot.space
     )
     wireframe!(
         plot, plot[1],
@@ -96,7 +97,8 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         colorrange = plot.colorrange,
         lowclip = plot.lowclip,
         highclip = plot.highclip,
-        nan_color = plot.nan_color,
+        nan_color=plot.nan_color,
+        alpha=plot.alpha,
         overdraw = plot.overdraw,
         fxaa = plot.fxaa,
         transparency = plot.transparency,
@@ -121,7 +123,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
 
     lines!(
         plot, outline, visible = plot.visible,
-        color = stroke, linestyle = plot.linestyle,
+        color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
         linewidth = plot.strokewidth, space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5
@@ -134,6 +136,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
         space = plot.space, ssao = plot.ssao,
+        alpha=plot.alpha,
         lowclip = get(plot, :lowclip, automatic),
         highclip = get(plot, :highclip, automatic),
         nan_color = get(plot, :nan_color, :transparent),
