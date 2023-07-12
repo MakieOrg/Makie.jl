@@ -26,7 +26,7 @@ function colorbar_check(keys, kwargs_keys)
 end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    # colorbar_check((:colormap, :limits), keys(kwargs))
+    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa ColorMap
         cmap = plot.calculated_colors[]
         scale = cmap.scale
