@@ -191,11 +191,11 @@ struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
     color_scaled::Observable{T2}
 end
 
-function assemble_colors(::T, color, plot) where {N, T<:AbstractArray{<:Number, N}}
+function assemble_colors(::T, color, @nospecialize(plot)) where {N, T<:AbstractArray{<:Number, N}}
     color_tight = convert(Observable{T}, color)
     colormap = Observable(RGBAf[]; ignore_equal_values=true)
     categorical = Observable(false)
-    colorscale = Observable{Function}(plot.colorscale[])
+    colorscale = convert(Observable{Function}, plot.colorscale)
     mapping = Observable{Union{Nothing, Vector{Float64}}}(nothing)
 
     function update_colors(cmap, a)
