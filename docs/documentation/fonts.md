@@ -42,7 +42,6 @@ Here's an example:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
 
 f = Figure(fontsize = 24, fonts = (; regular = "Dejavu", weird = "Blackchancery"))
 Axis(f[1, 1], title = "A title", xlabel = "An x label", xlabelfont = :weird)
