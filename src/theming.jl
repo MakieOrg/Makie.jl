@@ -55,8 +55,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
     patchstrokewidth = 0,
     resolution = (600, 450), # 4/3 aspect ratio
     visible = true,
-    axis = Attributes(),
-    axis3d = Attributes(),
+    Axis = Attributes(),
+    Axis3 = Attributes(),
     legend = Attributes(),
     axis_type = automatic,
     camera = automatic,
@@ -111,7 +111,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
 
     WGLMakie = Attributes(
-        framerate = 30.0
+        framerate = 30.0,
+        resize_to_body = false
     ),
 
     RPRMakie = Attributes(
