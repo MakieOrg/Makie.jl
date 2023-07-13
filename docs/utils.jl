@@ -444,3 +444,51 @@ function contenttable()
         end
     end
 end
+
+
+function lx_attrdocs(lxc, _)
+    type = getproperty(Makie, Symbol(Franklin.stent(lxc.braces[1])))
+
+    attrkeys = sort(collect(keys(Makie.default_attribute_values(type, nothing))))
+
+    io = IOBuffer()
+
+    for attrkey in attrkeys
+
+        docs = get(Makie._attribute_docs(type), attrkey, nothing)
+        examples = get(Makie.attribute_examples(type), attrkey, Makie.Example[])
+        default_str = Makie.attribute_default_expressions(type)[attrkey]
+
+        println(io, "### `$attrkey`")
+        println(io)
+        println(io, "Defaults to `$default_str`")
+        println(io)
+        
+        if docs === nothing
+            println(io, "No docstring defined for attribute `$attrkey`.")
+        else
+            println(io, docs)
+        end
+        println(io)
+
+        for example in examples
+            use_svg = (example.backend === :CairoMakie) && example.svg
+            option_bracket = use_svg ? "{svg = true}" : "{}"
+            println(io, "#### Example: $(example.name)")
+            println(io, "\\begin{examplefigure}$option_bracket")
+            println(io, "```julia")
+            println(io, "using $(example.backend_using)")
+            println(io, "using $(example.backend) # hide")
+            println(io, "$(example.backend).activate!() # hide")
+            println(io, example.code)
+            println(io, "```")
+            println(io, "\\end{examplefigure}")
+            println(io)
+        end
+        
+        println(io)
+    end
+
+    return String(take!(io))
+end
+
