@@ -5,11 +5,14 @@
 - GLMakie has gained support for HiDPI (aka Retina) screens.
   This also enables saving images with higher resolution than screen pixel dimensions.
   [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544)
-  
-## master
-
 - Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie. [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598)
 - Improved 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
+
+## master
+
+- Deprecated `flatten_plots` in favor of `collect_atomic_plots`. Using the new `collect_atomic_plots` fixed a bug in CairoMakie where the z-level of plots within recipes was not respected. [#2793](https://github.com/MakieOrg/Makie.jl/pull/2793)
+- Fixed incorrect line depth in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
+- Fixed incorrect line alpha in dense lines in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
 - Fixed DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002)
 - Added option `WGLMakie.activate!(resize_to_body=true)`, to make plots resize to the VSCode plotpane. Resizes to the HTML body element, so may work outside VSCode [#3044](https://github.com/MakieOrg/Makie.jl/pull/3044), [#3042](https://github.com/MakieOrg/Makie.jl/pull/3042).
 - Fixed DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002).
