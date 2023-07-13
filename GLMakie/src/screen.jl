@@ -106,7 +106,7 @@ mutable struct ScreenConfig
     end
 end
 
-const LAST_INLINE = Ref{Union{Makie.Automatic, Bool}}(Makie.automatic)
+const LAST_INLINE = Ref{Union{Makie.Automatic, Bool}}(false)
 
 """
     GLMakie.activate!(; screen_config...)

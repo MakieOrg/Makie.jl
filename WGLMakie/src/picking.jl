@@ -93,7 +93,7 @@ App() do session
     }
     \"\"\"
 
-    tooltip = WGLMakie.ToolTip(f, on_click_callback; plots=pl)
+    tooltip = WGL.ToolTip(f, on_click_callback; plots=pl)
     return DOM.div(f, tooltip)
 end
 ```
@@ -107,7 +107,7 @@ struct ToolTip
         if isnothing(plots)
             plots = scene.plots
         end
-        all_plots = WGLMakie.js_uuid.(filter!(x-> x.inspectable[], Makie.collect_atomic_plots(plots)))
+        all_plots = js_uuid.(filter!(x-> x.inspectable[], Makie.collect_atomic_plots(plots)))
         new(scene, callback, all_plots)
     end
 end
