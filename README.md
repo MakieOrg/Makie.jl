@@ -3,7 +3,7 @@
       <source media="(prefers-color-scheme: dark)" 
         srcset="/assets/makie_logo_canvas_dark.svg" >
       <img alt="Makie.jl logo" 
-        src="/assets/makie_logo_canvas.svg" >
+        src="/assets/makie_logo_canvas.svg" width="400">
     </picture>
 </div>
 
@@ -40,7 +40,7 @@ BibTeX entry:
   number = {65},
   pages = {3349},
   author = {Simon Danisch and Julius Krumbiegel},
-  title = {Makie.jl: Flexible high-performance data visualization for Julia},
+  title = {{Makie.jl}: Flexible high-performance data visualization for {Julia}},
   journal = {Journal of Open Source Software}
 }
 ```
