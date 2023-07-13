@@ -87,19 +87,19 @@ precision mediump sampler3D;
 
 out vec4 fragment_color;
 
-uniform vec3 diffuse;
-uniform float opacity;
+uniform vec4 color;
 
 in vec2 vUv;
 
 
 void main() {
 
-    fragment_color = vec4(0,0,0, 1.0);
+    fragment_color = color;
 }
 `;
 
 function create_line_material(uniforms) {
+    console.log(uniforms)
     return new THREE.RawShaderMaterial({
         uniforms: deserialize_uniforms(uniforms),
         vertexShader: LINES_VERT,
@@ -108,7 +108,23 @@ function create_line_material(uniforms) {
     });
 }
 
-function create_line_geometry(linepositions) {
+function create_line_geometry(linepositions, linesegments) {
+    const length = linepositions.length;
+    let points;
+    if (linesegments) {
+        points = linepositions;
+    } else {
+        points = new Float32Array(2 * length);
+
+        for (let i = 0; i < length; i += 2) {
+            points[2 * i] = linepositions[i];
+            points[2 * i + 1] = linepositions[i + 1];
+
+            points[2 * i + 2] = linepositions[i + 2];
+            points[2 * i + 3] = linepositions[i + 3];
+        }
+    }
+
     const geometry = new THREE.InstancedBufferGeometry();
 
     const instance_positions = [
@@ -124,11 +140,7 @@ function create_line_geometry(linepositions) {
     );
     geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
 
-    const instanceBuffer = new THREE.InstancedInterleavedBuffer(
-        linepositions,
-        4,
-        1
-    ); // xyz, xyz
+    const instanceBuffer = new THREE.InstancedInterleavedBuffer(points, 4, 1); // xyz, xyz
 
     geometry.setAttribute(
         "instanceStart",
@@ -143,17 +155,17 @@ function create_line_geometry(linepositions) {
     // don't use intersection / culling
     geometry.boundingSphere.radius = 10000000000000;
     geometry.frustumCulled = false;
-    geometry.instanceCount = linepositions.length / 2
+    geometry.instanceCount = points.length / 2;
 
     return geometry;
 }
 
 export function create_line(line_data) {
-    console.log(line_data);
-    const geometry = create_line_geometry(line_data.positions);
+    const geometry = create_line_geometry(
+        line_data.positions,
+        line_data.is_linesegments
+    );
     const material = create_line_material(line_data.uniforms);
-    console.log(geometry)
-    console.log(material);
     return new THREE.Mesh(geometry, material);
 }
 
@@ -331,7 +343,6 @@ export function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
     const identity = new THREE.Uniform(new THREE.Matrix4());
-
     if (plot_data.cam_space == "data") {
         plot_data.uniforms.view = cam.view;
         plot_data.uniforms.projection = cam.projection;

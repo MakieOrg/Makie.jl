@@ -19879,18 +19879,18 @@ precision mediump sampler3D;
 
 out vec4 fragment_color;
 
-uniform vec3 diffuse;
-uniform float opacity;
+uniform vec4 color;
 
 in vec2 vUv;
 
 
 void main() {
 
-    fragment_color = vec4(0,0,0, 1.0);
+    fragment_color = color;
 }
 `;
 function create_line_material(uniforms) {
+    console.log(uniforms);
     return new mod.RawShaderMaterial({
         uniforms: deserialize_uniforms(uniforms),
         vertexShader: LINES_VERT,
@@ -19898,7 +19898,20 @@ function create_line_material(uniforms) {
         transparent: true
     });
 }
-function create_line_geometry(linepositions) {
+function create_line_geometry(linepositions, linesegments) {
+    const length = linepositions.length;
+    let points;
+    if (linesegments) {
+        points = linepositions;
+    } else {
+        points = new Float32Array(2 * length);
+        for(let i = 0; i < length; i += 2){
+            points[2 * i] = linepositions[i];
+            points[2 * i + 1] = linepositions[i + 1];
+            points[2 * i + 2] = linepositions[i + 2];
+            points[2 * i + 3] = linepositions[i + 3];
+        }
+    }
     const geometry = new mod.InstancedBufferGeometry();
     const instance_positions = [
         -1,
@@ -19967,21 +19980,18 @@ function create_line_geometry(linepositions) {
     geometry.setIndex(index);
     geometry.setAttribute("position", new mod.Float32BufferAttribute(instance_positions, 3));
     geometry.setAttribute("uv", new mod.Float32BufferAttribute(uvs, 2));
-    const instanceBuffer = new mod.InstancedInterleavedBuffer(linepositions, 4, 1);
+    const instanceBuffer = new mod.InstancedInterleavedBuffer(points, 4, 1);
     geometry.setAttribute("instanceStart", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 0));
     geometry.setAttribute("instanceEnd", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 2));
     geometry.boundingSphere = new mod.Sphere();
     geometry.boundingSphere.radius = 10000000000000;
     geometry.frustumCulled = false;
-    geometry.instanceCount = linepositions.length / 2;
+    geometry.instanceCount = points.length / 2;
     return geometry;
 }
 function create_line(line_data) {
-    console.log(line_data);
-    const geometry = create_line_geometry(line_data.positions);
+    const geometry = create_line_geometry(line_data.positions, line_data.is_linesegments);
     const material = create_line_material(line_data.uniforms);
-    console.log(geometry);
-    console.log(material);
     return new mod.Mesh(geometry, material);
 }
 const scene_cache = {};
@@ -20128,6 +20138,7 @@ function on_next_insert(f) {
 function add_plot(scene, plot_data) {
     const cam = scene.wgl_camera;
     const identity = new mod.Uniform(new mod.Matrix4());
+    console.log(plot_data.cam_space);
     if (plot_data.cam_space == "data") {
         plot_data.uniforms.view = cam.view;
         plot_data.uniforms.projection = cam.projection;
@@ -20437,7 +20448,7 @@ function render_scene(scene, picking = false) {
     if (!scene.visible.value) {
         return true;
     }
-    renderer.autoClear = scene.clearscene;
+    renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t)=>t / pixelRatio1);

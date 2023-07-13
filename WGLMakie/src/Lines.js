@@ -161,6 +161,17 @@ function create_line_material(uniforms) {
 }
 
 function create_line_geometry(linepositions) {
+    const length = linepositions.length
+    const points = new Float32Array(2 * length);
+
+    for (let i = 0; i < length; i += 2) {
+        points[2 * i] = linepositions[i];
+        points[2 * i + 1] = linepositions[i + 1];
+
+        points[2 * i + 2] = linepositions[i + 2];
+        points[2 * i + 3] = linepositions[i + 3];
+    }
+
     const geometry = new THREE.InstancedBufferGeometry();
 
     const instance_positions = [
@@ -176,11 +187,7 @@ function create_line_geometry(linepositions) {
     );
     geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
 
-    const instanceBuffer = new THREE.InstancedInterleavedBuffer(
-        linepositions,
-        4,
-        1
-    ); // xyz, xyz
+    const instanceBuffer = new THREE.InstancedInterleavedBuffer(points, 4, 1); // xyz, xyz
 
     geometry.setAttribute(
         "instanceStart",
