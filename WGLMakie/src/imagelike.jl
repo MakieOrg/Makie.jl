@@ -62,11 +62,10 @@ function create_shader(mscene::Scene, plot::Volume)
     specular = lift(x -> convert_attribute(x, Key{:specular}()), plot.specular)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
 
+
+
     uniforms = Dict{Symbol, Any}(
-        :volumedata => Sampler(lift(Makie.el32convert, vol)),
         :modelinv => modelinv,
-        :colormap => Sampler(lift(to_colormap, plot.colormap)),
-        :colorrange => lift(Vec2f, plot.colorrange),
         :isovalue => lift(Float32, plot.isovalue),
         :isorange => lift(Float32, plot.isorange),
         :absorption => lift(Float32, get(plot, :absorption, Observable(1.0f0))),
@@ -84,6 +83,8 @@ function create_shader(mscene::Scene, plot::Volume)
         :picking => false,
         :object_id => UInt32(0)
     )
+
+    handle_color!(plot, uniforms, nothing, :volumedata; permute_tex=false)
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
 end
 

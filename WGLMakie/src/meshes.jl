@@ -33,11 +33,11 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
     elseif color[] isa AbstractMatrix
         uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter=minfilter)
     elseif color[] isa Makie.ColorMap
-        if color[].color_scaled[] isa AbstractMatrix
-            uniforms[uniform_color_name] = Sampler(lift(permutedims, color[].color_scaled); minfilter=minfilter)
-            uniforms[:color] = false
-        else
+        if color[].color_scaled[] isa AbstractVector
             buffers[:color] = Buffer(color[].color_scaled)
+        else
+            color_scaled = convert_text(color[].color_scaled)
+            uniforms[uniform_color_name] = Sampler(color_scaled; minfilter=minfilter)
         end
         uniforms[:colormap] = Sampler(color[].colormap)
         uniforms[:colorrange] = color[].colorrange_scaled
