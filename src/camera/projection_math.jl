@@ -329,6 +329,8 @@ function _space_to_space_matrix(cam::Camera, input::Symbol, output::Symbol)
     # identities
     if input in (:data, :transformed, :world) && output in (:data, :transformed, :world)
         return Mat4f(I)
+    elseif input == output
+        return Mat4f(I)
     
     # direct conversions (no calculations)
     elseif input === :world && output === :eye
