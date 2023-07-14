@@ -985,21 +985,32 @@ end
     f
 end
 
-@reference_test "Log y-scale histogram (barplot)" begin
+@reference_test "Log scale histogram (barplot)" begin
+    f = Figure()
     hist(
+        f[1, 1],
         RNG.randn(10^6); 
         axis=(; yscale=log2)
     )
-    current_figure()
-end
-
-@reference_test "Log y-scale histogram (barplot) with gap" begin
+    hist(
+        f[1, 2],
+        RNG.randn(10^6); 
+        axis=(; xscale=log2),
+        direction = :x
+    )
     # make a gap in histogram as edge case
     hist(
+        f[2, 1],
         filter!(x-> x<0 || x > 1.5, RNG.randn(10^6)); 
         axis=(; yscale=log10)
     )
-    current_figure()
+    hist(
+        f[2, 2],
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6)); 
+        axis=(; xscale=log10),
+        direction = :x
+    )
+    f
 end
 
 @reference_test "Stephist" begin
