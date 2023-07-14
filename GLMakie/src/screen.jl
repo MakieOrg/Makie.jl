@@ -106,7 +106,7 @@ mutable struct ScreenConfig
     end
 end
 
-const LAST_INLINE = Ref{Union{Makie.Automatic, Bool}}(Makie.automatic)
+const LAST_INLINE = Ref{Union{Makie.Automatic, Bool}}(false)
 
 """
     GLMakie.activate!(; screen_config...)
@@ -518,7 +518,7 @@ end
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
-        for cplot in Makie.flatten_plots(plot)
+        for cplot in Makie.collect_atomic_plots(plot)
             delete!(screen, scene, cplot)
         end
     else
@@ -919,7 +919,7 @@ function renderloop(screen)
 end
 
 function plot2robjs(screen::Screen, plot)
-    plots = Makie.flatten_plots(plot)
+    plots = Makie.collect_atomic_plots(plot)
     return map(x-> screen.cache[objectid(x)], plots)
 end
 
