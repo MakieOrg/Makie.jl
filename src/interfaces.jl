@@ -24,7 +24,7 @@ function color_and_colormap!(plot, intensity = plot[:color])
         get!(plot, :nan_color, RGBAf(0,0,0,0))
         if intensity[] isa Number
             plot[:colorrange][] isa Automatic &&
-                error("Cannot determine a colorrange automatically for single number color value $intens. Pass an explicit colorrange.")
+                error("Cannot determine a colorrange automatically for single number color value $intensity. Pass an explicit colorrange.")
             args = @converted_attribute plot (colorrange, lowclip, highclip, nan_color)
             plot[:color] = lift(numbers_to_colors, plot, intensity, colormap, args...)
             delete!(plot, :colorrange)
