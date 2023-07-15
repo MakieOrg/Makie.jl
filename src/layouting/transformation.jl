@@ -459,7 +459,7 @@ function inverse_transform(trans::Polar)
     return Makie.PointTrans{2}() do point
         typeof(point)(
             hypot(point[1], point[2]), 
-            -trans.direction * (atan(point[2], point[1]) - trans.theta_0)
+            mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
         )
     end
 end
