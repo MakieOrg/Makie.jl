@@ -45,9 +45,9 @@ function Makie.initialize_block!(po::PolarAxis)
             bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
-
-        max_width, max_height = max_widths
         
+        max_width, max_height = max_widths
+
         space_from_center = 0.5 .* widths(area)
         space_for_ticks = 2pad .+ (max_width, max_height)
         space_for_axis = space_from_center .- space_for_ticks
@@ -56,7 +56,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
     # Set up the title position
     title_position = map(
-            po.blockscene, pixelarea(po.scene), po.titlegap, po.titlealign
+            po.blockscene, scenearea, po.titlegap, po.titlealign
         ) do area, titlegap, titlealign
         calculate_polar_title_position(area, titlegap, titlealign)
     end
@@ -71,6 +71,7 @@ function Makie.initialize_block!(po::PolarAxis)
         align = @lift(($(po.titlealign), :center)),
         visible = po.titlevisible
     )
+    translate!(titleplot, 0, 0, 9001) # Make sure this draws on top of clip
 
     # We only need to update the title protrusion calculation when some parameter
     # which affects the glyph collection changes.  But, we don't want to update
@@ -309,19 +310,21 @@ function draw_axis!(po::PolarAxis, axis_radius)
         scale!(clipouter, 2 * Vec3f(radius, radius, 1))
     end
 
-    translate!.((spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 100)
-    translate!.((clipplot, clipouter), 0, 0, 99)
+    translate!.((spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 9000)
+    translate!.((clipplot, clipouter), 0, 0, 8990)
 
     return thetaticklabelplot
 end
 
 function calculate_polar_title_position(area, titlegap, align)
+    w, h = area.widths
+
     x::Float32 = if align === :center
-        area.origin[1] + area.widths[1] / 2
+        area.origin[1] + w / 2
     elseif align === :left
         area.origin[1]
     elseif align === :right
-        area.origin[1] + area.widths[1]
+        area.origin[1] + w
     else
         error("Title align $align not supported.")
     end
@@ -332,7 +335,12 @@ function calculate_polar_title_position(area, titlegap, align)
     #     0f0
     # end
 
-    yoffset::Float32 = top(area) + titlegap
+    # The scene area is a rectangle that can include a lot of empty space. With
+    # this we allow the title to draw in that empty space
+    mini = min(w, h)
+    h = top(area) - 0.5 * (h - mini)
+
+    yoffset::Float32 = h + titlegap
 
     return Point2f(x, yoffset)
 end
@@ -412,20 +420,22 @@ function setup_camera_matrices!(po::PolarAxis)
         return
     end
 
+    max_z = 10_000f0
+
     # update projection matrices
-    # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -100 ... 100)
+    # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -max_z ... max_z)
     on(po.blockscene, po.scene.px_area) do area
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
-        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
+        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
     on(po.blockscene, po.overlay.px_area) do area
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
-        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -100f0, 100f0)
+        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
     return axis_radius
