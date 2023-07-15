@@ -33,10 +33,12 @@ function Makie.initialize_block!(po::PolarAxis)
     # Outsource to `draw_axis` function
     thetaticklabelplot = draw_axis!(po, axis_radius)
 
-    # Handle protrusions
-    # TODO - what do these do again?
+    # Handle tick label spacing by axis radius adjustments
+    onany(
+            po.blockscene, thetaticklabelplot.plots[1].plots[1][1], 
+            po.thetaticklabelpad, po.overlay.px_area
+        ) do glyph_collections, pad, area
 
-    thetaticklabelprotrusions = map(thetaticklabelplot.plots[1].plots[1][1]) do glyph_collections
         # get maximum size of tick label (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
         for gc in glyph_collections
@@ -46,21 +48,17 @@ function Makie.initialize_block!(po::PolarAxis)
 
         max_width, max_height = max_widths
         
-        GridLayoutBase.RectSides(max_width, max_width, max_height, max_height)
-    end
-
-    onany(po.blockscene, thetaticklabelprotrusions, po.thetaticklabelpad, po.overlay.px_area) do rectsides, pad, area
         space_from_center = 0.5 .* widths(area)
-        space_for_ticks = 2pad .+ (rectsides.left, rectsides.bottom)
+        space_for_ticks = 2pad .+ (max_width, max_height)
         space_for_axis = space_from_center .- space_for_ticks
         axis_radius[] = max(0, minimum(space_for_axis) / space_from_center[1])
     end
 
     # Set up the title position
     title_position = map(
-            po.blockscene, pixelarea(po.scene), po.titlegap, po.titlealign, thetaticklabelprotrusions
-        ) do area, titlegap, titlealign, thetatlprot
-        calculate_polar_title_position(area, titlegap, titlealign, thetatlprot)
+            po.blockscene, pixelarea(po.scene), po.titlegap, po.titlealign
+        ) do area, titlegap, titlealign
+        calculate_polar_title_position(area, titlegap, titlealign)
     end
 
     titleplot = text!(
@@ -82,12 +80,15 @@ function Makie.initialize_block!(po::PolarAxis)
         po.blockscene,
         po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize
     )
-    #
-    protrusions = map(po.blockscene, thetaticklabelprotrusions, title_update_obs) do thetatlprot, _
+    
+    # Protrusions are space reserved for ticks and labels outside `scenearea`.
+    # Since we handle ticks within out `scenearea` this only needs to reservse
+    # space for the title
+    protrusions = map(po.blockscene, title_update_obs) do _
         GridLayoutBase.RectSides(
-            thetatlprot.left,
-            thetatlprot.right,
-            thetatlprot.bottom,
+            0f0,
+            0f0,
+            0f0,
             (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(po.scene)[])),
         )
     end
@@ -314,7 +315,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
     return thetaticklabelplot
 end
 
-function calculate_polar_title_position(area, titlegap, align, thetaaxisprotrusion)
+function calculate_polar_title_position(area, titlegap, align)
     x::Float32 = if align === :center
         area.origin[1] + area.widths[1] / 2
     elseif align === :left
@@ -331,8 +332,7 @@ function calculate_polar_title_position(area, titlegap, align, thetaaxisprotrusi
     #     0f0
     # end
 
-    yoffset::Float32 = top(area) + titlegap + thetaaxisprotrusion.top #=+
-        subtitlespace=#
+    yoffset::Float32 = top(area) + titlegap
 
     return Point2f(x, yoffset)
 end
