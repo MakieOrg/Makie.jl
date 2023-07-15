@@ -73,23 +73,14 @@ function Makie.initialize_block!(po::PolarAxis)
     )
     translate!(titleplot, 0, 0, 9001) # Make sure this draws on top of clip
 
-    # We only need to update the title protrusion calculation when some parameter
-    # which affects the glyph collection changes.  But, we don't want to update
-    # the protrusion when the position changes.
-    title_update_obs = map(
-        (x...) -> true, 
-        po.blockscene,
-        po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize
-    )
-    
     # Protrusions are space reserved for ticks and labels outside `scenearea`.
     # Since we handle ticks within out `scenearea` this only needs to reservse
     # space for the title
-    protrusions = map(po.blockscene, title_update_obs) do _
+    protrusions = map(
+            po.blockscene, po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize
+        ) do _, _, _, _, _, _
         GridLayoutBase.RectSides(
-            0f0,
-            0f0,
-            0f0,
+            0f0, 0f0, 0f0,
             (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(po.scene)[])),
         )
     end
@@ -304,7 +295,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         color = clipcolor,
         visible = po.clip,
         fxaa = false,
-        transformation = Transformation() # no polar pls thanks
+        transformation = Transformation() # no polar transform for this
     )
     on(po.blockscene, axis_radius) do radius
         scale!(clipouter, 2 * Vec3f(radius, radius, 1))
@@ -446,7 +437,6 @@ function reset_limits!(po::PolarAxis)
         if !isempty(po.scene.plots)
             # WTF, why does this include child scenes by default?
             lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
-            @info lims3d
             po.target_radius[] = maximum(lims3d)[1]
         end
     elseif po.target_radius[] != po.radius[]
