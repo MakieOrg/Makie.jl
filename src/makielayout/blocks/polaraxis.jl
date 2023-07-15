@@ -16,6 +16,7 @@ function Makie.initialize_block!(po::PolarAxis)
     po.scene = Scene(
         po.blockscene, scenearea, backgroundcolor = po.backgroundcolor, clear = true
     )
+    map!(to_color, po.scene.backgroundcolor, po.backgroundcolor)
 
     po.overlay = Scene(po.scene, scenearea, clear = false, backgroundcolor = :transparent)
 
