@@ -1646,7 +1646,7 @@ end
         "The color of the `r` tick labels."
         rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
-        rticklabelstrokewidth = 1.0
+        rticklabelstrokewidth = 0.0
         "The color of the outline of `r` ticks. By default this uses the background color."
         rticklabelstrokecolor = automatic
         "Controls if the `r` ticks are visible."
