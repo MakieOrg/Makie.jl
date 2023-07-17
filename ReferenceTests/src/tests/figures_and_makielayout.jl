@@ -170,13 +170,14 @@ end
         backgroundcolor = :black,
         rminorgridvisible = true, rminorgridcolor = :red, 
         rminorgridwidth = 1.0, rminorgridstyle = :dash,
-        thetaminorgridvisible = true, thetaminorgridcolor = :lightblue,
+        thetaminorgridvisible = true, thetaminorgridcolor = :blue,
         thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
         rgridwidth = 2, rgridcolor = :red,
-        thetagridwidth = 2, thetagridcolor = :lightblue,
+        thetagridwidth = 2, thetagridcolor = :blue,
         rticklabelsize = 18, rticklabelcolor = :red,
         rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
-        thetaticklabelsize = 18, thetaticklabelcolor = :lightblue
+        thetaticklabelsize = 18, thetaticklabelcolor = :blue,
+        thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
     )
     
     f

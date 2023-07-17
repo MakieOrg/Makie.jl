@@ -230,7 +230,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         end
     end
     
-    strokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
+    rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
         sc === automatic ? bg : Makie.to_color(sc)
     end
 
@@ -240,15 +240,21 @@ function draw_axis!(po::PolarAxis, axis_radius)
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
         strokewidth = po.rticklabelstrokewidth,
-        strokecolor = strokecolor,
+        strokecolor = rstrokecolor,
         align = (:left, :bottom),
     )
+
+    thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
+        sc === automatic ? bg : Makie.to_color(sc)
+    end
 
     thetaticklabelplot = text!(
         po.overlay, thetatick_pos_lbl;
         fontsize = po.thetaticklabelsize,
         font = po.thetaticklabelfont,
         color = po.thetaticklabelcolor,
+        strokewidth = po.thetaticklabelstrokewidth,
+        strokecolor = thetastrokecolor,
         align = thetatick_align,
     )
 

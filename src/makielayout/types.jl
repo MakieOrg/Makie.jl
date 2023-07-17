@@ -1675,6 +1675,10 @@ end
         thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Padding of the `theta` ticks label."
         thetaticklabelpad = 4f0
+        "The width of the outline of `theta` ticks. Setting this to 0 will remove the outline."
+        thetaticklabelstrokewidth = 0.0
+        "The color of the outline of `theta` ticks. By default this uses the background color."
+        thetaticklabelstrokecolor = automatic
         "Controls if the `theta` ticks are visible."
         thetaticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
         "The title of the plot"
