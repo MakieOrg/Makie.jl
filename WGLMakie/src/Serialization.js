@@ -7,6 +7,32 @@ import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 // https://github.com/gameofbombs/pixi-candles/tree/master/src
 // https://github.com/wwwtyro/instanced-lines-demos/tree/master
 
+function typedarray_to_vectype(typedArray, ndim) {
+    let glslType;
+
+    if (typedArray instanceof Float32Array) {
+        glslType = "vec" + ndim;
+    } else if (typedArray instanceof Int32Array) {
+        glslType = "ivec" + ndim;
+    } else if (typedArray instanceof Uint32Array) {
+        glslType = "uvec" + ndim;
+    } else {
+        throw new Error("Unsupported TypedArray type.");
+    }
+
+    return "in " + glslType;
+}
+
+const isTypedArray = (obj) => ArrayBuffer.isView(obj);
+
+function glsl_type(obj) {
+    if (isTypedArray(obj.flat) && obj.type_length) {
+        return typedarray_to_vectype(obj.flat, obj.type_length);
+    } else {
+        return "uniform " + obj.type;
+    }
+}
+
 function lines_shader(positions, linewidth, colors) {
     const position_type = glsl_type(positions);
     const linewidth_type = glsl_type(linewidth);
@@ -209,7 +235,7 @@ function create_line_geometry(linepoints, is_linesegments) {
             "position",
             new THREE.Float32BufferAttribute(instance_positions, 1)
         );
-        return geometry
+        return geometry;
     }
 
     const geometry = geometry_buffer();
@@ -233,8 +259,8 @@ function create_line_geometry(linepoints, is_linesegments) {
         }
 
         geometry.instanceCount = (new_line_points.length - 4) / 4;
-        instanceBuffer.needsUpdate = true
-    })
+        instanceBuffer.needsUpdate = true;
+    });
 
     geometry.boundingSphere = new THREE.Sphere();
     // don't use intersection / culling
@@ -307,7 +333,7 @@ export function insert_plot(scene_id, plot_data) {
 }
 
 export function delete_plots(scene_id, plot_uuids) {
-    console.log(`deleting plots!: ${plot_uuids}`)
+    console.log(`deleting plots!: ${plot_uuids}`);
     const scene = find_scene(scene_id);
     const plots = find_plots(plot_uuids);
     plots.forEach((p) => {
@@ -774,9 +800,9 @@ export function deserialize_scene(data, screen) {
 
 export function delete_plot(plot) {
     delete plot_cache[plot.plot_uuid];
-    const {parent} = plot
+    const { parent } = plot;
     if (parent) {
-        parent.remove(plot)
+        parent.remove(plot);
     }
     plot.geometry.dispose();
     plot.material.dispose();
@@ -785,8 +811,8 @@ export function delete_plot(plot) {
 export function delete_three_scene(scene) {
     delete scene_cache[scene.scene_uuid];
     scene.scene_children.forEach(delete_three_scene);
-    while(scene.children.length > 0) {
-        delete_plot(scene.children[0])
+    while (scene.children.length > 0) {
+        delete_plot(scene.children[0]);
     }
 }
 
