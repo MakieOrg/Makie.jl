@@ -2,6 +2,8 @@
 
 ## master
 
+- Add `colorscale = identity` to any plotting function using a colormap. This works with any scaling function like `log10`, `sqrt` etc. Consequently, `scale` for `hexbin` is replaced with `colorscale` [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
+- Add `alpha=1.0` argument to all basic plots, which supports independently adding an alpha component to colormaps and colors. Multiple alphas like in `plot(alpha=0.2, color=RGBAf(1, 0, 0, 0.5))`, will get multiplied [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
 - Deprecated `flatten_plots` in favor of `collect_atomic_plots`. Using the new `collect_atomic_plots` fixed a bug in CairoMakie where the z-level of plots within recipes was not respected. [#2793](https://github.com/MakieOrg/Makie.jl/pull/2793)
 - Fixed incorrect line depth in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
 - Fixed incorrect line alpha in dense lines in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
@@ -38,7 +40,6 @@
 
 ## v0.19.4
 
-- Add default `colorscale = identity` to all plotting functions. Consequently, `scale` for `hexbin` is replaced with `colorscale`.
 - Added export of `hidezdecorations!` from MakieLayout [#2821](https://github.com/MakieOrg/Makie.jl/pull/2821).
 - Fixed an issue with GLMakie lines becoming discontinuous [#2828](https://github.com/MakieOrg/Makie.jl/pull/2828).
 
