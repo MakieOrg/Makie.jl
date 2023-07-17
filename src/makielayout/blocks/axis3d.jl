@@ -47,16 +47,19 @@ function initialize_block!(ax::Axis3)
         cam.eyeposition[] = eyepos
     end
 
-    ticknode_1 = lift(scene, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
-        tl = get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
+    ticknode_1 = Observable{Any}()
+    map!(scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
+        get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
     end
 
-    ticknode_2 = lift(scene, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
-        tl = get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
+    ticknode_2 = Observable{Any}()
+    map!(scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
+        get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
     end
 
-    ticknode_3 = lift(scene, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
-        tl = get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
+    ticknode_3 = Observable{Any}()
+    map!(scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
+        get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
     add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
@@ -470,7 +473,10 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     d2 = dim2(dim)
 
     tickvalues = @lift($ticknode[1])
-    ticklabels = @lift($ticknode[2])
+    ticklabels = Observable{Any}()
+    map!(ticklabels, ticknode) do (values, labels)
+        labels
+    end
 
     tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
             scene.camera.projectionview, scene.px_area) do lims, ticks, miv, min1, min2,
@@ -515,7 +521,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
 
-    labels_positions = lift(topscene, scene.px_area, scene.camera.projectionview,
+    labels_positions = Observable{Any}()
+    map!(topscene, labels_positions, scene.px_area, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
@@ -530,8 +537,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
 
         N = min(length(ticklabs), length(points))
-        v = [(ticklabs[i], points[i]) for i in 1:N]
-        v::Vector{Tuple{String, Point2f}}
+        Tuple{Any,Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
     align = lift(topscene, miv, min1, min2) do mv, m1, m2
@@ -544,12 +550,12 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticklabels = text!(topscene, labels_positions, align = align,
+    ticklabels_text = text!(topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
-    translate!(ticklabels, 0, 0, 1000)
+    translate!(ticklabels_text, 0, 0, 1000)
 
     label_position = Observable(Point2f(0))
     label_rotation = Observable(0f0)
@@ -637,8 +643,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         inspectable = false
     )
 
-
-    return ticks, ticklabels, label
+    return ticks, ticklabels_text, label
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)

@@ -32,11 +32,17 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-    vec3 L = normalize(frag_lightdir);
-    vec3 N = normalize(frag_normal);
-    vec3 light1 = blinnphong(N, frag_position, L, frag_color.rgb);
-    vec3 light2 = blinnphong(N, frag_position, -L, frag_color.rgb);
-    vec3 color = get_ambient() * frag_color.rgb + light1 + get_backlight() * light2;
+    vec3 L, N, light1, light2, color;
+    if (get_shading()) {
+        L = normalize(frag_lightdir);
+        N = normalize(frag_normal);
+        light1 = blinnphong(N, frag_position, L, frag_color.rgb);
+        light2 = blinnphong(N, frag_position, -L, frag_color.rgb);
+        color = get_ambient() * frag_color.rgb + light1 + get_backlight() * light2;
+    } else {
+        color = frag_color.rgb;
+    }
+
 
     if (picking) {
         if (frag_color.a > 0.1) {
