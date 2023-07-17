@@ -140,7 +140,7 @@ end
 end
 
 @reference_test "interactive colorscale - heatmap" begin
-    data = exp.(abs.(randn(20, 20)))
+    data = exp.(abs.(RNG.randn(20, 20)))
     f, ax, hm = heatmap(data, colorscale=log10, axis=(; title="log10"))
     Colorbar(f[1, 2], hm)
     ax2, hm2 = heatmap(f[1, 3], data, colorscale=log10, axis=(; title="log10"))
@@ -157,8 +157,8 @@ end
 end
 
 @reference_test "interactive colorscale - hexbin" begin
-    x = randn(1_000)
-    y = randn(1_000)
+    x = RNG.randn(1_000)
+    y = RNG.randn(1_000)
     f = Figure()
     hexbin(f[1, 1], x, y; axis=(aspect=DataAspect(), title="identity"))
     ax, hb = hexbin(f[1, 2], x, y; colorscale=log, axis=(aspect=DataAspect(), title="log"))
