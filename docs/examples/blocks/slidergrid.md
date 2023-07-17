@@ -33,3 +33,8 @@ ylims!(ax, 0, 30)
 fig
 ```
 \end{examplefigure}
+
+
+## Attributes
+
+\attrdocs{SliderGrid}

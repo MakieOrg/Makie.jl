@@ -84,7 +84,7 @@ mutable struct Scene <: AbstractScene
     px_area::Observable{Rect2i}
 
     "Whether the scene should be cleared."
-    clear::Bool
+    clear::Observable{Bool}
 
     "The `Camera` associated with the Scene."
     camera::Camera
@@ -119,7 +119,7 @@ mutable struct Scene <: AbstractScene
             parent::Union{Nothing, Scene},
             events::Events,
             px_area::Observable{Rect2i},
-            clear::Bool,
+            clear::Observable{Bool},
             camera::Camera,
             camera_controls::AbstractCamera,
             transformation::Transformation,
@@ -217,7 +217,7 @@ end
 function Scene(;
         px_area::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
-        clear::Union{Automatic, Bool} = automatic,
+        clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
         transform_func=identity,
         camera::Union{Function, Camera, Nothing} = nothing,
         camera_controls::AbstractCamera = EmptyCamera(),
@@ -232,7 +232,9 @@ function Scene(;
         theme = Attributes(),
         theme_kw...
     )
-    m_theme = merge_without_obs!(current_default_theme(; theme_kw...), theme)
+
+    global_theme = merge_without_obs!(copy(theme), current_default_theme())
+    m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
@@ -246,7 +248,9 @@ function Scene(;
 
     # if we have an opaque background, automatically set clear to true!
     if clear isa Automatic
-        clear = alpha(bg[]) == 1 ? true : false
+        clear = Observable(alpha(bg[]) == 1 ? true : false)
+    else
+        clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
@@ -316,7 +320,7 @@ function Scene(
     child = Scene(;
         events=events,
         px_area=child_px_area,
-        clear=clear,
+        clear=convert(Observable{Bool}, clear),
         camera=camera,
         camera_controls=camera_controls,
         parent=parent,
@@ -619,3 +623,46 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+"""
+    is_atomic_plot(plot::Combined)
+
+Defines what Makie considers an atomic plot, used in `collect_atomic_plots`.
+Backends may have a different definition of what is considered an atomic plot,
+but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
+"""
+is_atomic_plot(plot::Combined) = isempty(plot.plots)
+
+"""
+    collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+    collect_atomic_plots(x::Combined, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+
+Collects all plots in the provided `<: ScenePlot` and returns a vector of all plots
+which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
+"""
+function collect_atomic_plots(xplot::Combined, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    if is_atomic_plot(xplot)
+        # Atomic plot!
+        push!(plots, xplot)
+    else
+        for elem in xplot.plots
+            collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+        end
+    end
+    return plots
+end
+
+function collect_atomic_plots(array, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    for elem in array
+        collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+    end
+    plots
+end
+
+function collect_atomic_plots(scene::Scene, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.plots, plots; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.children, plots; is_atomic_plot=is_atomic_plot)
+    plots
+end
+
+Base.@deprecate flatten_plots(scenelike) collect_atomic_plots(scenelike)

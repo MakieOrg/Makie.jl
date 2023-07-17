@@ -6,7 +6,7 @@ js_uuid(object) = string(objectid(object))
 function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
     push!(scene_uuids, js_uuid(scene))
     for plot in scene.plots
-        append!(plot_uuids, (js_uuid(p) for p in Makie.flatten_plots(plot)))
+        append!(plot_uuids, (js_uuid(p) for p in Makie.collect_atomic_plots(plot)))
     end
     for child in scene.children
         all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
@@ -15,7 +15,7 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[
 end
 
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSourceContext)
-    uuids = js_uuid.(Makie.flatten_plots(plot))
+    uuids = js_uuid.(Makie.collect_atomic_plots(plot))
     # This is a bit more complicated then it has to be, since evaljs / on_document_load
     # isn't guaranteed to run after plot initialization in an App... So, if we don't find any plots,
     # we have to check again after inserting new plots
@@ -45,21 +45,19 @@ function three_display(session::Session, scene::Scene; screen_config...)
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
-    canvas = DOM.um("canvas"; tabindex="0")
-    wrapper = DOM.div(canvas)
+    canvas = DOM.m("canvas"; tabindex="0", style="display: block")
+    wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = JSServe.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
     $(WGL).then(WGL => {
-        // well.... not nice, but can't deal with the `Promise` in all the other functions
-        window.WGLMakie = WGL
-        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
+        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(ta), $(config.framerate), $(config.resize_to_body))
         $(done_init).notify(true)
     })
     """)
-    on(done_init) do val
+    on(session, done_init) do val
         window_open[] = true
     end
     connect_scene_events!(scene, comm)
