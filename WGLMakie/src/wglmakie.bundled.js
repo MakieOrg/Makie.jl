@@ -19797,100 +19797,145 @@ class MakieCamera {
 }
 const LINES_VERT = `#version 300 es
 precision mediump int;
-precision mediump float;
+precision highp float;
 precision mediump sampler2D;
 precision mediump sampler3D;
-// https://github.com/mrdoob/three.js/blob/dev/examples/jsm/lines/LineMaterial.js
-// https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
-// https://github.com/gameofbombs/pixi-candles/tree/master/src
-// https://github.com/wwwtyro/instanced-lines-demos/tree/master
 
-in vec2 uv;
-in vec3 position;
-in vec2 instanceStart;
-in vec2 instanceEnd;
+in float position;
 
-out vec2 vUv;
+in vec2 linepoint_prev; // start of previous segment
+in vec2 linepoint_start; // end of previous segment, start of current segment
+in vec2 linepoint_end; // end of current segment, start of next segment
+in vec2 linepoint_next; // end of next segment
 
-uniform mat4 projectionview;
-uniform mat4 projection;
-uniform mat4 model;
-uniform mat4 view;
+uniform vec4 is_valid; // start of previous segment
 
-uniform float linewidth;
+uniform vec4 color_start; // end of previous segment, start of current segment
+uniform vec4 color_end; // end of current segment, start of next segment
+
+uniform float thickness_start;
+uniform float thickness_end;
+
 uniform vec2 resolution;
+uniform mat4 projectionview;
+uniform mat4 model;
+uniform float pattern_length;
 
-vec4 screen_space(vec4 vertex)
-{
-    return vec4(vertex.xy * resolution, vertex.z, vertex.w) / vertex.w;
+flat out vec2 f_uv_minmax;
+out vec2 f_uv;
+out vec4 f_color;
+out float f_thickness;
+
+#define MITER_LIMIT -0.4
+#define AA_THICKNESS 4.0
+
+vec3 screen_space(vec2 point) {
+    vec4 vertex = projectionview * model * vec4(point, 0, 1);
+    return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
 }
 
-vec4 clip_space(vec4 screenspace) {
-    return vec4((screenspace.xy / resolution), screenspace.z, 1.0) * screenspace.w;
+void emit_vertex(vec3 position, vec2 uv, bool is_start) {
+
+    f_uv = uv;
+
+    f_color = is_start ? color_start : color_end;
+
+    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
+    // linewidth scaling may shrink the effective linewidth
+    f_thickness = is_start ? thickness_start : thickness_end;
 }
 
 void main() {
-
-    // camera space
-    vec4 start = projectionview * model * vec4(instanceStart, 0.0, 1.0);
-    vec4 end = projectionview * model * vec4(instanceEnd, 0.0, 1.0);
-    vUv = uv;
-
-    // screenspace
-    vec4 ndcStart = screen_space(start);
-    vec4 ndcEnd = screen_space(end);
-
-
-    // direction
-    vec2 dir = ndcEnd.xy - ndcStart.xy;
-
-    // account for clip-space aspect ratio
+    vec3 p1 = screen_space(linepoint_start);
+    vec3 p2 = screen_space(linepoint_end);
+    vec2 dir = p1.xy - p2.xy;
     dir = normalize(dir);
+    vec2 line_normal = vec2(dir.y, -dir.x);
+    vec2 line_offset = line_normal * (thickness_start / 2.0);
 
-    vec2 offset = vec2(dir.y, -dir.x); // orthogonal vector
-
-    // sign flip
-    if (position.x < 0.0)
-        offset *= -1.0;
-
-    // endcaps
-    if (position.y < 0.0) {
-        offset += -dir;
-    } else if (position.y > 1.0) {
-        offset += dir;
+    // triangle 1
+    vec3 v0 = vec3(p1.xy - line_offset, p1.z);
+    if (position == 0.0) {
+        emit_vertex(v0, vec2(0.0, 0.0), true);
+        return;
+    }
+    vec3 v2 = vec3(p2.xy - line_offset, p2.z);
+    if (position == 1.0) {
+        emit_vertex(v2, vec2(0.0, 0.0), true);
+        return;
+    }
+    vec3 v1 = vec3(p1.xy + line_offset, p1.z);
+    if (position == 2.0) {
+        emit_vertex(v1, vec2(0.0, 0.0), false);
+        return;
     }
 
-    // adjust for linewidth
-    offset *= linewidth;
-
-
-
-    // select end
-    vec4 screen = (position.y < 0.5) ? ndcStart : ndcEnd;
-    screen.xy += offset;
-    gl_Position = clip_space(screen);
+    // triangle 2
+    if (position == 3.0) {
+        emit_vertex(v2, vec2(0.0, 0.0), false);
+        return;
+    }
+    vec3 v3 = vec3(p2.xy + line_offset, p2.z);
+    if (position == 4.0) {
+        emit_vertex(v3, vec2(0.0, 0.0), false);
+        return;
+    }
+    if (position == 5.0) {
+        emit_vertex(v1, vec2(0.0, 0.0), false);
+        return;
+    }
 }
 `;
 const LINES_FRAG = `#version 300 es
 precision mediump int;
-precision mediump float;
+precision highp float;
 precision mediump sampler2D;
 precision mediump sampler3D;
 
+flat in vec2 f_uv_minmax;
+in vec2 f_uv;
+in vec4 f_color;
+in float f_thickness;
+
+uniform float pattern_length;
+
 out vec4 fragment_color;
 
-uniform vec4 color;
+// Half width of antialiasing smoothstep
+#define ANTIALIAS_RADIUS 0.8
 
-in vec2 vUv;
+float aastep(float threshold1, float dist) {
+    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
+}
 
+float aastep(float threshold1, float threshold2, float dist) {
+    // We use 2x pixel space in the geometry shaders which passes through
+    // in uv.y, so we need to treat it here by using 2 * ANTIALIAS_RADIUS
+    float AA = 2.0 * ANTIALIAS_RADIUS;
+    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
+           smoothstep(threshold2 - AA, threshold2 + AA, dist);
+}
 
-void main() {
+float aastep_scaled(float threshold1, float threshold2, float dist) {
+    float AA = ANTIALIAS_RADIUS / pattern_length;
+    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
+           smoothstep(threshold2 - AA, threshold2 + AA, dist);
+}
 
-    fragment_color = color;
+void main(){
+    // vec4 color = vec4(f_color.rgb, 0.0);
+    // vec2 xy = f_uv;
+
+    // float alpha = aastep(0.0, xy.x);
+    // float alpha2 = aastep(-f_thickness, f_thickness, xy.y);
+    // float alpha3 = aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x);
+
+    // color = vec4(f_color.rgb, f_color.a * alpha * alpha2 * alpha3);
+
+    fragment_color = f_color;
 }
 `;
 function create_line_material(uniforms) {
-    console.log(uniforms);
     return new mod.RawShaderMaterial({
         uniforms: deserialize_uniforms(uniforms),
         vertexShader: LINES_VERT,
@@ -19898,95 +19943,70 @@ function create_line_material(uniforms) {
         transparent: true
     });
 }
-function create_line_geometry(linepositions, linesegments) {
-    const length = linepositions.length;
-    let points;
-    if (linesegments) {
-        points = linepositions;
+function linepoints2buffer(linepoints, is_linesegments) {
+    const N = linepoints.length;
+    if (is_linesegments) {
+        const N2 = linepoints.length + 4;
+        const points = new Float32Array(N2);
+        points[0] = linepoints[0];
+        points[1] = linepoints[1];
+        points.set(linepoints, 2);
+        points[N2 - 2] = linepoints[N - 2];
+        points[N2 - 1] = linepoints[N - 1];
+        return points;
     } else {
-        points = new Float32Array(2 * length);
-        for(let i = 0; i < length; i += 2){
-            points[2 * i] = linepositions[i];
-            points[2 * i + 1] = linepositions[i + 1];
-            points[2 * i + 2] = linepositions[i + 2];
-            points[2 * i + 3] = linepositions[i + 3];
+        const N2 = linepoints.length * 2 + 4;
+        const points = new Float32Array(N2);
+        points[0] = linepoints[0];
+        points[1] = linepoints[1];
+        for(let i = 0; i < linepoints.length; i += 2){
+            points[2 * i + 2] = linepoints[i];
+            points[2 * i + 3] = linepoints[i + 1];
+            points[2 * i + 4] = linepoints[i + 2];
+            points[2 * i + 5] = linepoints[i + 3];
         }
+        points[N2 - 2] = linepoints[N - 2];
+        points[N2 - 1] = linepoints[N - 1];
+        return points;
     }
-    const geometry = new mod.InstancedBufferGeometry();
-    const instance_positions = [
-        -1,
-        2,
-        0,
-        1,
-        2,
-        0,
-        -1,
-        1,
-        0,
-        1,
-        1,
-        0,
-        -1,
-        0,
-        0,
-        1,
-        0,
-        0,
-        -1,
-        -1,
-        0,
-        1,
-        -1,
-        0
-    ];
-    const uvs = [
-        -1,
-        2,
-        1,
-        2,
-        -1,
-        1,
-        1,
-        1,
-        -1,
-        -1,
-        1,
-        -1,
-        -1,
-        -2,
-        1,
-        -2
-    ];
-    const index = [
-        0,
-        2,
-        1,
-        2,
-        3,
-        1,
-        2,
-        4,
-        3,
-        4,
-        5,
-        3,
-        4,
-        6,
-        5,
-        6,
-        7,
-        5
-    ];
-    geometry.setIndex(index);
-    geometry.setAttribute("position", new mod.Float32BufferAttribute(instance_positions, 3));
-    geometry.setAttribute("uv", new mod.Float32BufferAttribute(uvs, 2));
+}
+function attach_instanced_line_geometry(geometry, points) {
     const instanceBuffer = new mod.InstancedInterleavedBuffer(points, 4, 1);
-    geometry.setAttribute("instanceStart", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 0));
-    geometry.setAttribute("instanceEnd", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 2));
+    geometry.setAttribute("linepoint_prev", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 0));
+    geometry.setAttribute("linepoint_start", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 2));
+    geometry.setAttribute("linepoint_end", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 4));
+    geometry.setAttribute("linepoint_next", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 6));
+    return instanceBuffer;
+}
+function create_line_geometry(linepoints, is_linesegments) {
+    function geometry_buffer() {
+        const geometry = new mod.InstancedBufferGeometry();
+        const instance_positions = [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+        ];
+        geometry.setAttribute("position", new mod.Float32BufferAttribute(instance_positions, 1));
+        return geometry;
+    }
+    const geometry = geometry_buffer();
+    const points = linepoints2buffer(linepoints.value, is_linesegments);
+    const instanceBuffer = attach_instanced_line_geometry(geometry, points);
+    console.log(instanceBuffer);
+    linepoints.on((new_points)=>{
+        const new_line_points = linepoints2buffer(new_points, is_linesegments);
+        instanceBuffer.updateRange.count = new_line_points.length;
+        instanceBuffer.set(new_line_points, 0);
+        instanceBuffer.needsUpdate = true;
+        geometry.instanceCount = (new_line_points.length - 4) / 4;
+    });
     geometry.boundingSphere = new mod.Sphere();
     geometry.boundingSphere.radius = 10000000000000;
     geometry.frustumCulled = false;
-    geometry.instanceCount = points.length / 2;
+    geometry.instanceCount = (points.length - 4) / 4;
     return geometry;
 }
 function create_line(line_data) {
@@ -20138,7 +20158,6 @@ function on_next_insert(f) {
 function add_plot(scene, plot_data) {
     const cam = scene.wgl_camera;
     const identity = new mod.Uniform(new mod.Matrix4());
-    console.log(plot_data.cam_space);
     if (plot_data.cam_space == "data") {
         plot_data.uniforms.view = cam.view;
         plot_data.uniforms.projection = cam.projection;

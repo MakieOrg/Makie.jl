@@ -1,12 +1,6 @@
 import * as Camera from "./Camera.js";
 import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 
-//https://wwwtyro.net/2019/11/18/instanced-lines.html
-// https://github.com/mrdoob/three.js/blob/dev/examples/jsm/lines/LineMaterial.js
-// https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
-// https://github.com/gameofbombs/pixi-candles/tree/master/src
-// https://github.com/wwwtyro/instanced-lines-demos/tree/master
-
 const LINES_VERT = `#version 300 es
 precision mediump int;
 precision highp float;
@@ -33,9 +27,13 @@ uniform mat4 projectionview;
 uniform mat4 model;
 uniform float pattern_length;
 
+flat out vec2 f_uv_minmax;
 out vec2 f_uv;
 out vec4 f_color;
 out float f_thickness;
+
+#define MITER_LIMIT -0.4
+#define AA_THICKNESS 4.0
 
 vec3 screen_space(vec2 point) {
     vec4 vertex = projectionview * model * vec4(point, 0, 1);
@@ -49,18 +47,22 @@ void emit_vertex(vec3 position, vec2 uv, bool is_start) {
     f_color = is_start ? color_start : color_end;
 
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    // linewidth scaling may shrink the effective linewidth
     f_thickness = is_start ? thickness_start : thickness_end;
 }
 
 void main() {
+    vec3 p0 = screen_space(linepoint_prev);
     vec3 p1 = screen_space(linepoint_start);
     vec3 p2 = screen_space(linepoint_end);
+    vec3 p3 = screen_space(linepoint_next);
     vec2 dir = p1.xy - p2.xy;
     dir = normalize(dir);
     vec2 line_normal = vec2(dir.y, -dir.x);
     vec2 line_offset = line_normal * (thickness_start / 2.0);
 
+    vec2 tangent = normalize(normalize(p2 - p1) + normalize(p1 - p0));
+
+    vec2 miter = vec2(-tangent.y, tangent.x);
     // triangle 1
     vec3 v0 = vec3(p1.xy - line_offset, p1.z);
     if (position == 0.0) {
@@ -154,20 +156,26 @@ function create_line_material(uniforms) {
     });
 }
 
-function linepoints2buffer(linepoints, is_linesegments) {
+function create_line_geometry(linepoints, linesegments) {
+    const geometry = new THREE.InstancedBufferGeometry();
+    const instance_positions = [0, 1, 2, 3, 4, 5];
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(instance_positions, 1)
+    );
     const N = linepoints.length;
-    if (is_linesegments) {
+    let points;
+    if (linesegments) {
         const N2 = linepoints.length + 4;
-        const points = new Float32Array(N2);
+        points = new Float32Array(N2);
         points[0] = linepoints[0];
         points[1] = linepoints[1];
         points.set(linepoints, 2);
         points[N2 - 2] = linepoints[N - 2];
         points[N2 - 1] = linepoints[N - 1];
-        return points;
     } else {
         const N2 = linepoints.length * 2 + 4;
-        const points = new Float32Array(N2);
+        points = new Float32Array(N2);
         points[0] = linepoints[0];
         points[1] = linepoints[1];
         for (let i = 0; i < linepoints.length; i += 2) {
@@ -177,14 +185,13 @@ function linepoints2buffer(linepoints, is_linesegments) {
             points[2 * i + 4] = linepoints[i + 2];
             points[2 * i + 5] = linepoints[i + 3];
         }
+
         points[N2 - 2] = linepoints[N - 2];
         points[N2 - 1] = linepoints[N - 1];
-        return points;
     }
-}
 
-function attach_instanced_line_geometry(geometry, points) {
     const instanceBuffer = new THREE.InstancedInterleavedBuffer(points, 4, 1); // xy1, xy2
+
     geometry.setAttribute(
         "linepoint_prev",
         new THREE.InterleavedBufferAttribute(instanceBuffer, 2, 0)
@@ -201,44 +208,6 @@ function attach_instanced_line_geometry(geometry, points) {
         "linepoint_next",
         new THREE.InterleavedBufferAttribute(instanceBuffer, 2, 6)
     ); // xyz2
-    return instanceBuffer;
-}
-
-function create_line_geometry(linepoints, is_linesegments) {
-    function geometry_buffer() {
-        const geometry = new THREE.InstancedBufferGeometry();
-        const instance_positions = [0, 1, 2, 3, 4, 5];
-
-        geometry.setAttribute(
-            "position",
-            new THREE.Float32BufferAttribute(instance_positions, 1)
-        );
-        return geometry
-    }
-
-    const geometry = geometry_buffer();
-
-    const points = linepoints2buffer(linepoints.value, is_linesegments);
-
-    let instanceBuffer = attach_instanced_line_geometry(geometry, points);
-
-    linepoints.on((new_points) => {
-        const new_line_points = linepoints2buffer(new_points, is_linesegments);
-        const old_count = instanceBuffer.updateRange.count;
-        if (old_count < new_line_points.length) {
-            instanceBuffer.dispose();
-            instanceBuffer = attach_instanced_line_geometry(
-                geometry,
-                new_line_points
-            );
-        } else {
-            instanceBuffer.updateRange.count = new_line_points.length;
-            instanceBuffer.set(new_line_points, 0);
-        }
-
-        geometry.instanceCount = (new_line_points.length - 4) / 4;
-        instanceBuffer.needsUpdate = true
-    })
 
     geometry.boundingSphere = new THREE.Sphere();
     // don't use intersection / culling
@@ -255,6 +224,7 @@ export function create_line(line_data) {
         line_data.is_linesegments
     );
     const material = create_line_material(line_data.uniforms);
+    console.log(material);
     return new THREE.Mesh(geometry, material);
 }
 
@@ -311,7 +281,7 @@ export function insert_plot(scene_id, plot_data) {
 }
 
 export function delete_plots(scene_id, plot_uuids) {
-    console.log(`deleting plots!: ${plot_uuids}`)
+    console.log(`deleting plots!: ${plot_uuids}`);
     const scene = find_scene(scene_id);
     const plots = find_plots(plot_uuids);
     plots.forEach((p) => {
@@ -778,9 +748,9 @@ export function deserialize_scene(data, screen) {
 
 export function delete_plot(plot) {
     delete plot_cache[plot.plot_uuid];
-    const {parent} = plot
+    const { parent } = plot;
     if (parent) {
-        parent.remove(plot)
+        parent.remove(plot);
     }
     plot.geometry.dispose();
     plot.material.dispose();
@@ -789,8 +759,8 @@ export function delete_plot(plot) {
 export function delete_three_scene(scene) {
     delete scene_cache[scene.scene_uuid];
     scene.scene_children.forEach(delete_three_scene);
-    while(scene.children.length > 0) {
-        delete_plot(scene.children[0])
+    while (scene.children.length > 0) {
+        delete_plot(scene.children[0]);
     }
 }
 

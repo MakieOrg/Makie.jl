@@ -1,16 +1,20 @@
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
+
     uniforms = Dict(
-        :opacity => 1.0,
-        :linewidth => plot.linewidth[],
-        :diffuse => Vec3f(0, 0, 0),
-        :model => plot.model
+        # :linewidth => plot.linewidth[],
+        :pattern_length => 1f0,
+        :model => plot.model,
+        :is_valid => Vec4f(1),
+        :thickness_start => plot.linewidth[],
+        :thickness_end => plot.linewidth[]
     )
     color = to_color(plot.color[])
-    if color isa Colorant
-        uniforms[:color] = serialize_three(color)
-    else
-        uniforms[:color] = serialize_three(to_color(:black))
-    end
+
+    c = color isa Colorant ? serialize_three(color) : serialize_three(RGBAf(0, 0, 0, 1))
+
+    uniforms[:color_start] = c
+    uniforms[:color_end] = c
+
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
         :visible => plot.visible,
@@ -18,9 +22,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :plot_type => :lines,
         :cam_space => plot.space[],
         :is_linesegments => plot isa LineSegments,
-        :positions => collect(reinterpret(Float32, plot[1][])),
-        :uniforms => serialize_uniforms(uniforms)
+        :positions => lift(x-> collect(reinterpret(Float32, x)), plot[1]),
+        :uniforms => serialize_uniforms(uniforms),
     )
-
     return attr
 end
