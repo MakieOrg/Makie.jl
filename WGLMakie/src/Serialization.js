@@ -7,93 +7,97 @@ import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 // https://github.com/gameofbombs/pixi-candles/tree/master/src
 // https://github.com/wwwtyro/instanced-lines-demos/tree/master
 
-const LINES_VERT = `#version 300 es
-precision mediump int;
-precision highp float;
-precision mediump sampler2D;
-precision mediump sampler3D;
+function lines_shader(positions, linewidth, colors) {
+    const position_type = glsl_type(positions);
+    const linewidth_type = glsl_type(linewidth);
+    const colors_type = glsl_type(colors);
 
-in float position;
+    return `#version 300 es
+        precision mediump int;
+        precision highp float;
+        precision mediump sampler2D;
+        precision mediump sampler3D;
 
-in vec2 linepoint_prev; // start of previous segment
-in vec2 linepoint_start; // end of previous segment, start of current segment
-in vec2 linepoint_end; // end of current segment, start of next segment
-in vec2 linepoint_next; // end of next segment
+        in float position;
 
-uniform vec4 is_valid; // start of previous segment
+        ${position_type} linepoint_prev; // start of previous segment
+        ${position_type} linepoint_start; // end of previous segment, start of current segment
+        ${position_type} linepoint_end; // end of current segment, start of next segment
+        ${position_type} linepoint_next; // end of next segment
 
-uniform vec4 color_start; // end of previous segment, start of current segment
-uniform vec4 color_end; // end of current segment, start of next segment
+        ${colors_type} color_start; // end of previous segment, start of current segment
+        ${colors_type} color_end; // end of current segment, start of next segment
 
-uniform float thickness_start;
-uniform float thickness_end;
+        ${linewidth_type} thickness_start;
+        ${linewidth_type} thickness_end;
 
-uniform vec2 resolution;
-uniform mat4 projectionview;
-uniform mat4 model;
-uniform float pattern_length;
+        uniform vec2 resolution;
+        uniform mat4 projectionview;
+        uniform mat4 model;
+        uniform float pattern_length;
 
-out vec2 f_uv;
-out vec4 f_color;
-out float f_thickness;
+        out vec2 f_uv;
+        out vec4 f_color;
+        out float f_thickness;
 
-vec3 screen_space(vec2 point) {
-    vec4 vertex = projectionview * model * vec4(point, 0, 1);
-    return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+        vec3 screen_space(vec2 point) {
+            vec4 vertex = projectionview * model * vec4(point, 0, 1);
+            return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+        }
+
+        void emit_vertex(vec3 position, vec2 uv, bool is_start) {
+
+            f_uv = uv;
+
+            f_color = is_start ? color_start : color_end;
+
+            gl_Position = vec4((position.xy / resolution), position.z, 1.0);
+            // linewidth scaling may shrink the effective linewidth
+            f_thickness = is_start ? thickness_start : thickness_end;
+        }
+
+        void main() {
+            vec3 p1 = screen_space(linepoint_start);
+            vec3 p2 = screen_space(linepoint_end);
+            vec2 dir = p1.xy - p2.xy;
+            dir = normalize(dir);
+            vec2 line_normal = vec2(dir.y, -dir.x);
+            vec2 line_offset = line_normal * (thickness_start / 2.0);
+
+            // triangle 1
+            vec3 v0 = vec3(p1.xy - line_offset, p1.z);
+            if (position == 0.0) {
+                emit_vertex(v0, vec2(0.0, 0.0), true);
+                return;
+            }
+            vec3 v2 = vec3(p2.xy - line_offset, p2.z);
+            if (position == 1.0) {
+                emit_vertex(v2, vec2(0.0, 0.0), true);
+                return;
+            }
+            vec3 v1 = vec3(p1.xy + line_offset, p1.z);
+            if (position == 2.0) {
+                emit_vertex(v1, vec2(0.0, 0.0), false);
+                return;
+            }
+
+            // triangle 2
+            if (position == 3.0) {
+                emit_vertex(v2, vec2(0.0, 0.0), false);
+                return;
+            }
+            vec3 v3 = vec3(p2.xy + line_offset, p2.z);
+            if (position == 4.0) {
+                emit_vertex(v3, vec2(0.0, 0.0), false);
+                return;
+            }
+            if (position == 5.0) {
+                emit_vertex(v1, vec2(0.0, 0.0), false);
+                return;
+            }
+        }
+        `;
 }
-
-void emit_vertex(vec3 position, vec2 uv, bool is_start) {
-
-    f_uv = uv;
-
-    f_color = is_start ? color_start : color_end;
-
-    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    // linewidth scaling may shrink the effective linewidth
-    f_thickness = is_start ? thickness_start : thickness_end;
-}
-
-void main() {
-    vec3 p1 = screen_space(linepoint_start);
-    vec3 p2 = screen_space(linepoint_end);
-    vec2 dir = p1.xy - p2.xy;
-    dir = normalize(dir);
-    vec2 line_normal = vec2(dir.y, -dir.x);
-    vec2 line_offset = line_normal * (thickness_start / 2.0);
-
-    // triangle 1
-    vec3 v0 = vec3(p1.xy - line_offset, p1.z);
-    if (position == 0.0) {
-        emit_vertex(v0, vec2(0.0, 0.0), true);
-        return;
-    }
-    vec3 v2 = vec3(p2.xy - line_offset, p2.z);
-    if (position == 1.0) {
-        emit_vertex(v2, vec2(0.0, 0.0), true);
-        return;
-    }
-    vec3 v1 = vec3(p1.xy + line_offset, p1.z);
-    if (position == 2.0) {
-        emit_vertex(v1, vec2(0.0, 0.0), false);
-        return;
-    }
-
-    // triangle 2
-    if (position == 3.0) {
-        emit_vertex(v2, vec2(0.0, 0.0), false);
-        return;
-    }
-    vec3 v3 = vec3(p2.xy + line_offset, p2.z);
-    if (position == 4.0) {
-        emit_vertex(v3, vec2(0.0, 0.0), false);
-        return;
-    }
-    if (position == 5.0) {
-        emit_vertex(v1, vec2(0.0, 0.0), false);
-        return;
-    }
-}
-`;
 
 const LINES_FRAG = `#version 300 es
 precision mediump int;
@@ -132,23 +136,15 @@ float aastep_scaled(float threshold1, float threshold2, float dist) {
 }
 
 void main(){
-    // vec4 color = vec4(f_color.rgb, 0.0);
-    // vec2 xy = f_uv;
-
-    // float alpha = aastep(0.0, xy.x);
-    // float alpha2 = aastep(-f_thickness, f_thickness, xy.y);
-    // float alpha3 = aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x);
-
-    // color = vec4(f_color.rgb, f_color.a * alpha * alpha2 * alpha3);
 
     fragment_color = f_color;
 }
 `;
 
-function create_line_material(uniforms) {
+function create_line_material(uniforms, positions, linewidth, colors) {
     return new THREE.RawShaderMaterial({
         uniforms: deserialize_uniforms(uniforms),
-        vertexShader: LINES_VERT,
+        vertexShader: lines_shader(positions, linewidth, colors),
         fragmentShader: LINES_FRAG,
         transparent: true,
     });

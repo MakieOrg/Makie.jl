@@ -1,19 +1,12 @@
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
-
+    Makie.@converted_attribute plot (linewidth, color)
     uniforms = Dict(
-        # :linewidth => plot.linewidth[],
         :pattern_length => 1f0,
         :model => plot.model,
         :is_valid => Vec4f(1),
-        :thickness_start => plot.linewidth[],
-        :thickness_end => plot.linewidth[]
+        :linewidth => linewidth,
+        :color => color
     )
-    color = to_color(plot.color[])
-
-    c = color isa Colorant ? serialize_three(color) : serialize_three(RGBAf(0, 0, 0, 1))
-
-    uniforms[:color_start] = c
-    uniforms[:color_end] = c
 
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
