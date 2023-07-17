@@ -282,11 +282,12 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     end
 
     cam = scene.camera
+    plot_attributes = copy(plot.attributes)
+    plot_attributes.attributes[:calculated_colors] = uniform_color
 
     uniforms = Dict(
         :model => plot.model,
         :shape_type => Observable(Cint(3)),
-        # :color => uniform_color,
         :rotations => uniform_rotation,
         :pos => positions,
         :marker_offset => char_offset,
@@ -299,5 +300,5 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :depth_shift => get(plot, :depth_shift, Observable(0f0))
     )
 
-    return scatter_shader(scene, uniforms, plot)
+    return scatter_shader(scene, uniforms, plot_attributes)
 end
