@@ -5,9 +5,10 @@
 
 Makie.can_be_current_axis(ax::PolarAxis) = true
 
-function Makie.initialize_block!(po::PolarAxis)
+function Makie.initialize_block!(po::PolarAxis; palette=nothing)
+
+
     # Setup Scenes
-    
     cb = po.layoutobservables.computedbbox
     scenearea = map(po.blockscene, cb) do cb
         return Rect(round.(Int, minimum(cb)), round.(Int, widths(cb)))
@@ -20,6 +21,13 @@ function Makie.initialize_block!(po::PolarAxis)
 
     po.overlay = Scene(po.scene, scenearea, clear = false, backgroundcolor = :transparent)
 
+
+    # Setup Cycler
+    po.cycler = Cycler()
+    if palette === nothing
+        palette = fast_deepcopy(get(po.blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
+    end
+    po.palette = palette isa Attributes ? palette : Attributes(palette)
 
     # Setup camera/limits
     axis_radius = setup_camera_matrices!(po)
@@ -35,7 +43,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
     # Handle tick label spacing by axis radius adjustments
     onany(
-            po.blockscene, thetaticklabelplot.plots[1].plots[1][1], 
+            po.blockscene, thetaticklabelplot.plots[1].plots[1][1],
             po.thetaticklabelpad, po.overlay.px_area
         ) do glyph_collections, pad, area
 
@@ -45,7 +53,7 @@ function Makie.initialize_block!(po::PolarAxis)
             bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
-        
+
         max_width, max_height = max_widths
 
         space_from_center = 0.5 .* widths(area)
@@ -100,23 +108,23 @@ function draw_axis!(po::PolarAxis, axis_radius)
     onany(
             po.blockscene,
             po.rticks, po.rminorticks, po.rtickformat,
-            po.rtickangle, po.target_radius, axis_radius, po.sample_density, 
+            po.rtickangle, po.target_radius, axis_radius, po.sample_density,
         ) do rticks, rminorticks, rtickformat, rtickangle, data_radius, axis_radius, sample_density
-        
+
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, 0, data_radius)
         _rtickpos = _rtickvalues .* (axis_radius / data_radius) # we still need the values
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, rtickangle))
-        
+
         thetas = LinRange(thetalims..., sample_density)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
-        
+
         _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, 0, data_radius)
         _rminortickvalues .*= (axis_radius / data_radius)
         rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
 
         return
     end
-    
+
     thetatick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
     thetatick_align = Observable{Vector{Point2f}}()
     thetagridpoints = Observable{Vector{Point2f}}()
@@ -127,9 +135,9 @@ function draw_axis!(po::PolarAxis, axis_radius)
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
             po.theta_0, axis_radius, po.overlay.px_area
         ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, axis_radius, pixelarea
-        
+
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
-        
+
         # Since theta = 0 is at the same position as theta = 2π, we remove the last tick
         # iff the difference between the first and last tick is exactly 2π
         # This is a special case, since it's the only possible instance of colocation
@@ -137,13 +145,13 @@ function draw_axis!(po::PolarAxis, axis_radius)
             pop!(_thetatickvalues)
             pop!(_thetaticklabels)
         end
-        
+
         thetatick_align.val = map(_thetatickvalues) do angle
             s, c = sincos(angle + theta_0)
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
-        
+
         # transform px_pad to radial pad
         w2, h2 = (0.5 .* widths(pixelarea)).^2
         tick_positions = map(_thetatickvalues) do angle
@@ -151,11 +159,11 @@ function draw_axis!(po::PolarAxis, axis_radius)
             pad_mult = 1.0 + px_pad / sqrt(w2 * c * c + h2 * s * s)
             Point2f(pad_mult * axis_radius, angle)
         end
-        
+
         thetatick_pos_lbl[] = tuple.(_thetaticklabels, tick_positions)
-        
+
         thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (0, axis_radius)]
-        
+
         _thetaminortickvalues = Makie.get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
         thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in (0, axis_radius)]
 
@@ -167,7 +175,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
     onany(
             po.blockscene, po.sample_density, axis_radius
         ) do sample_density, axis_radius
-        
+
         thetas = LinRange(thetalims..., sample_density)
         spinepoints[] = Point2f.(axis_radius, thetas)
 
@@ -220,7 +228,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
     )
 
     # tick labels
-    
+
     clipcolor = map(po.blockscene, po.backgroundcolor) do bgc
         bgc = to_color(bgc)
         if alpha(bgc) == 0f0
@@ -229,7 +237,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
             return bgc
         end
     end
-    
+
     rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
         sc === automatic ? bg : Makie.to_color(sc)
     end
@@ -259,7 +267,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
     )
 
     # inner clip
-    # scatter shouldn't interfere with lines and text in GLMakie, so this should 
+    # scatter shouldn't interfere with lines and text in GLMakie, so this should
     # look a bit cleaner
     inverse_circle =  BezierPath([
         MoveTo(Point( 1,  1)),
@@ -355,8 +363,8 @@ function Makie.plot!(
 
     allattrs = merge(attributes, Attributes(kw_attributes))
 
-    # cycle = get_cycle_for_plottype(allattrs, P)
-    # add_cycle_attributes!(allattrs, P, cycle, po.cycler, po.palette)
+    cycle = get_cycle_for_plottype(allattrs, P)
+    add_cycle_attributes!(allattrs, P, cycle, po.cycler, po.palette)
 
     plot = Makie.plot!(po.scene, P, allattrs, args...)
 
@@ -398,7 +406,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # Reset button
     onany(po.blockscene, e.mousebutton, e.keyboardbutton) do e1, e2
-        if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) && 
+        if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) &&
             (e1.action == Mouse.press) && (e2.action == Keyboard.press)
             if ispressed(e, Keyboard.left_shift)
                 autolimits!(po)

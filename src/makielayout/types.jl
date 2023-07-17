@@ -411,7 +411,7 @@ end
         so that the axis aspect ratio width/height matches `ratio`.
 
         Note that both `DataAspect` and `AxisAspect` can result in excess whitespace around the axis.
-        To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting. 
+        To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting.
         """
         aspect = nothing
         "The vertical alignment of the axis within its suggested bounding box."
@@ -451,12 +451,12 @@ end
         xticks = Makie.automatic
         """
         The formatter for the ticks on the x axis.
-        
+
         Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
         `Makie.get_ticklabels(xtickformat, xtickvalues)` is called. If there is a special method defined,
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `xticks` for more information.
-        
+
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
@@ -485,12 +485,12 @@ end
         yticks = Makie.automatic
         """
         The formatter for the ticks on the y axis.
-        
+
         Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
         `Makie.get_ticklabels(ytickformat, ytickvalues)` is called. If there is a special method defined,
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `yticks` for more information.
-        
+
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
@@ -546,14 +546,14 @@ end
 
         The function `autolimits!` resets the value of `limits` to `(nothing, nothing)` and adjusts the axis limits according
         to the extents of the plots added to the axis.
-        
+
         The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, high)` where each value
         can be a real number or `nothing`.
         It can also be a tuple `(x, y)` where `x` and `y` can be `nothing` or a tuple `(low, high)`.
         In all cases, `nothing` means that the respective limit values will be automatically determined.
 
         Automatically determined limits are also influenced by `xautolimitmargin` and `yautolimitmargin`.
-        
+
         The convenience functions `xlims!` and `ylims!` allow to set only the x or y part of `limits`.
         The function `limits!` is another option to set both x and y simultaneously.
         """
@@ -609,14 +609,14 @@ end
         `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
-        
+
         If the scaling function is only defined over a limited interval,
         no plot object may have a source datum that lies outside of that range.
         For example, there may be no x value lower than or equal to 0 when `log`
         is selected for `xscale`. What matters are the source data, not the user-selected
         limits, because all data have to be transformed, irrespective of whether they
         lie inside or outside of the current limits.
-        
+
         The axis scale may affect tick finding and formatting, depending
         on the values of `xticks` and `xtickformat`.
         """
@@ -628,14 +628,14 @@ end
         `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
-        
+
         If the scaling function is only defined over a limited interval,
         no plot object may have a source datum that lies outside of that range.
         For example, there may be no y value lower than or equal to 0 when `log`
         is selected for `yscale`. What matters are the source data, not the user-selected
         limits, because all data have to be transformed, irrespective of whether they
         lie inside or outside of the current limits.
-        
+
         The axis scale may affect tick finding and formatting, depending
         on the values of `yticks` and `ytickformat`.
         """
@@ -1594,6 +1594,8 @@ end
     scene::Scene
     overlay::Scene
     target_radius::Observable{Float64}
+    cycler::Cycler
+    palette::Attributes
     @attributes begin
         "The height setting of the scene."
         height = nothing
