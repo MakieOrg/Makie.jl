@@ -934,26 +934,26 @@ end
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
         axis = (aspect = DataAspect(), title = "scale = identity"))
-    hexbin(f[1, 2], x, y, bins = 40, scale=log10,
+    hexbin(f[1, 2], x, y, bins = 40, colorscale=log10,
         axis = (aspect = DataAspect(), title = "scale = log10"))
     f
 end
 
 # Scatter needs working highclip/lowclip first
-# @reference_test "hexbin colorrange highclip lowclip" begin
-#     x = RNG.randn(100000)
-#     y = RNG.randn(100000)
+@reference_test "hexbin colorrange highclip lowclip" begin
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
 
-#     hexbin(x, y,
-#         bins = 40,
-#         axis = (aspect = DataAspect(),),
-#         colorrange = (10, 300),
-#         highclip = :red,
-#         lowclip = :pink,
-#         strokewidth = 1,
-#         strokecolor = :gray30
-#     )
-# end
+    f, ax, pl = hexbin(x, y,
+        bins = 40,
+        axis = (aspect = DataAspect(),),
+        colorrange = (10, 300),
+        highclip = :red,
+        lowclip = :pink,
+        strokewidth = 1,
+        strokecolor = :gray30
+    )
+end
 
 @reference_test "Latex labels after the fact" begin
     f = Figure(fontsize = 50)
