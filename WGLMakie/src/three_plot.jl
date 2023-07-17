@@ -6,7 +6,7 @@ js_uuid(object) = string(objectid(object))
 function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
     push!(scene_uuids, js_uuid(scene))
     for plot in scene.plots
-        append!(plot_uuids, (js_uuid(p) for p in Makie.flatten_plots(plot)))
+        append!(plot_uuids, (js_uuid(p) for p in Makie.collect_atomic_plots(plot)))
     end
     for child in scene.children
         all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
@@ -15,7 +15,7 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[
 end
 
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSourceContext)
-    uuids = js_uuid.(Makie.flatten_plots(plot))
+    uuids = js_uuid.(Makie.collect_atomic_plots(plot))
     # This is a bit more complicated then it has to be, since evaljs / on_document_load
     # isn't guaranteed to run after plot initialization in an App... So, if we don't find any plots,
     # we have to check again after inserting new plots

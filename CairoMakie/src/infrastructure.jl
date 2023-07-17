@@ -11,7 +11,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
-    allplots = get_all_plots(scene)
+    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
     zvals = Makie.zvalue2d.(allplots)
     permute!(allplots, sortperm(zvals))
 
@@ -23,10 +23,12 @@ function cairo_draw(screen::Screen, scene::Scene)
 
     Cairo.save(screen.context)
     for p in allplots
-        to_value(get(p, :visible, true)) || continue
+        check_parent_plots(p) do plot
+            to_value(get(plot, :visible, true))
+        end || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        pparent = p.parent::Scene
+        pparent = Makie.parent_scene(p)
         pparent.visible[] || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
@@ -36,8 +38,8 @@ function cairo_draw(screen::Screen, scene::Scene)
         end
         Cairo.save(screen.context)
 
-        # When a plot is too large to save with a reasonable file size on a vector backend, 
-        # the user can choose to rasterize it when plotting to vector backends, by using the 
+        # When a plot is too large to save with a reasonable file size on a vector backend,
+        # the user can choose to rasterize it when plotting to vector backends, by using the
         # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
         # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
@@ -54,12 +56,33 @@ function cairo_draw(screen::Screen, scene::Scene)
     return
 end
 
-function get_all_plots(scene, plots = AbstractPlot[])
-    append!(plots, scene.plots)
-    for c in scene.children
-        get_all_plots(c, plots)
+"""
+    is_cairomakie_atomic_plot(plot::Combined)::Bool
+
+Returns whether the plot is considered atomic for the CairoMakie backend.
+This is overridden for `Poly`, `Band`, and `Tricontourf` so we can apply
+CairoMakie can treat them as atomic plots and render them directly.
+
+Plots with children are by default recursed into.  This can be overridden
+by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
+"""
+is_cairomakie_atomic_plot(plot::Combined) = isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
+
+"""
+    check_parent_plots(f, plot::Combined)::Bool
+Returns whether the plot's parent tree satisfies the predicate `f`.
+`f` must return a `Bool` and take a plot as its only argument.
+"""
+function check_parent_plots(f, plot::Combined)
+    if f(plot)
+        check_parent_plots(f, parent(plot))
+    else
+        return false
     end
-    plots
+end
+
+function check_parent_plots(f, scene::Scene)
+    return true
 end
 
 function prepare_for_scene(screen::Screen, scene::Scene)
