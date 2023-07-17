@@ -251,17 +251,17 @@ end
 end
 
 @reference_test "colorscale (poly)" begin
-    X = [0. 1 1 2; 1 1 2 2; 0 0 1 1]
-    Y = [1. 1 1 1; 1 0 1 0; 0 0 0 0]
-    Z = [1. 1 1 1; 1 0 1 0; 0 0 0 0]
-    C = [.5 1. 1. .5; 1. .5 .5 .1667; .333 .333 .5 .5]
+    X = [0.0 1 1 2; 1 1 2 2; 0 0 1 1]
+    Y = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    Z = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    C = [0.5 1.0 1.0 0.5; 1.0 0.5 0.5 0.1667; 0.333 0.333 0.5 0.5] .^ 3
 
     vertices = connect(reshape([X[:] Y[:] Z[:]]', :), Point3f)
     indices = connect(1:length(X), TriangleFace)
 
     fig = Figure()
-    poly!(Axis3(fig[1, 1]), vertices, indices; color = C[:], strokewidth = 1, colorscale = identity)
-    poly!(Axis3(fig[1, 2]), vertices, indices; color = C[:], strokewidth = 1, colorscale = log10)
+    poly!(Axis3(fig[1, 1]), vertices, indices; color=C[:], colorscale=identity)
+    poly!(Axis3(fig[1, 2]), vertices, indices; color=C[:], colorscale=log10)
     fig
 end
 
