@@ -146,9 +146,11 @@ end
     ax2, hm2 = heatmap(f[1, 3], data, colorscale=log10, axis=(; title="log10"))
     st = Stepper(f)
     Makie.step!(st)
+
     hm2.colorscale = identity
     ax2.title = "identity"
     Makie.step!(st)
+
     hm.colorscale = identity
     ax.title = "identity"
     Makie.step!(st)

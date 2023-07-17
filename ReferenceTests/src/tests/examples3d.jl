@@ -523,7 +523,8 @@ end
     fig, ax, pl = volume(
         r, r, r,          # coordinates to plot on
         ρ,                # charge density (functions as colorant)
-        algorithm=:mip  # maximum-intensity-projection
+        algorithm=:mip,  # maximum-intensity-projection
+        colorrange=(0, 1),
     )
     ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
     fig.scene.backgroundcolor[] = to_color(:black)

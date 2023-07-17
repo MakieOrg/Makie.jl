@@ -47,7 +47,7 @@ end
 
 @reference_test "Arrows on hemisphere" begin
     s = Sphere(Point3f(0), 0.9f0)
-    fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
+    fig, ax, meshplot = mesh(s)
     pos = decompose(Point3f, s)
     dirs = decompose_normals(s)
     arrows!(ax, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
@@ -599,10 +599,10 @@ end
 
 @reference_test "colorscale (lines)" begin
     xs = 0:0.01:10
-    ys = 2(1 .+ sin.(xs))
+    ys = 2 .* (1 .+ sin.(xs))
     fig = Figure()
-    lines(fig[1, 1], xs, ys; linewidth = 10, color = ys, colorscale = identity)
-    lines(fig[2, 1], xs, ys; linewidth = 10, color = ys, colorscale = sqrt)
+    lines(fig[1, 1], xs, ys; linewidth=50, color=ys, colorscale=identity)
+    lines(fig[2, 1], xs, ys; linewidth=50, color=ys, colorscale=sqrt)
     fig
 end
 

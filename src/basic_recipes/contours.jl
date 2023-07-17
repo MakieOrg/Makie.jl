@@ -28,7 +28,7 @@ $(ATTRIBUTES)
         default...,
         color = nothing,
         colormap = theme(scene, :colormap),
-        colorscale = identity, 
+        colorscale = identity,
         colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
@@ -150,6 +150,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     attr[:colormap] = cmap
     attr[:algorithm] = 7
     pop!(attr, :levels)
+    pop!(attr, :alpha) # don't apply alpha 2 times
     # unused attributes
     pop!(attr, :labels)
     pop!(attr, :labelfont)
