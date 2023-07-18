@@ -269,8 +269,8 @@ Save a `Scene` with the specified filename and format.
 
 # Supported Formats
 
-- `GLMakie`: `.png`, `.jpeg`, and `.bmp`
-- `CairoMakie`: `.svg`, `.pdf`, `.png`, and `.jpeg`
+- `GLMakie`: `.png`
+- `CairoMakie`: `.svg`, `.pdf` and `.png`
 - `WGLMakie`: `.png`
 
 # Supported Keyword Arguments
