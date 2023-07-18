@@ -17,7 +17,7 @@ It is available for Windows, Mac and Linux.
 using GLMakie # All functionality is defined in Makie and every backend re-exports Makie
 GLMakie.activate!() # hide
 
-Base.@kwdef mutable struct Lorenz # define the Lorenz attractor
+Base.@kwdef mutable struct Lorenz
     dt::Float64 = 0.01
     σ::Float64 = 10
     ρ::Float64 = 28
@@ -27,7 +27,7 @@ Base.@kwdef mutable struct Lorenz # define the Lorenz attractor
     z::Float64 = 1
 end
 
-function step!(l::Lorenz) # define how to advance in time
+function step!(l::Lorenz)
     dx = l.σ * (l.y - l.x)
     dy = l.x * (l.ρ - l.z) - l.y
     dz = l.x * l.y - l.β * l.z
@@ -39,10 +39,10 @@ end
 
 attractor = Lorenz()
 
-points = Observable(Point3f[]) # Observables are like boxes which hold values
+points = Observable(Point3f[]) # Signal that can be used to update plots efficiently
 colors = Observable(Int[])
 
-set_theme!(theme_black()) # Makie can be themed!
+set_theme!(theme_black())
 
 fig, ax, l = lines(points, color = colors,
     colormap = :inferno, transparency = true, # these are attributes of the line plot
