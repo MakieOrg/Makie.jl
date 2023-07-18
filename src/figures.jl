@@ -27,11 +27,15 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
-const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
+const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
+Base.@deprecate_binding _current_figure CURRENT_FIGURE
+
+const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
+
 "Returns the current active figure (or the last figure that got created)"
-current_figure() = _current_figure[]
+current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
 "Set `fig` as the current active scene"
-current_figure!(fig) = (_current_figure[] = fig)
+current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
 
 "Returns the current active axis (or the last axis that got created)"
 current_axis() = current_axis(current_figure())
@@ -44,9 +48,11 @@ function current_axis!(fig::Figure, ax)
     fig.current_axis[] = ax
     ax
 end
+
 function current_axis!(fig::Figure, ::Nothing)
     fig.current_axis[] = nothing
 end
+
 function current_axis!(ax)
     fig = ax.parent
     if !(fig isa Figure)
@@ -69,11 +75,11 @@ function Figure(; kwargs...)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
-    alignmode = lift(Outside ∘ to_rectsides, padding)
+    alignmode = lift(Outside ∘ to_rectsides, scene, padding)
 
     layout = GridLayout(scene)
 
-    on(alignmode) do al
+    on(scene, alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end
@@ -152,7 +158,10 @@ function resize_to_layout!(fig::Figure)
 end
 
 function Base.empty!(fig::Figure)
+    screens = copy(fig.scene.current_screens)
     empty!(fig.scene)
+    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
+    append!(fig.scene.current_screens, screens)
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)

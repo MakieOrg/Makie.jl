@@ -70,7 +70,7 @@ function Base.show(io::IO, atlas::TextureAtlas)
     println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
 
-const SERIALIZATION_FORMAT_VERSION = "v1"
+const SERIALIZATION_FORMAT_VERSION = "v2"
 
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
@@ -185,37 +185,44 @@ function cached_load(resolution::Int, pix_per_glyph::Int)
     return atlas
 end
 
-const _default_font = NativeFont[]
-const _alternative_fonts = NativeFont[]
+const DEFAULT_FONT = NativeFont[]
+const ALTERNATIVE_FONTS = NativeFont[]
+const FONT_LOCK = Base.ReentrantLock()
+Base.@deprecate_binding _default_font DEFAULT_FONT
+Base.@deprecate_binding _alternative_fonts ALTERNATIVE_FONTS
 
 function defaultfont()
-    if isempty(_default_font)
-        push!(_default_font, to_font("TeX Gyre Heros Makie"))
+    lock(FONT_LOCK) do
+        if isempty(DEFAULT_FONT)
+            push!(DEFAULT_FONT, to_font("TeX Gyre Heros Makie"))
+        end
+        DEFAULT_FONT[]
     end
-    _default_font[]
 end
 
 function alternativefonts()
-    if isempty(_alternative_fonts)
-        alternatives = [
-            "TeXGyreHerosMakie-Regular.otf",
-            "DejaVuSans.ttf",
-            "NotoSansCJKkr-Regular.otf",
-            "NotoSansCuneiform-Regular.ttf",
-            "NotoSansSymbols-Regular.ttf",
-            "FiraMono-Medium.ttf"
-        ]
-        for font in alternatives
-            push!(_alternative_fonts, NativeFont(assetpath("fonts", font)))
+    lock(FONT_LOCK) do
+        if isempty(ALTERNATIVE_FONTS)
+            alternatives = [
+                "TeXGyreHerosMakie-Regular.otf",
+                "DejaVuSans.ttf",
+                "NotoSansCJKkr-Regular.otf",
+                "NotoSansCuneiform-Regular.ttf",
+                "NotoSansSymbols-Regular.ttf",
+                "FiraMono-Medium.ttf"
+            ]
+            for font in alternatives
+                push!(ALTERNATIVE_FONTS, NativeFont(assetpath("fonts", font)))
+            end
         end
+        return ALTERNATIVE_FONTS
     end
-    return _alternative_fonts
 end
 
 function render_default_glyphs!(atlas)
     font = defaultfont()
     chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-']
-    fonts = to_font.(to_value.(values(Makie.minimal_default.fonts)))
+    fonts = to_font.(to_value.(values(Makie.MAKIE_DEFAULT_THEME.fonts)))
     for font in fonts
         for c in chars
             insert_glyph!(atlas, c, font)
@@ -473,14 +480,13 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas))
     # left + right pad - cutoff from pixel centering
-    full_pad = 2f0 * atlas.glyph_padding - 1 
+    full_pad = 2f0 * atlas.glyph_padding - 1
     return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
 end
 
 function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
     # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-    path_width = widths(Makie.bbox(path))
-    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* path_width
+    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* widths(Makie.bbox(path))
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, markersize)
@@ -505,7 +511,7 @@ end
 
 function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
     bb = bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb))
+    pad_offset = origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb)
     return markersize .* pad_offset
 end
 

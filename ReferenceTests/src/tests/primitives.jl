@@ -1,5 +1,4 @@
-# @reference_test "lines and linestyles" begin
-quote
+@reference_test "lines and linestyles" begin
     # For now disabled until we fix GLMakie linestyle
     s = Scene(resolution = (800, 800), camera = campixel!)
     scalar = 30
@@ -249,6 +248,27 @@ end
     for (i, marker) in enumerate(markers)
         scatter!(Point2f.(1:5, i), marker = marker, markersize = range(10, 30, length = 5), color = :black)
         scatter!(Point2f.(1:5, i), markersize = 4, color = :white)
+    end
+
+    f
+end
+
+@reference_test "BezierPath marker stroke" begin
+    f = Figure(resolution = (800, 800))
+    ax = Axis(f[1, 1])
+
+    # Same as above
+    markers = [
+        :rect, :circle, :cross, :x, :utriangle, :rtriangle, :dtriangle, :ltriangle, :pentagon, 
+        :hexagon, :octagon, :star4, :star5, :star6, :star8, :vline, :hline, 'x', 'X'
+    ]
+
+    for (i, marker) in enumerate(markers)
+        scatter!(
+            Point2f.(1:5, i), marker = marker, 
+            markersize = range(10, 30, length = 5), color = :orange,
+            strokewidth = 2, strokecolor = :black
+        )
     end
 
     f
