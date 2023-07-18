@@ -49,7 +49,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 import TriplotBase
-import MiniQhull
+import DelaunayTriangulation as DelTri 
 import Setfield
 import REPL
 import MacroTools
@@ -176,6 +176,7 @@ include("stats/hexbin.jl")
 # Interactiveness
 include("interaction/events.jl")
 include("interaction/interactive_api.jl")
+include("interaction/ray_casting.jl")
 include("interaction/inspector.jl")
 
 # documentation and help functions
