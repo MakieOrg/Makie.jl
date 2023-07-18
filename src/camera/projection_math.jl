@@ -122,6 +122,27 @@ function perspectiveprojection(
 end
 
 """
+    azel2xyz(azimuth, elevation, distance, up)
+
+Compute the eulerian space coordinates from a specified elevation, azimuth and distance (spherical coordinates) w.r.t to origin and an up-vector.
+Use e.g. lookat + azel2xyz(π / 3, deg2rad(60), 1., Vec3f(0, 0, 1)) to compute a camera position.
+"""
+function azel2xyz(azimuth, elevation::E, distance, up::Vec{3, T}) where {E,T}
+    sin_el, cos_el = sincos(elevation)
+    sin_az, cos_az = sincos(azimuth)
+    cos_el_nz = copysign(max(10sqrt(eps(E)), abs(cos_el)), cos_el)  # avoid mult underflow
+    a = distance * sin_el
+    b = distance * cos_az * cos_el_nz
+    c = distance * sin_az * cos_el_nz
+    x, y, z = abs.(normalize(up))
+    return Vec{3, T}(
+        a * x + c * y + b * z,
+        b * x + a * y + c * z,
+        c * x + b * y + a * z,
+    )
+end
+
+"""
 `view = lookat(eyeposition, lookat, up)` creates a view matrix with
 the eye located at `eyeposition` and looking at position `lookat`,
 with the top of the window corresponding to the direction `up`. Only
