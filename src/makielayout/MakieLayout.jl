@@ -21,6 +21,7 @@ include("lineaxis.jl")
 include("interactions.jl")
 include("blocks/axis.jl")
 include("blocks/axis3d.jl")
+include("blocks/polaraxis.jl")
 include("blocks/colorbar.jl")
 include("blocks/label.jl")
 include("blocks/slider.jl")
@@ -36,6 +37,7 @@ include("blocks/textbox.jl")
 
 export Axis
 export Axis3
+export PolarAxis
 export Slider
 export SliderGrid
 export IntervalSlider
@@ -60,7 +62,7 @@ export labelslider!, labelslidergrid!
 export addmouseevents!
 export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
 export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
-# export hlines!, vlines!, abline!, hspan!, vspan!
+export hlines!, vlines!, abline!, hspan!, vspan!
 export Cycle
 export Cycled
 
