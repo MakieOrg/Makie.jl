@@ -1612,7 +1612,7 @@ end
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
         "The background color of the axis."
-        backgroundcolor = :white
+        backgroundcolor = inherit(scene, :backgroundcolor, :white)
         "The maximum radius of the PolarAxis. This acts as the limit of the axis."
         radius = nothing
         "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
