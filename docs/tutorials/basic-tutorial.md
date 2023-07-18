@@ -1,3 +1,5 @@
+@def description = "Learn how to create data visualizations with Makie, the plotting ecosystem for the Julia language, in this introductory tutorial. Topics include Makie's different backends, basic building blocks like Figure, Axis, lines and scatters as well as how to theme your plots and create layouts with multiple subplots."
+
 # Basic Tutorial
 
 ## Preface

@@ -2,29 +2,6 @@
 #                    Poly - the not so primitive, primitive                    #
 ################################################################################
 
-
-function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
-    return numbers_to_colors(colors, plot_object)
-end
-
-function to_cairo_color(color::Makie.AbstractPattern, plot_object)
-    cairopattern = Cairo.CairoPattern(color)
-    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
-    return cairopattern
-end
-
-function to_cairo_color(color, plot_object)
-    return to_color(color)
-end
-
-function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
-    return Cairo.set_source(ctx, pattern)
-end
-
-function set_source(ctx::Cairo.CairoContext, color::Colorant)
-    return Cairo.set_source_rgba(ctx, rgbatuple(color)...)
-end
-
 """
 Special method for polys so we don't fall back to atomic meshes, which are much more
 complex and slower to draw than standard paths with single color.
@@ -34,6 +11,10 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # meshes if possible
     draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
 end
+
+# Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+is_cairomakie_atomic_plot(plot::Poly) = true
 
 """
 Fallback method for args without special treatment.
@@ -79,8 +60,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
-    color = to_color(poly.color[])
-    strokecolor = to_color(poly.strokecolor[])
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
     broadcast_foreach(points_list, color,
         strokecolor, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokewidth, model
             draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
@@ -88,7 +69,6 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
-
 
 function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     model = poly.model[]
@@ -110,16 +90,19 @@ end
 
 function polypath(ctx, polygon)
     ext = decompose(Point2f, polygon.exterior)
+    Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_EVEN_ODD)
     Cairo.move_to(ctx, ext[1]...)
     for point in ext[2:end]
         Cairo.line_to(ctx, point...)
     end
     Cairo.close_path(ctx)
-
     interiors = decompose.(Point2f, polygon.interiors)
     for interior in interiors
+        # Cairo needs to have interiors counter clockwise
+        n = length(interior)
         Cairo.move_to(ctx, interior[1]...)
-        for point in interior[2:end]
+        for idx in 2:n
+            point = interior[idx]
             Cairo.line_to(ctx, point...)
         end
         Cairo.close_path(ctx)
@@ -132,7 +115,7 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = project_polygon.(Ref(poly), space, polygons, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -203,6 +186,12 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
+# Override `is_cairomakie_atomic_plot` to allow this dispatch of `band` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function is_cairomakie_atomic_plot(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    return true
+end
+
 #################################################################################
 #                                  Tricontourf                                  #
 # Tricontourf creates many disjoint polygons that are adjacent and form contour #
@@ -234,4 +223,10 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     draw_tripolys(projected_polys, colornumbers, colors)
 
     return
+end
+
+# Override `is_cairomakie_atomic_plot` to allow `Tricontourf` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function is_cairomakie_atomic_plot(plot::Tricontourf)
+    return true
 end

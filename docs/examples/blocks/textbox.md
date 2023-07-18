@@ -45,3 +45,7 @@ lines(f[1, 1], xs, sinecurve)
 f
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{Textbox}

@@ -27,11 +27,15 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
-const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
+const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
+Base.@deprecate_binding _current_figure CURRENT_FIGURE
+
+const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
+
 "Returns the current active figure (or the last figure that got created)"
-current_figure() = _current_figure[]
+current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
 "Set `fig` as the current active scene"
-current_figure!(fig) = (_current_figure[] = fig)
+current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
 
 "Returns the current active axis (or the last axis that got created)"
 current_axis() = current_axis(current_figure())
@@ -44,9 +48,11 @@ function current_axis!(fig::Figure, ax)
     fig.current_axis[] = ax
     ax
 end
+
 function current_axis!(fig::Figure, ::Nothing)
     fig.current_axis[] = nothing
 end
+
 function current_axis!(ax)
     fig = ax.parent
     if !(fig isa Figure)
@@ -66,15 +72,14 @@ to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
-    padding = pop!(kwargs_dict, :figure_padding, current_default_theme()[:figure_padding])
+    padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, kwargs_dict...)
-    padding = padding isa Observable ? padding : Observable{Any}(padding)
-
-    alignmode = lift(Outside ∘ to_rectsides, padding)
+    padding = convert(Observable{Any}, padding)
+    alignmode = lift(Outside ∘ to_rectsides, scene, padding)
 
     layout = GridLayout(scene)
 
-    on(alignmode) do al
+    on(scene, alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end
@@ -144,7 +149,7 @@ function resize_to_layout!(fig::Figure)
     # it is assumed that all plot objects have been added at this point,
     # but it's possible the limits have not been updated, yet,
     # so without `update_state_before_display!` it's possible that the layout
-    # is optimized for the wrong ticks 
+    # is optimized for the wrong ticks
     update_state_before_display!(fig)
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
@@ -153,7 +158,10 @@ function resize_to_layout!(fig::Figure)
 end
 
 function Base.empty!(fig::Figure)
+    screens = copy(fig.scene.current_screens)
     empty!(fig.scene)
+    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
+    append!(fig.scene.current_screens, screens)
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)
