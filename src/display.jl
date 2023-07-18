@@ -59,7 +59,7 @@ function set_screen_config!(backend::Module, new_values)
     bkeys = keys(backend_defaults)
     for (k, v) in pairs(new_values)
         if !(k in bkeys)
-            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenCofig`")
+            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenConfig`")
         end
         backend_defaults[k] = v
     end
@@ -110,7 +110,7 @@ end
 
 can_show_inline(::Missing) = false # no backend
 function can_show_inline(Backend)
-    for mime in [MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
+    for mime in [MIME"juliavscode/html"(), MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
         if backend_showable(Backend.Screen, mime)
             return has_mime_display(mime)
         end
@@ -128,7 +128,8 @@ see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 
 `backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
 """
-function Base.display(figlike::FigureLike; backend=current_backend(), update=true, screen_config...)
+function Base.display(figlike::FigureLike; backend=current_backend(),
+                      inline=ALWAYS_INLINE_PLOTS[], update = true, screen_config...)
     if ismissing(backend)
         error("""
         No backend available!
@@ -138,7 +139,7 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
         In that case, try `]build GLMakie` and watch out for any warnings.
         """)
     end
-    inline = ALWAYS_INLINE_PLOTS[]
+
     # We show inline if explicitely requested or if automatic and we can actually show something inline!
     if (inline === true || inline === automatic) && can_show_inline(backend)
         Core.invoke(display, Tuple{Any}, figlike)
@@ -190,7 +191,9 @@ const MIME_TO_TRICK_VSCODE = MIME"application/vnd.julia-vscode.diagnostics"
 
 function _backend_showable(mime::MIME{SYM}) where SYM
     if ALWAYS_INLINE_PLOTS[] == false
-        return mime isa MIME_TO_TRICK_VSCODE
+        if mime isa MIME_TO_TRICK_VSCODE
+            return true
+        end
     end
     Backend = current_backend()
     if ismissing(Backend)
@@ -266,8 +269,8 @@ Save a `Scene` with the specified filename and format.
 
 # Supported Formats
 
-- `GLMakie`: `.png`, `.jpeg`, and `.bmp`
-- `CairoMakie`: `.svg`, `.pdf`, `.png`, and `.jpeg`
+- `GLMakie`: `.png`
+- `CairoMakie`: `.svg`, `.pdf` and `.png`
 - `WGLMakie`: `.png`
 
 # Supported Keyword Arguments
@@ -275,6 +278,10 @@ Save a `Scene` with the specified filename and format.
 ## All Backends
 
 - `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+- `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
+- `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
+- Further keywords will be forwarded to the screen.
+
 
 ## CairoMakie
 

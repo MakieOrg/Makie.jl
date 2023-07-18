@@ -49,14 +49,20 @@ vec3 screen_space(vec4 vertex)
 // Manual uv calculation
 // - position in screen space (double resolution as generally used)
 // - uv with uv.u normalized (0..1), uv.v unnormalized (0..pattern_length)
-void emit_vertex(vec3 position, vec2 uv, int index)
+void emit_vertex(vec3 position, vec2 uv, int index, float thickness)
 {
     f_uv        = uv;
     f_color     = g_color[index];
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
     f_id        = g_id[index];
-    f_thickness = g_thickness[index];
+    // linewidth scaling may shrink the effective linewidth
+    f_thickness = thickness; 
     EmitVertex();
+}
+// default for miter joins
+void emit_vertex(vec3 position, vec2 uv, int index)
+{
+    emit_vertex(position, uv, index, g_thickness[index]);
 }
 
 // For center point
@@ -71,14 +77,19 @@ void emit_vertex(vec3 position, vec2 uv)
 }
 
 // Debug
-void emit_vertex(vec3 position, vec2 uv, int index, vec4 color)
+void emit_vertex(vec3 position, vec2 uv, int index, vec4 color, float thickness)
 {
     f_uv        = uv;
     f_color     = color;
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
     f_id        = g_id[index];
-    f_thickness = g_thickness[index];
+    f_thickness = thickness;
     EmitVertex();
+}
+// default for miter joins
+void emit_vertex(vec3 position, vec2 uv , int index, vec4 color)
+{
+    emit_vertex(position, uv , index, color, g_thickness[index]);
 }
 void emit_vertex(vec3 position, vec2 uv, vec4 color)
 {
@@ -97,8 +108,11 @@ void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv, int index)
     emit_vertex(
         position + vec3(offset, 0),
         vec2(uv.x + px2uv * dot(line_dir, offset), uv.y),
-        index
+        index,
+        abs(uv.y) - AA_THICKNESS
     );
+    // `abs(uv.y) - AA_THICKNESS` corrects for enlarged AA padding between
+    // segments of different linewidth, see #2953
 }
 
 void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv)
@@ -618,10 +632,6 @@ void draw_solid_line(bool isvalid[4])
     vec3 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
     vec3 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
 
-    // linewidth with padding for anti aliasing
-    float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
-    float thickness_aa2 = g_thickness[2] + AA_THICKNESS;
-
     // determine the direction of each of the 3 segments (previous, current, next)
     vec3 v1 = p2 - p1;
     float segment_length = length(v1.xy);
@@ -640,6 +650,14 @@ void draw_solid_line(bool isvalid[4])
     vec2 n0 = vec2(-v0.y, v0.x);
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
+
+    // determine stretching of AA border due to linewidth change
+    float temp = (g_thickness[2] - g_thickness[1]) / segment_length;
+    float edge_scale = sqrt(1 + temp * temp);
+
+    // linewidth with padding for anti aliasing (used for geometry)
+    float thickness_aa1 = g_thickness[1] + edge_scale * AA_THICKNESS;
+    float thickness_aa2 = g_thickness[2] + edge_scale * AA_THICKNESS;
 
     // Setup for sharp corners (see above)
     vec2 miter_a = normalize(n0 + n1);
@@ -717,6 +735,10 @@ void draw_solid_line(bool isvalid[4])
         segment_length += corner_offset;
     }
 
+    // scaling of uv.y due to different linewidths
+    // the padding for AA_THICKNESS should always have AA_THICKNESS width in uv
+    thickness_aa1 = g_thickness[1] / edge_scale + AA_THICKNESS;
+    thickness_aa2 = g_thickness[2] / edge_scale + AA_THICKNESS;
 
     // Generate line segment
     u1 *= px2uv;
