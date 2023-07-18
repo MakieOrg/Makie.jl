@@ -87,6 +87,28 @@ end
     @test apply_transform(t1, r2) == Rect2f(apply_transform(t1, pa), apply_transform(t1, pb) .- apply_transform(t1, pa) )
 end
 
+@testset "Polar Transform" begin
+    tf = Makie.Polar()
+    @test tf.theta_0 == 0.0
+    @test tf.direction == 1
+
+    input = Point2f.(1:6, [0, pi/3, pi/2, pi, 2pi, 3pi])
+    output = [r * Point2f(cos(phi), sin(phi)) for (r, phi) in input]
+    inv = Point2f.(1:6, mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)))
+    @test apply_transform(tf, input) ≈ output
+    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+
+    tf = Makie.Polar(pi/2)
+    output = [r * Point2f(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
+    @test apply_transform(tf, input) ≈ output
+    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+
+    tf = Makie.Polar(pi/2, -1)
+    output = [r * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
+    @test apply_transform(tf, input) ≈ output
+    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+end
+
 @testset "Coordinate Systems" begin
     funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
     spaces = [:data, :pixel, :relative, :clip]

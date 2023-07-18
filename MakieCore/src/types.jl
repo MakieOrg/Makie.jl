@@ -57,6 +57,13 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     input_args::Tuple
     converted::Tuple
     plots::Vector{AbstractPlot}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
+    function Combined{Typ, T}(
+        parent::SceneLike, transformation::Transformable, attributes::Attributes,
+        input_args::Tuple, converted::Tuple, plots::Vector{AbstractPlot}) where {Typ, T}
+        return new(parent, transformation, attributes, input_args, converted, plots,
+                   Observables.ObserverFunction[])
+    end
 end
 
 function Base.show(io::IO, plot::Combined)

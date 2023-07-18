@@ -1,6 +1,6 @@
 
 """
-streamplot(f::function, xinterval, yinterval; kwargs...)
+    streamplot(f::function, xinterval, yinterval; kwargs...)
 
 f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
 f must return a Point2.
@@ -159,7 +159,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
 end
 
 function plot!(p::StreamPlot)
-    data = lift(p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density) do f, limits, resolution, stepsize, maxsteps, density
+    data = lift(p, p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density) do f, limits, resolution, stepsize, maxsteps, density
         P = if applicable(f, Point2f(0)) || applicable(f, Point3f(0))
             Point
         else
@@ -169,7 +169,7 @@ function plot!(p::StreamPlot)
     end
     lines!(
         p,
-        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap, colorrange = p.colorrange,
+        lift(x->x[3], p, data), color = lift(last, p, data), colormap = p.colormap, colorrange = p.colorrange,
         linestyle = p.linestyle,
         linewidth = p.linewidth,
         inspectable = p.inspectable,
@@ -181,7 +181,7 @@ function plot!(p::StreamPlot)
         # Calculate arrow head rotations as angles. To avoid distortions from
         # (extreme) aspect ratios we need to project to pixel space and renormalize.
         scene = parent_scene(p)
-        rotations = lift(scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
+        rotations = lift(p, scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
             angles = map(data[1], data[2]) do pos, dir
                 pstart = project(scene, pos)
                 pstop = project(scene, pos + dir)
@@ -202,9 +202,9 @@ function plot!(p::StreamPlot)
 
     scatterfun(N)(
         p,
-        lift(first, data), markersize = p.arrow_size,
-        marker = @lift(arrow_head(N, $(p.arrow_head), $(p.quality))),
-        color = lift(x-> x[4], data), rotations = rotations,
+        lift(first, p, data), markersize = p.arrow_size,
+        marker=lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
+        color = lift(x-> x[4], p, data), rotations = rotations,
         colormap = p.colormap, colorrange = p.colorrange,
         inspectable = p.inspectable, transparency = p.transparency
     )

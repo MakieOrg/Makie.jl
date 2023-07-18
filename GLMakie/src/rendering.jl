@@ -10,7 +10,7 @@ function setup!(screen)
                 a = pixelarea(scene)[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
-                if scene.clear
+                if scene.clear[]
                     c = scene.backgroundcolor[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
@@ -22,8 +22,6 @@ function setup!(screen)
     glDisable(GL_SCISSOR_TEST)
     return
 end
-
-const selection_queries = Function[]
 
 """
 Renders a single frame of a `window`

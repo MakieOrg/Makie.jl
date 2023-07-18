@@ -53,13 +53,13 @@ function Makie.plot!(p::Waterfall)
         return (xy=xy, fillto=fillto, final=final)
     end
 
-    fromto = lift(stack_bars, p[1], p.dodge, p.stack)
+    fromto = lift(stack_bars, p, p[1], p.dodge, p.stack)
 
     if p.show_final[]
         final_gap = p.final_gap[] === automatic ? p.dodge[] == automatic ? 0 : p.gap : p.final_gap
         barplot!(
             p,
-            lift(x -> x.final, fromto);
+            lift(x -> x.final, p, fromto);
             dodge=p.dodge,
             color=p.final_color,
             dodge_gap=p.final_dodge_gap,
@@ -69,9 +69,9 @@ function Makie.plot!(p::Waterfall)
 
     barplot!(
         p,
-        lift(x -> x.xy, fromto);
+        lift(x -> x.xy, p, fromto);
         p.attributes...,
-        fillto=lift(x -> x.fillto, fromto),
+        fillto=lift(x -> x.fillto, p, fromto),
         stack=automatic,
     )
 
@@ -104,6 +104,7 @@ function Makie.plot!(p::Waterfall)
 
         markers = lift(
             direction_markers,
+            p,
             fromto,
             p.marker_pos,
             p.marker_neg,
@@ -116,8 +117,8 @@ function Makie.plot!(p::Waterfall)
 
         scatter!(
             p,
-            lift(x -> x.xy, markers);
-            marker=lift(x -> x.shapes, markers),
+            lift(x -> x.xy, p, markers);
+            marker=lift(x -> x.shapes, p, markers),
             color=p.direction_color)
     end
 

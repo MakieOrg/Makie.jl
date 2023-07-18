@@ -5,6 +5,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+in float lastlen;
 {{vertex_type}} vertex;
 {{thickness_type}} thickness;
 
@@ -14,6 +15,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 
 uniform mat4 projectionview, model;
 uniform uint objectid;
+uniform float depth_shift;
 
 out uvec2 g_id;
 out vec4 g_color;
@@ -34,7 +36,6 @@ vec4 to_color(float color, sampler1D color_map, vec2 color_norm, int index){
     return color_lookup(color, color_map, color_norm);
 }
 
-uniform float depth_shift;
 
 void main()
 {
