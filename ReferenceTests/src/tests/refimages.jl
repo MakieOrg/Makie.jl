@@ -10,6 +10,7 @@ using ReferenceTests.LaTeXStrings
 using ReferenceTests.DelimitedFiles
 using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
+using ReferenceTests.DelaunayTriangulation
 using Makie: Record, volume
 
 @testset "primitives" begin

@@ -24,7 +24,7 @@ function JSServe.jsrender(session::Session, scene::Scene)
     screen = Screen(c, true, scene)
     screen.session = session
     Makie.push_screen!(scene, screen)
-    on(on_init) do i
+    on(session, on_init) do i
         mark_as_displayed!(screen, scene)
     end
     return canvas
@@ -46,6 +46,7 @@ const WEB_MIMES = (
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
+    resize_to_body::Bool # false
 end
 
 """
@@ -93,7 +94,7 @@ for M in WEB_MIMES
                 screen.session = session
                 three, canvas, init_obs = three_display(session, scene)
                 Makie.push_screen!(scene, screen)
-                on(init_obs) do _
+                on(session, init_obs) do _
                     put!(screen.three, three)
                     mark_as_displayed!(screen, scene)
                     return
@@ -183,7 +184,7 @@ function Base.display(screen::Screen, scene::Scene; kw...)
     app = App() do session, request
         screen.session = session
         three, canvas, done_init = three_display(session, scene)
-        on(done_init) do _
+        on(session, done_init) do _
             put!(screen.three, three)
             mark_as_displayed!(screen, scene)
             return
@@ -205,7 +206,7 @@ function session2image(session::Session, scene::Scene)
     to_data = js"""function (){
         return $(scene).then(scene => {
             const {renderer} = scene.screen
-            WGLMakie.render_scene(scene)
+            WGL.render_scene(scene)
             const img = renderer.domElement.toDataURL()
             return img
         })
@@ -223,6 +224,31 @@ function Makie.colorbuffer(screen::Screen)
     end
     three = get_three(screen; error="Not able to show scene in a browser")
     return session2image(three.session, screen.scene)
+end
+
+
+function insert_scene!(disp, screen::Screen, scene::Scene)
+    if js_uuid(scene) in screen.displayed_scenes
+        return true
+    else
+        scene_ser = serialize_scene(scene)
+        parent = scene.parent
+        parent_uuid = js_uuid(parent)
+        insert_scene!(disp, screen, parent) # make sure parent is also already displayed
+        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
+        evaljs_value(disp.session, js"""
+        $(WGL).then(WGL=> {
+            const parent = WGL.find_scene($(parent_uuid));
+            if (!parent) {
+                throw new Error($(err))
+            }
+            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
+            parent.scene_children.push(new_scene);
+        })
+        """)
+        mark_as_displayed!(screen, scene)
+        return false
+    end
 end
 
 function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
@@ -245,20 +271,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
         # We serialize the whole scene (containing `plot` as well),
         # since, we should only get here if scene is newly created and this is the first plot we insert!
         @assert scene.plots[1] == plot
-        scene_ser = serialize_scene(scene)
-        parent_uuid = js_uuid(parent)
-        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
-        evaljs_value(disp.session, js"""
-        $(WGL).then(WGL=> {
-            const parent = WGL.find_scene($(parent_uuid));
-            if (!parent) {
-                throw new Error($(err))
-            }
-            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
-            parent.scene_children.push(new_scene);
-        })
-        """)
-        mark_as_displayed!(screen, scene)
+        insert_scene!(disp, screen, scene)
     end
     return
 end
@@ -330,7 +343,7 @@ const DISABLE_JS_FINALZING = Base.RefValue(false)
 const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_plot!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
-    atomics = Makie.flatten_plots(plot) # delete all atomics
+    atomics = Makie.collect_atomic_plots(plot) # delete all atomics
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
         push!(DELETE_QUEUE, (screen, js_uuid(scene), js_uuid.(atomics)))
