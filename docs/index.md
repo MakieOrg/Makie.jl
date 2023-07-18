@@ -45,18 +45,19 @@ colors = Observable(Int[])
 set_theme!(theme_black())
 
 fig, ax, l = lines(points, color = colors,
-    colormap = :inferno, transparency = true, # these are attributes of the line plot
-    axis = (; type = Axis3, protrusions = (0, 0, 0, 0), # these are attributes of the axis
-        viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
+    colormap = :inferno, transparency = true, 
+    axis = (; type = Axis3, protrusions = (0, 0, 0, 0), 
+              viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
 
-record(fig, "lorenz.mp4", 1:120) do frame # this records an animation by iterating through the last argument
+record(fig, "lorenz.mp4", 1:120) do frame
     for i in 1:50
-        push!(points[], step!(attractor)) # update the value which points holds
-        push!(colors[], frame)            # update the value which colors holds
+        # update arrays inplace
+        push!(points[], step!(attractor))
+        push!(colors[], frame)
     end
     ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120) # set the view angle of the axis
-    notify.((points, colors)) # tell points and colors that their value has been updated
-    l.colorrange = (0, frame) # set the range of the colormap for the plot
+    foreach(notify, (points, colors)) # tell points and colors that their value has been updated
+    l.colorrange = (0, frame) # update plot attribute directly
 end
 set_theme!() # hide
 ```
