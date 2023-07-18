@@ -510,8 +510,8 @@ function render_path(path, bitmap_size_px = 256)
     outline_ref = make_outline(path_transformed)
 
     # Adjust bitmap size to match path aspect
-    w = ceil(Int, bitmap_size_px * aspect[1])
-    h = ceil(Int, bitmap_size_px * aspect[2])
+    w = floor(Int, bitmap_size_px * aspect[1])
+    h = floor(Int, bitmap_size_px * aspect[2])
     pitch = w * 1 # 8 bit gray
     pixelbuffer = zeros(UInt8, h * pitch)
     bitmap_ref = Ref{FT_Bitmap}()
