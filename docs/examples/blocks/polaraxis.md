@@ -123,3 +123,7 @@ which clips the content to the relevant area. If you want to draw outside the
 circle limiting the polar axis but still within it's scene area, you will need
 to translate those plots to a z range between `9000` and `10_000` or disable 
 clipping via the `clip` attribute.
+
+## Attributes
+
+\attrdocs{PolarAxis}
