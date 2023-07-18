@@ -56,10 +56,6 @@ vec2 get_sd(Nothing _, vec2 uv){
     return uv;
 }
 
-float ifelse(bool condition, float true_val, float false_val){
-    return float(condition) * (true_val - false_val) + false_val;
-}
-
 void main(){
     vec4 color = vec4(f_color.rgb, 0.0);
     vec2 xy = get_sd(pattern, f_uv);
@@ -78,6 +74,10 @@ void main(){
     // color.g = mod(f_uv.x, 1.0);
     // color.b = mod(f_uv.x, 1.0);
     // color.a = 0.2 + 0.8 * color.a;
+
+    // Debug: Show AA padding in red
+    // color.r = 1 - color.a;
+    // color.a = 0.5 + 0.5 * color.a;
 
     
     write2framebuffer(color, f_id);

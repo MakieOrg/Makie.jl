@@ -27,19 +27,26 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
-const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
+
+const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
+Base.@deprecate_binding _current_figure CURRENT_FIGURE
+
+const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
+
 """
     current_figure()
 
-Returns the current active figure (or the last figure created). Returns `nothing` if there is no current active figure.
+Returns the current active figure (or the last figure created). 
+Returns `nothing` if there is no current active figure.
 """
-current_figure() = _current_figure[]
+current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
+
 """
     current_figure!(fig)
 
 Set `fig` as the current active figure.
 """
-current_figure!(fig) = (_current_figure[] = fig)
+current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
 
 """
     current_axis()
@@ -61,9 +68,11 @@ function current_axis!(fig::Figure, ax)
     fig.current_axis[] = ax
     ax
 end
+
 function current_axis!(fig::Figure, ::Nothing)
     fig.current_axis[] = nothing
 end
+
 """
     current_axis!(ax)
 
