@@ -950,13 +950,12 @@ To register a new interaction, call `register_interaction!(ax, name::Symbol, int
 The `interaction` argument can be of any type.
 
 To remove an existing interaction completely, call `deregister_interaction!(ax, name::Symbol)`.
-You can check which interactions are currently active by calling `interactions(ax)`.
+You can check which interactions are currently active by calling `interactions(ax)`, including the default interactions `:dragpan`, `:limitreset`, `:rectanglezoom`, and `:scrollzoom`.
 
 #### Activating and deactivating interactions
 
 Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again.
 You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
-Registered interactions are stored in `ax.interactions`, including the default interactions `:dragpan`, `:limitreset`, `:rectanglezoom`, and `:scrollzoom`.
 
 #### `Function` interaction
 
