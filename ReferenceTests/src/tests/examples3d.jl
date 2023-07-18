@@ -55,6 +55,17 @@ end
     mesh(catmesh, color=loadasset("diffusemap.png"))
 end
 
+@reference_test "Textured meshscatter" begin
+    catmesh = loadasset("cat.obj")
+    img = loadasset("diffusemap.png")
+    rot = qrotation(Vec3f(1, 0, 0), 0.5pi) * qrotation(Vec3f(0, 1, 0), 0.7pi)
+    meshscatter(
+        1:3, 1:3, fill(0, 3, 3),
+        marker=catmesh, color=img, markersize=1, rotation=rot,
+        axis=(type=LScene, show_axis=false)
+    )
+end
+
 @reference_test "Load Mesh" begin
     mesh(loadasset("cat.obj"))
 end
@@ -571,4 +582,9 @@ end
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig
+end
+
+# TODO: get 3D images working in CairoMakie and test them here too
+@reference_test "Heatmap 3D" begin
+    heatmap(-2..2, -1..1, rand(100, 100); axis = (; type = LScene))
 end
