@@ -88,6 +88,7 @@ function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f
     gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
+
 function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, col, scol, swi, www)
@@ -354,7 +355,7 @@ function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
     gc.origins .= Ref(quat) .* gc.origins
     @assert gc.rotations.sv isa Vector # should always be a vector because that's how the glyphcollection is created
     gc.rotations.sv .= Ref(quat) .* gc.rotations.sv
-    gc
+    return gc
 end
 
 function apply_lineheight!(lines, lh)
@@ -368,20 +369,31 @@ function apply_lineheight!(lines, lh)
     return
 end
 
-function apply_alignment_and_justification!(lines, ju, al)
-    max_xs = map(lines) do line
-        maximum(line, init = 0f0) do ginfo
-            ginfo.origin[1] + ginfo.extent.hadvance * ginfo.size[1]
-        end
+function max_x_advance(glyph_infos::Vector{GlyphInfo})::Float32
+    return maximum(glyph_infos; init=0.0f0) do ginfo
+        ginfo.origin[1] + ginfo.extent.hadvance * ginfo.size[1]
     end
+end
+
+function max_y_ascender(glyph_infos::Vector{GlyphInfo})::Float32
+    return maximum(glyph_infos) do ginfo
+        return ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
+    end
+end
+
+function min_y_descender(glyph_infos::Vector{GlyphInfo})::Float32
+    return minimum(glyph_infos) do ginfo
+        return ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
+    end
+end
+
+function apply_alignment_and_justification!(lines, ju, al)
+
+    max_xs = map(max_x_advance, lines)
     max_x = maximum(max_xs)
 
-    top_y = maximum(lines[1]) do ginfo
-        ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
-    end
-    bottom_y = minimum(lines[end]) do ginfo
-        ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
-    end
+    top_y = max_y_ascender(lines[1])
+    bottom_y = min_y_descender(lines[end])
 
     al_offset_x = if al[1] === :center
         max_x / 2

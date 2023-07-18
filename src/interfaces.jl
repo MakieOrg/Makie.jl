@@ -275,12 +275,14 @@ Main plotting signatures that plot/plot! route to if no Plot Type is given
 function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
     attributes = merge!(Attributes(kw_attributes), attributes)
     argvalues = to_value.(args)
-    PreType = plottype(P, argvalues...)
+    pre_type_no_args = plottype(P, argvalues...)
     # plottype will lose the argument types, so we just extract the plot func
     # type and recreate the type with the argument type
-    PreType = Combined{plotfunc(PreType), typeof(argvalues)}
-    convert_keys = intersect(used_attributes(PreType, argvalues...), keys(attributes))
-    kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
+    PreType = Combined{plotfunc(pre_type_no_args), typeof(argvalues)}
+    used_attrs = used_attributes(PreType, argvalues...)
+    convert_keys = intersect(used_attrs, keys(attributes))
+    kw_signal = if isempty(convert_keys)
+        # lift(f) isn't supported so we need to catch the empty case
         Observable(())
     else
         # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
