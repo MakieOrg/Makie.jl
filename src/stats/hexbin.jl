@@ -7,7 +7,7 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 
 ### Specific to `Hexbin`
 
-- `weights = nothing`: Weights for each observation.  Can be `nothing` (each observation carries weight 1) or any `AbstractVector{<: Real}` or `StatsBase.AbstractWeights`. 
+- `weights = nothing`: Weights for each observation.  Can be `nothing` (each observation carries weight 1) or any `AbstractVector{<: Real}` or `StatsBase.AbstractWeights`.
 - `bins = 20`: If an `Int`, sets the number of bins in x and y direction. If a `Tuple{Int, Int}`, sets the number of bins for x and y separately.
 - `cellsize = nothing`: If a `Real`, makes equally-sided hexagons with width `cellsize`. If a `Tuple{Real, Real}` specifies hexagon width and height separately.
 - `threshold::Int = 1`: The minimal number of observations in the bin to be shown. If 0, all zero-count hexagons fitting into the data limits will be shown.
@@ -101,7 +101,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         y_diff = yma - ymi
 
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi,
-                                                                                yma)                                                                     
+                                                                                yma)
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -127,7 +127,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             is_grid1 = d1 < d2
 
             # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
-            
+
             id = if is_grid1
                 (
                     cld(dvx, 2),
@@ -150,7 +150,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 for ix in 0:_nx-1
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
-                    c = get(d, (ix, iy), 0e0)
+                    c = get(d, (ix, iy), 0.0)
                     push!(points[], Point2f(_x, _y))
                     push!(count_hex[], scale(c))
                 end
