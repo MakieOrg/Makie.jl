@@ -1,24 +1,14 @@
-function Makie.plot!(plot::Plot(AbstractVector{<: Complex}))
-    plot[:axis, :labels] = ("Re(x)", "Im(x)")
-    lines!(plot, lift(im-> Point2f.(real.(im), imag.(im)), x[1]))
-end
-
-
 """
     showlibrary(lib::Symbol)::Scene
 
-Shows all colour gradients in the given library.
-Returns a Scene with these colour gradients arranged
-as horizontal colourbars.
+Shows all color gradients in the given library.
+Returns a Scene with these color gradients arranged
+as horizontal colorbars.
 """
 function showlibrary(lib::Symbol)::Scene
-
     cgrads = sort(PlotUtils.cgradients(lib))
-
     PlotUtils.clibrary(lib)
-
     showgradients(cgrads)
-
 end
 
 

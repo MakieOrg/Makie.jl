@@ -92,6 +92,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
+    uniform_dict[:shading] = plot.shading
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
@@ -123,7 +124,7 @@ function serialize_three(fta::NoDataTextureAtlas)
 end
 
 
-function scatter_shader(scene::Scene, attributes)
+function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
     per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
                          :uv_offset_width, :quad_offset, :marker_offset)
@@ -154,7 +155,7 @@ function scatter_shader(scene::Scene, attributes)
     end
 
     for (k, v) in per_instance
-        per_instance[k] = Buffer(lift_convert(k, v, nothing))
+        per_instance[k] = Buffer(lift_convert(k, v, plot))
     end
 
     uniforms = filter(attributes) do (k, v)
@@ -163,7 +164,7 @@ function scatter_shader(scene::Scene, attributes)
 
     for (k, v) in uniforms
         k in IGNORE_KEYS && continue
-        uniform_dict[k] = lift_convert(k, v, nothing)
+        uniform_dict[k] = lift_convert(k, v, plot)
     end
     if !isnothing(marker)
         get!(uniform_dict, :shape_type) do
@@ -215,7 +216,7 @@ function create_shader(scene::Scene, plot::Scatter)
 
     delete!(attributes, :uv_offset_width)
     filter!(kv -> !(kv[2] isa Function), attributes)
-    return scatter_shader(scene, attributes)
+    return scatter_shader(scene, attributes, plot)
 end
 
 value_or_first(x::AbstractArray) = first(x)
@@ -227,7 +228,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     glyphcollection = plot[1]
     res = map(x->Vec2f(widths(x)), pixelarea(scene))
     projview = scene.camera.projectionview
-    transfunc =  Makie.transform_func_obs(scene)
+    transfunc = Makie.transform_func_obs(plot)
     pos = plot.position
     space = plot.space
     markerspace = plot.markerspace
@@ -294,5 +295,5 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :depth_shift => get(plot, :depth_shift, Observable(0f0))
     )
 
-    return scatter_shader(scene, uniforms)
+    return scatter_shader(scene, uniforms, plot)
 end

@@ -28,3 +28,7 @@ ylims!(ax, 0, 20)
 fig
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{Button}

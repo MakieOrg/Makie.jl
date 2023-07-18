@@ -10,7 +10,7 @@ function setup!(screen)
                 a = pixelarea(scene)[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
-
+        
                 # Each scene gets a stencil index/value during scene insertion
                 # based on its depth in the scene tree (root = 0x00). When a 
                 # scene has `clear = true` we mark its area with its stencil 
@@ -20,7 +20,7 @@ function setup!(screen)
 
                 bits = GL_STENCIL_BUFFER_BIT
                 glClearStencil(screen.stencil_index[id])
-                if scene.clear
+                if scene.clear[]
                     c = scene.backgroundcolor[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
@@ -33,8 +33,6 @@ function setup!(screen)
     glDisable(GL_SCISSOR_TEST)
     return
 end
-
-const selection_queries = Function[]
 
 """
 Renders a single frame of a `window`
