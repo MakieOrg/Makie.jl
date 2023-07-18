@@ -297,7 +297,7 @@ $(Base.Docs.doc(MakieCore.default_theme!))
 """
 @recipe(Mesh, mesh) do scene
     attr = Attributes(;
-        color=theme(scene, :patchcolor),
+        color = :black,
         interpolate = true,
 
         fxaa = true,
