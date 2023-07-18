@@ -190,12 +190,17 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     end
 
     hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi / 6, 13pi / 6; length=7)[1:6]])
-
+    scale = if haskey(hb, :scale)
+        @warn("`hexbin(..., scale=$(hb.scale[]))` is deprecated, use `hexbin(..., colorscale=$(hb.scale[]))` instead")
+        hb.scale
+    else
+        hb.colorscale
+    end
     return scatter!(hb, points;
                     colorrange=hb.colorrange,
                     color=count_hex,
                     colormap=hb.colormap,
-                    colorscale=hb.colorscale,
+                    colorscale=scale,
                     lowclip=hb.lowclip,
                     highclip=hb.highclip,
                     nan_color=hb.nan_color,
