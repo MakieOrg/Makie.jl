@@ -40,3 +40,7 @@ fig
 ## Labelled sliders and grids
 
 The functions \apilink{labelslider!} and \apilink{labelslidergrid!} are deprecated, use \apilink{SliderGrid} instead.
+
+## Attributes
+
+\attrdocs{Slider}
