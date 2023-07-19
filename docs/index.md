@@ -56,7 +56,7 @@ record(fig, "lorenz.mp4", 1:120) do frame
         push!(colors[], frame)
     end
     ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120) # set the view angle of the axis
-    foreach(notify, (points, colors)) # tell points and colors that their value has been updated
+    notify(points); notify(colors) # tell points and colors that their value has been updated
     l.colorrange = (0, frame) # update plot attribute directly
 end
 set_theme!() # hide
