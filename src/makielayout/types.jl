@@ -1594,24 +1594,6 @@ end
     end
 end
 
-@Block Viewport3DController begin
-    @attributes begin
-        # Controller specific
-        "Sets the background color on the viewport controller."
-        backgroundcolor = :transparent
-        "Sets the outline color of the (x, y, z) labels."
-        strokecolor = (:black, :black, :black)
-        "Sets the (inner) color of the (x, y, z) labels."
-        fontcolor = (:white, :white, :white)
-
-        # Layouting
-        "The height setting of the scene."
-        height = Auto()
-        "The width setting of the scene."
-        width = Auto()
-    end
-end
-
 @Block PolarAxis begin
     scene::Scene
     overlay::Scene
@@ -1741,5 +1723,33 @@ end
         clip = true
         "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
         reset_button = Keyboard.left_control & Mouse.left
+    end
+end
+
+@Block Viewport3DController begin
+    @attributes begin
+        # Controller specific
+        "Sets the background color on the viewport controller."
+        backgroundcolor = :transparent
+        "Sets the outline color of the (x, y, z) labels."
+        strokecolor = (:black, :black, :black)
+        "Sets the (inner) color of the (x, y, z) labels."
+        fontcolor = (:white, :white, :white)
+
+        # Layouting
+        "The height setting of the scene."
+        height = Auto()
+        "The width setting of the scene."
+        width = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The horizontal alignment of the scene in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the scene in its suggested bounding box."
+        valign = :center
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
     end
 end
