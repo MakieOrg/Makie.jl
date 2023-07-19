@@ -69,18 +69,16 @@ end
 
 Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
 
-@generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
-
-@inline function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
-    if hasfield(x, Val(key))
+function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
+    if hasfield(typeof(x), key)
         getfield(x, key)
     else
         getindex(x, key)
     end
 end
 
-@inline function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
-    if hasfield(x, Val(key))
+function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
+    if hasfield(typeof(x), key)
         setfield!(x, key, value)
     else
         setindex!(x, value, key)
@@ -186,7 +184,7 @@ function Base.getindex(x::AbstractPlot, key::Symbol)
     if idx === nothing
         return x.attributes[key]
     else
-        x.converted[idx]
+        return x.converted[idx]
     end
 end
 
