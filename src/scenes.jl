@@ -188,6 +188,7 @@ end
 end
 
 get_scene(scene::Scene) = scene
+get_scene(plot::AbstractPlot) = parent_scene(plot)
 
 _plural_s(x) = length(x) != 1 ? "s" : ""
 

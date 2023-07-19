@@ -30,7 +30,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     space = to_value(get(primitive, :space, :data))
     projected_positions = project_position.(Ref(scene), (Makie.transform_func(primitive),), Ref(space), positions, Ref(model))
 
-    color = to_cairo_color(color, primitive)
+    color = to_color(primitive.calculated_colors[])
 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
@@ -208,18 +208,18 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
-    fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker, marker_offset, rotations))
+    fields = @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotations))
     @get_attribute(primitive, (transform_marker,))
 
     ctx = screen.context
-    model = primitive[:model][]
+    model = primitive.model[]
     positions = primitive[1][]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f(I)
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
 
-    colors = to_cairo_color(color, primitive)
+    colors = to_color(primitive.calculated_colors[])
 
     markerspace = to_value(get(primitive, :markerspace, :pixel))
     space = to_value(get(primitive, :space, :data))
@@ -392,7 +392,7 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
 
     # convert marker to Cairo compatible image data
     marker = permutedims(marker, (2,1))
-    marker_surf = to_cairo_image(marker, ())
+    marker_surf = to_cairo_image(marker)
 
     w, h = size(marker)
 
@@ -606,6 +606,17 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     t = Makie.transform_func(primitive)
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
+    xy_aligned = let 
+        # Only allow scaling and translation
+        pv = scene.camera.projectionview[]
+        M = Mat4f(
+            pv[1, 1], 0.0,      0.0,      0.0,
+            0.0,      pv[2, 2], 0.0,      0.0,
+            0.0,      0.0,      pv[3, 3], 0.0,
+            pv[1, 4], pv[2, 4], pv[3, 4], 1.0
+        )
+        pv ≈ M
+    end
 
     if interpolate
         if !regular_grid
@@ -624,11 +635,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
 
-    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
+    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform && 
+        (interpolate || xy_aligned)
     use_fast_path = can_use_fast_path && !disable_fast_path
 
     if use_fast_path
-        s = to_cairo_image(image, primitive)
+        s = to_cairo_image(to_color(primitive.calculated_colors[]))
 
         weird_cairo_limit = (2^15) - 23
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
@@ -651,7 +663,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))
         xys = project_position.(scene, (Makie.transform_func(primitive),), space, [Point2f(x, y) for x in xs, y in ys], (model,))
-        colors = to_rgba_image(image, primitive)
+        colors = to_color(primitive.calculated_colors[])
 
         # Note: xs and ys should have size ni+1, nj+1
         ni, nj = size(image)
@@ -716,23 +728,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
-    @get_attribute(plot, (color,))
-    color = to_color(hasproperty(mesh, :color) ? mesh.color : color)
     vs =  decompose(Point2f, mesh)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     model = plot.model[]::Mat4f
-    colormap = haskey(plot, :colormap) ? to_colormap(plot.colormap[]) : nothing
-    colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
-
-    lowclip = get_color_attr(plot, :lowclip)
-    highclip = get_color_attr(plot, :highclip)
-    nan_color = get_color_attr(plot, :nan_color)
-
-    cols = per_face_colors(
-        color, colormap, colorrange, nothing, fs, nothing, uv,
-        lowclip, highclip, nan_color)
-
+    color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
+    cols = per_face_colors(color, nothing, fs, nothing, uv)
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     return draw_mesh2D(scene, screen, cols, space, transform_func, vs, fs, model)
@@ -779,24 +780,16 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     # Priorize colors of the mesh if present
     @get_attribute(attributes, (color,))
 
-    colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
-    colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
     matcap = to_value(get(attributes, :matcap, nothing))
 
-    color = hasproperty(mesh, :color) ? mesh.color : color
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     meshnormals = decompose_normals(mesh)::Vector{Vec3f}
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
-    lowclip = get_color_attr(attributes, :lowclip)
-    highclip = get_color_attr(attributes, :highclip)
-    nan_color = get_color_attr(attributes, :nan_color)
+    color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
 
-    per_face_col = per_face_colors(
-        color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
-        lowclip, highclip, nan_color
-    )
+    per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
     @get_attribute(attributes, (shading, diffuse,
         specular, shininess, faceculling))
@@ -973,11 +966,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (color, model, marker, markersize, rotations))
-
-    if color isa AbstractArray{<: Number}
-        color = numbers_to_colors(color, primitive)
-    end
+    @get_attribute(primitive, (model, marker, markersize, rotations))
 
     m = convert_attribute(marker, key"marker"(), key"meshscatter"())
     pos = primitive[1][]
@@ -991,9 +980,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         cam_pos[3] / cam_pos[4]
     end, rev=false)
 
+    color = to_color(primitive.calculated_colors[])
     submesh = Attributes(
         model=model,
-        color=color,
+        calculated_colors = color,
         shading=primitive.shading, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
         faceculling=get(primitive, :faceculling, -10),
@@ -1006,11 +996,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         submesh[:model] = model * R
     end
     scales = primitive[:markersize][]
-
     for i in zorder
         p = pos[i]
         if color isa AbstractVector
-            submesh[:color] = color[i]
+            submesh[:calculated_colors] = color[i]
         end
         if rotations isa Vector
             R = Makie.rotationmatrix4(to_rotation(rotations[i]))

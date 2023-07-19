@@ -145,7 +145,8 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         anisotropic = s.anisotropic; kwargs...
     )
     obsfunc = ShaderAbstractions.connect!(s, tex)
-    push!(tex.observers, obsfunc)
+    obsfunc2 = on(x -> tex.requires_update[] = true, s.updates.update)
+    push!(tex.observers, obsfunc, obsfunc2)
     return tex
 end
 

@@ -269,8 +269,8 @@ Save a `Scene` with the specified filename and format.
 
 # Supported Formats
 
-- `GLMakie`: `.png`, `.jpeg`, and `.bmp`
-- `CairoMakie`: `.svg`, `.pdf`, `.png`, and `.jpeg`
+- `GLMakie`: `.png`
+- `CairoMakie`: `.svg`, `.pdf` and `.png`
 - `WGLMakie`: `.png`
 
 # Supported Keyword Arguments
@@ -278,6 +278,10 @@ Save a `Scene` with the specified filename and format.
 ## All Backends
 
 - `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+- `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
+- `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
+- Further keywords will be forwarded to the screen.
+
 
 ## CairoMakie
 
