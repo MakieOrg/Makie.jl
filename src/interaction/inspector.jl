@@ -202,7 +202,7 @@ function cleanup(inspector::DataInspector)
     off.(inspector.obsfuncs)
     empty!(inspector.obsfuncs)
     delete!(inspector.root, inspector.plot)
-    clear_temporary_plots!(inspector, inspector.slection)
+    clear_temporary_plots!(inspector, inspector.selection)
     inspector
 end
 
