@@ -485,8 +485,9 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
 end
 
 function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
-    # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* widths(Makie.bbox(path))
+    # TODO: Why is it like this?
+    pad_scale = bezierpath_pad_scale_factor(atlas, path)
+    return (1 ./ pad_scale .+ 1) .* minimum(pad_scale) .* maximum(widths(Makie.bbox(path)))
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, markersize)
@@ -510,8 +511,13 @@ function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
 end
 
 function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
+    # TODO: explain
     bb = bbox(bp)
-    pad_offset = origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb)
+    wh = widths(bb)
+    pad_scale = bezierpath_pad_scale_factor(atlas, bp)
+    # this moves the original bezierpath origin to... something with pixel rounding applied?
+    o = origin(bb) .+ 0.5f0 * wh .- 0.5f0 * minimum(pad_scale) * maximum(wh) ./ pad_scale
+    pad_offset = o .- 0.5f0 .* minimum(pad_scale) .* maximum(wh)
     return markersize .* pad_offset
 end
 

@@ -248,6 +248,17 @@ end
     for (i, marker) in enumerate(markers)
         scatter!(Point2f.(1:5, i), marker = marker, markersize = range(10, 30, length = 5), color = :black)
         scatter!(Point2f.(1:5, i), markersize = 4, color = :white)
+
+        # # Debug - show bbox outline
+        # if !(marker isa Char)
+        #     scene = Makie.get_scene(ax)
+        #     bb = Makie.bbox(Makie.DEFAULT_MARKER_MAP[marker])
+        #     w, h = widths(bb)
+        #     ox, oy = origin(bb)
+        #     xy = map(pv -> Makie.project(pv, Vec2f(widths(pixelarea(scene)[])), Point2f(5, i)), scene.camera.projectionview)
+        #     bb = map(xy -> Rect2f(xy .+ 30 * Vec2f(ox, oy), 30 * Vec2f(w, h)), xy)
+        #     lines!(bb, linewidth = 1, color = :orange, space = :pixel, linestyle = :dash)
+        # end
     end
 
     f
