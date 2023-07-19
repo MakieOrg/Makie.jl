@@ -1,68 +1,24 @@
-function default_theme(scene)
-    return Attributes(
-        transformation = automatic,
-        model = automatic,
-        visible = true,
-        transparency = false,
-        overdraw = false,
-        ssao = false,
-        inspectable = true,
-        depth_shift = 0f0,
-        space = :data
-    )
-end
-
-function color_and_colormap!(plot, intensity = plot[:color])
-    if intensity[] isa Union{Number, AbstractArray{<: Number}}
-        @converted_attribute plot (colormap,)
-        replace_automatic!(plot, :highclip) do
-            lift(last, plot, colormap)
-        end
-        replace_automatic!(plot, :lowclip) do
-            lift(first, plot, colormap)
-        end
-        get!(plot, :nan_color, RGBAf(0,0,0,0))
-        if intensity[] isa Number
-            plot[:colorrange][] isa Automatic &&
-                error("Cannot determine a colorrange automatically for single number color value $intensity. Pass an explicit colorrange.")
-            args = @converted_attribute plot (colorrange, lowclip, highclip, nan_color)
-            plot[:color] = lift(numbers_to_colors, plot, intensity, colormap, args...)
-            delete!(plot, :colorrange)
-            delete!(plot, :colormap)
-        elseif intensity[] isa AbstractArray{<: Number}
-            haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
-            replace_automatic!(plot, :colorrange) do
-                lift(x-> Vec2f(distinct_extrema_nan(x)), plot, intensity)
-            end
-        end
-        return true
-    else
-        delete!(plot, :highclip)
-        delete!(plot, :lowclip)
-        delete!(plot, :colorrange)
-        delete!(plot, :colormap)
-        return false
-    end
+function color_and_colormap!(plot, colors = plot.color)
+    colors = assemble_colors(colors[], colors, plot)
+    attributes(plot.attributes)[:calculated_colors] = colors
 end
 
 function calculated_attributes!(T::Type{<: Mesh}, plot)
     mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
     color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
-    need_cmap = color_and_colormap!(plot, color)
-    need_cmap || delete!(plot, :colormap)
+    color_and_colormap!(plot, color)
     return
 end
 
 function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
-    plot[:color] = plot[3]
-    color_and_colormap!(plot)
+    color_and_colormap!(plot, plot[3])
 end
 
 function calculated_attributes!(::Type{<: Surface}, plot)
     colors = plot[3]
     if haskey(plot, :color)
         color = plot[:color][]
-        if isa(color, AbstractMatrix{<: Number}) && !(color === to_value(colors))
+        if isa(color, AbstractMatrix) && !(color === to_value(colors))
             colors = plot[:color]
         end
     end
@@ -71,10 +27,17 @@ end
 
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
+    return
+end
+
+function calculated_attributes!(::Type{<:Volume}, plot)
+    color_and_colormap!(plot, plot[4])
+    return
 end
 
 function calculated_attributes!(::Type{<:Text}, plot)
-    return color_and_colormap!(plot)
+    color_and_colormap!(plot)
+    return
 end
 
 function calculated_attributes!(::Type{<: Scatter}, plot)
@@ -100,7 +63,6 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 end
 
 function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
-    color_and_colormap!(plot)
     pos = plot[1][]
     # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
     if T <: LineSegments
@@ -113,6 +75,8 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
             end
         end
     end
+    color_and_colormap!(plot)
+    return
 end
 
 const atomic_function_symbols = (
@@ -311,12 +275,14 @@ Main plotting signatures that plot/plot! route to if no Plot Type is given
 function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
     attributes = merge!(Attributes(kw_attributes), attributes)
     argvalues = to_value.(args)
-    PreType = plottype(P, argvalues...)
+    pre_type_no_args = plottype(P, argvalues...)
     # plottype will lose the argument types, so we just extract the plot func
     # type and recreate the type with the argument type
-    PreType = Combined{plotfunc(PreType), typeof(argvalues)}
-    convert_keys = intersect(used_attributes(PreType, argvalues...), keys(attributes))
-    kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
+    PreType = Combined{plotfunc(pre_type_no_args), typeof(argvalues)}
+    used_attrs = used_attributes(PreType, argvalues...)
+    convert_keys = intersect(used_attrs, keys(attributes))
+    kw_signal = if isempty(convert_keys)
+        # lift(f) isn't supported so we need to catch the empty case
         Observable(())
     else
         # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily

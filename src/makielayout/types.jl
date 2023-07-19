@@ -750,20 +750,26 @@ end
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
+
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
         "The range of values depicted in the colorbar."
         limits = nothing
         "The range of values depicted in the colorbar."
         colorrange = nothing
-        "The align mode of the colorbar in its parent GridLayout."
-        alignmode = Inside()
-        "The number of steps in the heatmap underlying the colorbar gradient."
-        nsteps = 100
         "The color of the high clip triangle."
         highclip = nothing
         "The color of the low clip triangle."
         lowclip = nothing
+        "The axis scale"
+        scale = identity
+
+
+        "The align mode of the colorbar in its parent GridLayout."
+        alignmode = Inside()
+        "The number of steps in the heatmap underlying the colorbar gradient."
+        nsteps = 100
+
         "Controls if minor ticks are visible"
         minorticksvisible = false
         "The alignment of minor ticks on the axis spine"
@@ -776,8 +782,6 @@ end
         minortickcolor = :black
         "The tick locator for the minor ticks"
         minorticks = IntervalsBetween(5)
-        "The axis scale"
-        scale = identity
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 16
     end

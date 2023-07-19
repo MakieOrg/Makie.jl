@@ -1342,3 +1342,29 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+
+
+# SAMPLER overloads
+
+convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
+function convert_attribute(s::ShaderAbstractions.Sampler{T,N}, k::key"color") where {T,N}
+    return ShaderAbstractions.Sampler(el32convert(s.data); minfilter=s.minfilter, magfilter=s.magfilter,
+                                      x_repeat=s.repeat[1], y_repeat=s.repeat[min(2, N)],
+                                      z_repeat=s.repeat[min(3, N)],
+                                      anisotropic=s.anisotropic, color_swizzel=s.color_swizzel)
+end
+
+function el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
+    T32 = float32type(T)
+    T32 === T && return x
+    data = el32convert(x.data)
+    return ShaderAbstractions.Sampler{T32,N,typeof(data)}(data, x.minfilter, x.magfilter,
+                                       x.repeat,
+                                       x.anisotropic,
+                                       x.color_swizzel,
+                                       ShaderAbstractions.ArrayUpdater(data, x.updates.update))
+end
+
+to_color(sampler::ShaderAbstractions.Sampler) = el32convert(sampler)
+
+assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32convert(color[]))
