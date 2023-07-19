@@ -64,6 +64,7 @@ function shading_attributes!(attr)
     attr[:diffuse] = 0.4
     attr[:specular] = 0.2
     attr[:shininess] = 32.0f0
+    attr[:backlight] = 0f0
     attr[:ssao] = false
 end
 
@@ -198,7 +199,6 @@ $(Base.Docs.doc(MakieCore.default_theme!))
 @recipe(Surface, x, y, z) do scene
     attr = Attributes(;
         color = nothing,
-        backlight = 0f0,
         invert_normals = false,
 
         fxaa = true,

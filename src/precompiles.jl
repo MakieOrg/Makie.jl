@@ -21,10 +21,6 @@ precompile(_get_glyphcollection_and_linesegments,
 precompile(Makie.apply_alignment_and_justification!, (Vector{Vector{Makie.GlyphInfo}}, MakieCore.Automatic,
                                                     Tuple{Symbol,Symbol}))
 
-precompile(Makie.glyph_collection, (String, Any, Base.Generator{String,Makie.var"#818#819"{Float32}},
-                                  Symbol, Symbol, Float64, MakieCore.Automatic, Quaternionf,
-                                  ColorTypes.RGBA{Float32}, ColorTypes.RGBA{Float32}, Int64, Int64))
-
 precompile(MakieCore.convert_arguments, (Type{Scatter}, UnitRange{Int64}))
 precompile(Makie.assemble_colors, (UnitRange{Int64}, Any, Any))
 let
