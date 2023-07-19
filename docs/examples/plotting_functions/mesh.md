@@ -30,10 +30,6 @@ scene = mesh(vertices, faces, color = colors, shading = false)
 
 \begin{examplefigure}{}
 ```julia
-using GLMakie
-using Makie.GeometryBasics: GeometryBasics, GLTriangleFace
-GLMakie.activate!() # hide
-
 vertices = Point3f[
     (cosd(0), sind(0), 0),
     (cosd(120), sind(120), 0),
@@ -57,13 +53,12 @@ msh = GeometryBasics.Mesh(vertices, faces) # mesh without normals
 normal_msh = GeometryBasics.normal_mesh(msh) # explicitely create mesh with normals
 
 colors = [:red, :green, :blue, :orange]
-
+# Axis3 currently doesn't support setting lights, so we just change them in the theme!
+set_theme!(lightposition=Vec3f(1, -1, 2), ambient=RGBf(0.2, 0.2, 0.2))
 f = Figure()
-
 # normals get generated automatically in the meshcall in both cases, since Makie@0.19.7
 mesh(f[1, 1], msh; color=colors, axis=(; type=Axis3, aspect=:data, title="No shading"), shading=false)
 mesh(f[2, 1], normal_msh; color=colors, axis=(; type=Axis3, aspect=:data, title="Automatic normals"))
-
 f
 ```
 \end{examplefigure}
