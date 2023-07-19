@@ -49,15 +49,20 @@ vec3 screen_space(vec4 vertex)
 // Manual uv calculation
 // - position in screen space (double resolution as generally used)
 // - uv with uv.u normalized (0..1), uv.v unnormalized (0..pattern_length)
-void emit_vertex(vec3 position, vec2 uv, int index)
+void emit_vertex(vec3 position, vec2 uv, int index, float thickness)
 {
     f_uv        = uv;
     f_color     = g_color[index];
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
     f_id        = g_id[index];
     // linewidth scaling may shrink the effective linewidth
-    f_thickness = abs(uv.y) - AA_THICKNESS; 
+    f_thickness = thickness; 
     EmitVertex();
+}
+// default for miter joins
+void emit_vertex(vec3 position, vec2 uv, int index)
+{
+    emit_vertex(position, uv, index, g_thickness[index]);
 }
 
 // For center point
@@ -72,14 +77,19 @@ void emit_vertex(vec3 position, vec2 uv)
 }
 
 // Debug
-void emit_vertex(vec3 position, vec2 uv, int index, vec4 color)
+void emit_vertex(vec3 position, vec2 uv, int index, vec4 color, float thickness)
 {
     f_uv        = uv;
     f_color     = color;
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
     f_id        = g_id[index];
-    f_thickness = abs(uv.y) - AA_THICKNESS;
+    f_thickness = thickness;
     EmitVertex();
+}
+// default for miter joins
+void emit_vertex(vec3 position, vec2 uv , int index, vec4 color)
+{
+    emit_vertex(position, uv , index, color, g_thickness[index]);
 }
 void emit_vertex(vec3 position, vec2 uv, vec4 color)
 {
@@ -98,8 +108,11 @@ void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv, int index)
     emit_vertex(
         position + vec3(offset, 0),
         vec2(uv.x + px2uv * dot(line_dir, offset), uv.y),
-        index
+        index,
+        abs(uv.y) - AA_THICKNESS
     );
+    // `abs(uv.y) - AA_THICKNESS` corrects for enlarged AA padding between
+    // segments of different linewidth, see #2953
 }
 
 void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv)

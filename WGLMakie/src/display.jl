@@ -46,6 +46,7 @@ const WEB_MIMES = (
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
+    resize_to_body::Bool # false
 end
 
 """
@@ -205,7 +206,7 @@ function session2image(session::Session, scene::Scene)
     to_data = js"""function (){
         return $(scene).then(scene => {
             const {renderer} = scene.screen
-            WGLMakie.render_scene(scene)
+            WGL.render_scene(scene)
             const img = renderer.domElement.toDataURL()
             return img
         })
@@ -342,7 +343,7 @@ const DISABLE_JS_FINALZING = Base.RefValue(false)
 const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_plot!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
-    atomics = Makie.flatten_plots(plot) # delete all atomics
+    atomics = Makie.collect_atomic_plots(plot) # delete all atomics
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
         push!(DELETE_QUEUE, (screen, js_uuid(scene), js_uuid.(atomics)))
