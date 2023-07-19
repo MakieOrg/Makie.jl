@@ -150,7 +150,7 @@ end
     rotations = [ 2pi/3 * (i-1) for i = 1:length(pixel_types) ]
     s = Scene(resolution = (100+100*length(pixel_types), 400), camera = campixel!)
     filename = Makie.assetpath("icon_transparent.png")
-    marker_image = FileIO.load(filename)
+    marker_image = load(filename)
     for (i, (rot, pxtype)) in enumerate(zip(rotations, pixel_types))
         marker = convert.(pxtype, marker_image)
         p = Point2f((i-1) * 100 + 100, 200)

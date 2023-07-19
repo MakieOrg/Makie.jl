@@ -2,6 +2,9 @@
 
 ## master
 
+- Add `colorscale = identity` to any plotting function using a colormap. This works with any scaling function like `log10`, `sqrt` etc. Consequently, `scale` for `hexbin` is replaced with `colorscale` [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
+- Add `alpha=1.0` argument to all basic plots, which supports independently adding an alpha component to colormaps and colors. Multiple alphas like in `plot(alpha=0.2, color=RGBAf(1, 0, 0, 0.5))`, will get multiplied [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
+- `hexbin` now supports any per-observation weights which StatsBase respects - `<: StatsBase.AbstractWeights`, `Vector{Real}`, or `nothing` (the default). [#2804](https://github.com/MakieOrg/Makie.jl/pulls/2804)
 - Added a new Axis type, `PolarAxis`, which is an axis with a polar projection.  Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation. 
   Generally, its attributes are very similar to the usual `Axis` attributes, but `x` is replaced by `r` and `y` by `θ`.  
   It also inherits from the theme of `Axis` in this manner, so should work seamlessly with Makie themes [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990).

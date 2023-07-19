@@ -102,7 +102,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Texture
-        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color        = nothing => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
@@ -172,7 +172,7 @@ function draw_scatter(screen, (marker, position), data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
-    
+
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
@@ -191,7 +191,6 @@ function draw_scatter(screen, (marker, position), data)
             return shape
         end
     end
-
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -228,6 +227,7 @@ function draw_scatter(screen, (marker, position), data)
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)
     data[:len] = const_lift(length, position)
+
     return assemble_shader(data)
 end
 
