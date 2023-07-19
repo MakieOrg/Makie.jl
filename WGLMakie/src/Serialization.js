@@ -176,8 +176,57 @@ function create_line_material(uniforms, positions, linewidth, colors) {
     });
 }
 
-function linepoints2buffer(linepoints, is_linesegments) {
+
+function interleave_arrays(arrays) {
+    const lengths = arrays.map((x) => x.data.length);
+    const type_lengths = arrays.map((x) => x.type_length);
+    const N = lengths[0];
+    if (!arrays.all((x) => x.length === N)) {
+        throw new Error("Arrays must have same length");
+    }
+    const total_element_length = type_lengths.sum();
+    const result = new Float32Array(N * total_element_length);
+    let offset = 0;
+    for (let i = 0; i < N; i++) {
+        for (let j = 0; j < arrays.length; j++) {
+            const array = arrays[j];
+            const element_length = array.type_length;
+            const element = array.data.subarray(
+                i * element_length,
+                (i + 1) * element_length
+            );
+            result.set(element, offset);
+            offset += element_length;
+        }
+    }
+    return result;
+}
+
+function linepoints2buffer(linepoints, colors, thickness, is_linesegments) {
     const N = linepoints.length;
+    const interleave_colors = isTypedArray(colors);
+    const interleave_thickness = isTypedArray(thickness);
+    if (interleave_colors && colors.length != N) {
+        throw Exception("Colors must have same length as linepoints");
+    }
+    if (interleave_thickness && thickness.length != N) {
+        throw Exception("Colors must have same length as linepoints");
+    }
+    const layout = [
+        ["linepoint_prev", 2, 0],
+        ["linepoint_start", 2, 2],
+        ["linepoint_end", 2, 4],
+        ["linepoint_next", 2, 6],
+    ]
+    let n_layout = 6;
+    if (interleave_colors) {
+        layout.push(["color_start", 4, n_layout]);
+        n_layout = n_layout + 4;
+    }
+    if (interleave_thickness) {
+        layout.push(["color_start", 4, n_layout]);
+        n_layout = n_layout + 4;
+    }
     if (is_linesegments) {
         const N2 = linepoints.length + 4;
         const points = new Float32Array(N2);
@@ -276,7 +325,12 @@ export function create_line(line_data) {
         line_data.positions,
         line_data.is_linesegments
     );
-    const material = create_line_material(line_data.uniforms);
+    const material = create_line_material(
+        line_data.uniforms,
+        line_data.positions,
+        line_data.linewidth,
+        line_data.colors
+    );
     return new THREE.Mesh(geometry, material);
 }
 
