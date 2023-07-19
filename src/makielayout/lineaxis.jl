@@ -694,7 +694,7 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
 end
 
 # identity or unsupported scales
-function get_minor_tickvalues(i::IntervalsBetween, _, tickvalues, vmin, vmax)
+function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax)
     vals = Float64[]
     length(tickvalues) < 2 && return vals
     n = i.n
@@ -727,7 +727,8 @@ function get_minor_tickvalues(i::IntervalsBetween, _, tickvalues, vmin, vmax)
 end
 
 # for log scales, we need to step in log steps at the edges
-function get_minor_tickvalues(i::IntervalsBetween, scale::REVERSIBLE_SCALES, tickvalues, vmin, vmax)
+function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log),typeof(log2),typeof(log10)},
+                              tickvalues, vmin, vmax)
     vals = Float64[]
     length(tickvalues) < 2 && return vals
     n = i.n
