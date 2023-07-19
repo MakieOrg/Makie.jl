@@ -197,7 +197,7 @@ end
 
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
-    sf = Observable(Base.Fix2(v, 0e0))
+    sf = Observable(Base.Fix2(v, 0.0))
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2, colormap=:magma, axis=(;title=title_str))
@@ -1026,24 +1026,24 @@ end
     f = Figure()
     hist(
         f[1, 1],
-        RNG.randn(10^6); 
+        RNG.randn(10^6);
         axis=(; yscale=log2)
     )
     hist(
         f[1, 2],
-        RNG.randn(10^6); 
+        RNG.randn(10^6);
         axis=(; xscale=log2),
         direction = :x
     )
     # make a gap in histogram as edge case
     hist(
         f[2, 1],
-        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6)); 
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
         axis=(; yscale=log10)
     )
     hist(
         f[2, 2],
-        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6)); 
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
         axis=(; xscale=log10),
         direction = :x
     )
@@ -1086,17 +1086,17 @@ end
 end
 
 @reference_test "Z-translation within a recipe" begin
-    # This is testing whether backends respect the 
+    # This is testing whether backends respect the
     # z-level of plots within recipes in 2d.
     # Ideally, the output of this test
     # would be a blue line with red scatter markers.
     # However, if a backend does not correctly pick up on translations,
     # then this will be drawn in the drawing order, and blue
     # will completely obscure red.
-    
+
     # It seems like we can't define recipes in `@reference_test` yet,
     # so we'll have to fake a recipe's structure.
-    
+
     fig = Figure(resolution = (600, 600))
     # Create a recipe plot
     ax, plot_top = heatmap(fig[1, 1], randn(10, 10))

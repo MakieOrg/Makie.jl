@@ -608,3 +608,8 @@ end
     end
     fig
 end
+
+# TODO: get 3D images working in CairoMakie and test them here too
+@reference_test "Heatmap 3D" begin
+    heatmap(-2..2, -1..1, rand(100, 100); axis = (; type = LScene))
+end

@@ -2,13 +2,13 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
+function project_position(scene::Scene, transform_func::T, space, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
     point = Makie.apply_transform(transform_func, point, space)
     _project_position(scene, space, point, model, yflip)
 end
 
-function _project_position(scene, space, point, model, yflip)
+function _project_position(scene::Scene, space, point, model, yflip::Bool)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = Makie.space_to_clip(scene.camera, space) * model * p4d
@@ -24,8 +24,9 @@ function _project_position(scene, space, point, model, yflip)
     return p_0_to_1 .* res
 end
 
-function project_position(scene, space, point, model, yflip::Bool = true)
-    project_position(scene, scene.transformation.transform_func[], space, point, model, yflip)
+function project_position(scenelike, space, point, model, yflip::Bool = true)
+    scene = Makie.get_scene(scenelike)
+    project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
 function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
@@ -46,23 +47,23 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     end
 end
 
-function project_rect(scene, space, rect::Rect, model)
-    mini = project_position(scene, space, minimum(rect), model)
-    maxi = project_position(scene, space, maximum(rect), model)
+function project_rect(scenelike, space, rect::Rect, model)
+    mini = project_position(scenelike, space, minimum(rect), model)
+    maxi = project_position(scenelike, space, maximum(rect), model)
     return Rect(mini, maxi .- mini)
 end
 
-function project_polygon(scene, space, poly::P, model) where P <: Polygon
+function project_polygon(scenelike, space, poly::P, model) where P <: Polygon
     ext = decompose(Point2f, poly.exterior)
     interiors = decompose.(Point2f, poly.interiors)
     Polygon(
-        Point2f.(project_position.(Ref(scene), space, ext, Ref(model))),
-        [Point2f.(project_position.(Ref(scene), space, interior, Ref(model))) for interior in interiors],
+        Point2f.(project_position.(Ref(scenelike), space, ext, Ref(model))),
+        [Point2f.(project_position.(Ref(scenelike), space, interior, Ref(model))) for interior in interiors],
     )
 end
 
-function project_multipolygon(scene, space, multipoly::MP, model) where MP <: MultiPolygon
-    return MultiPolygon(project_polygon.(Ref(scene), Ref(space), multipoly.polygons, Ref(model)))
+function project_multipolygon(scenelike, space, multipoly::MP, model) where MP <: MultiPolygon
+    return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(model)))
 end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
