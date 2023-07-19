@@ -30,6 +30,7 @@ scene = mesh(vertices, faces, color = colors, shading = false)
 
 \begin{examplefigure}{}
 ```julia
+using GeometryBasics
 vertices = Point3f[
     (cosd(0), sind(0), 0),
     (cosd(120), sind(120), 0),
