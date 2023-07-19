@@ -12,6 +12,10 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
 end
 
+# Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+is_cairomakie_atomic_plot(plot::Poly) = true
+
 """
 Fallback method for args without special treatment.
 """
@@ -111,7 +115,7 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = project_polygon.(Ref(poly), space, polygons, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -182,6 +186,12 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
+# Override `is_cairomakie_atomic_plot` to allow this dispatch of `band` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function is_cairomakie_atomic_plot(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    return true
+end
+
 #################################################################################
 #                                  Tricontourf                                  #
 # Tricontourf creates many disjoint polygons that are adjacent and form contour #
@@ -213,4 +223,10 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     draw_tripolys(projected_polys, colornumbers, colors)
 
     return
+end
+
+# Override `is_cairomakie_atomic_plot` to allow `Tricontourf` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function is_cairomakie_atomic_plot(plot::Tricontourf)
+    return true
 end

@@ -197,7 +197,7 @@ end
 
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
-    sf = Observable(Base.Fix2(v, 0e0))
+    sf = Observable(Base.Fix2(v, 0.0))
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2, colormap=:magma, axis=(;title=title_str))
@@ -692,7 +692,7 @@ end
     y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
     z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.* RNG.randn.()
 
-    inner = [n:-1:1; n] # clockwise inner 
+    inner = [n:-1:1; n] # clockwise inner
     outer = [(n+1):(2n); n+1] # counter-clockwise outer
     boundary_nodes = [[outer], [inner]]
     tri = DelaunayTriangulation.triangulate([x'; y'], boundary_nodes = boundary_nodes)
@@ -707,16 +707,16 @@ end
     [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
     [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
     [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
-    ]  
+    ]
     curve_2 = [
         [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
         [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
         [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
-    ] 
+    ]
     curve_3 = [
         [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
         (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
-    ] 
+    ]
     curves = [curve_1, curve_2, curve_3]
     points = [
         (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
@@ -985,6 +985,34 @@ end
     f
 end
 
+@reference_test "Log scale histogram (barplot)" begin
+    f = Figure()
+    hist(
+        f[1, 1],
+        RNG.randn(10^6);
+        axis=(; yscale=log2)
+    )
+    hist(
+        f[1, 2],
+        RNG.randn(10^6);
+        axis=(; xscale=log2),
+        direction = :x
+    )
+    # make a gap in histogram as edge case
+    hist(
+        f[2, 1],
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
+        axis=(; yscale=log10)
+    )
+    hist(
+        f[2, 2],
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
+        axis=(; xscale=log10),
+        direction = :x
+    )
+    f
+end
+
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
@@ -1018,4 +1046,29 @@ end
         poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange)
     end
     f
+end
+
+@reference_test "Z-translation within a recipe" begin
+    # This is testing whether backends respect the
+    # z-level of plots within recipes in 2d.
+    # Ideally, the output of this test
+    # would be a blue line with red scatter markers.
+    # However, if a backend does not correctly pick up on translations,
+    # then this will be drawn in the drawing order, and blue
+    # will completely obscure red.
+
+    # It seems like we can't define recipes in `@reference_test` yet,
+    # so we'll have to fake a recipe's structure.
+
+    fig = Figure(resolution = (600, 600))
+    # Create a recipe plot
+    ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
+    # Plot some recipes at the level below the contour
+    scatterlineplot_1 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
+    scatterlineplot_2 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
+    # Translate the lowest level plots (scatters)
+    translate!(scatterlineplot_1.plots[2], 0, 0, 1)
+    translate!(scatterlineplot_2.plots[2], 0, 0, -1)
+    # Display
+    fig
 end
