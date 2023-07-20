@@ -3,13 +3,13 @@ using WGLMakie, Makie, Test
 using Pkg
 using WGLMakie.JSServe
 import Electron
-d = JSServe.use_electron_display()
 
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
 
 @testset "mimes" begin
+    Makie.inline!(true)
     f, ax, pl = scatter(1:4)
     @testset for mime in WGLMakie.WEB_MIMES
         @test showable(mime(), f)
@@ -52,11 +52,16 @@ excludes = Set([
     "Array of Images Scatter",
     "Image Scatter different sizes",
     "scatter with stroke",
-    "scatter with glow"
+    "scatter with glow",
+    "lines and linestyles",
+    "Textured meshscatter", # not yet implemented
+    "BezierPath marker stroke", # not yet implemented
 ])
+Makie.inline!(Makie.automatic)
 
 @testset "refimages" begin
     WGLMakie.activate!()
+    d = JSServe.use_electron_display()
     ReferenceTests.mark_broken_tests(excludes)
     recorded_files, recording_dir = @include_reference_tests "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)

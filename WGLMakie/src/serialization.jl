@@ -2,9 +2,27 @@ using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
 
+function lift_convert(key, value, ::Attributes)
+    convert(value) = wgl_convert(value, Key{key}())
+    if value isa Observable
+        val = lift(convert, value)
+    else
+        val = convert(value)
+    end
+    if key === :colormap && val[] isa AbstractArray
+        return ShaderAbstractions.Sampler(val)
+    else
+        return val
+    end
+end
+
+
 function lift_convert(key, value, plot)
-    val = lift(value) do value
-        return wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
+    convert(value) = wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
+    if value isa Observable
+        val = lift(convert, plot, value)
+    else
+        val = convert(value)
     end
     if key === :colormap && val[] isa AbstractArray
         return ShaderAbstractions.Sampler(val)
@@ -149,8 +167,10 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
     return convert(Quaternion, t)
 end
 
-function wgl_convert(value, key1, key2)
-    val = Makie.convert_attribute(value, key1, key2)
+
+
+function wgl_convert(value, key1, key2...)
+    val = Makie.convert_attribute(value, key1, key2...)
     return if val isa AbstractArray{<:Float64}
         return Makie.el32convert(val)
     else
@@ -158,7 +178,7 @@ function wgl_convert(value, key1, key2)
     end
 end
 
-function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
+function wgl_convert(value::AbstractMatrix, ::key"colormap", key2...)
     return ShaderAbstractions.Sampler(value)
 end
 
@@ -261,7 +281,9 @@ function serialize_scene(scene::Scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
+        dict = Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
+        dict[:resolution] = lift(res -> Int32[res...], scene.camera.resolution)
+        dict
     else
         nothing
     end
@@ -337,7 +359,7 @@ end
 
 function serialize_camera(scene::Scene)
     cam = scene.camera
-    return lift(cam.view, cam.projection, cam.resolution) do view, proj, res
+    return lift(scene, cam.view, cam.projection, cam.resolution) do view, proj, res
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]

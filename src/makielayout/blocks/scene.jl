@@ -20,15 +20,15 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
     blockscene = ls.blockscene
     # pick a camera and draw axis.
     scenekw = merge((clear = false, camera=cam3d!), scenekw)
-    ls.scene = Scene(blockscene, lift(round_to_IRect2D, ls.layoutobservables.computedbbox); scenekw...)
+    ls.scene = Scene(blockscene, lift(round_to_IRect2D, blockscene, ls.layoutobservables.computedbbox); scenekw...)
 
-    on(ls.show_axis) do show_axis
+    on(blockscene, ls.show_axis) do show_axis
         ax = ls.scene[OldAxis]
         if show_axis
             if isnothing(ax)
                 # Add axis on first plot!, if requested
                 # update limits when scene limits change
-                limits = lift(ls.scene.theme.limits) do lims
+                limits = lift(blockscene, ls.scene.theme.limits) do lims
                     if lims === automatic
                         dl = data_limits(ls.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
                         if any(isinf, widths(dl)) || any(isinf, Makie.origin(dl))

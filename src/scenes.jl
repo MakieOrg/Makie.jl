@@ -84,7 +84,7 @@ mutable struct Scene <: AbstractScene
     px_area::Observable{Rect2i}
 
     "Whether the scene should be cleared."
-    clear::Bool
+    clear::Observable{Bool}
 
     "The `Camera` associated with the Scene."
     camera::Camera
@@ -113,11 +113,13 @@ mutable struct Scene <: AbstractScene
     visible::Observable{Bool}
     ssao::SSAO
     lights::Vector{AbstractLight}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
             px_area::Observable{Rect2i},
-            clear::Bool,
+            clear::Observable{Bool},
             camera::Camera,
             camera_controls::AbstractCamera,
             transformation::Transformation,
@@ -145,14 +147,48 @@ mutable struct Scene <: AbstractScene
             backgroundcolor,
             visible,
             ssao,
-            lights
+            lights,
+            Observables.ObserverFunction[]
         )
         finalizer(empty!, scene)
         return scene
     end
 end
 
+# on & map versions that deregister when scene closes!
+function Observables.on(f, scene::Union{Combined,Scene}, observable::Observable; update=false, priority=0)
+    to_deregister = on(f, observable; update=update, priority=priority)
+    push!(scene.deregister_callbacks, to_deregister)
+    return to_deregister
+end
+
+function Observables.onany(f, scene::Union{Combined,Scene}, observables...; priority=0)
+    to_deregister = onany(f, observables...; priority=priority)
+    append!(scene.deregister_callbacks, to_deregister)
+    return to_deregister
+end
+
+@inline function Base.map!(@nospecialize(f), scene::Union{Combined,Scene}, result::AbstractObservable, os...;
+                           update::Bool=true)
+    # note: the @inline prevents de-specialization due to the splatting
+    callback = Observables.MapCallback(f, result, os)
+    for o in os
+        o isa AbstractObservable && on(callback, scene, o)
+    end
+    update && callback(nothing)
+    return result
+end
+
+@inline function Base.map(f::F, scene::Union{Combined,Scene}, arg1::AbstractObservable, args...;
+                          ignore_equal_values=false) where {F}
+    # note: the @inline prevents de-specialization due to the splatting
+    obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
+    map!(f, scene, obs, arg1, args...; update=false)
+    return obs
+end
+
 get_scene(scene::Scene) = scene
+get_scene(plot::AbstractPlot) = parent_scene(plot)
 
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
@@ -182,7 +218,7 @@ end
 function Scene(;
         px_area::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
-        clear::Union{Automatic, Bool} = automatic,
+        clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
         transform_func=identity,
         camera::Union{Function, Camera, Nothing} = nothing,
         camera_controls::AbstractCamera = EmptyCamera(),
@@ -198,7 +234,8 @@ function Scene(;
         theme_kw...
     )
 
-    m_theme = merge_without_obs!(current_default_theme(; theme_kw...), theme)
+    global_theme = merge_without_obs!(copy(theme), current_default_theme())
+    m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
@@ -208,28 +245,28 @@ function Scene(;
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
-    if wasnothing
-        on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
-                px_area[] = w_area
-            end
-            return Consume(false)
-        end
-    end
-
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
     # if we have an opaque background, automatically set clear to true!
     if clear isa Automatic
-        clear = alpha(bg[]) == 1 ? true : false
+        clear = Observable(alpha(bg[]) == 1 ? true : false)
+    else
+        clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights
     )
-    if camera isa Function
-        cam = camera(scene)
+    camera isa Function && camera(scene)
+
+    if wasnothing
+        on(scene, events.window_area, priority = typemax(Int)) do w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
+                px_area[] = w_area
+            end
+            return Consume(false)
+        end
     end
 
     if lights isa Automatic
@@ -274,33 +311,34 @@ function Scene(
         camera=nothing,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
-        current_screens=parent.current_screens,
         kw...
     )
-    if isnothing(px_area)
-        px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
-    else
-        px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
-            # make coordinates relative to parent
-            rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
-            return rect
-        end
-    end
+
     if camera !== parent.camera
         camera_controls = EmptyCamera()
     end
+    child_px_area = px_area isa Observable ? px_area : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
     child = Scene(;
         events=events,
-        px_area=px_area,
-        clear=clear,
+        px_area=child_px_area,
+        clear=convert(Observable{Bool}, clear),
         camera=camera,
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
-        current_screens=current_screens,
+        current_screens=copy(parent.current_screens),
         theme=theme(parent),
         kw...
     )
+    if isnothing(px_area)
+        map!(identity, child, child_px_area, parent.px_area)
+    elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
+        a = Rect2i(px_area)
+        on(child, pixelarea(parent)) do p
+            # make coordinates relative to parent
+            return Rect2i(minimum(p) .+ minimum(a), widths(a))
+        end
+    end
     push!(parent.children, child)
     child.parent = parent
     return child
@@ -337,23 +375,6 @@ function Base.resize!(scene::Scene, rect::Rect2)
     pixelarea(scene)[] = rect
 end
 
-"""
-    getscreen(scene::Scene)
-
-Gets the current screen a scene is associated with.
-Returns nothing if not yet displayed on a screen.
-"""
-function getscreen(scene::Scene)
-    if isempty(scene.current_screens)
-        isroot(scene) && return nothing # stop search
-        return getscreen(parent(scene)) # screen could be in parent
-    end
-    # TODO, when would we actually want to get a specific screen?
-    return last(scene.current_screens)
-end
-
-getscreen(scene::SceneLike) = getscreen(rootparent(scene))
-
 # Just indexing into a scene gets you plot 1, plot 2 etc
 Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
@@ -389,51 +410,47 @@ function getindex(scene::Scene, ::Type{OldAxis})
     return nothing
 end
 
+function delete_scene!(scene::Scene)
+    @warn "deprecated in favor of empty!(scene)"
+    empty!(scene)
+    return nothing
+end
+
 function Base.empty!(scene::Scene)
-    events(scene).window_open[] = false
-    # clear all child scenes
-    foreach(_empty_recursion, scene.children)
-    empty!(scene.children)
-    # clear plots of this scenes
-    for plot in reverse(scene.plots)
-        for screen in scene.current_screens
-            delete!(screen, scene, plot)
-        end
+    foreach(empty!, copy(scene.children))
+    # clear plots of this scene
+    for plot in copy(scene.plots)
+        delete!(scene, plot)
     end
+    for screen in copy(scene.current_screens)
+        delete!(screen, scene)
+    end
+    # clear all child scenes
+    if !isnothing(scene.parent)
+        filter!(x-> x !== scene, scene.parent.children)
+    end
+    scene.parent = nothing
+
+    empty!(scene.current_screens)
+    empty!(scene.children)
     empty!(scene.plots)
     empty!(scene.theme)
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
+
+    for field in [:backgroundcolor, :px_area, :visible]
+        Observables.clear(getfield(scene, field))
+    end
+    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
+        Observables.clear(getfield(scene.transformation, fieldname))
+    end
+    for obsfunc in scene.deregister_callbacks
+        Observables.off(obsfunc)
+    end
+    empty!(scene.deregister_callbacks)
     return nothing
 end
 
-function _empty_recursion(scene::Scene)
-    # empty all children
-    foreach(_empty_recursion, scene.children)
-    empty!(scene.children)
-
-    # remove scene (and all its plots) from the rendering
-    for screen in scene.current_screens
-        delete!(screen, scene)
-    end
-    empty!(scene.plots)
-
-    # clean up some onsverables (there are probably more...)
-    disconnect!(scene.camera)
-    scene.camera_controls = EmptyCamera()
-
-    # top level scene.px_area needs to remain for GridLayout?
-    off.(scene.px_area.inputs)
-    empty!(scene.px_area.listeners)
-    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
-        obs = getfield(scene.transformation, fieldname)
-        if isdefined(obs, :inputs)
-            off.(obs.inputs)
-        end
-        empty!(obs.listeners)
-    end
-    return
-end
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 
@@ -453,6 +470,18 @@ function Base.delete!(screen::MakieScreen, ::Scene)
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
+function free(plot::AbstractPlot)
+    for f in plot.deregister_callbacks
+        Observables.off(f)
+    end
+    foreach(free, plot.plots)
+    empty!(plot.plots)
+    empty!(plot.deregister_callbacks)
+    empty!(plot.attributes)
+    free(plot.transformation)
+    return
+end
+
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     len = length(scene.plots)
     filter!(x -> x !== plot, scene.plots)
@@ -462,6 +491,7 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     for screen in scene.current_screens
         delete!(screen, scene, plot)
     end
+    free(plot)
 end
 
 function Base.push!(scene::Scene, child::Scene)
@@ -594,3 +624,46 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+"""
+    is_atomic_plot(plot::Combined)
+
+Defines what Makie considers an atomic plot, used in `collect_atomic_plots`.
+Backends may have a different definition of what is considered an atomic plot,
+but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
+"""
+is_atomic_plot(plot::Combined) = isempty(plot.plots)
+
+"""
+    collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+    collect_atomic_plots(x::Combined, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+
+Collects all plots in the provided `<: ScenePlot` and returns a vector of all plots
+which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
+"""
+function collect_atomic_plots(xplot::Combined, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    if is_atomic_plot(xplot)
+        # Atomic plot!
+        push!(plots, xplot)
+    else
+        for elem in xplot.plots
+            collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+        end
+    end
+    return plots
+end
+
+function collect_atomic_plots(array, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    for elem in array
+        collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+    end
+    plots
+end
+
+function collect_atomic_plots(scene::Scene, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.plots, plots; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.children, plots; is_atomic_plot=is_atomic_plot)
+    plots
+end
+
+Base.@deprecate flatten_plots(scenelike) collect_atomic_plots(scenelike)
