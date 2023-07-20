@@ -342,7 +342,6 @@ function add_rotation!(scene, cam::BallControllerCamera, axis)
                     rotate_cam!(scene, cam, mp[1], mp[2], axis)
                 end
                 drag_state[] = (false, Vec2f(0), time())
-                println()
 
                 return Consume(true)
             end
@@ -360,7 +359,6 @@ function add_rotation!(scene, cam::BallControllerCamera, axis)
             mp = (last_mousepos .- mousepos) * 0.01f0 * rot_scaling
             rotate_cam!(scene, cam, mp[1], mp[2], axis)
             drag_state[] = (active, mousepos, last_time)
-            println()
             return Consume(true)
         end
 
@@ -369,7 +367,6 @@ function add_rotation!(scene, cam::BallControllerCamera, axis)
 end
 
 function rotate_cam!(scene, cam::BallControllerCamera, dphi::Real, dtheta::Real, axis)
-    @info dphi, dtheta
     cam.theta[] = mod(cam.theta[] + dtheta, 2pi)
     reverse = ifelse(pi/2 <= cam.theta[] <= 3pi/2, -1, 1)
     cam.phi[] = mod(cam.phi[] + reverse * dphi, 2pi)
@@ -383,9 +380,7 @@ end
 # Update camera matrices
 function update_cam!(scene::Scene, cam::BallControllerCamera, phi::Real, theta::Real)
     dphi = mod(2pi + cam.phi[] - phi, 2pi)
-    print(dphi, " -> ")
     dphi = ifelse(dphi > pi, dphi - 2pi, dphi)
-    println(dphi)
     if !(-1.1pi/2 <= dphi <= 1.1pi/2)
         cam.phi[]   = mod(phi + pi, 2pi)
         cam.theta[] = mod(pi - theta, 2pi)
@@ -401,7 +396,6 @@ function update_cam!(scene::Scene, cam::BallControllerCamera)
     fov = cam.attributes.fov[]
 
     phi = cam.phi[]; theta = cam.theta[]
-    @info "update mat: $phi, $theta"
     eyeposition = spherical_to_cartesian(phi, theta, 3f0)
     lookat = Vec3f(0)
     upvector = spherical_to_cartesian(phi, theta + pi/2)
@@ -452,7 +446,6 @@ function connect_camera!(lscene::LScene, scene::Scene)
             p = p / norm(p)
             phi = mod(2pi + atan(p[2], p[1]) + ifelse(pi/2 <= theta <= 3pi/2, pi, 0), 2pi)
         end
-        @info "from other: $phi, $theta"
         update_cam!(scene, scene.camera_controls, phi, theta)
         return
     end
@@ -505,7 +498,6 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
 
     # Handle block detachment (TODO?)
     if float
-        @info "Floating"
         align = map(blockscene, controller.halign, controller.valign) do halign, valign
             return Vec2f(Makie.halign2num(halign), Makie.valign2num(valign))
         end
@@ -520,7 +512,6 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
             return round_to_IRect2D(Rect2(origin, Vec2f(size)))
         end
     else
-        @info "In layout"
         align = Observable(Vec2f(0, 0))
         scene_region = map(blockscene, controller.layoutobservables.computedbbox) do bb
             mini = minimum(bb); ws = widths(bb)
