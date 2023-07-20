@@ -1737,12 +1737,14 @@ end
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
-        "The horizontal alignment of the scene in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the scene in its suggested bounding box."
-        valign = :center
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
+        "The horizontal alignment of the scene when it is not attached to the layout."
+        halign = :right
+        "The vertical alignment of the scene when it is not attached to the layout."
+        valign = :bottom
+        "The size of controller scene when it is not placed in a layout."
+        float_size = 150
 
         "Sets the font color for the direction picking angle indicator."
         angle_indicator_fontcolor = :black

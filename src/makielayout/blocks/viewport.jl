@@ -506,17 +506,28 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
     # Handle block detachment (TODO?)
     if float
         @info "Floating"
-        controller.halign[] = :right
-        controller.valign[] = :bottom
-        controller.layoutobservables.autosize[] = (150, 150)
-    end
+        align = map(blockscene, controller.halign, controller.valign) do halign, valign
+            return Vec2f(Makie.halign2num(halign), Makie.valign2num(valign))
+        end
 
-    # Generate Scene for controller
-    scene_region = map(blockscene, controller.layoutobservables.computedbbox) do bb
-        mini = minimum(bb); ws = widths(bb)
-        center = mini + 0.5 * ws
-        w = min(ws[1], ws[2])
-        return round_to_IRect2D(Rect2(center .- 0.5 * w, Vec2(w)))
+        scene_region = map(blockscene, 
+            axis.layoutobservables.computedbbox, controller.float_size, align
+        ) do parent_bb, size, align
+            mini = minimum(parent_bb); ws = widths(parent_bb)
+            anchor = mini .+ align .* ws
+            size = minimum(size) # the scene should end up square
+            origin = anchor .- align * size
+            return round_to_IRect2D(Rect2(origin, Vec2f(size)))
+        end
+    else
+        @info "In layout"
+        align = Observable(Vec2f(0, 0))
+        scene_region = map(blockscene, controller.layoutobservables.computedbbox) do bb
+            mini = minimum(bb); ws = widths(bb)
+            center = mini + 0.5 * ws
+            w = min(ws[1], ws[2])
+            return round_to_IRect2D(Rect2(center .- 0.5 * w, Vec2(w)))
+        end
     end
 
     scene = Scene(blockscene, px_area = scene_region) # clear = false
@@ -651,17 +662,40 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
         return Consume(false)
     end
 
+
+    # Translation
+    in_drag = RefValue(false)
+    drag_offset = RefValue(Vec2f(0))
+    on(scene, events(scene).mousebutton, priority = 101) do e
+        if float && is_mouseinside(scene) && e.button == Mouse.right
+            if e.action == Mouse.press
+                drag_offset[] = origin(scene.px_area[]) .- events(scene).mouseposition[]
+                in_drag[] = true
+            else
+                in_drag[] = false
+            end
+            return Consume(true)
+        end
+    end
+
     # Update angles for selectable region
-    on(scene, events(scene).mouseposition, priority = 101) do _
-        if is_mouseinside(scene)
+    on(scene, events(scene).mouseposition, priority = 101) do mp
+        if is_mouseinside(controller.blockscene) && float && in_drag[]
+            size = controller.float_size[]
+            bb = axis.layoutobservables.computedbbox[]
+            xy = origin(bb); wh = widths(bb)
+            align[] = (mp .+ drag_offset[] .- xy) ./ (wh .- size)
+        elseif is_mouseinside(scene)
             phi, theta = _hovered_angles(scene, cam, step[])
             if !isnan(phi)
                 phi_theta[] = (phi, theta)
                 lp.visible[] = true
-                return Consume(false)
+            else
+                lp.visible[] = false
             end
+        else
+            lp.visible[] = false
         end
-        lp.visible[] = false
         return Consume(false)
     end
 
