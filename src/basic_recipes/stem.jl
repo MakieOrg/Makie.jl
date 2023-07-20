@@ -29,6 +29,7 @@ $(ATTRIBUTES)
         markersize = theme(scene, :markersize),
         color = theme(scene, :markercolor),
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         strokecolor = theme(scene, :markerstrokecolor),
         strokewidth = theme(scene, :markerstrokewidth),
@@ -51,16 +52,17 @@ trunkpoint(stempoint::P, offset::Point3) where P <: Point3 = P(offset...)
 function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
     points = s[1]
 
-    stemtuples = lift(points, s.offset) do ps, to
+    stemtuples = lift(s, points, s.offset) do ps, to
         tuple.(ps, trunkpoint.(ps, to))
     end
 
-    trunkpoints = @lift(last.($stemtuples))
+    trunkpoints = lift(st -> last.(st), s, stemtuples)
 
     lines!(s, trunkpoints,
         linewidth = s.trunkwidth,
         color = s.trunkcolor,
         colormap = s.trunkcolormap,
+        colorscale = s.colorscale,
         colorrange = s.trunkcolorrange,
         visible = s.visible,
         linestyle = s.trunklinestyle,
@@ -69,6 +71,7 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         linewidth = s.stemwidth,
         color = s.stemcolor,
         colormap = s.stemcolormap,
+        colorscale = s.colorscale,
         colorrange = s.stemcolorrange,
         visible = s.visible,
         linestyle = s.stemlinestyle,
@@ -76,6 +79,7 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
     scatter!(s, s[1],
         color = s.color,
         colormap = s.colormap,
+        colorscale = s.colorscale,
         colorrange = s.colorrange,
         markersize = s.markersize,
         marker = s.marker,

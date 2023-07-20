@@ -16,6 +16,12 @@ stork = Downloads.download("https://files.stork-search.net/releases/v1.4.2/stork
 run(`chmod +x $stork`)
 success(`$stork`)
 
+# copy NEWS file over to documentation
+cp(
+    joinpath(@__DIR__, "..", "NEWS.md"),
+    joinpath(@__DIR__, "news.md"),
+    force = true)
+
 using Franklin
 using Documenter: Documenter
 using Gumbo

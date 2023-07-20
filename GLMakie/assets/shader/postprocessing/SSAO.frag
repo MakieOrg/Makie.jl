@@ -83,9 +83,8 @@ void main(void)
             float range_check = smoothstep(0.0, 1.0, radius / abs(view_pos.z - sample_depth));
             occlusion += (sample_depth >= sample_view_offset.z + view_pos.z + bias ? 1.0 : 0.0) * range_check;
         }
-        occlusion = 1.0 - (occlusion / {{N_samples}});
-        o_normal_occlusion.w = occlusion;
+        o_normal_occlusion.w = occlusion / {{N_samples}};
     } else {
-        o_normal_occlusion.w = 1.0;
+        o_normal_occlusion.w = 0.0;
     }
 }

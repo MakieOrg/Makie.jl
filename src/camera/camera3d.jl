@@ -174,7 +174,6 @@ function Camera3D(scene::Scene; kwargs...)
     on(camera(scene), events(scene).keyboardbutton) do event
         if event.action in (Keyboard.press, Keyboard.repeat) && cam.pulser[] == -1.0 &&
             attr.selected[] && any(key -> ispressed(scene, attr[key][]), keynames)
-
             cam.pulser[] = time()
             return Consume(true)
         end

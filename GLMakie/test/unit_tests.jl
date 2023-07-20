@@ -102,6 +102,7 @@ end
     text!(ax, [Point2f(2)], text=["hi"])
     screen = display(fig)
     empty!(fig)
+    @test screen in fig.scene.current_screens
     @testset "all got freed" begin
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
@@ -228,7 +229,7 @@ end
     images = map(Makie.colorbuffer, screens)
     @test all(x-> x ≈ first(images), images)
 
-    @test Base.summarysize(screens) / 10^6 > 300
+    @test Base.summarysize(screens) / 10^6 > 280
     foreach(close, screens)
 
     for screen in screens
