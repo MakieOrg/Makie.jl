@@ -10,19 +10,21 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
-        plot, lift(triangle_mesh, plot[1]),
-        color = plot[:color],
-        colormap = plot[:colormap],
-        colorrange = plot[:colorrange],
-        lowclip = plot[:lowclip],
-        highclip = plot[:highclip],
-        nan_color = plot[:nan_color],
-        shading = plot[:shading],
-        visible = plot[:visible],
-        overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable],
-        transparency = plot[:transparency],
-        space = plot[:space]
+        plot, lift(triangle_mesh, plot, plot[1]),
+        color = plot.color,
+        colormap = plot.colormap,
+        colorscale = plot.colorscale,
+        colorrange=plot.colorrange,
+        alpha=plot.alpha,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        nan_color = plot.nan_color,
+        shading = plot.shading,
+        visible = plot.visible,
+        overdraw = plot.overdraw,
+        inspectable = plot.inspectable,
+        transparency = plot.transparency,
+        space = plot.space
     )
     wireframe!(
         plot, plot[1],
@@ -59,14 +61,14 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     end
 end
 
-to_line_segments(polygon) = convert_arguments(LineSegments, polygon)[1]
+to_lines(polygon) = convert_arguments(Lines, polygon)[1]
 # Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
-to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
+to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
-function to_line_segments(meshes::AbstractVector)
+function to_lines(meshes::AbstractVector)
     line = Point2f[]
     for (i, mesh) in enumerate(meshes)
-        points = to_line_segments(mesh)
+        points = to_lines(mesh)
         append!(line, points)
         # push!(line, points[1])
         # dont need to separate the last line segment
@@ -77,7 +79,7 @@ function to_line_segments(meshes::AbstractVector)
     return line
 end
 
-function to_line_segments(polygon::AbstractVector{<: VecTypes})
+function to_lines(polygon::AbstractVector{<: VecTypes})
     result = Point2f.(polygon)
     push!(result, polygon[1])
     return result
@@ -85,24 +87,27 @@ end
 
 function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
-    meshes = lift(poly_convert, geometries)
+    meshes = lift(poly_convert, plot, geometries)
     mesh!(plot, meshes;
         visible = plot.visible,
         shading = plot.shading,
         color = plot.color,
         colormap = plot.colormap,
+        colorscale = plot.colorscale,
         colorrange = plot.colorrange,
         lowclip = plot.lowclip,
         highclip = plot.highclip,
-        nan_color = plot.nan_color,
+        nan_color=plot.nan_color,
+        alpha=plot.alpha,
         overdraw = plot.overdraw,
         fxaa = plot.fxaa,
         transparency = plot.transparency,
         inspectable = plot.inspectable,
         space = plot.space
     )
-    outline = lift(to_line_segments, geometries)
-    stroke = lift(outline, plot.strokecolor) do outline, sc
+
+    outline = lift(to_lines, plot, geometries)
+    stroke = lift(plot, outline, plot.strokecolor) do outline, sc
         if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
             idx = 1
             return map(outline) do point
@@ -118,7 +123,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
 
     lines!(
         plot, outline, visible = plot.visible,
-        color = stroke, linestyle = plot.linestyle,
+        color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
         linewidth = plot.strokewidth, space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5
@@ -127,31 +132,32 @@ end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
-    color_node = plot.color
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
         space = plot.space, ssao = plot.ssao,
+        alpha=plot.alpha,
         lowclip = get(plot, :lowclip, automatic),
         highclip = get(plot, :highclip, automatic),
         nan_color = get(plot, :nan_color, :transparent),
         colormap = get(plot, :colormap, nothing),
+        colorscale = get(plot, :colorscale, identity),
         colorrange = get(plot, :colorrange, automatic)
     )
 
-    num_meshes = lift(meshes; ignore_equal_values=true) do meshes
+    num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
         return Int[length(coordinates(m)) for m in meshes]
     end
 
-    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors}}()
+    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors, Float32}}()
 
-    map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
+    map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
-        c_converted = to_color(colors)
-        if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)
-            result = similar(c_converted, sum(num_meshes))
+        if colors isa AbstractVector && length(colors) == length(num_meshes)
+            ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)
+            result = similar(ccolors, float32type(ccolors), sum(num_meshes))
             i = 1
-            for (cs, len) in zip(c_converted, num_meshes)
+            for (cs, len) in zip(ccolors, num_meshes)
                 for j in 1:len
                     result[i] = cs
                     i += 1
@@ -163,11 +169,11 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         else
             # If we have colors per vertex, we need to interpolate in fragment shader
             attributes[:interpolate_in_fragment_shader] = true
-            return c_converted
+            return to_color(colors)
         end
     end
     attributes[:color] = mesh_colors
-    bigmesh = lift(meshes) do meshes
+    bigmesh = lift(plot, meshes) do meshes
         if isempty(meshes)
             return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
         else

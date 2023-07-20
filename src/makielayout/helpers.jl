@@ -137,34 +137,34 @@ function tightlimits!(la::Axis, ::Top)
     autolimits!(la)
 end
 
-GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> Rect2f(x), pixelarea(scene)), kwargs...)
+GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> Rect2f(x), scene, pixelarea(scene)), kwargs...)
 
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
     rightspinecolor, bottomspinecolor)
 
-    bottomline = lift(rect, spinewidth) do r, sw
+    bottomline = lift(scene, rect, spinewidth) do r, sw
         y = bottom(r)
         p1 = Point2(left(r) - 0.5sw, y)
         p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
-    leftline = lift(rect, spinewidth) do r, sw
+    leftline = lift(scene, rect, spinewidth) do r, sw
         x = left(r)
         p1 = Point2(x, bottom(r) - 0.5sw)
         p2 = Point2(x, top(r) + 0.5sw)
         [p1, p2]
     end
 
-    topline = lift(rect, spinewidth) do r, sw
+    topline = lift(scene, rect, spinewidth) do r, sw
         y = top(r)
         p1 = Point2(left(r) - 0.5sw, y)
         p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
-    rightline = lift(rect, spinewidth) do r, sw
+    rightline = lift(scene, rect, spinewidth) do r, sw
         x = right(r)
         p1 = Point2(x, bottom(r) - 0.5sw)
         p2 = Point2(x, top(r) + 0.5sw)
@@ -320,7 +320,7 @@ function labelslider!(scene, label, range; format = string,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
-    valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
+    valuelabel = Label(scene, lift(x -> apply_format(x, format), scene, slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
 
     Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslider!, force = true)
@@ -383,7 +383,8 @@ function labelslidergrid!(scene, labels, ranges; formats = [string], value_colum
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)
         label = Label(scene, label; halign = :left, labelkw...)
-        valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); halign = :right, valuekw...)
+        valuelabel = Label(scene, lift(x -> apply_format(x, format), scene, slider.value); halign=:right,
+                           valuekw...)
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 

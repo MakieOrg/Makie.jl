@@ -141,11 +141,12 @@ mutable struct RectangleZoom
     from::Union{Nothing, Point2f}
     to::Union{Nothing, Point2f}
     rectnode::Observable{Rect2f}
+    modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false)
+function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)))
+                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
@@ -201,11 +202,20 @@ end
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
     @attributes begin
-        "The xlabel string."
+        """
+        The content of the x axis label.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         xlabel = ""
-        "The ylabel string."
+        """
+        The content of the y axis label.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         ylabel = ""
-        "The axis title string."
+        """
+        The content of the axis title.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         title = ""
         "The font family of the title."
         titlefont = :bold
@@ -215,13 +225,21 @@ end
         titlegap::Float64 = 4f0
         "Controls if the title is visible."
         titlevisible::Bool = true
-        "The horizontal alignment of the title."
+        """
+        The horizontal alignment of the title.
+        The subtitle always follows this alignment setting.
+
+        Options are `:center`, `:left` or `:right`.
+        """
         titlealign::Symbol = :center
         "The color of the title"
         titlecolor::RGBAf = @inherit(:textcolor, :black)
         "The axis title line height multiplier."
         titlelineheight::Float64 = 1
-        "The axis subtitle string."
+        """
+        The content of the axis subtitle.
+        The value can be any non-vector-valued object that the `text` primitive supports.
+        """
         subtitle = ""
         "The font family of the subtitle."
         subtitlefont = :regular
@@ -377,7 +395,24 @@ end
         topspinecolor::RGBAf = :black
         "The color of the right axis spine."
         rightspinecolor::RGBAf = :black
-        "The forced aspect ratio of the axis. `nothing` leaves the axis unconstrained, `DataAspect()` forces the same ratio as the ratio in data limits between x and y axis, `AxisAspect(ratio)` sets a manual ratio."
+        """
+        Controls the forced aspect ratio of the axis.
+
+        The default `nothing` will not constrain the aspect ratio.
+        The axis area will span the available width and height in the layout.
+
+        `DataAspect()` reduces the effective axis size within the available layout space
+        so that the axis aspect ratio width/height matches that of the data limits.
+        For example, if the x limits range from 0 to 300 and the y limits from 100 to 250, `DataAspect()` will result
+        in an aspect ratio of `(300 - 0) / (250 - 100) = 2`.
+        This can be useful when plotting images, because the image will be displayed unsquished.
+
+        `AxisAspect(ratio)` reduces the effective axis size within the available layout space
+        so that the axis aspect ratio width/height matches `ratio`.
+
+        Note that both `DataAspect` and `AxisAspect` can result in excess whitespace around the axis.
+        To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting.
+        """
         aspect = nothing
         "The vertical alignment of the axis within its suggested bounding box."
         valign = :center
@@ -395,13 +430,73 @@ end
         xautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
-        "The xticks."
+        """
+        Controls what numerical tick values are calculated for the x axis.
+
+        To determine tick values and labels, Makie first calls `Makie.get_ticks(xticks, xscale, xtickformat, xmin, xmax)`.
+        If there is no special method defined for the current combination of
+        ticks, scale and formatter which returns both tick values and labels at once,
+        then the numerical tick values will be determined using
+        `xtickvalues = Makie.get_tickvalues(xticks, xscale, xmin, xmax)` after which the labels are determined using
+        `Makie.get_ticklabels(xtickformat, xtickvalues)`.
+
+        Common objects that can be used as ticks are:
+        - A vector of numbers
+        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+        - `WilkinsonTicks`, the default tick finder for linear ticks
+        - `LinearTicks`, an alternative tick finder for linear ticks
+        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        """
         xticks = Makie.automatic
-        "Format for xticks."
+        """
+        The formatter for the ticks on the x axis.
+
+        Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
+        `Makie.get_ticklabels(xtickformat, xtickvalues)` is called. If there is a special method defined,
+        tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
+        docstring for `xticks` for more information.
+
+        Common objects that can be used for tick formatting are:
+        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+          that can be plotted by the `text` primitive.
+        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        """
         xtickformat = Makie.automatic
-        "The yticks."
+        """
+        Controls what numerical tick values are calculated for the y axis.
+
+        To determine tick values and labels, Makie first calls `Makie.get_ticks(yticks, yscale, ytickformat, ymin, ymax)`.
+        If there is no special method defined for the current combination of
+        ticks, scale and formatter which returns both tick values and labels at once,
+        then the numerical tick values will be determined using
+        `ytickvalues = Makie.get_tickvalues(yticks, yscale, ymin, ymax)` after which the labels are determined using
+        `Makie.get_ticklabels(ytickformat, ytickvalues)`.
+
+        Common objects that can be used as ticks are:
+        - A vector of numbers
+        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+        - `WilkinsonTicks`, the default tick finder for linear ticks
+        - `LinearTicks`, an alternative tick finder for linear ticks
+        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        """
         yticks = Makie.automatic
-        "Format for yticks."
+        """
+        The formatter for the ticks on the y axis.
+
+        Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
+        `Makie.get_ticklabels(ytickformat, ytickvalues)` is called. If there is a special method defined,
+        tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
+        docstring for `yticks` for more information.
+
+        Common objects that can be used for tick formatting are:
+        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+          that can be plotted by the `text` primitive.
+        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        """
         ytickformat = Makie.automatic
         "The button for panning."
         panbutton::Makie.Mouse.Button = Makie.Mouse.right
@@ -417,17 +512,51 @@ end
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
         yaxisposition::Symbol = :left
-        "Controls if the x spine is limited to the furthest tick marks or not."
+        """
+        If `true`, limits the x axis spine's extent to the outermost major tick marks.
+        Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
+        """
         xtrimspine::Union{Bool, Tuple{Bool,Bool}}  = false
-        "Controls if the y spine is limited to the furthest tick marks or not."
+        """
+        If `true`, limits the y axis spine's extent to the outermost major tick marks.
+        Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
+        """
         ytrimspine::Union{Bool, Tuple{Bool,Bool}} = false
         "The background color of the axis."
         backgroundcolor::RGBAf = :white
         "Controls if the ylabel's rotation is flipped."
         flip_ylabel::Bool = false
-        "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
+        """
+        If `autolimitaspect` is set to a number, the limits of the axis
+        will autoadjust such that the ratio of the limits to the axis size equals
+        that number.
+
+        For example, if the axis size is 100 x 200, then with `autolimitaspect = 1`,
+        the autolimits will also have a ratio of 1 to 2. The setting `autolimitaspect = 1`
+        is the complement to `aspect = AxisAspect(1)`, but while `aspect` changes the axis
+        size, `autolimitaspect` changes the limits to achieve the desired ratio.
+        """
         autolimitaspect = nothing
-        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
+        """
+        Can be used to manually specify which axis limits are desired.
+
+        The `limits` attribute cannot be used to read out the actual limits of the axis.
+        The value of `limits` does not change when interactively zooming and panning and the axis can be reset
+        accordingly using the function `reset_limits!`.
+
+        The function `autolimits!` resets the value of `limits` to `(nothing, nothing)` and adjusts the axis limits according
+        to the extents of the plots added to the axis.
+
+        The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, high)` where each value
+        can be a real number or `nothing`.
+        It can also be a tuple `(x, y)` where `x` and `y` can be `nothing` or a tuple `(low, high)`.
+        In all cases, `nothing` means that the respective limit values will be automatically determined.
+
+        Automatically determined limits are also influenced by `xautolimitmargin` and `yautolimitmargin`.
+
+        The convenience functions `xlims!` and `ylims!` allow to set only the x or y part of `limits`.
+        The function `limits!` is another option to set both x and y simultaneously.
+        """
         limits = (nothing, nothing)
         "The align mode of the axis in its parent GridLayout."
         alignmode = Inside()
@@ -445,7 +574,14 @@ end
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
         xminortickcolor::RGBAf = :black
-        "The tick locator for the x minor ticks"
+        """
+        The tick locator for the minor ticks of the x axis.
+
+        Common objects that can be used are:
+        - `IntervalsBetween`, divides the space between two adjacent major ticks into `n` intervals
+          for `n-1` minor ticks
+        - A vector of numbers
+        """
         xminorticks = IntervalsBetween(2)
         "Controls if minor ticks on the y axis are visible"
         yminorticksvisible::Bool = false
@@ -457,18 +593,60 @@ end
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
         yminortickcolor::RGBAf = :black
-        "The tick locator for the y minor ticks"
+        """
+        The tick locator for the minor ticks of the y axis.
+
+        Common objects that can be used are:
+        - `IntervalsBetween`, divides the space between two adjacent major ticks into `n` intervals
+          for `n-1` minor ticks
+        - A vector of numbers
+        """
         yminorticks = IntervalsBetween(2)
-        "The x axis scale"
+        """
+        The scaling function for the x axis.
+
+        Can be any invertible function, some predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
+        `Makie.defaultlimits` and `Makie.defined_interval`.
+
+        If the scaling function is only defined over a limited interval,
+        no plot object may have a source datum that lies outside of that range.
+        For example, there may be no x value lower than or equal to 0 when `log`
+        is selected for `xscale`. What matters are the source data, not the user-selected
+        limits, because all data have to be transformed, irrespective of whether they
+        lie inside or outside of the current limits.
+
+        The axis scale may affect tick finding and formatting, depending
+        on the values of `xticks` and `xtickformat`.
+        """
         xscale = identity
-        "The y axis scale"
+        """
+        The scaling function for the y axis.
+
+        Can be any invertible function, some predefined options are
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
+        `Makie.defaultlimits` and `Makie.defined_interval`.
+
+        If the scaling function is only defined over a limited interval,
+        no plot object may have a source datum that lies outside of that range.
+        For example, there may be no y value lower than or equal to 0 when `log`
+        is selected for `yscale`. What matters are the source data, not the user-selected
+        limits, because all data have to be transformed, irrespective of whether they
+        lie inside or outside of the current limits.
+
+        The axis scale may affect tick finding and formatting, depending
+        on the values of `yticks` and `ytickformat`.
+        """
         yscale = identity
     end
 end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, Observable(ax.scene), ax.finallimits, r.rectnode)
+    selection_vertices = lift(_selection_vertices, ax.blockscene, Observable(ax.scene), ax.finallimits,
+                              r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
@@ -572,20 +750,26 @@ end
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
+
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
         "The range of values depicted in the colorbar."
         limits = nothing
         "The range of values depicted in the colorbar."
         colorrange = nothing
-        "The align mode of the colorbar in its parent GridLayout."
-        alignmode = Inside()
-        "The number of steps in the heatmap underlying the colorbar gradient."
-        nsteps = 100
         "The color of the high clip triangle."
         highclip = nothing
         "The color of the low clip triangle."
         lowclip = nothing
+        "The axis scale"
+        scale = identity
+
+
+        "The align mode of the colorbar in its parent GridLayout."
+        alignmode = Inside()
+        "The number of steps in the heatmap underlying the colorbar gradient."
+        nsteps = 100
+
         "Controls if minor ticks are visible"
         minorticksvisible = false
         "The alignment of minor ticks on the axis spine"
@@ -598,8 +782,6 @@ end
         minortickcolor = :black
         "The tick locator for the minor ticks"
         minorticks = IntervalsBetween(5)
-        "The axis scale"
-        scale = identity
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 16
     end
@@ -910,6 +1092,8 @@ end
         direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
+        "Speed of scrolling in large Menu lists."
+        scroll_speed = 15.0
     end
 end
 
@@ -933,7 +1117,7 @@ struct LegendEntry
     attributes::Attributes
 end
 
-const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
+const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
     entrygroups::Observable{Vector{EntryGroup}}
@@ -1169,15 +1353,47 @@ end
         valign = :center
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
-        "The elevation angle of the camera"
+        "The elevation (up / down) angle of the camera. Possible values are between -pi/2 (looking from the bottom up) and +pi/2 (looking from the top down)."
         elevation = pi/8
-        "The azimuth angle of the camera"
+        """
+        The azimuth (left / right) angle of the camera.
+
+        At `azimuth = 0`, the camera looks at the axis from a point on the positive x axis, and rotates to the right from there
+        with increasing values. At the default value 1.275π, the x axis goes to the right and the y axis to the left.
+        """
         azimuth = 1.275 * pi
-        "A number between 0 and 1, where 0 is orthographic, and 1 full perspective"
+        """
+        This setting offers a simple scale from 0 to 1, where 0 looks like an orthographic projection (no perspective)
+        and 1 is a strong perspective look. For most data visualization applications, perspective should
+        be avoided because it makes interpreting the data correctly harder. It can be of use, however,
+        if aesthetics are more important than neutral presentation.
+        """
         perspectiveness = 0f0
-        "Aspects of the 3 axes with each other"
+        """
+        Controls the lengths of the three axes relative to each other.
+
+        Options are:
+          - A three-tuple of numbers, which sets the relative lengths of the x, y and z axes directly
+          - `:data` which sets the length ratios equal to the limit ratios of the axes. This results in an "unsquished" look
+            where a cube in data space looks like a cube and not a cuboid.
+          - `:equal` which is a shorthand for `(1, 1, 1)`
+        """
         aspect = (1.0, 1.0, 2/3) # :data :equal
-        "The view mode which affects the final projection. `:fit` results in the projection that always fits the limits into the viewport, invariant to rotation. `:fitzoom` keeps the x/y ratio intact but stretches the view so the corners touch the scene viewport. `:stretch` scales separately in both x and y direction to fill the viewport, which can distort the `aspect` that is set."
+        """
+        The view mode affects the final projection of the axis by fitting the axis cuboid into the available
+        space in different ways.
+
+          - `:fit` uses a fixed scaling such that a tight sphere around the cuboid touches the frame edge.
+            This means that the scaling doesn't change when rotating the axis (the apparent size
+            of the axis stays the same), but not all available space is used.
+            The chosen `aspect` is maintained using this setting.
+          - `:fitzoom` uses a variable scaling such that the closest cuboid corner touches the frame edge.
+            When rotating the axis, the apparent size of the axis changes which can result in a "pumping" visual effect.
+            The chosen `aspect` is also maintained using this setting.
+          - `:stretch` pulls the cuboid corners to the frame edges such that the available space is filled completely.
+            The chosen `aspect` is not maintained using this setting, so `:stretch` should not be used
+            if a particular aspect is needed.
+        """
         viewmode = :fitzoom # :fit :fitzoom :stretch
         "The background color"
         backgroundcolor = :transparent
@@ -1381,5 +1597,137 @@ end
         yautolimitmargin = (0.05, 0.05)
         "The relative margins added to the autolimits in z direction."
         zautolimitmargin = (0.05, 0.05)
+    end
+end
+
+@Block PolarAxis begin
+    scene::Scene
+    overlay::Scene
+    target_radius::Observable{Float64}
+    cycler::Cycler
+    palette::Attributes
+    @attributes begin
+        "The height setting of the scene."
+        height = nothing
+        "The width setting of the scene."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The horizontal alignment of the scene in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the scene in its suggested bounding box."
+        valign = :center
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
+        "The background color of the axis."
+        backgroundcolor = inherit(scene, :backgroundcolor, :white)
+        "The maximum radius of the PolarAxis. This acts as the limit of the axis."
+        radius = nothing
+        "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
+        direction = 1
+        "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
+        theta_0 = 0f0
+        "The width of the spine."
+        spinewidth = 2
+        "The color of the spine."
+        spinecolor = :black
+        "Controls whether the spine is visible."
+        spinevisible = true
+        "The linestyle of the spine."
+        spinestyle = nothing
+        "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis."
+        rticks = LinearTicks(4)
+        "The specifier for the minor `r` ticks."
+        rminorticks = IntervalsBetween(2)
+        "The color of the `r` grid."
+        rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
+        "The linewidth of the `r` grid."
+        rgridwidth = inherit(scene, (:Axis, :xgridwidth), 1)
+        "The linestyle of the `r` grid."
+        rgridstyle = inherit(scene, (:Axis, :xgridstyle), nothing)
+        "Controls if the `r` grid is visible."
+        rgridvisible = inherit(scene, (:Axis, :xgridvisible), true)
+        "The formatter for the `r` ticks"
+        rtickformat = Makie.automatic
+        "The fontsize of the `r` tick labels."
+        rticklabelsize = inherit(scene, (:Axis, :xticklabelsize), 16)
+        "The font of the `r` tick labels."
+        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the `r` tick labels."
+        rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
+        "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
+        rticklabelstrokewidth = 0.0
+        "The color of the outline of `r` ticks. By default this uses the background color."
+        rticklabelstrokecolor = automatic
+        "Controls if the `r` ticks are visible."
+        rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
+        "The angle in radians along which the `r` ticks are printed."
+        rtickangle = π/8
+        "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
+        thetaticks = ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        "The specifier for the minor `theta` ticks."
+        thetaminorticks = IntervalsBetween(2)
+        "The color of the `theta` grid."
+        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
+        "The linewidth of the `theta` grid."
+        thetagridwidth = inherit(scene, (:Axis, :ygridwidth), 1)
+        "The linestyle of the `theta` grid."
+        thetagridstyle = inherit(scene, (:Axis, :ygridstyle), nothing)
+        "Controls if the `theta` grid is visible."
+        thetagridvisible = inherit(scene, (:Axis, :ygridvisible), true)
+        "The formatter for the `theta` ticks."
+        thetatickformat = Makie.automatic
+        "The fontsize of the `theta` tick labels."
+        thetaticklabelsize = inherit(scene, (:Axis, :yticklabelsize), 16)
+        "The font of the `theta` tick labels."
+        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the `theta` tick labels."
+        thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
+        "Padding of the `theta` ticks label."
+        thetaticklabelpad = 4f0
+        "The width of the outline of `theta` ticks. Setting this to 0 will remove the outline."
+        thetaticklabelstrokewidth = 0.0
+        "The color of the outline of `theta` ticks. By default this uses the background color."
+        thetaticklabelstrokecolor = automatic
+        "Controls if the `theta` ticks are visible."
+        thetaticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
+        "The title of the plot"
+        title = " "
+        "The gap between the title and the top of the axis"
+        titlegap = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
+        "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
+        titlealign = :center
+        "The fontsize of the title."
+        titlesize = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
+        "The font of the title."
+        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the title."
+        titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
+        "Controls if the title is visible."
+        titlevisible = inherit(scene, (:Axis, :titlevisible), true)
+        "The color of the `r` minor grid."
+        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
+        "The linewidth of the `r` minor grid."
+        rminorgridwidth = inherit(scene, (:Axis, :xminorgridwidth), 1)
+        "The linestyle of the `r` minor grid."
+        rminorgridstyle = inherit(scene, (:Axis, :xminorgridstyle), nothing)
+        "Controls if the `r` minor grid is visible."
+        rminorgridvisible = inherit(scene, (:Axis, :xminorgridvisible), false)
+        "The color of the `theta` minor grid."
+        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        "The linewidth of the `theta` minor grid."
+        thetaminorgridwidth = inherit(scene, (:Axis, :yminorgridwidth), 1)
+        "The linestyle of the `theta` minor grid."
+        thetaminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
+        "Controls if the `theta` minor grid is visible."
+        thetaminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), false)
+        "The density at which grid lines are sampled."
+        sample_density = 100
+        "Controls whether to activate the nonlinear clip feature.  Note that this should not be used when the background is ultimately transparent."
+        clip = true
+        "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
+        reset_button = Keyboard.left_control & Mouse.left
     end
 end

@@ -133,6 +133,20 @@ macro get_attribute(scene, args)
     extract_expr(get_attribute, scene, args)
 end
 
+# a few shortcut functions to make attribute conversion easier
+function converted_attribute(dict, key, default=nothing)
+    if haskey(dict, key)
+        return lift(x-> convert_attribute(x, Key{key}()), dict[key])
+    else
+        return default
+    end
+end
+
+macro converted_attribute(dictlike, args)
+    return extract_expr(converted_attribute, dictlike, args)
+end
+
+
 @inline getindex_value(x::Union{Dict,Attributes,AbstractPlot}, key::Symbol) = to_value(x[key])
 @inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 
@@ -264,23 +278,6 @@ function to_vector(x::ClosedInterval, len, T)
     range(a, stop=b, length=len)
 end
 
-"""
-A colorsampler maps numnber values from a certain range to values of a colormap
-```
-x = ColorSampler(colormap, (0.0, 1.0))
-x[0.5] # returns color at half point of colormap
-```
-"""
-struct ColorSampler{Data <: AbstractArray}
-    colormap::Data
-    color_range::Tuple{Float64,Float64}
-end
-
-function Base.getindex(cs::ColorSampler, value::Number)
-    return interpolated_getindex(cs.colormap, value, cs.color_range)
-end
-
-
 # This function was copied from GR.jl,
 # written by Josef Heinen.
 """
@@ -346,3 +343,7 @@ function extract_keys(attributes, keys)
     end
     return attr
 end
+
+# Scalar - Vector getindex
+sv_getindex(v::Vector, i::Integer) = v[i]
+sv_getindex(x, i::Integer) = x

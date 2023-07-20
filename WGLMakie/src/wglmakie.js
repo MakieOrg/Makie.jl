@@ -35,7 +35,7 @@ export function render_scene(scene, picking = false) {
     if (!scene.visible.value) {
         return true;
     }
-    renderer.autoClear = scene.clearscene;
+    renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t) => t / pixelRatio);
@@ -80,9 +80,19 @@ function start_renderloop(three_scene) {
 function throttle_function(func, delay) {
     // Previously called time of the function
     let prev = 0;
-    return (...args) => {
+    // ID of queued future update
+    let future_id = undefined;
+    function inner_throttle(...args) {
         // Current called time of the function
         const now = new Date().getTime();
+
+        // If we had a queued run, clear it now, we're
+        // either going to execute now, or queue a new run.
+        if (future_id !== undefined) {
+            clearTimeout(future_id);
+            future_id = undefined;
+        }
+
         // If difference is greater than delay call
         // the function again.
         if (now - prev > delay) {
@@ -91,11 +101,18 @@ function throttle_function(func, delay) {
             // returning the function with the
             // array of arguments
             return func(...args);
+        } else {
+            // Otherwise, we want to queue this function call
+            // to occur at some later later time, so that it
+            // does not get lost; we'll schedule it so that it
+            // fires just a bit after our choke ends.
+            future_id = setTimeout(() => inner_throttle(...args), now - prev + 1);
         }
     };
+    return inner_throttle;
 }
 
-function threejs_module(canvas, comm, width, height) {
+function threejs_module(canvas, comm, width, height, resize_to_body) {
     let context = canvas.getContext("webgl2", {
         preserveDrawingBuffer: true,
     });
@@ -199,6 +216,32 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
 
+    function resize_callback() {
+        const bodyStyle = window.getComputedStyle(document.body);
+        // Subtract padding that is added by VSCode
+        const width_padding =
+            parseInt(bodyStyle.paddingLeft, 10) +
+            parseInt(bodyStyle.paddingRight, 10) +
+            parseInt(bodyStyle.marginLeft, 10) +
+            parseInt(bodyStyle.marginRight, 10);
+        const height_padding =
+            parseInt(bodyStyle.paddingTop, 10) +
+            parseInt(bodyStyle.paddingBottom, 10) +
+            parseInt(bodyStyle.marginTop, 10) +
+            parseInt(bodyStyle.marginBottom, 10);
+        const width = (window.innerWidth - width_padding) * pixelRatio;
+        const height = (window.innerHeight - height_padding) * pixelRatio;
+
+        // Send the resize event to Julia
+        comm.notify({ resize: [width, height] });
+    }
+    if (resize_to_body) {
+        const resize_callback_throttled = throttle_function(resize_callback, 100);
+        window.addEventListener("resize", (event) => resize_callback_throttled());
+        // Fire the resize event once at the start to auto-size our window
+        resize_callback_throttled();
+    }
+
     return renderer;
 }
 
@@ -210,10 +253,17 @@ function create_scene(
     comm,
     width,
     height,
+    texture_atlas_obs,
     fps,
-    texture_atlas_obs
+    resize_to_body
 ) {
-    const renderer = threejs_module(canvas, comm, width, height);
+    const renderer = threejs_module(
+        canvas,
+        comm,
+        width,
+        height,
+        resize_to_body
+    );
     TEXTURE_ATLAS[0] = texture_atlas_obs;
 
     if (renderer) {
@@ -374,7 +424,7 @@ export function pick_sorted(scene, xy, range) {
     const { width, height } = picking_target;
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
-        return [null, 0];
+        return null;
     }
 
     const x0 = Math.max(1, xy[0] - range);
@@ -386,7 +436,7 @@ export function pick_sorted(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
     if (selected.length == 0) {
-        return [];
+        return null;
     }
 
     const plot_matrix = plot_data.data;
@@ -412,7 +462,6 @@ export function pick_sorted(scene, xy, range) {
         (a, b) =>
             distances[a] < distances[b] ? -1 : (distances[b] < distances[a]) | 0
     );
-
     return sorted_indices.map((idx) => {
         const [plot, index] = selected[idx];
         return [plot.plot_uuid, index];
@@ -427,6 +476,41 @@ export function pick_native_uuid(scene, x, y, w, h) {
 export function pick_native_matrix(scene, x, y, w, h) {
     const [matrix, _] = pick_native(scene, x, y, w, h);
     return matrix;
+}
+
+export function register_popup(popup, scene, plots_to_pick, callback) {
+    if (!scene || !scene.screen) {
+        // scene not innitialized or removed already
+        return;
+    }
+    const { canvas } = scene.screen;
+    canvas.addEventListener("mousedown", (event) => {
+        if (!popup.classList.contains("show")) {
+            popup.classList.add("show");
+        }
+        popup.style.left = event.pageX + "px";
+        popup.style.top = event.pageY + "px";
+        const [x, y] = event2scene_pixel(scene, event);
+        const [_, picks] = pick_native(scene, x, y, 1, 1);
+        if (picks.length == 1) {
+            const [plot, index] = picks[0];
+            if (plots_to_pick.has(plot.plot_uuid)) {
+                const result = callback(plot, index);
+                if (typeof result === "string" || result instanceof String) {
+                    popup.innerText = result;
+                } else {
+                    popup.innerHTML = result;
+                }
+            }
+        } else {
+            popup.classList.remove("show");
+        }
+    });
+    canvas.addEventListener("keyup", (event) => {
+        if (event.key === "Escape") {
+            popup.classList.remove("show");
+        }
+    });
 }
 
 window.WGL = {
@@ -444,6 +528,8 @@ window.WGL = {
     create_scene,
     event2scene_pixel,
     on_next_insert,
+    register_popup,
+    render_scene,
 };
 
 export {
@@ -460,5 +546,5 @@ export {
     delete_scenes,
     create_scene,
     event2scene_pixel,
-    on_next_insert
+    on_next_insert,
 };
