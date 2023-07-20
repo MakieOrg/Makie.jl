@@ -358,12 +358,13 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(sl, firstindex(data, 1) .. lastindex(data, 1), firstindex(data, 2) .. lastindex(data, 2), el32convert(collect(data)))
+    start = Float32.(firstindex.((data,), 1:2) .- 1)
+    stop = Float32.(lastindex.((data,), 1:2))
+    convert_arguments(sl, start[1] .. stop[1], start[2] .. stop[2], el32convert(data))
 end
 
 function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
-    convert_arguments(ds, edges(axes(data, 1)), edges(axes(data, 2)), el32convert(collect(data)))
+    convert_arguments(ds, edges(axes(data, 1)), edges(axes(data, 2)), el32convert(data))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
@@ -422,16 +423,18 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
+    start = Float32.(firstindex.((data,), 1:3) .- 1)
+    stop = Float32.(lastindex.((data,), 1:3))
     return (
-        firstindex(data, 1) .. lastindex(data, 1), 
-        firstindex(data, 2) .. lastindex(data, 2), 
-        firstindex(data, 3) .. lastindex(data, 3), 
-        el32convert(collect(data))
+        start[1] .. stop[1],
+        start[2] .. stop[2],
+        start[3] .. stop[3],
+        el32convert(data)
     )
 end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
-    return (x, y, z, el32convert(collect(data)))
+    return (x, y, z, el32convert(data))
 end
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
