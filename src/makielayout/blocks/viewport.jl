@@ -3,15 +3,40 @@
 ################################################################################
 
 
+function generate_textures()
+    for i in 1:3
+        Makie.generate_navball_texture(;
+            majortick_step = (10, 15, 30)[i], 
+            minortick_step = (5, 5, 10)[i], 
+            merge_angle = (74, 74, 55)[i],
+            majortick_linewidth = (6, 4, 3)[i], 
+            minortick_linewidth = 2.5 - 0.5i,
+            minorticklength = (0.01, 0.01, 0.02)[i], 
+            majorticklength = (0.02, 0.02, 0.04)[i],
+            ticklabelpad = (0.02, 0.02, 0.04)[i],
+            ticklabel_strokewidth = (2, 2, 1.5)[i],
+            resolution = (1600, 800) .>> (i-1),
+            fontsize = (28, 22, 16)[i],
+            hide_ring_labels = (false, false, true)[i],
+            filename = Makie.assetpath("ball_controller_$(800 >> (i-1)).png")
+        )
+    end
+end
+
 function generate_navball_texture(;
-        top_color = Makie.wong_colors(1)[1],
-        bottom_color = Makie.wong_colors(1)[2],
-        majortick_linewidth = 8, minortick_linewidth = 2,
+        top_color = RGBf(0.75, 0.9, 1), 
+        bottom_color = RGBf(0.65, 0.85, 0.5),
+        majortick_step = 10, minortick_step = 5, merge_angle = 74,
+        majortick_linewidth = 6, minortick_linewidth = 2,
         minorticklength = 0.01, majorticklength = 0.02,
-        ticklabelpad = 0.005,
-        resolution = (1800, 900),
-        fontsize = 30,
-        linecolor = :black,
+        ticklabelpad = 0.02,
+        ticklabelcolor = :white, ticklabeloutline = :black, 
+        ticklabel_strokewidth = 2,
+        resolution = (1600, 800),
+        fontsize = 28,
+        linecolor = :black, 
+        hide_ring_labels = false,
+        save = true, 
         filename = Makie.assetpath("navball_texture.png")
     )
 
@@ -19,7 +44,11 @@ function generate_navball_texture(;
     scaling(z) = min(1e6, 1.0 / cos(z * pi/2))
 
     parent = Scene(resolution = resolution, backgroundcolor = top_color, clear = true)
-    Scene(parent, px_area = Observable(Rect2i(0, 450, 1800, 450)), backgroundcolor = bottom_color, clear = true)
+    Scene(
+        parent, 
+        px_area = map(r -> Rect2i(0, 0, widths(r)[1], 0.5widths(r)[2]), parent.px_area), 
+        backgroundcolor = bottom_color, clear = true
+    )
     scene = Scene(parent, backgroundcolor = :transparent, clear = false)
 
     # main north-south lines
@@ -32,10 +61,7 @@ function generate_navball_texture(;
         )
     end
 
-    # equator
-    lines!(scene, [-1.1, 1.1], [0.0, 0.0], linewidth = majortick_linewidth, color = linecolor)
-
-    # Minor lines
+    # Minor north-south lines
     zs = range(-1, 1, length = 301)
     for x in (-0.75, -0.25, 0.25, 0.75)
         lines!(
@@ -43,75 +69,105 @@ function generate_navball_texture(;
             color = linecolor
         )
     end
+
+    # equator ring
+    lines!(scene, [-1.1, 1.1], [0.0, 0.0], linewidth = majortick_linewidth, color = linecolor)
+    # 45° rings
     for z in (-0.5, 0.5)
         lines!(scene, [-1, 1], [z, z], linewidth = minortick_linewidth, color = linecolor)
     end
 
-    # Major Ticks
-    zs = range(-1, 1, length=19)[2:end-1]
-    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
-    ps = [Point2f(x+dx*scaling(z), z) for z in zs for x in xs for dx in (-majorticklength, majorticklength)]
-    linesegments!(scene, ps, color = linecolor, linewidth = minortick_linewidth)
+    # Vertical ticks
 
-    zs = vcat(range(-1, 0, length=10)[3:end-1], range(0, 1, length=10)[2:end-2])
-    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
-    ps = [Point2f(x - (majorticklength + ticklabelpad) * scaling(z), z) for z in zs for x in xs]
-    text!(
-        scene, ps,
-        text = [string(z) for z in vcat(-70:10:-10, 10:10:70) for x in xs],
-        color = :white, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
-        strokecolor = :black, strokewidth = 2,
-        align = (:left, :center),
-    )
-
-    zs = vcat(range(-1, 0, length=10)[3:end-1], range(0, 1, length=10)[2:end-2])
-    xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
-    ps = [Point2f(x - (majorticklength + ticklabelpad) * scaling(z), z) for z in zs for x in xs]
-    text!(
-        scene, ps,
-        text = [string(z) for z in vcat(-70:10:-10, 10:10:70) for x in xs],
-        color = :white, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
-        strokecolor = :black, strokewidth = 2,
-        align = (:right, :center)
-    )
-
-    zs = range(-1, 1, length=19)[[2, 18]]
-    xs = (-0.75, -0.25, 0.25, 0.75)
-    ps = [Point2f(x, z) for z in zs for x in xs]
-    text!(
-        scene, ps,
-        text = [string(z) for z in (-80, 80) for x in xs],
-        color = :white, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
-        strokecolor = :black, strokewidth = 2,
-        align = (:center, :center)
-    )
+    minor_tick_positions = vcat(reverse(0:-minortick_step:-81), (0:minortick_step:81))
+    major_tick_positions = vcat(reverse(0:-majortick_step:-81), (0:majortick_step:81))
     
-    # Minor Ticks
-    zs = range(-1, 1, length=37)[2:2:end-1]
+    # discard overlapping ticks
+    for (trg, src) in zip(
+            (minor_tick_positions, minor_tick_positions, major_tick_positions),
+            (major_tick_positions, (-45, 0, 45), (-45, 0, 45))
+        )
+
+        filter!(trg) do trg_phi
+            for src_phi in src
+                if abs(trg_phi - src_phi) < 1
+                    return false
+                end
+            end
+            return true
+        end
+    end
+
+    # Common
     xs = (-1.0, -0.5, 0.0, 0.5, 1.0)
+
+    # Minor Ticks
+    zs = minor_tick_positions ./ 90
     ps = [Point2f(x+dx*scaling(z), z) for z in zs for x in xs for dx in (-minorticklength, minorticklength)]
     linesegments!(
         scene, ps, color = linecolor, linewidth = minortick_linewidth#, fxaa = fxaa
     )
 
-    # Labels
+    # Major Ticks
+    zs = major_tick_positions ./ 90
+    ps = [Point2f(x+dx*scaling(z), z) for z in zs for x in xs for dx in (-majorticklength, majorticklength)]
+    linesegments!(scene, ps, color = linecolor, linewidth = minortick_linewidth)
+
+    # Separate labels
+    ticks = filter(v -> abs(v) < merge_angle, major_tick_positions)
+    zs = ticks ./ 90
+    ps = [Point2f(x + (majorticklength + ticklabelpad) * scaling(z), z) for z in zs for x in xs]
+    text!(
+        scene, ps,
+        text = [string(z) for z in ticks for x in xs],
+        color = ticklabelcolor, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
+        strokecolor = ticklabeloutline, strokewidth = ticklabel_strokewidth,
+        align = (:left, :center),
+    )
+
+    ps = [Point2f(x - (majorticklength + ticklabelpad) * scaling(z), z) for z in zs for x in xs]
+    text!(
+        scene, ps,
+        text = [string(z) for z in ticks for x in xs],
+        color = ticklabelcolor, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
+        strokecolor = ticklabeloutline, strokewidth = ticklabel_strokewidth,
+        align = (:right, :center)
+    )
+
+    # Merged labels
+    ticks = filter(v -> abs(v) > merge_angle, major_tick_positions)
+    zs = ticks ./ 90
+    xs = (-0.75, -0.25, 0.25, 0.75)
+    ps = [Point2f(x, z) for z in zs for x in xs]
+    text!(
+        scene, ps,
+        text = [string(z) for z in ticks for x in xs],
+        color = ticklabelcolor, fontsize = fontsize .* Vec2f.(scaling.(last.(ps)), 1),
+        strokecolor = ticklabeloutline, strokewidth = ticklabel_strokewidth,
+        align = (:center, :center)
+    )
+
+
+    # Horizontal Labels
     horizontal_labels = ("-X", "225", "-Y", "315", "X", "45", "Y", "135", "-X")
     text!(
         scene, 
         [Point2f(x, 0) for x in range(-1, 1, length = 9)],
         text = [str for str in horizontal_labels],
-        color = :white, fontsize = fontsize,
+        color = ticklabelcolor, fontsize = fontsize,
+        strokecolor = ticklabeloutline, strokewidth = ticklabel_strokewidth,
         align = (:center, :center),
-        strokecolor = :black, strokewidth = 2
     )
-    text!(
-        scene, 
-        [Point2f(x, z) for x in range(-1, 1, length = 9) for z in (-0.5, 0.5)],
-        text = [str for str in horizontal_labels for z in 1:2],
-        color = :white, fontsize = fontsize * Vec2f(scaling(0.5), 1),
-        align = (:center, :center),
-        strokecolor = :black, strokewidth = 2,
-    )
+    if !hide_ring_labels
+        text!(
+            scene, 
+            [Point2f(x, z) for x in range(-1, 1, length = 9) for z in (-0.5, 0.5)],
+            text = [str for str in horizontal_labels for z in 1:2],
+            color = ticklabelcolor, fontsize = fontsize * Vec2f(scaling(0.5), 1),
+            strokecolor = ticklabeloutline, strokewidth = ticklabel_strokewidth,
+            align = (:center, :center),
+        )
+    end
 
     # Frame
     linesegments!(
@@ -119,7 +175,7 @@ function generate_navball_texture(;
         color = linecolor, linewidth = 2*majortick_linewidth#, fxaa = fxaa
     )
 
-    Makie.save(filename, parent)
+    save && Makie.save(filename, parent)
 
     return parent
 end
@@ -447,14 +503,15 @@ end
 function initialize_block!(controller::Viewport3DController; axis::Union{LScene, Axis3}, float::Bool)
     blockscene = controller.blockscene
 
+    # Handle block detachment (TODO?)
     if float
         @info "Floating"
-        # map!(round_to_IRect2D, controller.layoutobservables.suggestedbbox, axis.scene.px_area)
         controller.halign[] = :right
         controller.valign[] = :bottom
         controller.layoutobservables.autosize[] = (150, 150)
     end
 
+    # Generate Scene for controller
     scene_region = map(blockscene, controller.layoutobservables.computedbbox) do bb
         mini = minimum(bb); ws = widths(bb)
         center = mini + 0.5 * ws
@@ -466,33 +523,72 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
         blockscene, 
         px_area = scene_region, 
         # backgroundcolor = (:yellow, 0.3),
-        clear = true
+        clear = !true
     )
 
-    # m = Rhombicuboctahedron()
-    texture = let
+    # Handle textures (TODO mipmap?)
+    textures = let
         # url = "https://raw.githubusercontent.com/linuxgurugamer/NavBallTextureChanger/master/GameData/NavBallTextureChanger/PluginData/Skins/Trekky0623_DIF.png"
         # path = Base.download(url)
-        path = Makie.assetpath("navball_texture.png")
-        img = FileIO.load(path)
-        # rm(path)
-        img
+        (
+            FileIO.load(Makie.assetpath("ball_controller_800.png")),
+            FileIO.load(Makie.assetpath("ball_controller_400.png")),
+            FileIO.load(Makie.assetpath("ball_controller_200.png"))
+        )
     end
 
+    # scene size threshholds for texture swaps (move to mipmap?)
+    low_mid = 125
+    mid_high = 250
+    selected_texture = RefValue(:none)
+
+    texture = let
+        w, h = widths(scene_region[])
+        tex = if h < low_mid
+            selected_texture[] = :low
+            textures[1]
+        elseif h < mid_high
+            selected_texture[] = :mid
+            textures[2]
+        else
+            selected_texture[] = :high
+            textures[3]
+        end
+        @info h, selected_texture[]
+        Observable(tex)
+    end
+
+    on(scene_region) do bb
+        w, h = widths(bb)
+
+        if h < low_mid - 10 && selected_texture[] != :low
+            selected_texture[] = :low
+            texture[] = textures[3]
+        elseif low_mid + 10 < h < mid_high - 20 && selected_texture[] != :mid
+            selected_texture[] = :mid
+            texture[] = textures[2]
+        elseif mid_high + 20 < h && selected_texture[] != :high
+            selected_texture[] = :high
+            texture[] = textures[1]
+        end
+    end
+
+    # Generate sphere mesh
     m = uv_normal_mesh(Tesselation(Sphere(Point3f(0), 1f0), 50))
-    # @info length(coordinates(m))
     mp = mesh!(scene, m, color = texture, transparency = false, fxaa=!false)
     rotate!(mp, Vec3f(0, 0, 1), pi)
 
+    # Constants for selection ranges/steps
     step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
     step_index = Observable(3)
     step = map(i -> 2pi / step_choices[i], step_index)
+
+    # Generate camera controls + linking
     cam = ViewportControllerCamera(scene, axis, step = step)
 
-    # info on step size
+    # Angle step burnout text
     timeout = Observable(-0.05)
     on(timeout) do remaining
-        @info remaining
         @async if remaining >= 0.0
             sleep(0.05)
             timeout[] -= 0.05
@@ -509,21 +605,15 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
     )
 
     # sphere background
-    # bg = scatter!(
-    #     scene, [Point2f(0) for _ in 1:3], space = :clip, 
-    #     marker = Circle, markersize = [1.8, 1.77, 1.73], markerspace = :clip,
-    #     color = [:black, :gray, :black], fxaa = true
-    # )
-    # translate!(bg, 0, 0, 1)
     bg = scatter!(
         scene, Point2f(0), space = :clip, 
-        marker = Circle, markersize = 1.73, markerspace = :clip,
-        color = :green, fxaa = true,
-        glowcolor = :green, glowwidth = 5
+        marker = Circle, markersize = 1.75, markerspace = :clip,
+        color = :black, fxaa = true,
+        # glowcolor = :white, glowwidth = 5
     )
     translate!(bg, 0, 0, 1)
 
-    # Mark selectable region
+    # Create marker for hovered region
     phi_theta = Observable(Point2f(0, 0))
     region = map(phi_theta, step) do phi_theta, step
         r = 1.01
