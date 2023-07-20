@@ -1368,3 +1368,7 @@ end
 to_color(sampler::ShaderAbstractions.Sampler) = el32convert(sampler)
 
 assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32convert(color[]))
+
+# BUFFER OVERLOAD
+
+GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec
