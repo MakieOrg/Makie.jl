@@ -5,7 +5,7 @@
 
 function generate_textures()
     for i in 1:3
-        Makie.generate_navball_texture(;
+        Makie.generate_ball_controller_texture(;
             majortick_step = (10, 15, 30)[i], 
             minortick_step = (5, 5, 10)[i], 
             merge_angle = (74, 74, 55)[i],
@@ -23,7 +23,7 @@ function generate_textures()
     end
 end
 
-function generate_navball_texture(;
+function generate_ball_controller_texture(;
         top_color = RGBf(0.75, 0.9, 1), 
         bottom_color = RGBf(0.65, 0.85, 0.5),
         majortick_step = 10, minortick_step = 5, merge_angle = 74,
@@ -37,7 +37,7 @@ function generate_navball_texture(;
         linecolor = :black, 
         hide_ring_labels = false,
         save = true, 
-        filename = Makie.assetpath("navball_texture.png")
+        filename = Makie.assetpath("ball_controller_texture.png")
     )
 
     # Scaling due to shrinking circumference
@@ -186,32 +186,32 @@ end
 
 
 # Simplified/Modified from Camera3D to make sure updates work correctly
-struct ViewportControllerCamera <: AbstractCamera
+struct BallControllerCamera <: AbstractCamera
     phi::Observable{Float32}
     theta::Observable{Float32}
     attributes::Attributes
 end
 
-function ViewportControllerCamera(scene::Scene, axis; kwargs...)
+function BallControllerCamera(scene::Scene, axis; kwargs...)
     kwdict = Dict(kwargs)
     attr = Attributes(
-        fov = 45.0,
-        projectiontype = Makie.Perspective,
-        rotationspeed = 1.0,
-        click_timeout = 0.3,
+        fov = get(kwdict, :fov, 45.0),
+        projectiontype = get(kwdict, :projectiontype, Makie.Perspective),
+        rotationspeed = get(kwdict, :rotationspeed, 1.0),
+        click_timeout = get(kwdict, :click_timeout, 0.3),
+        step = get(kwdict, :step, 2pi/16),
         selected = false,
-        step = get(kwdict, :step, 2pi/16)
     )
     # merge!(attr, Attributes(kwargs)) # doesn't replace?
 
     if axis isa Axis3
-        cam = ViewportControllerCamera(
+        cam = BallControllerCamera(
             Observable{Float32}(axis.azimuth[]), 
             Observable{Float32}(axis.elevation[]),
             attr
         )
     else
-        cam = ViewportControllerCamera(
+        cam = BallControllerCamera(
             Observable{Float32}(pi/4), 
             Observable{Float32}(0.61547977f0),
             attr
@@ -248,9 +248,9 @@ function ViewportControllerCamera(scene::Scene, axis; kwargs...)
 
     cam
 end
-deselect_camera!(cam::ViewportControllerCamera) = cam.attributes.selected[] = false
+deselect_camera!(cam::BallControllerCamera) = cam.attributes.selected[] = false
 
-function Ray(scene::Scene, cam::ViewportControllerCamera, xy::VecTypes{2})
+function Ray(scene::Scene, cam::BallControllerCamera, xy::VecTypes{2})
     phi = cam.phi[]; theta = cam.theta[]
     viewdir = - Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
     eyepos = - 3f0 * viewdir
@@ -313,7 +313,7 @@ function _hovered_angles(scene, cam, step)
     end
 end
 
-function add_rotation!(scene, cam::ViewportControllerCamera, axis)
+function add_rotation!(scene, cam::BallControllerCamera, axis)
     @extract cam.attributes (rotationspeed, click_timeout, step)
     drag_state = RefValue((false, Vec2f(0), time()))
     e = events(scene)
@@ -368,7 +368,7 @@ function add_rotation!(scene, cam::ViewportControllerCamera, axis)
     end
 end
 
-function rotate_cam!(scene, cam::ViewportControllerCamera, dphi::Real, dtheta::Real, axis)
+function rotate_cam!(scene, cam::BallControllerCamera, dphi::Real, dtheta::Real, axis)
     @info dphi, dtheta
     cam.theta[] = mod(cam.theta[] + dtheta, 2pi)
     reverse = ifelse(pi/2 <= cam.theta[] <= 3pi/2, -1, 1)
@@ -381,7 +381,7 @@ function rotate_cam!(scene, cam::ViewportControllerCamera, dphi::Real, dtheta::R
 end
 
 # Update camera matrices
-function update_cam!(scene::Scene, cam::ViewportControllerCamera, phi::Real, theta::Real)
+function update_cam!(scene::Scene, cam::BallControllerCamera, phi::Real, theta::Real)
     dphi = mod(2pi + cam.phi[] - phi, 2pi)
     print(dphi, " -> ")
     dphi = ifelse(dphi > pi, dphi - 2pi, dphi)
@@ -396,7 +396,7 @@ function update_cam!(scene::Scene, cam::ViewportControllerCamera, phi::Real, the
     return update_cam!(scene, cam)
 end
 
-function update_cam!(scene::Scene, cam::ViewportControllerCamera)
+function update_cam!(scene::Scene, cam::BallControllerCamera)
     # @extractvalue cam (lookat, eyeposition, upvector)
     fov = cam.attributes.fov[]
 
@@ -492,15 +492,15 @@ end
 
 
 # Create Controller
-function Viewport3DController(x, axis::Union{LScene, Axis3}; float::Bool, kwargs...)
-    Viewport3DController(x; axis = axis, float, bbox = axis.scene.px_area, kwargs...)
+function BallController(x, axis::Union{LScene, Axis3}; float::Bool, kwargs...)
+    BallController(x; axis = axis, float, bbox = axis.scene.px_area, kwargs...)
 end
-function Viewport3DController(x::Union{GridPosition, GridSubposition}, axis::Union{LScene, Axis3}; kwargs...)
-    Viewport3DController(x; axis = axis, float = false, kwargs...)
+function BallController(x::Union{GridPosition, GridSubposition}, axis::Union{LScene, Axis3}; kwargs...)
+    BallController(x; axis = axis, float = false, kwargs...)
 end
 
 
-function initialize_block!(controller::Viewport3DController; axis::Union{LScene, Axis3}, float::Bool)
+function initialize_block!(controller::BallController; axis::Union{LScene, Axis3}, float::Bool)
     blockscene = controller.blockscene
 
     # Handle block detachment (TODO?)
@@ -519,57 +519,39 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
         return round_to_IRect2D(Rect2(center .- 0.5 * w, Vec2(w)))
     end
 
-    scene = Scene(
-        blockscene, 
-        px_area = scene_region, 
-        # backgroundcolor = (:yellow, 0.3),
-        clear = !true
-    )
+    scene = Scene(blockscene, px_area = scene_region) # clear = false
 
     # Handle textures (TODO mipmap?)
-    textures = let
-        # url = "https://raw.githubusercontent.com/linuxgurugamer/NavBallTextureChanger/master/GameData/NavBallTextureChanger/PluginData/Skins/Trekky0623_DIF.png"
-        # path = Base.download(url)
-        (
-            FileIO.load(Makie.assetpath("ball_controller_800.png")),
-            FileIO.load(Makie.assetpath("ball_controller_400.png")),
-            FileIO.load(Makie.assetpath("ball_controller_200.png"))
-        )
-    end
-
     # scene size threshholds for texture swaps (move to mipmap?)
-    low_mid = 125
-    mid_high = 250
     selected_texture = RefValue(:none)
 
     texture = let
         w, h = widths(scene_region[])
-        tex = if h < low_mid
+        tex = if h < controller.low_mid_threshold[]
             selected_texture[] = :low
-            textures[1]
-        elseif h < mid_high
+            controller.texture_low[]
+        elseif h < controller.mid_high_threshold[]
             selected_texture[] = :mid
-            textures[2]
+            controller.texture_mid[]
         else
             selected_texture[] = :high
-            textures[3]
+            controller.texture_high[]
         end
-        @info h, selected_texture[]
         Observable(tex)
     end
 
     on(scene_region) do bb
         w, h = widths(bb)
 
-        if h < low_mid - 10 && selected_texture[] != :low
+        if h < controller.low_mid_threshold[] - 10 && selected_texture[] != :low
             selected_texture[] = :low
-            texture[] = textures[3]
-        elseif low_mid + 10 < h < mid_high - 20 && selected_texture[] != :mid
+            texture[] = controller.texture_low[]
+        elseif controller.low_mid_threshold[] + 10 < h < controller.mid_high_threshold[] - 20 && selected_texture[] != :mid
             selected_texture[] = :mid
-            texture[] = textures[2]
-        elseif mid_high + 20 < h && selected_texture[] != :high
+            texture[] = controller.texture_mid[]
+        elseif controller.mid_high_threshold[] + 20 < h && selected_texture[] != :high
             selected_texture[] = :high
-            texture[] = textures[1]
+            texture[] = controller.texture_high[]
         end
     end
 
@@ -579,12 +561,16 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
     rotate!(mp, Vec3f(0, 0, 1), pi)
 
     # Constants for selection ranges/steps
-    step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
     step_index = Observable(3)
-    step = map(i -> 2pi / step_choices[i], step_index)
+    step = map((r, i) -> 2pi / r[i], controller.step_choices, step_index)
 
     # Generate camera controls + linking
-    cam = ViewportControllerCamera(scene, axis, step = step)
+    cam = BallControllerCamera(
+        scene, axis, step = step, fov = controller.fov, 
+        projectiontype = controller.projectiontype,
+        rotationspeed = controller.rotationspeed,
+        click_timeout = controller.click_timeout
+    )
 
     # Angle step burnout text
     timeout = Observable(-0.05)
@@ -598,9 +584,11 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
     text!(
         scene, 
         Point2f(0.9), space = :clip, align = (:right, :top),
-        text = map(i -> "$(360/step_choices[i])°", step_index),
-        fontsize = 20, color = map(a -> (:black, a), timeout), 
-        strokewidth = 2, strokecolor = map(a -> (:white, a), timeout), 
+        text = map((r, i) -> "$(360/r[i])°", controller.step_choices, step_index),
+        fontsize = controller.angle_indicator_fontsize, 
+        color = map((c, a) -> (c, a), controller.angle_indicator_fontcolor, timeout), 
+        strokewidth = controller.angle_indicator_strokesize, 
+        strokecolor = map(a -> (:white, a), timeout), 
         visible = map(remaining -> remaining > 0, timeout)
     )
 
@@ -608,7 +596,7 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
     bg = scatter!(
         scene, Point2f(0), space = :clip, 
         marker = Circle, markersize = 1.75, markerspace = :clip,
-        color = :black, fxaa = true,
+        color = controller.backgroundcolor, fxaa = true,
         # glowcolor = :white, glowwidth = 5
     )
     translate!(bg, 0, 0, 1)
@@ -634,7 +622,8 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
     end
     lp = lines!(
         scene, region, 
-        color = :white, linewidth = 1, 
+        color = controller.angle_indicator_color,
+        linewidth = controller.angle_indicator_linewidth, 
         # strokecolor = :black, strokewidth = 1,
         visible = false, fxaa = true#, depth_shift = -0.001
     )
@@ -643,12 +632,12 @@ function initialize_block!(controller::Viewport3DController; axis::Union{LScene,
     on(scene, events(scene).scroll, priority = 100) do e
         if is_mouseinside(scene)
             idx = trunc(Int, step_index[] - sign(e[2]))
-            if 0 < idx <= length(step_choices) && (idx != step_index[])
+            if 0 < idx <= length(controller.step_choices[]) && (idx != step_index[])
                 step_index[] = idx
                 if timeout.val < 0.0
-                    timeout[] = 3.0
+                    timeout[] = controller.angle_indicator_timeout[]
                 else
-                    timeout.val = 3.0
+                    timeout.val = controller.angle_indicator_timeout[]
                 end
                 if is_mouseinside(scene)
                     phi, theta = _hovered_angles(scene, cam, step[])

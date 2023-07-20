@@ -1726,16 +1726,8 @@ end
     end
 end
 
-@Block Viewport3DController begin
+@Block BallController begin
     @attributes begin
-        # Controller specific
-        "Sets the background color on the viewport controller."
-        backgroundcolor = :transparent
-        "Sets the outline color of the (x, y, z) labels."
-        strokecolor = (:black, :black, :black)
-        "Sets the (inner) color of the (x, y, z) labels."
-        fontcolor = (:white, :white, :white)
-
         # Layouting
         "The height setting of the scene."
         height = Auto()
@@ -1751,5 +1743,50 @@ end
         valign = :center
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
+
+        "Sets the font color for the direction picking angle indicator."
+        angle_indicator_fontcolor = :black
+        "Sets the font size for the direction picking angle indicator."
+        angle_indicator_fontsize = 20
+        "Sets the font outline size for the direction picking angle indicator."
+        angle_indicator_strokesize = 2
+        "Sets the font outline color for the direction picking angle indicator."
+        angle_indicator_strokecolor = :white
+        "Sets the color for the direction picking rect."
+        angle_indicator_color = :white
+        "Sets the line width for the direction picking rect."
+        angle_indicator_linewidth = 1
+
+
+        # Controller visuals
+        "Sets the background color for the circle behind the displayed ball"
+        backgroundcolor = :black
+        "Sets the low resolution texture."
+        texture_low = FileIO.load(Makie.assetpath("ball_controller_200.png"))
+        "Sets the mid resolution texture."
+        texture_mid = FileIO.load(Makie.assetpath("ball_controller_400.png"))
+        "Sets the high resolution texture."
+        texture_high = FileIO.load(Makie.assetpath("ball_controller_800.png"))
+        "Threshold pixel diameter for switching between low and mid resolution textures."
+        low_mid_threshold = 125
+        "Threshold pixel diameter for switching between mid and high resolution textures."
+        mid_high_threshold = 250
+
+        # Camera Controls
+        # TODO - which of these are actually work modifying?
+        "Adjuts the field of view."
+        fov = 45.0
+        "Adjusts the projection type. Can be `Perspective` or `Orthographic`."
+        projectiontype = Perspective
+        "Sets the speed of mouse drag rotations."
+        rotationspeed = 1.0
+        "Sets the maximum time between pressing and releasing a mouse button for it to still count as a click."
+        click_timeout = 0.3
+
+        # Other Controls
+        "Controls the number of different selectable directions. The elements represent different zoom levels of the selection with each value being the number of direction over 360°."
+        step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
+        "Sets how long the angle indicator is visible after switching to a finer or coarser direction selection."
+        angle_indicator_timeout = 3.0
     end
 end
