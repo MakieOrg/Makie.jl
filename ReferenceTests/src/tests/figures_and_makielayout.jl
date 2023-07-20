@@ -136,3 +136,49 @@ end
     surface!(ax, xs, ys, zs)
     fig
 end
+
+@reference_test "PolarAxis surface" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1])
+    zs = [r*cos(phi) for r in range(1, 2, length=100), phi in range(0, 4pi, length=100)]
+    p = surface!(ax, 0..10, 0..2pi, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    Colorbar(f[1, 2], p)
+    f
+end
+
+# may fail in WGLMakie due to missing dashes
+@reference_test "PolarAxis scatterlines spine" begin
+    f = Figure(resolution = (800, 400))
+    ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
+    scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
+    
+    ax2 = PolarAxis(f[1, 2], title = "Modified spine")
+    ax2.spinecolor[] = :red
+    ax2.spinestyle[] = :dash
+    ax2.spinewidth[] = 5
+    scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
+    
+    f
+end
+
+# may fail in CairoMakie due to different text stroke handling
+# and in WGLMakie due to missing stroke
+@reference_test "PolarAxis decorations" begin
+    f = Figure(resolution = (400, 400), backgroundcolor = :black)
+    ax = PolarAxis(
+        f[1, 1], 
+        backgroundcolor = :black,
+        rminorgridvisible = true, rminorgridcolor = :red, 
+        rminorgridwidth = 1.0, rminorgridstyle = :dash,
+        thetaminorgridvisible = true, thetaminorgridcolor = :blue,
+        thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
+        rgridwidth = 2, rgridcolor = :red,
+        thetagridwidth = 2, thetagridcolor = :blue,
+        rticklabelsize = 18, rticklabelcolor = :red,
+        rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
+        thetaticklabelsize = 18, thetaticklabelcolor = :blue,
+        thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
+    )
+    
+    f
+end

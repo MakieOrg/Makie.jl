@@ -165,7 +165,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.elements = elements
 
     if palette === nothing
-        palette = fast_deepcopy(haskey(blockscene.theme, :palette) ? blockscene.theme[:palette] : Makie.DEFAULT_PALETTES)
+        palette = fast_deepcopy(get(blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
     end
     ax.palette = palette isa Attributes ? palette : Attributes(palette)
 

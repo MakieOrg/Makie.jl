@@ -7,10 +7,11 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 
 ### Specific to `Hexbin`
 
+- `weights = nothing`: Weights for each observation.  Can be `nothing` (each observation carries weight 1) or any `AbstractVector{<: Real}` or `StatsBase.AbstractWeights`.
 - `bins = 20`: If an `Int`, sets the number of bins in x and y direction. If a `Tuple{Int, Int}`, sets the number of bins for x and y separately.
 - `cellsize = nothing`: If a `Real`, makes equally-sided hexagons with width `cellsize`. If a `Tuple{Real, Real}` specifies hexagon width and height separately.
 - `threshold::Int = 1`: The minimal number of observations in the bin to be shown. If 0, all zero-count hexagons fitting into the data limits will be shown.
-- `scale = identity`: A function to scale the number of observations in a bin, eg. log10.
+- `colorscale = identity`: A function to scale the number of observations in a bin, eg. log10.
 
 ### Generic
 
@@ -19,14 +20,18 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 """
 @recipe(Hexbin) do scene
     return Attributes(;
-                      colormap=theme(scene, :colormap),
-                      colorrange=Makie.automatic,
-                      bins=20,
-                      cellsize=nothing,
-                      threshold=1,
-                      scale=identity,
-                      strokewidth=0,
-                      strokecolor=:black)
+        colormap=theme(scene, :colormap),
+        colorscale=identity,
+        colorrange=Makie.automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+        bins=20,
+        weights=nothing,
+        cellsize=nothing,
+        threshold=1,
+        strokewidth=0,
+        strokecolor=:black)
 end
 
 function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
@@ -69,6 +74,10 @@ function data_limits(hb::Hexbin)
     return Rect3f(no, nw)
 end
 
+get_weight(weights, i) = Float64(weights[i])
+get_weight(::StatsBase.UnitWeights, i) = 1e0
+get_weight(::Nothing, i) = 1e0
+
 function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
 
@@ -76,7 +85,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
 
-    function calculate_grid(xy, bins, cellsize, threshold, scale)
+    function calculate_grid(xy, weights, bins, cellsize, threshold)
         empty!(points[])
         empty!(count_hex[])
 
@@ -93,8 +102,8 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         x_diff = xma - xmi
         y_diff = yma - ymi
 
-        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi,
-                                                                                yma)                                                                     
+        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy =
+            spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -102,13 +111,14 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         xsize = xspacing * 2
         rx = xsize / sqrt3
 
-        d = Dict{Tuple{Int,Int},Int}()
+        d = Dict{Tuple{Int,Int}, Float64}()
 
         # for the distance measurement, the y dimension must be weighted relative to the x
         # dimension according to the different sizes in each, otherwise the attribution to hexagonal
         # cells is wrong
         yweight = xsize / ysize
 
+        i = 1
         for (_x, _y) in xy
             nx, nxs, dvx = nearest_center(_x, xspacing, xoff)
             ny, nys, dvy = nearest_center(_y, yspacing, yoff)
@@ -119,7 +129,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             is_grid1 = d1 < d2
 
             # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
-            
+
             id = if is_grid1
                 (
                     cld(dvx, 2),
@@ -132,7 +142,8 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 )
             end
 
-            d[id] = get(d, id, 0) + 1
+            d[id] = get(d, id, 0) + (get_weight(weights, i))
+            i += 1
         end
 
         if threshold == 0
@@ -141,9 +152,9 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 for ix in 0:_nx-1
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
-                    c = get(d, (ix, iy), 0)
+                    c = get(d, (ix, iy), 0.0)
                     push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], scale(c))
+                    push!(count_hex[], c)
                 end
             end
         else
@@ -153,7 +164,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
                     push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], scale(value))
+                    push!(count_hex[], value)
                 end
             end
         end
@@ -162,7 +173,8 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         notify(points)
         return notify(count_hex)
     end
-    onany(calculate_grid, xy, hb.bins, hb.cellsize, hb.threshold, hb.scale)
+    onany(calculate_grid, xy, hb.weights, hb.bins, hb.cellsize, hb.threshold)
+
     # trigger once
     notify(hb.bins)
 
@@ -187,11 +199,20 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     end
 
     hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi / 6, 13pi / 6; length=7)[1:6]])
-
+    scale = if haskey(hb, :scale)
+        @warn("`hexbin(..., scale=$(hb.scale[]))` is deprecated, use `hexbin(..., colorscale=$(hb.scale[]))` instead")
+        hb.scale
+    else
+        hb.colorscale
+    end
     return scatter!(hb, points;
                     colorrange=hb.colorrange,
                     color=count_hex,
                     colormap=hb.colormap,
+                    colorscale=scale,
+                    lowclip=hb.lowclip,
+                    highclip=hb.highclip,
+                    nan_color=hb.nan_color,
                     marker=hexmarker,
                     markersize=markersize,
                     markerspace=:data,
