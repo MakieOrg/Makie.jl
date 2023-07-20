@@ -5,7 +5,7 @@ const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
 # if no plot type based conversion is defined, we try using a trait
 function convert_arguments(T::PlotFunc, args...; kw...)
-    ct = conversion_trait(T)
+    ct = conversion_trait(T, args...)
     try
         convert_arguments(ct, args...; kw...)
     catch e

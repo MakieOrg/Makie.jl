@@ -25,8 +25,8 @@ plotkey(::Nothing) = :scatter
 
 function create_plot(P::Combined{F, Any}, args, kw) where F
     args_converted = convert_arguments(P, map(to_value, args)...)
-    PType = Combined{F, Tuple{typeof.(args_converted)...}}
-    return PType(args, kw)
+    ArgTypes = Tuple{typeof.(args_converted)...}
+    return Combined{F,ArgTypes}(args, kw)
 end
 
 """
@@ -55,17 +55,9 @@ function default_plot_signatures(funcname, funcname!, PlotType)
             return figurelike_return!(figlike, plot)
         end
 
-        function ($funcname!)(scene::AbstractScene, args...; kw...)
-            P = $(PlotType)
-            plot = create_plot(P, Any[args...], Dict{Symbol,Any}(kw))
+        function ($funcname!)(scene::SceneLike, args...; kw...)
+            plot = create_plot($(PlotType), Any[args...], Dict{Symbol,Any}(kw))
             plot!(scene, plot)
-            return plot
-        end
-
-        function ($funcname!)(obj::PlotObject, args...; kw...)
-            attributes = Dict{Symbol,Any}(kw)
-            plot = PlotObject($(PlotType), Any[args...], attributes)
-            plot!(obj, plot)
             return plot
         end
     end
