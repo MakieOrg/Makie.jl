@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -23,7 +23,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -40,13 +40,13 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
 
 x = rand(200)
-w = @. x^2 * (1 - x)^2 
+w = @. x^2 * (1 - x)^2
 ecdfplot!(x)
 ecdfplot!(x; weights = w, color=:orange)
 

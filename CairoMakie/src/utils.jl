@@ -2,47 +2,68 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, point, model, yflip = true)
-
+function project_position(scene::Scene, transform_func::T, space, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(scene.transformation.transform_func[], point)
+    point = Makie.apply_transform(transform_func, point, space)
+    _project_position(scene, space, point, model, yflip)
+end
 
+function _project_position(scene::Scene, space, point, model, yflip::Bool)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = scene.camera.projectionview[] * model * p4d
+    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
     @inbounds begin
-    # between -1 and 1
+        # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
         # flip y to match cairo
         p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
 end
 
-project_scale(scene::Scene, s::Number, model = Mat4f(I)) = project_scale(scene, Vec2f(s), model)
-
-function project_scale(scene::Scene, s, model = Mat4f(I))
-    p4d = to_ndim(Vec4f, s, 0f0)
-    p = @inbounds (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)] ./ 2f0
-    return p .* scene.camera.resolution[]
+function project_position(scenelike, space, point, model, yflip::Bool = true)
+    scene = Makie.get_scene(scenelike)
+    project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
-function project_rect(scene, rect::Rect, model)
-    mini = project_position(scene, minimum(rect), model)
-    maxi = project_position(scene, maximum(rect), model)
+function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
+    project_scale(scene, space, Vec2f(s), model)
+end
+
+function project_scale(scene::Scene, space, s, model = Mat4f(I))
+    p4d = model * to_ndim(Vec4f, s, 0f0)
+    if is_data_space(space)
+        @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
+        return p .* scene.camera.resolution[] .* 0.5
+    elseif is_pixel_space(space)
+        return p4d[Vec(1, 2)]
+    elseif is_relative_space(space)
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
+    else # clip
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
+    end
+end
+
+function project_rect(scenelike, space, rect::Rect, model)
+    mini = project_position(scenelike, space, minimum(rect), model)
+    maxi = project_position(scenelike, space, maximum(rect), model)
     return Rect(mini, maxi .- mini)
 end
 
-function project_polygon(scene, poly::P, model) where P <: Polygon
+function project_polygon(scenelike, space, poly::P, model) where P <: Polygon
     ext = decompose(Point2f, poly.exterior)
     interiors = decompose.(Point2f, poly.interiors)
     Polygon(
-        Point2f.(project_position.(Ref(scene), ext, Ref(model))),
-        [Point2f.(project_position.(Ref(scene), interior, Ref(model))) for interior in interiors],
+        Point2f.(project_position.(Ref(scenelike), space, ext, Ref(model))),
+        [Point2f.(project_position.(Ref(scenelike), space, interior, Ref(model))) for interior in interiors],
     )
+end
+
+function project_multipolygon(scenelike, space, multipoly::MP, model) where MP <: MultiPolygon
+    return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(model)))
 end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
@@ -95,62 +116,43 @@ function rgbatuple(c)
     return rgbatuple(colorant)
 end
 
-to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
+to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
+########################################
+#        Common color utilities        #
+########################################
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
+function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
+    cmap = Makie.assemble_colors(colors, Observable(colors), plot_object)
+    return to_color(to_value(cmap))
+end
 
-    if colorrange === Makie.automatic
-        colorrange = extrema(numbers)
-    end
+function to_cairo_color(color::Makie.AbstractPattern, plot_object)
+    cairopattern = Cairo.CairoPattern(color)
+    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
+    return cairopattern
+end
 
-    Makie.interpolated_getindex.(
-        Ref(colormap),
-        Float64.(numbers), # ints don't work in interpolated_getindex
-        Ref(colorrange))
+function to_cairo_color(color, plot_object)
+    return to_color(color)
+end
+
+function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
+    return Cairo.set_source(ctx, pattern)
+end
+
+function set_source(ctx::Cairo.CairoContext, color::Colorant)
+    return Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 end
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #
 ########################################
 
-function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    to_cairo_image(to_rgba_image(img, attributes), attributes)
-end
 
-function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+to_cairo_image(img::AbstractMatrix{<: Colorant}) =  to_cairo_image(to_uint32_color.(img))
 
-    nan_color = Makie.to_color(nan_color)
-    lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
-    highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
-
-    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
-end
-
-to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
-
-function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
-    vmin, vmax = colorrange
-
-    if isnan(pixel)
-        RGBAf(nan_color)
-    elseif pixel < vmin && !isnothing(lowclip)
-        RGBAf(lowclip)
-    elseif pixel > vmax && !isnothing(highclip)
-        RGBAf(highclip)
-    else
-        RGBAf(Makie.interpolated_getindex(colormap, pixel, colorrange))
-    end
-end
-
-function to_cairo_image(img::AbstractMatrix{<: Colorant}, attributes)
-    to_cairo_image(to_uint32_color.(img), attributes)
-end
-
-function to_cairo_image(img::Matrix{UInt32}, attributes)
+function to_cairo_image(img::Matrix{UInt32})
     # we need to convert from column-major to row-major storage,
     # therefore we permute x and y
     return Cairo.CairoARGBSurface(permutedims(img))
@@ -183,19 +185,19 @@ function FaceIterator(data::AbstractVector, faces)
     end
 end
 
-
 Base.size(fi::FaceIterator) = size(fi.faces)
 Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
-color_or_nothing(c) = c === nothing ? nothing : to_color(c)
+color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
+function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
+    return color_or_nothing(to_value(get(attributes, attribute, nothing)))
+end
 
-function per_face_colors(
-        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
-        lowclip=nothing, highclip=nothing, nan_color=nothing
-    )
-    if matcap !== nothing
+function per_face_colors(_color, matcap, faces, normals, uv)
+    color = to_color(_color)
+    if !isnothing(matcap)
         wsize = reverse(size(matcap))
         wh = wsize .- 1
         cvec = map(normals) do n
@@ -206,37 +208,50 @@ function per_face_colors(
         return FaceIterator(cvec, faces)
     elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
-    elseif color isa AbstractArray
-        if color isa AbstractVector{<: Colorant}
-            return FaceIterator(color, faces)
-        elseif color isa AbstractArray{<: Number}
-            low, high = extrema(colorrange)
-            cvec = map(color[:]) do c
-                if isnan(c) && nan_color !== nothing
-                    return nan_color
-                elseif c < low && lowclip !== nothing
-                    return lowclip
-                elseif c > high && highclip !== nothing
-                    return highclip
-                else
-                    Makie.interpolated_getindex(colormap, c, colorrange)
-                end
-            end
-            return FaceIterator(cvec, faces)
-        elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
-            wsize = reverse(size(color))
-            wh = wsize .- 1
-            cvec = map(uv) do uv
-                x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
-                return color[end - (y - 1), x]
-            end
-            # TODO This is wrong and doesn't actually interpolate
-            # Inside the triangle sampling the color image
-            return FaceIterator(cvec, faces)
+    elseif color isa AbstractVector{<: Colorant}
+        return FaceIterator(color, faces)
+    elseif color isa Makie.AbstractPattern
+        # let next level extend and fill with CairoPattern
+        return color
+    elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
+        wsize = reverse(size(color))
+        wh = wsize .- 1
+        cvec = map(uv) do uv
+            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+            return color[end - (y - 1), x]
         end
+        # TODO This is wrong and doesn't actually interpolate
+        # Inside the triangle sampling the color image
+        return FaceIterator(cvec, faces)
     end
     error("Unsupported Color type: $(typeof(color))")
 end
 
-mesh_pattern_set_corner_color(pattern, id, c::Colorant) =
+function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+end
+
+# not piracy
+function Cairo.CairoPattern(color::Makie.AbstractPattern)
+    # the Cairo y-coordinate are fliped
+    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
+    cairoimage = Cairo.CairoImageSurface(bitmappattern)
+    cairopattern = Cairo.CairoPattern(cairoimage)
+    return cairopattern
+end
+
+"""
+Finds a font that can represent the unicode character!
+Returns Makie.defaultfont() if not representable!
+"""
+function best_font(c::Char, font = Makie.defaultfont())
+    if Makie.FreeType.FT_Get_Char_Index(font, c) == 0
+        for afont in Makie.alternativefonts()
+            if Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
+                return afont
+            end
+        end
+        return Makie.defaultfont()
+    end
+    return font
+end

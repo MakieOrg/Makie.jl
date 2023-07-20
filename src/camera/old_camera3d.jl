@@ -23,7 +23,7 @@ Creates a 3D camera for `scene` which rotates around
 the _viewer_'s "up" axis - similarly to how it's done
 in CAD software cameras.
 """
-function old_cam3d_cad!(scene; kw_args...)
+function old_cam3d_cad!(scene::Scene; kw_args...)
     cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Attributes(
             rotationspeed = 0.01,
@@ -59,7 +59,7 @@ end
 Creates a 3D camera for `scene`, which rotates around
 the plot's axis.
 """
-function old_cam3d_turntable!(scene; kw_args...)
+function old_cam3d_turntable!(scene::Scene; kw_args...)
     cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Attributes(
             rotationspeed = 0.01,
@@ -264,7 +264,7 @@ function zoom!(scene, point::VecTypes, zoom_step, shift_lookat::Bool)
     # the offset perpendicular to `eyeposition - lookat`, based on mouse offset ~ ray_dir
     # the offset parallel to `eyeposition - lookat` ~ dir
     ray_eye = inv(scene.camera.projection[]) * Vec4f(point[1],point[2],0,0)
-    ray_eye = Vec4f(ray_eye[1:2]...,0,0)
+    ray_eye = Vec4f(ray_eye[Vec(1, 2)]...,0,0)
     ray_dir = Vec3f((inv(scene.camera.view[]) * ray_eye))
 
     dir = eyeposition - lookat

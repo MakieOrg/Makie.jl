@@ -108,7 +108,6 @@ end
 ############################################################################
 
 function _chosen_limits(rz, ax)
-
     r = positivize(Rect2f(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
@@ -122,11 +121,12 @@ function _chosen_limits(rz, ax)
     return r
 end
 
-function _selection_vertices(outer, inner)
+function _selection_vertices(ax_scene, outer, inner)
     _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-
-    outer = positivize(outer)
-    inner = positivize(inner)
+    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.px_area[])
+    transf = Makie.transform_func(ax_scene)
+    outer = positivize(Makie.apply_transform(transf, outer))
+    inner = positivize(Makie.apply_transform(transf, inner))
 
     obl = bottomleft(outer)
     obr = bottomright(outer)
@@ -137,12 +137,14 @@ function _selection_vertices(outer, inner)
     ibr = _clamp(bottomright(inner), obl, otr)
     itl = _clamp(topleft(inner), obl, otr)
     itr = _clamp(topright(inner), obl, otr)
-
-    return [obl, obr, otr, otl, ibl, ibr, itr, itl]
+    # We plot the selection vertices in blockscene, which is pixelspace, so we need to manually
+    # project the points to the space of `ax.scene`
+    return [proj(obl), proj(obr), proj(otr), proj(otl), proj(ibl), proj(ibr), proj(itr), proj(itl)]
 end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
-
+    # only rectangle zoom if modifier is pressed (defaults to true)
+    ispressed(ax.scene, r.modifier) || return Consume(false)
     # TODO: actually, the data from the mouse event should be transformed already
     # but the problem is that these mouse events are generated all the time
     # and outside of log axes, you would quickly run into domain errors
@@ -187,11 +189,10 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     return Consume(false)
 end
 
-function rectclamp(p::Point, r::Rect)
-    p = map(p, minimum(r), maximum(r)) do pp, mi, ma
-        clamp(pp, mi, ma)
-    end
-    return Point(p)
+function rectclamp(p::Point{N, T}, r::Rect) where {N, T}
+    mi, ma = extrema(r)
+    p = clamp.(p, mi, ma)
+    return Point{N, T}(p)
 end
 
 function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
@@ -203,11 +204,11 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     return Consume(true)
 end
 
-function positivize(r::Rect2f)
+function positivize(r::Rect2)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
-    return Rect2f(newori, newwidths)
+    return Rect2(newori, newwidths)
 end
 
 function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
@@ -248,7 +249,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         mp_axscene = Vec4f((e.mouseposition[] .- pa.origin)..., 0, 1)
 
         # first to normal -1..1 space
-        mp_axfraction =  (cam.pixel_space[] * mp_axscene)[1:2] .*
+        mp_axfraction =  (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
             # now to 1..-1 if an axis is reversed to correct zoom point
             (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
             # now to 0..1
@@ -312,7 +313,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     mp_axfraction, mp_axfraction_prev = map((mp_axscene, mp_axscene_prev)) do mp
         # first to normal -1..1 space
-        (cam.pixel_space[] * mp)[1:2] .*
+        (cam.pixel_space[] * mp)[Vec(1, 2)] .*
         # now to 1..-1 if an axis is reversed to correct zoom point
         (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
         # now to 0..1

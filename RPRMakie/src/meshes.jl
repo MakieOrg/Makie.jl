@@ -68,15 +68,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     instances = [marker]
     n_instances = length(positions)
     RPR.rprShapeSetObjectID(marker, 0)
-    material = if haskey(plot, :material)
-        if plot.material isa Attributes
-            RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
-        else
-            plot.material[]
-        end
-    else
-        RPR.DiffuseMaterial(matsys)
-    end
+    material = extract_material(matsys, plot)
     set!(marker, material)
     for i in 1:(n_instances-1)
         inst = RPR.Shape(context, marker)
@@ -99,6 +91,8 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
 
         material.color = tex
     elseif color isa Colorant
+        material.color = color
+    elseif color isa AbstractMatrix{<: Colorant}
         material.color = color
     else
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
@@ -136,8 +130,9 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
 
     function grid(x, y, z, trans)
         g = map(CartesianIndices(z)) do i
+            space = to_value(get(plot, :space, :data))
             p = Point3f(Makie.get_dim(x, i, 1, size(z)), Makie.get_dim(y, i, 2, size(z)), z[i])
-            return Makie.apply_transform(trans, p)
+            return Makie.apply_transform(trans, p, space)
         end
         return vec(g)
     end

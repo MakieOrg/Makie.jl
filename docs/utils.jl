@@ -10,19 +10,6 @@ using Pkg
 
 include("colormap_generation.jl")
 
-# Pause renderloop for slow software rendering.
-# This way, we only render if we actualy save e.g. an image
-GLMakie.set_window_config!(;
-    framerate = 1.0,
-    pause_rendering = true
-)
-
-# copy NEWS file over to documentation
-cp(
-    joinpath(@__DIR__, "..", "NEWS.md"),
-    joinpath(@__DIR__, "documentation", "news.md"),
-    force = true)
-
 ############################ Functions ##############################
 
 function hfun_doc(params)
@@ -78,8 +65,10 @@ function env_examplefigure(com, _)
 
     kwargs = eval(Meta.parse("Dict(pairs((;" * Franklin.content(com.braces[1]) * ")))"))
 
-    name = get(kwargs, :name, "example_" * string(hash(content)))
-    svg = get(kwargs, :svg, false)
+    name = pop!(kwargs, :name, "example_" * string(hash(content)))
+    svg = pop!(kwargs, :svg, false)
+
+    rest_kwargs_str = join(("$key = $(repr(val))" for (key, val) in kwargs), ", ")
 
     pngfile = "$name.png"
     svgfile = "$name.svg"
@@ -95,8 +84,8 @@ function env_examplefigure(com, _)
     __result = begin # hide
         $code
     end # hide
-    save(joinpath(@OUTPUT, "$pngfile"), __result) # hide
-    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result) # hide" : "")
+    save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide
+    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str) # hide" : "")
     nothing # hide
     ```
     ~~~
@@ -455,3 +444,51 @@ function contenttable()
         end
     end
 end
+
+
+function lx_attrdocs(lxc, _)
+    type = getproperty(Makie, Symbol(Franklin.stent(lxc.braces[1])))
+
+    attrkeys = sort(collect(keys(Makie.default_attribute_values(type, nothing))))
+
+    io = IOBuffer()
+
+    for attrkey in attrkeys
+
+        docs = get(Makie._attribute_docs(type), attrkey, nothing)
+        examples = get(Makie.attribute_examples(type), attrkey, Makie.Example[])
+        default_str = Makie.attribute_default_expressions(type)[attrkey]
+
+        println(io, "### `$attrkey`")
+        println(io)
+        println(io, "Defaults to `$default_str`")
+        println(io)
+        
+        if docs === nothing
+            println(io, "No docstring defined for attribute `$attrkey`.")
+        else
+            println(io, docs)
+        end
+        println(io)
+
+        for example in examples
+            use_svg = (example.backend === :CairoMakie) && example.svg
+            option_bracket = use_svg ? "{svg = true}" : "{}"
+            println(io, "#### Example: $(example.name)")
+            println(io, "\\begin{examplefigure}$option_bracket")
+            println(io, "```julia")
+            println(io, "using $(example.backend_using)")
+            println(io, "using $(example.backend) # hide")
+            println(io, "$(example.backend).activate!() # hide")
+            println(io, example.code)
+            println(io, "```")
+            println(io, "\\end{examplefigure}")
+            println(io)
+        end
+        
+        println(io)
+    end
+
+    return String(take!(io))
+end
+

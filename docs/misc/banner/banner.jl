@@ -1,8 +1,6 @@
 using GLMakie
 GLMakie.activate!()
 
-set_window_config!(pause_rendering = false)
-
 ##
 
 function copy_scene_settings(s)

@@ -9,7 +9,7 @@
 using CairoMakie
 CairoMakie.activate!() # hide
 using Makie.GeometryBasics
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -25,7 +25,7 @@ f
 using CairoMakie
 CairoMakie.activate!() # hide
 using Makie.GeometryBasics
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -47,7 +47,7 @@ f
 using CairoMakie
 CairoMakie.activate!() # hide
 using Makie.GeometryBasics
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -68,7 +68,7 @@ f
 using CairoMakie
 CairoMakie.activate!() # hide
 using Makie.GeometryBasics
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1], aspect = DataAspect())
@@ -85,7 +85,7 @@ f
 using CairoMakie
 CairoMakie.activate!() # hide
 using Makie.GeometryBasics
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1]; backgroundcolor = :gray15)

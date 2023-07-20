@@ -1,5 +1,4 @@
 using Test
-using StaticArrays
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -19,6 +18,9 @@ using Makie: volume
         @test all(hi .>= (8,8,10))
     end
 
+    include("pipeline.jl")
+    include("record.jl")
+    include("scenes.jl")
     include("conversions.jl")
     include("quaternions.jl")
     include("projection_math.jl")
@@ -29,4 +31,6 @@ using Makie: volume
     include("stack.jl")
     include("events.jl")
     include("text.jl")
+    include("boundingboxes.jl")
+    include("ray_casting.jl")
 end

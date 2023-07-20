@@ -187,7 +187,9 @@ module Mouse
     # deprecated, remove eventually
     """
         Mouse.DragEnum
+
     Enumerates the drag states of the mouse.
+
     $(INSTANCES)
     """
     @enum DragEnum begin

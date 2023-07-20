@@ -1,5 +1,5 @@
 #=
-Taken from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/typerecipes/distribution.jl
+Taken from https://github.com/MakieOrg/StatsMakie.jl/blob/master/src/typerecipes/distribution.jl
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 
@@ -91,15 +91,15 @@ function fit_qqplot(x, y; qqline = :none)
     end
     h = qqbuild(x, y)
     points = Point2f.(h.qx, h.qy)
-    qqline == :none && return points, Point2f[]
+    qqline === :none && return points, Point2f[]
     xs = collect(extrema(h.qx))
-    if qqline == :identity
+    if qqline === :identity
         ys = xs
-    elseif qqline == :fit
+    elseif qqline === :fit
         itc, slp = hcat(fill!(similar(h.qx), 1), h.qx) \ h.qy
         ys = @. slp * xs + itc
-    else # if qqline == :fitrobust
-        quantx, quanty = quantile(x, [0.25, 0.75]), quantile(y, [0.25, 0.75])
+    else # if qqline === :fitrobust
+        quantx, quanty = quantile.(Ref(x), [0.25, 0.75]), quantile.(Ref(y), [0.25, 0.75])
         slp = (quanty[2] - quanty[1]) / (quantx[2] - quantx[1])
         ys = @. quanty + slp * (xs - quantx)
     end
@@ -122,11 +122,15 @@ convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
 
-function plot!(p::QQPlot)
+function Makie.plot!(p::QQPlot)
+
     points, line = p[1], p[2]
-    real_markercolor = lift(Any, p.color, p.markercolor) do color, markercolor
-        markercolor === automatic ? color : markercolor
+    real_markercolor = Observable{RGBColors}()
+
+    map!(real_markercolor, p.color, p.markercolor) do color, markercolor
+        return to_color(markercolor === automatic ? color : markercolor)
     end
+
     scatter!(p, points;
         color = real_markercolor,
         strokecolor = p.strokecolor,

@@ -21,31 +21,12 @@ grid.
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Arrows, points, directions) do scene
-    attr = merge!(
-        default_theme(scene),
-        Attributes(
-            arrowhead = automatic,
-            arrowtail = automatic,
-            color = :black,
-            linecolor = automatic,
-            arrowsize = automatic,
-            linestyle = nothing,
-            align = :origin,
-            normalize = false,
-            lengthscale = 1f0,
-            colormap = theme(scene, :colormap),
-            quality = 32,
-            inspectable = theme(scene, :inspectable),
-            markerspace = Pixel,
-        )
-    )
-    attr[:fxaa] = automatic
-    attr[:linewidth] = automatic
-    # connect arrow + linecolor by default
-    get!(attr, :arrowcolor, attr[:linecolor])
-    attr
-end
+arrows
+
+"""
+See [`arrows`](@ref).
+"""
+arrows!
 
 # For the matlab/matplotlib users
 const quiver = arrows
@@ -55,7 +36,7 @@ export quiver, quiver!
 arrow_head(N, marker, quality) = marker
 function arrow_head(N, marker::Automatic, quality)
     if N == 2
-        return '▲'
+        return :utriangle
     else
         merge([
            _circle(Point3f(0), 0.5f0, Vec3f(0,0,-1), quality),
@@ -120,16 +101,15 @@ function _circle(origin, r, normal, N)
     GeometryBasics.Mesh(meta(coords; normals=normals), faces)
 end
 
-
 convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
 function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
 end
 convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
 
-function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
+function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
-        points, directions, colormap, normalize, align,
+        points, directions, colormap, colorscale, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
@@ -137,20 +117,21 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         fxaa, ssao, transparency, visible, inspectable
     )
 
-    arrow_c = map((a, c)-> a === automatic ? c : a , arrowcolor, color)
-    line_c = map((a, c)-> a === automatic ? c : a , linecolor, color)
+    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
+    line_c = map((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
+    fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic == fxaa for 3D
 
+    marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
     if N == 2
-        fxaa_bool = @lift($fxaa == automatic ? false : $fxaa)
-        headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
+        headstart = lift(arrowplot, points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
-                dir = n ? StaticArrays.normalize(dir) : dir
+                dir = n ? LinearAlgebra.normalize(dir) : dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = s .* dir
                 else
                     shift = Vec2f(0)
                 end
-                Point2f(p1 .- shift) => Point2f(p1 .- shift .+ (dir .* s))
+                return Point2f(p1 .- shift) => Point2f(p1 .- shift .+ (dir .* s))
             end
         end
 
@@ -159,8 +140,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
 
         # for 2D arrows, compute the correct marker rotation given the projection / scene size
         # for the screen-space marker
-        if arrowplot.markerspace[] == Pixel
-            rotations = lift(scene.camera.projectionview, scene.px_area, headstart) do pv, pxa, hs
+        if is_pixel_space(arrowplot.markerspace[])
+            rotations = lift(arrowplot, scene.camera.projectionview, scene.px_area, headstart) do pv, pxa, hs
                 angles = map(hs) do (start, stop)
                     pstart = project(scene, start)
                     pstop = project(scene, stop)
@@ -179,49 +160,54 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
 
         linesegments!(
             arrowplot, headstart,
-            color = line_c, colormap = colormap, linestyle = linestyle,
-            linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth),
+            color = line_c, colormap = colormap, colorscale = colorscale, linestyle = linestyle,
+            linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible,
         )
         scatter!(
             arrowplot,
-            lift(x-> last.(x), headstart),
-            marker = @lift(arrow_head(2, $arrowhead, $quality)),
-            markersize = @lift($arrowsize === automatic ? theme(scene, :markersize)[] : $arrowsize),
+            lift(x-> last.(x), arrowplot, headstart),
+            marker=marker_head,
+            markersize = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize),
             color = arrow_c, rotations = rotations, strokewidth = 0.0,
             colormap = colormap, markerspace = arrowplot.markerspace,
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
     else
-        fxaa_bool = @lift($fxaa == automatic ? true : $fxaa)
-        markersize = lift(Any, arrowsize) do as
-            as === automatic ? Vec3f(0.2, 0.2, 0.3) : as
+        msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
+        markersize = Observable{Union{Vec3f, Vector{Vec3f}}}()
+        map!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
+            ms = as isa Automatic ? Vec3f(0.2, 0.2, 0.3) : as
+            markersize[] = to_3d_scale(ms)
+            lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth
+            if n
+                return broadcast((lw, ls) -> Vec3f(lw, lw, ls), lw, ls)
+            else
+                return broadcast(lw, dirs, ls) do lw, dir, s
+                    return Vec3f(lw, lw, norm(dir) * s)
+                end
+            end
         end
-        start = lift(points, directions, align, lengthscale) do points, dirs, align, s
-            map(points, dirs) do p, dir
+
+        start = lift(arrowplot, points, directions, align, lengthscale) do points, dirs, align, scales
+            return broadcast(points, dirs, scales) do p, dir, s
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = Vec3f(0)
                 else
                     shift = -s .* dir
                 end
-                Point3f(p .- shift)
+                return Point3f(p .- shift)
             end
         end
+        marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
         meshscatter!(
             arrowplot,
             start, rotations = directions,
-            marker = @lift(arrow_tail(3, $arrowtail, $quality)),
-            markersize = lift(directions, normalize, linewidth, lengthscale, markersize) do dirs, n, linewidth, ls, ms
-                lw = linewidth === automatic ? minimum(ms) * 0.5 : linewidth
-                if n
-                    Vec3f(lw, lw, ls)
-                else
-                    map(dir -> Vec3f(lw, lw, norm(dir) * ls), dirs)
-                end
-            end,
-            color = line_c, colormap = colormap,
+            marker=marker_tail,
+            markersize = msize,
+            color = line_c, colormap = colormap, colorscale = colorscale,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
@@ -230,9 +216,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         meshscatter!(
             arrowplot,
             start, rotations = directions,
-            marker = @lift(arrow_head(3, $arrowhead, $quality)),
+            marker=marker_head,
             markersize = markersize,
-            color = arrow_c, colormap = colormap,
+            color = arrow_c, colormap = colormap, colorscale = colorscale,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,

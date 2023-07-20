@@ -21,11 +21,13 @@ end
 
 Plot a kernel density estimate of `values`.
 `npoints` controls the resolution of the estimate, the baseline can be
-shifted with `offset` and the `direction` set to :x or :y.
+shifted with `offset` and the `direction` set to `:x` or `:y`.
 `bandwidth` and `boundary` are determined automatically by default.
 
+Statistical weights can be provided via the `weights` keyword argument.
+
 `color` is usually set to a single color, but can also be set to `:x` or
-`:y` to color with a gradient. If you use `:y` when direction = `:x` (or vice versa),
+`:y` to color with a gradient. If you use `:y` when `direction = :x` (or vice versa),
 note that only 2-element colormaps can work correctly.
 
 ## Attributes
@@ -35,6 +37,7 @@ $(ATTRIBUTES)
     Theme(
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = Makie.automatic,
         strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
@@ -45,6 +48,7 @@ $(ATTRIBUTES)
         direction = :x,
         boundary = automatic,
         bandwidth = automatic,
+        weights = automatic,
         cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable)
     )
@@ -53,13 +57,14 @@ end
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     x = plot[1]
 
-    lowerupper = lift(x, plot.direction, plot.boundary, plot.offset,
-        plot.npoints, plot.bandwidth) do x, dir, bound, offs, n, bw
+    lowerupper = lift(plot, x, plot.direction, plot.boundary, plot.offset,
+        plot.npoints, plot.bandwidth, plot.weights) do x, dir, bound, offs, n, bw, weights
 
         k = KernelDensity.kde(x;
             npoints = n,
             (bound === automatic ? NamedTuple() : (boundary = bound,))...,
             (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
+            (weights === automatic ? NamedTuple() : (weights = StatsBase.weights(weights),))...
         )
 
         if dir === :x
@@ -74,7 +79,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         (lowerv, upperv)
     end
 
-    linepoints = lift(lowerupper, plot.strokearound) do lu, sa
+    linepoints = lift(plot, lowerupper, plot.strokearound) do lu, sa
         if sa
             ps = copy(lu[2])
             push!(ps, lu[1][end])
@@ -89,26 +94,27 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     lower = Observable(Point2f[])
     upper = Observable(Point2f[])
 
-    on(lowerupper) do (l, u)
+    on(plot, lowerupper) do (l, u)
         lower.val = l
         upper[] = u
     end
     notify(lowerupper)
 
-    colorobs = lift(Any, plot.color, lowerupper, plot.direction) do c, lu, dir
-        if (dir == :x && c == :x) || (dir == :y && c == :y)
-            dim = dir == :x ? 1 : 2
-            [l[dim] for l in lu[1]]
-        elseif (dir == :y && c == :x) || (dir == :x && c == :y)
+    colorobs = Observable{RGBColors}()
+    map!(plot, colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
+        if (dir === :x && c === :x) || (dir === :y && c === :y)
+            dim = dir === :x ? 1 : 2
+            return Float32[l[dim] for l in lu[1]]
+        elseif (dir === :y && c === :x) || (dir === :x && c === :y)
             o = Float32(plot.offset[])
-            dim = dir == :x ? 2 : 1
-            vcat([l[dim] - o for l in lu[1]], [l[dim] - o for l in lu[2]])
+            dim = dir === :x ? 2 : 1
+            return vcat(Float32[l[dim] - o for l in lu[1]], Float32[l[dim] - o for l in lu[2]])::Vector{Float32}
         else
-            c
+            return to_color(c)
         end
     end
 
-    band!(plot, lower, upper, color = colorobs, colormap = plot.colormap,
+    band!(plot, lower, upper, color = colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
         colorrange = plot.colorrange, inspectable = plot.inspectable)
     l = lines!(plot, linepoints, color = plot.strokecolor,
         linestyle = plot.linestyle, linewidth = plot.strokewidth,

@@ -65,7 +65,7 @@
 @@box-container
   @@box
     ~~~<a class="boxlink" href="https://www.youtube.com/watch?v=AtqXFfaMZqo">~~~
-    @@title MakieLayout Deep Dive @@
+    @@title Makie Layouting Deep Dive @@
     @@box-content
       @@description
       A tour of some of the more complex layout features of Makie.

@@ -1,5 +1,6 @@
 in vec2 frag_uv;
 in vec4 frag_color;
+flat in int sample_frag_color;
 
 in vec3 o_normal;
 in vec3 o_camdir;
@@ -22,11 +23,11 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 }
 
 vec4 get_color(vec3 color, vec2 uv, bool colorrange, bool colormap){
-    return vec4(color, 1.0); // we must prohibit uv from getting into dead variable removal
+    return vec4(color, 1.0);
 }
 
 vec4 get_color(vec4 color, vec2 uv, bool colorrange, bool colormap){
-    return color; // we must prohibit uv from getting into dead variable removal
+    return color;
 }
 
 vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
@@ -34,28 +35,64 @@ vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
 }
 
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
-    return texture(color, uv);
+    if (get_pattern()) {
+        vec2 size = vec2(textureSize(color, 0));
+        vec2 pos = gl_FragCoord.xy;
+        return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
+    } else {
+        return texture(color, uv);
+    }
 }
 
 float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
-vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
-    float value = texture(color, uv).x;
-    float normed = _normalize(value, colorrange.x, colorrange.y);
-    vec4 c = texture(colormap, vec2(normed, 0.0));
-
-    if (isnan(value)) {
-        c = get_nan_color();
-    } else if (value < colorrange.x) {
-        c = get_lowclip();
-    } else if (value > colorrange.y) {
-        c = get_highclip();
+vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
+    } else if (value < cmin) {
+        return get_lowclip();
+    } else if (value > cmax) {
+        return get_highclip();
+    } else {
+        // isnan is broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return get_nan_color();
     }
-    return c;
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, vec2(i01, 0.0));
+}
+
+vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap){
+    if (get_interpolate_in_fragment_shader()) {
+        return get_color_from_cmap(frag_color.x, colormap, colorrange);
+    } else {
+        return frag_color;
+    }
+}
+
+vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap){
+    float value = texture(values, uv).x;
+    return get_color_from_cmap(value, colormap, colorrange);
 }
 
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
+}
+
+flat in uint frag_instance_id;
+vec4 pack_int(uint id, uint index) {
+    vec4 unpack;
+    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
+    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
+    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
+    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    return unpack;
 }
 
 void main() {
@@ -68,6 +105,17 @@ void main() {
         vec3 light1 = blinnphong(N, o_camdir, L, real_color.rgb);
         vec3 light2 = blinnphong(N, o_camdir, -L, real_color.rgb);
         shaded_color = get_ambient() * real_color.rgb + light1 + get_backlight() * light2;
+    }
+
+    if (picking) {
+        if (real_color.a > 0.1) {
+            fragment_color = pack_int(object_id, frag_instance_id);
+        }
+        return;
+    }
+
+    if (real_color.a <= 0.0){
+        discard;
     }
     fragment_color = vec4(shaded_color, real_color.a);
 }

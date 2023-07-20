@@ -9,7 +9,36 @@ abstract type Transformable end
 abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
-abstract type AbstractScreen <: AbstractDisplay end
+
+"""
+Screen constructors implemented by all backends:
+
+```julia
+# Constructor aimed at showing the plot in a window.
+Screen(scene::Scene; screen_config...)
+
+# Screen to save a png/jpeg to file or io
+Screen(scene::Scene, io::IO, mime; screen_config...)
+
+# Screen that is efficient for `colorbuffer(screen, format)`
+Screen(scene::Scene, format::Makie.ImageStorageFormat; screen_config...)
+```
+
+Interface implemented by all backends:
+
+```julia
+# Needs to be overload:
+size(screen) # Size in pixel
+empty!(screen) # empties screen state to reuse the screen, or to close it
+
+# Optional
+wait(screen) # waits as long window is open
+
+# Provided by Makie:
+push_screen!(scene, screen)
+```
+"""
+abstract type MakieScreen <: AbstractDisplay end
 
 const SceneLike = Union{AbstractScene, ScenePlot}
 
@@ -28,6 +57,13 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     input_args::Tuple
     converted::Tuple
     plots::Vector{AbstractPlot}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
+    function Combined{Typ, T}(
+        parent::SceneLike, transformation::Transformable, attributes::Attributes,
+        input_args::Tuple, converted::Tuple, plots::Vector{AbstractPlot}) where {Typ, T}
+        return new(parent, transformation, attributes, input_args, converted, plots,
+                   Observables.ObserverFunction[])
+    end
 end
 
 function Base.show(io::IO, plot::Combined)

@@ -3,11 +3,12 @@ Selection of random objects on the screen is realized by rendering an
 object id + plus an arbitrary index into the framebuffer.
 The index can be used for e.g. instanced geometries.
 """
-struct SelectionID{T <: Integer} <: FieldVector{2, T}
+struct SelectionID{T <: Integer}
     id::T
     index::T
 end
-
+Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
+Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
 mutable struct GLFramebuffer
     resolution::Observable{NTuple{2, Int}}
@@ -55,6 +56,36 @@ function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) w
     return next_color_id
 end
 
+function enum_to_error(s)
+    s == GL_FRAMEBUFFER_COMPLETE && return
+    s == GL_FRAMEBUFFER_UNDEFINED &&
+        error("GL_FRAMEBUFFER_UNDEFINED: The specified framebuffer is the default read or draw framebuffer, but the default framebuffer does not exist.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: At least one of the framebuffer attachment points is incomplete.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: The framebuffer does not have at least one image attached to it.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: The value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for any color attachment point(s) specified by GL_DRAW_BUFFERi.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: GL_READ_BUFFER is not GL_NONE and the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for the color attachment point specified by GL_READ_BUFFER.")
+    s == GL_FRAMEBUFFER_UNSUPPORTED &&
+        error("GL_FRAMEBUFFER_UNSUPPORTED: The combination of internal formats of the attached images violates a driver implementation-dependent set of restrictions. Check your OpenGL driver!")
+    s == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: The value of GL_RENDERBUFFER_SAMPLES is not the same for all attached renderbuffers;
+if the value of GL_TEXTURE_SAMPLES is not the same for all attached textures; or, if the attached images consist of a mix of renderbuffers and textures,
+    the value of GL_RENDERBUFFER_SAMPLES does not match the value of GL_TEXTURE_SAMPLES.
+    GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE is also returned if the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not consistent across all attached textures;
+        or, if the attached images include a mix of renderbuffers and textures, the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not set to GL_TRUE for all attached textures.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: Any framebuffer attachment is layered, and any populated attachment is not layered, or if all populated color attachments are not from textures of the same target.")
+    return error("Unknown framebuffer completion error code: $s")
+end
+
+function check_framebuffer()
+    status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+    return enum_to_error(status)
+end
+
 function GLFramebuffer(fb_size::NTuple{2, Int})
     # Create framebuffer
     frambuffer_id = glGenFramebuffers()
@@ -91,12 +122,11 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
-    status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    @assert status == GL_FRAMEBUFFER_COMPLETE
+    check_framebuffer()
 
     fb_size_node = Observable(fb_size)
 
-    # To allow adding postprocessors in various combinations we need to keep 
+    # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
     buffer_ids = Dict(

@@ -92,7 +92,7 @@ If `Makie` can't find your font, you can do two things:
 
 ### Elements are squashed into the lower left corner
 
-Layoutable elements require a bounding box that they align themselves to. If you
+Block elements require a bounding box that they align themselves to. If you
 place such an element in a layout, the bounding box is controlled by that layout.
 If you forget to put an element in a layout, it will have its default bounding box
 of `BBox(0, 100, 0, 100)` which ends up being in the lower left corner. You can

@@ -7,7 +7,6 @@ using Makie:
     categorical_colors
 
 @testset "Conversions" begin
-
     # NoConversion
     struct NoConversionTestType end
     conversion_trait(::NoConversionTestType) = NoConversion()
@@ -19,6 +18,14 @@ using Makie:
 
 end
 
+@testset "changing input types" begin
+    input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
+    f, ax, pl = mesh(input)
+    m = Makie.triangle_mesh(Circle(Point2f(0), 1f0))
+    input[] = m
+    @test pl[1][] == m
+end
+
 @testset "to_vertices" begin
     X1 = [Point(rand(3)...) for i = 1:10]
     V1 = to_vertices(X1)
@@ -27,10 +34,6 @@ end
     X2 = [tuple(rand(3)...) for i = 1:10]
     V2 = to_vertices(X2)
     @test Float32(X2[7][1]) == V2[7][1]
-
-    X3 = [SVector(rand(3)...) for i = 1:10]
-    V3 = to_vertices(X3)
-    @test Float32(X3[7][1]) == V3[7][1]
 
     X4 = rand(2,10)
     V4 = to_vertices(X4)
@@ -51,6 +54,67 @@ end
     @test Float32(X7[7,1]) == V7[7][1]
 end
 
+@testset "GeometryBasics Lines & Polygons" begin
+    pts = [Point(1, 2), Point(4, 5), Point(10, 8), Point(1, 2)]
+    ls = LineString(pts)
+    p = convert_arguments(Makie.PointBased(), ls)
+    @test p[1] == pts
+
+    pts_empty = Point2f[]
+    ls_empty = LineString(pts_empty)
+    p_empty = convert_arguments(Makie.PointBased(), ls_empty)
+    @test p_empty[1] == pts_empty
+
+    pts1 = [Point(5, 2), Point(4, 8), Point(2, 8), Point(5, 2)]
+    ls1 = LineString(pts1)
+    lsa = [ls, ls1]
+    p1 = convert_arguments(Makie.PointBased(), lsa)
+    @test p1[1][1:4] == pts
+    @test p1[1][6:9] == pts1
+
+    mls = MultiLineString(lsa)
+    p2 = convert_arguments(Makie.PointBased(), mls)
+    @test p2[1][1:4] == pts
+    @test p2[1][6:9] == pts1
+
+    mls_emtpy = MultiLineString([LineString(pts_empty)])
+    p_empty = convert_arguments(Makie.PointBased(), mls_emtpy)
+    @test p_empty[1] == pts_empty
+
+    pol_e = Polygon(ls)
+    p3_e = convert_arguments(Makie.PointBased(), pol_e)
+    @test p3_e[1][1:end] == pts # for poly we repeat last point
+
+    pol = Polygon(ls, [ls1])
+    p3 = convert_arguments(Makie.PointBased(), pol)
+    @test p3[1][1:4] == pts
+    @test p3[1][6:9] == pts1
+
+    pol_emtpy = Polygon(pts_empty)
+    p_empty = convert_arguments(Makie.PointBased(), pol_emtpy)
+    @test p_empty[1] == pts_empty
+
+    pts2 = Point{2,Int}[(5, 1), (3, 3), (4, 8), (1, 2), (5, 1)]
+    pts3 = Point{2,Int}[(2, 2), (2, 3), (3, 4), (2, 2)]
+    pts4 = Point{2,Int}[(2, 2), (3, 8), (5, 6), (3, 4), (2, 2)]
+    ls2 = LineString(pts2)
+    ls3 = LineString(pts3)
+    ls4 = LineString(pts4)
+    pol1 = Polygon(ls2, [ls3, ls4])
+    apol = [pol, pol1]
+    p4 = convert_arguments(Makie.PointBased(), apol)
+    mpol = MultiPolygon([pol, pol1])
+    @test p4[1][1:4] == pts
+    @test p4[1][6:9] == pts1
+    @test p4[1][11:15] == pts2
+    @test p4[1][17:20] == pts3
+    @test p4[1][22:end] == pts4
+
+    mpol_emtpy = MultiPolygon(typeof(pol_emtpy)[])
+    p_empty = convert_arguments(Makie.PointBased(), mpol_emtpy)
+    @test p_empty[1] == pts_empty
+end
+
 @testset "functions" begin
     x = -pi..pi
     s = convert_arguments(Lines, x, sin)
@@ -69,48 +133,6 @@ end
     for (val, fval) in xy
         @test fval ≈ sin(val) atol=1f-6
     end
-
-    pts = [Point(1, 2), Point(4,5), Point(10, 8), Point(1, 2)]
-    ls=LineString(pts)
-    p = convert_arguments(Makie.PointBased(), ls)
-    @test p[1] == pts
-
-    pts1 = [Point(5, 2), Point(4,8), Point(2, 8), Point(5, 2)]
-    ls1 = LineString(pts1)
-    lsa = [ls, ls1]
-    p1 = convert_arguments(Makie.PointBased(), lsa)
-    @test p1[1][1:4] == pts
-    @test p1[1][6:9] == pts1
-
-    mls = MultiLineString(lsa)
-    p2 = convert_arguments(Makie.PointBased(), mls)
-    @test p2[1][1:4] == pts
-    @test p2[1][6:9] == pts1
-
-    pol_e = Polygon(ls)
-    p3_e = convert_arguments(Makie.PointBased(), pol_e)
-    @test p3_e[1][1:end-1] == pts # for poly we repeat last point
-
-    pol = Polygon(ls, [ls1])
-    p3 = convert_arguments(Makie.PointBased(), pol)
-    @test p3[1][1:4] == pts
-    @test p3[1][7:10] == pts1
-
-    pts2 = Point{2, Int}[(5, 1), (3, 3), (4, 8), (1, 2), (5, 1)]
-    pts3 = Point{2, Int}[(2, 2), (2, 3),(3, 4), (2, 2)]
-    pts4 = Point{2, Int}[(2, 2), (3, 8),(5, 6), (3, 4), (2, 2)]
-    ls2 = LineString(pts2)
-    ls3 = LineString(pts3)
-    ls4 = LineString(pts4)
-    pol1 = Polygon(ls2, [ls3, ls4])
-    apol = [pol, pol1]
-    p4 = convert_arguments(Makie.PointBased(), apol)
-    mpol = MultiPolygon([pol, pol1])
-    @test p4[1][1:4] == pts
-    @test p4[1][7:10] == pts1
-    @test p4[1][14:18] == pts2
-    @test p4[1][21:24] == pts3
-    @test p4[1][27:31] == pts4
 end
 
 using Makie: check_line_pattern, line_diff_pattern
@@ -181,7 +203,27 @@ end
     @test categorical_colors([to_color(:red)], 1) == [to_color(:red)]
     @test categorical_colors([:red], 1) == [to_color(:red)]
     @test_throws ErrorException categorical_colors([to_color(:red)], 2)
-    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))
+    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))[1:1]
+    @test_throws ErrorException to_colormap(:viridis, 10) # deprecated
+    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))[1:1]
+    @test categorical_colors(:viridis, 10) == to_colormap(:viridis)[1:10]
+    # TODO why don't they exactly match?
+    @test categorical_colors(:Set1, 9) ≈ to_colormap(:Set1)
+
+    @test_throws ArgumentError Makie.categorical_colors(:PuRd, 20) # not enough categories
+end
+
+@testset "resample colormap" begin
+    cs = Makie.resample_cmap(:viridis, 10; alpha=LinRange(0, 1, 10))
+    @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
+    cs = Makie.resample_cmap(:viridis, 2; alpha=0.5)
+    @test all(x-> x == 0.5, Colors.alpha.(cs))
+    @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:viridis), 2))
+    cs = Makie.resample_cmap(:Set1, 100)
+    @test all(x-> x == 1.0, Colors.alpha.(cs))
+    @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:Set1), 100))
+    cs = Makie.resample_cmap(:Set1, 10; alpha=(0, 1))
+    @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
 end
 
 @testset "colors" begin
@@ -205,4 +247,43 @@ end
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
     x = [NaN, 1, 2]
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
+end
+
+@testset "to_colormap" begin
+    @test to_colormap([HSL(0, 10, 20)]) isa Vector{RGBAf}
+    @test to_colormap([:red, :green]) isa Vector{RGBAf}
+    @test to_colormap([(:red, 0.1), (:green, 0.2)]) isa Vector{RGBAf}
+    @test to_colormap((:viridis, 0.1)) isa Vector{RGBAf}
+    @test to_colormap(Reverse(:viridis)) isa Vector{RGBAf}
+    @test to_colormap(:cividis) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis, 8, categorical=true)) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis, 8)) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis)) isa Vector{RGBAf}
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5))[1]) == 0.5
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))[1]) == 0.5
+
+
+    @inferred to_colormap([HSL(0, 10, 20)])
+    @inferred to_colormap([:red, :green])
+    @inferred to_colormap([(:red, 0.1), (:green, 0.2)])
+    @inferred to_colormap((:viridis, 0.1))
+    @inferred to_colormap(Reverse(:viridis))
+    @inferred to_colormap(:cividis)
+    @inferred to_colormap(cgrad(:cividis, 8, categorical=true))
+    @inferred to_colormap(cgrad(:cividis, 8))
+    @inferred to_colormap(cgrad(:cividis))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))
+end
+
+
+@testset "empty poly" begin
+    f, ax, pl = poly(Rect2f[]);
+    pl[1] = [Rect2f(0, 0, 1, 1)];
+    @test pl.plots[1][1][] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
+
+    f, ax, pl = poly(Vector{Point2f}[])
+    points = decompose(Point2f, Circle(Point2f(0),1))
+    pl[1] = [points]
+    @test pl.plots[1][1][] == Makie.poly_convert(points)
 end

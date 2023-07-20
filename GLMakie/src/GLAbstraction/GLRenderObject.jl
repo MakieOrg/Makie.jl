@@ -1,15 +1,6 @@
-function RenderObject(
-        data::Dict{Symbol}, program, pre,
-        bbs=Observable(Rect3f(Vec3f(0), Vec3f(1))),
-        main=nothing
-    )
-    RenderObject(convert(Dict{Symbol,Any}, data), program, pre, bbs, main)
-end
-
 function Base.show(io::IO, obj::RenderObject)
     println(io, "RenderObject with ID: ", obj.id)
 end
-
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]
 Base.setindex!(obj::RenderObject, value, symbol::Symbol) = obj.uniforms[symbol] = value
@@ -56,11 +47,11 @@ function (sp::StandardPrerender)()
         glBlendFunci(0, GL_ONE, GL_ONE)
 
         # buffer 1 is objectid, do nothing
-        glDisablei(1, GL_BLEND)
+        glDisablei(GL_BLEND, 1)
 
         # buffer 2 is color.a, should do product
-        # destination <- 0 * source + (1 - source) * destination
-        glBlendFunci(2, GL_ZERO, GL_ONE_MINUS_SRC_COLOR)
+        # destination <- 0 * source + (source) * destination
+        glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
 
     else
         glDepthMask(GL_TRUE)
@@ -93,20 +84,6 @@ struct EmptyPrerender end
 
 export EmptyPrerender
 export prerendertype
-
-function instanced_renderobject(data, program, bb=Observable(Rect3f(Vec3f(0), Vec3f(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
-    pre = StandardPrerender()
-    robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
-    robj.postrenderfunction = StandardPostrenderInstanced(main, robj.vertexarray, primitive)
-    robj
-end
-
-function std_renderobject(data, program, bb=Observable(Rect3f(Vec3f(0), Vec3f(1))), primitive=GL_TRIANGLES, main=nothing)
-    pre = StandardPrerender()
-    robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
-    robj.postrenderfunction = StandardPostrender(robj.vertexarray, primitive)
-    robj
-end
 
 prerendertype(::Type{RenderObject{Pre}}) where {Pre} = Pre
 prerendertype(::RenderObject{Pre}) where {Pre} = Pre

@@ -441,12 +441,11 @@ a.boxlink:hover {
 }
 
 #navbar ul ul {
-    padding-left: 0.5em;
+    padding-left: 0.5rem;
 }
 
 #navbar li ul {
     margin-top: 0;
-    border-left: 1px solid #eee;
 }
 
 /* #navbar ul ul.collapsed {
@@ -575,6 +574,7 @@ a.boxlink:hover {
         top: 4em;
         height: auto;
         max-height: calc(100vh - 4em);
+        min-height: calc(100vh - 16em);
         padding: 0;
     }
     .greedy-nav__toggle {
@@ -605,7 +605,9 @@ html {
 .docs-chevron::before {
     font-family: "Font Awesome 5 Free";
     font-weight: 900;
-    content: "\f138";
+    content: "\f054";
+    width: 0.6em;
+    display: inline-block;
 }
 
 input.collapse-toggle {
@@ -613,7 +615,7 @@ input.collapse-toggle {
 }
 
 #navbar input:checked~div label.tocexpander .docs-chevron::before {
-    content: "\f13a";
+    content: "\f078";
 }
 
 #navbar ul ul {
@@ -622,9 +624,7 @@ input.collapse-toggle {
 
 #navbar ul.page-content {
     display: block;
-    background: rgb(248, 248, 248);
-    border: 1px solid #ececec;
-    border-radius: 3px;
+    font-size: 0.85em;
 }
 
 #navbar ul.page-content ul {
@@ -800,3 +800,23 @@ button.copy-code:focus {
     outline: none;
 }
 
+.outdated-warning-overlay {
+    left: 0;
+    right: 0;
+    top: 0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    background-color: #ffaba7;
+    color: rgba(0, 0, 0, 0.7);
+    border-bottom: 3px solid #da0b00;
+    padding: 10px 35px;
+    text-align: center;
+    font-size: 15px;
+}
+
+.outdated-warning-overlay a {
+    color: #2e63b8;
+}
+
+.outdated-warning-overlay a:hover {
+    color: #363636;
+}

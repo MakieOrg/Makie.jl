@@ -1,53 +1,15 @@
-module MakieLayout
-
-using ..Makie
-using ..Makie: Rect2
-import ..Makie: Rect2i
-using ..Makie.Keyboard
-using ..Makie.Mouse
-using ..Makie: ispressed, is_mouseinside, get_scene, FigureLike
-using ..Makie: Consume
-using ..Makie: OpenInterval, Interval
-using MakieCore
-using MakieCore: Automatic, automatic
-using Observables: onany
-import Observables
 import Formatting
 using Match
 import Animations
-import PlotUtils
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
 import Showoff
-using Colors
 
 const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
 const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
 
-# Make GridLayoutBase default row and colgaps themeable when using MakieLayout
-# This mutates module-level state so it could mess up other libraries using
-# GridLayoutBase at the same time as MakieLayout, which is unlikely, though
-function __init__()
-    GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-        ct = Makie.current_default_theme()
-        if haskey(ct, :colgap)
-            ct[:colgap][]
-        else
-            GridLayoutBase.DEFAULT_COLGAP[]
-        end
-    end
-    GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-        ct = Makie.current_default_theme()
-        if haskey(ct, :rowgap)
-            ct[:rowgap][]
-        else
-            GridLayoutBase.DEFAULT_ROWGAP[]
-        end
-    end
-end
-
-include("layoutables.jl")
+include("blocks.jl")
 include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")
 include("types.jl")
@@ -57,23 +19,27 @@ include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
-include("layoutables/axis.jl")
-include("layoutables/axis3d.jl")
-include("layoutables/colorbar.jl")
-include("layoutables/label.jl")
-include("layoutables/slider.jl")
-include("layoutables/intervalslider.jl")
-include("layoutables/button.jl")
-include("layoutables/box.jl")
-include("layoutables/toggle.jl")
-include("layoutables/legend.jl")
-include("layoutables/scene.jl")
-include("layoutables/menu.jl")
-include("layoutables/textbox.jl")
+include("blocks/axis.jl")
+include("blocks/axis3d.jl")
+include("blocks/polaraxis.jl")
+include("blocks/colorbar.jl")
+include("blocks/label.jl")
+include("blocks/slider.jl")
+include("blocks/slidergrid.jl")
+include("blocks/intervalslider.jl")
+include("blocks/button.jl")
+include("blocks/box.jl")
+include("blocks/toggle.jl")
+include("blocks/legend.jl")
+include("blocks/scene.jl")
+include("blocks/menu.jl")
+include("blocks/textbox.jl")
 
 export Axis
 export Axis3
+export PolarAxis
 export Slider
+export SliderGrid
 export IntervalSlider
 export Button
 export Colorbar
@@ -89,7 +55,7 @@ export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!
 export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
-export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
+export hidexdecorations!, hideydecorations!, hidezdecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export set_close_to!
 export labelslider!, labelslidergrid!
@@ -128,9 +94,4 @@ export swap!
 export ncols, nrows
 export contents, content
 
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
-end
-
-end # module
+Base.@deprecate_binding MakieLayout Makie true "The module `MakieLayout` has been removed and integrated into Makie, so simply replace all usage of `MakieLayout` with `Makie`."

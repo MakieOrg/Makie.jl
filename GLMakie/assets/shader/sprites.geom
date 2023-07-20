@@ -60,9 +60,9 @@ flat out vec4 f_glow_color;
 flat out uvec2 f_id;
 out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
+flat out vec2 f_sprite_scale;
 
-uniform bool use_pixel_marker;
-uniform mat4 projection, view, model, pixel_space;
+uniform mat4 projection, view, model;
 
 float get_distancefield_scale(sampler2D distancefield){
     // Glyph distance field units are in pixels; convert to dimensionless
@@ -89,6 +89,7 @@ void emit_vertex(vec4 vertex, vec2 uv)
     f_stroke_color    = g_stroke_color[0];
     f_glow_color      = g_glow_color[0];
     f_id              = g_id[0];
+    f_sprite_scale    = g_offset_width[0].zw;
     EmitVertex();
 }
 
@@ -120,11 +121,10 @@ void main(void)
     mat4 pview = projection * view;
     // Compute transform for the offset vectors from the central point
     mat4 trans = scale_primitive ? model : mat4(1.0);
-    mat4 billtrans = use_pixel_marker ? pixel_space : projection;
-    trans = (billboard ? billtrans : pview) * qmat(g_rotation[0]) * trans;
+    trans = (billboard ? projection : pview) * qmat(g_rotation[0]) * trans;
 
     // Compute centre of billboard in clipping coordinates
-    vec4 vclip = pview*model*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
+    vec4 vclip = pview*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
 
     // Extra buffering is required around sprites which are antialiased so that
     // the antialias blur doesn't get cut off (see #15). This blur falls to
@@ -159,18 +159,14 @@ void main(void)
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = abs(o_w.z);
+    float sprite_from_u_scale = min(abs(o_w.z), abs(o_w.w));
     f_viewport_from_u_scale = viewport_from_sprite_scale * sprite_from_u_scale;
     f_distancefield_scale = get_distancefield_scale(distancefield);
 
     // Compute required amount of buffering
     float sprite_from_viewport_scale = 1.0 / viewport_from_sprite_scale;
     float bbox_buf = sprite_from_viewport_scale *
-                     (// Hack!! antialiasing is disabled for RECTANGLE==1 for now
-                      // because it's used for boxplots where the sprites are
-                      // long and skinny (violating assumption 1 above)
-                      (shape == 1 ? 0.0 : ANTIALIAS_RADIUS) +
-                      max(glow_width, 0) + max(stroke_width, 0));
+        (ANTIALIAS_RADIUS + max(glow_width, 0) + max(stroke_width, 0));
     // Compute xy bounding box of billboard (in model space units) after
     // buffering and associated bounding box of uv coordinates.
     vec2 bbox_radius_buf = bbox_signed_radius + sign(bbox_signed_radius)*bbox_buf;

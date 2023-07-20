@@ -1,5 +1,5 @@
 #=
-S. Axen implementation from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
+S. Axen implementation from https://github.com/MakieOrg/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 """
@@ -25,6 +25,7 @@ It is most commonly used as part of the `boxplot`.
     t = Theme(
     color=theme(scene, :patchcolor),
     colormap=theme(scene, :colormap),
+    colorscale=identity,
     colorrange=automatic,
     orientation=:vertical,
     # box and dodging
@@ -54,6 +55,7 @@ function Makie.plot!(plot::CrossBar)
     args = @extract plot (width, dodge, n_dodge, gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
     signals = lift(
+        plot,
         plot[1],
         plot[2],
         plot[3],
@@ -65,8 +67,8 @@ function Makie.plot!(plot::CrossBar)
 
         # for horizontal crossbars just flip all components
         fpoint, frect = Point2f, Rectf
-        if orientation == :horizontal
-            fpoint, frect = _flip_xy ∘ fpoint, _flip_xy ∘ frect
+        if orientation === :horizontal
+            fpoint, frect = flip_xy ∘ fpoint, flip_xy ∘ frect
         end
 
         # make the shape
@@ -88,7 +90,9 @@ function Makie.plot!(plot::CrossBar)
                 fpoint.(l, ymax),
                 fpoint.(l, nmax),
                 fpoint.(m .- nw .* hw, y), # notch left
-                fpoint.(l, nmin),)))
+                fpoint.(l, nmin),
+                fpoint.(l, ymin)
+               )))
             boxes = if points isa AbstractVector{<: Point} # poly
                 [GeometryBasics.triangle_mesh(points)]
             else # multiple polys (Vector{Vector{<:Point}})
@@ -101,14 +105,15 @@ function Makie.plot!(plot::CrossBar)
         end
         return [boxes;], [midlines;]
     end
-    boxes = @lift($signals[1])
-    midlines = @lift($signals[2])
+    boxes = lift(s-> s[1], plot, signals)
+    midlines = lift(s-> s[2], plot, signals)
     poly!(
         plot,
         boxes,
         color=plot.color,
         colorrange=plot.colorrange,
         colormap=plot.colormap,
+        colorscale=plot.colorscale,
         strokecolor=plot.strokecolor,
         strokewidth=plot.strokewidth,
         inspectable = plot[:inspectable]
@@ -117,6 +122,7 @@ function Makie.plot!(plot::CrossBar)
         plot,
         color=lift(
             (mc, sc) -> mc === automatic ? sc : mc,
+            plot,
             plot.midlinecolor,
             plot.strokecolor,
         ),

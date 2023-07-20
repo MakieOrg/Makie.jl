@@ -4,7 +4,6 @@ using CSV
 using DataFrames
 using GLMakie
 using LinearAlgebra
-GLMakie.inline!(false)
 url = "https://raw.githubusercontent.com/plotly/datasets/master/vortex.csv"
 df = CSV.File(HTTP.get(url).body)|> DataFrame;
 

@@ -10,7 +10,7 @@ function find_observable_expressions(obj::Expr)
             observable_expressions = union(observable_expressions, find_observable_expressions(a))
         end
     end
-    observable_expressions
+    return observable_expressions
 end
 
 # empty dict if x is not an Expr
@@ -42,19 +42,25 @@ end
 replace_observable_expressions!(x, exprdict) = nothing
 
 """
-Replaces an expression with lift(argtuple -> expression, args...), where args
+Replaces an expression with `lift(argtuple -> expression, args...)`, where `args`
 are all expressions inside the main one that begin with \$.
 
 # Example:
 
+```julia
 x = Observable(rand(100))
 y = Observable(rand(100))
+```
 
 ## before
+```julia
 z = lift((x, y) -> x .+ y, x, y)
+```
 
 ## after
+```julia
 z = @lift(\$x .+ \$y)
+```
 
 You can also use parentheses around an expression if that expression evaluates to an observable.
 
@@ -96,5 +102,5 @@ macro lift(exp)
         esc.(observable_expressions_without_dollar)...
     )
 
-    lift_expression
+    return lift_expression
 end

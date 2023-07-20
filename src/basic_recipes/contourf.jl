@@ -12,8 +12,17 @@ You can also set the `mode` attribute to `:relative`.
 In this mode you specify edges by the fraction between minimum and maximum value of `zs`.
 This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
 
-In :normal mode, if you want to show a band from `-Inf` to the low edge, set `extendlow` to `:auto` for the same color as the first level, or specify a different color (default `nothing` means no extended band)
-If you want to show a band from the high edge to `Inf`, set `extendhigh` to `:auto` for the same color as the last level, or specify a different color (default `nothing` means no extended band)
+In :normal mode, if you want to show a band from `-Inf` to the low edge,
+set `extendlow` to `:auto` for the same color as the first level,
+or specify a different color (default `nothing` means no extended band)
+If you want to show a band from the high edge to `Inf`, set `extendhigh`
+to `:auto` for the same color as the last level, or specify a different color
+(default `nothing` means no extended band).
+
+If `levels` is an `Int`, the contour plot will be rectangular as all `zs` will be covered.
+This is why `Axis` defaults to tight limits for such contourf plots.
+If you specify `levels` as an `AbstractVector{<:Real}`, however, note that the axis limits include the default margins because the contourf plot can have an irregular shape.
+You can use `tightlimits!(ax)` to tighten the limits similar to the `Int` behavior.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -23,8 +32,11 @@ $(ATTRIBUTES)
         levels = 10,
         mode = :normal,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         extendlow = nothing,
         extendhigh = nothing,
+        # TODO, Isoband doesn't seem to support nans?
+        nan_color = :transparent,
         inspectable = theme(scene, :inspectable),
         transparency = false
     )
@@ -61,44 +73,26 @@ end
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
-
-    c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
+    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
         _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c._computed_levels) do levels
+    colorrange = lift(c, c._computed_levels) do levels
         minimum(levels), maximum(levels)
     end
+    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
+                             c.extendhigh)
+    c.attributes[:_computed_colormap] = computed_colormap
 
-    c.attributes[:_computed_colormap] = lift(c._computed_levels, c.colormap) do levels, cmap
-        levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-        cgrad(cmap, levels_scaled, categorical = true)
-    end
-
-
-    lowcolor = lift(Union{Nothing, RGBAf}, c.extendlow) do el
-        if el === nothing
-            nothing
-        elseif el === automatic || el == :auto
-            RGBAf(get(c._computed_colormap[], 0))
-        else
-            convert_attribute(el, key"color"())::RGBAf
-        end
-    end
+    lowcolor = Observable{RGBAf}()
+    map!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(x -> !isnothing(x), lowcolor)
+    is_extended_low = lift(!isnothing, c, lowcolor)
 
-    highcolor = lift(Union{Nothing, RGBAf}, c.extendhigh) do eh
-        if eh === nothing
-            nothing
-        elseif eh === automatic || eh == :auto
-            RGBAf(get(c._computed_colormap[], 1))
-        else
-            convert_attribute(eh, key"color"())::RGBAf
-        end
-    end
+    highcolor = Observable{RGBAf}()
+    map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(x -> !isnothing(x), highcolor)
+    is_extended_high = lift(!isnothing, c, highcolor)
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
@@ -116,14 +110,9 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        nbands = length(lows)
-
         # zs needs to be transposed to match rest of makie
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
-        allvertices = Point2f[]
-        allfaces = NgonFace{3,OffsetInteger{-1,UInt32}}[]
-        allids = Int[]
         levelcenters = (highs .+ lows) ./ 2
 
         for (i, (center, group)) in enumerate(zip(levelcenters, isos))
@@ -134,7 +123,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
                 holes = polygroup[2:end]
                 push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
-                center_scaled = (center - colorrange[][1]) / (colorrange[][2] - colorrange[][1])
                 push!(colors[], center)
             end
         end
@@ -142,7 +130,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
+    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
     # onany doesn't get called without a push, so we call
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
@@ -151,6 +139,9 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         polys,
         colormap = c._computed_colormap,
         colorrange = colorrange,
+        highclip = highcolor,
+        lowclip = lowcolor,
+        nan_color = c.nan_color,
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,

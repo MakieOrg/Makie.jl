@@ -13,6 +13,8 @@ vec4 tovec4(vec4 v){return v;}
 
 out vec4 frag_color;
 
+flat out uint frag_instance_id;
+
 void main()
 {
     mat4 pvm = projection * view * get_model();
@@ -42,5 +44,7 @@ void main()
     // start, or end of quad, need to use current or next point as anchor
     gl_Position = anchor + offset;
     gl_Position.z += gl_Position.w * get_depth_shift();
+
+    frag_instance_id = uint(gl_InstanceID);
 
 }

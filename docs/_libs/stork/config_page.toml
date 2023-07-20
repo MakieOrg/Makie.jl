@@ -1,0 +1,10 @@
+[input]
+base_directory = "../.."
+url_prefix = ""
+html_selector = ".franklin-content"
+title_boost = "Ridiculous"
+
+[output]
+save_nearest_html_id = true
+excerpt_buffer = 24
+excerpts_per_result = 7

@@ -8,7 +8,7 @@
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 data = randn(1000)
 
@@ -53,6 +53,27 @@ ax = Axis(fig[1, 1])
 for i in 1:5
      hist!(ax, randn(1000), scale_to=-0.6, offset=i, direction=:x)
 end
+fig
+```
+\end{examplefigure}
+
+#### Using statistical weights
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie, Distributions
+CairoMakie.activate!() # hide
+
+
+N = 100_000
+x = rand(Uniform(-5, 5), N)
+
+w = pdf.(Normal(), x)
+
+fig = Figure()
+hist(fig[1,1], x)
+hist(fig[1,2], x, weights = w)
+
 fig
 ```
 \end{examplefigure}

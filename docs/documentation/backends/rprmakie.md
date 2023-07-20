@@ -11,10 +11,11 @@ using RadeonProRender
 RadeonProRender.Context()
 ```
 
-## Activating and working with RPMakie
+To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x84 build of Julia (not the ARM build, you may have to download this manually).  RadeonProRender does not distribute binaries built for the ARM architecture of the M-series processors yet.
 
-To use the backend, just call `activate!` like with all other backends. There are a few extra parameters for RPRMakie:
+## Activation and screen config
 
+Activate the backend by calling `RPRMakie.activate!()` with the following options:
 ```julia:docs
 # hideall
 using RPRMakie, Markdown
@@ -27,24 +28,27 @@ println("~~~")
 Since RPRMakie is quite the unique backend and still experimental, there are several gotchas when working with it.
 
 ```julia
-fig = Figure()
+fig = Figure(); # RPRMakie can't show Figures yet, since it only supports a physical 3D camera
 radiance = 10000
 # Lights are much more important for ray tracing,
 # so most examples will use extra lights and environment lights.
 # Note, that RPRMakie is the only backend
 # supporting multiple light sources and EnvironmentLights right now
 lights = [
-    EnvironmentLight(0.5, load(RPR.assetpath("studio026.exr"))),
-    PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))]
+    EnvironmentLight(0.5, Makie.FileIO.load(RPR.assetpath("studio026.exr"))),
+    PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))
+]
 
 # Only LScene is supported right now,
 # since the other projections don't map to the pysical acurate Camera in RPR.
-ax = LScene(fig[1, 1]; scenekw=(lights=lights,))
+ax = LScene(fig[1, 1]; show_axis = false, scenekw=(lights=lights,))
+# Note that since RPRMakie doesn't yet support text (this is being worked on!),
+# you can't show a 3d axis yet.
 
 # to create materials, one needs access to the RPR context.
-# Note, if you create an RPRScreen manually, don't display the scene or fig anymore, since that would create a new RPR context, in which resources from the manually created Context would be invalid. Since RPRs error handling is pretty bad, this usually results in Segfaults.
+# Note, if you create an Screen manually, don't display the scene or fig anymore, since that would create a new RPR context, in which resources from the manually created Context would be invalid. Since RPRs error handling is pretty bad, this usually results in Segfaults.
 # See below how to render a picture with a manually created context
-screen = RPRScreen(ax.scene; iterations=10, plugin=RPR.Northstar)
+screen = RPRMakie.Screen(ax.scene; iterations=10, plugin=RPR.Northstar)
 matsys = screen.matsys
 context = screen.context
 # You can use lots of materials from RPR.
@@ -52,19 +56,19 @@ context = screen.context
 # Or at least one, that doesn't need to access the RPR context
 mat = RPR.Chrome(matsys)
 # The material attribute is specific to RPRMakie and gets ignored by other Backends. This may change in the future
-mesh!(ax, Sphere(Point3f, 0), material=mat)
+mesh!(ax, Sphere(Point3f(0), 1), material=mat)
 
 # There are three main ways to turn a Makie scene into a picture:
-# Get the colorbuffer of the RPRScreen. RPRScreen also has `show` overloaded for the mime `image\png` so it should display in IJulia/Jupyter/VSCode.
+# Get the colorbuffer of the Screen. Screen also has `show` overloaded for the mime `image\png` so it should display in IJulia/Jupyter/VSCode.
 image = colorbuffer(screen)::Matrix{RGB{N0f8}}
-# Replace a specific (sub) LScene with RPR, and display the whole scene interactively in GLMakie
-using GLMakie
+# Replace a specific (sub) LScene with RPR, and display the whole scene interactively in RPRMakie
+using RPRMakie
 refres = Observable(nothing) # Optional observable that triggers
-GLMakie.activate!(); display(fig) # Make sure to display scene first in GLMakie
+RPRMakie.activate!(); display(fig) # Make sure to display scene first in RPRMakie
 # Replace the scene with an interactively rendered RPR output.
-# See more about this in the GLMakie interop example
+# See more about this in the RPRMakie interop example
 context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
-# If one doesn't create the RPRScreen manually to create custom materials,
+# If one doesn't create the Screen manually to create custom materials,
 # display(ax.scene), show(io, MIME"image/png", ax.scene), save("rpr.png", ax.scene)
 # Should work just like with other backends.
 # Note, that only the scene from LScene can be displayed directly, but soon, `display(fig)` should also work.
@@ -72,12 +76,12 @@ context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
 
 
 There are several examples showing different aspects of how to use RPRMakie.
-The examples are in [RPRMakie/examples](https://github.com/JuliaPlots/Makie.jl/tree/master/RPRMakie/examples)
+The examples are in [RPRMakie/examples](https://github.com/MakieOrg/Makie.jl/tree/master/RPRMakie/examples)
 
 ## MaterialX and predefined materials (materials.jl)
 
 There are several predefined materials one can use in RadeonProRender.
-RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `Matx` materials.
+RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `MaterialX`.
 
 ~~~
 <input id="hidecode5" class="hidecode" type="checkbox">
@@ -90,9 +94,9 @@ using Colors: N0f8
 radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
-fig = Figure(; resolution=(1500, 700))
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-screen = RPRScreen(ax.scene; plugin=RPR.Northstar, iterations=400)
+fig = Figure(; resolution=(1500, 700));
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
+screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
 
 matsys = screen.matsys
 emissive = RPR.EmissiveMaterial(matsys)
@@ -206,16 +210,16 @@ save("topographie.png", ax.scene)
 <img src="/assets/topographie.png">
 ~~~
 
-## GLMakie interop (opengl_interop.jl)
+## RPRMakie interop (opengl_interop.jl)
 
-RPRMakie doesn't support layouting and sub scenes yet, but you can replace a single scene with a RPR renedered, interactive window.
+RPRMakie doesn't support layouting and sub scenes yet, but you can replace a single scene with a RPR rendered, interactive window.
 This is especially handy, to show 2d graphics and interactive UI elements next to a ray traced scene and interactively tune camera and material parameters.
 
 ~~~
 <input id="hidecode3" class="hidecode" type="checkbox">
 ~~~
 ```julia
-using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
+using RPRMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
 
@@ -229,8 +233,8 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
           PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 
 fig = Figure(; resolution=(1500, 1000))
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-screen = RPRMakie.RPRScreen(size(ax.scene); plugin=RPR.Tahoe)
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
+screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
 
 surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,
@@ -279,14 +283,13 @@ for (key, (obs, input)) in pairs(sliders)
     push!(labels, Label(fig, string(key); align=:left))
     push!(inputs, input)
     on(obs) do value
-        @show key value
         setproperty!(material, key, value)
         return notify(refresh)
     end
 end
 
 fig[1, 2] = grid!(hcat(labels, inputs); width=500)
-GLMakie.activate!()
+RPRMakie.activate!()
 
 cam = cameracontrols(ax.scene)
 cam.eyeposition[] = Vec3f(22, 0, 17)
@@ -485,7 +488,6 @@ for i in 1:length(toLines)
 end
 
 earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/commons/5/56/Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg"))
-Makie.inline!(true)
 # the actual plot !
 RPRMakie.activate!(; iterations=100)
 scene = with_theme(theme_dark()) do
@@ -493,7 +495,7 @@ scene = with_theme(theme_dark()) do
     radiance = 30
     lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
               PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
-    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(;lights=lights))
     n = 1024 ÷ 4 # 2048
     θ = LinRange(0, pi, n)
     φ = LinRange(-pi, pi, 2 * n)

@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = [1, 1, 2, 2, 3, 3]
 ys = rand(6)

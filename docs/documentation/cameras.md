@@ -24,7 +24,7 @@ The 2D camera (\apilink{cam2d!(scene)}) uses an orthographic projection with a f
 - `panbutton = Mouse.right` sets the mouse button that needs to be pressed to translate the view.
 - `selectionbutton = (Keyboard.space, Mouse.left)` sets a set of buttons that need to be pressed to perform rectangle zooms.
 
-Note that this camera is not used by MakieLayout `Axis`. It is used, by default, for 2D `LScene`s and `Scene`s.
+Note that this camera is not used by `Axis`. It is used, by default, for 2D `LScene`s and `Scene`s.
 
 ## 3D Camera
 

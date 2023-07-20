@@ -1,6 +1,6 @@
 # Figures
 
-The `Figure` object contains a top-level `Scene` and a `GridLayout`, as well as a list of layoutables that have been placed into it, like `Axis`, `Colorbar`, `Slider`, `Legend`, etc.
+The `Figure` object contains a top-level `Scene` and a `GridLayout`, as well as a list of blocks that have been placed into it, like `Axis`, `Colorbar`, `Slider`, `Legend`, etc.
 
 
 ## Creating a `Figure`
@@ -34,9 +34,9 @@ You can pass arguments to the created figure in a dict-like object to the specia
 scatter(rand(100, 2), figure = (resolution = (600, 400),))
 ```
 
-## Placing layoutables into a `Figure`
+## Placing blocks into a `Figure`
 
-All layoutables take their parent figure as the first argument, then you can place them in the figure layout via indexing syntax.
+All blocks take their parent figure as the first argument, then you can place them in the figure layout via indexing syntax.
 
 ```julia
 f = Figure()
@@ -102,7 +102,7 @@ All nested GridLayouts that don't exist yet, but are needed for a nested plottin
 
 ## Figure padding
 
-You can change the amount of whitespace around the figure content with the keyword `figure_padding`.
+You can change the amount of whitespace (margin) around the figure content with the keyword `figure_padding`.
 This takes either a number for all four sides, or a tuple of four numbers for left, right, bottom, top.
 You can also theme this setting with `set_theme!(figure_padding = 30)`, for example.
 

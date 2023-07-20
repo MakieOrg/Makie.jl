@@ -22,7 +22,7 @@ Let's create a plot with the default theme:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 function example_plot()
     f = Figure()
@@ -99,9 +99,9 @@ with_theme(example_plot, lines_theme)
 ```
 \end{examplefigure}
 
-## Theming layoutable objects
+## Theming block objects
 
-Every Layoutable such as `Axis`, `Legend`, `Colorbar`, etc. can be themed by using its type name as a key in your theme.
+Every Block such as `Axis`, `Legend`, `Colorbar`, etc. can be themed by using its type name as a key in your theme.
 
 Here is how you could define a simple ggplot-like style for your axes:
 
@@ -142,9 +142,31 @@ cycle = [[:linecolor, :markercolor] => :color, :marker]
 cycle = nothing # equivalent to cycle = []
 ```
 
+Notice that cycles must be given as attributes to a plot object, not the top-level theme
+(because different plot objects can cycle different attributes, e.g., a density plot
+cannot cycle markers). This is exemplified in the following code blocks.
+
+\begin{examplefigure}{}
+```julia
+with_theme(
+    Theme(
+        palette = (color = [:red, :blue], marker = [:circle, :xcross]),
+        Scatter = (cycle = [:color, :marker],)
+    )) do
+    scatter(fill(1, 10))
+    scatter!(fill(2, 10))
+    scatter!(fill(3, 10))
+    scatter!(fill(4, 10))
+    scatter!(fill(5, 10))
+    current_figure()
+end
+```
+\end{examplefigure}
+
 ### Covarying cycles
 
-You can also construct a `Cycle` object directly, which additionally allows to set the `covary` keyword, that defaults to `false`. A cycler with `covary = true` cycles all attributes together, instead of cycling through all values of the first, then the second, etc.
+You can also construct a `Cycle` object directly, which additionally allows to set the `covary` keyword, that defaults to `false`.
+A cycler with `covary = true` cycles all attributes together, instead of cycling through all values of the first, then the second, etc.
 
 ```julia
 # palettes: color = [:red, :blue, :green] marker = [:circle, :rect, :utriangle, :dtriangle]
@@ -164,6 +186,25 @@ cycle = Cycle([:color, :marker], covary = true)
 # ...
 ```
 
+For example
+
+\begin{examplefigure}{}
+```julia
+with_theme(
+    Theme(
+        palette = (color = [:red, :blue], linestyle = [:dash, :dot]),
+        Lines = (cycle = Cycle([:color, :linestyle], covary = true),)
+    )) do
+    lines(fill(5, 10))
+    lines!(fill(4, 10))
+    lines!(fill(3, 10))
+    lines!(fill(2, 10))
+    lines!(fill(1, 10))
+    current_figure()
+end
+```
+\end{examplefigure}
+
 ### Manual cycling using `Cycled`
 
 If you want to give a plot's attribute a specific value from the respective cycler, you can use the `Cycled` object.
@@ -176,7 +217,7 @@ The cycler's internal counter is not advanced when using `Cycled` for any attrib
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -206,7 +247,7 @@ Here's an example that shows how density plots react to different palette option
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 set_theme!() # hide
 

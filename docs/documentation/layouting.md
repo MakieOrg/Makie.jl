@@ -1,6 +1,6 @@
 # How layouts work
 
-The goal of MakieLayout is that all elements placed in a scene fit into the
+The goal is that all elements placed in a scene fit into the
 window, fill the available space, and are nicely aligned relative to each other.
 This works by using `GridLayout` objects that determine how wide their rows and
 columns should be given their content elements.

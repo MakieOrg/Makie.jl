@@ -10,7 +10,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 data = cumsum(randn(4, 101), dims = 2)
 

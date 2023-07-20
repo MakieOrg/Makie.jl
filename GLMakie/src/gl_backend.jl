@@ -5,7 +5,7 @@ catch e
         OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
         This likely means, you're on a headless server without having OpenGL support setup correctly.
         Have a look at the troubleshooting section in the readme:
-        https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+        https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
     """)
     rethrow(e)
 end
@@ -16,17 +16,23 @@ using .GLAbstraction
 
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
-function get_texture!(atlas)
+function get_texture!(atlas::Makie.TextureAtlas)
+    current_ctx = GLAbstraction.current_context()
+    if !GLAbstraction.context_alive(current_ctx)
+        return nothing
+    end
+
     # clean up dead context!
-    filter!(atlas_texture_cache) do (ctx, tex_func)
+    filter!(atlas_texture_cache) do ((ptr, ctx), tex_func)
         if GLAbstraction.context_alive(ctx)
             return true
         else
-            Makie.remove_font_render_callback!(tex_func[2])
+            Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
         end
     end
-    tex, func = get!(atlas_texture_cache, GLAbstraction.current_context()) do
+
+    tex, func = get!(atlas_texture_cache, (pointer(atlas.data), current_ctx)) do
         tex = Texture(
                 atlas.data,
                 minfilter = :linear,
@@ -48,29 +54,26 @@ function get_texture!(atlas)
                 ShaderAbstractions.switch_context!(prev_ctx)
             end
         end
-        Makie.font_render_callback!(callback)
+        Makie.font_render_callback!(callback, atlas)
         return (tex, callback)
     end
     return tex
 end
 
-# TODO
-# find a better way to handle this
-# enable_SSAO and FXAA adjust the rendering pipeline and are currently per screen
-const enable_SSAO = Ref(false)
-const enable_FXAA = Ref(true)
-# This adjusts a factor in the rendering shaders for order independent 
-# transparency. This should be the same for all of them (within one rendering 
-# pipeline) otherwise depth "order" will be broken.
-const transparency_weight_scale = Ref(1000f0)
-
-include("GLVisualize/GLVisualize.jl")
-using .GLVisualize
-
 include("glwindow.jl")
 include("postprocessing.jl")
 include("screen.jl")
+include("glshaders/visualize_interface.jl")
+include("glshaders/lines.jl")
+include("glshaders/image_like.jl")
+include("glshaders/mesh.jl")
+include("glshaders/particles.jl")
+include("glshaders/surface.jl")
+
+include("picking.jl")
 include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")
 include("display.jl")
+
+Base.@deprecate_binding GLVisualize GLMakie true "The module `GLVisualize` has been removed and integrated into GLMakie, so simply replace all usage of `GLVisualize` with `GLMakie`."
