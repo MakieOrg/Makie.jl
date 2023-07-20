@@ -179,14 +179,8 @@ function glyph_collection(
         else
             0.5f0
         end
-    elseif justification === :left
-        0.0f0
-    elseif justification === :right
-        1.0f0
-    elseif justification === :center
-        0.5f0
     else
-        Float32(justification)
+        halign2num(justification, "Invalid justification $justification. Valid values are <:Number, :left, :center and :right.")
     end
 
     xs_justified = map(xs, width_differences) do xsgroup, wd
@@ -203,17 +197,7 @@ function glyph_collection(
     ys = cumsum([0.0; -lineheights[2:end]])
 
     # compute x values after left/center/right alignment
-    halign = if halign isa Number
-        Float32(halign)
-    elseif halign === :left
-        0.0f0
-    elseif halign === :center
-        0.5f0
-    elseif halign === :right
-        1.0f0
-    else
-        error("Invalid halign $halign. Valid values are <:Number, :left, :center and :right.")
-    end
+    halign = halign2num(halign)
     xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs_justified]
 
     # for y alignment, we need the largest ascender of the first line
@@ -233,17 +217,7 @@ function glyph_collection(
     ys_aligned = if valign === :baseline
         ys .- first_line_ascender .+ overall_height .+ last_line_descender
     else
-        va = if valign isa Number
-            Float32(valign)
-        elseif valign === :top
-            1f0
-        elseif valign === :bottom
-            0f0
-        elseif valign === :center
-            0.5f0
-        else
-            error("Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
-        end
+        va = valign2num(valign, "Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
         ys .- first_line_ascender .+ (1 - va) .* overall_height
     end
 

@@ -347,3 +347,31 @@ end
 # Scalar - Vector getindex
 sv_getindex(v::Vector, i::Integer) = v[i]
 sv_getindex(x, i::Integer) = x
+
+halign2num(v::Real, error_msg = "") = Float32(v)
+function halign2num(v::Symbol, error_msg = "")
+    if v === :left
+        return 0.0f0
+    elseif v === :center
+        return 0.5f0
+    elseif v === :right
+        return 1.0f0
+    end
+end
+function halign2num(v, msg = "Invalid halign $v. Valid values are <:Number, :left, :center and :right.")
+    error(msg)
+end
+
+valign2num(v::Real, error_msg = "") = Float32(v)
+function valign2num(v::Symbol, error_msg = "")
+    if v === :top
+        return 1f0
+    elseif v === :bottom
+        return 0f0
+    elseif v === :center
+        return 0.5f0
+    end
+end
+function valign2num(v, msg = "Invalid valign $v. Valid values are <:Number, :bottom, :top, and :center.")
+    error(msg)
+end
