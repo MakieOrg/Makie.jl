@@ -12,6 +12,7 @@ $(ATTRIBUTES)
     Attributes(
         color = l_theme.color,
         colormap = l_theme.colormap,
+        colorscale = l_theme.colorscale,
         colorrange = get(l_theme.attributes, :colorrange, automatic),
         linestyle = l_theme.linestyle,
         linewidth = l_theme.linewidth,
@@ -31,7 +32,8 @@ end
 function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
 
     # markercolor is the same as linecolor if left automatic
-    real_markercolor = Observable{Union{Vector{RGBAf}, RGBAf}}()
+    # RGBColors -> union of all colortypes that `to_color` accepts + returns
+    real_markercolor = Observable{RGBColors}() 
     map!(real_markercolor, p.color, p.markercolor) do col, mcol
         if mcol === automatic
             return to_color(col)
@@ -45,6 +47,7 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         linestyle = p.linestyle,
         linewidth = p.linewidth,
         colormap = p.colormap,
+        colorscale = p.colorscale,
         colorrange = p.colorrange,
         inspectable = p.inspectable
     )
@@ -55,6 +58,7 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         marker = p.marker,
         markersize = p.markersize,
         colormap = p.markercolormap,
+        colorscale = p.colorscale,
         colorrange = p.markercolorrange,
         inspectable = p.inspectable
     )

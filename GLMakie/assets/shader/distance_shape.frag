@@ -14,6 +14,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 #define ROUNDED_RECTANGLE 2
 #define DISTANCEFIELD     3
 #define TRIANGLE          4
+#define ELLIPSE           5
 
 #define M_SQRT_2          1.4142135
 
@@ -37,6 +38,7 @@ flat in uvec2           f_id;
 flat in int             f_primitive_index;
 in vec2                 f_uv; // f_uv.{x,y} are in the interval [-a, 1+a]
 flat in vec4            f_uv_texture_bbox;
+flat in vec2            f_sprite_scale;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
@@ -65,15 +67,46 @@ float triangle(vec2 P){
     return -max(r1,r2);
 }
 float circle(vec2 uv){
-    return 0.5-length(uv-vec2(0.5));
+    return 0.5 - length(uv - vec2(0.5));
 }
 float rectangle(vec2 uv){
-    vec2 d = max(-uv, uv-vec2(1));
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(-uv, uv-vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
 float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
-    vec2 d = max(tl-uv, uv-br);
-    return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(tl-uv, uv-br);
+    return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))) - s.x * tl.x);
+}
+// See https://iquilezles.org/articles/ellipsedist/
+float ellipse(vec2 uv, vec2 scale)
+{
+    // to central coordinates, use symmetry (quarter ellipse, 0 <= p <= wh)
+    vec2 wh = scale / min(scale.x, scale.y);
+    vec2 p = wh * abs(uv - vec2(0.5));
+    wh = wh * 0.5;
+
+    // initial value
+    vec2 q = wh * (p - wh);
+    vec2 cs = normalize( (q.x<q.y) ? vec2(0.01,1) : vec2(1,0.01) );
+    
+    // find root with Newton solver
+    for( int i=0; i<5; i++ )
+    {
+        vec2 u = wh * vec2( cs.x, cs.y);
+        vec2 v = wh * vec2(-cs.y, cs.x);
+        float a = dot(p-u,v);
+        float c = dot(p-u,u) + dot(v,v);
+        float b = sqrt(c*c-a*a);
+        cs = vec2( cs.x*b-cs.y*a, cs.y*b+cs.x*a )/c;
+    }
+    
+    // compute final point and distance
+    float d = length(p - wh*cs);
+    
+    // return signed distance
+    return (dot(p/wh,p/wh)>1.0) ? -d : d;
 }
 
 void fill(vec4 fillcolor, Nothing image, vec2 uv, float infill, inout vec4 color){
@@ -138,9 +171,11 @@ void main(){
     else if(shape == ROUNDED_RECTANGLE)
         signed_distance = rounded_rectangle(f_uv, vec2(0.2), vec2(0.8));
     else if(shape == RECTANGLE)
-        signed_distance = 1.0; // rectangle(f_uv);
+        signed_distance = rectangle(f_uv);
     else if(shape == TRIANGLE)
         signed_distance = triangle(f_uv);
+    else if(shape == ELLIPSE)
+        signed_distance = ellipse(f_uv, f_sprite_scale);
 
     // See notes in geometry shader where f_viewport_from_u_scale is computed.
     signed_distance *= f_viewport_from_u_scale;

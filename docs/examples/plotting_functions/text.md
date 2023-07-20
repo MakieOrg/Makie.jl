@@ -184,7 +184,7 @@ ax3 = Axis(f[2, 1:2], limits = (9, 10, 11, 12))
 for (ax, label) in zip([ax1, ax2, ax3], ["A", "B", "C"])
     text!(
         ax, 0, 1,
-        text = label, 
+        text = label,
         font = :bold,
         align = (:left, :top),
         offset = (4, -2),
@@ -249,7 +249,6 @@ The top-level settings for font, color, etc. are taken from the `text` attribute
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
 
 f = Figure(fontsize = 30)
 Label(
@@ -284,7 +283,6 @@ You can use the `offset` value for rich text to shift glyphs by an amount propor
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
 
 f = Figure(fontsize = 30)
 Label(

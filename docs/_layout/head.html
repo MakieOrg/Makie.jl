@@ -12,7 +12,8 @@
   {{if hasmath}} {{insert head_katex.html }}     {{end}}
   {{if hascode}} {{insert head_highlight.html }}   {{end}}
   {{insert style.html}}
-  {{isdef title}} <title>{{fill title}}</title>  {{end}}
+  {{isdef title}} <title>{{fill title}} · Makie</title>  {{end}}
+  {{isdef description}} <meta meta name="description" content="{{fill description}}">  {{end}}
   <!-- end custom head snippets -->
 </head>
 {{insert body_layout.html}}

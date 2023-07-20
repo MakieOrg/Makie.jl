@@ -5,6 +5,7 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     c = cam_controls
     l, u, p, fov = c.lookat[], c.upvector[], c.eyeposition[], c.fov[]
     far, near, res = c.far[], c.near[], cam.resolution[]
+    fov = 45f0 # The current camera ignores fov updates
     new_vals = (; l, u, p, fov, far, near, res)
     new_vals == oldvals && return oldvals
     wd = norm(l - p)
@@ -180,6 +181,11 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
     set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(config.max_recursion))
     screen.iterations = config.iterations
     return screen
+end
+
+function Screen(fb_size::NTuple{2,<:Integer}; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    return Screen(fb_size, config)
 end
 
 function Screen(scene::Scene; screen_config...)

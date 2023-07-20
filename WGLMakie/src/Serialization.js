@@ -54,6 +54,7 @@ export function insert_plot(scene_id, plot_data) {
 }
 
 export function delete_plots(scene_id, plot_uuids) {
+    console.log(`deleting plots!: ${plot_uuids}`)
     const scene = find_scene(scene_id);
     const plots = find_plots(plot_uuids);
     plots.forEach((p) => {
