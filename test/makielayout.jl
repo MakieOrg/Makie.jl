@@ -42,11 +42,11 @@ end
     _, hm = heatmap(fig[1, 1], xs, ys, zs)
     cb = Colorbar(fig[1, 2], hm)
 
-    @test hm.attributes[:colorrange][] == Vec(-.5, .5)
+    @test hm.calculated_colors[].colorrange[] == Vec(-0.5, 0.5)
     @test cb.limits[] == Vec(-.5, .5)
 
-    hm.attributes[:colorrange][] = Float32.((-1, 1))
-    @test cb.limits[] == (-1, 1)
+    hm.colorrange = Float32.((-1, 1))
+    @test cb.limits[] == Vec(-1, 1)
 
     # TODO: This doesn't work anymore because colorbar doesn't use the same observable
     # cb.limits[] = Float32.((-2, 2))
@@ -344,7 +344,7 @@ end
                 (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
                 (label = "Phase", range = 0:0.01:2pi,
                     format = x -> string(round(x/pi, digits = 2), "π"))
-            ) 
+            )
         end
         @test isempty(d)
     end

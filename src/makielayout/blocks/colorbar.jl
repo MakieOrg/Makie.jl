@@ -17,48 +17,38 @@ function block_docs(::Type{Colorbar})
     """
 end
 
-
-function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-
-    for key in (:colormap, :limits)
-        if key in keys(kwargs)
+function colorbar_check(keys, kwargs_keys)
+    for key in keys
+        if key in kwargs_keys
             error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
         end
     end
-
-    Colorbar(
-        fig_or_scene;
-        colormap = plot.colormap,
-        limits = plot.colorrange,
-        kwargs...
-    )
 end
 
-function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
 
-    for key in (:colormap, :limits, :highclip, :lowclip)
-        if key in keys(kwargs)
-            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
-        end
+    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa ColorMap
+        cmap = plot.calculated_colors[]
+        scale = cmap.scale
+    else
+        cmap = plot
+        scale = plot.colorscale
     end
 
     Colorbar(
         fig_or_scene;
-        colormap = heatmap.colormap,
-        limits = heatmap.colorrange,
-        highclip = heatmap.highclip,
-        lowclip = heatmap.lowclip,
+        colormap=cmap.colormap,
+        limits=cmap.colorrange,
+        scale=scale,
+        highclip=cmap.highclip,
+        lowclip=cmap.lowclip,
         kwargs...
     )
 end
 
 function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs...)
-
-    for key in (:colormap, :limits, :highclip, :lowclip)
-        if key in keys(kwargs)
-            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
-        end
-    end
+    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
 
     steps = contourf._computed_levels
 
@@ -72,11 +62,16 @@ function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs..
         limits = limits,
         lowclip = contourf._computed_extendlow,
         highclip = contourf._computed_extendhigh,
+        scale = contourf.colorscale,
         kwargs...
     )
 
 end
 
+colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
+function colorbar_range(start, stop, length, scale::REVERSIBLE_SCALES)
+    inverse_transform(scale).(range(start, stop; length))
+end
 
 function initialize_block!(cb::Colorbar)
     blockscene = cb.blockscene
@@ -150,11 +145,11 @@ function initialize_block!(cb::Colorbar)
 
     map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, blockscene, cgradient)
 
-    steps = lift(blockscene, cgradient, cb.nsteps) do cgradient, n
+    steps = lift(blockscene, cgradient, cb.nsteps, cb.scale) do cgradient, n, scale
         s = if cgradient isa PlotUtils.CategoricalColorGradient
             cgradient.values
         else
-            collect(LinRange(0, 1, n))
+            collect(colorbar_range(0, 1, n, scale))
         end::Vector{Float64}
     end
 
@@ -168,7 +163,6 @@ function initialize_block!(cb::Colorbar)
     # this should solve most white-line issues
 
     # for categorical colormaps we make a number of rectangle polys
-
     rects_and_colors = lift(blockscene, barbox, cb.vertical, steps, cgradient, cb.scale,
                             limits) do bbox, v, steps, gradient, scale, lims
 
@@ -208,7 +202,7 @@ function initialize_block!(cb::Colorbar)
     continous_pixels = lift(blockscene, cb.vertical, cb.nsteps, cgradient, limits,
                             cb.scale) do v, n, grad, lims, scale
 
-        s_steps = scaled_steps(LinRange(0, 1, n), scale, lims)
+        s_steps = scaled_steps(colorbar_range(0, 1, n, scale), scale, lims)
         px = get.(Ref(grad), s_steps)
         return v ? reshape(px, 1, n) : reshape(px, n, 1)
     end
@@ -238,7 +232,7 @@ function initialize_block!(cb::Colorbar)
     end
 
     highclip_tri_color = lift(blockscene, cb.highclip) do hc
-        to_color(isnothing(hc) ? :transparent : hc)
+        to_color(hc isa Automatic || isnothing(hc) ? :transparent : hc)
     end
 
     highclip_tri_poly = poly!(blockscene, highclip_tri, color = highclip_tri_color,
@@ -260,7 +254,7 @@ function initialize_block!(cb::Colorbar)
     end
 
     lowclip_tri_color = lift(blockscene, cb.lowclip) do lc
-        to_color(isnothing(lc) ? :transparent : lc)
+        to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc)
     end
 
     lowclip_tri_poly = poly!(blockscene, lowclip_tri, color = lowclip_tri_color,
