@@ -409,6 +409,25 @@ function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; scree
     end
 end
 
+function get_sub_picture(image, format::ImageStorageFormat, rect)
+    xmin, ymin = minimum(rect) .- (1, 0)
+    xmax, ymax = maximum(rect)
+    start = size(image, 1) - ymax
+    stop = size(image, 1) - ymin
+    return image[start:stop, xmin:xmax]
+end
+
+function colorbuffer(ax::Axis; include_decorations=true, update=true)
+    bb = if include_decorations
+        bb = Makie.boundingbox(ax.blockscene)
+        Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
+    else
+        pixelarea(ax.scene)[]
+    end
+    img = colorbuffer(root(ax.scene); update=update)
+    return get_sub_picture(img, JuliaNative, bb)
+end
+
 """
     colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
 
@@ -428,7 +447,12 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
     update && update_state_before_display!(fig)
     visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
     screen = getscreen(backend, scene; start_renderloop=false, visible=visible, screen_config...)
-    return colorbuffer(screen, format)
+    img = colorbuffer(screen, format)
+    if !isroot(scene)
+        return get_sub_picture(img, format, pixelarea(scene)[])
+    else
+        return img
+    end
 end
 
 # Fallback for any backend that will just use colorbuffer to write out an image
