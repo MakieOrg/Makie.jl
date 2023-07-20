@@ -47,7 +47,7 @@ end
 
 @reference_test "Arrows on hemisphere" begin
     s = Sphere(Point3f(0), 0.9f0)
-    fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
+    fig, ax, meshplot = mesh(s)
     pos = decompose(Point3f, s)
     dirs = decompose_normals(s)
     arrows!(ax, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
@@ -589,6 +589,43 @@ end
     fig
 end
 
+@reference_test "colorscale (heatmap)" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    fig, ax, hm = heatmap(x, y, (x, y) -> x; axis = (; xscale = log10), colorscale = log10)
+    Colorbar(fig[1, 2], hm)
+    fig
+end
+
+@reference_test "colorscale (lines)" begin
+    xs = 0:0.01:10
+    ys = 2 .* (1 .+ sin.(xs))
+    fig = Figure()
+    lines(fig[1, 1], xs, ys; linewidth=50, color=ys, colorscale=identity)
+    lines(fig[2, 1], xs, ys; linewidth=50, color=ys, colorscale=sqrt)
+    fig
+end
+
+@reference_test "colorscale (scatter)" begin
+    xs = range(0, 10; length = 30)
+    ys = 0.5 .* sin.(xs)
+    color = (1:30) .^ 2
+    markersize = 100
+    fig = Figure()
+    scatter(fig[1, 1], xs, ys; markersize, color, colorscale = identity)
+    scatter(fig[2, 1], xs, ys; markersize, color, colorscale = log10)
+    fig
+end
+
+@reference_test "colorscale (hexbin)" begin
+    x = RNG.randn(10_000)
+    y = RNG.randn(10_000)
+    fig = Figure()
+    hexbin(fig[1, 1], x, y; bins = 40, colorscale = identity)
+    hexbin(fig[1, 2], x, y; bins = 40, colorscale = log10)
+    fig
+end
+
 @reference_test "multi rect with poly" begin
     # use thick strokewidth, so it will make tests fail if something is missing
     poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
@@ -897,26 +934,26 @@ end
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
         axis = (aspect = DataAspect(), title = "scale = identity"))
-    hexbin(f[1, 2], x, y, bins = 40, scale=log10,
+    hexbin(f[1, 2], x, y, bins = 40, colorscale=log10,
         axis = (aspect = DataAspect(), title = "scale = log10"))
     f
 end
 
 # Scatter needs working highclip/lowclip first
-# @reference_test "hexbin colorrange highclip lowclip" begin
-#     x = RNG.randn(100000)
-#     y = RNG.randn(100000)
+@reference_test "hexbin colorrange highclip lowclip" begin
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
 
-#     hexbin(x, y,
-#         bins = 40,
-#         axis = (aspect = DataAspect(),),
-#         colorrange = (10, 300),
-#         highclip = :red,
-#         lowclip = :pink,
-#         strokewidth = 1,
-#         strokecolor = :gray30
-#     )
-# end
+    f, ax, pl = hexbin(x, y,
+        bins = 40,
+        axis = (aspect = DataAspect(),),
+        colorrange = (10, 300),
+        highclip = :red,
+        lowclip = :pink,
+        strokewidth = 1,
+        strokecolor = :gray30
+    )
+end
 
 @reference_test "Latex labels after the fact" begin
     f = Figure(fontsize = 50)
