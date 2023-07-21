@@ -417,17 +417,6 @@ function get_sub_picture(image, format::ImageStorageFormat, rect)
     return image[start:stop, xmin:xmax]
 end
 
-function colorbuffer(ax::Axis; include_decorations=true, update=true)
-    bb = if include_decorations
-        bb = Makie.boundingbox(ax.blockscene)
-        Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
-    else
-        pixelarea(ax.scene)[]
-    end
-    img = colorbuffer(root(ax.scene); update=update)
-    return get_sub_picture(img, JuliaNative, bb)
-end
-
 """
     colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
 

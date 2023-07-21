@@ -342,7 +342,6 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
     # Set the config
     screen.config = config
-    @show start_renderloop
     if start_renderloop
         start_renderloop!(screen)
     else
