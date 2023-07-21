@@ -30,7 +30,7 @@ flat out uint frag_instance_id;
 void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
-    vec3 vertex_position = get_markersize() * get_position();
+    vec3 vertex_position = get_markersize() * to_vec3(get_position());
     vec3 lightpos = vec3(20,20,20);
     vec3 N = get_normals();
     rotate(get_rotations(), vertex_position, N);

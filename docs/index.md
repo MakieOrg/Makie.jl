@@ -1,6 +1,7 @@
-@def title = "Home"
+@def title = "Interactive visualizations and powerful plotting in Julia"
 @def order = 0
 @def frontpage = true
+@def description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live."
 
 # Welcome to Makie!
 
@@ -13,7 +14,7 @@ It is available for Windows, Mac and Linux.
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
 ```julia:lorenz
-using GLMakie
+using GLMakie # All functionality is defined in Makie and every backend re-exports Makie
 GLMakie.activate!() # hide
 
 Base.@kwdef mutable struct Lorenz
@@ -38,24 +39,25 @@ end
 
 attractor = Lorenz()
 
-points = Observable(Point3f[])
+points = Observable(Point3f[]) # Signal that can be used to update plots efficiently
 colors = Observable(Int[])
 
 set_theme!(theme_black())
 
 fig, ax, l = lines(points, color = colors,
-    colormap = :inferno, transparency = true,
-    axis = (; type = Axis3, protrusions = (0, 0, 0, 0),
-        viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
+    colormap = :inferno, transparency = true, 
+    axis = (; type = Axis3, protrusions = (0, 0, 0, 0), 
+              viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
 
 record(fig, "lorenz.mp4", 1:120) do frame
     for i in 1:50
+        # update arrays inplace
         push!(points[], step!(attractor))
         push!(colors[], frame)
     end
-    ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120)
-    notify.((points, colors))
-    l.colorrange = (0, frame)
+    ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120) # set the view angle of the axis
+    notify(points); notify(colors) # tell points and colors that their value has been updated
+    l.colorrange = (0, frame) # update plot attribute directly
 end
 set_theme!() # hide
 ```
@@ -68,6 +70,8 @@ set_theme!() # hide
 ## Installation and Import
 
 Add one or more of the Makie backend packages [`GLMakie.jl`](/documentation/backends/glmakie/) (OpenGL), [`CairoMakie.jl`](/documentation/backends/cairomakie/) (Cairo), or [`WGLMakie.jl`](/documentation/backends/wglmakie/) (WebGL), [`RPRMakie`](/documentation/backends/rprmakie/) (RadeonProRender) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
+
+Makie is the core package, and the backends have no user facing functionality.  They only render the final result.  See the [Backends](@ref) page for more information!
 
 ```julia
 ]add GLMakie
@@ -267,7 +271,7 @@ You can use the following BibTeX entry:
   number = {65},
   pages = {3349},
   author = {Simon Danisch and Julius Krumbiegel},
-  title = {Makie.jl: Flexible high-performance data visualization for Julia},
+  title = {{Makie.jl}: Flexible high-performance data visualization for {Julia}},
   journal = {Journal of Open Source Software}
 }
 ```

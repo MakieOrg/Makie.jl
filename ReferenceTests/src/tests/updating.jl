@@ -101,3 +101,71 @@ end
         return Makie.RamStepper(fig, Makie.current_backend().Screen(fig.scene), reference, :png)
     end
 end
+
+@reference_test "deletion" begin
+    f = Figure()
+    l = Legend(f[1, 1], [LineElement(color=:red)], ["Line"])
+    s = display(f)
+    @test f.scene.current_screens[1] === s
+    @test f.scene.children[1].current_screens[1] === s
+    @test f.scene.children[1].children[1].current_screens[1] === s
+    delete!(l)
+    @test f.scene.current_screens[1] === s
+    ## legend should be gone
+    ax = Axis(f[1, 1])
+    scatter!(ax, 1:4, markersize=200, color=1:4)
+    f
+end
+
+@reference_test "deletion and observable args" begin
+    obs = Observable(1:5)
+    f, ax, pl = scatter(obs; markersize=150)
+    s = display(f)
+    @test length(obs.listeners) == 1
+    delete!(ax, pl)
+    @test length(obs.listeners) == 0
+    sleep(1.0)
+    f
+end
+
+@reference_test "interactive colorscale - mesh" begin
+    brain = load(assetpath("brain.stl"))
+    color = [abs(tri[1][2]) for tri in brain for i in 1:3]
+    f, ax, m = mesh(brain; color, colorscale=identity)
+    mesh(f[1, 2], brain; color, colorscale=log10)
+    st = Stepper(f)
+    Makie.step!(st)
+    m.colorscale = log10
+    Makie.step!(st)
+end
+
+@reference_test "interactive colorscale - heatmap" begin
+    data = exp.(abs.(RNG.randn(20, 20)))
+    f, ax, hm = heatmap(data, colorscale=log10, axis=(; title="log10"))
+    Colorbar(f[1, 2], hm)
+    ax2, hm2 = heatmap(f[1, 3], data, colorscale=log10, axis=(; title="log10"))
+    st = Stepper(f)
+    Makie.step!(st)
+
+    hm2.colorscale = identity
+    ax2.title = "identity"
+    Makie.step!(st)
+
+    hm.colorscale = identity
+    ax.title = "identity"
+    Makie.step!(st)
+end
+
+@reference_test "interactive colorscale - hexbin" begin
+    x = RNG.randn(1_000)
+    y = RNG.randn(1_000)
+    f = Figure()
+    hexbin(f[1, 1], x, y; axis=(aspect=DataAspect(), title="identity"))
+    ax, hb = hexbin(f[1, 2], x, y; colorscale=log, axis=(aspect=DataAspect(), title="log"))
+    Colorbar(f[1, end+1], hb)
+    st = Stepper(f)
+    Makie.step!(st)
+    hb.colorscale = identity
+    ax.title = "identity"
+    Makie.step!(st)
+end

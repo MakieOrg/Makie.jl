@@ -72,3 +72,7 @@ menu2.is_open = true
 fig
 ```
 \end{examplefigure}
+
+## Attributes
+
+\attrdocs{Menu}

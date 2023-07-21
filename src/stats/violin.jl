@@ -51,7 +51,9 @@ function plot!(plot::Violin)
     x, y = plot[1], plot[2]
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth, weights,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
-    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, w, limits, max_density, dodge, n_dodge, gap, dodge_gap, orientation
+    signals = lift(plot, x, y,
+                   args...) do x, y, width, vside, color, show_median, n, bound, bw, w, limits, max_density,
+                               dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all componentes
@@ -132,14 +134,14 @@ function plot!(plot::Violin)
 
     poly!(
         plot,
-        lift(s -> s.vertices, signals),
-        color = lift(s -> s.colors, signals),
+        lift(s -> s.vertices, plot, signals);
+        color=lift(s -> s.colors, plot, signals),
         strokecolor = plot[:strokecolor],
         strokewidth = plot[:strokewidth],
     )
     linesegments!(
         plot,
-        lift(s -> s.lines, signals),
+        lift(s -> s.lines, plot, signals);
         color = plot[:mediancolor],
         linewidth = plot[:medianlinewidth],
         visible = plot[:show_median],
