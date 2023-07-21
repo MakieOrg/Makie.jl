@@ -440,14 +440,8 @@ function float_justification(ju, al)::Float32
         else
             0.5f0
         end
-    elseif ju === :left
-        0.0f0
-    elseif ju === :right
-        1.0f0
-    elseif ju === :center
-        0.5f0
     else
-        Float32(ju)
+        halign2num(ju, "Justification $ju not recognized. Should be :left, :center, :right, a Number or automatic.")
     end
 end
 

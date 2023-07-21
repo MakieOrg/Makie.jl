@@ -82,15 +82,8 @@ function initialize_block!(ax::Axis3)
 
     titlepos = lift(scene, scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
 
-        x = if align === :center
-            a.origin[1] + a.widths[1] / 2
-        elseif align === :left
-            a.origin[1]
-        elseif align === :right
-            a.origin[1] + a.widths[1]
-        else
-            error("Title align $align not supported.")
-        end
+        align_factor = halign2num(align, "Title align $align not supported.")
+        x = a.origin[1] + align_factor * a.widths[1]
 
         yoffset = top(a) + titlegap
 

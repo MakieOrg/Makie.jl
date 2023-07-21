@@ -499,7 +499,7 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
     # Handle block detachment (TODO?)
     if float
         align = map(blockscene, controller.halign, controller.valign) do halign, valign
-            return Vec2f(Makie.halign2num(halign), Makie.valign2num(valign))
+            return Vec2f(halign2num(halign), valign2num(valign))
         end
 
         scene_region = map(blockscene, 

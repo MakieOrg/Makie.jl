@@ -948,7 +948,7 @@ convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c
 """
     Text align, e.g.:
 """
-to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
+to_align(x::Tuple{Symbol, Symbol}) = Vec2f(halign2num(x[1]), valign2num(x[2]))
 to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
