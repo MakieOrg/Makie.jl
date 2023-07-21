@@ -6,6 +6,7 @@ using Makie.PlotUtils
 using Makie.FileIO
 using Makie.IntervalSets
 using GeometryBasics: Pyramid
+using OffsetArrays
 
 using Makie: volume
 

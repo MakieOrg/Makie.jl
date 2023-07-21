@@ -287,3 +287,22 @@ end
     pl[1] = [points]
     @test pl.plots[1][1][] == Makie.poly_convert(points)
 end
+
+@testset "offsetarrays" begin
+    x = -5:5
+    y = -3:3
+    data_2d = rand(Float32, length.((x, y)))
+    offsets_2d = OffsetArray(data_2d, x, y)
+    _x, _y, z = convert_arguments(Heatmap, offsets_2d)
+    @test z == data_2d
+
+    points = OffsetArray(1:length(x), x)
+    xy = convert_arguments(Makie.PointBased(), points)
+    @test xy[1] == Point2f.(x, 1:length(x))
+
+    z = -10:10
+    data_3d = rand(Float32, length.((x, y, z)))
+    offset_3d = OffsetArray(data_3d, x, y, z)
+    x, y, z, vol = convert_arguments(Volume, offset_3d)
+    @test vol == data_3d
+end

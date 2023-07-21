@@ -133,9 +133,29 @@ function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
+function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real})
+    if length(x) != length(y)
+        error("Length of x & y need to be the same. Found x: $(length(x)), y: $(length(y)))")
+    end
+    # Manually iterate, since for comprehension / map / broadcast all preserve input array types, which we dont want here!
+    points = Vector{Point2f}(undef, length(x))
+    @inbounds for (i, xy) in enumerate(zip(x, y))
+        points[i] = Point2f(xy)
+    end
+    return (points,)
+end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
+function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real})
+    if length(x) != length(y) && length(z) != length(y)
+        error("Length of x & y & z need to be the same. Found x: $(length(x)), y: $(length(y))), z: $(length(z)))")
+    end
+    # Manually iterate, since for comprehension / map / broadcast all preserve input array types, which we dont want here!
+    points = Vector{Point3f}(undef, length(x))
+    @inbounds for (i, xyz) in enumerate(zip(x, y, z))
+        points[i] = Point2f(xyz)
+    end
+    return (points,)
+end
 
 """
     convert_arguments(P, y)::Vector
@@ -668,7 +688,7 @@ float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
-el32convert(x::AbstractArray{Float32}) = x
+el32convert(x::AbstractArray{Float32, N}) where {N} = collect(x)
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 
