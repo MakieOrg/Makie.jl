@@ -152,7 +152,7 @@ function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::Abstract
     # Manually iterate, since for comprehension / map / broadcast all preserve input array types, which we dont want here!
     points = Vector{Point3f}(undef, length(x))
     @inbounds for (i, xyz) in enumerate(zip(x, y, z))
-        points[i] = Point2f(xyz)
+        points[i] = Point3f(xyz)
     end
     return (points,)
 end
