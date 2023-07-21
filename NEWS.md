@@ -2,14 +2,15 @@
 
 ## master
 
-- Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color_func`.  This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object. [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002)
+- Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color`.  This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002).
+- Fixed an issue where the `linestyle` of some polys was not applied to the stroke in CairoMakie. [#2604](https://github.com/MakieOrg/Makie.jl/pull/2604)
 - Add `colorscale = identity` to any plotting function using a colormap. This works with any scaling function like `log10`, `sqrt` etc. Consequently, `scale` for `hexbin` is replaced with `colorscale` [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
 - Add `alpha=1.0` argument to all basic plots, which supports independently adding an alpha component to colormaps and colors. Multiple alphas like in `plot(alpha=0.2, color=RGBAf(1, 0, 0, 0.5))`, will get multiplied [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
 - `hexbin` now supports any per-observation weights which StatsBase respects - `<: StatsBase.AbstractWeights`, `Vector{Real}`, or `nothing` (the default). [#2804](https://github.com/MakieOrg/Makie.jl/pulls/2804)
-- Added a new Axis type, `PolarAxis`, which is an axis with a polar projection.  Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation. 
-  Generally, its attributes are very similar to the usual `Axis` attributes, but `x` is replaced by `r` and `y` by `θ`.  
+- Added a new Axis type, `PolarAxis`, which is an axis with a polar projection.  Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation.
+  Generally, its attributes are very similar to the usual `Axis` attributes, but `x` is replaced by `r` and `y` by `θ`.
   It also inherits from the theme of `Axis` in this manner, so should work seamlessly with Makie themes [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990).
-- `inherit` now has a new signature `inherit(scene, attrs::NTuple{N, Symbol}, default_value)`, allowing recipe authors to access nested attributes when trying to inherit from the parent Scene. 
+- `inherit` now has a new signature `inherit(scene, attrs::NTuple{N, Symbol}, default_value)`, allowing recipe authors to access nested attributes when trying to inherit from the parent Scene.
   For example, one could inherit from `scene.Axis.yticks` by `inherit(scene, (:Axis, :yticks), $default_value)` [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990).
 - Fixed incorrect rendering of 3D heatmaps [#2959](https://github.com/MakieOrg/Makie.jl/pull/2959)
 - Deprecated `flatten_plots` in favor of `collect_atomic_plots`. Using the new `collect_atomic_plots` fixed a bug in CairoMakie where the z-level of plots within recipes was not respected. [#2793](https://github.com/MakieOrg/Makie.jl/pull/2793)
@@ -52,7 +53,6 @@
 - Fixed an issue with GLMakie lines becoming discontinuous [#2828](https://github.com/MakieOrg/Makie.jl/pull/2828).
 
 ## v0.19.3
-
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
 - Added the `brackets` plotting function [#2356](https://github.com/MakieOrg/Makie.jl/pull/2356).
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478).
