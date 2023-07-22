@@ -3,6 +3,7 @@
     arrows(x, y, u, v)
     arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     arrows(x, y, z, u, v, w)
+    arrows(x, y, [z], f::Function)
 
 Plots arrows at the specified points with the specified components.
 `u` and `v` are interpreted as vector components (`u` being the x
@@ -17,6 +18,10 @@ specifications for a grid, and `u, v` are plotted as arrows along the
 grid.
 
 `arrows` can also work in three dimensions.
+
+If a `Function` is provided in place of `u, v, [w]`, then it must accept 
+a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
+or other array-like output.
 
 ## Attributes
 $(ATTRIBUTES)

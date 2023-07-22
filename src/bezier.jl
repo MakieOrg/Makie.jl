@@ -502,16 +502,24 @@ function render_path(path, bitmap_size_px = 256)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    aspect = widths(bbox(path)) / maximum(widths(bbox(path)))
-    path_unit_rect = fit_to_bbox(path_replaced, Rect2f(Point2f(0), aspect))
+    # Minimal size that becomes integer when mutliplying by 64 (target size for 
+    # atlas). This adds padding to avoid blurring/scaling factors from rounding
+    # during sdf generation
+    path_size = widths(bbox(path)) / maximum(widths(bbox(path)))
+    w = ceil(Int, 64 * path_size[1])
+    h = ceil(Int, 64 * path_size[2])
+    path_size = Vec2f(w, h) / 64f0
+
+    path_unit_rect = fit_to_bbox(path_replaced, Rect2f(Point2f(0), path_size))
 
     path_transformed = Makie.scale(path_unit_rect, scale_factor)
 
     outline_ref = make_outline(path_transformed)
 
-    # Adjust bitmap size to match path aspect
-    w = ceil(Int, bitmap_size_px * aspect[1])
-    h = ceil(Int, bitmap_size_px * aspect[2])
+    # Adjust bitmap size to match path size
+    w = ceil(Int, bitmap_size_px * path_size[1])
+    h = ceil(Int, bitmap_size_px * path_size[2])
+    
     pitch = w * 1 # 8 bit gray
     pixelbuffer = zeros(UInt8, h * pitch)
     bitmap_ref = Ref{FT_Bitmap}()
