@@ -26,6 +26,9 @@ f(x, P::FitzhughNagumo) = Point2f(
 
 f(x) = f(x, P)
 
-streamplot(f, -1.5..1.5, -1.5..1.5, colormap = :magma)
+fig, ax, pl = streamplot(f, -1.5..1.5, -1.5..1.5, colormap = :magma)
+# you can also pass a function to `color`, to either return a number or color value
+streamplot(fig[1,2], f, -1.5 .. 1.5, -1.5 .. 1.5, color=(p)-> RGBAf(p..., 0.0, 1))
+fig
 ```
 \end{examplefigure}
