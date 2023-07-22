@@ -14,7 +14,7 @@ vertices = [
     0.0 0.0;
     1.0 0.0;
     1.0 1.0;
-    0.25 0.75;
+    0.0 1.0;
 ]
 
 faces = [
@@ -30,46 +30,10 @@ scene = mesh(vertices, faces, color = colors, shading = false)
 
 \begin{examplefigure}{}
 ```julia
-using GeometryBasics
-vertices = Point3f[
-    (cosd(0), sind(0), 0),
-    (cosd(120), sind(120), 0),
-    (cosd(240), sind(240), 0),
-    (0, 0, 1)
-]
-
-# The order of indices in each face is important for the direction of the
-# automatic normals created in `normal_mesh`. If your mesh doesn't seem to
-# be lit correctly, check that the normals do not point inwards.
-
-faces = [
-    GLTriangleFace(1, 2, 3),
-    GLTriangleFace(2, 3, 4),
-    GLTriangleFace(1, 4, 2),
-    GLTriangleFace(1, 4, 3),
-]
-
-msh = GeometryBasics.Mesh(vertices, faces) # mesh without normals
-# or normal_mesh(vertices, faces)
-normal_msh = GeometryBasics.normal_mesh(msh) # explicitely create mesh with normals
-
-colors = [:red, :green, :blue, :orange]
-# Axis3 currently doesn't support setting lights, so we just change them in the theme!
-with_theme(lightposition=Vec3f(1, -1, 2), ambient=RGBf(0.2, 0.2, 0.2)) do 
-    f = Figure()
-    # normals get generated automatically in the meshcall in both cases, since Makie@0.19.7
-    mesh(f[1, 1], msh; color=colors, axis=(; type=Axis3, aspect=:data, title="No shading"), shading=false)
-    mesh(f[2, 1], normal_msh; color=colors, axis=(; type=Axis3, aspect=:data, title="Automatic normals"))
-    f
-end
-```
-\end{examplefigure}
-
-\begin{examplefigure}{}
-```julia
 using FileIO
 using GLMakie
 GLMakie.activate!() # hide
+
 
 brain = load(assetpath("brain.stl"))
 
