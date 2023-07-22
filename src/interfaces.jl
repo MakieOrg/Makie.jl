@@ -87,8 +87,11 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
-function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
-    PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
+function Combined{Func, ArgTypes}(kw, args) where {Func, ArgTypes}
+    t = Transformation()
+    plot = Combined{Func,ArgTypes}(t, kw, args)
+    plot[:model] = transformationmatrix(t)
+    return plot
 end
 
 """
@@ -202,22 +205,19 @@ plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
 
-function Combined(::Type{PlotType}, args::Vector{Any}, kw::Dict{Symbol,Any}) where {PlotType<:AbstractPlot}
-    t = Transformation()
-    plot = Combined(PlotType,
-                      t,
-                      # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
-                      kw,
-                      args)
-    plot[:model] = transformationmatrix(t)
+
+function plot!(plot::Combined{F}) where {F}
+    if !(F in atomic_functions)
+        error("No recipe!")
+    end
+end
+
+function plot!(scene::SceneLike, plot::Combined)
+    prepare_plot!(scene, plot)
+    push!(scene, plot)
     return plot
 end
 
-function plot!(::SceneLike, plot::Combined{F}) where F
-    if !(F in atomic_functions)
-        error("No recipe for $(plot)?")
-    end
-end
 
 function apply_theme!(scene::Scene, plot::Combined{F}) where {F}
     theme = default_theme(scene, Combined{F, Any})
@@ -238,11 +238,6 @@ function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     return plot
 end
 
-function plot!(scene::SceneLike, plot::Combined)
-    prepare_plot!(scene, plot)
-    push!(scene, plot)
-    return plot
-end
 
 function convert_arguments!(plot::Combined{F}) where F
     P = Combined{F, Any}

@@ -50,18 +50,22 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
-struct Combined{Typ, T} <: ScenePlot{Typ}
-    parent::SceneLike
+mutable struct Combined{Typ, T} <: ScenePlot{Typ}
     transformation::Transformable
+
+    # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
+    kw::Dict{Symbol,Any}
+    args::Vector{Any}
+    converted::NTuple{N,Observable} where {N}
+    # Converted and processed arguments
     attributes::Attributes
-    input_args::Tuple
-    converted::Tuple
-    plots::Vector{AbstractPlot}
+
+    plots::Vector{Combined}
     deregister_callbacks::Vector{Observables.ObserverFunction}
-    function Combined{Typ, T}(
-        parent::SceneLike, transformation::Transformable, attributes::Attributes,
-        input_args::Tuple, converted::Tuple, plots::Vector{AbstractPlot}) where {Typ, T}
-        return new(parent, transformation, attributes, input_args, converted, plots,
+    parent::Union{AbstractScene,Combined}
+
+    function Combined{Typ,T}(transformation, kw, args) where {Typ,T}
+        return new{Typ,T}(transformation, kw, args, (), Attributes(), Combined[],
                    Observables.ObserverFunction[])
     end
 end

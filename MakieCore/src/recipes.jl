@@ -23,11 +23,29 @@ plotkey(::T) where T <: AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
 
 
-function create_plot(P::Combined{F, Any}, args, kw) where F
+function create_plot(P::Type{<: Combined{F}}, args, kw) where F
+    if first(args) isa Attributes
+        merge!(kw, attributes(popfirst!(args)))
+    end
     args_converted = convert_arguments(P, map(to_value, args)...)
     ArgTypes = Tuple{typeof.(args_converted)...}
-    return Combined{F,ArgTypes}(args, kw)
+    return Combined{F,ArgTypes}(kw, args)
 end
+
+function create_plot(P::Type{<:Any}, args, kw)
+    error("$args")
+    if first(args) isa Attributes
+        merge!(kw, attributes(popfirst!(args)))
+    end
+    args_conv = map(to_value, args)
+    P = plottype(args_conv...)
+    args_converted = convert_arguments(P, args_conv...)
+    ArgTypes = Tuple{typeof.(args_converted)...}
+    return Combined{plotfunc(P),ArgTypes}(kw, args)
+end
+
+function create_figurelike end
+function create_figurelike! end
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
