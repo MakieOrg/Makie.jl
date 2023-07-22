@@ -182,7 +182,7 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # the plot itself.
 Base.getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
 Base.getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
-Base.setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = value)
+Base.setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.args[idx][] = value)
 Base.length(plot::AbstractPlot) = length(plot.converted)
 
 function Base.getindex(x::AbstractPlot, key::Symbol)

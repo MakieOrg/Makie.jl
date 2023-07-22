@@ -339,7 +339,6 @@ function plot!(axis::Axis3D)
         Observable(textbuffer), Observable(linebuffer), scale(scene),
         axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
     )
-    push!(scene, axis)
     return axis
 end
 

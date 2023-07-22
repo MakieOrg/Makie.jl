@@ -30,7 +30,7 @@ end
     xmax = Observable{Any}([0.25, 0.5, 0.75, 1])
 
     p = hlines!(ax, list, xmax = xmax, color = :blue)
-    @test getfield(p, :input_args)[1] === list
+    @test getfield(p, :args)[1] === list
     @test p.xmax === xmax
     fig
 end

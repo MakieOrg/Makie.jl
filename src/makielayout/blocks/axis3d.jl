@@ -270,30 +270,26 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 end
 
 
-function Makie.plot!(
-    ax::Axis3, P::Makie.PlotFunc,
-    attributes::Makie.Attributes, args...;
-    kw_attributes...)
+function plot!(ax::Axis3, p::P) where P
+    # allattrs = merge(attributes, Attributes(kw_attributes))
 
-    allattrs = merge(attributes, Attributes(kw_attributes))
+    # _disallow_keyword(:axis, allattrs)
+    # _disallow_keyword(:figure, allattrs)
 
-    _disallow_keyword(:axis, allattrs)
-    _disallow_keyword(:figure, allattrs)
+    # cycle = get_cycle_for_plottype(allattrs, P)
+    # add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
 
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
-
-    plot = Makie.plot!(ax.scene, P, allattrs, args...)
+    plot!(ax.scene, p)
 
     if is_open_or_any_parent(ax.scene)
         reset_limits!(ax)
     end
-    plot
+    return p
 end
 
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
+function plot!(P::PlotFunc, ax::Axis3, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot!(ax, P, attributes, args...)
 end
 
 function update_state_before_display!(ax::Axis3)
