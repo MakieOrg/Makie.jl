@@ -218,7 +218,6 @@ function plot!(scene::SceneLike, plot::Combined)
     return plot
 end
 
-
 function apply_theme!(scene::Scene, plot::Combined{F}) where {F}
     theme = default_theme(scene, Combined{F, Any})
     raw_attr = getfield(plot.attributes, :attributes)
@@ -233,7 +232,7 @@ function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     connect!(transformation(scene), transformation(plot))
     apply_theme!(parent_scene(scene), plot)
     convert_arguments!(plot)
-    calculated_attributes!(Combined{F,Any}, plot)
+    calculated_attributes!(Combined{F}, plot)
     plot!(plot)
     return plot
 end

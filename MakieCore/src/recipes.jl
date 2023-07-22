@@ -46,6 +46,7 @@ end
 
 function create_figurelike end
 function create_figurelike! end
+function figurelike_return end
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)

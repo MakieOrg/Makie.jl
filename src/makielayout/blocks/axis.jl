@@ -776,38 +776,32 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function Makie.plot!(
-        la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
-
-    allattrs = merge(attributes, Attributes(kw_attributes))
-
-    _disallow_keyword(:axis, allattrs)
-    _disallow_keyword(:figure, allattrs)
-
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
+function Makie.plot!(ax::Axis, plot::P) where {P}
+    # cycle = get_cycle_for_plottype(plot)
+    # add_cycle_attributes!(plot, cycle, ax.cycler, ax.palette)
+    # _disallow_keyword(:axis, allattrs)
+    # _disallow_keyword(:figure, allattrs)
+    Makie.plot!(ax.scene, plot)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(la)
+    needs_tight_limits(plot) && tightlimits!(ax)
 
-    if is_open_or_any_parent(la.scene)
-        reset_limits!(la)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
     end
-    plot
+    return plot
+end
+
+function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
+    attributes = Makie.Attributes(kw_attributes)
+    return Makie.plot!(ax, P, attributes, args...)
 end
 
 is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)
 is_open_or_any_parent(::Nothing) = false
 
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
-end
+
 
 needs_tight_limits(@nospecialize any) = false
 needs_tight_limits(::Union{Heatmap, Image}) = true

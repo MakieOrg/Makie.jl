@@ -9,7 +9,6 @@ function Observables.connect!(parent::Transformation, child::Transformation)
     return
 end
 
-
 function free(transformation::Transformation)
     # clear parent...Needs to be same type, so just use itself
     transformation.parent[] = transformation
