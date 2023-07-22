@@ -3,6 +3,7 @@
 ## master
 
 - Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color`.  This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002).
+- `arrows` can now take input of the form `x::AbstractVector, y::AbstractVector, [z::AbstractVector,] f::Function`, where `f` must return a `VecTypes` of the appropriate dimension [#2597](https://github.com/MakieOrg/Makie.jl/pull/2597).
 - Exported colorbuffer, and added `colorbuffer(axis::Axis; include_decorations=false, colorbuffer_kws...)`, to get an image of an axis with or without decorations [#3078](https://github.com/MakieOrg/Makie.jl/pull/3078).
 - Fixed an issue where the `linestyle` of some polys was not applied to the stroke in CairoMakie. [#2604](https://github.com/MakieOrg/Makie.jl/pull/2604)
 - Add `colorscale = identity` to any plotting function using a colormap. This works with any scaling function like `log10`, `sqrt` etc. Consequently, `scale` for `hexbin` is replaced with `colorscale` [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
