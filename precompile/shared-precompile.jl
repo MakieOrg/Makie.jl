@@ -1,11 +1,10 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
-
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 
 @compile scatter(0..1, rand(10), markersize=rand(10) .* 20)
 @compile scatter(LinRange(0, 1, 10), rand(10))
-@compile scatter(-1..1, x -> x^2)
+# @compile scatter(-1..1, x -> x^2)
 
 @compile begin
     f, ax, pl = lines(Rect(0, 0, 1, 1), linewidth=4)
@@ -16,7 +15,7 @@ end
 @compile lines(rand(10), rand(10), color=rand(10), linewidth=10)
 @compile lines(rand(10), rand(10), color=rand(RGBAf, 10), linewidth=10)
 @compile lines(Circle(Point2f(0), Float32(1)))
-@compile lines(-1..1, x -> x^2)
+# @compile lines(-1..1, x -> x^2)
 
 @compile heatmap(rand(50, 50), colormap=(:RdBu, 0.2))
 
