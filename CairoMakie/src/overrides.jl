@@ -9,7 +9,7 @@ complex and slower to draw than standard paths with single color.
 function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # dispatch on input arguments to poly to use smarter drawing methods than
     # meshes if possible
-    draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
+    return draw_poly(scene, screen, poly, to_value.(poly.args)...)
 end
 
 # Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,

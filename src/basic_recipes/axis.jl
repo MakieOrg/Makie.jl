@@ -316,7 +316,6 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     end
     return
 end
-plot!(plot::Axis3D) = nothing
 
 function plot!(axis::Axis3D)
     scene = parent_scene(axis)
