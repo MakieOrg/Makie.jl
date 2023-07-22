@@ -36,8 +36,8 @@ See the function `Makie.streamplot_impl` for implementation details.
         linewidth = theme(scene, :linewidth),
         linestyle = nothing,
     )
-    MakieCore.colormap_args!(attr, theme(scene, :colormap))
-    MakieCore.default_theme!(attr)
+    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
+    MakieCore.generic_plot_attributes!(attr)
     return attr
 end
 
@@ -176,7 +176,7 @@ function plot!(p::StreamPlot)
         streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
     end
     colormap_args = MakieCore.colormap_attributes(p)
-    default_attributes = MakieCore.default_attributes(p)
+    generic_plot_attributes = MakieCore.generic_plot_attributes(p)
 
     lines!(
         p,
@@ -185,7 +185,7 @@ function plot!(p::StreamPlot)
         linestyle = p.linestyle,
         linewidth = p.linewidth;
         colormap_args...,
-        default_attributes...
+        generic_plot_attributes...
     )
 
     N = ndims(p.limits[])
@@ -220,6 +220,6 @@ function plot!(p::StreamPlot)
         color=lift(x -> x[4], p, data),
         marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
         colormap_args...,
-        default_attributes...
+        generic_plot_attributes...
     )
 end
