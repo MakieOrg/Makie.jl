@@ -33,12 +33,14 @@ function Transformation(transformable::Transformable;
         return p * transformationmatrix(t, s, r)
     end
 
+    tf = Observable{Any}(parent_transform.transform_func[])
+    on(x -> tf[] = x, parent_transform.transform_func, update = true, priority = 100)
     trans = Transformation(
         translation_o,
         scale_o,
         rotation_o,
         model,
-        copy(parent_transform.transform_func)
+        tf
     )
 
     trans.parent[] = parent_transform
