@@ -77,6 +77,13 @@ function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
     end
 end
 
+function Base.setproperty!(x::Union{Attributes,AbstractPlot}, key::Symbol, value::NamedTuple)
+    x[key] = Attributes(value)
+end
+function Base.setindex!(x::Attributes, value::NamedTuple, key::Symbol)
+    return x[key] = Attributes(value)
+end
+
 function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
     if hasfield(typeof(x), key)
         setfield!(x, key, value)

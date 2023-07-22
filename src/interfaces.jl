@@ -208,7 +208,7 @@ const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
 
 function plot!(plot::Combined{F}) where {F}
     if !(F in atomic_functions)
-        error("No recipe!")
+        error("No recipe for $(F)")
     end
 end
 
@@ -222,7 +222,11 @@ function apply_theme!(scene::Scene, plot::Combined{F}) where {F}
     theme = default_theme(scene, Combined{F, Any})
     raw_attr = getfield(plot.attributes, :attributes)
     for (k, v) in plot.kw
-        raw_attr[k] = convert(Observable{Any}, v)
+        if v isa NamedTuple
+            raw_attr[k] = Attributes(v)
+        else
+            raw_attr[k] = convert(Observable{Any}, v)
+        end
     end
     return merge!(plot.attributes, theme)
 end

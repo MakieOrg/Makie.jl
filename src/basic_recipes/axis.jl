@@ -316,9 +316,10 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     end
     return
 end
+plot!(plot::Axis3D) = nothing
 
-function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
-    axis = Axis3D(scene, attributes, args)
+function plot!(axis::Axis3D)
+    scene = parent_scene(axis)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
     textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,

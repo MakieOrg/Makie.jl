@@ -130,7 +130,6 @@ end
 
 function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...)
     f = get_top_parent(gp)
-    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
     c = contents(gp; exact=true)
     if !isempty(c)
         error("""
@@ -150,6 +149,14 @@ function create_figurelike!(PlotType, attributes::Dict, ax::Axis, args...)
     return ax, attributes, args
 end
 
+function create_figurelike!(PlotType, attributes::Dict, ax::LScene, args...)
+    return ax, attributes, args
+end
+
+function create_figurelike!(PlotType, attributes::Dict, ax::Axis3, args...)
+    return ax, attributes, args
+end
+
 function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, args...)
     layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
@@ -164,7 +171,10 @@ end
 figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
 figurelike_return(ax::Axis, plot) = AxisPlot(ax, plot)
 figurelike_return(ax::LScene, plot) = AxisPlot(ax, plot)
+figurelike_return(ax::Axis3, plot) = AxisPlot(ax, plot)
 figurelike_return!(ax::Axis, plot) = plot
+figurelike_return!(ax::LScene, plot) = plot
+figurelike_return!(ax::Axis3, plot) = plot
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 

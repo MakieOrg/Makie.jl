@@ -33,7 +33,6 @@ function create_plot(P::Type{<: Combined{F}}, args, kw) where F
 end
 
 function create_plot(P::Type{<:Any}, args, kw)
-    error("$args")
     if first(args) isa Attributes
         merge!(kw, attributes(popfirst!(args)))
     end
@@ -47,40 +46,35 @@ end
 function create_figurelike end
 function create_figurelike! end
 function figurelike_return end
+function figurelike_return! end
 
-"""
-     default_plot_signatures(funcname, funcname!, PlotType)
-Creates all the different overloads for `funcname` that need to be supported for the plotting frontend!
-Since we add all these signatures to different functions, we make it reusable with this function.
-The `Core.@__doc__` macro transfers the docstring given to the Recipe into the functions.
-"""
-function default_plot_signatures(funcname, funcname!, PlotType)
-    quote
-        Core.@__doc__ function ($funcname)(args...; kw...)
-            attributes = Dict{Symbol,Any}(kw)
-            P = $(PlotType)
-            figlike, plot_kw, plot_args = create_figurelike(P, attributes, args...)
-            plot = create_plot(P, Any[plot_args...], plot_kw)
-            plot!(figlike, plot)
-            return figurelike_return(figlike, plot)
-        end
-
-        Core.@__doc__ function ($funcname!)(args...; kw...)
-            attributes = Dict{Symbol,Any}(kw)
-            P = $(PlotType)
-            figlike, plot_kw, plot_args = create_figurelike!(P, attributes, args...)
-            plot = create_plot(P, Any[plot_args...], plot_kw)
-            plot!(figlike, plot)
-            return figurelike_return!(figlike, plot)
-        end
-
-        function ($funcname!)(scene::SceneLike, args...; kw...)
-            plot = create_plot($(PlotType), Any[args...], Dict{Symbol,Any}(kw))
-            plot!(scene, plot)
-            return plot
-        end
-    end
+function _create_plot(F, kw, args...)
+    P = Combined{F}
+    attributes = Dict{Symbol,Any}(kw)
+    figlike, plot_kw, plot_args = create_figurelike(P, attributes, args...)
+    plot = create_plot(P, Any[plot_args...], plot_kw)
+    plot!(figlike, plot)
+    return figurelike_return(figlike, plot)
 end
+
+function _create_plot!(F, kw, args...)
+    P = Combined{F}
+    attributes = Dict{Symbol,Any}(kw)
+    figlike, plot_kw, plot_args = create_figurelike!(P, attributes, args...)
+    plot = create_plot(P, Any[plot_args...], plot_kw)
+    plot!(figlike, plot)
+    return figurelike_return!(figlike, plot)
+end
+
+function _create_plot!(F, kw, scene::SceneLike, args...)
+    plot = create_plot(Combined{F}, Any[args...], Dict{Symbol,Any}(kw))
+    plot!(scene, plot)
+    return plot
+end
+
+plot(args...; kw...) = _create_plot(plot, kw, args...)
+plot!(args...; kw...) = _create_plot!(plot, kw, args...)
+
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
@@ -215,7 +209,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname,$(esc(:ArgType))}
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        $(default_plot_signatures(funcname, funcname!, PlotType))
+        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, kw, args...)
+        ($funcname!)(args...; kw...) = _create_plot!($funcname, kw, args...)
         $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end
@@ -230,12 +225,6 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     end
     expr
 end
-
-# Register plot / plot! using the Any type as PlotType.
-# This is done so that plot(args...) / plot!(args...) can by default go
-# through a pipeline where the appropriate PlotType is determined
-# from the input arguments themselves.
-eval(default_plot_signatures(:plot, :plot!, :Any))
 
 """
 Returns the Combined type that represents the signature of `args`.
