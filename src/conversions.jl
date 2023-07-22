@@ -607,6 +607,25 @@ function convert_arguments(
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
+                        
+################################################################################
+#                                   <:Arrows                                   #
+################################################################################
+
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+    points = Point2f.(x, y')
+    f_out = Vec2f.(f.(points))
+    return (vec(points), vec(f_out))
+end
+
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    points = [Point3f(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3f.(f.(points))
+    return (vec(points), vec(f_out))
+end
 
 ################################################################################
 #                             Function Conversions                             #
@@ -1368,3 +1387,7 @@ end
 to_color(sampler::ShaderAbstractions.Sampler) = el32convert(sampler)
 
 assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32convert(color[]))
+
+# BUFFER OVERLOAD
+
+GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec
