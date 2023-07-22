@@ -26,6 +26,20 @@ function default_theme!(attr)
     return attr
 end
 
+function default_attributes(attr)
+    return (
+        transformation = attr[:transformation],
+        model = attr[:model],
+        visible = attr[:visible],
+        transparency = attr[:transparency],
+        overdraw = attr[:overdraw],
+        ssao = attr[:ssao],
+        inspectable = attr[:inspectable],
+        depth_shift = attr[:depth_shift],
+        space = attr[:space]
+    )
+end
+
 """
 ### Color attributes
 
@@ -50,6 +64,18 @@ function colormap_args!(attr, colormap)
     return attr
 end
 
+function colormap_attributes(attr)
+    return (
+        colormap = attr[:colormap],
+        colorscale = attr[:colorscale],
+        colorrange = attr[:colorrange],
+        lowclip = attr[:lowclip],
+        highclip = attr[:highclip],
+        nan_color = attr[:nan_color],
+        alpha = attr[:alpha]
+    )
+end
+
 """
 ### 3D shading attributes
 
@@ -66,6 +92,17 @@ function shading_attributes!(attr)
     attr[:shininess] = 32.0f0
     attr[:backlight] = 0f0
     attr[:ssao] = false
+end
+
+function shading_attributes(attr)
+    return (
+        shading = attr[:shading],
+        diffuse = attr[:diffuse],
+        specular = attr[:specular],
+        shininess = attr[:shininess],
+        backlight = attr[:backlight],
+        ssao = attr[:ssao]
+    )
 end
 
 """
