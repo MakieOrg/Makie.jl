@@ -1,5 +1,5 @@
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
-    attrs = merge!(Attributes(kwargs), default_attributes(LineAxis))
+    attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
     return LineAxis(parent, attrs)
 end
 
