@@ -34,3 +34,27 @@ end
     @test p.xmax === xmax
     fig
 end
+
+begin
+    f = Figure()
+    x = range(0, 10, length=100)
+    scatter!(f[1, 1], x, sin)
+    scatter!(f[1, 2][1, 1], x, sin)
+    scatter!(f[1, 2][1, 2], x, sin)
+
+    meshscatter!(f[2, 1], x, sin; axis=(type=Axis3,))
+    meshscatter!(f[2, 2][1, 1], x, sin; axis=(type=Axis3,))
+    meshscatter!(f[2, 2][1, 2], x, sin; axis=(type=Axis3,))
+
+    meshscatter!(f[3, 1], rand(Point3f, 10); axis=(type=LScene,))
+    meshscatter!(f[3, 2][1, 1], rand(Point3f, 10); axis=(type=LScene,))
+    meshscatter!(f[3, 2][1, 2], rand(Point3f, 10); axis=(type=LScene,))
+
+    sub = f[4, :]
+    f = Figure()
+    scatter(Axis(f[1, 1]), x, sin)
+    meshscatter(Axis3(f[1, 1]), x, sin)
+    meshscatter(LScene(f[1, 1]), rand(Point3f, 10))
+
+    f
+end

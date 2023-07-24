@@ -37,7 +37,6 @@ end
 plot_preferred_axis(@nospecialize(x)) = nothing # nothing == I dont know
 plot_preferred_axis(p::PlotFunc) = plot_preferred_axis(Makie.conversion_trait(p))
 plot_preferred_axis(::Type{<:Volume}) = LScene
-plot_preferred_axis(::Type{<:Surface}) = LScene
 plot_preferred_axis(::VolumeLike) = LScene
 plot_preferred_axis(::Type{<:Image}) = Axis
 plot_preferred_axis(::Type{<:Heatmap}) = Axis
@@ -47,8 +46,9 @@ function args_preferred_axis(P::Type, args...)
     isnothing(result) || return result
     return args_preferred_axis(args...)
 end
-args_preferred_axis(::Type{<:Surface}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = LScene
-args_preferred_axis(::Type{<:Wireframe}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = LScene
+function args_preferred_axis(::Type{<: Union{Wireframe, Surface, Contour3d}}, x::AbstractArray, y::AbstractArray, z::AbstractArray)
+    return all(x -> z[1] ≈ x, z) ? Axis : LScene
+end
 
 function args_preferred_axis(@nospecialize(args...))
     # Fallback: check each single arg if they have a favorite axis type
@@ -63,6 +63,9 @@ args_preferred_axis(x) = nothing
 args_preferred_axis(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function) = LScene
 args_preferred_axis(m::AbstractArray{T,3}) where {T} = LScene
 
+function args_preferred_axis(m::AbstractVector{<: Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}}) where {DIM}
+    return DIM === 2 ? Axis : LScene
+end
 function args_preferred_axis(m::Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
@@ -145,18 +148,6 @@ function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...
     return ax, attributes, args
 end
 
-function create_figurelike!(PlotType, attributes::Dict, ax::Axis, args...)
-    return ax, attributes, args
-end
-
-function create_figurelike!(PlotType, attributes::Dict, ax::LScene, args...)
-    return ax, attributes, args
-end
-
-function create_figurelike!(PlotType, attributes::Dict, ax::Axis3, args...)
-    return ax, attributes, args
-end
-
 function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, args...)
     layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
@@ -168,13 +159,30 @@ function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, ar
     return ax, attributes, args
 end
 
+function create_figurelike(PlotType, attributes::Dict, gsp::GridSubposition, args...)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
+    c = contents(gsp; exact=true)
+    if !isempty(c)
+        error("""
+        You have used the non-mutating plotting syntax with a GridSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+
+        $(c)
+
+        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
+        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
+        """)
+    end
+
+    fig = get_top_parent(gsp)
+
+    ax = create_axis_from_kw(PlotType, fig, attributes, args...)
+    gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
+    return ax, attributes, args
+end
+
 figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
-figurelike_return(ax::Axis, plot) = AxisPlot(ax, plot)
-figurelike_return(ax::LScene, plot) = AxisPlot(ax, plot)
-figurelike_return(ax::Axis3, plot) = AxisPlot(ax, plot)
-figurelike_return!(ax::Axis, plot) = plot
-figurelike_return!(ax::LScene, plot) = plot
-figurelike_return!(ax::Axis3, plot) = plot
+figurelike_return(ax::AbstractAxis, plot) = AxisPlot(ax, plot)
+figurelike_return!(ax::AbstractAxis, plot) = plot
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
@@ -185,4 +193,42 @@ function update_state_before_display!(f::Figure)
         update_state_before_display!(c)
     end
     return
+end
+
+Makie.can_be_current_axis(ax::AbstractAxis) = true
+
+function update_state_before_display!(ax::AbstractAxis)
+    reset_limits!(ax)
+    return
+end
+
+function create_figurelike!(PlotType, attributes::Dict, ax::AbstractAxis, args...)
+    return ax, attributes, args
+end
+
+
+function create_figurelike(PlotType, attributes::Dict, ::Union{Scene,AbstractAxis}, args...)
+    return error("Plotting into an axis without !")
+end
+
+function plot!(ax::AbstractAxis, plot::P) where {P <: AbstractPlot}
+    if hasproperty(ax, :cycler) && hasproperty(ax, :palette)
+        cycle = get_cycle_for_plottype(plot, P)
+        add_cycle_attributes!(attributes(plot), P, cycle, ax.cycler, ax.palette)
+    end
+
+    plot!(ax.scene, plot)
+
+    # some area-like plots basically always look better if they cover the whole plot area.
+    # adjust the limit margins in those cases automatically.
+    needs_tight_limits(plot) && tightlimits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
+    return plot
+end
+
+function plot!(P::PlotFunc, ax::AbstractAxis, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    return plot!(ax, P, attributes, args...)
 end

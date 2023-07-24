@@ -124,7 +124,7 @@ end
     @test length(obs.listeners) == 1
     delete!(ax, pl)
     @test length(obs.listeners) == 0
-    sleep(1.0)
+    yield()
     f
 end
 

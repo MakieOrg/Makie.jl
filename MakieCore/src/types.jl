@@ -56,6 +56,7 @@ mutable struct Combined{Typ, T} <: ScenePlot{Typ}
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
     kw::Dict{Symbol,Any}
     args::Vector{Any}
+
     converted::NTuple{N,Observable} where {N}
     # Converted and processed arguments
     attributes::Attributes

@@ -655,7 +655,6 @@ end
 function convert_limit_attribute(lims::Tuple{Any, Any})
     lims
 end
-can_be_current_axis(ax::Axis) = true
 
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
     mi = minimum(lims)
@@ -774,28 +773,6 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
             end
         end
     end
-end
-
-function Makie.plot!(ax::Axis, plot::P) where {P}
-    # cycle = get_cycle_for_plottype(plot)
-    # add_cycle_attributes!(plot, cycle, ax.cycler, ax.palette)
-    # _disallow_keyword(:axis, allattrs)
-    # _disallow_keyword(:figure, allattrs)
-    Makie.plot!(ax.scene, plot)
-
-    # some area-like plots basically always look better if they cover the whole plot area.
-    # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(ax)
-
-    if is_open_or_any_parent(ax.scene)
-        reset_limits!(ax)
-    end
-    return plot
-end
-
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    return Makie.plot!(ax, P, attributes, args...)
 end
 
 is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)
@@ -1360,10 +1337,6 @@ defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
 defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
 
-function update_state_before_display!(ax::Axis)
-    reset_limits!(ax)
-    return
-end
 
 function attribute_examples(::Type{Axis})
     Dict(

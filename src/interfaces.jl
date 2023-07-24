@@ -87,10 +87,20 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
-function Combined{Func, ArgTypes}(kw, args) where {Func, ArgTypes}
-    t = Transformation()
-    plot = Combined{Func,ArgTypes}(t, kw, args)
-    plot[:model] = transformationmatrix(t)
+function Combined{Func, ArgTypes}(plot_attributes, args) where {Func, ArgTypes}
+    trans = get!(plot_attributes, :transformation, automatic)
+    transval = to_value(trans)
+    transformation = if transval isa Automatic
+        Transformation()
+    elseif transval isa Transformation
+        transval
+    else
+        t = Transformation()
+        transform!(t, transval)
+        t
+    end
+    plot = Combined{Func,ArgTypes}(transformation, plot_attributes, convert.(Observable, args))
+    plot.model = transformationmatrix(transformation)
     return plot
 end
 
@@ -233,7 +243,10 @@ end
 
 function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     plot.parent = scene
-    connect!(transformation(scene), transformation(plot))
+    t = to_value(getfield(plot, :kw)[:transformation])
+    if t isa Automatic
+        connect!(transformation(scene), transformation(plot))
+    end
     apply_theme!(parent_scene(scene), plot)
     convert_arguments!(plot)
     calculated_attributes!(Combined{F}, plot)
@@ -256,6 +269,6 @@ function convert_arguments!(plot::Combined{F}) where F
         end
     end
     on_update(map(to_value, plot.args)...)
-    onany(on_update, plot.args...)
+    onany(on_update, plot, plot.args...)
     return
 end

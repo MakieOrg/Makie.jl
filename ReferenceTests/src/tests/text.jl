@@ -176,7 +176,8 @@ end
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
         fontsize = 1,
-        markerspace = :data
+        markerspace = :data,
+        axis=(; type=LScene)
     )
 end
 
@@ -368,4 +369,3 @@ end
     ax.zlabel[] = L"\sum_{n=1}^{\infty} 2^{-n} = 1"
     fig
 end
-

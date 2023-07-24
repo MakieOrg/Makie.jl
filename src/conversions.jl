@@ -567,8 +567,16 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
-    (m,)
+    vs = to_vertices(vertices)
+    fs = to_triangles(indices)
+    if eltype(vs) <: Point{3}
+        ns = normals(vs, fs)
+        m = GeometryBasics.Mesh(meta(vs; normals=ns), fs)
+    else
+        # TODO, we don't need to add normals here, but maybe nice for type stability?
+        m = GeometryBasics.Mesh(meta(vs; normals=fill(Vec3f(0, 0, 1), length(vs))), fs)
+    end
+    return (m,)
 end
 
 ################################################################################
@@ -633,6 +641,8 @@ function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
 end
+
+
 
 # The following `tryrange` code was copied from Plots.jl
 # https://github.com/MakieOrg/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
@@ -739,12 +749,12 @@ Converts a representation of vertices `v` to its canonical representation as a
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
 """
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
-    vert3f0 = T != Float32 ? Point3f.(verts) : verts
+    vert3f0 = T != Float32 ? map(Point3f, verts) : verts
     return reinterpret(Point3f, vert3f0)
 end
 
-function to_vertices(verts::AbstractVector{<: VecTypes})
-    to_vertices(to_ndim.(Point3f, verts, 0.0))
+function to_vertices(verts::AbstractVector{<: VecTypes{N}}) where {N}
+    return map(Point{N, Float32}, verts)
 end
 
 function to_vertices(verts::AbstractMatrix{<: Number})
@@ -764,7 +774,7 @@ function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
     else
         let N = Val(N), lverts = verts
             broadcast(1:size(verts, 2), N) do vidx, n
-                to_ndim(Point3f, ntuple(i-> lverts[i, vidx], n), 0.0)
+                Point(ntuple(i-> Float32(lverts[i, vidx]), n))
             end
         end
     end
@@ -773,7 +783,7 @@ end
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
     let N = Val(size(verts, 2)), lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
-            to_ndim(Point3f, ntuple(i-> lverts[vidx, i], n), 0.0)
+            Point(ntuple(i-> Float32(verts[vidx, i]), n))
         end
     end
 end
