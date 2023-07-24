@@ -27,11 +27,18 @@ end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
-
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa ColorMap
         cmap = plot.calculated_colors[]
         scale = cmap.scale
     else
+        # Atomic plots should always have calculated_colors set, if they actually use a colormap
+        if is_atomic_plot(plot)
+            error("Plot `$(plotfunc(plot))` has no values that are mapped to colors, so it cannot be used to create a colorbar.")
+        end
+        # So this is for recipes
+        if !all(x-> haskey(plot, x), (:colormap, :colorrange, :highclip, :lowclip))
+            error("Plot $(plotfunc(plot)) doesn't have all colormap attributes. Attributes needed: colormap, colorrange, highclip, lowclip")
+        end
         cmap = plot
         scale = plot.colorscale
     end
