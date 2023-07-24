@@ -23,13 +23,15 @@ plotkey(::T) where T <: AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
 
 
+argtypes(F, tuple::T) where {T <: Tuple} = (F, T)
+
 function create_plot(P::Type{<: Combined{F}}, args, kw) where F
     if first(args) isa Attributes
         merge!(kw, attributes(popfirst!(args)))
     end
     args_converted = convert_arguments(P, map(to_value, args)...)
-    ArgTypes = Tuple{typeof.(args_converted)...}
-    return Combined{F,ArgTypes}(kw, args)
+    f_argtypes = argtypes(F, args_converted)
+    return Combined{f_argtypes...}(kw, args)
 end
 
 function create_plot(P::Type{<:Any}, args, kw)

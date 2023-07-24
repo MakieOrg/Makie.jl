@@ -243,6 +243,9 @@ end
 
 function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     plot.parent = scene
+    # TODO, move transformation into attributes?
+    # This hacks around transformation being already constructed in the constructor
+    # So here we don't want to connect to the scene if an explicit Transformation was passed to the plot
     t = to_value(getfield(plot, :kw)[:transformation])
     if t isa Automatic
         connect!(transformation(scene), transformation(plot))
@@ -252,6 +255,11 @@ function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     calculated_attributes!(Combined{F}, plot)
     plot!(plot)
     return plot
+end
+
+function MakieCore.argtypes(F, plot::PlotSpec{P}) where {P}
+    args_converted = convert_arguments(P, plot.args...)
+    return MakieCore.argtypes(plotfunc(P), args_converted)
 end
 
 
