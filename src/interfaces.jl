@@ -87,8 +87,6 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
-is_atomic_plot(::Combined{F}) where {F} = F in atomic_functions
-
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
