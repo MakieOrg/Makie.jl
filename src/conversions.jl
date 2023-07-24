@@ -401,23 +401,6 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::Abst
 end
 
 
-"""
-    convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
-
-Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that `x` and `y` span.
-This is equivalent to `f.(x, y')`.
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
-    if !applicable(f, x[1], y[1])
-        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
-    end
-    T = typeof(f(x[1], y[1]))
-    z = similar(x, T, (length(x), length(y)))
-    z .= f.(x, y')
-    return convert_arguments(sl, x, y, z)
-end
-
 ################################################################################
 #                                  VolumeLike                                  #
 ################################################################################
@@ -447,26 +430,6 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 """
 function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
     (x, y, z, el32convert(i))
-end
-
-
-"""
-    convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
-
-Takes `AbstractVector` `x`, `y`, and `z` and the function `f`, evaluates `f` on the volume
-spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
-    if !applicable(f, x[1], y[1], z[1])
-        error("You need to pass a function with signature f(x, y, z). Found: $f")
-    end
-    _x, _y, _z = ntuple(Val(3)) do i
-        A = (x, y, z)[i]
-        reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
-    end
-    return (x, y, z, el32convert.(f.(_x, _y, _z)))
 end
 
 ################################################################################
@@ -607,39 +570,68 @@ function convert_arguments(
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
-                        
-################################################################################
-#                                   <:Arrows                                   #
-################################################################################
-
-# Allow the user to pass a function to `arrows` which determines the direction
-# and magnitude of the arrows.  The function must accept `Point2f` as input.
-# and return Point2f or Vec2f or some array like structure as output.
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
-    points = Point2f.(x, y')
-    f_out = Vec2f.(f.(points))
-    return (vec(points), vec(f_out))
-end
-
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
-    points = [Point3f(x, y, z) for x in x, y in y, z in z]
-    f_out = Vec3f.(f.(points))
-    return (vec(points), vec(f_out))
-end
 
 ################################################################################
 #                             Function Conversions                             #
 ################################################################################
 
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+    points = Point2f.(x, y')
+    f_out = Vec2f.(f.(points))
+    return (vec(points), vec(f_out))
+end
+
+function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector,
+                           f::Function)
+    points = [Point3f(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3f.(f.(points))
+    return (vec(points), vec(f_out))
+end
+
+"""
+    convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
+
+Takes `AbstractVector` `x`, `y`, and `z` and the function `f`, evaluates `f` on the volume
+spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
+
+`P` is the plot Type (it is optional).
+"""
+function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    if !applicable(f, x[1], y[1], z[1])
+        error("You need to pass a function with signature f(x, y, z). Found: $f")
+    end
+    _x, _y, _z = ntuple(Val(3)) do i
+        A = (x, y, z)[i]
+        return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
+    end
+    return (x, y, z, el32convert.(f.(_x, _y, _z)))
+end
+
+"""
+    convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
+
+Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that `x` and `y` span.
+This is equivalent to `f.(x, y')`.
+`P` is the plot Type (it is optional).
+"""
+function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2},
+                           f::Function) where {T1,T2}
+    if !applicable(f, x[1], y[1])
+        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
+    end
+    return convert_arguments(sl, x, y, f.(x, y'))
+end
+
 function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
+    return convert_arguments(P, r, map(f, r))
 end
 
 function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, x, y))
+    return convert_arguments(P, x, y)
 end
 
 # The following `tryrange` code was copied from Plots.jl
@@ -663,6 +655,7 @@ function tryrange(F, vec)
     end
     error("$F is not a Function, or is not defined at any of the values $vec")
 end
+
 
 # OffsetArrays conversions
 function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
