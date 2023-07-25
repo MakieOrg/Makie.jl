@@ -32,12 +32,22 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         scale = cmap.scale
     else
         # Atomic plots should always have calculated_colors set, if they actually use a colormap
-        if is_atomic_plot(plot)
-            error("Plot `$(plotfunc(plot))` has no values that are mapped to colors, so it cannot be used to create a colorbar.")
+        func = plotfunc(plot)
+        if func in Makie.atomic_functions
+            error("Plot `$(func)` doesn't have a color attribute that uses a colormap to map to colors, so it cannot be used to create a colorbar. Found color attribute: $(typeof(plot.calculated_colors[]))). Needs to be a number of vector of numbers!")
         end
         # So this is for recipes
         if !all(x-> haskey(plot, x), (:colormap, :colorrange, :highclip, :lowclip))
-            error("Plot $(plotfunc(plot)) doesn't have all colormap attributes. Attributes needed: colormap, colorrange, highclip, lowclip")
+            attributes = filter(x-> haskey(plot, x), [:colormap, :colorrange, :highclip, :lowclip])
+            error("Plot $(func) doesn't have all colormap attributes. Attributes needed: colormap, colorrange, highclip, lowclip. Found: $(attributes)")
+        end
+        if to_value(plot.colorrange) isa Automatic || (plot.color[] isa Union{AbstractVector{<: Colorant}, Colorant})
+            error("""
+            Plot $(func) doesn't have a color attribute that uses a colormap to map to colors, so it cannot be used to create a colorbar.
+            Please create the colorbar manually e.g. via `Colorbar(f[1, 2], colorrange=the_range, colormap=the_colormap)`.
+            This could also mean, that you're using a recipe, which itself doesn't calculate the colorrange, and leaves it to its children.
+            E.g. `f, ax, pl = barplot(1:3; color=1:3)` will not work, but `Colorbar(f[1, 2], pl.plots[1].plots[1])` will.
+            """)
         end
         cmap = plot
         scale = plot.colorscale
