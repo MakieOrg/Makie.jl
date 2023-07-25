@@ -556,12 +556,12 @@ end
 get_tickvalues(::Automatic, ::typeof(identity), vmin, vmax) = get_tickvalues(WilkinsonTicks(5, k_min = 3), vmin, vmax)
 
 # fall back to identity if not overloaded scale function is used with automatic
-get_tickvalues(::Automatic, F, vmin, vmax) = get_tickvalues(automatic, identity, vmin, vmax)
+get_tickvalues(::Automatic, _, vmin, vmax) = get_tickvalues(automatic, identity, vmin, vmax)
 
 # fall back to non-scale aware behavior if no special version is overloaded
-get_tickvalues(ticks, scale, vmin, vmax) = get_tickvalues(ticks, vmin, vmax)
+get_tickvalues(ticks, _, vmin, vmax) = get_tickvalues(ticks, vmin, vmax)
 
-function get_ticks(ticks_and_labels::Tuple{Any, Any}, any_scale, ::Automatic, vmin, vmax)
+function get_ticks(ticks_and_labels::Tuple{Any, Any}, _, ::Automatic, vmin, vmax)
     n1 = length(ticks_and_labels[1])
     n2 = length(ticks_and_labels[2])
     if n1 != n2
@@ -570,7 +570,7 @@ function get_ticks(ticks_and_labels::Tuple{Any, Any}, any_scale, ::Automatic, vm
     ticks_and_labels
 end
 
-function get_ticks(tickfunction::Function, any_scale, formatter, vmin, vmax)
+function get_ticks(tickfunction::Function, _, formatter, vmin, vmax)
     result = tickfunction(vmin, vmax)
     if result isa Tuple{Any, Any}
         tickvalues, ticklabels = result
@@ -581,18 +581,20 @@ function get_ticks(tickfunction::Function, any_scale, formatter, vmin, vmax)
     return tickvalues, ticklabels
 end
 
+_logbase(s::ReversibleScale) = s.logbase
 _logbase(::typeof(log10)) = "10"
 _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
+_logbase(::Any) = ""
 
-
-function get_ticks(::Automatic, scale::Union{typeof(log10), typeof(log2), typeof(log)},
-        any_formatter, vmin, vmax)
-    get_ticks(LogTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
+function get_ticks(::Automatic, scale::Union{LogFunctions,ReversibleScale}, any_formatter, vmin, vmax)
+    wt = WilkinsonTicks(5, k_min = 3)
+    ticks = isempty(_logbase(scale)) ? wt : LogTicks(wt)
+    get_ticks(ticks, scale, any_formatter, vmin, vmax)
 end
 
 # log ticks just use the normal pipeline but with log'd limits, then transform the labels
-function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof(log)}, ::Automatic, vmin, vmax)
+function get_ticks(l::LogTicks, scale::Union{LogFunctions,ReversibleScale}, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
 
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
@@ -727,8 +729,7 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
 end
 
 # for log scales, we need to step in log steps at the edges
-function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log),typeof(log2),typeof(log10)},
-                              tickvalues, vmin, vmax)
+function get_minor_tickvalues(i::IntervalsBetween, scale::LogFunctions, tickvalues, vmin, vmax)
     vals = Float64[]
     length(tickvalues) < 2 && return vals
     n = i.n

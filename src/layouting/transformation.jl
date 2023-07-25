@@ -400,12 +400,11 @@ end
 
 const REVERSIBLE_SCALES = Union{
     # typeof(identity),  # no, this is a noop
-    typeof(log10),
-    typeof(log),
-    typeof(log2),
-    typeof(sqrt),
+    LogFunctions,
     typeof(pseudolog10),
     typeof(logit),
+    typeof(sqrt),
+    ReversibleScale,
     Symlog10,
 }
 
@@ -417,6 +416,7 @@ inverse_transform(::typeof(sqrt)) = x -> x ^ 2
 inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
+inverse_transform(s::ReversibleScale) = s.backward
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
 inverse_transform(s) = nothing
 

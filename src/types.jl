@@ -378,3 +378,18 @@ end
 
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
+
+const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
+
+struct ReversibleScale{F <: Function, B <: Function}
+    forward::F
+    backward::B
+    logbase::String
+    function ReversibleScale(forward, backward, logbase = "")
+        new{typeof(forward),typeof(backward)}(forward, backward, logbase)
+    end
+end
+
+function (s::ReversibleScale)(args...)  # functor
+    s.forward(args...)
+end
