@@ -168,6 +168,14 @@ end
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
+    @testset "errors" begin
+        f, ax, pl1 = scatter(rand(10))
+        pl2 = scatter!(ax, rand(10); color=rand(RGBf, 10))
+        pl3 = barplot!(ax, 1:3; colorrange=(0, 1))
+        @test_throws ErrorException Colorbar(f[1, 2], pl1)
+        @test_throws ErrorException Colorbar(f[1, 2], pl2)
+        @test_throws ErrorException Colorbar(f[1, 2], pl3)
+    end
 end
 
 @testset "cycling" begin
