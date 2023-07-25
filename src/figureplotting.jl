@@ -103,7 +103,8 @@ function create_axis_from_kw(PlotType, figlike, attributes::Dict, args...)
     else
         preferred_axis_type(PlotType, args...)
     end
-    return AxType(figlike; axis_kw...)
+    bbox = pop!(axis_kw, :bbox, nothing)
+    return _block(AxType, figlike, [], axis_kw, bbox)
 end
 
 function create_figurelike(PlotType, attributes::Dict, args...)

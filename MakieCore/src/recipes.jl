@@ -26,23 +26,12 @@ plotkey(::Nothing) = :scatter
 argtypes(F, tuple::T) where {T <: Tuple} = (F, T)
 
 function create_plot(P::Type{<: Combined{F}}, args, kw) where F
-    if first(args) isa Attributes
-        merge!(kw, attributes(popfirst!(args)))
-    end
-    args_converted = convert_arguments(P, map(to_value, args)...)
-    f_argtypes = argtypes(F, args_converted)
-    return Combined{f_argtypes...}(kw, args)
+    return Combined{F}(kw, args)
 end
 
 function create_plot(P::Type{<:Any}, args, kw)
-    if first(args) isa Attributes
-        merge!(kw, attributes(popfirst!(args)))
-    end
-    args_conv = map(to_value, args)
-    P = plottype(args_conv...)
-    args_converted = convert_arguments(P, args_conv...)
-    ArgTypes = Tuple{typeof.(args_converted)...}
-    return Combined{plotfunc(P),ArgTypes}(kw, args)
+    P = plottype(args...)
+    return Combined{plotfunc(P)}(kw, args)
 end
 
 function create_figurelike end
@@ -50,26 +39,23 @@ function create_figurelike! end
 function figurelike_return end
 function figurelike_return! end
 
-function _create_plot(F, kw, args...)
+function _create_plot(F, attributes, args...)
     P = Combined{F}
-    attributes = Dict{Symbol,Any}(kw)
     figlike, plot_kw, plot_args = create_figurelike(P, attributes, args...)
-    plot = create_plot(P, Any[plot_args...], plot_kw)
+    plot = Combined{F}(plot_args, plot_kw)
     plot!(figlike, plot)
     return figurelike_return(figlike, plot)
 end
 
-function _create_plot!(F, kw, args...)
-    P = Combined{F}
-    attributes = Dict{Symbol,Any}(kw)
-    figlike, plot_kw, plot_args = create_figurelike!(P, attributes, args...)
-    plot = create_plot(P, Any[plot_args...], plot_kw)
+function _create_plot!(F, attributes, args...)
+    figlike, plot_kw, plot_args = create_figurelike!(Combined{F}, attributes, args...)
+    plot = Combined{F}(plot_args, plot_kw)
     plot!(figlike, plot)
     return figurelike_return!(figlike, plot)
 end
 
 function _create_plot!(F, kw, scene::SceneLike, args...)
-    plot = create_plot(Combined{F}, Any[args...], Dict{Symbol,Any}(kw))
+    plot = Combined{F}(args, kw)
     plot!(scene, plot)
     return plot
 end
@@ -211,8 +197,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname,$(esc(:ArgType))}
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, kw, args...)
-        ($funcname!)(args...; kw...) = _create_plot!($funcname, kw, args...)
+        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
+        ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
         $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end

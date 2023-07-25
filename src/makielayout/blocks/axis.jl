@@ -158,7 +158,6 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-
     blockscene = ax.blockscene
 
     elements = Dict{Symbol, Any}()

@@ -250,14 +250,15 @@ function get_attribute(dict, key, default=nothing)
 end
 
 function merge_attributes!(input::Attributes, theme::Attributes)
-    for (key, value) in theme
+    for (key, value) in attributes(theme)
         if !haskey(input, key)
             input[key] = value
         else
             current_value = input[key]
-            if value isa Attributes && current_value isa Attributes
+            tvalue = to_value(value)
+            if tvalue isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
-                merge_attributes!(current_value, value)
+                merge_attributes!(current_value, tvalue)
             end
             # we're good! input already has a value, can ignore theme
         end

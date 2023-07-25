@@ -273,12 +273,14 @@ function _block(T::Type{<:Block},
     b
 end
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
-        args...; bbox = nothing, kwargs...)
+
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
+    return _block(T, fig_or_scene, Any[args...], Dict{Symbol,Any}(kwargs), bbox)
+end
+
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox)
 
     # first sort out all user kwargs that correspond to block attributes
-
-    kwdict = Dict(kwargs)
 
     if haskey(kwdict, :textsize)
         throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))

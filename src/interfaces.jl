@@ -87,7 +87,30 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
-function Combined{Func, ArgTypes}(plot_attributes, args) where {Func, ArgTypes}
+
+
+function convert_arguments!(plot::Combined{F}) where {F}
+    P = Combined{F,Any}
+    function on_update(args...)
+        nt = convert_arguments(P, args...)
+        P, converted = apply_convert!(P, plot.attributes, nt)
+        for (obs, new_val) in zip(plot.converted, converted)
+            obs[] = new_val
+        end
+    end
+    onany(on_update, plot, plot.args...)
+    return
+end
+
+
+function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
+    if first(args) isa Attributes
+        merge!(plot_attributes, attributes(first(args)))
+        return Combined{Func}(Base.tail(args), plot_attributes)
+    end
+    P = Combined{Func}
+    args_converted = convert_arguments(P, map(to_value, args)...)
+    P2, converted = apply_convert!(P, Attributes(), args_converted)
     trans = get!(plot_attributes, :transformation, automatic)
     transval = to_value(trans)
     transformation = if transval isa Automatic
@@ -99,7 +122,12 @@ function Combined{Func, ArgTypes}(plot_attributes, args) where {Func, ArgTypes}
         transform!(t, transval)
         t
     end
-    plot = Combined{Func,ArgTypes}(transformation, plot_attributes, convert.(Observable, args))
+
+    obs_args = Any[convert(Observable, x) for x in args]
+
+    f_argtypes = MakieCore.argtypes(plotfunc(P2), converted)
+    plot = Combined{f_argtypes...}(transformation, plot_attributes, obs_args)
+    plot.converted = map(Observable, converted)
     plot.model = transformationmatrix(transformation)
     return plot
 end
@@ -230,7 +258,7 @@ end
 
 function apply_theme!(scene::Scene, plot::Combined{F}) where {F}
     theme = default_theme(scene, Combined{F, Any})
-    raw_attr = getfield(plot.attributes, :attributes)
+    raw_attr = attributes(plot.attributes)
     for (k, v) in plot.kw
         if v isa NamedTuple
             raw_attr[k] = Attributes(v)
@@ -260,23 +288,4 @@ end
 function MakieCore.argtypes(F, plot::PlotSpec{P}) where {P}
     args_converted = convert_arguments(P, plot.args...)
     return MakieCore.argtypes(plotfunc(P), args_converted)
-end
-
-
-function convert_arguments!(plot::Combined{F}) where F
-    P = Combined{F, Any}
-    function on_update(args...)
-        nt = convert_arguments(P, args...)
-        P, converted = apply_convert!(P, plot.attributes, nt)
-        if isempty(plot.converted)
-            # initialize the tuple first for when it was `()`
-            plot.converted = Observable.(converted)
-        end
-        for (obs, new_val) in zip(plot.converted, converted)
-            obs[] = new_val
-        end
-    end
-    on_update(map(to_value, plot.args)...)
-    onany(on_update, plot, plot.args...)
-    return
 end
