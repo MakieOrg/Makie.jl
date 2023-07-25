@@ -1,4 +1,4 @@
-default_theme(scene) = default_theme!(Attributes())
+default_theme(scene) = generic_plot_attributes!(Attributes())
 
 
 """
@@ -13,7 +13,7 @@ default_theme(scene) = default_theme!(Attributes())
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `space::Symbol = :data` sets the transformation space for box encompassing the volume plot. See `Makie.spaces()` for possible inputs.
 """
-function default_theme!(attr)
+function generic_plot_attributes!(attr)
     attr[:transformation] = automatic
     attr[:model] = automatic
     attr[:visible] = true
@@ -24,6 +24,20 @@ function default_theme!(attr)
     attr[:depth_shift] = 0.0f0
     attr[:space] = :data
     return attr
+end
+
+function generic_plot_attributes(attr)
+    return (
+        transformation = attr[:transformation],
+        model = attr[:model],
+        visible = attr[:visible],
+        transparency = attr[:transparency],
+        overdraw = attr[:overdraw],
+        ssao = attr[:ssao],
+        inspectable = attr[:inspectable],
+        depth_shift = attr[:depth_shift],
+        space = attr[:space]
+    )
 end
 
 """
@@ -39,7 +53,7 @@ end
 - `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
 - `alpha = 1.0` sets the alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied.
 """
-function colormap_args!(attr, colormap)
+function colormap_attributes!(attr, colormap)
     attr[:colormap] = colormap
     attr[:colorscale] = identity
     attr[:colorrange] = automatic
@@ -48,6 +62,18 @@ function colormap_args!(attr, colormap)
     attr[:nan_color] = :transparent
     attr[:alpha] = 1.0
     return attr
+end
+
+function colormap_attributes(attr)
+    return (
+        colormap = attr[:colormap],
+        colorscale = attr[:colorscale],
+        colorrange = attr[:colorrange],
+        lowclip = attr[:lowclip],
+        highclip = attr[:highclip],
+        nan_color = attr[:nan_color],
+        alpha = attr[:alpha]
+    )
 end
 
 """
@@ -66,6 +92,17 @@ function shading_attributes!(attr)
     attr[:shininess] = 32.0f0
     attr[:backlight] = 0f0
     attr[:ssao] = false
+end
+
+function shading_attributes(attr)
+    return (
+        shading = attr[:shading],
+        diffuse = attr[:diffuse],
+        specular = attr[:specular],
+        shininess = attr[:shininess],
+        backlight = attr[:backlight],
+        ssao = attr[:ssao]
+    )
 end
 
 """
@@ -92,17 +129,17 @@ Plots an image on range `x, y` (defaults to dimensions).
 
 - `interpolate::Bool = true` sets whether colors should be interpolated.
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Image, x, y, image) do scene
     attr = Attributes(;
         interpolate = true,
         fxaa = false,
     )
-    default_theme!(attr)
-    return colormap_args!(attr, [:black, :white])
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, [:black, :white])
 end
 
 """
@@ -117,9 +154,9 @@ Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions)
 
 - `interpolate::Bool = false` sets whether colors should be interpolated.
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Heatmap, x, y, values) do scene
     attr = Attributes(;
@@ -129,8 +166,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
         linewidth = 0.0,
         fxaa = true,
     )
-    default_theme!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -156,9 +193,9 @@ Available algorithms are:
 
 $(Base.Docs.doc(shading_attributes!))
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Volume, x, y, z, volume) do scene
     attr = Attributes(;
@@ -169,9 +206,9 @@ $(Base.Docs.doc(MakieCore.default_theme!))
 
         fxaa = true,
     )
-    default_theme!(attr)
+    generic_plot_attributes!(attr)
     shading_attributes!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -192,9 +229,9 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
 
 $(Base.Docs.doc(shading_attributes!))
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Surface, x, y, z) do scene
     attr = Attributes(;
@@ -204,8 +241,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
         fxaa = true,
     )
     shading_attributes!(attr)
-    default_theme!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -227,9 +264,9 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 - `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Lines, positions) do scene
     attr = Attributes(;
@@ -241,8 +278,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
         fxaa = false,
         cycle = [:color],
     )
-    default_theme!(attr, )
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr, )
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -263,9 +300,9 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 - `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(LineSegments, positions) do scene
     default_theme(scene, Lines)
@@ -291,9 +328,9 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
 
 $(Base.Docs.doc(shading_attributes!))
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Mesh, mesh) do scene
     attr = Attributes(;
@@ -304,8 +341,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
         cycle = [:color => :patchcolor],
     )
     shading_attributes!(attr)
-    default_theme!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -332,9 +369,9 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 - `rotations::Union{Real, Billboard, Quaternion} = Billboard(0f0)` sets the rotation of the marker. A `Billboard` rotation is always around the depth axis.
 - `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker.)
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Scatter, positions) do scene
     attr = Attributes(;
@@ -359,8 +396,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
         fxaa = false,
         cycle = [:color],
     )
-    default_theme!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -384,9 +421,9 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 
 $(Base.Docs.doc(shading_attributes!))
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(MeshScatter, positions) do scene
     attr = Attributes(;
@@ -401,8 +438,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
         cycle = [:color],
     )
     shading_attributes!(attr)
-    default_theme!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -431,9 +468,9 @@ Plots one or multiple texts passed via the `text` keyword.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
 - `word_wrap_with::Real = -1` specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Text, positions) do scene
     attr = Attributes(;
@@ -455,8 +492,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
         offset = (0.0, 0.0),
         word_wrap_width = -1,
     )
-    default_theme!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 """
@@ -487,9 +524,9 @@ Plots polygons, which are defined by
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 
-$(Base.Docs.doc(colormap_args!))
+$(Base.Docs.doc(colormap_attributes!))
 
-$(Base.Docs.doc(MakieCore.default_theme!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Poly) do scene
     attr = Attributes(;
@@ -504,8 +541,8 @@ $(Base.Docs.doc(MakieCore.default_theme!))
 
         cycle = [:color => :patchcolor],
     )
-    default_theme!(attr)
-    return colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 @recipe(Wireframe) do scene
@@ -542,8 +579,8 @@ end
         ssao = false
     )
 
-    default_theme!(attr)
-    colormap_args!(attr, theme(scene, :colormap))
+    generic_plot_attributes!(attr)
+    colormap_attributes!(attr, theme(scene, :colormap))
 
     attr[:fxaa] = automatic
     attr[:linewidth] = automatic

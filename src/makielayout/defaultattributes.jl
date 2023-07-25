@@ -34,7 +34,7 @@ function inherit(::Nothing, attr::NTuple{N, Symbol}, default_value::T) where {N,
     default_value
 end
 
-function default_attributes(::Type{LineAxis})
+function generic_plot_attributes(::Type{LineAxis})
     Attributes(
         endpoints = (Point2f(0, 0), Point2f(100, 0)),
         trimspine = false,
