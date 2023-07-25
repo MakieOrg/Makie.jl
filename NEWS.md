@@ -3,6 +3,7 @@
 ## master
 
 - Fixed some errors around dynamic changes of `ax.xscale` or `ax.yscale` [#3084](https://github.com/MakieOrg/Makie.jl/pull/3084)
+- Fixed automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
 
 ## v0.19.7
 
