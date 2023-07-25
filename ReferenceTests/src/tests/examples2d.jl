@@ -597,6 +597,15 @@ end
     fig
 end
 
+@reference_test "custom colorscale (heatmap)" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    scale = Makie.ReversibleScale(x -> log10(x + 2), x -> exp10(x) - 2, "10")
+    fig, ax, hm = heatmap(x, y, (x, y) -> x; axis = (; xscale = scale), colorscale = scale)
+    Colorbar(fig[1, 2], hm)
+    fig
+end
+
 @reference_test "colorscale (lines)" begin
     xs = 0:0.01:10
     ys = 2 .* (1 .+ sin.(xs))
