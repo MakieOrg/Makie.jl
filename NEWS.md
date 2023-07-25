@@ -2,6 +2,7 @@
 
 ## master
 
+- Allow arbitrary reversible scale functions through `Makie.ReversibleScale`.
 - Fix automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
 
 ## v0.19.7
