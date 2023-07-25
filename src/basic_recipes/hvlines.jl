@@ -64,7 +64,7 @@ function Makie.plot!(p::Union{HLines, VLines})
             if p isa HLines
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
-                val = _apply_y_transform(transf, x_mi)
+                val = _apply_y_transform(transf, val)
                 push!(points[], Point2f(x_mi, val))
                 push!(points[], Point2f(x_ma, val))
             elseif p isa VLines
@@ -82,8 +82,8 @@ function Makie.plot!(p::Union{HLines, VLines})
 
     line_attributes = copy(p.attributes)
     delete!.(line_attributes, (:ymin, :ymax, :yautolimits))
-    ls = linesegments!(p, line_attributes, points)
     # Drop transform_func because we handle it manually
-    ls.transformation.transform_func[] = identity
+    T = Transformation(p, transform_func = identity)
+    linesegments!(p, line_attributes, points, transformation = T)
     p
 end

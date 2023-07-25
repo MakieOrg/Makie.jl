@@ -73,9 +73,9 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     notify(p[1])
 
-    plt = poly!(p, rects; p.attributes...)
     # we handle transform_func manually
-    plt.transformation.transform_func[] = identity
+    T = Transformation(p, transform_func = identity)
+    poly!(p, rects; transformation = T, p.attributes...)
     p
 end
 
