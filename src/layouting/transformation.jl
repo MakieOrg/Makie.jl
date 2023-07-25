@@ -33,14 +33,12 @@ function Transformation(transformable::Transformable;
         return p * transformationmatrix(t, s, r)
     end
 
-    tf = Observable{Any}(parent_transform.transform_func[])
-    on(x -> tf[] = x, parent_transform.transform_func, update = true, priority = 100)
     trans = Transformation(
         translation_o,
         scale_o,
         rotation_o,
         model,
-        tf
+        copy(parent_transform.transform_func)
     )
 
     trans.parent[] = parent_transform
@@ -212,13 +210,13 @@ transform_func_obs(x) = transformation(x).transform_func
     apply_transform_and_model(model, transfrom_func, pos, output_type = Point3f)
 
 
-Applies the transform function and model matrix (i.e. transformations from 
+Applies the transform function and model matrix (i.e. transformations from
 `translate!`, `rotate!` and `scale!`) to the given input
 """
 function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
     return apply_transform_and_model(
-        plot.model[], transform_func(plot), pos, 
-        to_value(get(plot, :space, :data)), 
+        plot.model[], transform_func(plot), pos,
+        to_value(get(plot, :space, :data)),
         output_type
     )
 end
@@ -471,7 +469,7 @@ end
 function inverse_transform(trans::Polar)
     return Makie.PointTrans{2}() do point
         typeof(point)(
-            hypot(point[1], point[2]), 
+            hypot(point[1], point[2]),
             mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
         )
     end
