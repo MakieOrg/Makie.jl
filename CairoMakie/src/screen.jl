@@ -311,3 +311,6 @@ end
 is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
 is_vector_backend(surf::Cairo.CairoSurface) = is_vector_backend(get_render_type(surf))
 is_vector_backend(rt::RenderType) = rt in (PDF, EPS, SVG)
+
+# no need for resizing screen, since we need to redisplay anyways!
+Base.resize!(screen::Screen, w, h) = nothing
