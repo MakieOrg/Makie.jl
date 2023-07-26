@@ -41,7 +41,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
             attributes = filter(x-> haskey(plot, x), [:colormap, :colorrange, :highclip, :lowclip])
             error("Plot $(func) doesn't have all colormap attributes. Attributes needed: colormap, colorrange, highclip, lowclip. Found: $(attributes)")
         end
-        if to_value(plot.colorrange) isa Automatic || (plot.color[] isa Union{AbstractVector{<: Colorant}, Colorant})
+        if to_value(plot.colorrange) isa Automatic || (to_value(get(plot, :color, nothing)) isa Union{AbstractVector{<: Colorant}, Colorant})
             error("""
             Plot $(func) doesn't have a color attribute that uses a colormap to map to colors, so it cannot be used to create a colorbar.
             Please create the colorbar manually e.g. via `Colorbar(f[1, 2], colorrange=the_range, colormap=the_colormap)`.
