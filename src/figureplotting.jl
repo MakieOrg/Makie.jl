@@ -97,8 +97,14 @@ to_dict(dict::Dict) = dict
 to_dict(nt::NamedTuple) = Dict{Symbol,Any}(pairs(nt))
 to_dict(attr::Attributes) = attributes(attr)
 
+function extract_attributes(dict, key)
+    attributes = pop!(dict, key, Dict{Symbol,Any}())
+    _validate_nt_like_keyword(attributes, key)
+    return to_dict(attributes)
+end
+
 function create_axis_from_kw(PlotType, figlike, attributes::Dict, args...)
-    axis_kw = to_dict(pop!(attributes, :axis, Dict{Symbol,Any}()))
+    axis_kw = extract_attributes(attributes, :axis)
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
     else
@@ -109,7 +115,7 @@ function create_axis_from_kw(PlotType, figlike, attributes::Dict, args...)
 end
 
 function create_figurelike(PlotType, attributes::Dict, args...)
-    figure_kw = pop!(attributes, :figure, Dict{Symbol,Any}())
+    figure_kw = extract_attributes(attributes, :figure)
     figure = Figure(; figure_kw...)
     ax = create_axis_from_kw(PlotType, figure, attributes, args...)
     figure[1, 1] = ax
@@ -119,21 +125,26 @@ end
 function create_figurelike!(@nospecialize(PlotType), attributes::Dict, @nospecialize(args...))
     figure = current_figure()
     isnothing(figure) && error("There is no current figure to plot into.")
+    _disallow_keyword(:figure, attributes)
     ax = current_axis(figure)
     isnothing(ax) && error("There is no current axis to plot into.")
+    _disallow_keyword(:axis, attributes)
     return ax, attributes, args
 end
 
 function create_figurelike!(PlotType, attributes::Dict, gp::GridPosition, args...)
+    _disallow_keyword(:figure, attributes)
     c = contents(gp; exact=true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
+    _disallow_keyword(:axis, attributes)
     return ax, attributes, args
 end
 
 function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...)
+    _disallow_keyword(:figure, attributes)
     f = get_top_parent(gp)
     c = contents(gp; exact=true)
     if !isempty(c)
@@ -144,13 +155,13 @@ function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...
         If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
         """)
     end
-
     ax = create_axis_from_kw(PlotType, f, attributes, args...)
     gp[] = ax
     return ax, attributes, args
 end
 
 function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, args...)
+    _disallow_keyword(:figure, attributes)
     layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
     c = contents(gp; exact=true)
@@ -162,6 +173,7 @@ function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, ar
 end
 
 function create_figurelike(PlotType, attributes::Dict, gsp::GridSubposition, args...)
+    _disallow_keyword(:figure, attributes)
     layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
     c = contents(gsp; exact=true)
     if !isempty(c)
@@ -205,6 +217,7 @@ function update_state_before_display!(ax::AbstractAxis)
 end
 
 function create_figurelike!(PlotType, attributes::Dict, ax::AbstractAxis, args...)
+    _disallow_keyword(:axis, attributes)
     return ax, attributes, args
 end
 
