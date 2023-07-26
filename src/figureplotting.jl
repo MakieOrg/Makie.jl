@@ -95,6 +95,7 @@ end
 
 to_dict(dict::Dict) = dict
 to_dict(nt::NamedTuple) = Dict{Symbol,Any}(pairs(nt))
+to_dict(attr::Attributes) = attributes(attr)
 
 function create_axis_from_kw(PlotType, figlike, attributes::Dict, args...)
     axis_kw = to_dict(pop!(attributes, :axis, Dict{Symbol,Any}()))

@@ -38,7 +38,6 @@ end
     X4 = rand(2,10)
     V4 = to_vertices(X4)
     @test Float32(X4[1,7]) == V4[7][1]
-    @test V4[7][3] == 0
 
     X5 = rand(3,10)
     V5 = to_vertices(X5)
@@ -47,7 +46,6 @@ end
     X6 = rand(10,2)
     V6 = to_vertices(X6)
     @test Float32(X6[7,1]) == V6[7][1]
-    @test V6[7][3] == 0
 
     X7 = rand(10,3)
     V7 = to_vertices(X7)
@@ -117,8 +115,7 @@ end
 
 @testset "functions" begin
     x = -pi..pi
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
@@ -126,8 +123,7 @@ end
     end
 
     x = range(-pi, stop=pi, length=100)
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy

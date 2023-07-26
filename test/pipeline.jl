@@ -35,26 +35,76 @@ end
     fig
 end
 
-begin
-    f = Figure()
-    x = range(0, 10, length=100)
-    scatter!(f[1, 1], x, sin)
-    scatter!(f[1, 2][1, 1], x, sin)
-    scatter!(f[1, 2][1, 2], x, sin)
 
-    meshscatter!(f[2, 1], x, sin; axis=(type=Axis3,))
-    meshscatter!(f[2, 2][1, 1], x, sin; axis=(type=Axis3,))
-    meshscatter!(f[2, 2][1, 2], x, sin; axis=(type=Axis3,))
+@testset "Figure / Axis / Gridposition creation test" begin
+    @testset "proper errors for wrongly used (non) mutating plot functions" begin
+        f = Figure()
+        x = range(0, 10, length=100)
+        @test_throws ErrorException scatter!(f[1, 1], x, sin)
+        @test_throws ErrorException scatter!(f[1, 2][1, 1], x, sin)
+        @test_throws ErrorException scatter!(f[1, 2][1, 2], x, sin)
 
-    meshscatter!(f[3, 1], rand(Point3f, 10); axis=(type=LScene,))
-    meshscatter!(f[3, 2][1, 1], rand(Point3f, 10); axis=(type=LScene,))
-    meshscatter!(f[3, 2][1, 2], rand(Point3f, 10); axis=(type=LScene,))
+        @test_throws ErrorException meshscatter!(f[2, 1], x, sin; axis=(type=Axis3,))
+        @test_throws ErrorException meshscatter!(f[2, 2][1, 1], x, sin; axis=(type=Axis3,))
+        @test_throws ErrorException meshscatter!(f[2, 2][1, 2], x, sin; axis=(type=Axis3,))
 
-    sub = f[4, :]
-    f = Figure()
-    scatter(Axis(f[1, 1]), x, sin)
-    meshscatter(Axis3(f[1, 1]), x, sin)
-    meshscatter(LScene(f[1, 1]), rand(Point3f, 10))
+        @test_throws ErrorException meshscatter!(f[3, 1], rand(Point3f, 10); axis=(type=LScene,))
+        @test_throws ErrorException meshscatter!(f[3, 2][1, 1], rand(Point3f, 10); axis=(type=LScene,))
+        @test_throws ErrorException meshscatter!(f[3, 2][1, 2], rand(Point3f, 10); axis=(type=LScene,))
 
-    f
+        sub = f[4, :]
+        f = Figure()
+        @test_throws ErrorException scatter(Axis(f[1, 1]), x, sin)
+        @test_throws ErrorException meshscatter(Axis3(f[1, 1]), x, sin)
+        @test_throws ErrorException meshscatter(LScene(f[1, 1]), rand(Point3f, 10))
+
+        f
+    end
+
+    @testset "creating plot object for different (non) mutating plotting functions into figure" begin
+        f = Figure()
+        x = range(0, 10; length=100)
+        ax, pl = scatter(f[1, 1], x, sin)
+        @test ax isa Axis
+        @test pl isa AbstractPlot
+
+        ax, pl = scatter(f[1, 2][1, 1], x, sin)
+        @test ax isa Axis
+        @test pl isa AbstractPlot
+
+        ax, pl = scatter(f[1, 2][1, 2], x, sin)
+        @test ax isa Axis
+        @test pl isa AbstractPlot
+
+        ax, pl = meshscatter(f[2, 1], x, sin; axis=(type=Axis3,))
+        @test ax isa Axis3
+        @test pl isa AbstractPlot
+
+        ax, pl = meshscatter(f[2, 2][1, 1], x, sin; axis=(type=Axis3,))
+        @test ax isa Axis3
+        @test pl isa AbstractPlot
+        ax, pl = meshscatter(f[2, 2][1, 2], x, sin; axis=(type=Axis3,))
+        @test ax isa Axis3
+        @test pl isa AbstractPlot
+
+        ax, pl = meshscatter(f[3, 1], rand(Point3f, 10); axis=(type=LScene,))
+        @test ax isa LScene
+        @test pl isa AbstractPlot
+        ax, pl = meshscatter(f[3, 2][1, 1], rand(Point3f, 10); axis=(type=LScene,))
+        @test ax isa LScene
+        @test pl isa AbstractPlot
+        ax, pl = meshscatter(f[3, 2][1, 2], rand(Point3f, 10); axis=(type=LScene,))
+        @test ax isa LScene
+        @test pl isa AbstractPlot
+
+        sub = f[4, :]
+
+        pl = scatter!(Axis(sub[1, 1]), x, sin)
+        @test pl isa AbstractPlot
+        pl = meshscatter!(Axis3(sub[1, 2]), x, sin)
+        @test pl isa AbstractPlot
+        pl = meshscatter!(LScene(sub[1, 3]), rand(Point3f, 10))
+        @test pl isa AbstractPlot
+
+    end
 end
