@@ -73,9 +73,12 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     notify(p[1])
 
+    poly_attributes = copy(p.attributes)
+    delete!.(poly_attributes, (:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits))
+
     # we handle transform_func manually
     T = Transformation(p, transform_func = identity)
-    poly!(p, rects; transformation = T, p.attributes...)
+    poly!(p, poly_attributes, rects; transformation = T)
     p
 end
 
