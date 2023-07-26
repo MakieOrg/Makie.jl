@@ -683,28 +683,13 @@ function get_cycler_index!(c::Cycler, P::Type)
     end
 end
 
-function get_cycle_for_plottype(allattrs, P)::Cycle
-    psym = MakieCore.plotsym(P)
-
-    plottheme = Makie.default_theme(nothing, P)
-
-    cycle_raw = if haskey(allattrs, :cycle)
-        allattrs.cycle[]
-    else
-        global_theme_cycle = theme(psym)
-        if !isnothing(global_theme_cycle) && haskey(global_theme_cycle, :cycle)
-            global_theme_cycle.cycle[]
-        else
-            haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
-        end
-    end
-
+function get_cycle_for_plottype(cycle_raw)::Cycle
     if isnothing(cycle_raw)
-        Cycle([])
+        return Cycle([])
     elseif cycle_raw isa Cycle
-        cycle_raw
+        return cycle_raw
     else
-        Cycle(cycle_raw)
+        return Cycle(cycle_raw)
     end
 end
 
@@ -712,7 +697,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler
     # if any of the cycled attributes were specified manually
-    no_cycle_attribute_passed = !any(keys(allattrs)) do key
+    no_cycle_attribute_passed = any(keys(allattrs)) do key
         any(syms -> key in syms, attrsyms(cycle))
     end
 
@@ -726,6 +711,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     # if there are any manually cycled attributes, we don't do the normal
     # cycling but only look up exactly the passed attributes
     cycle_attrsyms = attrsyms(cycle)
+
     if !isempty(manually_cycled_attributes)
         # an attribute given as Cycled needs to be present in the cycler,
         # otherwise there's no cycle in which to look up a value

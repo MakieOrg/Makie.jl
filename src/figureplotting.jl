@@ -228,8 +228,7 @@ end
 
 function plot!(ax::AbstractAxis, plot::P) where {P <: AbstractPlot}
     if hasproperty(ax, :cycler) && hasproperty(ax, :palette)
-        cycle = get_cycle_for_plottype(plot, P)
-        add_cycle_attributes!(attributes(plot), P, cycle, ax.cycler, ax.palette)
+        plot.axis_cycler = (ax.cycler, ax.palette)
     end
 
     plot!(ax.scene, plot)
