@@ -677,9 +677,9 @@ attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
 
 function get_cycler_index!(c::Cycler, P::Type)
     if !haskey(c.counters, P)
-        c.counters[P] = 1
+        return c.counters[P] = 1
     else
-        c.counters[P] += 1
+        return c.counters[P] += 1
     end
 end
 
@@ -693,19 +693,33 @@ function get_cycle_for_plottype(cycle_raw)::Cycle
     end
 end
 
-function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Attributes)
+
+function to_color(cycle, attribute_name, cycler, palette)
+    if cycle.covary
+        palettes[current_symbol][mod1(index, length(palettes[isym]))]
+    else
+        cis = CartesianIndices(Tuple(length(p) for p in palettes))
+        n = length(cis)
+        k = mod1(index, n)
+        idx = Tuple(cis[k])
+        palettes[isym][idx[isym]]
+    end
+end
+
+function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler, palette::Attributes)
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler
     # if any of the cycled attributes were specified manually
-    no_cycle_attribute_passed = any(keys(allattrs)) do key
+    user_attributes = plot.kw
+    no_cycle_attribute_passed = !any(keys(user_attributes)) do key
         any(syms -> key in syms, attrsyms(cycle))
     end
 
     # check if any attributes were passed as `Cycled` entries
     # because if there were any, these are looked up directly
     # in the cycler without advancing the counter etc.
-    manually_cycled_attributes = filter(keys(allattrs)) do key
-        to_value(allattrs[key]) isa Cycled
+    manually_cycled_attributes = filter(keys(user_attributes)) do key
+        return to_value(user_attributes[key]) isa Cycled
     end
 
     # if there are any manually cycled attributes, we don't do the normal
@@ -725,10 +739,10 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 
         for sym in manually_cycled_attributes
             isym = findfirst(syms -> sym in syms, attrsyms(cycle))
-            index = allattrs[sym][].i
+            index = plot[sym][].i
             # replace the Cycled values with values from the correct palettes
             # at the index inside the Cycled object
-            allattrs[sym] = if cycle.covary
+            plot[sym] = if cycle.covary
                 palettes[isym][mod1(index, length(palettes[isym]))]
             else
                 cis = CartesianIndices(Tuple(length(p) for p in palettes))
@@ -740,13 +754,13 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
         end
 
     elseif no_cycle_attribute_passed
-        index = get_cycler_index!(cycler, P)
+        index = get_cycler_index!(cycler, typeof(plot))
 
         palettes = [palette[sym][] for sym in palettesyms(cycle)]
 
         for (isym, syms) in enumerate(attrsyms(cycle))
             for sym in syms
-                allattrs[sym] = if cycle.covary
+                plot[sym] = if cycle.covary
                     palettes[isym][mod1(index, length(palettes[isym]))]
                 else
                     cis = CartesianIndices(Tuple(length(p) for p in palettes))

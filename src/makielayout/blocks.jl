@@ -281,10 +281,7 @@ end
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox)
 
     # first sort out all user kwargs that correspond to block attributes
-
-    if haskey(kwdict, :textsize)
-        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
-    end
+    check_textsize_deprecation(kwdict)
 
     attribute_kwargs = Dict{Symbol, Any}()
     for (key, value) in kwdict
