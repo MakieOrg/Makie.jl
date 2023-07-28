@@ -1109,3 +1109,142 @@ end
     # Display
     fig
 end
+
+@reference_test "Basic triplot" begin 
+    pts = RNG.rand(2, 500)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri)
+    fig 
+end
+
+@reference_test "Triplot with points, ghost edges, and convex hull" begin
+    pts = RNG.rand(2, 50)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri,
+        show_points=true,
+        show_ghost_edges=true,
+        show_convex_hull=true)
+    xlims!(ax,-0.2,1.2)
+    ylims!(ax,-0.2,1.2)
+    fig
+end
+
+@reference_test "Triplot with further customisation and recompute_center" begin
+    pts = RNG.rand(2, 10)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    reset_representative_points!(tri)
+    fig, ax, sc = triplot(tri, 
+        show_points=true,    
+        show_convex_hull=true,
+        markersize=14,
+        strokewidth=2,
+        triangle_color = (:blue,0.1),
+        convex_hull_color=:magenta,
+        convex_hull_linewidth=3,
+        show_ghost_edges=true,
+        recompute_centers=true)
+    xlims!(ax,-0.2,1.2)
+    ylims!(ax,-0.2,1.2)
+    fig
+end
+
+@reference_test "Triplot of a constrained triangulation with holes" begin
+    curve_1 = [[
+        (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
+        (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
+        (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
+        (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
+        (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
+        (-4.0, 0.0), (0.0, 0.0),
+    ]]
+    curve_2 = [[
+        (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
+        (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
+        (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
+    ]]
+    curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
+    curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
+    curves = [curve_1, curve_2, curve_3, curve_4]
+    points = [
+        (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
+        (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
+        (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
+        (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
+        (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
+        (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
+        (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
+        (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
+        (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
+        (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
+        (7.0, 7.8), (7.0, 7.4)]
+    boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+    tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
+    refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri, 
+        show_points=true, 
+        show_constrained_edges=true, 
+        constrained_edge_linewidth=2, 
+        strokewidth=0.2,
+        markersize=15,
+        point_color=:blue,
+        show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
+        marker='x')
+    xlims!(ax, -5, 20)
+    ylims!(ax, -5, 35)
+    fig
+end
+
+#@reference_test "Triplot with an Observable tri" begin
+#    tri = triangulate([rand(2) for _ in 1:50])
+#    _tri = Observable(tri)
+#    fig, ax, sc = triplot(_tri)
+#    map(_tri) do tri 
+#        refine!(tri, max_area=1e-4get_total_area(tri))
+#    end
+#end
+
+@reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
+    points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
+    tri = triangulate(points; boundary_nodes = [1,2,3,4,1])
+    refine!(tri; max_area=1e-3, min_angle = 29.871)
+    vorn = voronoi(tri)
+    smooth_vorn = centroidal_smooth(vorn; maxiters = 2500)
+    cmap = cgrad(:matter)
+    fig, ax, sc = voronoiplot(smooth_vorn, markersize=4)
+    fig 
+end 
+
+@reference_test "Voronoiplot for a tessellation with unbounded polygons and hiding generators" begin
+    pts = 25randn(2, 500)
+    tri = triangulate(pts)
+    vorn = voronoi(tri)
+    fig, ax, sc = voronoiplot(vorn, show_generators=false, colormap=:matter)
+    xlims!(ax, -120, 120)
+    ylims!(ax, -120, 120)
+    fig 
+end
+
+@reference_test "Voronoiplot for a tessellation with further customisation" begin
+    pts = 25randn(2, 500)
+    tri = triangulate(pts)
+    vorn = voronoi(tri, false)
+    fig, ax, sc = voronoiplot(vorn, 
+        show_generators=true, 
+        colormap=:jet, 
+        strokecolor=:red, 
+        strokewidth=3,
+        marker = 'x',
+        point_color=:white, 
+        unbounded_edge_extension_factor=5.0)
+    xlims!(ax, -120, 120)
+    ylims!(ax, -120, 120)
+    fig 
+end
+
+@reference_test "Voronoiplot with a single patch color for a clipped tessellation" begin
+    pts = 25randn(2, 10)
+    tri = triangulate(pts)
+    vorn = voronoi(tri, true)
+    fig, ax, sc = voronoiplot(vorn, polygon_color = (:blue,0.2))
+    fig
+end
