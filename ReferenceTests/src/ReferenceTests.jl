@@ -27,7 +27,15 @@ using Colors
 using LaTeXStrings
 using GeometryBasics
 using DelimitedFiles
-using DelaunayTriangulation
+import DelaunayTriangulation: triangulate,
+                              convert_boundary_points_to_indices,
+                              each_point,
+                              reset_representative_points!,
+                              refine!,
+                              get_total_area,
+                              voronoi,
+                              get_polygon_colors, 
+                              centroidal_smooth
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
