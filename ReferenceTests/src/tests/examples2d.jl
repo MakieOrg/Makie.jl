@@ -1205,18 +1205,18 @@ end
 
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
     points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
-    tri = triangulate(points; boundary_nodes = [1,2,3,4,1])
+    tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
     refine!(tri; max_area=1e-3, min_angle = 29.871)
     vorn = voronoi(tri)
-    smooth_vorn = centroidal_smooth(vorn; maxiters = 2500)
+    smooth_vorn = centroidal_smooth(vorn; maxiters = 2500, rng = RNG.STABLE_RNG)
     cmap = cgrad(:matter)
     fig, ax, sc = voronoiplot(smooth_vorn, markersize=4)
     fig 
 end 
 
 @reference_test "Voronoiplot for a tessellation with unbounded polygons and hiding generators" begin
-    pts = 25randn(2, 500)
-    tri = triangulate(pts)
+    pts = 25RNG.randn(2, 500)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri)
     fig, ax, sc = voronoiplot(vorn, show_generators=false, colormap=:matter)
     xlims!(ax, -120, 120)
@@ -1225,8 +1225,8 @@ end
 end
 
 @reference_test "Voronoiplot for a tessellation with further customisation" begin
-    pts = 25randn(2, 500)
-    tri = triangulate(pts)
+    pts = 25RNG.randn(2, 500)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, false)
     fig, ax, sc = voronoiplot(vorn, 
         show_generators=true, 
@@ -1242,8 +1242,8 @@ end
 end
 
 @reference_test "Voronoiplot with a single patch color for a clipped tessellation" begin
-    pts = 25randn(2, 10)
-    tri = triangulate(pts)
+    pts = 25RNG.randn(2, 10)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, true)
     fig, ax, sc = voronoiplot(vorn, polygon_color = (:blue,0.2))
     fig
