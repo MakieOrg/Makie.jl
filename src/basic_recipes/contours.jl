@@ -191,6 +191,16 @@ function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels,
     return contourlines(T, contours, level_colors, labels)
 end
 
+function has_changed(old_args, new_args)
+    length(old_args) === length(new_args) || return true
+    for (old, new) in zip(old_args, new_args)
+        if old != new
+            return true
+        end
+    end
+    return false
+end
+
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     zrange = lift(nan_extrema, plot, z)
@@ -209,13 +219,19 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorscale, colorrange, alpha)
     level_colors = lift(color_per_level, plot, args..., levels)
-
-    points, colors, lev_pos_col = Observable.(contourlines(x[], y[], z[], levels[], level_colors[], labels[], T); ignore_equal_values=true)
-
-    onany(plot, x, y, z, levels, level_colors, labels) do args...
-        _points, _colors, _lev_pos_col = contourlines(args..., T)
-        points[] = _points; colors[] = _colors; lev_pos_col[] = _lev_pos_col
-        return
+    args = (x, y, z, levels, level_colors, labels)
+    arg_values = map(to_value, args)
+    old_values = map(copy, arg_values)
+    points, colors, lev_pos_col = Observable.(contourlines(arg_values..., T); ignore_equal_values=true)
+    onany(plot, args...) do args...
+        # contourlines is expensive enough, that it's worth to copy & check against old values
+        # We need to copy, since the values may get mutated in place
+        if has_changed(old_values, args)
+            old_values = map(copy, args)
+            _points, _colors, _lev_pos_col = contourlines(args..., T)
+            points[] = _points; colors[] = _colors; lev_pos_col[] = _lev_pos_col
+            return
+        end
     end
 
     P = T <: Contour ? Point2f : Point3f
