@@ -183,6 +183,14 @@ function color_per_level(::Nothing, colormap, colorscale, colorrange, a, levels)
     end
 end
 
+
+function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
+    # Compute contours
+    xv, yv = to_vector(x, size(z, 1), ET), to_vector(y, size(z, 2), ET)
+    contours = Contours.contours(xv, yv, z, convert(Vector{ET}, levels))
+    return contourlines(T, contours, level_colors, labels)
+end
+
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     zrange = lift(nan_extrema, plot, z)
@@ -201,12 +209,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorscale, colorrange, alpha)
     level_colors = lift(color_per_level, plot, args..., levels)
-    cont_lines = lift(plot, x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
-        t = eltype(z)
-        # Compute contours
-        xv, yv = to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t)
-        contours = Contours.contours(xv, yv, z,  convert(Vector{t}, levels))
-        contourlines(T, contours, level_colors, labels)
+
+    points, colors, lev_pos_col = Observable.(contourlines(x[], y[], z[], levels[], level_colors[], labels[], T); ignore_equal_values=true)
+
+    onany(plot, x, y, z, levels, level_colors, labels) do args...
+        _points, _colors, _lev_pos_col = contourlines(args..., T)
+        points[] = _points; colors[] = _colors; lev_pos_col[] = _lev_pos_col
+        return
     end
 
     P = T <: Contour ? Point2f : Point3f
@@ -224,8 +233,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         font = labelfont,
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, labelformatter, cont_lines) do _, _,
-            labels, labelcolor, labelformatter, (_, _, lev_pos_col)
+    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, labelformatter,
+         lev_pos_col) do _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
@@ -246,19 +255,18 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             push!(pos, p1)
         end
         notify(texts.text)
-        nothing
+        return
     end
 
-    bboxes = lift(labels, texts.text) do labels, _
+    bboxes = lift(labels, texts.text; ignore_equal_values=true) do labels, _
         labels || return
-        broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
+        return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
             Rect2f(boundingbox(gc, project(scene.camera, space, :pixel, pt), to_rotation(rot)))
         end
     end
 
-    masked_lines = lift(labels, bboxes) do labels, bboxes
-        segments = cont_lines.val[1]
+    masked_lines = lift(labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
         n = 1
         bb = bboxes[n]
@@ -287,7 +295,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     lines!(
         plot, masked_lines;
-        color = lift(x -> x[2], plot, cont_lines),
+        color = colors,
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
