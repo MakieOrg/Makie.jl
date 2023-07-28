@@ -10,7 +10,7 @@ using ReferenceTests.LaTeXStrings
 using ReferenceTests.DelimitedFiles
 using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
-using DelaunayTriangulation: DelaunayTriangulation,
+using ReferenceTests.DelaunayTriangulation: DelaunayTriangulation,
                              triangulate,
                              convert_boundary_points_to_indices,
                              each_point,
