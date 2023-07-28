@@ -26,7 +26,7 @@ Plots the triangles from the provided `Triangulation` from DelaunayTriangulation
 - `ghost_edge_color = :blue` sets the color of the ghost edges.
 - `ghost_edge_linestyle = :solid` sets the linestyle of the ghost edges.
 - `ghost_edge_linewidth = 1` sets the width of the ghost edges.
-- `ghost_edge_extension_factor = 10.0` sets the extension factor for the ghost edges.
+- `ghost_edge_extension_factor = 2.0` sets the extension factor for the rectangle that the exterior ghost edges are extended onto. The rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the extension factor, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the triangulation.
 
 - `constrained_edge_color = :magenta` sets the color of the constrained edges.
 - `constrained_edge_linestyle = :solid` sets the linestyle of the constrained edges.
@@ -60,7 +60,7 @@ Plots the triangles from the provided `Triangulation` from DelaunayTriangulation
                       ghost_edge_color=:blue,
                       ghost_edge_linestyle=theme(scene, :linestyle),
                       ghost_edge_linewidth=theme(scene, :linewidth),
-                      ghost_edge_extension_factor=10.0,
+                      ghost_edge_extension_factor=2.0,
 
                       # Constrained edge settings
                       constrained_edge_color=:magenta,
@@ -100,8 +100,20 @@ function get_triangulation_triangles!(triangles, tri)
 end
 
 function get_triangulation_ghost_edges!(ghost_edges, extent, tri)
+    @assert extent > 0.0 "The ghost_edge_extension_factor must be positive."
     empty!(ghost_edges)
     sizehint!(ghost_edges, 2DelTri.num_ghost_edges(tri))
+    if DelTri.has_boundary_nodes(tri)
+        xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri), DelTri.get_boundary_nodes(tri))
+    else
+        xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
+                                                       DelTri.get_convex_hull_indices(tri))
+    end
+    Δx = xmax - xmin
+    Δy = ymax - ymin
+    a, b, c, d = (xmin - extent * Δx, xmax + extent * Δx, ymin - extent * Δy, ymax + extent * Δy)
+    bbox = [(a, c), (b, c), (b, d), (a, d)]
+    bbox_order = [1, 2, 3, 4, 1]
     for e in DelTri.each_ghost_edge(tri)
         u, v = DelTri.edge_indices(e)
         if DelTri.is_boundary_index(v)
@@ -115,8 +127,8 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri)
         if DelTri.is_interior_curve(curve_index)
             ex, ey = rx, ry
         else
-            ex = rx * (1 - extent) + extent * px
-            ey = ry * (1 - extent) + extent * py
+            e = DelTri.intersection_of_ray_with_boundary(bbox, bbox_order, representative_coordinates, p)
+            ex, ey = DelTri.getxy(e)
         end
         push!(ghost_edges, Point2f(px, py), Point2f(ex, ey))
     end

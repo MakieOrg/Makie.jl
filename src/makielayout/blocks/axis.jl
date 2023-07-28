@@ -816,6 +816,12 @@ function needs_tight_limits(c::Contourf)
     # otherwise here it could be in an arbitrary shape
     return c.levels[] isa Int
 end
+function needs_tight_limits(p::Triplot)
+    return p.show_ghost_edges[]
+end
+function needs_tight_limits(p::Voronoiplot)
+    return !isempty(DelTri.get_unbounded_polygons(p[1][]))
+end
 
 function expandbboxwithfractionalmargins(bb, margins)
     newwidths = bb.widths .* (1f0 .+ margins)
