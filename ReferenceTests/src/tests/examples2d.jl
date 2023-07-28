@@ -1233,6 +1233,7 @@ end
         colormap=:jet, 
         strokecolor=:red, 
         strokewidth=3,
+        markersize=9,
         marker = 'x',
         point_color=:white, 
         unbounded_edge_extension_factor=5.0)

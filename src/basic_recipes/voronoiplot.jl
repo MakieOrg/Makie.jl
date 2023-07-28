@@ -7,7 +7,7 @@ Plots a Voronoi tessellation from the provided `VoronoiTessellation` from Delaun
 
 - `show_generators = true` determines whether to plot the individual generators.
 
-- `markersize = 12` sets the size of the points.
+- `markersize = 4` sets the size of the points.
 - `marker = :circle` sets the shape of the points.
 - `point_color = :black` sets the color of the points.
 
@@ -29,7 +29,7 @@ Plots a Voronoi tessellation from the provided `VoronoiTessellation` from Delaun
                       show_generators=true,
 
                       # Point settings 
-                      markersize=sc.markersize,
+                      markersize=4,
                       marker=sc.marker,
                       point_color=sc.color,
 
