@@ -440,7 +440,7 @@ function Base.empty!(scene::Scene)
     empty!(scene.children)
     empty!(scene.plots)
     empty!(scene.theme)
-    merge!(scene.theme, CURRENT_DEFAULT_THEME)
+    merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
 
