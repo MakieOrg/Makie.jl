@@ -373,6 +373,11 @@ end
 Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
 function Base.resize!(scene::Scene, rect::Rect2)
     pixelarea(scene)[] = rect
+    if isroot(scene)
+        for screen in scene.current_screens
+            resize!(screen, widths(rect)...)
+        end
+    end
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
