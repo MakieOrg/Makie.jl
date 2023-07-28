@@ -31,6 +31,7 @@ Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pai
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
 attributes(x::Attributes) = getfield(x, :attributes)
+attributes(x::AbstractPlot) = getfield(x, :attributes)
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
