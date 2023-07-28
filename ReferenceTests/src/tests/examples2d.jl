@@ -732,7 +732,7 @@ end
     inner = [n:-1:1; n] # clockwise inner
     outer = [(n+1):(2n); n+1] # counter-clockwise outer
     boundary_nodes = [[outer], [inner]]
-    tri = DelaunayTriangulation.triangulate([x'; y'], boundary_nodes = boundary_nodes)
+    tri = triangulate([x'; y'], boundary_nodes = boundary_nodes)
     f, ax, _ = tricontourf(tri, z)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
     f
