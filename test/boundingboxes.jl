@@ -10,8 +10,8 @@
 
     fig, ax, p = surface([x*y for x in 1:10, y in 1:10])
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(0.0, 0.0, 1.0)
-    @test bb.widths ≈ Vec3f(10.0, 10.0, 99.0)
+    @test bb.origin ≈ Point3f(1.0, 1.0, 1.0)
+    @test bb.widths ≈ Vec3f(9.0, 9.0, 99.0)
 
     fig, ax, p = meshscatter([Point3f(x, y, z) for x in 1:5 for y in 1:5 for z in 1:5])
     bb = boundingbox(p)
@@ -42,7 +42,7 @@
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(0.5, 0.5, 0)
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
-    
+
     fig, ax, p = image(rand(10, 10))
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(0)

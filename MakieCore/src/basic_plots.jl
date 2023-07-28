@@ -218,7 +218,7 @@ end
 Plots a surface, where `(x, y)`  define a grid whose heights are the entries in `z`.
 `x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
 
-`Surface` has the conversion trait `ContinuousSurface <: SurfaceLike`.
+`Surface` has the conversion trait `VertexBasedGrid <: GridBased`.
 
 ## Attributes
 

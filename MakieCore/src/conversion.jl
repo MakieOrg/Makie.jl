@@ -37,13 +37,26 @@ struct PointBased <: ConversionTrait end
 conversion_trait(::Type{<: XYBased}) = PointBased()
 conversion_trait(::Type{<: Text}) = PointBased()
 
-abstract type SurfaceLike <: ConversionTrait end
+abstract type GridBased <: ConversionTrait end
 
-struct ContinuousSurface <: SurfaceLike end
-conversion_trait(::Type{<: Union{Surface, Image}}) = ContinuousSurface()
+struct VertexBasedGrid <: GridBased end
+conversion_trait(::Type{<: Surface}) = VertexBasedGrid()
+# [Point3f(xs[i], ys[j], zs[i, j]) for i in axes(zs, 1), j in axes(zs, 2)]
 
-struct DiscreteSurface <: SurfaceLike end
-conversion_trait(::Type{<: Heatmap}) = DiscreteSurface()
+struct CellBasedGrid <: GridBased end
+conversion_trait(::Type{<: Heatmap}) = CellBasedGrid()
+# [Rect2f(xs[i], ys[j], xs[i+1], ys[j+1]) for i in axes(zs, 1), j in axes(zs, 2)]
+
+struct ImageLike end
+conversion_trait(::Type{<: Image}) = ImageLike()
+# Rect2f(xmin, ymin, xmax, ymax)
+
+# Deprecations
+function ContinuousSurface()
+    error("ContinuousSurface has been deprecated. Use `ImageLike()` or `VertexBasedGrid()`")
+end
+
+@deprecate DiscreteSurface CellLike()
 
 struct VolumeLike <: ConversionTrait end
 conversion_trait(::Type{<: Volume}) = VolumeLike()
