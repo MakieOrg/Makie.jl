@@ -3,6 +3,7 @@
 ## master
 
 - Fix automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
+- Add the `triplot` and `voronoiplot` recipes from DelaunayTriangulation.jl [#3102](https://github.com/MakieOrg/Makie.jl/pull/3102).
 
 ## v0.19.7
 
