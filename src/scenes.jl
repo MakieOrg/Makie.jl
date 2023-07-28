@@ -150,7 +150,7 @@ mutable struct Scene <: AbstractScene
             lights,
             Observables.ObserverFunction[]
         )
-        finalizer(empty!, scene)
+        finalizer(free, scene)
         return scene
     end
 end
@@ -261,7 +261,7 @@ function Scene(;
     camera isa Function && camera(scene)
 
     if wasnothing
-        on(scene, events.window_area, priority = typemax(Int)) do w_area
+        on(events.window_area, priority = typemax(Int)) do w_area
             if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
                 px_area[] = w_area
             end
@@ -331,13 +331,18 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        map!(identity, child, child_px_area, parent.px_area)
-    elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
-        a = Rect2i(px_area)
-        on(child, pixelarea(parent)) do p
-            # make coordinates relative to parent
-            return Rect2i(minimum(p) .+ minimum(a), widths(a))
-        end
+        map!(identity, child_px_area, parent.px_area)
+    elseif !(px_area isa Observable)
+        # this can't have been working before, since the `on` didn't update anything
+        #=
+         old code instead of error!
+         a = Rect2i(px_area)
+         on(child, pixelarea(parent)) do p
+             # make coordinates relative to parent
+             return Rect2i(minimum(p) .+ minimum(a), widths(a)) # doesn't do anything!!
+         end
+        =#
+        error("Not implemented")
     end
     push!(parent.children, child)
     child.parent = parent
@@ -421,32 +426,40 @@ function delete_scene!(scene::Scene)
     return nothing
 end
 
-function Base.empty!(scene::Scene)
+function free(scene::Scene)
+    empty!(scene; free=true)
+    for field in [:backgroundcolor, :px_area, :visible]
+        Observables.clear(getfield(scene, field))
+    end
+    for screen in copy(scene.current_screens)
+        delete!(screen, scene)
+    end
+    empty!(scene.current_screens)
+    scene.parent = nothing
+    return
+end
+
+function Base.empty!(scene::Scene; free=false)
     foreach(empty!, copy(scene.children))
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
     end
-    for screen in copy(scene.current_screens)
-        delete!(screen, scene)
-    end
+
     # clear all child scenes
     if !isnothing(scene.parent)
         filter!(x-> x !== scene, scene.parent.children)
     end
-    scene.parent = nothing
 
-    empty!(scene.current_screens)
     empty!(scene.children)
     empty!(scene.plots)
     empty!(scene.theme)
-    merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+    # conditional, since in free we dont want this!
+    free || merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
 
-    for field in [:backgroundcolor, :px_area, :visible]
-        Observables.clear(getfield(scene, field))
-    end
     for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
         Observables.clear(getfield(scene.transformation, fieldname))
     end
