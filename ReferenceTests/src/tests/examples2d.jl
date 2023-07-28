@@ -1197,7 +1197,7 @@ end
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
     points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
     tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
-    refine!(tri; max_area=1e-3, min_angle = 29.871)
+    refine!(tri; max_area=1e-3, min_angle = 29.871, rng = RNG.STABLE_RNG)
     vorn = voronoi(tri)
     smooth_vorn = centroidal_smooth(vorn; maxiters = 2500, rng = RNG.STABLE_RNG)
     cmap = cgrad(:matter)
