@@ -1194,15 +1194,6 @@ end
     fig
 end
 
-#@reference_test "Triplot with an Observable tri" begin
-#    tri = triangulate([rand(2) for _ in 1:50])
-#    _tri = Observable(tri)
-#    fig, ax, sc = triplot(_tri)
-#    map(_tri) do tri 
-#        refine!(tri, max_area=1e-4get_total_area(tri))
-#    end
-#end
-
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
     points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
     tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
