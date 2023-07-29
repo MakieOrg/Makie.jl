@@ -330,55 +330,53 @@ end
 adjust_axes(::VertexBasedGrid, x, y, z) = x, y, z
 
 """
-    convert_arguments(SL::GridBased, x::VecOrMat, y::VecOrMat, z::Matrix)
+    convert_arguments(ct::GridBased, x::VecOrMat, y::VecOrMat, z::Matrix)
 
-If `SL` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y`
+If `ct` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y`
 whether they represent edges or centers of the heatmap bins.
 If they are centers, convert to edges. Convert eltypes to `Float32` and return
 outputs as a `Tuple`.
 """
-function convert_arguments(SL::GridBased, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return map(el32convert, adjust_axes(SL, x, y, z))
+function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
+    return map(el32convert, adjust_axes(ct, x, y, z))
 end
-function convert_arguments(SL::GridBased, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return map(el32convert, adjust_axes(SL, x, y, z))
+function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
+    return map(el32convert, adjust_axes(ct, x, y, z))
 end
 
-convert_arguments(sl::GridBased, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
+convert_arguments(ct::VertexBasedGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
 
 """
-    convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
+    convert_arguments(P, x::RangeLike, y::RangeLike, z::AbstractMatrix)
 
-Takes 2 ClosedIntervals's `x`, `y`, and an AbstractMatrix `z`, and converts the closed range to
-linspaces with size(z, 1/2)
-`P` is the plot Type (it is optional).
+Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
+with size(z, 1/2).
 """
-function convert_arguments(P::GridBased, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix)
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
 """
-    convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
+    convert_arguments(::ImageLike, mat::AbstractMatrix)
 
-Takes an `AbstractMatrix`, converts the dimesions `n` and `m` into `ClosedInterval`,
-and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tuple.
-
-`P` is the plot Type (it is optional).
+Generates `ClosedInterval`s of size `0 .. size(mat, 1/2)` as x and y values.
 """
-function convert_arguments(il::ImageLike, data::AbstractMatrix)
+function convert_arguments(::ImageLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
     return (0f0 .. n, 0f0 .. m, el32convert(data))
 end
-function convert_arguments(il::ImageLike, xs::RangeLike, ys::RangeLike, data::AbstractMatrix)
-    return (minimum(xs) .. maximum(xs), minimum(ys) .. maximum(ys), el32convert(data))
+function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike, data::AbstractMatrix)
+    x = Float32(minimum(xs)) .. Float32(maximum(xs))
+    y = Float32(minimum(ys)) .. Float32(maximum(ys))
+    return (x, y, el32convert(data))
 end
 
-function convert_arguments(CT::GridBased, data::AbstractMatrix)
+function convert_arguments(ct::GridBased, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    convert_arguments(CT, 1f0 .. n, 1f0 .. m, el32convert(data))
+    convert_arguments(ct, 1f0 .. n, 1f0 .. m, el32convert(data))
 end
 
-function convert_arguments(CT::GridBased, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
+function convert_arguments(ct::GridBased, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
     if !(length(x) == length(y) == length(z))
         error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
     end
@@ -400,7 +398,7 @@ function convert_arguments(CT::GridBased, x::AbstractVector{<:Number}, y::Abstra
         j = searchsortedfirst(y_centers, yi)
         @inbounds zs[i, j] = zi
     end
-    convert_arguments(CT, x_centers, y_centers, zs)
+    convert_arguments(ct, x_centers, y_centers, zs)
 end
 
 
@@ -411,14 +409,14 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(CT::Union{GridBased, ImageLike}, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+function convert_arguments(ct::Union{GridBased, ImageLike}, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
     if !applicable(f, x[1], y[1])
         error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
     end
     T = typeof(f(x[1], y[1]))
     z = similar(x, T, (length(x), length(y)))
     z .= f.(x, y')
-    return convert_arguments(CT, x, y, z)
+    return convert_arguments(ct, x, y, z)
 end
 
 ################################################################################
