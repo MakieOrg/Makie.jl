@@ -331,7 +331,7 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        map!(identity, child_px_area, parent.px_area)
+        map!(identity, child, child_px_area, parent.px_area)
     elseif px_area isa Rect2
         child_px_area[] = Rect2i(px_area)
     else
