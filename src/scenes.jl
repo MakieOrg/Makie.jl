@@ -332,17 +332,12 @@ function Scene(
     )
     if isnothing(px_area)
         map!(identity, child_px_area, parent.px_area)
-    elseif !(px_area isa Observable)
-        # this can't have been working before, since the `on` didn't update anything
-        #=
-         old code instead of error!
-         a = Rect2i(px_area)
-         on(child, pixelarea(parent)) do p
-             # make coordinates relative to parent
-             return Rect2i(minimum(p) .+ minimum(a), widths(a)) # doesn't do anything!!
-         end
-        =#
-        error("Not implemented")
+    elseif px_area isa Rect2
+        child_px_area[] = Rect2i(px_area)
+    else
+        if !(px_area isa Observable)
+            error("px_area must be an Observable{Rect2} or a Rect2")
+        end
     end
     push!(parent.children, child)
     child.parent = parent
@@ -395,7 +390,7 @@ struct OldAxis end
 zero_origin(area) = Recti(0, 0, widths(area))
 
 function child(scene::Scene; camera, attributes...)
-    return Scene(scene, lift(zero_origin, pixelarea(scene)); camera=camera, attributes...)
+    return Scene(scene; camera=camera, attributes...)
 end
 
 """
