@@ -68,6 +68,9 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
+# Resizing the scene is enough for WGLMakie
+Base.resize!(::WGLMakie.Screen, w, h) = nothing
+
 function Base.isopen(screen::Screen)
     three = get_three(screen)
     return !isnothing(three) && isopen(three.session)

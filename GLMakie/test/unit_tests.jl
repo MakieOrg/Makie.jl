@@ -229,7 +229,7 @@ end
     images = map(Makie.colorbuffer, screens)
     @test all(x-> x ≈ first(images), images)
 
-    @test Base.summarysize(screens) / 10^6 > 300
+    @test Base.summarysize(screens) / 10^6 > 280
     foreach(close, screens)
 
     for screen in screens

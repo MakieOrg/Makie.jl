@@ -3,6 +3,7 @@
     arrows(x, y, u, v)
     arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     arrows(x, y, z, u, v, w)
+    arrows(x, y, [z], f::Function)
 
 Plots arrows at the specified points with the specified components.
 `u` and `v` are interpreted as vector components (`u` being the x
@@ -17,6 +18,10 @@ specifications for a grid, and `u, v` are plotted as arrows along the
 grid.
 
 `arrows` can also work in three dimensions.
+
+If a `Function` is provided in place of `u, v, [w]`, then it must accept 
+a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
+or other array-like output.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -101,7 +106,6 @@ function _circle(origin, r, normal, N)
     GeometryBasics.Mesh(meta(coords; normals=normals), faces)
 end
 
-
 convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
 function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
@@ -110,7 +114,7 @@ convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
-        points, directions, colormap, normalize, align,
+        points, directions, colormap, colorscale, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
@@ -161,7 +165,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
 
         linesegments!(
             arrowplot, headstart,
-            color = line_c, colormap = colormap, linestyle = linestyle,
+            color = line_c, colormap = colormap, colorscale = colorscale, linestyle = linestyle,
             linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible,
@@ -208,7 +212,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker=marker_tail,
             markersize = msize,
-            color = line_c, colormap = colormap,
+            color = line_c, colormap = colormap, colorscale = colorscale,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
@@ -219,7 +223,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker=marker_head,
             markersize = markersize,
-            color = arrow_c, colormap = colormap,
+            color = arrow_c, colormap = colormap, colorscale = colorscale,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,

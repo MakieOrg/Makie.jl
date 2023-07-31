@@ -137,6 +137,9 @@ Colors from Colors.jl should mostly work as well
 Texture(image::Array{T, NDim}; kw_args...) where {T <: GLArrayEltypes, NDim} =
     Texture(pointer(image), size(image); kw_args...)::Texture{T, NDim}
 
+Texture(image::AbstractArray{T, NDim}; kw_args...) where {T <: GLArrayEltypes, NDim} =
+    Texture(collect(image); kw_args...)
+
 function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
     tex = Texture(
         pointer(s.data), size(s.data),
@@ -145,7 +148,8 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         anisotropic = s.anisotropic; kwargs...
     )
     obsfunc = ShaderAbstractions.connect!(s, tex)
-    push!(tex.observers, obsfunc)
+    obsfunc2 = on(x -> tex.requires_update[] = true, s.updates.update)
+    push!(tex.observers, obsfunc, obsfunc2)
     return tex
 end
 

@@ -54,8 +54,8 @@ end
 
 @reference_test "volume translated" begin
     r = range(-3pi, stop=3pi, length=100)
-    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
-    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip,
+    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), colorrange=(0, 1), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
+    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, colorrange=(0, 1),
                  transformation=(translation=Vec3f(6pi, 0, 0),))
     fig
 end
@@ -254,6 +254,31 @@ end
     lines!([50,50], [0, 100];  space=:pixel)
     lines!([0,1], [0.25, 0.25];  space=:clip)
     scatter!(Point2f(0.5, 0), space=:relative)
+    f
+end
+
+@reference_test "colorbuffer for axis" begin
+    fig = Figure()
+    ax1 = Axis(fig[1, 1])
+    ax2 = Axis(fig[1, 2])
+    ax3 = Axis(fig[2, 2])
+    ax4 = Axis(fig[2, 1])
+    scatter!(ax1, 1:10, 1:10; markersize=50, color=1:10)
+    scatter!(ax2, 1:10, 1:10; markersize=50, color=:red)
+    heatmap!(ax3, -8:0.1:8, 8:0.1:8, (x, y) -> sin(x) + cos(y))
+    meshscatter!(ax4, 1:10, 1:10; markersize=1, color=:red)
+    img1 = colorbuffer(ax1; include_decorations=true)
+    img2 = colorbuffer(ax2; include_decorations=false)
+    img3 = colorbuffer(ax3; include_decorations=true)
+    img4 = colorbuffer(ax4; include_decorations=false)
+    f, ax5, pl = image(rotr90(img1); axis=(; aspect=DataAspect()))
+    ax6, pl = image(f[1, 2], rotr90(img2); axis=(; aspect=DataAspect()))
+    ax7, pl = image(f[2, 2], rotr90(img3); axis=(; aspect=DataAspect()))
+    ax8, pl = image(f[2, 1], rotr90(img4); axis=(; aspect=DataAspect()))
+    hidedecorations!(ax5)
+    hidedecorations!(ax6)
+    hidedecorations!(ax7)
+    hidedecorations!(ax8)
     f
 end
 
