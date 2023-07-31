@@ -10,7 +10,7 @@ in float lastlen;
 {{thickness_type}} thickness;
 
 {{color_type}} color;
-{{color_map_type}}  color_map;
+{{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
 
 uniform mat4 projectionview, model;

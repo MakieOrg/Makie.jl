@@ -49,7 +49,9 @@ $(ATTRIBUTES)
         fillto = automatic,
         offset = 0.0,
         color = theme(scene, :patchcolor),
+        alpha = 1.0,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
@@ -76,7 +78,7 @@ $(ATTRIBUTES)
         color_over_bar = automatic,
         label_offset = 5,
         label_font = theme(scene, :font),
-        label_size = 20,
+        label_size = theme(scene, :fontsize),
         label_formatter = bar_label_formatter,
         transparency = false
     )
@@ -218,7 +220,7 @@ end
 
 function Makie.plot!(p::BarPlot)
 
-    labels = Observable(Tuple{String, Point2f}[])
+    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2f}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])
     label_colors = Observable(RGBAf[])
@@ -286,10 +288,10 @@ function Makie.plot!(p::BarPlot)
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 
     poly!(
-        p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
+        p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
         inspectable = p.inspectable, transparency = p.transparency,
-        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color,
+        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha
     )
     if !isnothing(p.bar_labels[])
         text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)

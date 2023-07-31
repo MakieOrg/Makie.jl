@@ -543,10 +543,10 @@ end
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
-        n = normals(mesh)
+        n = normals(metafree(decompose(Point, mesh)), faces(mesh))
         # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
+        if !isnothing(n)
+            mesh = GeometryBasics.pointmeta(mesh; normals=decompose(Vec3f, n))
         end
     end
     # If already correct eltypes for GL, we can pass the mesh through as is
@@ -606,6 +606,25 @@ function convert_arguments(
     )
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
+end
+                        
+################################################################################
+#                                   <:Arrows                                   #
+################################################################################
+
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+    points = Point2f.(x, y')
+    f_out = Vec2f.(f.(points))
+    return (vec(points), vec(f_out))
+end
+
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    points = [Point3f(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3f.(f.(points))
+    return (vec(points), vec(f_out))
 end
 
 ################################################################################
@@ -1342,3 +1361,33 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+
+
+# SAMPLER overloads
+
+convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
+function convert_attribute(s::ShaderAbstractions.Sampler{T,N}, k::key"color") where {T,N}
+    return ShaderAbstractions.Sampler(el32convert(s.data); minfilter=s.minfilter, magfilter=s.magfilter,
+                                      x_repeat=s.repeat[1], y_repeat=s.repeat[min(2, N)],
+                                      z_repeat=s.repeat[min(3, N)],
+                                      anisotropic=s.anisotropic, color_swizzel=s.color_swizzel)
+end
+
+function el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
+    T32 = float32type(T)
+    T32 === T && return x
+    data = el32convert(x.data)
+    return ShaderAbstractions.Sampler{T32,N,typeof(data)}(data, x.minfilter, x.magfilter,
+                                       x.repeat,
+                                       x.anisotropic,
+                                       x.color_swizzel,
+                                       ShaderAbstractions.ArrayUpdater(data, x.updates.update))
+end
+
+to_color(sampler::ShaderAbstractions.Sampler) = el32convert(sampler)
+
+assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32convert(color[]))
+
+# BUFFER OVERLOAD
+
+GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec

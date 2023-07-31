@@ -1,5 +1,5 @@
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
-    attrs = merge!(Attributes(kwargs), default_attributes(LineAxis))
+    attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
     return LineAxis(parent, attrs)
 end
 
@@ -693,6 +693,7 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     multiples .* m.multiple, Showoff.showoff(multiples) .* m.suffix
 end
 
+# identity or unsupported scales
 function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax)
     vals = Float64[]
     length(tickvalues) < 2 && return vals
@@ -726,8 +727,8 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
 end
 
 # for log scales, we need to step in log steps at the edges
-function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typeof(log2), typeof(log10)}, tickvalues, vmin, vmax)
-
+function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log),typeof(log2),typeof(log10)},
+                              tickvalues, vmin, vmax)
     vals = Float64[]
     length(tickvalues) < 2 && return vals
     n = i.n

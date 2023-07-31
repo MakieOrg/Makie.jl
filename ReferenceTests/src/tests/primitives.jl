@@ -150,7 +150,7 @@ end
     rotations = [ 2pi/3 * (i-1) for i = 1:length(pixel_types) ]
     s = Scene(resolution = (100+100*length(pixel_types), 400), camera = campixel!)
     filename = Makie.assetpath("icon_transparent.png")
-    marker_image = FileIO.load(filename)
+    marker_image = load(filename)
     for (i, (rot, pxtype)) in enumerate(zip(rotations, pixel_types))
         marker = convert.(pxtype, marker_image)
         p = Point2f((i-1) * 100 + 100, 200)
@@ -248,6 +248,17 @@ end
     for (i, marker) in enumerate(markers)
         scatter!(Point2f.(1:5, i), marker = marker, markersize = range(10, 30, length = 5), color = :black)
         scatter!(Point2f.(1:5, i), markersize = 4, color = :white)
+
+        # # Debug - show bbox outline
+        # if !(marker isa Char)
+        #     scene = Makie.get_scene(ax)
+        #     bb = Makie.bbox(Makie.DEFAULT_MARKER_MAP[marker])
+        #     w, h = widths(bb)
+        #     ox, oy = origin(bb)
+        #     xy = map(pv -> Makie.project(pv, Vec2f(widths(pixelarea(scene)[])), Point2f(5, i)), scene.camera.projectionview)
+        #     bb = map(xy -> Rect2f(xy .+ 30 * Vec2f(ox, oy), 30 * Vec2f(w, h)), xy)
+        #     lines!(bb, linewidth = 1, color = :orange, space = :pixel, linestyle = :dash)
+        # end
     end
 
     f
@@ -433,4 +444,16 @@ end
     draw_marker_test!(scene, 'u', Point2f(1050, 1050); markersize=500)
 
     scene
+end
+
+@reference_test "barplot with TeX-ed labels" begin
+    fig = Figure(resolution = (800, 800))
+    lab1 = L"\int f(x) dx"
+    lab2 = lab1
+    # lab2 = L"\frac{a}{b} - \sqrt{b}" # this will not work until #2667 is fixed
+    
+    barplot(fig[1,1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction=:x)
+    barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
+
+    fig
 end
