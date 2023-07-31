@@ -65,7 +65,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-    
+
     broadcast_foreach(points_list, color,
         strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokestyle, strokewidth, model
             draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
@@ -81,16 +81,21 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
 
     color = to_cairo_color(poly.color[], poly)
 
-    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-
+    linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    if isnothing(linestyle)
+        linestyle_diffed = nothing
+    elseif linestyle isa AbstractVector{Float64}
+        linestyle_diffed = diff(Float64.(linestyle))
+    else
+        error("Wrong type for linestyle: $(poly.linestyle[]).")
+    end
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-
-    broadcast_foreach(projected_rects, color, strokecolor, strokestyle, poly.strokewidth[]) do r, c, sc, ss, sw
+    broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
         Cairo.rectangle(screen.context, origin(r)..., widths(r)...)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
+        isnothing(linestyle_diffed) || Cairo.set_dash(screen.context, linestyle_diffed .* sw)
         set_source(screen.context, sc)
-        isnothing(ss) || Cairo.set_dash(screen.context, diff(Float64.(ss)) .* sw)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
     end

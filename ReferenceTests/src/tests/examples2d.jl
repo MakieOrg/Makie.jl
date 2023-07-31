@@ -807,6 +807,16 @@ end
     fig
 end
 
+@reference_test "contour labels with transform_func" begin
+    f = Figure(resolution = (400, 400))
+    a = Axis(f[1, 1], xscale = log10)
+    xs = 10 .^ range(0, 3, length=101)
+    ys = range(1, 4, length=101)
+    zs = [sqrt(x*x + y*y) for x in -50:50, y in -50:50]
+    contour!(a, xs, ys, zs, labels = true, labelsize = 20)
+    f
+end
+
 @reference_test "contour labels 3D" begin
     fig = Figure()
     Axis3(fig[1, 1])
