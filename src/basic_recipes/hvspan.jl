@@ -74,7 +74,7 @@ function Makie.plot!(p::Union{HSpan, VSpan})
     notify(p[1])
 
     poly_attributes = copy(p.attributes)
-    delete!.(poly_attributes, (:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits))
+    foreach(x-> delete!(poly_attributes, x), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
 
     # we handle transform_func manually
     T = Transformation(p, transform_func = identity)
