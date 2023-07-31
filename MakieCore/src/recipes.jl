@@ -31,8 +31,7 @@ function figurelike_return end
 function figurelike_return! end
 
 function _create_plot(F, attributes, args...)
-    P = Combined{F}
-    figlike, plot_kw, plot_args = create_figurelike(P, attributes, args...)
+    figlike, plot_kw, plot_args = create_figurelike(Combined{F}, attributes, args...)
     plot = Combined{F}(plot_args, plot_kw)
     plot!(figlike, plot)
     return figurelike_return(figlike, plot)

@@ -41,7 +41,7 @@ end
 # and reconvert the whole tuple in order to handle missings centrally, e.g.
 function convert_arguments_individually(T::PlotFunc, args...)
     # convert each single argument until it doesn't change type anymore
-    single_converted = recursively_convert_argument.(args)
+    single_converted = map(recursively_convert_argument, args)
     # if the type of args hasn't changed this function call didn't help and we error
     if typeof(single_converted) == typeof(args)
         throw(MethodError(convert_arguments, (T, args...)))
@@ -54,9 +54,9 @@ end
 function recursively_convert_argument(x)
     newx = convert_single_argument(x)
     if typeof(newx) == typeof(x)
-        x
+        return x
     else
-        recursively_convert_argument(newx)
+        return recursively_convert_argument(newx)
     end
 end
 
@@ -112,6 +112,7 @@ spanning z over the grid spanned by x y
 function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f.(x, y', z)),)
 end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 
@@ -154,7 +155,6 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-#convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
 convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
 convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
