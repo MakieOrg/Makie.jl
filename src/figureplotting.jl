@@ -46,6 +46,7 @@ function args_preferred_axis(P::Type, args...)
     isnothing(result) || return result
     return args_preferred_axis(args...)
 end
+
 function args_preferred_axis(::Type{<: Union{Wireframe, Surface, Contour3d}}, x::AbstractArray, y::AbstractArray, z::AbstractArray)
     return all(x -> z[1] ≈ x, z) ? Axis : LScene
 end
@@ -60,6 +61,7 @@ function args_preferred_axis(@nospecialize(args...))
 end
 
 args_preferred_axis(x) = nothing
+
 args_preferred_axis(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function) = LScene
 args_preferred_axis(m::AbstractArray{T,3}) where {T} = LScene
 
@@ -79,7 +81,7 @@ function preferred_axis_type(@nospecialize(p::PlotFunc), @nospecialize(args...))
     isnothing(result) || return result
 
     # Otherwise, we check the arguments
-    non_obs = to_value.(args)
+    non_obs = map(to_value, args)
     RealP = plottype(p, non_obs...)
     result = plot_preferred_axis(RealP)
     isnothing(result) || return result
@@ -194,37 +196,20 @@ function create_figurelike(PlotType, attributes::Dict, gsp::GridSubposition, arg
     return ax, attributes, args
 end
 
-figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
-figurelike_return(ax::AbstractAxis, plot) = AxisPlot(ax, plot)
-figurelike_return!(ax::AbstractAxis, plot) = plot
-
-plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
-
-update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
-
-function update_state_before_display!(f::Figure)
-    for c in f.content
-        update_state_before_display!(c)
-    end
-    return
-end
-
-Makie.can_be_current_axis(ax::AbstractAxis) = true
-
-function update_state_before_display!(ax::AbstractAxis)
-    reset_limits!(ax)
-    return
-end
-
 function create_figurelike!(PlotType, attributes::Dict, ax::AbstractAxis, args...)
     _disallow_keyword(:axis, attributes)
     return ax, attributes, args
 end
 
-
 function create_figurelike(PlotType, attributes::Dict, ::Union{Scene,AbstractAxis}, args...)
     return error("Plotting into an axis without !")
 end
+
+figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
+figurelike_return(ax::AbstractAxis, plot) = AxisPlot(ax, plot)
+figurelike_return!(ax::AbstractAxis, plot) = plot
+
+plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
 function plot!(ax::AbstractAxis, plot::P) where {P <: AbstractPlot}
     if hasproperty(ax, :cycler) && hasproperty(ax, :palette)
@@ -242,7 +227,19 @@ function plot!(ax::AbstractAxis, plot::P) where {P <: AbstractPlot}
     return plot
 end
 
-function plot!(P::PlotFunc, ax::AbstractAxis, args...; kw_attributes...)
-    attributes = Attributes(kw_attributes)
-    return plot!(ax, P, attributes, args...)
+
+update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
+
+function update_state_before_display!(f::Figure)
+    for c in f.content
+        update_state_before_display!(c)
+    end
+    return
+end
+
+Makie.can_be_current_axis(ax::AbstractAxis) = true
+
+function update_state_before_display!(ax::AbstractAxis)
+    reset_limits!(ax)
+    return
 end

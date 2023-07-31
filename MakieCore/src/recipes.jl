@@ -25,15 +25,6 @@ plotkey(::Nothing) = :scatter
 
 argtypes(F, tuple::T) where {T <: Tuple} = (F, T)
 
-function create_plot(P::Type{<: Combined{F}}, args, kw) where F
-    return Combined{F}(kw, args)
-end
-
-function create_plot(P::Type{<:Any}, args, kw)
-    P = plottype(args...)
-    return Combined{plotfunc(P)}(kw, args)
-end
-
 function create_figurelike end
 function create_figurelike! end
 function figurelike_return end
