@@ -15,7 +15,7 @@ Plots a Voronoi tessellation from the provided `VoronoiTessellation` from Delaun
 - `strokewidth = 1` sets the width of the polygon stroke.
 - `polygon_color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
 - `unbounded_edge_extension_factor = 0.1` sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
-- `bounding_box = automatic` sets the bounding box for the polygons. If `automatic`, the bounding box will be determined automatically based on the extension factor, otherwise it should be a `Tuple` of the form `(xmin, xmax, ymin, ymax)`.
+- `bounding_box = automatic` sets the bounding box for the polygons. If `automatic`, the bounding box will be determined automatically based on the extension factor, otherwise it should be a `Tuple` of the form `(xmin, xmax, ymin, ymax)`. If any of the generators or polygons are outside of the polygon, the plot will error.
 
 - `colormap = :viridis` sets the colormap for the polygons.
 - `colorrange = automatic` sets the colorrange for the polygons. If `nothing`, the colorrange will be determined automatically.
@@ -51,13 +51,21 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     empty!(polygons)
     sizehint!(generators, DelTri.num_generators(vorn))
     sizehint!(polygons, DelTri.num_polygons(vorn))
+    if !isnothing(bbox)
+        a, b, c, d = bbox
+        @assert a < b && c < d "Bounding box must be of the form (xmin, xmax, ymin, ymax)."
+    end
     for i in DelTri.each_generator(vorn)
         g = DelTri.get_generator(vorn, i)
         x, y = DelTri.getxy(g)
         push!(generators, Point2f(x, y))
+        !isnothing(bbox) &&
+            @assert a ≤ x ≤ b && c ≤ y ≤ d "Generator $(i) with coordinates ($x, $y) is outside the bounding box."
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, bbox)
         polygon_coords_2f = map(polygon_coords) do coords
             x, y = DelTri.getxy(coords)
+            !isnothing(bbox) &&
+                @assert a ≤ x ≤ b && c ≤ y ≤ d "Polygon vertex $(i) with coordinates ($x, $y) is outside the bounding box."
             return Point2f(x, y)
         end
         push!(polygons, Polygon(polygon_coords_2f))
@@ -91,14 +99,16 @@ function plot!(p::Voronoiplot)
     end
     function update_plot(vorn)
         bbox = map(p.unbounded_edge_extension_factor, p.bounding_box) do extent, bnd
+            isempty(DelTri.get_unbounded_polygons(vorn)) && return nothing
             if bnd === automatic
                 return DelTri.polygon_bounds(vorn, extent)
             else
-                return p.bounding_box
+                return bnd
             end
         end
         map(generators_2f, polygons, bbox) do gens, polys, box
-            return get_voronoi_tiles!(gens, polys, vorn, box)
+            _box = !isnothing(box) ? map(Float64, box) : box
+            return get_voronoi_tiles!(gens, polys, vorn, _box)
         end
         map(colors, p.polygon_color, p.colormap) do cols, polycol, cmap
             return polycol == automatic && get_voronoi_colors!(cols, vorn, cmap)
