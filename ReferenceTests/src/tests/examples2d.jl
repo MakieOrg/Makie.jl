@@ -1172,15 +1172,13 @@ end
         show_points=true,
         show_ghost_edges=true,
         show_convex_hull=true)
-    xlims!(ax,-0.2,1.2)
-    ylims!(ax,-0.2,1.2)
     fig
 end
 
 @reference_test "Triplot with further customisation and recompute_center" begin
     pts = RNG.rand(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    reset_representative_points!(tri)
+    DelaunayTriangulation.reset_representative_points!(tri)
     fig, ax, sc = triplot(tri,
         show_points=true,
         show_convex_hull=true,
@@ -1191,12 +1189,10 @@ end
         convex_hull_linewidth=3,
         show_ghost_edges=true,
         recompute_centers=true)
-    xlims!(ax,-0.2,1.2)
-    ylims!(ax,-0.2,1.2)
     fig
 end
 
-@reference_test "Triplot of a constrained triangulation with holes" begin
+@reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
     curve_1 = [[
         (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
         (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
@@ -1236,9 +1232,8 @@ end
         markersize=15,
         point_color=:blue,
         show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
-        marker='x')
-    xlims!(ax, -5, 20)
-    ylims!(ax, -5, 35)
+        marker='x',
+        bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
     fig
 end
 
@@ -1263,7 +1258,7 @@ end
     fig
 end
 
-@reference_test "Voronoiplot for a tessellation with further customisation" begin
+@reference_test "Voronoiplot for a tessellation with further customisation and a custom bounding box" begin
     pts = 25RNG.randn(2, 500)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, false)
