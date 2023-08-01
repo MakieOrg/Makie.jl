@@ -270,13 +270,13 @@ end
 
     # Same as above
     markers = [
-        :rect, :circle, :cross, :x, :utriangle, :rtriangle, :dtriangle, :ltriangle, :pentagon, 
+        :rect, :circle, :cross, :x, :utriangle, :rtriangle, :dtriangle, :ltriangle, :pentagon,
         :hexagon, :octagon, :star4, :star5, :star6, :star8, :vline, :hline, 'x', 'X'
     ]
 
     for (i, marker) in enumerate(markers)
         scatter!(
-            Point2f.(1:5, i), marker = marker, 
+            Point2f.(1:5, i), marker = marker,
             markersize = range(10, 30, length = 5), color = :orange,
             strokewidth = 2, strokecolor = :black
         )
@@ -451,9 +451,23 @@ end
     lab1 = L"\int f(x) dx"
     lab2 = lab1
     # lab2 = L"\frac{a}{b} - \sqrt{b}" # this will not work until #2667 is fixed
-    
+
     barplot(fig[1,1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction=:x)
     barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
 
     fig
+end
+
+@reference_test "Surface with NaN points" begin
+    # prepare surface data
+    zs = [x^2 + y^2 for x in range(-2, 0, length=10), y in range(-2, 0, length=10)]
+    ns = copy(zs)
+    ns[4, 3:6] .= NaN
+    # plot surface
+    f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
+    # plot a wireframe so we can see what's going on, and in which cells.
+    m = Makie.surface2mesh(to_value.(p.converted)...)
+    scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
+    wireframe!(a, m, depth_shift = -1f-3, color = :black)
+    f
 end

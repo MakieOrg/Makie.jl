@@ -747,8 +747,16 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
-        pattern = Cairo.CairoPatternMesh()
+
         t1, t2, t3 =  project_position.(scene, (transform_func,), space, vs[f], (model,)) #triangle points
+
+        # don't draw any mesh faces with NaN components.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
+        pattern = Cairo.CairoPatternMesh()
+
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1...)
@@ -784,7 +792,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
 
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = decompose_normals(mesh)::Vector{Vec3f}
+    meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
@@ -828,7 +836,8 @@ function draw_mesh3D(
     end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
-    # Liight math happens in view/camera space
+
+    # Light math happens in view/camera space
     pointlight = Makie.get_point_light(scene)
     lightposition = if !isnothing(pointlight)
         pointlight.position[]
@@ -883,13 +892,17 @@ end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
     for k in reverse(zorder)
-        pattern = Cairo.CairoPatternMesh()
 
         f = meshfaces[k]
         # avoid SizedVector through Face indexing
         t1 = ts[f[1]]
         t2 = ts[f[2]]
         t3 = ts[f[3]]
+        
+        # skip any mesh segments with NaN points.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
 
         facecolors = per_face_col[k]
         # light calculation
@@ -911,6 +924,8 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         # c1 = RGB(n1...)
         # c2 = RGB(n2...)
         # c3 = RGB(n3...)
+        
+        pattern = Cairo.CairoPatternMesh()
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -938,7 +953,7 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
     # Pretend the surface plot is a mesh plot and plot that instead
-    mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
+    mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     old = primitive[:color]
     if old[] === nothing
         primitive[:color] = primitive[3]
@@ -951,14 +966,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     return nothing
 end
 
-function surface2mesh(xs, ys, zs::AbstractMatrix)
-    ps = Makie.matrix_grid(p-> nan2zero.(p), xs, ys, zs)
-    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
-    faces = decompose(QuadFace{Int}, rect)
-    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
-    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
-    return GeometryBasics.normal_mesh(uvm)
-end
 
 ################################################################################
 #                                 MeshScatter                                  #
