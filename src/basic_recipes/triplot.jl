@@ -119,7 +119,6 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     else
         a, b, c, d = bounding_box
     end
-    a, b, c, d = bounding_box
     @assert a < b && c < d "Bounding box must be of the form (xmin, xmax, ymin, ymax)."
     for e in DelTri.each_ghost_edge(tri)
         u, v = DelTri.edge_indices(e)
@@ -191,7 +190,7 @@ function Makie.plot!(p::Triplot)
         end
         map(p.show_ghost_edges, p.ghost_edge_extension_factor, ghost_edges_2f,
             p.bounding_box) do sge, extent, ge, bbox
-            _bbox = map(Float64, bbox)
+            _bbox = !isnothing(bbox) ? map(Float64, bbox) : bbox
             return sge && get_triangulation_ghost_edges!(ge, extent, tri, _bbox)
         end
         map(p.show_convex_hull, convex_hull_2f) do sch, ch
