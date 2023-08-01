@@ -1,12 +1,15 @@
 # News
 
-## master
+## beta
 
-- Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie. [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598)
 - GLMakie has gained support for HiDPI (aka Retina) screens.
   This also enables saving images with higher resolution than screen pixel dimensions.
   [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544)
+- Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie. [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598)
 - Improved 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
+
+## master
+
 - Fixed incorrect placement of contourlabels with transform functions [#3083](https://github.com/MakieOrg/Makie.jl/pull/3083)
 - Fix automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
 
@@ -36,7 +39,6 @@
 - Adjusted scaling of scatter/text stroke, glow and anti-aliasing width under non-uniform 2D scaling (Vec2f markersize/fontsize) in GLMakie [#2950](https://github.com/MakieOrg/Makie.jl/pull/2950).
 - Scaled `errorbar` whiskers and `bracket` correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012).
 - Updated `bracket` when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012).
-- Added auto-resizing functionality to WGLMakie plot figures [#3042](https://github.com/MakieOrg/Makie.jl/pull/3042)
 
 ## v0.19.6
 

@@ -10,4 +10,4 @@ function Base.display(screen::Screen, scene::Scene; connect=true)
     return screen
 end
 
-Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true
+Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png", Makie.WEB_MIMES...}) = true
