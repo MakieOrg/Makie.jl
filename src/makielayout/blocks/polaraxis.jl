@@ -3,8 +3,6 @@
 ################################################################################
 
 
-Makie.can_be_current_axis(ax::PolarAxis) = true
-
 function Makie.initialize_block!(po::PolarAxis; palette=nothing)
 
 
@@ -353,35 +351,6 @@ function calculate_polar_title_position(area, titlegap, align)
     yoffset::Float32 = h + titlegap
 
     return Point2f(x, yoffset)
-end
-
-
-################################################################################
-### Plotting
-################################################################################
-
-
-function Makie.plot!(
-    po::PolarAxis, P::Makie.PlotFunc,
-    attributes::Makie.Attributes, args...;
-    kw_attributes...)
-
-    allattrs = merge(attributes, Attributes(kw_attributes))
-
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, po.cycler, po.palette)
-
-    plot = Makie.plot!(po.scene, P, allattrs, args...)
-
-    reset_limits!(po)
-
-    plot
-end
-
-
-function Makie.plot!(P::Makie.PlotFunc, po::PolarAxis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(po, P, attributes, args...)
 end
 
 

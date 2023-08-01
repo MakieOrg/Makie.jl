@@ -35,7 +35,7 @@ Draw a violin plot.
     )
 end
 
-conversion_trait(x::Type{<:Violin}) = SampleBased()
+conversion_trait(::Type{<:Violin}) = SampleBased()
 
 getuniquevalue(v, idxs) = v
 

@@ -39,7 +39,7 @@ const IGNORE_KEYS = Set([
     :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
     :lightposition, :cycle, :label, :inspector_clear, :inspector_hover,
-    :inspector_label
+    :inspector_label, :axis_cycler
 ])
 
 function create_shader(scene::Scene, plot::MeshScatter)

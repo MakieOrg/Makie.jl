@@ -185,7 +185,7 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
-@Block Axis begin
+@Block Axis <: AbstractAxis begin
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
@@ -1236,7 +1236,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
     end
 end
 
-@Block LScene begin
+@Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
         "The height setting of the scene."
@@ -1329,7 +1329,7 @@ end
     end
 end
 
-@Block Axis3 begin
+@Block Axis3 <: AbstractAxis begin
     scene::Scene
     finallimits::Observable{Rect3f}
     mouseeventhandle::MouseEventHandle
@@ -1600,7 +1600,7 @@ end
     end
 end
 
-@Block PolarAxis begin
+@Block PolarAxis <: AbstractAxis begin
     scene::Scene
     overlay::Scene
     target_radius::Observable{Float64}

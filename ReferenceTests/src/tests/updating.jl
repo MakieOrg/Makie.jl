@@ -124,7 +124,9 @@ end
     @test length(obs.listeners) == 1
     delete!(ax, pl)
     @test length(obs.listeners) == 0
-    sleep(1.0)
+    # ugh, hard to synchronize this with WGLMakie, so, we need to sleep for now to make sure the change makes it to the browser
+    # TODO, add synchronization primitive?
+    sleep(1)
     f
 end
 

@@ -1,4 +1,5 @@
 abstract type Block end
+abstract type AbstractAxis <: Block end
 
 function is_attribute end
 function default_attribute_values end
@@ -7,12 +8,15 @@ function _attribute_docs end
 function has_forwarded_layout end
 
 
-macro Block(name::Symbol, body::Expr = Expr(:block))
+macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
+    type_expr = _name isa Expr ? _name : :($_name <: Makie.Block)
+    name = _name isa Symbol ? _name : _name.args[1]
+
     structdef = quote
-        mutable struct $name <: Makie.Block
+        mutable struct $(type_expr)
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
             blockscene::Scene
@@ -269,15 +273,15 @@ function _block(T::Type{<:Block},
     b
 end
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
-        args...; bbox = nothing, kwargs...)
+
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
+    return _block(T, fig_or_scene, Any[args...], Dict{Symbol,Any}(kwargs), bbox)
+end
+
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox)
 
     # first sort out all user kwargs that correspond to block attributes
-    kwdict = Dict(kwargs)
-
-    if haskey(kwdict, :textsize)
-        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
-    end
+    check_textsize_deprecation(kwdict)
 
     attribute_kwargs = Dict{Symbol, Any}()
     for (key, value) in kwdict

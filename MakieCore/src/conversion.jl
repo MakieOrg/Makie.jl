@@ -29,6 +29,8 @@ struct NoConversion <: ConversionTrait end
 
 # No conversion by default
 conversion_trait(::Type) = NoConversion()
+conversion_trait(T::Type, args...) = conversion_trait(T)
+
 convert_arguments(::NoConversion, args...) = args
 
 struct PointBased <: ConversionTrait end
