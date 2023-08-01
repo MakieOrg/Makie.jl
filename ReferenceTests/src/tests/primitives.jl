@@ -446,18 +446,6 @@ end
     scene
 end
 
-@reference_test "barplot with TeX-ed labels" begin
-    fig = Figure(resolution = (800, 800))
-    lab1 = L"\int f(x) dx"
-    lab2 = lab1
-    # lab2 = L"\frac{a}{b} - \sqrt{b}" # this will not work until #2667 is fixed
-
-    barplot(fig[1,1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction=:x)
-    barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
-
-    fig
-end
-
 @reference_test "Surface with NaN points" begin
     # prepare surface data
     zs = [x^2 + y^2 for x in range(-2, 0, length=10), y in range(-2, 0, length=10)]
@@ -470,4 +458,16 @@ end
     scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
     wireframe!(a, m, depth_shift = -1f-3, color = :black)
     f
+end
+
+  @reference_test "barplot with TeX-ed labels" begin
+    fig = Figure(resolution = (800, 800))
+    lab1 = L"\int f(x) dx"
+    lab2 = lab1
+    # lab2 = L"\frac{a}{b} - \sqrt{b}" # this will not work until #2667 is fixed
+
+    barplot(fig[1,1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction=:x)
+    barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
+
+    fig
 end

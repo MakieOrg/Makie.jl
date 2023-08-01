@@ -711,7 +711,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     # GLFW.PollEvents()
-    render_frame(screen, resize_buffers=true) # let it render
+    # keep current buffer size to allows larger-than-window renders
+    render_frame(screen, resize_buffers=false) # let it render
     if screen.config.visible
         GLFW.SwapBuffers(to_native(screen))
     else
