@@ -1,48 +1,15 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
-function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    model = map(transformationmatrix, translation_o, scale_o, rotation_o)
-    return Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-end
-
-function Transformation(transformable::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    parent_transform = transformation(transformable)
-
-    pmodel = parent_transform.model
-    model = map(translation_o, scale_o, rotation_o, pmodel) do t, s, r, p
-        return p * transformationmatrix(t, s, r)
+function Observables.connect!(parent::Transformation, child::Transformation)
+    on(parent.model; update=true) do m
+        return child.parent_model[] = m
     end
-
-    trans = Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        copy(parent_transform.transform_func)
-    )
-
-    trans.parent[] = parent_transform
-    return trans
+    on(parent.transform_func; update=true) do f
+        child.transform_func[] = f
+        return
+    end
+    child.parent[] = parent
+    return
 end
 
 function free(transformation::Transformation)
@@ -68,7 +35,7 @@ end
 function translated(scene::Scene; kw_args...)
     tscene = Scene(scene, transformation = Transformation())
     transform!(tscene; kw_args...)
-    tscene
+     tscene
 end
 
 function transform!(
@@ -83,7 +50,7 @@ function transform!(
 end
 
 function transform!(
-        scene::Transformable, attributes::Union{Attributes, AbstractDict}
+        scene::Transformable, attributes::Union{Attributes, AbstractDict, NamedTuple}
     )
     transform!(scene; attributes...)
 end
@@ -210,13 +177,13 @@ transform_func_obs(x) = transformation(x).transform_func
     apply_transform_and_model(model, transfrom_func, pos, output_type = Point3f)
 
 
-Applies the transform function and model matrix (i.e. transformations from 
+Applies the transform function and model matrix (i.e. transformations from
 `translate!`, `rotate!` and `scale!`) to the given input
 """
 function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
     return apply_transform_and_model(
-        plot.model[], transform_func(plot), pos, 
-        to_value(get(plot, :space, :data)), 
+        plot.model[], transform_func(plot), pos,
+        to_value(get(plot, :space, :data)),
         output_type
     )
 end
@@ -469,7 +436,7 @@ end
 function inverse_transform(trans::Polar)
     return Makie.PointTrans{2}() do point
         typeof(point)(
-            hypot(point[1], point[2]), 
+            hypot(point[1], point[2]),
             mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
         )
     end

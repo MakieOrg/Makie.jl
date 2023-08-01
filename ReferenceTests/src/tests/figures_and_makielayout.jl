@@ -151,13 +151,13 @@ end
     f = Figure(resolution = (800, 400))
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
-    
+
     ax2 = PolarAxis(f[1, 2], title = "Modified spine")
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
     scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
-    
+
     f
 end
 
@@ -166,9 +166,9 @@ end
 @reference_test "PolarAxis decorations" begin
     f = Figure(resolution = (400, 400), backgroundcolor = :black)
     ax = PolarAxis(
-        f[1, 1], 
+        f[1, 1],
         backgroundcolor = :black,
-        rminorgridvisible = true, rminorgridcolor = :red, 
+        rminorgridvisible = true, rminorgridcolor = :red,
         rminorgridwidth = 1.0, rminorgridstyle = :dash,
         thetaminorgridvisible = true, thetaminorgridcolor = :blue,
         thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
@@ -179,6 +179,6 @@ end
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
     )
-    
+
     f
 end

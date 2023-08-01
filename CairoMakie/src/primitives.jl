@@ -50,8 +50,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         Cairo.set_dash(ctx, pattern)
     end
 
-    if primitive isa Lines && primitive.input_args[1][] isa BezierPath
-        return draw_bezierpath_lines(ctx, primitive.input_args[1][], scene, color, space, model, linewidth)
+    if primitive isa Lines && to_value(primitive.args[1]) isa BezierPath
+        return draw_bezierpath_lines(ctx, to_value(primitive.args[1]), scene, color, space, model, linewidth)
     end
 
     if color isa AbstractArray || linewidth isa AbstractArray
@@ -606,7 +606,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     t = Makie.transform_func(primitive)
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    xy_aligned = let 
+    xy_aligned = let
         # Only allow scaling and translation
         pv = scene.camera.projectionview[]
         M = Mat4f(
@@ -635,7 +635,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
 
-    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform && 
+    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
         (interpolate || xy_aligned)
     use_fast_path = can_use_fast_path && !disable_fast_path
 

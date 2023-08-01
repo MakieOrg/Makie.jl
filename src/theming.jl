@@ -129,6 +129,8 @@ Base.@deprecate_binding minimal_default MAKIE_DEFAULT_THEME
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
 const THEME_LOCK = Base.ReentrantLock()
 
+
+
 # Basically like deepcopy but while merging it into another Attribute dict
 function merge_without_obs!(result::Attributes, theme::Attributes)
     dict = attributes(result)
@@ -146,6 +148,26 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     end
     return result
 end
+
+# Same as above, but second argument gets priority so, `merge_without_obs_reverse!(Attributes(a=22), Attributes(a=33)) -> Attributes(a=33)`
+function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
+    result_dict = attributes(result)
+    for (key, value) in priority
+        if !haskey(result_dict, key)
+            result_dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+        else
+            current_value = result[key]
+            if value isa Attributes && current_value isa Attributes
+                # if nested attribute, we merge recursively
+                merge_without_obs_reverse!(current_value, value)
+            else
+                result_dict[key] = Observable{Any}(to_value(value))
+            end
+        end
+    end
+    return result
+end
+
 # Use copy with no obs to quickly deepcopy
 fast_deepcopy(attributes) = merge_without_obs!(Attributes(), attributes)
 

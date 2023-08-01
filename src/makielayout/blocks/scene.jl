@@ -1,19 +1,13 @@
-function Makie.plot!(
-        lscene::LScene, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
-
-    plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
+function Makie.plot!(lscene::LScene, plot::AbstractPlot)
+    Makie.plot!(lscene.scene, plot)
     notify(lscene.scene.theme.limits)
     center!(lscene.scene)
-    plot
+    return plot
 end
 
-function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
+function Makie.plot!(P::Makie.PlotFunc, ax::LScene, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
-    _disallow_keyword(:axis, attributes)
-    _disallow_keyword(:figure, attributes)
-    Makie.plot!(ls, P, attributes, args...)
+    return Makie.plot!(ax, P, attributes, args...)
 end
 
 function initialize_block!(ls::LScene; scenekw = NamedTuple())
@@ -61,8 +55,6 @@ function Base.delete!(ax::LScene, plot::AbstractPlot)
     ax
 end
 
-can_be_current_axis(ls::LScene) = true
-
 Makie.cam2d!(ax::LScene; kwargs...) = Makie.cam2d!(ax.scene; kwargs...)
 Makie.campixel!(ax::LScene; kwargs...) = Makie.campixel!(ax.scene; kwargs...)
 Makie.cam_relative!(ax::LScene; kwargs...) = Makie.cam_relative!(ax.scene; kwargs...)
@@ -70,3 +62,8 @@ Makie.cam3d!(ax::LScene; kwargs...) = Makie.cam3d!(ax.scene; kwargs...)
 Makie.cam3d_cad!(ax::LScene; kwargs...) = Makie.cam3d_cad!(ax.scene; kwargs...)
 Makie.old_cam3d!(ax::LScene; kwargs...) = Makie.old_cam3d!(ax.scene; kwargs...)
 Makie.old_cam3d_cad!(ax::LScene; kwargs...) = Makie.old_cam3d_cad!(ax.scene; kwargs...)
+
+
+function reset_limits!(ax::LScene)
+   # TODO
+end

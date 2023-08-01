@@ -171,8 +171,6 @@ function initialize_block!(ax::Axis3)
     return
 end
 
-can_be_current_axis(ax3::Axis3) = true
-
 function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect,
     viewmode)
     ws = widths(limits)
@@ -269,33 +267,6 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
     end
 end
 
-
-function Makie.plot!(
-    ax::Axis3, P::Makie.PlotFunc,
-    attributes::Makie.Attributes, args...;
-    kw_attributes...)
-
-    allattrs = merge(attributes, Attributes(kw_attributes))
-
-    _disallow_keyword(:axis, allattrs)
-    _disallow_keyword(:figure, allattrs)
-
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
-
-    plot = Makie.plot!(ax.scene, P, allattrs, args...)
-
-    if is_open_or_any_parent(ax.scene)
-        reset_limits!(ax)
-    end
-    plot
-end
-
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
-end
-
 function update_state_before_display!(ax::Axis3)
     reset_limits!(ax)
     return
@@ -348,10 +319,6 @@ function getlimits(ax::Axis3, dim)
 
     templim
 end
-
-# mutable struct LineAxis3D
-
-# end
 
 function dimpoint(dim, v, v1, v2)
     if dim == 1
@@ -1041,3 +1008,8 @@ function attribute_examples(::Type{Axis3})
         ],
     )
 end
+
+
+# Axis interface
+
+tightlimits!(ax::Axis3) = nothing # TODO, not implemented yet

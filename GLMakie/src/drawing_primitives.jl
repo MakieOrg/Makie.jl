@@ -104,7 +104,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         filtered = filter(x.attributes) do (k, v)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
-                :lightposition, :material,
+                        :lightposition, :material, :axis_cycler,
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
                         :calculated_colors

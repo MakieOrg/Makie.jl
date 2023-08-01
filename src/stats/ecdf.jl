@@ -19,11 +19,13 @@ function convert_arguments(P::PlotFunc, ecdf::StatsBase.ECDF; npoints=10_000)
     end
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
+
 function convert_arguments(P::PlotFunc, x::AbstractVector, ecdf::StatsBase.ECDF)
     ptype = plottype(P, Stairs)
     kwargs = ptype <: Stairs ? (; step=:post) : NamedTuple()
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
+
 function convert_arguments(P::PlotFunc, x0::AbstractInterval, ecdf::StatsBase.ECDF)
     xmin, xmax = extrema(x0)
     z = ecdf_xvalues(ecdf, Inf)

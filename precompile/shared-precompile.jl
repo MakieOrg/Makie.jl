@@ -1,6 +1,5 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
-
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 
 @compile scatter(0..1, rand(10), markersize=rand(10) .* 20)
