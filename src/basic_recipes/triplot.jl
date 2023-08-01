@@ -26,7 +26,8 @@ Plots the triangles from the provided `Triangulation` from DelaunayTriangulation
 - `ghost_edge_color = :blue` sets the color of the ghost edges.
 - `ghost_edge_linestyle = :solid` sets the linestyle of the ghost edges.
 - `ghost_edge_linewidth = 1` sets the width of the ghost edges.
-- `ghost_edge_extension_factor = 2.0` sets the extension factor for the rectangle that the exterior ghost edges are extended onto. The rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the extension factor, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the triangulation.
+- `ghost_edge_extension_factor = 0.1` sets the extension factor for the rectangle that the exterior ghost edges are extended onto. 
+- `bounding_box = automatic`: Bounding box for truncating the ghost edges. Should be a `Tuple` of the form `(a, b, c, d)` that defines the bounding box `a ≤ x ≤ b` and `c ≤ y ≤ d`. Alternatively, by default, the rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the `ghost_edge_extension_factor`, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the points in the triangulation.
 
 - `constrained_edge_color = :magenta` sets the color of the constrained edges.
 - `constrained_edge_linestyle = :solid` sets the linestyle of the constrained edges.
@@ -60,7 +61,8 @@ Plots the triangles from the provided `Triangulation` from DelaunayTriangulation
                       ghost_edge_color=:blue,
                       ghost_edge_linestyle=theme(scene, :linestyle),
                       ghost_edge_linewidth=theme(scene, :linewidth),
-                      ghost_edge_extension_factor=2.0,
+                      ghost_edge_extension_factor=0.1,
+                      bounding_box=automatic,
 
                       # Constrained edge settings
                       constrained_edge_color=:magenta,
@@ -99,21 +101,24 @@ function get_triangulation_triangles!(triangles, tri)
     return triangles
 end
 
-function get_triangulation_ghost_edges!(ghost_edges, extent, tri)
+function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     @assert extent > 0.0 "The ghost_edge_extension_factor must be positive."
     empty!(ghost_edges)
     sizehint!(ghost_edges, 2DelTri.num_ghost_edges(tri))
-    if DelTri.has_boundary_nodes(tri)
-        xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri), DelTri.get_boundary_nodes(tri))
+    if bounding_box === automatic
+        if DelTri.has_boundary_nodes(tri)
+            xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
+                                                           DelTri.get_boundary_nodes(tri))
+        else
+            xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
+                                                           DelTri.get_convex_hull_indices(tri))
+        end
+        Δx = xmax - xmin
+        Δy = ymax - ymin
+        a, b, c, d = (xmin - extent * Δx, xmax + extent * Δx, ymin - extent * Δy, ymax + extent * Δy)
     else
-        xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                       DelTri.get_convex_hull_indices(tri))
+        a, b, c, d = bounding_box
     end
-    Δx = xmax - xmin
-    Δy = ymax - ymin
-    a, b, c, d = (xmin - extent * Δx, xmax + extent * Δx, ymin - extent * Δy, ymax + extent * Δy)
-    bbox = [(a, c), (b, c), (b, d), (a, d)]
-    bbox_order = [1, 2, 3, 4, 1]
     for e in DelTri.each_ghost_edge(tri)
         u, v = DelTri.edge_indices(e)
         if DelTri.is_boundary_index(v)
@@ -122,12 +127,13 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri)
         curve_index = DelTri.get_curve_index(tri, u)
         representative_coordinates = DelTri.get_representative_point_coordinates(tri, curve_index)
         rx, ry = DelTri.getxy(representative_coordinates)
+        @assert a ≤ rx ≤ b && c ≤ ry ≤ d "The representative point is not in the bounding box."
         p = DelTri.get_point(tri, v)
         px, py = DelTri.getxy(p)
         if DelTri.is_interior_curve(curve_index)
             ex, ey = rx, ry
         else
-            e = DelTri.intersection_of_ray_with_boundary(bbox, bbox_order, representative_coordinates, p)
+            e = DelTri.intersection_of_ray_with_bounding_box(representative_coordinates, p, a, b, c, d)
             ex, ey = DelTri.getxy(e)
         end
         push!(ghost_edges, Point2f(px, py), Point2f(ex, ey))
@@ -161,10 +167,10 @@ function get_triangulation_constrained_edges!(constrained_edges, tri)
     return constrained_edges
 end
 
-function plot!(p::Triplot)
+function Makie.plot!(p::Triplot)
     points_2f = Observable(Point2f[])
     present_points_2f = Observable(Point2f[]) # Points might not be in the triangulation yet, so points_2f is not what we want for scatter
-    triangles_3f = Observable(TriangleFace{Int}[])
+    triangles_3f = Observable(Makie.TriangleFace{Int}[])
     ghost_edges_2f = Observable(Point2f[])
     convex_hull_2f = Observable(Point2f[])
     constrained_edges_2f = Observable(Point2f[])
@@ -181,8 +187,9 @@ function plot!(p::Triplot)
         map(triangles_3f) do tris
             return get_triangulation_triangles!(tris, tri)
         end
-        map(p.show_ghost_edges, p.ghost_edge_extension_factor, ghost_edges_2f) do sge, extent, ge
-            return sge && get_triangulation_ghost_edges!(ge, extent, tri)
+        map(p.show_ghost_edges, p.ghost_edge_extension_factor, ghost_edges_2f,
+            p.bounding_box) do sge, extent, ge, bbox
+            return sge && get_triangulation_ghost_edges!(ge, extent, tri, bbox)
         end
         map(p.show_convex_hull, convex_hull_2f) do sch, ch
             return sch && get_triangulation_convex_hull!(ch, tri)
