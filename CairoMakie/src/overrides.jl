@@ -12,6 +12,10 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
 end
 
+# Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+is_cairomakie_atomic_plot(plot::Poly) = true
+
 """
 Fallback method for args without special treatment.
 """
@@ -33,12 +37,13 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, poly.strokewidth[])
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokecolor, strokewidth)
+        model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
@@ -52,15 +57,18 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
     Cairo.fill_preserve(screen.context)
     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
     Cairo.set_line_width(screen.context, strokewidth)
+    isnothing(strokestyle) || Cairo.set_dash(screen.context, diff(Float64.(strokestyle)) .* strokewidth)
     Cairo.stroke(screen.context)
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+
     broadcast_foreach(points_list, color,
-        strokecolor, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokewidth, model
-            draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
+        strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokestyle, strokewidth, model
+            draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     end
 end
 
@@ -72,12 +80,21 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
 
+    linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    if isnothing(linestyle)
+        linestyle_diffed = nothing
+    elseif linestyle isa AbstractVector{Float64}
+        linestyle_diffed = diff(Float64.(linestyle))
+    else
+        error("Wrong type for linestyle: $(poly.linestyle[]).")
+    end
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
     broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
         Cairo.rectangle(screen.context, origin(r)..., widths(r)...)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
+        isnothing(linestyle_diffed) || Cairo.set_dash(screen.context, linestyle_diffed .* sw)
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
@@ -111,12 +128,13 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = project_polygon.(Ref(poly), space, polygons, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
-    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
+    broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do po, c, sc, ss, sw
         polypath(screen.context, po)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
@@ -134,13 +152,14 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-
-    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do mpo, c, sc, ss, sw
         for po in mpo.polygons
             polypath(screen.context, po)
             set_source(screen.context, c)
             Cairo.fill_preserve(screen.context)
             set_source(screen.context, sc)
+            isnothing(ss) || Cairo.set_dash(screen.context, diff(Float64.(ss)) .* sw)
             Cairo.set_line_width(screen.context, sw)
             Cairo.stroke(screen.context)
         end
@@ -182,6 +201,12 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
+# Override `is_cairomakie_atomic_plot` to allow this dispatch of `band` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function is_cairomakie_atomic_plot(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    return true
+end
+
 #################################################################################
 #                                  Tricontourf                                  #
 # Tricontourf creates many disjoint polygons that are adjacent and form contour #
@@ -213,4 +238,10 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     draw_tripolys(projected_polys, colornumbers, colors)
 
     return
+end
+
+# Override `is_cairomakie_atomic_plot` to allow `Tricontourf` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function is_cairomakie_atomic_plot(plot::Tricontourf)
+    return true
 end

@@ -150,7 +150,7 @@ mutable struct Scene <: AbstractScene
             lights,
             Observables.ObserverFunction[]
         )
-        finalizer(empty!, scene)
+        finalizer(free, scene)
         return scene
     end
 end
@@ -188,6 +188,7 @@ end
 end
 
 get_scene(scene::Scene) = scene
+get_scene(plot::AbstractPlot) = parent_scene(plot)
 
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
@@ -260,7 +261,7 @@ function Scene(;
     camera isa Function && camera(scene)
 
     if wasnothing
-        on(scene, events.window_area, priority = typemax(Int)) do w_area
+        on(events.window_area, priority = typemax(Int)) do w_area
             if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
                 px_area[] = w_area
             end
@@ -331,11 +332,11 @@ function Scene(
     )
     if isnothing(px_area)
         map!(identity, child, child_px_area, parent.px_area)
-    elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
-        a = Rect2i(px_area)
-        on(child, pixelarea(parent)) do p
-            # make coordinates relative to parent
-            return Rect2i(minimum(p) .+ minimum(a), widths(a))
+    elseif px_area isa Rect2
+        child_px_area[] = Rect2i(px_area)
+    else
+        if !(px_area isa Observable)
+            error("px_area must be an Observable{Rect2} or a Rect2")
         end
     end
     push!(parent.children, child)
@@ -372,6 +373,11 @@ end
 Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
 function Base.resize!(scene::Scene, rect::Rect2)
     pixelarea(scene)[] = rect
+    if isroot(scene)
+        for screen in scene.current_screens
+            resize!(screen, widths(rect)...)
+        end
+    end
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
@@ -384,7 +390,7 @@ struct OldAxis end
 zero_origin(area) = Recti(0, 0, widths(area))
 
 function child(scene::Scene; camera, attributes...)
-    return Scene(scene, lift(zero_origin, pixelarea(scene)); camera=camera, attributes...)
+    return Scene(scene; camera=camera, attributes...)
 end
 
 """
@@ -415,31 +421,40 @@ function delete_scene!(scene::Scene)
     return nothing
 end
 
-function Base.empty!(scene::Scene)
+function free(scene::Scene)
+    empty!(scene; free=true)
+    for field in [:backgroundcolor, :px_area, :visible]
+        Observables.clear(getfield(scene, field))
+    end
+    for screen in copy(scene.current_screens)
+        delete!(screen, scene)
+    end
+    empty!(scene.current_screens)
+    scene.parent = nothing
+    return
+end
+
+function Base.empty!(scene::Scene; free=false)
     foreach(empty!, copy(scene.children))
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
     end
-    for screen in copy(scene.current_screens)
-        delete!(screen, scene)
-    end
+
     # clear all child scenes
     if !isnothing(scene.parent)
         filter!(x-> x !== scene, scene.parent.children)
     end
-    scene.parent = nothing
 
-    empty!(scene.current_screens)
     empty!(scene.children)
     empty!(scene.plots)
     empty!(scene.theme)
+    # conditional, since in free we dont want this!
+    free || merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
 
-    for field in [:backgroundcolor, :px_area, :visible]
-        Observables.clear(getfield(scene, field))
-    end
     for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
         Observables.clear(getfield(scene.transformation, fieldname))
     end
@@ -623,3 +638,46 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+"""
+    is_atomic_plot(plot::Combined)
+
+Defines what Makie considers an atomic plot, used in `collect_atomic_plots`.
+Backends may have a different definition of what is considered an atomic plot,
+but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
+"""
+is_atomic_plot(plot::Combined) = isempty(plot.plots)
+
+"""
+    collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+    collect_atomic_plots(x::Combined, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+
+Collects all plots in the provided `<: ScenePlot` and returns a vector of all plots
+which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
+"""
+function collect_atomic_plots(xplot::Combined, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    if is_atomic_plot(xplot)
+        # Atomic plot!
+        push!(plots, xplot)
+    else
+        for elem in xplot.plots
+            collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+        end
+    end
+    return plots
+end
+
+function collect_atomic_plots(array, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    for elem in array
+        collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+    end
+    plots
+end
+
+function collect_atomic_plots(scene::Scene, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.plots, plots; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.children, plots; is_atomic_plot=is_atomic_plot)
+    plots
+end
+
+Base.@deprecate flatten_plots(scenelike) collect_atomic_plots(scenelike)

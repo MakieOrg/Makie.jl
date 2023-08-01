@@ -37,6 +37,7 @@ using Statistics
 using MakieCore
 using OffsetArrays
 using Downloads
+using ShaderAbstractions
 
 import RelocatableFolders
 import StatsBase
@@ -49,7 +50,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 import TriplotBase
-import DelaunayTriangulation as DelTri 
+import DelaunayTriangulation as DelTri
 import Setfield
 import REPL
 import MacroTools
@@ -275,7 +276,7 @@ export abline! # until deprecation removal
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record, Record
-export save
+export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients

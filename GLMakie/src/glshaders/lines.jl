@@ -72,9 +72,9 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         total_length::Int32 = const_lift(x-> Int32(length(x)), position)
         vertex              = p_vec => GLBuffer
         intensity           = nothing
+        color               = nothing => GLBuffer
         color_map           = nothing => Texture
         color_norm          = nothing
-        color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
         thickness           = 2f0 => GLBuffer
         pattern             = nothing
         pattern_sections    = pattern => Texture
@@ -132,7 +132,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         fast                = false
         indices             = const_lift(length, positions) => to_index_buffer
         # TODO update boundingbox
-        transparency = false
+        transparency        = false
         shader              = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
@@ -153,6 +153,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         data[:pattern] = tex
         data[:pattern_length] = Float32((last(pattern) - first(pattern)))
     end
-    return assemble_shader(data)
+    robj = assemble_shader(data)
+    return robj
 end
 @specialize

@@ -269,8 +269,8 @@ Save a `Scene` with the specified filename and format.
 
 # Supported Formats
 
-- `GLMakie`: `.png`, `.jpeg`, and `.bmp`
-- `CairoMakie`: `.svg`, `.pdf`, `.png`, and `.jpeg`
+- `GLMakie`: `.png`
+- `CairoMakie`: `.svg`, `.pdf` and `.png`
 - `WGLMakie`: `.png`
 
 # Supported Keyword Arguments
@@ -278,6 +278,10 @@ Save a `Scene` with the specified filename and format.
 ## All Backends
 
 - `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+- `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
+- `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
+- Further keywords will be forwarded to the screen.
+
 
 ## CairoMakie
 
@@ -316,7 +320,8 @@ function FileIO.save(
             # If the scene already got displayed, we get the current screen its displayed on
             # Else, we create a new scene and update the state of the fig
             update && update_state_before_display!(fig)
-            screen = getscreen(backend, scene, io, mime; visible=false, screen_config...)
+            visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
+            screen = getscreen(backend, scene, io, mime; visible=visible, screen_config...)
             backend_show(screen, io, mime, scene)
         end
     catch e
@@ -404,9 +409,16 @@ function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; scree
     end
 end
 
+function get_sub_picture(image, format::ImageStorageFormat, rect)
+    xmin, ymin = minimum(rect) .- (1, 0)
+    xmax, ymax = maximum(rect)
+    start = size(image, 1) - ymax
+    stop = size(image, 1) - ymin
+    return image[start:stop, xmin:xmax]
+end
+
 """
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; backend=current_backend(), screen_config...)
-    colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors. The return type is backend-dependent, but will be some form of RGB
@@ -417,12 +429,19 @@ or RGBA.
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
 - `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
+- `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
     update && update_state_before_display!(fig)
-    screen = getscreen(backend, scene, format; start_renderloop=false, visible=false, screen_config...)
-    return colorbuffer(screen, format)
+    visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
+    screen = getscreen(backend, scene; start_renderloop=false, visible=visible, screen_config...)
+    img = colorbuffer(screen, format)
+    if !isroot(scene)
+        return get_sub_picture(img, format, pixelarea(scene)[])
+    else
+        return img
+    end
 end
 
 # Fallback for any backend that will just use colorbuffer to write out an image

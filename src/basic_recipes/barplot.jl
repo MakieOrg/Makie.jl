@@ -3,6 +3,38 @@ function bar_label_formatter(value::Number)
 end
 
 """
+    bar_default_fillto(tf, ys, offset)::(ys, offset)
+
+Returns the default y-positions and offset positions for the given transform `tf`.  
+
+In order to customize this for your own transformation type, you can dispatch on 
+`tf`.
+
+Returns a Tuple of new y positions and offset arrays.
+
+## Arguments
+- `tf`: `plot.transformation.transform_func[]`. 
+- `ys`: The y-values passed to `barplot`.
+- `offset`: The `offset` parameter passed to `barplot`.
+"""
+function bar_default_fillto(tf, ys, offset, in_y_direction)
+    return ys, offset
+end
+
+# `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
+function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
+    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
+    if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
+        # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
+        # use the minimal non-zero y divided by 2 as lower bound for log scale
+        smart_fillto = minimum(y -> y<=0 ? oftype(y, Inf) : y, ys) / 2
+        return clamp.(ys, smart_fillto, Inf), smart_fillto
+    else
+        return ys, offset
+    end
+end
+
+"""
     barplot(x, y; kwargs...)
 
 Plots a barplot; `y` defines the height. `x` and `y` should be 1 dimensional.
@@ -17,7 +49,9 @@ $(ATTRIBUTES)
         fillto = automatic,
         offset = 0.0,
         color = theme(scene, :patchcolor),
+        alpha = 1.0,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
@@ -44,7 +78,7 @@ $(ATTRIBUTES)
         color_over_bar = automatic,
         label_offset = 5,
         label_font = theme(scene, :font),
-        label_size = 20,
+        label_size = theme(scene, :fontsize),
         label_formatter = bar_label_formatter,
         transparency = false
     )
@@ -186,11 +220,11 @@ end
 
 function Makie.plot!(p::BarPlot)
 
-    labels = Observable(Tuple{String, Point2f}[])
+    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2f}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])
     label_colors = Observable(RGBAf[])
-    function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, gap, dodge_gap, stack,
+    function calculate_bars(xy, fillto, offset, transformation, width, dodge, n_dodge, gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,
                             color_over_bar, label_formatter, label_offset)
 
@@ -217,7 +251,7 @@ function Makie.plot!(p::BarPlot)
 
         if stack === automatic
             if fillto === automatic
-                fillto = offset
+                y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction)
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
@@ -249,15 +283,15 @@ function Makie.plot!(p::BarPlot)
         return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.gap,
+    bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 
     poly!(
-        p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
+        p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
         inspectable = p.inspectable, transparency = p.transparency,
-        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color,
+        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha
     )
     if !isnothing(p.bar_labels[])
         text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
