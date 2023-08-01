@@ -511,7 +511,6 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
 
     # cast ray from cursor into screen, find closest point to line
     pos = position_on_plot(plot, idx)
-
     proj_pos = shift_project(scene, pos)
     update_tooltip_alignment!(inspector, proj_pos)
 

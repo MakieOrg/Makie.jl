@@ -40,7 +40,7 @@ function Ray(scene::Scene, cam::Camera3D, xy::VecTypes{2})
     aspect = px_width / px_height
     rel_pos = 2 .* xy ./ (px_width, px_height) .- 1
 
-    if cam.attributes.projectiontype[] === Perspective
+    if cam.settings.projectiontype[] === Perspective
         dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) * tand(0.5 * cam.fov[]) + u_z
         return Ray(cam.eyeposition[], normalize(dir))
     else
@@ -124,6 +124,12 @@ function closest_point_on_line(A::Point3f, B::Point3f, ray::Ray)
     return A .+ clamp(t, 0.0, AB_norm) * u_AB
 end
 
+function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::Ray, ϵ = 1e-6)
+    return ray_triangle_intersection(
+        to_ndim(Point3f, A, 0f0), to_ndim(Point3f, B, 0f0), to_ndim(Point3f, C, 0f0), 
+        ray, ϵ
+    )
+end
 
 function ray_triangle_intersection(A::VecTypes{3}, B::VecTypes{3}, C::VecTypes{3}, ray::Ray, ϵ = 1e-6)
     # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
@@ -299,8 +305,8 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
             end
         end
     end
-
-    @info "Did not find $idx"
+          
+    @debug "Did not find intersection for index = $idx when casting a ray on mesh."
 
     return Point3f(NaN)
 end
