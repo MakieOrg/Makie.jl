@@ -96,7 +96,12 @@ An alias to [`old_cam3d_turntable!`](@ref).
 Creates a 3D camera for `scene`, which rotates around
 the plot's axis.
 """
-const old_cam3d! = old_cam3d_turntable!
+old_cam3d!(scene::Scene; kwargs...) = old_cam3d_turntable!(scene; kwargs...)
+
+@deprecate old_cam3d! cam3d!
+@deprecate old_cam3d_turntable! cam3d!
+@deprecate old_cam3d_cad! cam3d_cad!
+
 
 function projection_switch(
         wh::Rect2,

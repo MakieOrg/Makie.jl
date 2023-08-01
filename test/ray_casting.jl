@@ -131,7 +131,7 @@
         center!(scene)
         ray = Makie.Ray(scene, (16.0, 306.0))
         pos = Makie.position_on_plot(p, 0, ray)
-        @test pos ≈ Point3f(10.0, 0.18444633, 9.989262)
+        @test pos ≈ Point3f(10.0, 0.08616829, 9.989262)
     end
 
     # For recreating the above:
