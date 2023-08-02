@@ -19795,97 +19795,135 @@ class MakieCamera {
         }
     }
 }
-const LINES_VERT = `#version 300 es
-precision mediump int;
-precision highp float;
-precision mediump sampler2D;
-precision mediump sampler3D;
-
-in float position;
-
-in vec2 linepoint_prev; // start of previous segment
-in vec2 linepoint_start; // end of previous segment, start of current segment
-in vec2 linepoint_end; // end of current segment, start of next segment
-in vec2 linepoint_next; // end of next segment
-
-uniform vec4 is_valid; // start of previous segment
-
-uniform vec4 color_start; // end of previous segment, start of current segment
-uniform vec4 color_end; // end of current segment, start of next segment
-
-uniform float thickness_start;
-uniform float thickness_end;
-
-uniform vec2 resolution;
-uniform mat4 projectionview;
-uniform mat4 model;
-uniform float pattern_length;
-
-flat out vec2 f_uv_minmax;
-out vec2 f_uv;
-out vec4 f_color;
-out float f_thickness;
-
-#define MITER_LIMIT -0.4
-#define AA_THICKNESS 4.0
-
-vec3 screen_space(vec2 point) {
-    vec4 vertex = projectionview * model * vec4(point, 0, 1);
-    return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
-}
-
-void emit_vertex(vec3 position, vec2 uv, bool is_start) {
-
-    f_uv = uv;
-
-    f_color = is_start ? color_start : color_end;
-
-    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    // linewidth scaling may shrink the effective linewidth
-    f_thickness = is_start ? thickness_start : thickness_end;
-}
-
-void main() {
-    vec3 p1 = screen_space(linepoint_start);
-    vec3 p2 = screen_space(linepoint_end);
-    vec2 dir = p1.xy - p2.xy;
-    dir = normalize(dir);
-    vec2 line_normal = vec2(dir.y, -dir.x);
-    vec2 line_offset = line_normal * (thickness_start / 2.0);
-
-    // triangle 1
-    vec3 v0 = vec3(p1.xy - line_offset, p1.z);
-    if (position == 0.0) {
-        emit_vertex(v0, vec2(0.0, 0.0), true);
-        return;
-    }
-    vec3 v2 = vec3(p2.xy - line_offset, p2.z);
-    if (position == 1.0) {
-        emit_vertex(v2, vec2(0.0, 0.0), true);
-        return;
-    }
-    vec3 v1 = vec3(p1.xy + line_offset, p1.z);
-    if (position == 2.0) {
-        emit_vertex(v1, vec2(0.0, 0.0), false);
-        return;
-    }
-
-    // triangle 2
-    if (position == 3.0) {
-        emit_vertex(v2, vec2(0.0, 0.0), false);
-        return;
-    }
-    vec3 v3 = vec3(p2.xy + line_offset, p2.z);
-    if (position == 4.0) {
-        emit_vertex(v3, vec2(0.0, 0.0), false);
-        return;
-    }
-    if (position == 5.0) {
-        emit_vertex(v1, vec2(0.0, 0.0), false);
-        return;
+function typedarray_to_vectype(typedArray, ndim) {
+    if (ndim === 1) {
+        return "float";
+    } else if (typedArray instanceof Float32Array) {
+        return "vec" + ndim;
+    } else if (typedArray instanceof Int32Array) {
+        return "ivec" + ndim;
+    } else if (typedArray instanceof Uint32Array) {
+        return "uvec" + ndim;
+    } else {
+        throw new Error("Unsupported TypedArray type.");
     }
 }
-`;
+function uniform_type(obj) {
+    if (obj instanceof mod.Uniform) {
+        return uniform_type(obj.value);
+    } else if (typeof obj === "number") {
+        return "float";
+    } else if (obj instanceof mod.Vector2) {
+        return "vec2";
+    } else if (obj instanceof mod.Vector3) {
+        return "vec3";
+    } else if (obj instanceof mod.Vector4) {
+        return "vec4";
+    } else if (obj instanceof mod.Color) {
+        return "vec4";
+    } else if (obj instanceof mod.Matrix3) {
+        return "mat3";
+    } else if (obj instanceof mod.Matrix4) {
+        return "mat4";
+    } else if (obj instanceof mod.Texture) {
+        return "sampler2D";
+    } else {
+        return "vec4";
+    }
+}
+function uniforms_to_type_declaration(uniform_dict) {
+    let result = "";
+    for(const name in uniform_dict){
+        const uniform = uniform_dict[name];
+        const type = uniform_type(uniform);
+        result += `uniform ${type} ${name};\n`;
+    }
+    return result;
+}
+function attributes_to_type_declaration(attributes_dict) {
+    let result = "";
+    for(const name in attributes_dict){
+        const attribute = attributes_dict[name];
+        const type = typedarray_to_vectype(attribute.array, attribute.itemSize);
+        result += `in ${type} ${name};\n`;
+    }
+    return result;
+}
+function lines_shader(uniforms, attributes) {
+    console.log(attributes);
+    const attribute_decl = attributes_to_type_declaration(attributes);
+    const uniform_decl = uniforms_to_type_declaration(uniforms);
+    return `#version 300 es
+        precision mediump int;
+        precision highp float;
+        precision mediump sampler2D;
+        precision mediump sampler3D;
+
+        ${attribute_decl}
+        ${uniform_decl}
+
+        out vec2 f_uv;
+        out vec4 f_color;
+        out float f_thickness;
+
+        vec3 screen_space(vec2 point) {
+            vec4 vertex = projectionview * model * vec4(point, 0, 1);
+            return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+        }
+
+        void emit_vertex(vec3 position, vec2 uv, bool is_start) {
+
+            f_uv = uv;
+
+            f_color = is_start ? color_start : color_end;
+
+            gl_Position = vec4((position.xy / resolution), position.z, 1.0);
+            // linewidth scaling may shrink the effective linewidth
+            f_thickness = is_start ? linewidth_start : linewidth_end;
+        }
+
+        void main() {
+            vec3 p1 = screen_space(linepoint_start);
+            vec3 p2 = screen_space(linepoint_end);
+            vec2 dir = p1.xy - p2.xy;
+            dir = normalize(dir);
+            vec2 line_normal = vec2(dir.y, -dir.x);
+            vec2 line_offset = line_normal * (linewidth_start / 2.0);
+
+            // triangle 1
+            vec3 v0 = vec3(p1.xy - line_offset, p1.z);
+            if (position == 0.0) {
+                emit_vertex(v0, vec2(0.0, 0.0), true);
+                return;
+            }
+            vec3 v2 = vec3(p2.xy - line_offset, p2.z);
+            if (position == 1.0) {
+                emit_vertex(v2, vec2(0.0, 0.0), true);
+                return;
+            }
+            vec3 v1 = vec3(p1.xy + line_offset, p1.z);
+            if (position == 2.0) {
+                emit_vertex(v1, vec2(0.0, 0.0), false);
+                return;
+            }
+
+            // triangle 2
+            if (position == 3.0) {
+                emit_vertex(v2, vec2(0.0, 0.0), false);
+                return;
+            }
+            vec3 v3 = vec3(p2.xy + line_offset, p2.z);
+            if (position == 4.0) {
+                emit_vertex(v3, vec2(0.0, 0.0), false);
+                return;
+            }
+            if (position == 5.0) {
+                emit_vertex(v1, vec2(0.0, 0.0), false);
+                return;
+            }
+        }
+        `;
+}
 const LINES_FRAG = `#version 300 es
 precision mediump int;
 precision highp float;
@@ -19923,62 +19961,49 @@ float aastep_scaled(float threshold1, float threshold2, float dist) {
 }
 
 void main(){
-    // vec4 color = vec4(f_color.rgb, 0.0);
-    // vec2 xy = f_uv;
-
-    // float alpha = aastep(0.0, xy.x);
-    // float alpha2 = aastep(-f_thickness, f_thickness, xy.y);
-    // float alpha3 = aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x);
-
-    // color = vec4(f_color.rgb, f_color.a * alpha * alpha2 * alpha3);
-
     fragment_color = f_color;
 }
 `;
-function create_line_material(uniforms) {
+function create_line_material(uniforms, attributes) {
+    const uniforms_des = deserialize_uniforms(uniforms);
     return new mod.RawShaderMaterial({
-        uniforms: deserialize_uniforms(uniforms),
-        vertexShader: LINES_VERT,
+        uniforms: uniforms_des,
+        vertexShader: lines_shader(uniforms_des, attributes),
         fragmentShader: LINES_FRAG,
         transparent: true
     });
 }
-function linepoints2buffer(linepoints, is_linesegments) {
+function to_linepoint_array(linepoints, is_linesegments, ndims) {
     const N = linepoints.length;
-    if (is_linesegments) {
-        const N2 = linepoints.length + 4;
-        const points = new Float32Array(N2);
-        points[0] = linepoints[0];
-        points[1] = linepoints[1];
-        points.set(linepoints, 2);
-        points[N2 - 2] = linepoints[N - 2];
-        points[N2 - 1] = linepoints[N - 1];
-        return points;
-    } else {
-        const N2 = linepoints.length * 2 + 4;
-        const points = new Float32Array(N2);
-        points[0] = linepoints[0];
-        points[1] = linepoints[1];
-        for(let i = 0; i < linepoints.length; i += 2){
-            points[2 * i + 2] = linepoints[i];
-            points[2 * i + 3] = linepoints[i + 1];
-            points[2 * i + 4] = linepoints[i + 2];
-            points[2 * i + 5] = linepoints[i + 3];
-        }
-        points[N2 - 2] = linepoints[N - 2];
-        points[N2 - 1] = linepoints[N - 1];
-        return points;
+    const duplicate = is_linesegments ? 1 : 2;
+    const N2 = linepoints.length * duplicate + ndims * 2;
+    const points = new Float32Array(N2);
+    for(let i = 0; i < ndims; i++){
+        points[i] = linepoints[i];
     }
+    for(let i = 1; i <= ndims; i++){
+        points[N2 - i] = linepoints[N - i];
+    }
+    if (is_linesegments) {
+        points.set(linepoints, ndims);
+    } else {
+        for(let i = 0; i < N; i += 2){
+            for(let j = 0; j < 2 * ndims; j++){
+                points[2 * i + ndims + j] = linepoints[i + j];
+            }
+        }
+    }
+    return points;
 }
-function attach_instanced_line_geometry(geometry, points) {
-    const instanceBuffer = new mod.InstancedInterleavedBuffer(points, 4, 1);
-    geometry.setAttribute("linepoint_prev", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 0));
-    geometry.setAttribute("linepoint_start", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 2));
-    geometry.setAttribute("linepoint_end", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 4));
-    geometry.setAttribute("linepoint_next", new mod.InterleavedBufferAttribute(instanceBuffer, 2, 6));
-    return instanceBuffer;
+function attach_interleaved_line_buffer(attr_name, geometry, points, ndim) {
+    const buffer = new mod.InstancedInterleavedBuffer(points, ndim * 2, 1);
+    geometry.setAttribute(attr_name + "_prev", new mod.InterleavedBufferAttribute(buffer, ndim, 0));
+    geometry.setAttribute(attr_name + "_start", new mod.InterleavedBufferAttribute(buffer, ndim, ndim));
+    geometry.setAttribute(attr_name + "_end", new mod.InterleavedBufferAttribute(buffer, ndim, ndim * 2));
+    geometry.setAttribute(attr_name + "_next", new mod.InterleavedBufferAttribute(buffer, ndim, ndim * 3));
+    return buffer;
 }
-function create_line_geometry(linepoints, is_linesegments) {
+function create_line_geometry(attributes, is_linesegments) {
     function geometry_buffer() {
         const geometry = new mod.InstancedBufferGeometry();
         const instance_positions = [
@@ -19993,16 +20018,31 @@ function create_line_geometry(linepoints, is_linesegments) {
         return geometry;
     }
     const geometry = geometry_buffer();
-    const points = linepoints2buffer(linepoints.value, is_linesegments);
-    const instanceBuffer = attach_instanced_line_geometry(geometry, points);
-    console.log(instanceBuffer);
-    linepoints.on((new_points)=>{
-        const new_line_points = linepoints2buffer(new_points, is_linesegments);
-        instanceBuffer.updateRange.count = new_line_points.length;
-        instanceBuffer.set(new_line_points, 0);
-        instanceBuffer.needsUpdate = true;
-        geometry.instanceCount = (new_line_points.length - 4) / 4;
-    });
+    const buffers = {};
+    function create_line_buffer(name, attr) {
+        const buffer = to_linepoint_array(attr.value, is_linesegments, 2);
+        const linebuffer = attach_interleaved_line_buffer(name, geometry, buffer, 2);
+        buffers[name] = linebuffer;
+        attr.on((new_points)=>{
+            const buff = buffers[name];
+            const new_line_points = to_linepoint_array(new_points, is_linesegments, 2);
+            const old_count = buff.updateRange.count;
+            if (old_count < new_line_points.length) {
+                buffers[name] = attach_interleaved_line_buffer(name, geometry, new_line_points);
+            } else {
+                buff.updateRange.count = new_line_points.length;
+                buff.set(new_line_points, 0);
+            }
+            geometry.instanceCount = (new_line_points.length - 4) / 4;
+            buffers[name].needsUpdate = true;
+        });
+        return buffer;
+    }
+    let points;
+    for(let name in attributes){
+        const attr = attributes[name];
+        points = create_line_buffer(name, attr);
+    }
     geometry.boundingSphere = new mod.Sphere();
     geometry.boundingSphere.radius = 10000000000000;
     geometry.frustumCulled = false;
@@ -20010,8 +20050,8 @@ function create_line_geometry(linepoints, is_linesegments) {
     return geometry;
 }
 function create_line(line_data) {
-    const geometry = create_line_geometry(line_data.positions, line_data.is_linesegments);
-    const material = create_line_material(line_data.uniforms);
+    const geometry = create_line_geometry(line_data.attributes, line_data.is_linesegments);
+    const material = create_line_material(line_data.uniforms, geometry.attributes);
     return new mod.Mesh(geometry, material);
 }
 const scene_cache = {};

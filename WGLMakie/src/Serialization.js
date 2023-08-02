@@ -8,35 +8,68 @@ import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 // https://github.com/wwwtyro/instanced-lines-demos/tree/master
 
 function typedarray_to_vectype(typedArray, ndim) {
-    let glslType;
-
-    if (typedArray instanceof Float32Array) {
-        glslType = "vec" + ndim;
+    if (ndim === 1) {
+        return "float";
+    } else if (typedArray instanceof Float32Array) {
+        return "vec" + ndim;
     } else if (typedArray instanceof Int32Array) {
-        glslType = "ivec" + ndim;
+        return "ivec" + ndim;
     } else if (typedArray instanceof Uint32Array) {
-        glslType = "uvec" + ndim;
+        return "uvec" + ndim;
     } else {
         throw new Error("Unsupported TypedArray type.");
     }
-
-    return "in " + glslType;
 }
 
-const isTypedArray = (obj) => ArrayBuffer.isView(obj);
-
-function glsl_type(obj) {
-    if (isTypedArray(obj.flat) && obj.type_length) {
-        return typedarray_to_vectype(obj.flat, obj.type_length);
+function uniform_type(obj) {
+    if (obj instanceof THREE.Uniform) {
+        return uniform_type(obj.value);
+    } else if (typeof obj === "number") {
+        return "float";
+    } else if (obj instanceof THREE.Vector2) {
+        return "vec2";
+    } else if (obj instanceof THREE.Vector3) {
+        return "vec3";
+    } else if (obj instanceof THREE.Vector4) {
+        return "vec4";
+    } else if (obj instanceof THREE.Color) {
+        return "vec4";
+    } else if (obj instanceof THREE.Matrix3) {
+        return "mat3";
+    } else if (obj instanceof THREE.Matrix4) {
+        return "mat4";
+    } else if (obj instanceof THREE.Texture) {
+        return "sampler2D";
     } else {
-        return "uniform " + obj.type;
+        return "vec4";
+        // throw new Error(`Unssupported uniform type: ${obj}`)
     }
 }
 
-function lines_shader(positions, linewidth, colors) {
-    const position_type = glsl_type(positions);
-    const linewidth_type = glsl_type(linewidth);
-    const colors_type = glsl_type(colors);
+function uniforms_to_type_declaration(uniform_dict) {
+    let result = "";
+    for (const name in uniform_dict) {
+        const uniform = uniform_dict[name];
+        const type = uniform_type(uniform);
+        result += `uniform ${type} ${name};\n`;
+    }
+    return result;
+}
+
+function attributes_to_type_declaration(attributes_dict) {
+    let result = "";
+    for (const name in attributes_dict) {
+        const attribute = attributes_dict[name];
+        const type = typedarray_to_vectype(attribute.array, attribute.itemSize);
+        result += `in ${type} ${name};\n`;
+    }
+    return result;
+}
+
+function lines_shader(uniforms, attributes) {
+    console.log(attributes)
+    const attribute_decl = attributes_to_type_declaration(attributes);
+    const uniform_decl = uniforms_to_type_declaration(uniforms);
 
     return `#version 300 es
         precision mediump int;
@@ -44,23 +77,8 @@ function lines_shader(positions, linewidth, colors) {
         precision mediump sampler2D;
         precision mediump sampler3D;
 
-        in float position;
-
-        ${position_type} linepoint_prev; // start of previous segment
-        ${position_type} linepoint_start; // end of previous segment, start of current segment
-        ${position_type} linepoint_end; // end of current segment, start of next segment
-        ${position_type} linepoint_next; // end of next segment
-
-        ${colors_type} color_start; // end of previous segment, start of current segment
-        ${colors_type} color_end; // end of current segment, start of next segment
-
-        ${linewidth_type} thickness_start;
-        ${linewidth_type} thickness_end;
-
-        uniform vec2 resolution;
-        uniform mat4 projectionview;
-        uniform mat4 model;
-        uniform float pattern_length;
+        ${attribute_decl}
+        ${uniform_decl}
 
         out vec2 f_uv;
         out vec4 f_color;
@@ -79,7 +97,7 @@ function lines_shader(positions, linewidth, colors) {
 
             gl_Position = vec4((position.xy / resolution), position.z, 1.0);
             // linewidth scaling may shrink the effective linewidth
-            f_thickness = is_start ? thickness_start : thickness_end;
+            f_thickness = is_start ? linewidth_start : linewidth_end;
         }
 
         void main() {
@@ -88,7 +106,7 @@ function lines_shader(positions, linewidth, colors) {
             vec2 dir = p1.xy - p2.xy;
             dir = normalize(dir);
             vec2 line_normal = vec2(dir.y, -dir.x);
-            vec2 line_offset = line_normal * (thickness_start / 2.0);
+            vec2 line_offset = line_normal * (linewidth_start / 2.0);
 
             // triangle 1
             vec3 v0 = vec3(p1.xy - line_offset, p1.z);
@@ -162,71 +180,70 @@ float aastep_scaled(float threshold1, float threshold2, float dist) {
 }
 
 void main(){
-
     fragment_color = f_color;
 }
 `;
 
-function create_line_material(uniforms, positions, linewidth, colors) {
+function create_line_material(uniforms, attributes) {
+    const uniforms_des = deserialize_uniforms(uniforms);
     return new THREE.RawShaderMaterial({
-        uniforms: deserialize_uniforms(uniforms),
-        vertexShader: lines_shader(positions, linewidth, colors),
+        uniforms: uniforms_des,
+        vertexShader: lines_shader(uniforms_des, attributes),
         fragmentShader: LINES_FRAG,
         transparent: true,
     });
 }
 
-function linepoints2buffer(linepoints, is_linesegments) {
+function to_linepoint_array(linepoints, is_linesegments, ndims) {
     const N = linepoints.length;
-    if (is_linesegments) {
-        const N2 = linepoints.length + 4;
-        const points = new Float32Array(N2);
-        points[0] = linepoints[0];
-        points[1] = linepoints[1];
-        points.set(linepoints, 2);
-        points[N2 - 2] = linepoints[N - 2];
-        points[N2 - 1] = linepoints[N - 1];
-        return points;
-    } else {
-        const N2 = linepoints.length * 2 + 4;
-        const points = new Float32Array(N2);
-        points[0] = linepoints[0];
-        points[1] = linepoints[1];
-        for (let i = 0; i < linepoints.length; i += 2) {
-            points[2 * i + 2] = linepoints[i];
-            points[2 * i + 3] = linepoints[i + 1];
-
-            points[2 * i + 4] = linepoints[i + 2];
-            points[2 * i + 5] = linepoints[i + 3];
-        }
-        points[N2 - 2] = linepoints[N - 2];
-        points[N2 - 1] = linepoints[N - 1];
-        return points;
+    const duplicate = is_linesegments ? 1 : 2;
+    const N2 = (linepoints.length * duplicate) + (ndims * 2);
+    const points = new Float32Array(N2);
+    // copy over first and last point
+    for (let i = 0; i < ndims; i++) {
+        points[i] = linepoints[i];
     }
+    for (let i = 1; i <= ndims; i++) {
+        points[N2 - i] = linepoints[N - i];
+    }
+    if (is_linesegments) {
+        points.set(linepoints, ndims);
+    } else {
+        for (let i = 0; i < N; i += 2) {
+            for (let j = 0; j < (2 * ndims); j++) {
+                points[(2 * i) + ndims + j] = linepoints[i + j];
+            }
+        }
+    }
+    return points;
 }
 
-function attach_instanced_line_geometry(geometry, points) {
-    const instanceBuffer = new THREE.InstancedInterleavedBuffer(points, 4, 1); // xy1, xy2
+function attach_interleaved_line_buffer(attr_name, geometry, points, ndim) {
+    const buffer = new THREE.InstancedInterleavedBuffer(
+        points,
+        ndim * 2, // xyz1, xyz2
+        1
+    );
     geometry.setAttribute(
-        "linepoint_prev",
-        new THREE.InterleavedBufferAttribute(instanceBuffer, 2, 0)
+        attr_name + "_prev",
+        new THREE.InterleavedBufferAttribute(buffer, ndim, 0)
     ); // xyz1
     geometry.setAttribute(
-        "linepoint_start",
-        new THREE.InterleavedBufferAttribute(instanceBuffer, 2, 2)
+        attr_name + "_start",
+        new THREE.InterleavedBufferAttribute(buffer, ndim, ndim)
     ); // xyz1
     geometry.setAttribute(
-        "linepoint_end",
-        new THREE.InterleavedBufferAttribute(instanceBuffer, 2, 4)
+        attr_name + "_end",
+        new THREE.InterleavedBufferAttribute(buffer, ndim, ndim * 2)
     ); // xyz1
     geometry.setAttribute(
-        "linepoint_next",
-        new THREE.InterleavedBufferAttribute(instanceBuffer, 2, 6)
+        attr_name + "_next",
+        new THREE.InterleavedBufferAttribute(buffer, ndim, ndim * 3)
     ); // xyz2
-    return instanceBuffer;
+    return buffer;
 }
 
-function create_line_geometry(linepoints, is_linesegments) {
+function create_line_geometry(attributes, is_linesegments) {
     function geometry_buffer() {
         const geometry = new THREE.InstancedBufferGeometry();
         const instance_positions = [0, 1, 2, 3, 4, 5];
@@ -239,28 +256,41 @@ function create_line_geometry(linepoints, is_linesegments) {
     }
 
     const geometry = geometry_buffer();
-
-    const points = linepoints2buffer(linepoints.value, is_linesegments);
-
-    let instanceBuffer = attach_instanced_line_geometry(geometry, points);
-
-    linepoints.on((new_points) => {
-        const new_line_points = linepoints2buffer(new_points, is_linesegments);
-        const old_count = instanceBuffer.updateRange.count;
-        if (old_count < new_line_points.length) {
-            instanceBuffer.dispose();
-            instanceBuffer = attach_instanced_line_geometry(
-                geometry,
-                new_line_points
+    const buffers = {};
+    function create_line_buffer(name, attr) {
+        const buffer = to_linepoint_array(attr.value, is_linesegments, 2);
+        const linebuffer = attach_interleaved_line_buffer(name, geometry, buffer, 2);
+        buffers[name] = linebuffer;
+        attr.on((new_points) => {
+            const buff = buffers[name];
+            const new_line_points = to_linepoint_array(
+                new_points,
+                is_linesegments,
+                2
             );
-        } else {
-            instanceBuffer.updateRange.count = new_line_points.length;
-            instanceBuffer.set(new_line_points, 0);
-        }
+            const old_count = buff.updateRange.count;
+            if (old_count < new_line_points.length) {
+                // instanceBuffer.dispose();
+                buffers[name] = attach_interleaved_line_buffer(
+                    name,
+                    geometry,
+                    new_line_points
+                );
+            } else {
+                buff.updateRange.count = new_line_points.length;
+                buff.set(new_line_points, 0);
+            }
 
-        geometry.instanceCount = (new_line_points.length - 4) / 4;
-        instanceBuffer.needsUpdate = true;
-    });
+            geometry.instanceCount = (new_line_points.length - 4) / 4;
+            buffers[name].needsUpdate = true;
+        });
+        return buffer;
+    }
+    let points;
+    for (let name in attributes) {
+        const attr = attributes[name];
+        points = create_line_buffer(name, attr);
+    }
 
     geometry.boundingSphere = new THREE.Sphere();
     // don't use intersection / culling
@@ -273,10 +303,13 @@ function create_line_geometry(linepoints, is_linesegments) {
 
 export function create_line(line_data) {
     const geometry = create_line_geometry(
-        line_data.positions,
+        line_data.attributes,
         line_data.is_linesegments
     );
-    const material = create_line_material(line_data.uniforms);
+    const material = create_line_material(
+        line_data.uniforms,
+        geometry.attributes
+    );
     return new THREE.Mesh(geometry, material);
 }
 
