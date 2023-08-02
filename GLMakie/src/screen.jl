@@ -342,7 +342,6 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
     # Set the config
     screen.config = config
-
     if start_renderloop
         start_renderloop!(screen)
     else
@@ -518,7 +517,7 @@ end
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
-        for cplot in Makie.flatten_plots(plot)
+        for cplot in Makie.collect_atomic_plots(plot)
             delete!(screen, scene, cplot)
         end
     else
@@ -688,7 +687,13 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # GLFW.PollEvents()
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render
-    glFinish() # block until opengl is done rendering
+    if screen.config.visible
+        GLFW.SwapBuffers(to_native(screen))
+    else
+        # SwapBuffers blocks as well, but if we don't call that
+        # We need to call glFinish to wait for all OpenGL changes to finish
+        glFinish()
+    end
     if size(ctex) != size(screen.framecache)
         screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
     end
@@ -919,7 +924,7 @@ function renderloop(screen)
 end
 
 function plot2robjs(screen::Screen, plot)
-    plots = Makie.flatten_plots(plot)
+    plots = Makie.collect_atomic_plots(plot)
     return map(x-> screen.cache[objectid(x)], plots)
 end
 

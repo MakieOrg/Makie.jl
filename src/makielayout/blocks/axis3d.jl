@@ -477,10 +477,11 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     map!(ticklabels, ticknode) do (values, labels)
         labels
     end
+    ticksize = attr(:ticksize)
 
     tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
-            scene.camera.projectionview, scene.px_area) do lims, ticks, miv, min1, min2,
-                pview, pxa
+            scene.camera.projectionview, scene.px_area, ticksize) do lims, ticks, miv, min1, min2,
+                pview, pxa, tsize
         f1 = !min1 ? minimum(lims)[d1] : maximum(lims)[d1]
         f2 = min2 ? minimum(lims)[d2] : maximum(lims)[d2]
 
@@ -490,23 +491,28 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
-        map(ticks) do t
+        o = pxa.origin
+
+        return map(ticks) do t
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
                 # special case the z axis, here it depends on azimuth in which direction the ticks go
                 if 45 <= mod1(rad2deg(azimuth[]), 180) <= 135
-                    dpoint(t, f1 + 0.03 * diff_f1, f2)
+                    dpoint(t, f1 + diff_f1, f2)
                 else
-                    dpoint(t, f1, f2 + 0.03 * diff_f2)
+                    dpoint(t, f1, f2 + diff_f2)
                 end
             else
-                dpoint(t, f1 + 0.03 * diff_f1, f2)
+                dpoint(t, f1 + diff_f1, f2)
             end
 
-            (p1, p2)
-        end
-    end
+            pp1 = Point2f(o + Makie.project(scene, p1))
+            pp2 = Point2f(o + Makie.project(scene, p2))
+            diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
+            return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
+         end
+    end
     # we are going to transform the 3d tick segments into 2d of the topscene
     # because otherwise they
     # be cut when they extend beyond the scene boundary
@@ -516,10 +522,13 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticks = linesegments!(topscene, tick_segments_2dz,
+    ticks = linesegments!(topscene, tick_segments,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
+    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
+    # to clip into plot objects anymore
+    translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
     map!(topscene, labels_positions, scene.px_area, scene.camera.projectionview,
@@ -528,12 +537,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         o = pxa.origin
 
         points = map(ticksegs) do (tstart, tend)
-            tstartp = Point2f(o + Makie.project(scene, tstart))
-            tendp = Point2f(o + Makie.project(scene, tend))
-
-            offset = pad * Makie.GeometryBasics.normalize(
-                Point2f(tendp - tstartp))
-            tendp + offset
+            offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
+            tend + offset
         end
 
         N = min(length(ticklabs), length(points))
@@ -609,7 +614,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         if slight_flip
             offset_ang_90deg_alwaysup += pi
         end
-        offset_ang_90deg_alwaysup
 
         labelrotation = if lrotation == Makie.automatic
             offset_ang_90deg_alwaysup

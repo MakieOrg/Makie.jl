@@ -74,6 +74,9 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
+# Resizing the scene is enough for WGLMakie
+Base.resize!(::WGLMakie.Screen, w, h) = nothing
+
 function Base.isopen(screen::Screen)
     three = get_three(screen)
     return !isnothing(three) && isopen(three.session)
@@ -343,7 +346,7 @@ const DISABLE_JS_FINALZING = Base.RefValue(false)
 const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_plot!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
-    atomics = Makie.flatten_plots(plot) # delete all atomics
+    atomics = Makie.collect_atomic_plots(plot) # delete all atomics
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
         push!(DELETE_QUEUE, (screen, js_uuid(scene), js_uuid.(atomics)))

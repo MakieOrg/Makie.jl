@@ -165,7 +165,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.elements = elements
 
     if palette === nothing
-        palette = fast_deepcopy(haskey(blockscene.theme, :palette) ? blockscene.theme[:palette] : Makie.DEFAULT_PALETTES)
+        palette = fast_deepcopy(get(blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
     end
     ax.palette = palette isa Attributes ? palette : Attributes(palette)
 
@@ -1784,4 +1784,31 @@ function attribute_examples(::Type{Axis})
             )
         ],
     )
+end
+
+function axis_bounds_with_decoration(axis::Axis)
+    # Filter out the zoomrect + background plot
+    lims = Makie.data_limits(axis.blockscene.plots, p -> p isa Mesh || p isa Poly)
+    return Makie.parent_transform(axis.blockscene) * lims
+end
+
+"""
+    colorbuffer(ax::Axis; include_decorations=true, colorbuffer_kws...)
+
+Gets the colorbuffer of the `Axis` in `JuliaNative` image format.
+If `include_decorations=false`, only the inside of the axis is fetched.
+"""
+function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffer_kws...)
+    if update
+        update_state_before_display!(ax)
+    end
+    bb = if include_decorations
+        bb = axis_bounds_with_decoration(ax)
+        Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
+    else
+        pixelarea(ax.scene)[]
+    end
+
+    img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)
+    return get_sub_picture(img, JuliaNative, bb)
 end

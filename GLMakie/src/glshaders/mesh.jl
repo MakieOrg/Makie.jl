@@ -34,18 +34,20 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     return result
 end
 
-function draw_mesh(screen, @nospecialize(mesh), data::Dict)
-    to_opengl_mesh!(data, mesh)
+function draw_mesh(screen, data::Dict)
     @gen_defaults! data begin
+        vertices = nothing => GLBuffer
+        faces = nothing => indexbuffer
+        normals = nothing => GLBuffer
         shading = true
         backlight = 0f0
         vertex_color = nothing => GLBuffer
-        texturecoordinates = Vec2f(0)
         image = nothing => Texture
         matcap = nothing => Texture
         color_map = nothing => Texture
         color_norm = nothing
         fetch_pixel = false
+        texturecoordinates = Vec2f(0) => GLBuffer
         uv_scale = Vec2f(1)
         transparency = false
         interpolate_in_fragment_shader = true
