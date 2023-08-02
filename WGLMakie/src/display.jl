@@ -234,7 +234,7 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     if js_uuid(scene) in screen.displayed_scenes
         return true
     else
-        scene_ser = serialize_scene(scene)
+        scene_ser = serialize_scene(disp.session, scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
         insert_scene!(disp, screen, parent) # make sure parent is also already displayed

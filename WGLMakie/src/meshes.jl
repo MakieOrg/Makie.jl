@@ -17,6 +17,7 @@ function converted_attribute(plot::AbstractPlot, key::Symbol)
     end
 end
 
+
 function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_color; permute_tex=true)
     color = plot.calculated_colors
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
@@ -44,6 +45,10 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         uniforms[:highclip] = Makie.highclip(color[])
         uniforms[:lowclip] = Makie.lowclip(color[])
         uniforms[:nan_color] = color[].nan_color
+    elseif color[] isa ImageFile
+        uniforms[:color] = color
+    else
+        error("Type for color $(typeof(color[])) not supported)")
     end
     get!(uniforms, :color, false)
     get!(uniforms, uniform_color_name, false)
