@@ -19850,7 +19850,6 @@ function attributes_to_type_declaration(attributes_dict) {
     return result;
 }
 function lines_shader(uniforms, attributes) {
-    console.log(attributes);
     const attribute_decl = attributes_to_type_declaration(attributes);
     const uniform_decl = uniforms_to_type_declaration(uniforms);
     return `#version 300 es
@@ -19976,7 +19975,8 @@ function create_line_material(uniforms, attributes) {
 function to_linepoint_array(linepoints, is_linesegments, ndims) {
     const N = linepoints.length;
     const duplicate = is_linesegments ? 1 : 2;
-    const N2 = linepoints.length * duplicate + ndims * 2;
+    const extra = is_linesegments ? 2 * ndims : 0;
+    const N2 = linepoints.length * duplicate + extra;
     const points = new Float32Array(N2);
     for(let i = 0; i < ndims; i++){
         points[i] = linepoints[i];
@@ -19987,7 +19987,7 @@ function to_linepoint_array(linepoints, is_linesegments, ndims) {
     if (is_linesegments) {
         points.set(linepoints, ndims);
     } else {
-        for(let i = 0; i < N; i += 2){
+        for(let i = 0; i < N - ndims; i += ndims){
             for(let j = 0; j < 2 * ndims; j++){
                 points[2 * i + ndims + j] = linepoints[i + j];
             }
@@ -20020,15 +20020,18 @@ function create_line_geometry(attributes, is_linesegments) {
     const geometry = geometry_buffer();
     const buffers = {};
     function create_line_buffer(name, attr) {
-        const buffer = to_linepoint_array(attr.value, is_linesegments, 2);
-        const linebuffer = attach_interleaved_line_buffer(name, geometry, buffer, 2);
+        const flat_buffer = attr.value.flat;
+        const ndims = attr.value.type_length;
+        const buffer = to_linepoint_array(flat_buffer, is_linesegments, ndims);
+        const linebuffer = attach_interleaved_line_buffer(name, geometry, buffer, ndims);
         buffers[name] = linebuffer;
         attr.on((new_points)=>{
             const buff = buffers[name];
-            const new_line_points = to_linepoint_array(new_points, is_linesegments, 2);
+            const ndims = new_points.type_length;
+            const new_line_points = to_linepoint_array(new_points.flat, is_linesegments, ndims);
             const old_count = buff.updateRange.count;
             if (old_count < new_line_points.length) {
-                buffers[name] = attach_interleaved_line_buffer(name, geometry, new_line_points);
+                buffers[name] = attach_interleaved_line_buffer(name, geometry, new_line_points, ndims);
             } else {
                 buff.updateRange.count = new_line_points.length;
                 buff.set(new_line_points, 0);

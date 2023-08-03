@@ -6,14 +6,14 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :is_valid => Vec4f(1),
     )
     attributes = Dict{Symbol, Any}(
-        :linepoint => lift(x -> collect(reinterpret(Float32, x)), plot[1])
+        :linepoint => lift(serialize_buffer_attribute, plot[1])
     )
     for (name, attr) in [:color => color, :linewidth => linewidth]
-        if Makie.is_scalar_attribute(attr)
+        if Makie.is_scalar_attribute(to_value(attr))
             uniforms[Symbol("$(name)_start")] = attr
             uniforms[Symbol("$(name)_end")] = attr
         else
-            attributes[name] = attr
+            attributes[name] = lift(serialize_buffer_attribute, attr)
         end
     end
     attr = Dict(
