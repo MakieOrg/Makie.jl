@@ -90,19 +90,34 @@ function get_voronoi_colors!(colors, vorn, cmap)
 end
 
 
-Makie.conversion_trait(::Voronoiplot) = PointBased()
-Makie.convert_arguments(::Voronoiplot, x::DelTri.VoronoiTessellation) = (x,)
+Makie.convert_arguments(::Type{<: Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
+Makie.convert_arguments(::Type{<: Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
+Makie.convert_arguments(::Type{<: Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
+Makie.convert_arguments(::Type{<: Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
 
-function Makie.plot!(p::Voronoiplot{<: Tuple{<: Vector{<: Point2f}}})
+function Makie.plot!(p::Voronoiplot{<: Tuple{<: Vector{<: Point{N}}}}) where {N}
     attr = copy(p.attributes)
     smooth = pop!(attr, :smooth)
 
+    # from call pattern (::Vector, ::Vector, ::Matrix)
+    if N == 3
+        ps = map(ps -> Point2f.(ps), p[1])
+        attr[:color] = map(ps -> last.(ps), p[1])
+    else
+        ps = p[1]
+    end
+
     # Handle transform_func early so tessellation is in cartesian space.
-    vorn = map(p.transformation.transform_func, p[1], smooth) do tf, ps, smooth
+    vorn = map(p.transformation.transform_func, ps, smooth) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
 
         # TODO: Make this work with Point2f directly
-        tri = DelTri.triangulate(Point2{Float64}.(transformed))
+        M = Matrix{Float64}(undef, 2, length(transformed))
+        for (i, p) in enumerate(transformed)
+            M[:, i] .= p
+        end
+
+        tri = DelTri.triangulate(M)
         vorn = DelTri.voronoi(tri)
         if smooth
             vorn = DelTri.centroidal_smooth(vorn)
