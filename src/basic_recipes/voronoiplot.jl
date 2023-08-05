@@ -102,12 +102,7 @@ function Makie.plot!(p::Voronoiplot{<: Tuple{<: Vector{<: Point2f}}})
         transformed = Makie.apply_transform(tf, ps)
 
         # TODO: Make this work with Point2f directly
-        M = Matrix{Float64}(undef, 2, length(transformed))
-        for (i, p) in enumerate(transformed)
-            M[:, i] .= p
-        end
-
-        tri = DelTri.triangulate(M)
+        tri = DelTri.triangulate(Point2{Float64}.(transformed))
         vorn = DelTri.voronoi(tri)
         if smooth
             vorn = DelTri.centroidal_smooth(vorn)
