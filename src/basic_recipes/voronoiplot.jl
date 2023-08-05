@@ -3,7 +3,7 @@
 
 Plots a Voronoi tessellation from the provided `VoronoiTessellation` from DelaunayTriangulation.jl.
 
-## Attributes 
+## Attributes
 
 - `show_generators = true` determines whether to plot the individual generators.
 
@@ -27,20 +27,21 @@ Plots a Voronoi tessellation from the provided `VoronoiTessellation` from Delaun
     return Attributes(;
                       # Toggles
                       show_generators=true,
+                      smooth=false,
 
-                      # Point settings 
+                      # Point settings
                       markersize=4,
                       marker=sc.marker,
                       point_color=sc.color,
 
-                      # Polygon settings 
+                      # Polygon settings
                       strokecolor=theme(scene, :patchstrokecolor),
                       strokewidth=1.0,
                       polygon_color=automatic,
                       unbounded_edge_extension_factor=0.1,
                       bounding_box=automatic,
 
-                      # Colormap settings 
+                      # Colormap settings
                       colormap=th.colormap,
                       colorrange=th.colorrange,
                       cycle=th.cycle)
@@ -72,6 +73,7 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     end
     return generators, polygons
 end
+
 function get_voronoi_colors!(colors, vorn, cmap)
     empty!(colors)
     sizehint!(colors, DelTri.num_polygons(vorn))
@@ -86,7 +88,39 @@ function get_voronoi_colors!(colors, vorn, cmap)
     end
     return colors
 end
-function plot!(p::Voronoiplot)
+
+
+Makie.conversion_trait(::Voronoiplot) = PointBased()
+Makie.convert_arguments(::Voronoiplot, x::DelTri.VoronoiTessellation) = (x,)
+
+function Makie.plot!(p::Voronoiplot{<: Tuple{<: Vector{<: Point2f}}})
+    attr = copy(p.attributes)
+    smooth = pop!(attr, :smooth)
+
+    # Handle transform_func early so tessellation is in cartesian space.
+    vorn = map(p.transformation.transform_func, p[1], smooth) do tf, ps, smooth
+        transformed = Makie.apply_transform(tf, ps)
+
+        # TODO: Make this work with Point2f directly
+        M = Matrix{Float64}(undef, 2, length(transformed))
+        for (i, p) in enumerate(transformed)
+            M[:, i] .= p
+        end
+
+        tri = DelTri.triangulate(M)
+        vorn = DelTri.voronoi(tri)
+        if smooth
+            vorn = DelTri.centroidal_smooth(vorn)
+        end
+
+        return vorn
+    end
+
+    transform = Transformation(p.transformation, transform_func = identity)
+    voronoiplot!(p, attr, vorn; transformation = transform)
+end
+
+function plot!(p::Voronoiplot{<: Tuple{<: DelTri.VoronoiTessellation}})
     generators_2f = Observable(Point2f[])
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
     polygons = Observable(PolyType[])
