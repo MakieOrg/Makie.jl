@@ -120,7 +120,7 @@ function Makie.plot!(p::Voronoiplot{<: Tuple{<: Vector{<: Point2f}}})
     voronoiplot!(p, attr, vorn; transformation = transform)
 end
 
-function plot!(p::Voronoiplot{<: Tuple{<: DelTri.VoronoiTessellation}})
+function Makie.plot!(p::Voronoiplot{<: Tuple{<: DelTri.VoronoiTessellation}})
     generators_2f = Observable(Point2f[])
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
     polygons = Observable(PolyType[])
@@ -160,11 +160,12 @@ function plot!(p::Voronoiplot{<: Tuple{<: DelTri.VoronoiTessellation}})
           colormap=p.colormap,
           colorrange=p.colorrange,
           cycle=p.cycle)
-    map(p.show_generators) do sg
-        return sg && scatter!(p, generators_2f;
-                              markersize=p.markersize,
-                              marker=p.marker,
-                              color=p.point_color)
-    end
+
+    scatter!(p, generators_2f;
+             markersize=p.markersize,
+             marker=p.marker,
+             color=p.point_color,
+             visible=p.show_generators)
+
     return p
 end
