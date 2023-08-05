@@ -1120,11 +1120,11 @@ end
     fig
 end
 
-@reference_test "Basic triplot" begin 
+@reference_test "Basic triplot" begin
     pts = RNG.rand(2, 500)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     fig, ax, sc = triplot(tri)
-    fig 
+    fig
 end
 
 @reference_test "Triplot with points, ghost edges, and convex hull" begin
@@ -1141,8 +1141,8 @@ end
     pts = RNG.rand(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     DelaunayTriangulation.reset_representative_points!(tri)
-    fig, ax, sc = triplot(tri, 
-        show_points=true,    
+    fig, ax, sc = triplot(tri,
+        show_points=true,
         show_convex_hull=true,
         markersize=14,
         strokewidth=2,
@@ -1186,10 +1186,10 @@ end
     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
     tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
     refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
-    fig, ax, sc = triplot(tri, 
-        show_points=true, 
-        show_constrained_edges=true, 
-        constrained_edge_linewidth=2, 
+    fig, ax, sc = triplot(tri,
+        show_points=true,
+        show_constrained_edges=true,
+        constrained_edge_linewidth=2,
         strokewidth=0.2,
         markersize=15,
         point_color=:blue,
@@ -1207,8 +1207,8 @@ end
     smooth_vorn = centroidal_smooth(vorn; maxiters = 2500, rng = RNG.STABLE_RNG)
     cmap = cgrad(:matter)
     fig, ax, sc = voronoiplot(smooth_vorn, markersize=4)
-    fig 
-end 
+    fig
+end
 
 @reference_test "Voronoiplot for a tessellation with unbounded polygons and hiding generators" begin
     pts = 25RNG.randn(2, 500)
@@ -1217,31 +1217,31 @@ end
     fig, ax, sc = voronoiplot(vorn, show_generators=false, colormap=:matter)
     xlims!(ax, -120, 120)
     ylims!(ax, -120, 120)
-    fig 
+    fig
 end
 
 @reference_test "Voronoiplot for a tessellation with further customisation and a custom bounding box" begin
     pts = 25RNG.randn(2, 500)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, false)
-    fig, ax, sc = voronoiplot(vorn, 
-        show_generators=true, 
-        colormap=:jet, 
-        strokecolor=:red, 
+    fig, ax, sc = voronoiplot(vorn,
+        show_generators=true,
+        colormap=:jet,
+        strokecolor=:red,
         strokewidth=3,
         markersize=9,
         marker = 'x',
-        point_color=:white, 
+        point_color=:white,
         unbounded_edge_extension_factor=5.0)
     xlims!(ax, -120, 120)
     ylims!(ax, -120, 120)
-    fig 
+    fig
 end
 
 @reference_test "Voronoiplot with a single patch color for a clipped tessellation" begin
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, true)
-    fig, ax, sc = voronoiplot(vorn, polygon_color = (:blue,0.2))
+    fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2))
     fig
 end
