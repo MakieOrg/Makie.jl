@@ -1,4 +1,3 @@
-# Makie.jl
 <div align="center">
     <picture>
       <source media="(prefers-color-scheme: dark)" 
@@ -10,11 +9,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MakieOrg/Makie.jl/blob/main/LICENSE)
 [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
-[![Build Status](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml?query=branch%3Amain)
+[![Build Status](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml?query=branch%3Amaster)
 [![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
 [![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/Makie&label=Downloads)](https://pkgs.genieframework.com?packages=Makie)
 
-From the japanese word ![_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
+From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is the gold and silver of our age, so let's spread it out beautifully on the screen!
 
 [Check out the documentation here!](http://docs.makie.org/stable/)
@@ -32,7 +31,8 @@ If you use Makie for a scientific publication, please cite [our JOSS paper](http
 
 > Danisch & Krumbiegel, (2021). Makie.jl: Flexible high-performance data visualization for Julia. Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.03349
 
-BibTeX entry:
+<details>
+  <summary>BibTeX entry:</summary>
 
 ```bib
 @article{DanischKrumbiegel2021,
@@ -48,6 +48,7 @@ BibTeX entry:
   journal = {Journal of Open Source Software}
 }
 ```
+</details>
 
 or [Download the BibTeX file](./assets/DanischKrumbiegel2021.bibtex).
 
