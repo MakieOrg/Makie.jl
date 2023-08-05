@@ -13,7 +13,7 @@ Plots a Voronoi tessellation from the provided `VoronoiTessellation` from Delaun
 
 - `strokecolor = :black` sets the strokecolor of the polygons.
 - `strokewidth = 1` sets the width of the polygon stroke.
-- `polygon_color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
+- `color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
 - `unbounded_edge_extension_factor = 0.1` sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
 - `bounding_box = automatic` sets the bounding box for the polygons. If `automatic`, the bounding box will be determined automatically based on the extension factor, otherwise it should be a `Tuple` of the form `(xmin, xmax, ymin, ymax)`. If any of the generators or polygons are outside of the polygon, the plot will error.
 
@@ -37,7 +37,7 @@ Plots a Voronoi tessellation from the provided `VoronoiTessellation` from Delaun
                       # Polygon settings
                       strokecolor=theme(scene, :patchstrokecolor),
                       strokewidth=1.0,
-                      polygon_color=automatic,
+                      color=automatic,
                       unbounded_edge_extension_factor=0.1,
                       bounding_box=automatic,
 
@@ -134,7 +134,7 @@ function Makie.plot!(p::Voronoiplot{<: Tuple{<: DelTri.VoronoiTessellation}})
     generators_2f = Observable(Point2f[])
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
     polygons = Observable(PolyType[])
-    colors = map(p.polygon_color) do polycol
+    colors = map(p.color) do polycol
         if polycol == automatic
             RGBA{Float64}[]
         else
@@ -154,7 +154,7 @@ function Makie.plot!(p::Voronoiplot{<: Tuple{<: DelTri.VoronoiTessellation}})
             _box = !isnothing(box) ? map(Float64, box) : box
             return get_voronoi_tiles!(gens, polys, vorn, _box)
         end
-        map(colors, p.polygon_color, p.colormap) do cols, polycol, cmap
+        map(colors, p.color, p.colormap) do cols, polycol, cmap
             return polycol == automatic && get_voronoi_colors!(cols, vorn, cmap)
         end
         for obs in (generators_2f, polygons, colors)
