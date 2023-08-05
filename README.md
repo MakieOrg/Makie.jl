@@ -75,8 +75,9 @@ using GLMakie
 ```
 
 ## Developing Makie
+
 <details>
-  <summary>Click for more</summary>
+  <summary><span style="color:red">Click for more</span></summary>
 
 Makie and its backends all live in the Makie monorepo.
 This makes it easier to change code across all packages.
