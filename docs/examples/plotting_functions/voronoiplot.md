@@ -1,20 +1,20 @@
-# voronoiplot 
+# voronoiplot
 
 {{doc voronoiplot}}
 
-## Examples 
+## Examples
 
-The function `voronoiplot` requires a Voronoi tessellation from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) as input. 
+The function `voronoiplot` requires a Voronoi tessellation from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) as input.
 
-When considering standard tessellations, without clipping, the unbounded polygons are clipped at a bounding box determined automatically by default, or from a user-provided bounding box (that must contain all polygon vertices). The automatic bounding box is determined by the bounding box of the polygon vertices, extended out some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to the lengths of the bounding box's sides. The tessellation is coloured by Voronoi tile according to the given `colormap`. 
+When considering standard tessellations, without clipping, the unbounded polygons are clipped at a bounding box determined automatically by default, or from a user-provided bounding box (that must contain all polygon vertices). The automatic bounding box is determined by the bounding box of the polygon vertices, extended out some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to the lengths of the bounding box's sides. The tessellation is coloured by Voronoi tile according to the given `colormap`.
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie 
+using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
-using Random 
+using Random
 Random.seed!(1234)
 
 points = rand(2, 50)
@@ -27,11 +27,11 @@ f
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie 
+using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
-using Random 
+using Random
 Random.seed!(1234)
 
 z = LinRange(0, 1, 250) .* exp.(LinRange(0, 16pi, 250) .* im)
@@ -45,11 +45,11 @@ f
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie 
+using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
-using Random 
+using Random
 Random.seed!(1234)
 
 x = LinRange(0, 16pi, 50)
@@ -57,7 +57,7 @@ y = sin.(x)
 points = [x'; y']
 tri = triangulate(points)
 vorn = voronoi(tri)
-f, ax, tr = voronoiplot(vorn, show_generators = false, bounding_box = (-1.0, 16pi + 1.0, -30, 30), polygon_color = :white, strokewidth = 2) # (xmin, xmax, ymin, ymax)
+f, ax, tr = voronoiplot(vorn, show_generators = false, bounding_box = (-1.0, 16pi + 1.0, -30, 30), color = :white, strokewidth = 2) # (xmin, xmax, ymin, ymax)
 f
 ```
 \end{examplefigure}
@@ -66,11 +66,11 @@ For clipped and centroidal tessellations, there are no unbounded polygons.
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie 
+using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
-using Random 
+using Random
 Random.seed!(1234)
 
 points = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
@@ -84,11 +84,11 @@ f
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie 
+using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
-using Random 
+using Random
 Random.seed!(1234)
 
 angles = range(0, 2pi, length = 251)[1:end-1]
