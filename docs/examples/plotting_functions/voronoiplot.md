@@ -57,7 +57,7 @@ y = sin.(x)
 points = [x'; y']
 tri = triangulate(points)
 vorn = voronoi(tri)
-f, ax, tr = voronoiplot(vorn, show_generators = false, bounding_box = (-1.0, 16pi + 1.0, -30, 30), color = :white, strokewidth = 2) # (xmin, xmax, ymin, ymax)
+f, ax, tr = voronoiplot(vorn, show_generators = false, bounding_box = (-1.0, 16pi + 1.0, -30, 30), polygon_color = :white, strokewidth = 2) # (xmin, xmax, ymin, ymax)
 f
 ```
 \end{examplefigure}
