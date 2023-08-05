@@ -91,7 +91,7 @@ To run the tests, you also should add:
 ```
 For more info about ReferenceTests, check out its [README](./ReferenceUpdater/README.md)
 
-# Quick start
+# Examples
 
 The following examples are supposed to be self-explanatory. For further information [check out the documentation!](http://docs.makie.org/stable/)
 
@@ -109,6 +109,9 @@ fig
 
 ### A more complex plot with unicode characters and LaTeX strings:
 [Similar to the one on this link](<https://github.com/gcalderone/Gnuplot.jl#a-slightly-more-complex-plot-with-unicode-on-x-tics>)
+
+<details>
+  <summary>Show Code</summary>
 
 ```julia
 x = -2pi:0.1:2pi
@@ -130,10 +133,14 @@ axislegend(; position = :ct, bgcolor = (:white, 0.75), framecolor = :orange)
 save("./assets/approxsin.png", fig, resolution = (600, 400))
 fig
 ```
+</details>
 
 <img src="./assets/approxsin.png">
 
 ### Simple layout: Heatmap, contour and 3D surface plot
+
+<details>
+  <summary>Show Code</summary>
 
 ```julia
 x = y = -5:0.5:5
@@ -155,6 +162,7 @@ resize_to_layout!(fig)
 save("./assets/simpleLayout.png", fig)
 fig
 ```
+</details>
 
 <img src="./assets/simpleLayout.png">
 
