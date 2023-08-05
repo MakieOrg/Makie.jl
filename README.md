@@ -1,19 +1,20 @@
-<div align="center">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" 
-        srcset="/assets/makie_logo_canvas_dark.svg" >
-      <img alt="Makie.jl logo" 
-        src="/assets/makie_logo_canvas.svg" width="400">
-    </picture>
-</div>
+# Makie.jl
+
+[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url] [![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
 
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is the gold and silver of our age, so let's spread it out beautifully on the screen!
 
 [Check out the documentation here!](http://docs.makie.org/stable/)
 
-[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url] [![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
-
+<div align="right">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" 
+        srcset="/assets/makie_logo_canvas_dark.svg" >
+      <img alt="Makie.jl logo" 
+        src="/assets/makie_logo_canvas.svg" width="150">
+    </picture>
+</div>
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
