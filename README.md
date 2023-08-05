@@ -75,6 +75,8 @@ using GLMakie
 ```
 
 ## Developing Makie
+<details>
+  <summary>Click for more</summary>
 
 Makie and its backends all live in the Makie monorepo.
 This makes it easier to change code across all packages.
@@ -90,6 +92,7 @@ To run the tests, you also should add:
 ]dev dev/Makie/ReferenceTests
 ```
 For more info about ReferenceTests, check out its [README](./ReferenceUpdater/README.md)
+</details>
 
 # Examples
 
