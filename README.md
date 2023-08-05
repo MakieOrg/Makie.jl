@@ -105,7 +105,7 @@ save("./assets/parabola.png", fig, resolution = (600, 400))
 fig
 ```
 
-<img src="./assets/parabola.png">
+<img src="./assets/parabola.png" align="center">
 
 ### A more complex plot with unicode characters and LaTeX strings:
 [Similar to the one on this link](<https://github.com/gcalderone/Gnuplot.jl#a-slightly-more-complex-plot-with-unicode-on-x-tics>)
@@ -135,7 +135,7 @@ fig
 ```
 </details>
 
-<img src="./assets/approxsin.png">
+<img src="./assets/approxsin.png" align="center">
 
 ### Simple layout: Heatmap, contour and 3D surface plot
 
@@ -164,7 +164,7 @@ fig
 ```
 </details>
 
-<img src="./assets/simpleLayout.png">
+<img src="./assets/simpleLayout.png" align="center">
 
 ⚠️WARNING⚠️. Don't forget to reset to the default Makie settings by doing `set_theme!()`.
 
