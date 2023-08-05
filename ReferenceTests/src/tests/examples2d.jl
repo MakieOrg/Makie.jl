@@ -1280,6 +1280,6 @@ end
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, true)
-    fig, ax, sc = voronoiplot(vorn, polygon_color = (:blue,0.2))
+    fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2))
     fig
 end
