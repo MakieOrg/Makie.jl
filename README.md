@@ -98,14 +98,16 @@ The following examples are supposed to be self-explanatory. For further informat
 ### A simple parabola
 
 ```julia
-x = 1:10
-fig = lines(x, x.^2; label = "Parabola")
-axislegend()
-save("./assets/parabola.png", fig, resolution = (600, 400))
+x = 1:0.1:10
+fig = lines(x, x.^2; label = "Parabola",
+    axis = (; xlabel = "x", ylabel = "y", title ="Title"),
+    figure = (; resolution = (800,600), fontsize = 22))
+axislegend(; position = :lt)
+save("./assets/parabola.png", fig)
 fig
 ```
 
-<img src="./assets/parabola.png" align="center">
+<img src="./assets/parabola.png">
 
 ### A more complex plot with unicode characters and LaTeX strings:
 [Similar to the one on this link](<https://github.com/gcalderone/Gnuplot.jl#a-slightly-more-complex-plot-with-unicode-on-x-tics>)
@@ -116,7 +118,8 @@ fig
 ```julia
 x = -2pi:0.1:2pi
 approx = fill(0.0, length(x))
-set_theme!(palette = (; patchcolor = cgrad(:Egypt, alpha=0.65)))
+cmap = [:gold, :deepskyblue3, :orangered, "#e82051"]
+set_theme!(palette = (; patchcolor = cgrad(cmap, alpha=0.45)))
 fig, axis, lineplot = lines(x, sin.(x); label = L"sin(x)", linewidth = 3, color = :black,
     axis = (; title = "Polynomial approximation of sin(x)",
         xgridstyle = :dash, ygridstyle = :dash,
@@ -130,12 +133,12 @@ band!(x, sin.(x), approx .+= x .^ 5 / 120; label = L"n = 2")
 band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
 limits!(-3.8, 3.8, -1.5, 1.5)
 axislegend(; position = :ct, bgcolor = (:white, 0.75), framecolor = :orange)
-save("./assets/approxsin.png", fig, resolution = (600, 400))
+save("./assets/approxsin.png", fig, resolution = (800, 600))
 fig
 ```
 </details>
 
-<img src="./assets/approxsin.png" align="center">
+<img src="./assets/approxsin.png">
 
 ### Simple layout: Heatmap, contour and 3D surface plot
 
@@ -145,17 +148,18 @@ fig
 ```julia
 x = y = -5:0.5:5
 z = x .^ 2 .+ y' .^ 2
-set_theme!(colormap = :Hiroshige)
-fig = Figure()
+cmap = :plasma
+set_theme!(colormap = cmap)
+fig = Figure(fontsize = 22)
 ax3d = Axis3(fig[1, 1]; aspect = (1, 1, 1),
     perspectiveness = 0.5, azimuth = 2.19, elevation = 0.57)
-ax2d = Axis(fig[1, 2]; aspect = 1)
+ax2d = Axis(fig[1, 2]; aspect = 1, xlabel = "x", ylabel="y")
 pltobj = surface!(ax3d, x, y, z; transparency = true)
-heatmap!(ax2d, x, y, z; colormap = (:Hiroshige, 0.5))
+heatmap!(ax2d, x, y, z; colormap = (cmap, 0.65))
 contour!(ax2d, x, y, z; linewidth = 2, levels = 12, color = :black)
 contour3d!(ax3d, x, y, z; linewidth = 4, levels = 12,
     transparency = true)
-Colorbar(fig[1, 3], pltobj)
+Colorbar(fig[1, 3], pltobj; label="z", labelrotation=pi)
 colsize!(fig.layout, 1, Aspect(1, 1.0))
 colsize!(fig.layout, 2, Aspect(1, 1.0))
 resize_to_layout!(fig)
@@ -164,7 +168,7 @@ fig
 ```
 </details>
 
-<img src="./assets/simpleLayout.png" align="center">
+<img src="./assets/simpleLayout.png">
 
 ⚠️WARNING⚠️. Don't forget to reset to the default Makie settings by doing `set_theme!()`.
 
