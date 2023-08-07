@@ -2,10 +2,7 @@ import {
     attributes_to_type_declaration,
     uniforms_to_type_declaration,
 } from "./Shaders.js";
-
-import {
-    deserialize_uniforms,
-} from "./Serialization.js"
+import { deserialize_uniforms } from "./Serialization.js";
 
 function lines_shader(uniforms, attributes) {
     const attribute_decl = attributes_to_type_declaration(attributes);
@@ -14,15 +11,12 @@ function lines_shader(uniforms, attributes) {
     return `#version 300 es
         precision mediump int;
         precision highp float;
-        precision mediump sampler2D;
-        precision mediump sampler3D;
 
         ${attribute_decl}
         ${uniform_decl}
 
         out vec2 f_uv;
         out vec4 f_color;
-        out float f_thickness;
 
         vec3 screen_space(vec2 point) {
             vec4 vertex = projectionview * model * vec4(point, 0, 1);
@@ -58,9 +52,6 @@ precision mediump sampler3D;
 flat in vec2 f_uv_minmax;
 in vec2 f_uv;
 in vec4 f_color;
-in float f_thickness;
-
-uniform float pattern_length;
 
 out vec4 fragment_color;
 
@@ -75,12 +66,6 @@ float aastep(float threshold1, float threshold2, float dist) {
     // We use 2x pixel space in the geometry shaders which passes through
     // in uv.y, so we need to treat it here by using 2 * ANTIALIAS_RADIUS
     float AA = 2.0 * ANTIALIAS_RADIUS;
-    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
-           smoothstep(threshold2 - AA, threshold2 + AA, dist);
-}
-
-float aastep_scaled(float threshold1, float threshold2, float dist) {
-    float AA = ANTIALIAS_RADIUS / pattern_length;
     return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
            smoothstep(threshold2 - AA, threshold2 + AA, dist);
 }
@@ -100,25 +85,13 @@ function create_line_material(uniforms, attributes) {
     });
 }
 
-function to_linepoint_array(linepoints, ndims) {
-    const N = linepoints.length;
-    const N2 = linepoints.length + (ndims * 1);
-    const points = new Float32Array(N2);
-    // copy over first and last point
-    // for (let i = 0; i < ndims; i++) {
-    //     points[i] = linepoints[i];
-    // }
-    for (let i = 1; i <= ndims; i++) {
-        points[N2 - i] = linepoints[N - i];
-    }
-    points.set(linepoints, 0);
-    console.log(points);
-    return points;
-}
-
-function attach_interleaved_line_buffer(attr_name, geometry, points, ndim) {
-    const buffer = new THREE.InstancedInterleavedBuffer(points, ndim, 1);
-    buffer.count = (points.length / ndim) - 1;
+function attach_interleaved_line_buffer(
+    attr_name,
+    geometry,
+    points,
+    ndim,
+) {
+    const buffer = new THREE.InstancedInterleavedBuffer(points, 2*ndim, 1);
     geometry.setAttribute(
         attr_name + "_start",
         new THREE.InterleavedBufferAttribute(buffer, ndim, 0)
@@ -130,7 +103,7 @@ function attach_interleaved_line_buffer(attr_name, geometry, points, ndim) {
     return buffer;
 }
 
-function create_line_geometry(attributes) {
+function create_linesegment_geometry(attributes) {
     function geometry_buffer() {
         const geometry = new THREE.InstancedBufferGeometry();
         const instance_positions = [
@@ -148,7 +121,7 @@ function create_line_geometry(attributes) {
     function create_line_buffer(name, attr) {
         const flat_buffer = attr.value.flat;
         const ndims = attr.value.type_length;
-        const buffer = to_linepoint_array(flat_buffer, ndims);
+        const buffer = flat_buffer;
         const linebuffer = attach_interleaved_line_buffer(
             name,
             geometry,
@@ -159,7 +132,7 @@ function create_line_geometry(attributes) {
         attr.on((new_points) => {
             const buff = buffers[name];
             const ndims = new_points.type_length;
-            const new_line_points = to_linepoint_array(new_points.flat, ndims);
+            const new_line_points = new_points.flat;
             const old_count = buff.updateRange.count;
             if (old_count < new_line_points.length) {
                 // instanceBuffer.dispose();
@@ -167,24 +140,21 @@ function create_line_geometry(attributes) {
                     name,
                     geometry,
                     new_line_points,
-                    ndims
+                    ndims,
                 );
             } else {
                 buff.updateRange.count = new_line_points.length;
                 buff.set(new_line_points, 0);
             }
-
-            // geometry.instanceCount = (new_line_points.length - 4) / 4;
             buffers[name].needsUpdate = true;
         });
         return buffer;
     }
-
+    let points;
     for (let name in attributes) {
         const attr = attributes[name];
-        create_line_buffer(name, attr);
+        points = create_line_buffer(name, attr);
     }
-
     geometry.boundingSphere = new THREE.Sphere();
     // don't use intersection / culling
     geometry.boundingSphere.radius = 10000000000000;
@@ -192,13 +162,11 @@ function create_line_geometry(attributes) {
     return geometry;
 }
 
-export function create_line(line_data) {
-    const geometry = create_line_geometry(line_data.attributes);
+export function create_linesegments(line_data) {
+    const geometry = create_linesegment_geometry(line_data.attributes);
     const material = create_line_material(
         line_data.uniforms,
         geometry.attributes
     );
-    console.log("------------------");
-    console.log(geometry);
     return new THREE.Mesh(geometry, material);
 }
