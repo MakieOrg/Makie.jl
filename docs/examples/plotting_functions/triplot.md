@@ -19,12 +19,10 @@ using Random
 Random.seed!(1234)
 
 points = randn(Point2f, 50)
-f, ax, tr = triplot(points)
-scatter!(ax, points)
+f, ax, tr = triplot(points, show_points = true)
 
 tri = triangulate(points)
-ax, tr = triplot(f[1, 2], tri)
-scatter!(ax, points)
+ax, tr = triplot(f[1, 2], tri, show_points = true)
 f
 ```
 \end{examplefigure}
