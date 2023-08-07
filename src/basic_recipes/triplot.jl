@@ -169,7 +169,34 @@ function get_triangulation_constrained_edges!(constrained_edges, tri)
     return constrained_edges
 end
 
-function Makie.plot!(p::Triplot)
+Makie.convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(), ps)
+Makie.convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
+Makie.convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
+
+function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
+    attr = copy(p.attributes)
+
+    ps = p[1]
+
+    # Handle transform_func early so tessellation is in cartesian space.
+    tri = map(p.transformation.transform_func, ps) do tf, ps
+        transformed = Makie.apply_transform(tf, ps)
+
+        M = Matrix{Float64}(undef, 2, length(transformed))
+        for (i, p) in enumerate(transformed)
+            M[:, i] .= p
+        end
+
+        tri = DelTri.triangulate(M)
+
+        return tri
+    end
+
+    transform = Transformation(p.transformation; transform_func=identity)
+    return triplot!(p, attr, tri; transformation=transform)
+end
+
+function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     points_2f = Observable(Point2f[])
     present_points_2f = Observable(Point2f[]) # Points might not be in the triangulation yet, so points_2f is not what we want for scatter
     triangles_3f = Observable(Makie.TriangleFace{Int}[])

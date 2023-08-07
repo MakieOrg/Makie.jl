@@ -1199,6 +1199,27 @@ end
     fig
 end
 
+@reference_test "Triplot with point signature" begin 
+    xs = RNG.rand(100)
+    ys = RNG.rand(100)
+    tri = triangulate([xs'; ys'])
+    fig, ax, sc = triplot(tri, axis = (width=600,height=600))
+    triplot!(Axis(fig[1,2],width=600,height=600), Point2f.(xs, ys))
+    triplot!(Axis(fig[1,3],width=600,height=600), xs, ys)
+    resize_to_layout!(fig)
+    fig
+end
+
+@reference_test "Triplot with nonlinear transformation" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1])
+    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    tr = triplot!(ax, points)
+    ax = PolarAxis(f[1, 2])
+    tr = triplot!(ax, points)
+    f
+end
+
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
     points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
     tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
@@ -1257,4 +1278,27 @@ end
     ax = Axis(fig[1, 2])
     voronoiplot!(ax, ps, polygon_color = cs2)
     fig
+end
+
+@reference_test "Voronoiplot with vec, vec, mat signature" begin
+    xs = LinRange(-1, 1, 25)
+    ys = LinRange(-1, 1, 25)
+    zs = [exp(-(x-y)^2) for x in xs, y in ys]
+    fig, ax, sc = voronoiplot(xs, ys, zs)
+    ps = [Point2(x, y) for x in xs for y in ys]
+    voronoiplot!(Axis(fig[1,2]), voronoi(triangulate(ps)), polygon_color = zs)
+    fig
+end
+
+@reference_test "Voronoiplot with a nonlinear transform" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1])
+    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    tr = voronoiplot!(ax, points, smooth = false, show_generators = false, polygon_color = polygon_color)
+    ax = PolarAxis(f[1, 2])
+    tr = voronoiplot!(ax, points, smooth = true, show_generators = false, polygon_color = polygon_color_2)
+    resize_to_layout!(f)
+    f
 end
