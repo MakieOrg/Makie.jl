@@ -4,10 +4,9 @@
 
 ## Examples
 
-A `triplot` generates a triangle mesh from an arbitrary set of points and shows
-its wireframe. The input data can either be point based (like `scatter` or
-`lines`) or a `Triangulation` from
-[DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl).
+A `triplot` plots a triangle mesh generated from an arbitrary set of points. The
+input data can either be point based (like `scatter` or `lines`) or a `Triangulation`
+from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl).
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -19,7 +18,7 @@ using Random
 Random.seed!(1234)
 
 points = randn(Point2f, 50)
-f, ax, tr = triplot(points, show_points = true)
+f, ax, tr = triplot(points, show_points = true, triangle_color = :lightblue)
 
 tri = triangulate(points)
 ax, tr = triplot(f[1, 2], tri, show_points = true)
