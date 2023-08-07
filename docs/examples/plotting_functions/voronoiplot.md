@@ -4,9 +4,32 @@
 
 ## Examples
 
-The function `voronoiplot` requires a Voronoi tessellation from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) as input.
+A `voronoiplot` generates a cell for each passed position similar to `heatmap`,
+however the cells are not restricted to a rectangular shape. It can called with
+point based (like `scatter` or `lines`) or `heatmap`-like inputs.
 
-When considering standard tessellations, without clipping, the unbounded polygons are clipped at a bounding box determined automatically by default, or from a user-provided bounding box (that must contain all polygon vertices). The automatic bounding box is determined by the bounding box of the polygon vertices, extended out some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to the lengths of the bounding box's sides. The tessellation is coloured by Voronoi tile according to the given `colormap`.
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+using Random
+Random.seed!(1234)
+
+f = Figure()
+ax = Axis(f[1, 1], limits = ((-0.1, 1.1), (-0.1, 1.1)))
+voronoiplot!(ax, rand(Point2f, 50))
+
+ax = Axis(f[1, 2], limits = ((-0.1, 1.1), (-0.1, 1.1)))
+voronoiplot!(ax, rand(10, 10), rand(10, 10), rand(10, 10))
+f
+```
+\end{examplefigure}
+
+`voronoiplot` uses the Voronoi tessellation from
+[DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl)
+to generate the cells. You can also do this yourself and directly plot the
+`VoronoiTesselation` object returned.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -24,6 +47,14 @@ f, ax, tr = voronoiplot(vorn)
 f
 ```
 \end{examplefigure}
+
+
+When considering standard tessellations the unbounded polygons are clipped at a
+bounding box determined automatically by default, or from a user-provided
+bounding box (that must contain all polygon vertices). The automatic bounding
+box is determined by the bounding box of the polygon vertices, extended out by
+some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to
+the lengths of the bounding box's sides.
 
 \begin{examplefigure}{svg = true}
 ```julia

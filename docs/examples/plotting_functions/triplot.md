@@ -1,23 +1,30 @@
-# triplot 
+# triplot
 
 {{doc triplot}}
 
-## Examples 
+## Examples
 
-The function `triplot` requires a triangulation from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) as input. 
+A `triplot` generates a triangle mesh from an arbitrary set of points and shows
+its wireframe. The input data can either be point based (like `scatter` or
+`lines`) or a `Triangulation` from
+[DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl).
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie 
+using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
-using Random 
+using Random
 Random.seed!(1234)
 
-points = randn(2, 50)
+points = randn(Point2f, 50)
+f, ax, tr = triplot(points)
+scatter!(ax, points)
+
 tri = triangulate(points)
-f, ax, tr = triplot(tri)
+ax, tr = triplot(f[1, 2], tri)
+scatter!(ax, points)
 f
 ```
 \end{examplefigure}
@@ -25,16 +32,16 @@ f
 You can use `triplot` to visualise the [ghost edges](https://danielvandh.github.io/DelaunayTriangulation.jl/stable/boundary_handling/#Ghost-Triangles) surrounding the boundary.
 
 \begin{examplefigure}{svg = true}
-```julia 
+```julia
 using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
 n = 20
 angles = range(0, 2pi, length = n+1)[1:end-1]
 x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
 y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
-inner = [n:-1:1; n] # clockwise inner 
+inner = [n:-1:1; n] # clockwise inner
 outer = [(n+1):(2n); n+1] # counter-clockwise outer
 boundary_nodes = [[outer], [inner]]
 points = [x'; y']
@@ -51,7 +58,7 @@ You can also highlight the constrained edges and display the convex hull, which 
 ```julia
 using CairoMakie
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
+CairoMakie.activate!() # hide
 
 using Random
 Random.seed!(1234)
