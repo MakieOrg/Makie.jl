@@ -15,11 +15,11 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
 
 - `markersize = 12` sets the size of the points.
 - `marker = :circle` sets the shape of the points.
-- `strokecolor = :black` sets the strokecolor of the points.
-- `strokewidth = 1` sets the width of the point stroke.
-- `linestyle = :solid` sets the linestyle of the triangles.
-- `triangle_color = (:white, 0.0)` sets the color of the triangles.
 - `point_color = :black` sets the color of the points.
+- `strokecolor = :black` sets the color of triangle edges.
+- `strokewidth = 1` sets the linewidth of triangle edges.
+- `linestyle = :solid` sets the linestyle of triangle edges.
+- `triangle_color = (:white, 0.0)` sets the color of the triangles.
 
 - `convex_hull_color = :red` sets the color of the convex hull.
 - `convex_hull_linestyle = :dash` sets the linestyle of the convex hull.
@@ -244,10 +244,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
            linestyle=p.convex_hull_linestyle)
     linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color,
                   linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
-    map(p.show_points) do sp
-        return sp &&
-               scatter!(p, present_points_2f; markersize=p.markersize, color=p.point_color,
-                        strokecolor=p.strokecolor, marker=p.marker)
-    end # Do last so that points go over the lines
+    scatter!(p, present_points_2f; markersize=p.markersize, color=p.point_color,
+             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift = -1f-5)
     return p
 end
