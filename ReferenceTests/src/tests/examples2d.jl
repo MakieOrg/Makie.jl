@@ -1158,37 +1158,16 @@ end
     fig, ax = contour(x, x, z, color=RGBAf(1,0,0,0.4), linewidth=6)
 end
 
-@reference_test "Basic triplot" begin
-    pts = RNG.rand(2, 500)
-    tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    fig, ax, sc = triplot(tri)
-    fig
-end
-
 @reference_test "Triplot with points, ghost edges, and convex hull" begin
     pts = RNG.rand(2, 50)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     fig, ax, sc = triplot(tri,
-        show_points=true,
-        show_ghost_edges=true,
-        show_convex_hull=true)
-    fig
-end
+        triangle_color = :lightgray, strokewidth = 4,
+        show_points=true, markersize = 20, markercolor = :orange,
+        show_ghost_edges=true, ghost_edge_linewidth = 4,
+        show_convex_hull=true, convex_hull_linewidth = 4
 
-@reference_test "Triplot with further customisation and recompute_center" begin
-    pts = RNG.rand(2, 10)
-    tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    DelaunayTriangulation.reset_representative_points!(tri)
-    fig, ax, sc = triplot(tri,
-        show_points=true,
-        show_convex_hull=true,
-        markersize=14,
-        strokewidth=2,
-        triangle_color = (:blue,0.1),
-        convex_hull_color=:magenta,
-        convex_hull_linewidth=3,
-        show_ghost_edges=true,
-        recompute_centers=true)
+    )
     fig
 end
 
@@ -1237,17 +1216,6 @@ end
     fig
 end
 
-@reference_test "Triplot with point signature" begin 
-    xs = RNG.rand(100)
-    ys = RNG.rand(100)
-    tri = triangulate([xs'; ys'])
-    fig, ax, sc = triplot(tri, axis = (width=600,height=600))
-    triplot!(Axis(fig[1,2],width=600,height=600), Point2f.(xs, ys))
-    triplot!(Axis(fig[1,3],width=600,height=600), xs, ys)
-    resize_to_layout!(fig)
-    fig
-end
-
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
@@ -1261,36 +1229,26 @@ end
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
     points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
     tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
-    refine!(tri; max_area=1e-3, min_angle = 29.871, rng = RNG.STABLE_RNG)
+    refine!(tri; max_area=1e-2, min_angle = 29.871, rng = RNG.STABLE_RNG)
     vorn = voronoi(tri)
-    smooth_vorn = centroidal_smooth(vorn; maxiters = 2500, rng = RNG.STABLE_RNG)
+    smooth_vorn = centroidal_smooth(vorn; maxiters = 250, rng = RNG.STABLE_RNG)
     cmap = cgrad(:matter)
-    fig, ax, sc = voronoiplot(smooth_vorn, markersize=4)
+    fig, ax, sc = voronoiplot(smooth_vorn, markersize=10, strokewidth = 4)
     fig
 end
 
-@reference_test "Voronoiplot for a tessellation with unbounded polygons and hiding generators" begin
-    pts = 25RNG.randn(2, 500)
-    tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    vorn = voronoi(tri)
-    fig, ax, sc = voronoiplot(vorn, show_generators=false, colormap=:matter)
-    xlims!(ax, -120, 120)
-    ylims!(ax, -120, 120)
-    fig
-end
-
-@reference_test "Voronoiplot for a tessellation with further customisation and a custom bounding box" begin
-    pts = 25RNG.randn(2, 500)
+@reference_test "Voronoiplot for a tessellation with a custom bounding box" begin
+    pts = 25RNG.randn(2, 50)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, false)
     fig, ax, sc = voronoiplot(vorn,
         show_generators=true,
-        colormap=:jet,
-        strokecolor=:red,
-        strokewidth=3,
-        markersize=9,
+        colormap=:RdBu,
+        strokecolor=:white,
+        strokewidth=4,
+        markersize=25,
         marker = 'x',
-        point_color=:white,
+        markercolor=:green,
         unbounded_edge_extension_factor=5.0)
     xlims!(ax, -120, 120)
     ylims!(ax, -120, 120)
@@ -1301,30 +1259,17 @@ end
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, true)
-    fig, ax, sc = voronoiplot(vorn, polygon_color = (:blue,0.2))
-    fig
-end
-
-@reference_test "Voronoiplot with a color per polygon, and providing points" begin
-    ps = [Point2f(x, y) for x in 1:10 for y in 1:10]
-    cs = [x for x in 1:10 for y in 1:10]
-    cs2 = [y for x in 1:10 for y in 1:10]
-
-    fig = Figure()
-    ax = Axis(fig[1, 1])
-    voronoiplot!(ax, ps, polygon_color = cs)
-    ax = Axis(fig[1, 2])
-    voronoiplot!(ax, ps, polygon_color = cs2)
+    fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2), markersize = 20, strokewidth = 4)
     fig
 end
 
 @reference_test "Voronoiplot with vec, vec, mat signature" begin
-    xs = LinRange(-1, 1, 25)
-    ys = LinRange(-1, 1, 25)
+    xs = LinRange(-1, 1, 10)
+    ys = LinRange(-1, 1, 10)
     zs = [exp(-(x-y)^2) for x in xs, y in ys]
-    fig, ax, sc = voronoiplot(xs, ys, zs)
+    fig, ax, sc = voronoiplot(xs, ys, zs, markersize = 10, strokewidth = 3)
     ps = [Point2(x, y) for x in xs for y in ys]
-    voronoiplot!(Axis(fig[1,2]), voronoi(triangulate(ps)), polygon_color = zs)
+    voronoiplot!(Axis(fig[1,2]), voronoi(triangulate(ps)), color = zs, markersize = 10, strokewidth = 3)
     fig
 end
 
@@ -1334,9 +1279,8 @@ end
     points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
-    tr = voronoiplot!(ax, points, smooth = false, show_generators = false, polygon_color = polygon_color)
+    tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
     ax = PolarAxis(f[1, 2])
-    tr = voronoiplot!(ax, points, smooth = true, show_generators = false, polygon_color = polygon_color_2)
-    resize_to_layout!(f)
+    tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
     f
 end

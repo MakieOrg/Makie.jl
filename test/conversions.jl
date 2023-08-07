@@ -302,3 +302,37 @@ end
     pl[1] = [points]
     @test pl.plots[1][1][] == Makie.poly_convert(points)
 end
+
+@testset "Triplot" begin
+    xs = rand(Float32, 10)
+    ys = rand(Float32, 10)
+    ps = Point2f.(xs, ys)
+
+    @test convert_arguments(Triplot, xs, ys)[1] == ps
+    @test convert_arguments(Triplot, ps)[1] == ps
+
+    f, a, p = triplot(xs, ys)
+    tri = p.plots[1][1][]
+    @test tri.points ≈ vcat(xs', ys')
+end
+
+@testset "Voronoiplot" begin
+    xs = rand(Float32, 10)
+    ys = rand(Float32, 10)
+    ps = Point2f.(xs, ys)
+
+    @test convert_arguments(Voronoiplot, xs, ys)[1] == ps
+    @test convert_arguments(Voronoiplot, ps)[1] == ps
+
+    f, a, p = voronoiplot(xs, ys)
+    tess = p.plots[1][1][]
+    @test Point2f[tess.generators[i] for i in 1:10] ≈ ps
+
+    # Heatmap style signatures
+    xs = rand(Float32, 10)
+    ys = rand(Float32, 10)
+    zs = rand(Float32, 10, 10)
+
+    @test convert_arguments(Voronoiplot, zs)[1] == Point3f.(1:10, (1:10)', zs)[:]
+    @test convert_arguments(Voronoiplot, xs, ys, zs)[1] == Point3f.(xs, ys', zs)[:]
+end
