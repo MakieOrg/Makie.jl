@@ -19,7 +19,7 @@ DelaunayTriangulation.jl.
 
 - `strokecolor = :black` sets the strokecolor of the polygons.
 - `strokewidth = 1` sets the width of the polygon stroke.
-- `polygon_color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
+- `color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
 - `unbounded_edge_extension_factor = 0.1` sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
 - `bounding_box = automatic` sets the bounding box for the polygons. If `automatic`, the bounding box will be determined automatically based on the extension factor, otherwise it should be a `Tuple` of the form `(xmin, xmax, ymin, ymax)`. If any of the generators or polygons are outside of the polygon, the plot will error.
 
