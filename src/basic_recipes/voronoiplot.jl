@@ -144,6 +144,15 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
         bbox = map(p.unbounded_edge_extension_factor, p.bounding_box) do extent, bnd
             isempty(DelTri.get_unbounded_polygons(vorn)) && return nothing
             if bnd === automatic
+                # bb_ref = RefValue(Rect3f())
+                # foreach(DelTri.get_generators(vorn)) do (_, p)
+                #     update_boundingbox!(bb_ref, Point2f(p))
+                # end
+
+                # x0, y0, _ = minimum(bb_ref[]) .- extent .* widths(bb_ref[])
+                # x1, y1, _ = maximum(bb_ref[]) .+ extent .* widths(bb_ref[])
+
+                # return (x0, x1, y0, y1)
                 return DelTri.polygon_bounds(vorn, extent)
             else
                 return bnd
