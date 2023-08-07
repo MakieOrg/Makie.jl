@@ -78,7 +78,7 @@ function get_voronoi_colors!(colors, vorn, cmap)
     empty!(colors)
     sizehint!(colors, DelTri.num_polygons(vorn))
     F = DelTri.number_type(vorn)
-    gtr = [DelTri.get_generator(vorn, i) for i in DelTri.each_generator(vorn)]
+    gtr = [DelTri.get_generator(vorn, i) for i in DelTri.each_generator(vorn)] # same as get_generators(vorn)
     reverse!(gtr) # For some reason this is needed to get distinct colors for the tiles
     gtr_mat = reinterpret(reshape, F, gtr)
     _colors = get(cgrad(cmap), gtr_mat, :extrema)
@@ -89,13 +89,12 @@ function get_voronoi_colors!(colors, vorn, cmap)
     return colors
 end
 
+Makie.convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
+Makie.convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
+Makie.convert_arguments(::Type{<:Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
+Makie.convert_arguments(::Type{<:Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
 
-Makie.convert_arguments(::Type{<: Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
-Makie.convert_arguments(::Type{<: Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
-Makie.convert_arguments(::Type{<: Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
-Makie.convert_arguments(::Type{<: Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
-
-function Makie.plot!(p::Voronoiplot{<: Tuple{<: Vector{<: Point{N}}}}) where {N}
+function Makie.plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     attr = copy(p.attributes)
     smooth = pop!(attr, :smooth)
 
@@ -126,19 +125,24 @@ function Makie.plot!(p::Voronoiplot{<: Tuple{<: Vector{<: Point{N}}}}) where {N}
         return vorn
     end
 
-    transform = Transformation(p.transformation, transform_func = identity)
-    voronoiplot!(p, attr, vorn; transformation = transform)
+    transform = Transformation(p.transformation; transform_func=identity)
+    return voronoiplot!(p, attr, vorn; transformation=transform)
 end
 
-function Makie.plot!(p::Voronoiplot{<: Tuple{<: DelTri.VoronoiTessellation}})
+function Makie.plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     generators_2f = Observable(Point2f[])
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
     polygons = Observable(PolyType[])
-    colors = map(p.polygon_color) do polycol
+    colors = map(p.polygon_color, p[1]) do polycol, vorn
         if polycol == automatic
             RGBA{Float64}[]
         else
-            polycol
+            if polycol isa AbstractArray
+                @assert length(polycol) == DelTri.num_points(DelTri.get_triangulation(vorn)) "Color vector must have the same length as the number of generators, including any not yet in the tessellation."
+                [polycol[i] for i in DelTri.each_generator(vorn)] # this matches the polygon order 
+            else
+                polycol
+            end
         end
     end
     function update_plot(vorn)

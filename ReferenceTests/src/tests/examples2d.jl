@@ -1283,3 +1283,16 @@ end
     fig, ax, sc = voronoiplot(vorn, polygon_color = (:blue,0.2))
     fig
 end
+
+@reference_test "Voronoiplot with a color per polygon, and providing points" begin
+    ps = [Point2f(x, y) for x in 1:10 for y in 1:10]
+    cs = [x for x in 1:10 for y in 1:10]
+    cs2 = [y for x in 1:10 for y in 1:10]
+
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    voronoiplot!(ax, ps, polygon_color = cs)
+    ax = Axis(fig[1, 2])
+    voronoiplot!(ax, ps, polygon_color = cs2)
+    fig
+end
