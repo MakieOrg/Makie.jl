@@ -3,7 +3,7 @@
     triplot(positions; kwargs...)
     triplot(triangles::Triangulation; kwargs...)
 
-Plots the triangles from the provided `Triangulation` from DelaunayTriangulation.jl.
+Plots a triangulation based on the provided position or `Triangulation` from DelaunayTriangulation.jl.
 
 ## Attributes
 
