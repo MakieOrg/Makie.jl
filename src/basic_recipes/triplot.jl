@@ -15,7 +15,7 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
 
 - `markersize = 12` sets the size of the points.
 - `marker = :circle` sets the shape of the points.
-- `point_color = :black` sets the color of the points.
+- `markercolor = :black` sets the color of the points.
 - `strokecolor = :black` sets the color of triangle edges.
 - `strokewidth = 1` sets the linewidth of triangle edges.
 - `linestyle = :solid` sets the linestyle of triangle edges.
@@ -48,11 +48,11 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
                       # Mesh settings
                       markersize=theme(scene, :markersize),
                       marker=theme(scene, :marker),
+                      markercolor=sc.color,
                       strokecolor=theme(scene, :patchstrokecolor),
                       strokewidth=1,
                       linestyle=:solid,
                       triangle_color=(:white, 0.0),
-                      point_color=sc.color, # not just color so that it's clear what color we are referring to
 
                       # Convex hull settings
                       convex_hull_color=:red,
@@ -241,10 +241,10 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
                   linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
     lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
-           linestyle=p.convex_hull_linestyle)
-    linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color,
+           linestyle=p.convex_hull_linestyle, depth_shift = -1f-5)
+    linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift = -2f-5,
                   linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
-    scatter!(p, present_points_2f; markersize=p.markersize, color=p.point_color,
-             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift = -1f-5)
+    scatter!(p, present_points_2f; markersize=p.markersize, color=p.markercolor,
+             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift = -3f-5)
     return p
 end

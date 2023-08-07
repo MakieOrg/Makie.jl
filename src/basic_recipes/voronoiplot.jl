@@ -15,7 +15,7 @@ DelaunayTriangulation.jl.
 
 - `markersize = 4` sets the size of the points.
 - `marker = :circle` sets the shape of the points.
-- `point_color = :black` sets the color of the points.
+- `markercolor = :black` sets the color of the points.
 
 - `strokecolor = :black` sets the strokecolor of the polygons.
 - `strokewidth = 1` sets the width of the polygon stroke.
@@ -36,7 +36,7 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
                       # Point settings
                       markersize=4,
                       marker=sc.marker,
-                      point_color=sc.color,
+                      markercolor=sc.color,
 
                       # Polygon settings
                       strokecolor=theme(scene, :patchstrokecolor),
@@ -184,7 +184,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     scatter!(p, generators_2f;
              markersize=p.markersize,
              marker=p.marker,
-             color=p.point_color,
+             color=p.markercolor,
              visible=p.show_generators)
 
     return p
