@@ -1,7 +1,13 @@
 """
+    voronoiplot(x, y, values; kwargs...)
+    voronoiplot(values; kwargs...)
+    voronoiplot(x, y; kwargs...)
+    voronoiplot(positions; kwargs...)
     voronoiplot(vorn::VoronoiTessellation; kwargs...)
 
-Plots a Voronoi tessellation from the provided `VoronoiTessellation` from DelaunayTriangulation.jl.
+Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
+The tessellation can also be passed directly as a `VoronoiTessellation` from
+DelaunayTriangulation.jl.
 
 ## Attributes
 
@@ -17,9 +23,7 @@ Plots a Voronoi tessellation from the provided `VoronoiTessellation` from Delaun
 - `unbounded_edge_extension_factor = 0.1` sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
 - `bounding_box = automatic` sets the bounding box for the polygons. If `automatic`, the bounding box will be determined automatically based on the extension factor, otherwise it should be a `Tuple` of the form `(xmin, xmax, ymin, ymax)`. If any of the generators or polygons are outside of the polygon, the plot will error.
 
-- `colormap = :viridis` sets the colormap for the polygons.
-- `colorrange = automatic` sets the colorrange for the polygons. If `nothing`, the colorrange will be determined automatically.
-- `cycle = [:color => :patchcolor]` sets the cycle for the polygons.
+$(Base.Docs.doc(MakieCore.colormap_attributes!))
 """
 @recipe(Voronoiplot, vorn) do scene
     th = default_theme(scene, Mesh)
@@ -72,12 +76,17 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     return generators, polygons
 end
 
-Makie.convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
-Makie.convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
-Makie.convert_arguments(::Type{<:Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
-Makie.convert_arguments(::Type{<:Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
+# For heatmap-like inputs
+function convert_arguments(::Type{<:Voronoiplot}, mat::AbstractMatrix)
+    return convert_arguments(PointBased(), axes(mat, 1), axes(mat, 2), mat)
+end
+convert_arguments(::Type{<:Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
+# For scatter-like inputs
+convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
+convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
+convert_arguments(::Type{<:Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
 
-function Makie.plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
+function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     attr = copy(p.attributes)
     smooth = pop!(attr, :smooth)
 
@@ -112,7 +121,7 @@ function Makie.plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     return voronoiplot!(p, attr, vorn; transformation=transform)
 end
 
-function Makie.plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
+function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     generators_2f = Observable(Point2f[])
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
     polygons = Observable(PolyType[])
