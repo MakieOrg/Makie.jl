@@ -1,9 +1,11 @@
 """
+    triplot(x, y; kwargs...)
+    triplot(positions; kwargs...)
     triplot(triangles::Triangulation; kwargs...)
 
-Plots the triangles from the provided `Triangulation` from DelaunayTriangulation.jl. 
+Plots the triangles from the provided `Triangulation` from DelaunayTriangulation.jl.
 
-## Attributes 
+## Attributes
 
 - `show_points = false` determines whether to plot the individual points. Note that this will only plot points included in the triangulation.
 - `show_convex_hull = false` determines whether to plot the convex hull.
@@ -26,7 +28,7 @@ Plots the triangles from the provided `Triangulation` from DelaunayTriangulation
 - `ghost_edge_color = :blue` sets the color of the ghost edges.
 - `ghost_edge_linestyle = :solid` sets the linestyle of the ghost edges.
 - `ghost_edge_linewidth = 1` sets the width of the ghost edges.
-- `ghost_edge_extension_factor = 0.1` sets the extension factor for the rectangle that the exterior ghost edges are extended onto. 
+- `ghost_edge_extension_factor = 0.1` sets the extension factor for the rectangle that the exterior ghost edges are extended onto.
 - `bounding_box = automatic`: Bounding box for truncating the ghost edges. Should be a `Tuple` of the form `(a, b, c, d)` that defines the bounding box `a ≤ x ≤ b` and `c ≤ y ≤ d`. Alternatively, by default, the rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the `ghost_edge_extension_factor`, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the points in the triangulation.
 
 - `constrained_edge_color = :magenta` sets the color of the constrained edges.
@@ -36,14 +38,14 @@ Plots the triangles from the provided `Triangulation` from DelaunayTriangulation
 @recipe(Triplot, triangles) do scene
     sc = default_theme(scene, Scatter)
     return Attributes(;
-                      # Toggles 
+                      # Toggles
                       show_points=false,
                       show_convex_hull=false,
                       show_ghost_edges=false,
                       show_constrained_edges=false,
                       recompute_centers=false,
 
-                      # Mesh settings 
+                      # Mesh settings
                       markersize=theme(scene, :markersize),
                       marker=theme(scene, :marker),
                       strokecolor=theme(scene, :patchstrokecolor),
@@ -52,12 +54,12 @@ Plots the triangles from the provided `Triangulation` from DelaunayTriangulation
                       triangle_color=(:white, 0.0),
                       point_color=sc.color, # not just color so that it's clear what color we are referring to
 
-                      # Convex hull settings 
+                      # Convex hull settings
                       convex_hull_color=:red,
                       convex_hull_linestyle=:dash,
                       convex_hull_linewidth=theme(scene, :linewidth),
 
-                      # Ghost edge settings 
+                      # Ghost edge settings
                       ghost_edge_color=:blue,
                       ghost_edge_linestyle=theme(scene, :linestyle),
                       ghost_edge_linewidth=theme(scene, :linewidth),
@@ -124,7 +126,7 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     for e in DelTri.each_ghost_edge(tri)
         u, v = DelTri.edge_indices(e)
         if DelTri.is_boundary_index(v)
-            u, v = v, u # Make sure that u is the boundary index 
+            u, v = v, u # Make sure that u is the boundary index
         end
         curve_index = DelTri.get_curve_index(tri, u)
         representative_coordinates = DelTri.get_representative_point_coordinates(tri, curve_index)
