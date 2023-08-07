@@ -173,7 +173,7 @@ Makie.convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(),
 Makie.convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
 Makie.convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
 
-function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
+function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     attr = copy(p.attributes)
 
     ps = p[1]
