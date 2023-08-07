@@ -131,12 +131,14 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
             # generate some consistent distinguishable colors
             cs = [sum(DelTri.get_generator(vorn, i)) for i in DelTri.each_generator(vorn)]
             reverse!(cs)
-        else
+        elseif color isa AbstractArray
             @assert(
                 length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
                 "Color vector must have the same length as the number of generators, including any not yet in the tessellation."
             )
             [color[i] for i in DelTri.each_generator(vorn)] # this matches the polygon order
+        else
+            color
         end
     end
 
@@ -185,7 +187,8 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
              markersize=p.markersize,
              marker=p.marker,
              color=p.markercolor,
-             visible=p.show_generators)
+             visible=p.show_generators,
+             depth_shift=-2f-5)
 
     return p
 end
