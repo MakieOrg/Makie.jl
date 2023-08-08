@@ -8,15 +8,25 @@ function typedarray_to_vectype(typedArray, ndim) {
     } else if (typedArray instanceof Uint32Array) {
         return "uvec" + ndim;
     } else {
-        throw new Error("Unsupported TypedArray type.");
+        return;
     }
 }
 
-function uniform_type(obj) {
+export function attribute_type(attribute) {
+    if (attribute) {
+        return typedarray_to_vectype(attribute.array, attribute.itemSize);
+    } else {
+        return;
+    }
+}
+
+export function uniform_type(obj) {
     if (obj instanceof THREE.Uniform) {
         return uniform_type(obj.value);
     } else if (typeof obj === "number") {
         return "float";
+    } else if (typeof obj === "boolean") {
+        return "bool";
     } else if (obj instanceof THREE.Vector2) {
         return "vec2";
     } else if (obj instanceof THREE.Vector3) {
@@ -32,8 +42,7 @@ function uniform_type(obj) {
     } else if (obj instanceof THREE.Texture) {
         return "sampler2D";
     } else {
-        return "vec4";
-        // throw new Error(`Unssupported uniform type: ${obj}`)
+        return;
     }
 }
 
@@ -51,7 +60,7 @@ export function attributes_to_type_declaration(attributes_dict) {
     let result = "";
     for (const name in attributes_dict) {
         const attribute = attributes_dict[name];
-        const type = typedarray_to_vectype(attribute.array, attribute.itemSize);
+        const type = attribute_type(attribute);
         result += `in ${type} ${name};\n`;
     }
     return result;

@@ -19535,7 +19535,14 @@ function typedarray_to_vectype(typedArray, ndim) {
     } else if (typedArray instanceof Uint32Array) {
         return "uvec" + ndim;
     } else {
-        throw new Error("Unsupported TypedArray type.");
+        return;
+    }
+}
+function attribute_type(attribute) {
+    if (attribute) {
+        return typedarray_to_vectype(attribute.array, attribute.itemSize);
+    } else {
+        return;
     }
 }
 function uniform_type(obj) {
@@ -19543,6 +19550,8 @@ function uniform_type(obj) {
         return uniform_type(obj.value);
     } else if (typeof obj === "number") {
         return "float";
+    } else if (typeof obj === "boolean") {
+        return "bool";
     } else if (obj instanceof THREE.Vector2) {
         return "vec2";
     } else if (obj instanceof THREE.Vector3) {
@@ -19558,7 +19567,7 @@ function uniform_type(obj) {
     } else if (obj instanceof THREE.Texture) {
         return "sampler2D";
     } else {
-        return "vec4";
+        return;
     }
 }
 function uniforms_to_type_declaration(uniform_dict) {
@@ -19574,7 +19583,7 @@ function attributes_to_type_declaration(attributes_dict) {
     let result = "";
     for(const name in attributes_dict){
         const attribute = attributes_dict[name];
-        const type = typedarray_to_vectype(attribute.array, attribute.itemSize);
+        const type = attribute_type(attribute);
         result += `in ${type} ${name};\n`;
     }
     return result;
@@ -19797,7 +19806,7 @@ class MakieCamera {
     update_matrices(view, projection, resolution, eyepos) {
         this.view.value.fromArray(view);
         this.projection.value.fromArray(projection);
-        this.resolution.value.fromArray(resolution);
+        this.resolution.value.fromArray(resolution.map((x)=>Math.ceil(x / pixelRatio)));
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
         return;
@@ -19850,82 +19859,17 @@ class MakieCamera {
     }
 }
 const scene_cache = {};
-function lines_shader(uniforms, attributes) {
-    const attribute_decl = attributes_to_type_declaration(attributes);
-    const uniform_decl = uniforms_to_type_declaration(uniforms);
-    return `#version 300 es
-        precision mediump int;
-        precision highp float;
-        precision mediump sampler2D;
-        precision mediump sampler3D;
-
-        ${attribute_decl}
-        ${uniform_decl}
-
-        out vec2 f_uv;
-        out vec4 f_color;
-        out float f_thickness;
-
-        vec3 screen_space(vec2 point) {
-            vec4 vertex = projectionview * model * vec4(point, 0, 1);
-            return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+function filter_by_key(dict, keys, default_value = false) {
+    const result = {};
+    keys.forEach((key)=>{
+        const val = dict[key];
+        if (val) {
+            result[key] = val;
+        } else {
+            result[key] = default_value;
         }
-
-        void main() {
-            vec3 p_a = screen_space(linepoint_start);
-            vec3 p_b = screen_space(linepoint_end);
-            // vec3 p_c = screen_space(linepoint_next);
-            float width = linewidth_start;
-
-            vec2 pointA = p_a.xy;
-            vec2 pointB = p_b.xy;
-            // vec2 pointC = p_c.xy;
-
-            vec2 xBasis = pointB - pointA;
-            vec2 yBasis = normalize(vec2(-xBasis.y, xBasis.x));
-            vec2 point = pointA + xBasis * position.x + yBasis * width * position.y;
-
-            gl_Position = vec4((point.xy / resolution), p_a.z, 1.0);
-            f_color = color_start;
-        }
-        `;
-}
-function lines_shader1(uniforms, attributes) {
-    const attribute_decl = attributes_to_type_declaration(attributes);
-    const uniform_decl = uniforms_to_type_declaration(uniforms);
-    return `#version 300 es
-        precision mediump int;
-        precision highp float;
-
-        ${attribute_decl}
-        ${uniform_decl}
-
-        out vec2 f_uv;
-        out vec4 f_color;
-
-        vec3 screen_space(vec2 point) {
-            vec4 vertex = projectionview * model * vec4(point, 0, 1);
-            return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
-        }
-
-        void main() {
-            vec3 p_a = screen_space(linepoint_start);
-            vec3 p_b = screen_space(linepoint_end);
-            // vec3 p_c = screen_space(linepoint_next);
-            float width = linewidth_start;
-
-            vec2 pointA = p_a.xy;
-            vec2 pointB = p_b.xy;
-            // vec2 pointC = p_c.xy;
-
-            vec2 xBasis = pointB - pointA;
-            vec2 yBasis = normalize(vec2(-xBasis.y, xBasis.x));
-            vec2 point = pointA + xBasis * position.x + yBasis * width * position.y;
-
-            gl_Position = vec4((point.xy / resolution), p_a.z, 1.0);
-            f_color = color_start;
-        }
-        `;
+    });
+    return result;
 }
 const plot_cache = {};
 const TEXTURE_ATLAS = [
@@ -20039,74 +19983,165 @@ function deserialize_uniforms(data) {
     }
     return result;
 }
-const LINES_FRAG = `#version 300 es
-precision mediump int;
-precision highp float;
-precision mediump sampler2D;
-precision mediump sampler3D;
+function linesegments_vertex_shader(uniforms, attributes) {
+    const attribute_decl = attributes_to_type_declaration(attributes);
+    const uniform_decl = uniforms_to_type_declaration(uniforms);
+    const color = attribute_type(attributes.color_start) || uniform_type(uniforms.color_start);
+    return `#version 300 es
+        precision mediump int;
+        precision highp float;
 
-flat in vec2 f_uv_minmax;
-in vec2 f_uv;
-in vec4 f_color;
-in float f_thickness;
+        ${attribute_decl}
+        ${uniform_decl}
 
-uniform float pattern_length;
+        out vec2 f_uv;
+        out ${color} f_color;
 
-out vec4 fragment_color;
+        vec3 screen_space(vec3 point) {
+            vec4 vertex = projectionview * model * vec4(point, 1);
+            return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+        }
 
-// Half width of antialiasing smoothstep
-#define ANTIALIAS_RADIUS 0.8
+        vec3 screen_space(vec2 point) {
+            return screen_space(vec3(point, 0));
+        }
 
-float aastep(float threshold1, float dist) {
-    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
+        void main() {
+            vec3 p_a = screen_space(linepoint_start);
+            vec3 p_b = screen_space(linepoint_end);
+            float width = (position.x == 1.0 ? linewidth_end : linewidth_start);
+            f_color = position.x == 1.0 ? color_end : color_start;
+            f_uv = vec2(position.x, position.y + 0.5);
+
+            vec2 pointA = p_a.xy;
+            vec2 pointB = p_b.xy;
+
+            vec2 xBasis = pointB - pointA;
+            vec2 yBasis = normalize(vec2(-xBasis.y, xBasis.x));
+            vec2 point = pointA + xBasis * position.x + yBasis * width * position.y;
+
+            gl_Position = vec4((point.xy / resolution), p_a.z, 1.0);
+        }
+        `;
 }
+function lines_fragment_shader(uniforms, attributes) {
+    const color = attribute_type(attributes.color_start) || uniform_type(uniforms.color_start);
+    const color_uniforms = filter_by_key(uniforms, [
+        "colorrange",
+        "colormap",
+        "nan_color",
+        "highclip",
+        "lowclip"
+    ]);
+    const uniform_decl = uniforms_to_type_declaration(color_uniforms);
+    return `#version 300 es
+    #extension GL_OES_standard_derivatives : enable
 
-float aastep(float threshold1, float threshold2, float dist) {
-    // We use 2x pixel space in the geometry shaders which passes through
-    // in uv.y, so we need to treat it here by using 2 * ANTIALIAS_RADIUS
-    float AA = 2.0 * ANTIALIAS_RADIUS;
-    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
-           smoothstep(threshold2 - AA, threshold2 + AA, dist);
-}
+    precision mediump int;
+    precision highp float;
+    precision mediump sampler2D;
+    precision mediump sampler3D;
 
-float aastep_scaled(float threshold1, float threshold2, float dist) {
-    float AA = ANTIALIAS_RADIUS / pattern_length;
-    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
-           smoothstep(threshold2 - AA, threshold2 + AA, dist);
-}
+    in vec2 f_uv;
+    in ${color} f_color;
+    ${uniform_decl}
 
-void main(){
-    fragment_color = f_color;
+    out vec4 fragment_color;
+
+    // Half width of antialiasing smoothstep
+    #define ANTIALIAS_RADIUS 0.7071067811865476
+
+    vec4 get_color_from_cmap(float value, sampler2D colormap, vec2 colorrange) {
+        float cmin = colorrange.x;
+        float cmax = colorrange.y;
+        if (value <= cmax && value >= cmin) {
+            // in value range, continue!
+        } else if (value < cmin) {
+            return lowclip;
+        } else if (value > cmax) {
+            return highclip;
+        } else {
+            // isnan CAN be broken (of course) -.-
+            // so if outside value range and not smaller/bigger min/max we assume NaN
+            return nan_color;
+        }
+        float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+        // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+        // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+        float stepsize = 1.0 / float(textureSize(colormap, 0));
+        i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+        return texture(colormap, vec2(i01, 0.0));
+    }
+
+    vec4 get_color(float color, sampler2D colormap, vec2 colorrange) {
+        return get_color_from_cmap(color, colormap, colorrange);
+    }
+
+    vec4 get_color(vec4 color, bool colormap, bool colorrange) {
+        return color;
+    }
+    vec4 get_color(vec3 color, bool colormap, bool colorrange) {
+        return vec4(color, 1.0);
+    }
+
+    float aastep(float threshold, float value) {
+        float afwidth = length(vec2(dFdx(value), dFdy(value))) * ANTIALIAS_RADIUS;
+        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+    }
+
+    float aastep(float threshold1, float threshold2, float dist) {
+        return aastep(threshold1, dist) * aastep(threshold2, 1.0 - dist);
+    }
+
+    void main(){
+        float xalpha = aastep(0.0, 0.0, f_uv.x);
+        float yalpha = aastep(0.0, 0.0, f_uv.y);
+        vec4 color = get_color(f_color, colormap, colorrange);
+        fragment_color = vec4(color.rgb, color.a);
+    }
+    `;
 }
-`;
 function create_line_material(uniforms, attributes) {
     const uniforms_des = deserialize_uniforms(uniforms);
+    uniforms_des.pixel_ratio = new THREE.Uniform(window.devicePixelRatio || 1.0);
     return new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
-        vertexShader: lines_shader(uniforms_des, attributes),
-        fragmentShader: LINES_FRAG,
+        vertexShader: linesegments_vertex_shader(uniforms_des, attributes),
+        fragmentShader: lines_fragment_shader(uniforms_des, attributes),
         transparent: true
     });
 }
-function to_linepoint_array(linepoints, ndims) {
-    const N = linepoints.length;
-    const N2 = linepoints.length + ndims * 1;
-    const points = new Float32Array(N2);
-    for(let i = 1; i <= ndims; i++){
-        points[N2 - i] = linepoints[N - i];
+function attach_interleaved_line_buffer(attr_name, geometry, points, ndim, is_segments) {
+    const skip_elems = is_segments ? 2 * ndim : ndim;
+    const buffer = new THREE.InstancedInterleavedBuffer(points, skip_elems, 1);
+    if (!is_segments) {
+        buffer.count = points.length / ndim - 1;
     }
-    points.set(linepoints, 0);
-    console.log(points);
-    return points;
-}
-function attach_interleaved_line_buffer(attr_name, geometry, points, ndim) {
-    const buffer = new THREE.InstancedInterleavedBuffer(points, ndim, 1);
-    buffer.count = points.length / ndim - 1;
     geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer, ndim, 0));
     geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer, ndim, ndim));
     return buffer;
 }
-function create_line_geometry(attributes) {
+function create_line_buffer(buffers, geometry, name, attr, is_segments) {
+    const flat_buffer = attr.value.flat;
+    const ndims = attr.value.type_length;
+    const linebuffer = attach_interleaved_line_buffer(name, geometry, flat_buffer, ndims, is_segments);
+    buffers[name] = linebuffer;
+    attr.on((new_points)=>{
+        const buff = buffers[name];
+        const ndims = new_points.type_length;
+        const new_line_points = new_points.flat;
+        const old_count = buff.updateRange.count;
+        if (old_count < new_line_points.length) {
+            buffers[name] = attach_interleaved_line_buffer(name, geometry, new_line_points, ndims, is_segments);
+        } else {
+            buff.updateRange.count = new_line_points.length;
+            buff.set(new_line_points, 0);
+        }
+        buffers[name].needsUpdate = true;
+    });
+    return flat_buffer;
+}
+function create_line_geometry(attributes, is_segments) {
     function geometry_buffer() {
         const geometry = new THREE.InstancedBufferGeometry();
         const instance_positions = [
@@ -20128,30 +20163,9 @@ function create_line_geometry(attributes) {
     }
     const geometry = geometry_buffer();
     const buffers = {};
-    function create_line_buffer(name, attr) {
-        const flat_buffer = attr.value.flat;
-        const ndims = attr.value.type_length;
-        const buffer = to_linepoint_array(flat_buffer, ndims);
-        const linebuffer = attach_interleaved_line_buffer(name, geometry, buffer, ndims);
-        buffers[name] = linebuffer;
-        attr.on((new_points)=>{
-            const buff = buffers[name];
-            const ndims = new_points.type_length;
-            const new_line_points = to_linepoint_array(new_points.flat, ndims);
-            const old_count = buff.updateRange.count;
-            if (old_count < new_line_points.length) {
-                buffers[name] = attach_interleaved_line_buffer(name, geometry, new_line_points, ndims);
-            } else {
-                buff.updateRange.count = new_line_points.length;
-                buff.set(new_line_points, 0);
-            }
-            buffers[name].needsUpdate = true;
-        });
-        return buffer;
-    }
     for(let name in attributes){
         const attr = attributes[name];
-        create_line_buffer(name, attr);
+        create_line_buffer(buffers, geometry, name, attr, is_segments);
     }
     geometry.boundingSphere = new THREE.Sphere();
     geometry.boundingSphere.radius = 10000000000000;
@@ -20159,114 +20173,13 @@ function create_line_geometry(attributes) {
     return geometry;
 }
 function create_line(line_data) {
-    const geometry = create_line_geometry(line_data.attributes);
+    const geometry = create_line_geometry(line_data.attributes, false);
     const material = create_line_material(line_data.uniforms, geometry.attributes);
-    console.log("------------------");
-    console.log(geometry);
     return new THREE.Mesh(geometry, material);
 }
-const LINES_FRAG1 = `#version 300 es
-precision mediump int;
-precision highp float;
-precision mediump sampler2D;
-precision mediump sampler3D;
-
-flat in vec2 f_uv_minmax;
-in vec2 f_uv;
-in vec4 f_color;
-
-out vec4 fragment_color;
-
-// Half width of antialiasing smoothstep
-#define ANTIALIAS_RADIUS 0.8
-
-float aastep(float threshold1, float dist) {
-    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
-}
-
-float aastep(float threshold1, float threshold2, float dist) {
-    // We use 2x pixel space in the geometry shaders which passes through
-    // in uv.y, so we need to treat it here by using 2 * ANTIALIAS_RADIUS
-    float AA = 2.0 * ANTIALIAS_RADIUS;
-    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
-           smoothstep(threshold2 - AA, threshold2 + AA, dist);
-}
-
-void main(){
-    fragment_color = f_color;
-}
-`;
-function create_line_material1(uniforms, attributes) {
-    const uniforms_des = deserialize_uniforms(uniforms);
-    return new THREE.RawShaderMaterial({
-        uniforms: uniforms_des,
-        vertexShader: lines_shader1(uniforms_des, attributes),
-        fragmentShader: LINES_FRAG1,
-        transparent: true
-    });
-}
-function attach_interleaved_line_buffer1(attr_name, geometry, points, ndim) {
-    const buffer = new THREE.InstancedInterleavedBuffer(points, 2 * ndim, 1);
-    geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer, ndim, 0));
-    geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer, ndim, ndim));
-    return buffer;
-}
-function create_linesegment_geometry(attributes) {
-    function geometry_buffer() {
-        const geometry = new THREE.InstancedBufferGeometry();
-        const instance_positions = [
-            0,
-            -0.5,
-            1,
-            -0.5,
-            1,
-            0.5,
-            0,
-            -0.5,
-            1,
-            0.5,
-            0,
-            0.5
-        ];
-        geometry.setAttribute("position", new THREE.Float32BufferAttribute(instance_positions, 2));
-        return geometry;
-    }
-    const geometry = geometry_buffer();
-    const buffers = {};
-    function create_line_buffer(name, attr) {
-        const flat_buffer = attr.value.flat;
-        const ndims = attr.value.type_length;
-        const buffer = flat_buffer;
-        const linebuffer = attach_interleaved_line_buffer1(name, geometry, buffer, ndims);
-        buffers[name] = linebuffer;
-        attr.on((new_points)=>{
-            const buff = buffers[name];
-            const ndims = new_points.type_length;
-            const new_line_points = new_points.flat;
-            const old_count = buff.updateRange.count;
-            if (old_count < new_line_points.length) {
-                buffers[name] = attach_interleaved_line_buffer1(name, geometry, new_line_points, ndims);
-            } else {
-                buff.updateRange.count = new_line_points.length;
-                buff.set(new_line_points, 0);
-            }
-            buffers[name].needsUpdate = true;
-        });
-        return buffer;
-    }
-    let points;
-    for(let name in attributes){
-        const attr = attributes[name];
-        points = create_line_buffer(name, attr);
-    }
-    geometry.boundingSphere = new THREE.Sphere();
-    geometry.boundingSphere.radius = 10000000000000;
-    geometry.frustumCulled = false;
-    return geometry;
-}
 function create_linesegments(line_data) {
-    const geometry = create_linesegment_geometry(line_data.attributes);
-    const material = create_line_material1(line_data.uniforms, geometry.attributes);
+    const geometry = create_line_geometry(line_data.attributes, true);
+    const material = create_line_material(line_data.uniforms, geometry.attributes);
     return new THREE.Mesh(geometry, material);
 }
 function deserialize_plot(data) {
@@ -20615,7 +20528,7 @@ function render_scene(scene, picking = false) {
     renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
-        const [x, y, w, h] = area.map((t)=>t / pixelRatio1);
+        const [x, y, w, h] = area.map((t)=>Math.ceil(t / pixelRatio1));
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
@@ -20685,7 +20598,7 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     });
     renderer.setClearColor("#ffffff");
     renderer.setPixelRatio(pixelRatio1);
-    renderer.setSize(width / pixelRatio1, height / pixelRatio1);
+    renderer.setSize(Math.ceil(width / pixelRatio1), Math.ceil(height / pixelRatio1));
     const mouse_callback = (x, y)=>comm.notify({
             mouseposition: [
                 x,
@@ -20789,7 +20702,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         start_renderloop(three_scene);
         canvas_width.on((w_h)=>{
             const pixelRatio = renderer.getPixelRatio();
-            renderer.setSize(w_h[0] / pixelRatio, w_h[1] / pixelRatio);
+            renderer.setSize(Math.ceil(w_h[0] / pixelRatio), Math.ceil(w_h[1] / pixelRatio));
         });
     } else {
         const warning = getWebGLErrorMessage();

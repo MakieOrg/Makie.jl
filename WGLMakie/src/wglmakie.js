@@ -38,7 +38,7 @@ export function render_scene(scene, picking = false) {
     renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
-        const [x, y, w, h] = area.map((t) => t / pixelRatio);
+        const [x, y, w, h] = area.map((t) => Math.ceil(t / pixelRatio));
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
@@ -141,7 +141,10 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     // The following handles high-DPI devices
     // `renderer.setSize` also updates `canvas` size
     renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(width / pixelRatio, height / pixelRatio);
+    renderer.setSize(
+        Math.ceil(width / pixelRatio),
+        Math.ceil(height / pixelRatio)
+    );
 
     const mouse_callback = (x, y) => comm.notify({ mouseposition: [x, y] });
     const notify_mouse_throttled = throttle_function(mouse_callback, 40);
@@ -291,7 +294,7 @@ function create_scene(
         canvas_width.on((w_h) => {
             // `renderer.setSize` correctly updates `canvas` dimensions
             const pixelRatio = renderer.getPixelRatio();
-            renderer.setSize(w_h[0] / pixelRatio, w_h[1] / pixelRatio);
+            renderer.setSize(Math.ceil(w_h[0] / pixelRatio), Math.ceil(w_h[1] / pixelRatio));
         });
     } else {
         const warning = getWebGLErrorMessage();

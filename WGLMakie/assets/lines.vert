@@ -1,6 +1,5 @@
 #version 300 es
 
-
 in float position;
 in vec2 linepoint_prev;
 in vec2 linepoint_start;
@@ -14,22 +13,23 @@ in float linewidth_next;
 uniform vec4 is_valid;
 uniform vec4 color_end;
 uniform vec4 color_start;
-uniform float pattern_length;
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
 uniform mat4 projectionview;
-uniform vec3 eyeposition;
 uniform vec2 resolution;
 
 out vec2 f_uv;
 out vec4 f_color;
 out float f_thickness;
 
-vec3 screen_space(vec2 point) {
-    vec4 vertex = projectionview * model * vec4(point, 0, 1);
+vec3 screen_space(vec3 point) {
+    vec4 vertex = projectionview * model * vec4(point, 1);
     return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
 }
+
+vec3 screen_space(vec2 point) {
+    return screen_space(vec3(point, 0));
+}
+
 
 void emit_vertex(vec3 position, vec2 uv, bool is_start) {
 

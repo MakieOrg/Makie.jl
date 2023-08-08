@@ -268,7 +268,7 @@ export class MakieCamera {
     update_matrices(view, projection, resolution, eyepos) {
         this.view.value.fromArray(view);
         this.projection.value.fromArray(projection);
-        this.resolution.value.fromArray(resolution);
+        this.resolution.value.fromArray(resolution.map(x=> Math.ceil(x / pixelRatio)));
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
         return;

@@ -1,14 +1,9 @@
 import * as Camera from "./Camera.js";
-import {create_line} from "./Lines.js";
-import { create_linesegments } from "./Linesegments.js";
+import { create_line, create_linesegments } from "./Lines.js";
 
 import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 
-//https://wwwtyro.net/2019/11/18/instanced-lines.html
-// https://github.com/mrdoob/three.js/blob/dev/examples/jsm/lines/LineMaterial.js
-// https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
-// https://github.com/gameofbombs/pixi-candles/tree/master/src
-// https://github.com/wwwtyro/instanced-lines-demos/tree/master
+
 
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
@@ -206,7 +201,6 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-
     plot_data.uniforms.resolution = cam.resolution;
 
     if (plot_data.uniforms.preprojection) {
