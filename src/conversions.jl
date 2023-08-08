@@ -607,7 +607,7 @@ function convert_arguments(
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
-                        
+
 ################################################################################
 #                                   <:Arrows                                   #
 ################################################################################
@@ -863,10 +863,30 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
-#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-#
-# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-convert_attribute(A::AbstractVector, ::key"linestyle") = [float(x - A[1]) for x in A]
+"""
+    Linestyle(value::Vector{<:Real})
+
+A type that can be used as value for the `linestyle` keyword argument
+of plotting functions to arbitrarily customize the linestyle.
+
+The `value` is a vector of positions where the line flips from being drawn or not
+and vice versa. The values of `value` are in units of linewidth.
+
+For example, with `value = [0.0, 4.0, 6.0, 9.5]`
+you start drawing at 0, stop at 4 linewidths, start again at 6, stop at 9.5,
+then repeat with 0 and 9.5 being treated as the same position.
+"""
+struct Linestyle
+    value::Vector{Float32}
+end
+
+convert_attribute(A::Linestyle, ::key"linestyle") = [float(x - A.value[1]) for x in A.value]
+# add deprecation for old conversion
+function convert_attribute(A::AbstractVector, ::key"linestyle")
+    @warn "Using a `Vector{<:Real}` as a linestyle attribute is deprecated. Wrap it in a `Linestyle`."
+    return [float(x - A[1]) for x in A]
+end
+
 
 # A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
