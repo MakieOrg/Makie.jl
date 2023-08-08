@@ -1349,7 +1349,8 @@ defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(s
 defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
 
-defaultlimits(scale::Union{LogFunctions,ReversibleScale}) = let inv_scale = inverse_transform(scale)
+defaultlimits(scale::ReversibleScale) = inverse_transform(scale).(scale.limits)
+defaultlimits(scale::LogFunctions) = let inv_scale = inverse_transform(scale)
     (inv_scale(0.0), inv_scale(3.0))
 end
 defaultlimits(::typeof(identity)) = (0.0, 10.0)
@@ -1358,8 +1359,8 @@ defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 defaultlimits(::typeof(Makie.pseudolog10)) = (0.0, 100.0)
 defaultlimits(::Makie.Symlog10) = (0.0, 100.0)
 
+defined_interval(scale::ReversibleScale) = scale.interval
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
-defined_interval(::ReversibleScale) = OpenInterval(-Inf, Inf)
 defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)

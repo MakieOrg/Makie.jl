@@ -381,12 +381,14 @@ const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
 
 const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
 
-struct ReversibleScale{F <: Function, B <: Function}
+struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
     forward::F
     backward::B
     logbase::String
-    function ReversibleScale(forward, backward, logbase = "")
-        new{typeof(forward),typeof(backward)}(forward, backward, logbase)
+    limits::NTuple{2,Float32}
+    interval::I
+    function ReversibleScale(forward, backward; logbase = "", limits = (0f0, 10f0), interval = OpenInterval(-Inf32, Inf32))
+        new{typeof(forward),typeof(backward),typeof(interval)}(forward, backward, logbase, limits, interval)
     end
 end
 
