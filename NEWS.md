@@ -3,6 +3,7 @@
 ## master
 
 - Allow arbitrary reversible scale functions through `Makie.ReversibleScale`.
+- Fixed incorrect placement of contourlabels with transform functions [#3083](https://github.com/MakieOrg/Makie.jl/pull/3083)
 - Fix automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
 
 ## v0.19.7

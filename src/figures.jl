@@ -100,11 +100,11 @@ function Figure(; kwargs...)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
-    alignmode = lift(Outside ∘ to_rectsides, scene, padding)
+    alignmode = lift(Outside ∘ to_rectsides, padding)
 
     layout = GridLayout(scene)
 
-    on(scene, alignmode) do al
+    on(alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end
