@@ -37,7 +37,7 @@ macro reference_test(name, code)
                     error("title must be unique. Duplicate title: $(title)")
                 end
                 println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
-                Makie.set_theme!(resolution=(500, 500))
+                Makie.set_theme!(resolution=(500, 500), CairoMakie = (; px_per_unit = 1))
                 ReferenceTests.RNG.seed_rng!()
                 result = let
                     $(esc(code))

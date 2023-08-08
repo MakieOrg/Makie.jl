@@ -8,21 +8,14 @@ macro ctime(x)
 end
 t_using = @ctime @eval using $Package
 
-function get_colorbuffer(fig)
-    # We need to handle old versions of Makie
-    if isdefined(Makie, :CURRENT_BACKEND) # new version after display refactor
-        return Makie.colorbuffer(fig) # easy :)
-    else
-        Makie.inline!(false)
-        screen = display(fig; visible=false)
-        return Makie.colorbuffer(screen)
-    end
-end
+get_colorbuffer(fig) = colorbuffer(fig; px_per_unit=1)
 
 if Package === :WGLMakie
     import Electron
     WGLMakie.JSServe.use_electron_display()
 end
+
+set_theme!(resolution=(800, 600))
 
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 display_time = @ctime get_colorbuffer(fig)

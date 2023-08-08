@@ -34,16 +34,16 @@ const MAKIE_DEFAULT_THEME = Attributes(
         italic = "TeX Gyre Heros Makie Italic",
         bold_italic = "TeX Gyre Heros Makie Bold Italic",
     ),
-    fontsize = 16,
+    fontsize = 14,
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,
-    rowgap = 24,
-    colgap = 24,
+    rowgap = 18,
+    colgap = 18,
     backgroundcolor = :white,
     colormap = :viridis,
     marker = :circle,
-    markersize = 12,
+    markersize = 9,
     markercolor = :black,
     markerstrokecolor = :black,
     markerstrokewidth = 0,
@@ -53,7 +53,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     patchcolor = RGBAf(0, 0, 0, 0.6),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
-    resolution = (800, 600), # 4/3 aspect ratio
+    resolution = (600, 450), # 4/3 aspect ratio
     visible = true,
     Axis = Attributes(),
     Axis3 = Attributes(),
@@ -73,7 +73,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     inspectable = true,
 
     CairoMakie = Attributes(
-        px_per_unit = 1.0,
+        px_per_unit = 2.0,
         pt_per_unit = 0.75,
         antialias = :best,
         visible = true,
@@ -87,6 +87,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         vsync = false,
         render_on_demand = true,
         framerate = 30.0,
+        px_per_unit = automatic,
 
         # GLFW window attributes
         float = false,
@@ -97,6 +98,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         debugging = false,
         monitor = nothing,
         visible = true,
+        scalefactor = automatic,
 
         # Postproccessor
         oit = true,
@@ -127,6 +129,8 @@ Base.@deprecate_binding minimal_default MAKIE_DEFAULT_THEME
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
 const THEME_LOCK = Base.ReentrantLock()
 
+
+
 # Basically like deepcopy but while merging it into another Attribute dict
 function merge_without_obs!(result::Attributes, theme::Attributes)
     dict = attributes(result)
@@ -144,6 +148,26 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     end
     return result
 end
+
+# Same as above, but second argument gets priority so, `merge_without_obs_reverse!(Attributes(a=22), Attributes(a=33)) -> Attributes(a=33)`
+function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
+    result_dict = attributes(result)
+    for (key, value) in priority
+        if !haskey(result_dict, key)
+            result_dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+        else
+            current_value = result[key]
+            if value isa Attributes && current_value isa Attributes
+                # if nested attribute, we merge recursively
+                merge_without_obs_reverse!(current_value, value)
+            else
+                result_dict[key] = Observable{Any}(to_value(value))
+            end
+        end
+    end
+    return result
+end
+
 # Use copy with no obs to quickly deepcopy
 fast_deepcopy(attributes) = merge_without_obs!(Attributes(), attributes)
 

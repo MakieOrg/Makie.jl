@@ -204,8 +204,15 @@ end
 
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 
-# need to define this to resolve ambiguoity issue
+# need to define this to resolve ambiguity issue
 Base.showable(mime::MIME"application/json", fig::FigureLike) = _backend_showable(mime)
+
+const WEB_MIMES = (
+    MIME"text/html",
+    MIME"application/vnd.webio.application+html",
+    MIME"application/prs.juno.plotpane+html",
+    MIME"juliavscode/html")
+
 
 backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
@@ -454,5 +461,14 @@ end
 function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
     img = colorbuffer(scene)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
+    return
+end
+
+function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene)
+    w, h = widths(scene.px_area[])
+    png_io = IOBuffer()
+    backend_show(screen, png_io, MIME"image/png"(), scene)
+    b64 = Base64.base64encode(String(take!(png_io)))
+    print(io, "<img width=$w height=$h style='object-fit: contain;' src=\"data:image/png;base64, $(b64)\"/>")
     return
 end

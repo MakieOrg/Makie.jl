@@ -31,6 +31,7 @@ Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pai
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
 attributes(x::Attributes) = getfield(x, :attributes)
+attributes(x::AbstractPlot) = getfield(x, :attributes)
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
@@ -75,6 +76,13 @@ function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
     else
         getindex(x, key)
     end
+end
+
+function Base.setproperty!(x::Union{Attributes,AbstractPlot}, key::Symbol, value::NamedTuple)
+    x[key] = Attributes(value)
+end
+function Base.setindex!(x::Attributes, value::NamedTuple, key::Symbol)
+    return x[key] = Attributes(value)
 end
 
 function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
@@ -175,7 +183,7 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # the plot itself.
 Base.getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
 Base.getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
-Base.setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = value)
+Base.setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.args[idx][] = value)
 Base.length(plot::AbstractPlot) = length(plot.converted)
 
 function Base.getindex(x::AbstractPlot, key::Symbol)
@@ -242,14 +250,15 @@ function get_attribute(dict, key, default=nothing)
 end
 
 function merge_attributes!(input::Attributes, theme::Attributes)
-    for (key, value) in theme
+    for (key, value) in attributes(theme)
         if !haskey(input, key)
             input[key] = value
         else
             current_value = input[key]
-            if value isa Attributes && current_value isa Attributes
+            tvalue = to_value(value)
+            if tvalue isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
-                merge_attributes!(current_value, value)
+                merge_attributes!(current_value, tvalue)
             end
             # we're good! input already has a value, can ignore theme
         end

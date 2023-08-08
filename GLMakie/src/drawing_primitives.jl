@@ -104,7 +104,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         filtered = filter(x.attributes) do (k, v)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
-                :lightposition, :material,
+                        :lightposition, :material, :axis_cycler,
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
                         :calculated_colors
@@ -128,6 +128,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:ambient] = ambientlight.color
         end
         gl_attributes[:track_updates] = screen.config.render_on_demand
+        gl_attributes[:px_per_unit] = screen.px_per_unit
 
         handle_intensities!(gl_attributes, x)
         connect_camera!(x, gl_attributes, scene.camera, get_space(x))
@@ -280,8 +281,15 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         data = Dict{Symbol, Any}(gl_attributes)
 
         positions = handle_view(x[1], data)
+
         transform_func = transform_func_obs(x)
 
+        # Tweak things for px_per_unit
+        resolution = pop!(data, :resolution)
+        px_per_unit = data[:px_per_unit]
+        data[:resolution] = map((ppu, res) -> ppu .* res, px_per_unit, resolution)
+
+        transform_func = transform_func_obs(x)
         ls = to_value(linestyle)
         space = x.space
         if isnothing(ls)
@@ -291,7 +299,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
+            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
+                ppu * _mean(lw) .* ls
+            end
             data[:fast] = false
 
             pvm = map(*, data[:projectionview], data[:model])
@@ -314,13 +324,16 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
+        px_per_unit = data[:px_per_unit]
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = nothing
             data[:fast] = true
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* _mean(to_value(linewidth))
+            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
+                ppu * _mean(lw) .* ls
+            end
             data[:fast] = false
         end
         positions = handle_view(x.converted[1], data)
@@ -328,6 +341,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
         end
+
+        # Tweak things for px_per_unit
+        resolution = pop!(data, :resolution)
+        data[:resolution] = map((ppu, res) -> ppu .* res, px_per_unit, resolution)
         return draw_linesegments(screen, positions, data)
     end
 end
