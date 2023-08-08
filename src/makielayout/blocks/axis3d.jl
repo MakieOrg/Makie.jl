@@ -39,7 +39,7 @@ function initialize_block!(ax::Axis3)
     end
 
     matrices = lift(calculate_matrices, scene, finallimits, scene.px_area, ax.elevation, ax.azimuth,
-                    ax.perspectiveness, ax.aspect, ax.viewmode)
+                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
 
     on(scene, matrices) do (view, proj, eyepos)
         cam = camera(scene)
@@ -67,18 +67,18 @@ function initialize_block!(ax::Axis3)
     add_panel!(scene, ax, 1, 3, 2, finallimits, mi2)
 
     xgridline1, xgridline2, xframelines =
-        add_gridlines_and_frames!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3)
+        add_gridlines_and_frames!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.xreversed, ax.yreversed, ax.zreversed)
     ygridline1, ygridline2, yframelines =
-        add_gridlines_and_frames!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3)
+        add_gridlines_and_frames!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.xreversed, ax.yreversed, ax.zreversed)
     zgridline1, zgridline2, zframelines =
-        add_gridlines_and_frames!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2)
+        add_gridlines_and_frames!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.xreversed, ax.yreversed, ax.zreversed)
 
     xticks, xticklabels, xlabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth)
+        add_ticks_and_ticklabels!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
     yticks, yticklabels, ylabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth)
+        add_ticks_and_ticklabels!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
     zticks, zticklabels, zlabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth)
+        add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
 
     titlepos = lift(scene, scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
 
@@ -174,9 +174,25 @@ end
 can_be_current_axis(ax3::Axis3) = true
 
 function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect,
-    viewmode)
+    viewmode, xreversed, yreversed, zreversed)
+
+    ori = limits.origin
     ws = widths(limits)
 
+    limits = Rect3f(
+        (
+            ori[1] + (xreversed ? ws[1] : zero(ws[1])),
+            ori[2] + (yreversed ? ws[2] : zero(ws[2])),
+            ori[3] + (zreversed ? ws[3] : zero(ws[3])),
+        ),
+        (
+            ws[1] * (xreversed ? -1 : 1),
+            ws[2] * (yreversed ? -1 : 1),
+            ws[3] * (zreversed ? -1 : 1),
+        )
+    )
+
+    ws = widths(limits)
 
     t = Makie.translationmatrix(-Float64.(limits.origin))
     s = if aspect === :equal
@@ -383,7 +399,7 @@ function dim2(dim)
     end
 end
 
-function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2)
+function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
@@ -392,11 +408,14 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
     d1 = dim1(dim)
     d2 = dim2(dim)
 
+
     tickvalues = @lift($ticknode[1])
 
-    endpoints = lift(limits, tickvalues, min1, min2) do lims, ticks, min1, min2
-        f1 = min1 ? minimum(lims)[d1] : maximum(lims)[d1]
-        f2 = min2 ? minimum(lims)[d2] : maximum(lims)[d2]
+    endpoints = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
+        rev1 = (xrev, yrev, zrev)[d1]
+        rev2 = (xrev, yrev, zrev)[d2]
+        f1 = min1 ⊻ rev1 ? minimum(lims)[d1] : maximum(lims)[d1]
+        f2 = min2 ⊻ rev2 ? minimum(lims)[d2] : maximum(lims)[d2]
         # from tickvalues and f1 and min2:max2
         mi = minimum(lims)
         ma = maximum(lims)
@@ -409,9 +428,11 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
 
-    endpoints2 = lift(limits, tickvalues, min1, min2) do lims, ticks, min1, min2
-        f1 = min1 ? minimum(lims)[d1] : maximum(lims)[d1]
-        f2 = min2 ? minimum(lims)[d2] : maximum(lims)[d2]
+    endpoints2 = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
+        rev1 = (xrev, yrev, zrev)[d1]
+        rev2 = (xrev, yrev, zrev)[d2]
+        f1 = min1 ⊻ rev1 ? minimum(lims)[d1] : maximum(lims)[d1]
+        f2 = min2 ⊻ rev2 ? minimum(lims)[d2] : maximum(lims)[d2]
         # from tickvalues and f1 and min2:max2
         mi = minimum(lims)
         ma = maximum(lims)
@@ -425,9 +446,15 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         visible = attr(:gridvisible), inspectable = false)
 
 
-    framepoints = lift(limits, scene.camera.projectionview, scene.px_area, min1, min2
-            ) do lims, _, pxa, mi1, mi2
+    framepoints = lift(limits, scene.camera.projectionview, scene.px_area, min1, min2, xreversed, yreversed, zreversed
+            ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
         o = pxa.origin
+
+        rev1 = (xrev, yrev, zrev)[d1]
+        rev2 = (xrev, yrev, zrev)[d2]
+
+        mi1 = mi1 ⊻ rev1
+        mi2 = mi2 ⊻ rev2
 
         f(mi) = mi ? minimum : maximum
         p1 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
@@ -463,7 +490,7 @@ function to_topscene_z_2d(p3d, scene)
     Point3f(p2d..., -10000)
 end
 
-function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth)
+function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
@@ -480,13 +507,17 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     ticksize = attr(:ticksize)
 
     tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
-            scene.camera.projectionview, scene.px_area, ticksize) do lims, ticks, miv, min1, min2,
-                pview, pxa, tsize
-        f1 = !min1 ? minimum(lims)[d1] : maximum(lims)[d1]
-        f2 = min2 ? minimum(lims)[d2] : maximum(lims)[d2]
+            scene.camera.projectionview, scene.px_area, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
+                pview, pxa, tsize, xrev, yrev, zrev
 
-        f1_oppo = min1 ? minimum(lims)[d1] : maximum(lims)[d1]
-        f2_oppo = !min2 ? minimum(lims)[d2] : maximum(lims)[d2]
+        rev1 = (xrev, yrev, zrev)[d1]
+        rev2 = (xrev, yrev, zrev)[d2]
+
+        f1 = !(min1 ⊻ rev1) ? minimum(lims)[d1] : maximum(lims)[d1]
+        f2 = (min2 ⊻ rev2) ? minimum(lims)[d2] : maximum(lims)[d2]
+
+        f1_oppo = (min1 ⊻ rev1) ? minimum(lims)[d1] : maximum(lims)[d1]
+        f2_oppo = !(min2 ⊻ rev2) ? minimum(lims)[d2] : maximum(lims)[d2]
 
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
@@ -568,13 +599,20 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     onany(topscene,
             scene.px_area, scene.camera.projectionview, limits, miv, min1, min2,
-            attr(:labeloffset), attr(:labelrotation), attr(:labelalign)
-            ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign
+            attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+            ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         o = pxa.origin
 
-        f1 = !min1 ? minimum(lims)[d1] : maximum(lims)[d1]
-        f2 = min2 ? minimum(lims)[d2] : maximum(lims)[d2]
+        rev1 = (xrev, yrev, zrev)[d1]
+        rev2 = (xrev, yrev, zrev)[d2]
+        revdim = (xrev, yrev, zrev)[dim]
+
+        minr1 = min1 ⊻ rev1
+        minr2 = min2 ⊻ rev2
+
+        f1 = !minr1 ? minimum(lims)[d1] : maximum(lims)[d1]
+        f2 = minr2 ? minimum(lims)[d2] : maximum(lims)[d2]
 
         # get end points of axis
         p1 = dpoint(minimum(lims)[dim], f1, f2)
@@ -591,9 +629,9 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff = pp2 - pp1
 
         diffsign = if dim == 1 || dim == 3
-            !(min1 ⊻ min2) ? 1 : -1
+            !(min1 ⊻ min2 ⊻ revdim) ? 1 : -1
         else
-            (min1 ⊻ min2) ? 1 : -1
+            (min1 ⊻ min2 ⊻ revdim) ? 1 : -1
         end
 
         a = pi/2
@@ -848,11 +886,11 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2]
         error("Can't set x limits to the same value $(xlims[1]).")
-    # elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
-    #     xlims = reverse(xlims)
-    #     ax.xreversed[] = true
-    # else
-    #     ax.xreversed[] = false
+    elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
+        xlims = reverse(xlims)
+        ax.xreversed[] = true
+    else
+        ax.xreversed[] = false
     end
 
     ax.limits.val = (xlims, ax.limits[][2], ax.limits[][3])
@@ -865,11 +903,11 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2]
         error("Can't set y limits to the same value $(ylims[1]).")
-    # elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
-    #     ylims = reverse(ylims)
-    #     ax.yreversed[] = true
-    # else
-    #     ax.yreversed[] = false
+    elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
+        ylims = reverse(ylims)
+        ax.yreversed[] = true
+    else
+        ax.yreversed[] = false
     end
 
     ax.limits.val = (ax.limits[][1], ylims, ax.limits[][3])
@@ -882,11 +920,11 @@ function Makie.zlims!(ax::Axis3, zlims)
         error("Invalid zlims length of $(length(zlims)), must be 2.")
     elseif zlims[1] == zlims[2]
         error("Can't set y limits to the same value $(zlims[1]).")
-    # elseif all(x -> x isa Real, zlims) && zlims[1] > zlims[2]
-    #     zlims = reverse(zlims)
-    #     ax.zreversed[] = true
-    # else
-    #     ax.zreversed[] = false
+    elseif all(x -> x isa Real, zlims) && zlims[1] > zlims[2]
+        zlims = reverse(zlims)
+        ax.zreversed[] = true
+    else
+        ax.zreversed[] = false
     end
 
     ax.limits.val = (ax.limits[][1], ax.limits[][2], zlims)
