@@ -1077,5 +1077,65 @@ function attribute_examples(::Type{Axis3})
                     """
             ),
         ],
+        :xreversed => [
+            Example(
+                name = "`xreversed` on and off",
+                code = """
+                using FileIO
+
+                fig = Figure()
+
+                brain = load(assetpath("brain.stl"))
+
+                ax1 = Axis3(fig[1, 1], title = "xreversed = false")
+                ax2 = Axis3(fig[2, 1], title = "xreversed = true", xreversed = true)
+                for ax in [ax1, ax2]
+                    mesh!(ax, brain, color = getindex.(brain.position, 1))
+                end
+
+                fig
+                    """
+            ),
+        ],
+        :yreversed => [
+            Example(
+                name = "`yreversed` on and off",
+                code = """
+                    using FileIO
+
+                    fig = Figure()
+
+                    brain = load(assetpath("brain.stl"))
+
+                    ax1 = Axis3(fig[1, 1], title = "yreversed = false")
+                    ax2 = Axis3(fig[2, 1], title = "yreversed = true", yreversed = true)
+                    for ax in [ax1, ax2]
+                        mesh!(ax, brain, color = getindex.(brain.position, 2))
+                    end
+
+                    fig
+                    """
+            ),
+        ],
+        :zreversed => [
+            Example(
+                name = "`zreversed` on and off",
+                code = """
+                    using FileIO
+                    
+                    fig = Figure()
+
+                    brain = load(assetpath("brain.stl"))
+
+                    ax1 = Axis3(fig[1, 1], title = "zreversed = false")
+                    ax2 = Axis3(fig[2, 1], title = "zreversed = true", zreversed = true)
+                    for ax in [ax1, ax2]
+                        mesh!(ax, brain, color = getindex.(brain.position, 3))
+                    end
+
+                    fig
+                    """
+            ),
+        ],
     )
 end
