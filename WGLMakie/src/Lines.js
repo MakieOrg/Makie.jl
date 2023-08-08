@@ -43,9 +43,15 @@ function linesegments_vertex_shader(uniforms, attributes) {
         out vec2 f_uv;
         out ${color} f_color;
 
+        vec2 get_resolution() {
+            // 2 * px_per_unit doesn't make any sense, but works
+            // TODO, figure out what's going on!
+            return resolution / 2.0 * px_per_unit;
+        }
+
         vec3 screen_space(vec3 point) {
             vec4 vertex = projectionview * model * vec4(point, 1);
-            return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+            return vec3(vertex.xy * get_resolution() , vertex.z) / vertex.w;
         }
 
         vec3 screen_space(vec2 point) {
@@ -55,7 +61,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
         void main() {
             vec3 p_a = screen_space(linepoint_start);
             vec3 p_b = screen_space(linepoint_end);
-            float width = (position.x == 1.0 ? linewidth_end : linewidth_start);
+            float width = (px_per_unit * (position.x == 1.0 ? linewidth_end : linewidth_start));
             f_color = position.x == 1.0 ? color_end : color_start;
             f_uv = vec2(position.x, position.y + 0.5);
 
@@ -66,7 +72,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
             vec2 yBasis = normalize(vec2(-xBasis.y, xBasis.x));
             vec2 point = pointA + xBasis * position.x + yBasis * width * position.y;
 
-            gl_Position = vec4((point.xy / resolution), p_a.z, 1.0);
+            gl_Position = vec4(point.xy / get_resolution(), p_a.z, 1.0);
         }
         `;
 }
@@ -155,7 +161,6 @@ function lines_fragment_shader(uniforms, attributes) {
 
 function create_line_material(uniforms, attributes) {
     const uniforms_des = deserialize_uniforms(uniforms);
-    uniforms_des.pixel_ratio = new THREE.Uniform(window.devicePixelRatio || 1.0);
     return new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
         vertexShader: linesegments_vertex_shader(uniforms_des, attributes),

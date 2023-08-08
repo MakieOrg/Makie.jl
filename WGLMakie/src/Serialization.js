@@ -201,7 +201,9 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
+    const px_per_unit = window.devicePixelRatio || 1.0;
     plot_data.uniforms.resolution = cam.resolution;
+    plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
     if (plot_data.uniforms.preprojection) {
         const { space, markerspace } = plot_data;
