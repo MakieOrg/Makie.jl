@@ -1597,6 +1597,12 @@ end
         yautolimitmargin = (0.05, 0.05)
         "The relative margins added to the autolimits in z direction."
         zautolimitmargin = (0.05, 0.05)
+        "Controls if the x axis goes rightwards (false) or leftwards (true) in default camera orientation."
+        xreversed::Bool = false
+        "Controls if the y axis goes leftwards (false) or rightwards (true) in default camera orientation."
+        yreversed::Bool = false
+        "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
+        zreversed::Bool = false
     end
 end
 
