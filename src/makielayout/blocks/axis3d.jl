@@ -1139,7 +1139,7 @@ function attribute_examples(::Type{Axis3})
         ],
         :protrusions => [
             Example(
-                name = "Single protrusion 100",
+                name = "Single protrusion",
                 code = """
                     fig = Figure()
                     Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
