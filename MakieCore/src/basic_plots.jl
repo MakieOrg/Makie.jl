@@ -121,7 +121,7 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
     image(x, y, image)
     image(image)
 
-Plots an image on range `x, y` (defaults to dimensions).
+Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 
 ## Attributes
 
@@ -146,7 +146,8 @@ end
     heatmap(x, y, values)
     heatmap(values)
 
-Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
+Plots a heatmap as a collection of rectangles centered at `x[i], y[j]` with
+colors derived from `values[i, j]`. (Defaults to `x, y = axes(values)`.)
 
 ## Attributes
 
@@ -215,10 +216,8 @@ end
     surface(x, y, z)
     surface(z)
 
-Plots a surface, where `(x, y)`  define a grid whose heights are the entries in `z`.
+Plots a surface, where `(x, y)` define a grid whose heights are the entries in `z`.
 `x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
-
-`Surface` has the conversion trait `VertexBasedGrid <: GridBased`.
 
 ## Attributes
 
