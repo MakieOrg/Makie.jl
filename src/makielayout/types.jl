@@ -1547,7 +1547,19 @@ end
         ygridvisible = true
         "Controls if the z grid is visible"
         zgridvisible = true
-        "The protrusions on the sides of the axis, how much gap space is reserved for labels etc."
+        """
+        The protrusions control how much gap space is reserved for labels etc. on the sides of the `Axis3`.
+        Unlike `Axis`, `Axis3` currently does not set these values automatically depending on the properties
+        of ticks and labels. This is because the effective protrusions also depend on the rotation and scaling
+        of the axis cuboid, which changes whenever the `Axis3` shifts in the layout. Therefore, auto-updating
+        protrusions could lead to an endless layout update cycle.
+
+        The default value of `30` for all sides is just a heuristic and might lead to collisions of axis
+        decorations with the `Figure` boundary or other plot elements. If that's the case, you can try increasing
+        the value(s).
+
+        The `protrusions` attribute accepts a single number for all sides, or a tuple of `(left, right, bottom, top)`.
+        """
         protrusions = 30
         "The x ticks"
         xticks = WilkinsonTicks(5; k_min = 3)
