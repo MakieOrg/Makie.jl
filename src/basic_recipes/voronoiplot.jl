@@ -96,7 +96,6 @@ function clip_polygon(poly::Polygon, edges::Vector{<: Line})
     return Polygon(output)
 end
 
-
 function clip_polygon(poly::Polygon, rect::Rect2)
     lb = Point2f(minimum(rect))
     rt = Point2f(maximum(rect))
@@ -105,21 +104,65 @@ function clip_polygon(poly::Polygon, rect::Rect2)
     return clip_polygon(poly, [Line(lb, lt), Line(lt, rt), Line(rt, rb), Line(rb, lb)])
 end
 
+function clip_polygon(poly::Polygon, circle::Circle)
+    # Sutherland-Hodgman adjusted
+    @assert isempty(poly.interiors) "Polygon must not have holes for clipping."
+
+    function intersection(A, B, circle)
+        CA = A - circle.center
+        AB = B - A
+        a = dot(AB, AB) # > 0
+        b = 2 * dot(CA, AB) # > 0
+        c = dot(CA, CA) - circle.r * circle.r
+        t = (sqrt(b*b - 4 * a * c) - b) / (2a) # only solution > 0 matters
+        return A + AB * t
+    end
+
+    input = Point2f.(first.(poly.exterior))
+    output = sizehint!(Point2f[], length(input))
+
+    for i in eachindex(input)
+        p1 = input[mod1(i-1, end)]
+        p2 = input[i]
+
+        Cp1 = p1 - circle.center
+        Cp2 = p2 - circle.center
+        r2 = circle.r * circle.r
+        if dot(Cp1, Cp1) < r2 # p1 inside
+            if dot(Cp2, Cp2) > r2 # p2 outside
+                p = intersection(p1, p2, circle)
+                push!(output, p)
+            else # both inside
+                push!(output, p2)
+            end
+        elseif dot(Cp2, Cp2) < r2 # p1 outside, p2 inside
+            p = intersection(p2, p1, circle)
+            push!(output, p, p2)
+        end
+    end
+
+    return Polygon(output)
+end
+
 function clip_polygon(poly::Polygon, ::Nothing)
     return poly
 end
 
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
+    inside(p, bb::Rect2) = p in bb
+    inside(p, c::Circle) = dot(p - c.center, p - c.center) < c.r * c.r
+    inside(p, bb) = true
+
     empty!(generators)
     empty!(polygons)
     sizehint!(generators, DelTri.num_generators(vorn))
     sizehint!(polygons, DelTri.num_polygons(vorn))
     # TODO: get_polygon_coordinates() errors without a bbox tuple.
-    pseudo_bbox = DelTri.polygon_bounds(vorn, 0.1)
+    pseudo_bbox = DelTri.polygon_bounds(vorn, 1.0)
     for i in DelTri.each_generator(vorn)
         g = DelTri.get_generator(vorn, i)
         p = Point2f(DelTri.getxy(g))
-        p in bbox && push!(generators, p)
+        inside(p, bbox) && push!(generators, p)
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, pseudo_bbox)
         polygon_coords_2f = map(polygon_coords) do coords
             x, y = DelTri.getxy(coords)
