@@ -1137,5 +1137,28 @@ function attribute_examples(::Type{Axis3})
                     """
             ),
         ],
+        :protrusions => [
+            Example(
+                name = "Single protrusion 100",
+                code = """
+                    fig = Figure()
+                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
+                    Axis3(fig[1, 1], protrusions = 100, viewmode = :stretch,
+                        title = "protrusions = 100")
+                    fig
+                """
+            ),
+            Example(
+                name = "Removing protrusions",
+                code = """
+                    fig = Figure()
+                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
+                    ax = Axis3(fig[1, 1], protrusions = (0, 0, 0, 20), viewmode = :stretch,
+                        title = "protrusions = (0, 0, 0, 20)")
+                    hidedecorations!(ax)
+                    fig
+                """
+            ),
+        ]
     )
 end
