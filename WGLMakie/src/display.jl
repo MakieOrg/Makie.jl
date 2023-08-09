@@ -18,11 +18,12 @@ function Base.size(screen::ThreeDisplay)
 end
 
 function JSServe.jsrender(session::Session, scene::Scene)
-    three, canvas, on_init = three_display(Screen(scene), session, scene)
+    screen = Screen(scene)
+    screen.session = session
+    screen.display = true
+    three, canvas, on_init = three_display(screen, session, scene)
     c = Channel{ThreeDisplay}(1)
     put!(c, three)
-    screen = Screen(c, true, scene)
-    screen.session = session
     Makie.push_screen!(scene, screen)
     on(session, on_init) do i
         mark_as_displayed!(screen, scene)
