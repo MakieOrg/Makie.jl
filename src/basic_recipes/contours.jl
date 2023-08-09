@@ -112,8 +112,8 @@ end
 
 conversion_trait(::Type{<: Contour3d}) = VertexBasedGrid()
 conversion_trait(::Type{<: Contour}) = VertexBasedGrid()
-conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
-conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
+conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<: Number, 3}}) = VolumeLike()
+conversion_trait(::Type{<: Contour}, ::AbstractArray{<: Number, 3}) = VolumeLike()
 
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
