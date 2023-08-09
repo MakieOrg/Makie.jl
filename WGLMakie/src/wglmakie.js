@@ -19,10 +19,8 @@ import { event2scene_pixel } from "./Camera.js";
 
 window.THREE = THREE;
 
-const pixelRatio = window.devicePixelRatio || 1.0;
-
 export function render_scene(scene, picking = false) {
-    const { camera, renderer } = scene.screen;
+    const { camera, renderer, scalefactor } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("EXITING WGL");
@@ -37,8 +35,10 @@ export function render_scene(scene, picking = false) {
     }
     renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
     if (area) {
-        const [x, y, w, h] = area.map((t) => Math.ceil(t));
+        const [x, y, w, h] = area.map((x) => x * scalefactor);
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
@@ -112,7 +112,8 @@ function throttle_function(func, delay) {
     return inner_throttle;
 }
 
-function threejs_module(canvas, comm, width, height, resize_to_body) {
+function threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit, scalefactor) {
+
     let context = canvas.getContext("webgl2", {
         preserveDrawingBuffer: true,
     });
@@ -129,6 +130,9 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
         // we return nothing which will be handled by caller
         return;
     }
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
+
     const renderer = new THREE.WebGLRenderer({
         antialias: true,
         canvas: canvas,
@@ -138,18 +142,23 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
 
     renderer.setClearColor("#ffffff");
 
-    // The following handles high-DPI devices
-    // `renderer.setSize` also updates `canvas` size
-    renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(width, height);
+    const [swidth, sheight] = [winscale * width, winscale * height];
+
+    renderer._width = width;
+    renderer._height = height;
+    canvas.width = Math.floor(width * scalefactor);
+    canvas.height = Math.floor(height * scalefactor);
+    canvas.style.width = swidth + "px";
+    canvas.style.height = sheight + "px";
+    renderer.setViewport(0, 0, swidth, sheight);
 
     const mouse_callback = (x, y) => comm.notify({ mouseposition: [x, y] });
     const notify_mouse_throttled = throttle_function(mouse_callback, 40);
 
     function mousemove(event) {
         var rect = canvas.getBoundingClientRect();
-        var x = (event.clientX - rect.left) * pixelRatio;
-        var y = (event.clientY - rect.top) * pixelRatio;
+        var x = (event.clientX - rect.left) * px_per_unit;
+        var y = (event.clientY - rect.top) * px_per_unit;
 
         notify_mouse_throttled(x, y);
         return false;
@@ -255,14 +264,25 @@ function create_scene(
     height,
     texture_atlas_obs,
     fps,
-    resize_to_body
+    resize_to_body,
+    px_per_unit,
+    scalefactor
 ) {
+    if (!scalefactor) {
+        scalefactor = window.devicePixelRatio || 1.0;
+    }
+    if (!px_per_unit) {
+        px_per_unit = scalefactor;
+    }
+
     const renderer = threejs_module(
         canvas,
         comm,
         width,
         height,
-        resize_to_body
+        resize_to_body,
+        px_per_unit,
+        scalefactor
     );
     TEXTURE_ATLAS[0] = texture_atlas_obs;
 
@@ -281,17 +301,27 @@ function create_scene(
         // 2) Only Area we pick
         //      It's currently not as easy to change the offset + area of the camera
         //      So, we'll need to make that easier first
+        console.log("----")
+        console.log(size);
         const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
-        const screen = { renderer, picking_target, camera, fps, canvas };
+        const screen = {
+            renderer,
+            picking_target,
+            camera,
+            fps,
+            canvas,
+            px_per_unit,
+            scalefactor,
+        };
 
         const three_scene = deserialize_scene(scenes, screen);
-        console.log(three_scene);
-        start_renderloop(three_scene);
 
+        start_renderloop(three_scene);
+        const pixel_ratio = window.devicePixelRatio || 1.0;
+        const winscale = scalefactor / pixel_ratio;
         canvas_width.on((w_h) => {
             // `renderer.setSize` correctly updates `canvas` dimensions
-            const pixelRatio = renderer.getPixelRatio();
-            renderer.setSize(Math.ceil(w_h[0]), Math.ceil(w_h[1]));
+            renderer.setSize(Math.round(winscale * w_h[0]), Math.round(winscale * w_h[1]));
         });
     } else {
         const warning = getWebGLErrorMessage();

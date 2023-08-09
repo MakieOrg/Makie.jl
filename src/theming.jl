@@ -88,6 +88,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         render_on_demand = true,
         framerate = 30.0,
         px_per_unit = automatic,
+        scalefactor = automatic,
 
         # GLFW window attributes
         float = false,
@@ -98,7 +99,6 @@ const MAKIE_DEFAULT_THEME = Attributes(
         debugging = false,
         monitor = nothing,
         visible = true,
-        scalefactor = automatic,
 
         # Postproccessor
         oit = true,
@@ -112,7 +112,9 @@ const MAKIE_DEFAULT_THEME = Attributes(
 
     WGLMakie = Attributes(
         framerate = 30.0,
-        resize_to_body = false
+        resize_to_body = false,
+        px_per_unit = automatic,
+        scalefactor = automatic
     ),
 
     RPRMakie = Attributes(

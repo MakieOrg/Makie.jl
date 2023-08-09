@@ -38,8 +38,8 @@ function JSServe.print_js_code(io::IO, scene::Scene, context::JSServe.JSSourceCo
     JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
 end
 
-function three_display(session::Session, scene::Scene; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
+function three_display(screen::Screen, session::Session, scene::Scene)
+    config = screen.config
     scene_serialized = serialize_scene(scene)
 
     window_open = scene.events.window_open
@@ -53,7 +53,10 @@ function three_display(session::Session, scene::Scene; screen_config...)
     ta = JSServe.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
     $(WGL).then(WGL => {
-        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(ta), $(config.framerate), $(config.resize_to_body))
+        WGL.create_scene(
+            $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+            $(ta), $(config.framerate), $(config.resize_to_body), $(config.px_per_unit), $(config.scalefactor)
+        )
         $(done_init).notify(true)
     })
     """)

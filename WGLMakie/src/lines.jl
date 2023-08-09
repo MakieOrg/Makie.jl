@@ -28,7 +28,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             attributes[name] = lift(serialize_buffer_attribute, attr)
         end
     end
-
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
         :visible => plot.visible,
@@ -36,6 +35,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :plot_type => plot isa LineSegments ? "linesegments" : "lines",
         :cam_space => plot.space[],
         :uniforms => serialize_uniforms(uniforms),
+        :uniform_updater => uniform_updater(uniforms),
         :attributes => attributes
     )
     return attr

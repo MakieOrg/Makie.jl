@@ -165,8 +165,8 @@ export function deserialize_plot(data) {
     mesh.plot_uuid = data.uuid;
     update_visible(data.visible.value);
     data.visible.on(update_visible);
+    connect_uniforms(mesh, data.uniform_updater);
     if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
-        connect_uniforms(mesh, data.uniform_updater);
         connect_attributes(mesh, data.attribute_updater);
     }
     return mesh;
@@ -201,7 +201,7 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-    const px_per_unit = window.devicePixelRatio || 1.0;
+    const {px_per_unit} = scene.screen;
     plot_data.uniforms.resolution = cam.resolution;
     plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
