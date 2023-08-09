@@ -49,29 +49,83 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
     return attr
 end
 
+function clip_polygon(poly::Polygon, edges::Vector{<: Line})
+    # Sutherland-Hodgman algorithm
+    # assuming edges clockwise
+    @assert isempty(poly.interiors) "Polygon must not have holes for clipping."
+
+    # TODO: GeometryBasics has some rotations in this. Do we need that here too?
+    function intersection(A, B, edge)
+        # assuming both infinite
+        e1, e2 = edge
+        alpha = A - e1
+        beta = A - B
+        v = e2 - e1
+        t1, t2 = inv(Mat2f(beta[1], beta[2], v[1], v[2])) * alpha
+        return e1 + t2 * v
+    end
+
+    output = Point2f.(first.(poly.exterior))
+    input = sizehint!(Point2f[], length(output))
+
+    for edge in edges
+        # swap references
+        temp = input
+        input = output
+        output = temp
+
+        empty!(output)
+        v = edge[2] - edge[1]
+        right = Vec2f(v[2], -v[1])
+
+        for i in eachindex(input)
+            p1 = input[mod1(i-1, end)]
+            p2 = input[i]
+            p = intersection(p1, p2, edge)
+            if dot(p2 - edge[1], right) > 0 # p2 inside
+                if dot(p1 - edge[1], right) < 0 # p1 outside
+                    push!(output, p)
+                end
+                push!(output, p2)
+            elseif dot(p1 - edge[1], right) > 0 # p1 inside
+                push!(output, p)
+            end
+        end
+    end
+
+    return Polygon(output)
+end
+
+
+function clip_polygon(poly::Polygon, rect::Rect2)
+    lb = Point2f(minimum(rect))
+    rt = Point2f(maximum(rect))
+    lt = Point2f(lb[1], rt[2])
+    rb = Point2f(rt[1], lb[2])
+    return clip_polygon(poly, [Line(lb, lt), Line(lt, rt), Line(rt, rb), Line(rb, lb)])
+end
+
+function clip_polygon(poly::Polygon, ::Nothing)
+    return poly
+end
+
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     empty!(generators)
     empty!(polygons)
     sizehint!(generators, DelTri.num_generators(vorn))
     sizehint!(polygons, DelTri.num_polygons(vorn))
-    if !isnothing(bbox)
-        a, b, c, d = bbox
-        @assert a < b && c < d "Bounding box must be of the form (xmin, xmax, ymin, ymax)."
-    end
+    # TODO: get_polygon_coordinates() errors without a bbox tuple.
+    pseudo_bbox = DelTri.polygon_bounds(vorn, 0.1)
     for i in DelTri.each_generator(vorn)
         g = DelTri.get_generator(vorn, i)
-        x, y = DelTri.getxy(g)
-        push!(generators, Point2f(x, y))
-        !isnothing(bbox) &&
-            @assert a ≤ x ≤ b && c ≤ y ≤ d "Generator $(i) with coordinates ($x, $y) is outside the bounding box."
-        polygon_coords = DelTri.get_polygon_coordinates(vorn, i, bbox)
+        p = Point2f(DelTri.getxy(g))
+        p in bbox && push!(generators, p)
+        polygon_coords = DelTri.get_polygon_coordinates(vorn, i, pseudo_bbox)
         polygon_coords_2f = map(polygon_coords) do coords
             x, y = DelTri.getxy(coords)
-            !isnothing(bbox) &&
-                @assert a ≤ x ≤ b && c ≤ y ≤ d "Polygon vertex $(i) with coordinates ($x, $y) is outside the bounding box."
             return Point2f(x, y)
         end
-        push!(polygons, Polygon(polygon_coords_2f))
+        push!(polygons, clip_polygon(Polygon(polygon_coords_2f), bbox))
     end
     return generators, polygons
 end
@@ -146,23 +200,21 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
         bbox = map(p.unbounded_edge_extension_factor, p.bounding_box) do extent, bnd
             isempty(DelTri.get_unbounded_polygons(vorn)) && return nothing
             if bnd === automatic
-                # bb_ref = RefValue(Rect3f())
-                # foreach(DelTri.get_generators(vorn)) do (_, p)
-                #     update_boundingbox!(bb_ref, Point2f(p))
-                # end
+                bb_ref = RefValue(Rect3f())
+                foreach(DelTri.get_generators(vorn)) do (_, p)
+                    update_boundingbox!(bb_ref, Point2f(p))
+                end
 
-                # x0, y0, _ = minimum(bb_ref[]) .- extent .* widths(bb_ref[])
-                # x1, y1, _ = maximum(bb_ref[]) .+ extent .* widths(bb_ref[])
-
-                # return (x0, x1, y0, y1)
-                return DelTri.polygon_bounds(vorn, extent)
+                x0, y0, _ = minimum(bb_ref[]) .- extent .* widths(bb_ref[])
+                w, h, _ = (1 + 2extent) .* widths(bb_ref[])
+                return Rect2f(x0, y0, w, h)
             else
                 return bnd
             end
         end
         map(generators_2f, polygons, bbox) do gens, polys, box
-            _box = !isnothing(box) ? map(Float64, box) : box
-            return get_voronoi_tiles!(gens, polys, vorn, _box)
+            # _box = !isnothing(box) ? map(Float64, box) : box
+            return get_voronoi_tiles!(gens, polys, vorn, box)
         end
         for obs in (generators_2f, polygons)
             notify(obs)
