@@ -8,9 +8,10 @@
 </div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MakieOrg/Makie.jl/blob/main/LICENSE)
-[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url][![JOSS][joss-img]][joss-url]
 [![Build Status](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml?query=branch%3Amaster)
 [![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
+[![chat][discord-img]][discord-url]
 [![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/Makie&label=Downloads)](https://pkgs.genieframework.com?packages=Makie)
 
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
@@ -24,6 +25,11 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 [docs-stable-url]: http://docs.makie.org/stable/
 [docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
 [docs-master-url]: http://docs.makie.org/dev/
+[joss-url]: https://doi.org/10.21105/joss.03349
+[joss-img]: http://joss.theoj.org/papers/10.21105/joss.03349/status.svg
+
+[discord-url]: https://discord.com/invite/2FBjYAT3cY
+[discord-img]: https://img.shields.io/discord/996787732149981214.svg?logo=discord&colorB=7289DA&style=flat-square
 
 # Citing Makie
 
