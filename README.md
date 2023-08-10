@@ -31,7 +31,7 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 [discord-url]: https://discord.com/invite/2FBjYAT3cY
 [discord-img]: https://img.shields.io/discord/996787732149981214.svg?logo=discord&colorB=7289DA&style=flat-square
 
-# Citing Makie
+## Citing Makie
 
 If you use Makie for a scientific publication, please cite [our JOSS paper](https://joss.theoj.org/papers/10.21105/joss.03349) the following way:
 
@@ -62,7 +62,11 @@ Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.0334
 
 or [Download the BibTeX file](./assets/DanischKrumbiegel2021.bibtex).
 
-# Installation
+## Community Channels
+
+We are on [Discord](https://discord.com/invite/2FBjYAT3cY) and [Discourse](https://discourse.julialang.org/c/17?tags=Makie)! Community channels are a great way for you to ask questions and get help. Please join us!
+
+## Installation
 
 Please consider using the backends directly. As explained in the documentation, they re-export all of Makie's functionality.
 So, instead of installing Makie, just install e.g. GLMakie directly:
@@ -105,7 +109,7 @@ To run the tests, you also should add:
 For more info about ReferenceTests, check out its [README](./ReferenceUpdater/README.md)
 </details>
 
-# Examples
+## Examples
 
 The following examples are supposed to be self-explanatory. For further information [check out the documentation!](http://docs.makie.org/stable/)
 
