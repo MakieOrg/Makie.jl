@@ -48,14 +48,60 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
     return attr
 end
 
+function _clip_polygon(poly::Polygon, circle::Circle)
+    # Sutherland-Hodgman adjusted
+    @assert isempty(poly.interiors) "Polygon must not have holes for clipping."
+
+    function intersection(A, B, circle)
+        CA = A - origin(circle)
+        AB = B - A
+        a = dot(AB, AB) # > 0
+        b = 2 * dot(CA, AB) # > 0
+        c = dot(CA, CA) - radius(circle) * radius(circle)
+        t = (sqrt(b*b - 4 * a * c) - b) / (2a) # only solution > 0 matters
+        return A + AB * t
+    end
+
+    input = Point2f.(first.(poly.exterior))
+    output = sizehint!(Point2f[], length(input))
+
+    for i in eachindex(input)
+        p1 = input[mod1(i-1, end)]
+        p2 = input[i]
+
+        Cp1 = p1 - origin(circle)
+        Cp2 = p2 - origin(circle)
+        r2 = radius(circle) * radius(circle)
+        if dot(Cp1, Cp1) < r2 # p1 inside
+            if dot(Cp2, Cp2) > r2 # p2 outside
+                p = intersection(p1, p2, circle)
+                push!(output, p)
+            else # both inside
+                push!(output, p2)
+            end
+        elseif dot(Cp2, Cp2) < r2 # p1 outside, p2 inside
+            p = intersection(p2, p1, circle)
+            push!(output, p, p2)
+        end
+    end
+
+    return Polygon(output)
+end
+_clip_polygon(poly::Polygon, ::Any) = poly
+
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
+    inside(p, c::Circle) = dot(p - origin(c), p - origin(c)) < radius(c) * radius(c)
     inside(p, bb::Rect2) = p in bb
     inside(p, bb::Tuple) = (bb[1] <= p[1] <= bb[2]) && (bb[3] <= p[2] <= bb[4])
     inside(p, bb) = true
 
+    function voronoi_bbox(c::Circle)
+        o = Float64.(origin(c)); r = Float64(radius(c))
+        return (o[1] - r, o[1] + r, o[2] - r, o[2] + r)
+    end
     function voronoi_bbox(r::Rect2)
-        mini = minimum(r); maxi = maximum(r)
-        return (Float64(mini[1]), Float64(maxi[1]), Float64(mini[2]), Float64(maxi[2]))
+        mini = Float64.(minimum(r)); maxi = Float64.(maximum(r))
+        return (mini[1], maxi[1], mini[2], maxi[2])
     end
     voronoi_bbox(t::Tuple) = Float64.(t)
     voronoi_bbox(::Nothing) = nothing
@@ -108,6 +154,19 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
             vorn = DelTri.centroidal_smooth(vorn)
         end
         return vorn
+    end
+
+    # Default to circular clip for polar transformed data
+    attr[:bounding_box] = map(
+            pop!(attr, :bounding_box), p.unbounded_edge_extension_factor,
+            transform_func_obs(p), ps) do bb, ext, tf, ps
+
+        if bb === automatic && tf isa Polar
+            rscaled = maximum(first, ps) * (1 + ext)
+            return Circle(Point2f(0), rscaled)
+        else
+            return bb
+        end
     end
 
     transform = Transformation(p.transformation; transform_func=identity)
