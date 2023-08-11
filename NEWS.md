@@ -2,8 +2,9 @@
 
 ## master
 
+- Added `xreversed`, `yreversed` and `zreversed` attributes to `Axis3` [#3138](https://github.com/MakieOrg/Makie.jl/pull/3138).
 - Fixed incorrect placement of contourlabels with transform functions [#3083](https://github.com/MakieOrg/Makie.jl/pull/3083)
-- Fix automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
+- Fixed automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
 - Added the `triplot` and `voronoiplot` recipes from DelaunayTriangulation.jl [#3102](https://github.com/MakieOrg/Makie.jl/pull/3102).
 
 ## v0.19.7
