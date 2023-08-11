@@ -40,7 +40,11 @@ function poly_convert(geometries)
     return triangle_mesh.(geometries)
 end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
-poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
+function poly_convert(polys::AbstractVector{<:Polygon})
+    # GLPlainMesh2D is not concrete?
+    T = GeometryBasics.Mesh{2, Float32, GeometryBasics.Ngon{2, Float32, 3, Point2f}, SimpleFaceView{2, Float32, 3, GLIndex, Point2f, GLTriangleFace}}
+    return isempty(polys) ? T[] : triangle_mesh.(polys)
+end
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
     return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
 end
