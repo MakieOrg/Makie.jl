@@ -20126,66 +20126,80 @@ function attach_interleaved_line_buffer(attr_name, geometry, points, ndim, is_se
     geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer, ndim, ndim));
     return buffer;
 }
-function create_line_buffer(buffers, geometry, name, attr, is_segments) {
-    const flat_buffer = attr.value.flat;
-    const ndims = attr.value.type_length;
-    const linebuffer = attach_interleaved_line_buffer(name, geometry, flat_buffer, ndims, is_segments);
-    buffers[name] = linebuffer;
-    attr.on((new_points)=>{
-        const buff = buffers[name];
-        const ndims = new_points.type_length;
-        const new_line_points = new_points.flat;
-        const old_count = buff.updateRange.count;
-        if (old_count < new_line_points.length) {
-            buffers[name] = attach_interleaved_line_buffer(name, geometry, new_line_points, ndims, is_segments);
-        } else {
-            buff.updateRange.count = new_line_points.length;
-            buff.set(new_line_points, 0);
-        }
-        buffers[name].needsUpdate = true;
-    });
-    return flat_buffer;
-}
-function create_line_geometry(attributes, is_segments) {
-    function geometry_buffer() {
-        const geometry = new THREE.InstancedBufferGeometry();
-        const instance_positions = [
-            0,
-            -0.5,
-            1,
-            -0.5,
-            1,
-            0.5,
-            0,
-            -0.5,
-            1,
-            0.5,
-            0,
-            0.5
-        ];
-        geometry.setAttribute("position", new THREE.Float32BufferAttribute(instance_positions, 2));
-        return geometry;
-    }
-    const geometry = geometry_buffer();
-    const buffers = {};
-    for(let name in attributes){
-        const attr = attributes[name];
-        create_line_buffer(buffers, geometry, name, attr, is_segments);
-    }
+function create_line_instance_geometry() {
+    const geometry = new THREE.InstancedBufferGeometry();
+    const instance_positions = [
+        0,
+        -0.5,
+        1,
+        -0.5,
+        1,
+        0.5,
+        0,
+        -0.5,
+        1,
+        0.5,
+        0,
+        0.5
+    ];
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(instance_positions, 2));
     geometry.boundingSphere = new THREE.Sphere();
     geometry.boundingSphere.radius = 10000000000000;
     geometry.frustumCulled = false;
     return geometry;
 }
-function create_line(line_data) {
-    const geometry = create_line_geometry(line_data.attributes, false);
+function create_line_buffer(geometry, buffers, name, attr, is_segments) {
+    const flat_buffer = attr.value.flat;
+    const ndims = attr.value.type_length;
+    const linebuffer = attach_interleaved_line_buffer(name, geometry, flat_buffer, ndims, is_segments);
+    buffers[name] = linebuffer;
+    return flat_buffer;
+}
+function create_line_buffers(geometry, buffers, attributes, is_segments) {
+    for(let name in attributes){
+        const attr = attributes[name];
+        create_line_buffer(geometry, buffers, name, attr, is_segments);
+    }
+}
+function attach_updates(mesh, buffers, attributes, is_segments) {
+    let geometry = mesh.geometry;
+    for(let name in attributes){
+        const attr = attributes[name];
+        attr.on((new_points)=>{
+            let buff = buffers[name];
+            const ndims = new_points.type_length;
+            const new_line_points = new_points.flat;
+            const old_count = buff.updateRange.count;
+            console.log(old_count);
+            if (old_count < new_line_points.length) {
+                mesh.geometry.dispose();
+                geometry = create_line_instance_geometry();
+                buff = attach_interleaved_line_buffer(name, geometry, new_line_points, ndims, is_segments);
+                mesh.geometry = geometry;
+                buffers[name] = buff;
+            } else {
+                buff.set(new_line_points, 0);
+            }
+            geometry.instanceCount = new_line_points.length / ndims;
+            buff.needsUpdate = true;
+            mesh.needsUpdate = true;
+        });
+    }
+}
+function _create_line(line_data, is_segments) {
+    const geometry = create_line_instance_geometry();
+    const buffers = {};
+    create_line_buffers(geometry, buffers, line_data.attributes, is_segments);
     const material = create_line_material(line_data.uniforms, geometry.attributes);
-    return new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(geometry, material);
+    attach_updates(mesh, buffers, line_data.attributes, is_segments);
+    return mesh;
+}
+function create_line(line_data) {
+    return _create_line(line_data, false);
 }
 function create_linesegments(line_data) {
-    const geometry = create_line_geometry(line_data.attributes, true);
-    const material = create_line_material(line_data.uniforms, geometry.attributes);
-    return new THREE.Mesh(geometry, material);
+    return _create_line(line_data, true);
 }
 function deserialize_plot(data) {
     let mesh;
@@ -20533,7 +20547,6 @@ function render_scene(scene, picking = false) {
     }
     renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
-    window.devicePixelRatio || 1.0;
     if (area) {
         const [x, y, w, h] = area.map((x)=>x * scalefactor);
         renderer.setViewport(x, y, w, h);
@@ -20626,8 +20639,14 @@ function threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit
     const notify_mouse_throttled = throttle_function(mouse_callback, 40);
     function mousemove(event) {
         var rect = canvas.getBoundingClientRect();
-        var x = (event.clientX - rect.left) * px_per_unit;
-        var y = (event.clientY - rect.top) * px_per_unit;
+        var x = (event.clientX - rect.left) / winscale;
+        var y = (event.clientY - rect.top) / winscale;
+        console.log("-----------------");
+        console.log(event.clientX);
+        console.log(event.clientY);
+        console.log(rect);
+        console.log(x);
+        console.log(y);
         notify_mouse_throttled(x, y);
         return false;
     }

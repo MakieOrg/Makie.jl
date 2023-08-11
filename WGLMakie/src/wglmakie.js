@@ -35,8 +35,6 @@ export function render_scene(scene, picking = false) {
     }
     renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
-    const pixel_ratio = window.devicePixelRatio || 1.0;
-    const winscale = scalefactor / pixel_ratio;
     if (area) {
         const [x, y, w, h] = area.map((x) => x * scalefactor);
         renderer.setViewport(x, y, w, h);
@@ -157,9 +155,14 @@ function threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit
 
     function mousemove(event) {
         var rect = canvas.getBoundingClientRect();
-        var x = (event.clientX - rect.left) * px_per_unit;
-        var y = (event.clientY - rect.top) * px_per_unit;
-
+        var x = (event.clientX - rect.left) / winscale;
+        var y = (event.clientY - rect.top) / winscale;
+        console.log("-----------------");
+        console.log(event.clientX);
+        console.log(event.clientY);
+        console.log(rect);
+        console.log(x)
+        console.log(y);
         notify_mouse_throttled(x, y);
         return false;
     }
