@@ -90,11 +90,6 @@ end
 _clip_polygon(poly::Polygon, ::Any) = poly
 
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
-    inside(p, c::Circle) = dot(p - origin(c), p - origin(c)) < radius(c) * radius(c)
-    inside(p, bb::Rect2) = p in bb
-    inside(p, bb::Tuple) = (bb[1] <= p[1] <= bb[2]) && (bb[3] <= p[2] <= bb[4])
-    inside(p, bb) = true
-
     function voronoi_bbox(c::Circle)
         o = Float64.(origin(c)); r = Float64(radius(c))
         return (o[1] - r, o[1] + r, o[2] - r, o[2] + r)
@@ -118,7 +113,7 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
         end
         push!(polygons, _clip_polygon(Polygon(polygon_coords_2f), bbox))
         gp = Point2f(DelTri.getxy(DelTri.get_generator(vorn, i)))
-        inside(gp, bbox) && push!(generators, gp)
+        !isempty(polygon_coords) && push!(generators, gp)
     end
     return generators, polygons
 end
