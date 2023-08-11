@@ -200,6 +200,9 @@ end
 
 Struct to hold all relevant matrices and additional parameters, to let backends
 apply camera based transformations.
+
+## Fields
+$(TYPEDFIELDS)
 """
 struct Camera
     """
@@ -381,11 +384,34 @@ const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
 
 const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
 
+"""
+    ReversibleScale
+
+Custom scale struct, taking a scaling (forward) and an inverse (backward) arbitrary scale function.
+
+## Fields
+$(TYPEDFIELDS)
+"""
 struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
+    """
+    forward transformation (e.g. `log10`)
+    """
     forward::F
+    """
+    inverse transformation (e.g. `exp10` for `log10` such that backward ∘ forward ≡ identity)
+    """
     backward::B
+    """
+    ticks base (e.g. "10" for pseudo `log10` ticks) (optional)
+    """
     logbase::String
+    """
+    default limits (optional)
+    """
     limits::NTuple{2,Float32}
+    """
+    valid limits interval (optional)
+    """
     interval::I
     function ReversibleScale(forward, backward; logbase = "", limits = (0f0, 10f0), interval = (-Inf32, Inf32))
         if !(interval isa AbstractInterval)
