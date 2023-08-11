@@ -1183,8 +1183,6 @@ end
     ax = PolarAxis(f[1, 1])
     points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = triplot!(ax, points)
-    ax = PolarAxis(f[1, 2])
-    tr = triplot!(ax, points)
     f
 end
 
@@ -1195,7 +1193,7 @@ end
     vorn = voronoi(tri)
     smooth_vorn = centroidal_smooth(vorn; maxiters = 250, rng = RNG.STABLE_RNG)
     cmap = cgrad(:matter)
-    fig, ax, sc = voronoiplot(smooth_vorn, markersize=10, strokewidth = 4)
+    fig, ax, sc = voronoiplot(smooth_vorn, markersize=10, strokewidth = 4, markercolor = :red)
     fig
 end
 
@@ -1252,7 +1250,7 @@ end
     tri = triangulate(points)
     vorn = voronoi(tri)
     fig, ax, sc = voronoiplot(vorn, show_generators = true, strokewidth = 4, color = [:red, :blue, :green])
-    fig 
+    fig
 end
 
 @reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
