@@ -1246,3 +1246,34 @@ end
     tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
     f
 end
+
+@reference_test "Voronoiplot with no bounded polygons" begin # used to be bugged
+    points = [(0.0, 1.0), (-1.0, 2.0), (-2.0, -1.0)]
+    tri = triangulate(points)
+    vorn = voronoi(tri)
+    fig, ax, sc = voronoiplot(vorn, show_generators = true, strokewidth = 4, color = [:red, :blue, :green])
+    fig 
+end
+
+#=
+"Voronoiplot with some custom bounding boxes may not contain all data sites"
+A = (-3.0, 7.0)
+B = (1.0, 6.0)
+C = (-1.0, 3.0)
+D = (-2.0, 4.0)
+E = (3.0, -2.0)
+F = (5.0, 5.0)
+G = (-4.0, -3.0)
+H = (3.0, 8.0)
+points = [A, B, C, D, E, F, G, H]
+tri = triangulate(points)
+vorn = voronoi(tri)
+color = [:red, :blue, :green, :yellow, :cyan, :magenta, :black, :brown] # the polygon colors should not change even if some are not included (because they're outside of the box)
+fig = Figure()
+ax1 = Axis(fig[1, 1], title = "Default")
+voronoiplot!(ax1, vorn, show_generators = true, strokewidth = 4, color = color)
+ax2 = Axis(fig[1, 2], title = "Some excluded")
+voronoiplot!(ax1, vorn, show_generators = true, strokewidth = 4, color = color, bounding_box = (0.0, 5.0, -15.0, 15.0))
+
+fig
+=#
