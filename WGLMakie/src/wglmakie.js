@@ -157,12 +157,6 @@ function threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit
         var rect = canvas.getBoundingClientRect();
         var x = (event.clientX - rect.left) / winscale;
         var y = (event.clientY - rect.top) / winscale;
-        console.log("-----------------");
-        console.log(event.clientX);
-        console.log(event.clientY);
-        console.log(rect);
-        console.log(x)
-        console.log(y);
         notify_mouse_throttled(x, y);
         return false;
     }
