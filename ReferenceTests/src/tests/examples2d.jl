@@ -1240,6 +1240,7 @@ end
     polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
+    Makie.rlims!(ax, 12) # to make rect clip visible if circular clip doesn't happen
     ax = PolarAxis(f[1, 2])
     tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
     f
