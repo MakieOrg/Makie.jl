@@ -49,7 +49,16 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
 end
 
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
-    inside(p, bb::NTuple{4}) = (bb[1] <= p[1] <= bb[2]) && (bb[3] <= p[2] <= bb[4])
+    inside(p, bb::Rect2) = p in bb
+    inside(p, bb::Tuple) = (bb[1] <= p[1] <= bb[2]) && (bb[3] <= p[2] <= bb[4])
+    inside(p, bb) = true
+
+    function voronoi_bbox(r::Rect2)
+        mini = minimum(r); maxi = maximum(r)
+        return (Float64(mini[1]), Float64(maxi[1]), Float64(mini[2]), Float64(maxi[2]))
+    end
+    voronoi_bbox(t::Tuple) = Float64.(t)
+    voronoi_bbox(::Nothing) = nothing
 
     empty!(generators)
     empty!(polygons)
@@ -57,11 +66,11 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     sizehint!(polygons, DelTri.num_polygons(vorn))
 
     for i in DelTri.each_generator(vorn)
-        polygon_coords = DelTri.get_polygon_coordinates(vorn, i, bbox)
+        polygon_coords = DelTri.get_polygon_coordinates(vorn, i, voronoi_bbox(bbox))
         polygon_coords_2f = map(polygon_coords) do coords
             return Point2f(DelTri.getxy(coords))
         end
-        push!(polygons, Polygon(polygon_coords_2f))
+        push!(polygons, _clip_polygon(Polygon(polygon_coords_2f), bbox))
         gp = Point2f(DelTri.getxy(DelTri.get_generator(vorn, i)))
         inside(gp, bbox) && push!(generators, gp)
     end
