@@ -81,7 +81,7 @@ end
 
 function to_lines(polygon::AbstractVector{<: VecTypes})
     result = Point2f.(polygon)
-    push!(result, polygon[1])
+    isempty(result) || push!(result, polygon[1])
     return result
 end
 
