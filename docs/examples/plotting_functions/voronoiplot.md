@@ -5,7 +5,7 @@
 ## Examples
 
 A `voronoiplot` generates a cell for each passed position similar to `heatmap`,
-however the cells are not restricted to a rectangular shape. It can called with
+however the cells are not restricted to a rectangular shape. It can be called with
 point based (like `scatter` or `lines`) or `heatmap`-like inputs.
 
 \begin{examplefigure}{svg = true}
@@ -51,8 +51,8 @@ f
 
 When considering standard tessellations the unbounded polygons are clipped at a
 bounding box determined automatically by default, or from a user-provided
-bounding box (that must contain all polygon vertices). The automatic bounding
-box is determined by the bounding box of the polygon vertices, extended out by
+bounding box. The automatic bounding
+box is determined by the bounding box of generators of the tessellation, meaning the provided points, extended out by
 some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to
 the lengths of the bounding box's sides.
 
