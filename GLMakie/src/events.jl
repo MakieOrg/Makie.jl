@@ -99,9 +99,7 @@ function Makie.mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebutton
     function mousebuttons(window, button, action, mods)
         @print_error begin
-            if Int(button) < 3  # ignore mouse buttons beyond 3
-                event[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
-            end
+            event[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
         end
     end
     disconnect!(window, mouse_buttons)
