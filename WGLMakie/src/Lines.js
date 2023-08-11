@@ -186,8 +186,25 @@ function attach_interleaved_line_buffer(attr_name, geometry, points, ndim, is_se
     return buffer;
 }
 
+function create_line_instance_geometry() {
+    const geometry = new THREE.InstancedBufferGeometry();
+    const instance_positions = [
+        0, -0.5, 1, -0.5, 1, 0.5,
 
-function create_line_buffer(buffers, geometry, name, attr, is_segments) {
+        0, -0.5, 1, 0.5, 0, 0.5,
+    ];
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(instance_positions, 2)
+    );
+    geometry.boundingSphere = new THREE.Sphere();
+    // don't use intersection / culling
+    geometry.boundingSphere.radius = 10000000000000;
+    geometry.frustumCulled = false;
+    return geometry;
+}
+
+function create_line_buffer(geometry, buffers, name, attr, is_segments) {
     const flat_buffer = attr.value.flat;
     const ndims = attr.value.type_length;
     const linebuffer = attach_interleaved_line_buffer(
@@ -198,81 +215,74 @@ function create_line_buffer(buffers, geometry, name, attr, is_segments) {
         is_segments
     );
     buffers[name] = linebuffer;
-    attr.on((new_points) => {
-        const buff = buffers[name];
-        const ndims = new_points.type_length;
-        const new_line_points = new_points.flat;
-        const old_count = buff.updateRange.count;
-        if (old_count < new_line_points.length) {
-            // instanceBuffer.dispose();
-            buffers[name] = attach_interleaved_line_buffer(
-                name,
-                geometry,
-                new_line_points,
-                ndims,
-                is_segments
-            );
-        } else {
-            buff.updateRange.count = new_line_points.length;
-            buff.set(new_line_points, 0);
-        }
-
-        // geometry.instanceCount = (new_line_points.length - 4) / 4;
-        buffers[name].needsUpdate = true;
-    });
     return flat_buffer;
 }
 
-function create_line_geometry(attributes, is_segments) {
-    function geometry_buffer() {
-        const geometry = new THREE.InstancedBufferGeometry();
-        const instance_positions = [
-            0, -0.5,
-            1, -0.5,
-            1, 0.5,
-
-            0, -0.5,
-            1, 0.5,
-            0, 0.5,
-        ];
-        geometry.setAttribute(
-            "position",
-            new THREE.Float32BufferAttribute(instance_positions, 2)
-        );
-        return geometry;
-    }
-
-    const geometry = geometry_buffer();
-    const buffers = {};
-
+function create_line_buffers(geometry, buffers, attributes, is_segments) {
     for (let name in attributes) {
         const attr = attributes[name];
-        create_line_buffer(buffers, geometry, name, attr, is_segments);
+        create_line_buffer(geometry, buffers, name, attr, is_segments);
     }
+}
 
-    geometry.boundingSphere = new THREE.Sphere();
-    // don't use intersection / culling
-    geometry.boundingSphere.radius = 10000000000000;
-    geometry.frustumCulled = false;
-    return geometry;
+function attach_updates(mesh, buffers, attributes, is_segments) {
+    let geometry = mesh.geometry;
+    for (let name in attributes) {
+        const attr = attributes[name];
+        attr.on((new_points) => {
+            let buff = buffers[name];
+            const ndims = new_points.type_length;
+            const new_line_points = new_points.flat;
+            const old_count = buff.updateRange.count;
+            console.log(old_count);
+            if (old_count < new_line_points.length) {
+                mesh.geometry.dispose();
+                geometry = create_line_instance_geometry();
+                buff = attach_interleaved_line_buffer(
+                    name,
+                    geometry,
+                    new_line_points,
+                    ndims,
+                    is_segments
+                );
+                mesh.geometry = geometry;
+                buffers[name] = buff;
+            } else {
+                buff.set(new_line_points, 0);
+            }
+            // buff.updateRange.count = new_line_points.length / ndims;
+            geometry.instanceCount = new_line_points.length / ndims;
+            buff.needsUpdate = true;
+            mesh.needsUpdate = true;
+        });
+    }
+}
+
+export function _create_line(line_data, is_segments) {
+    const geometry = create_line_instance_geometry();
+    const buffers = {};
+    create_line_buffers(
+        geometry,
+        buffers,
+        line_data.attributes,
+        is_segments
+    );
+    const material = create_line_material(
+        line_data.uniforms,
+        geometry.attributes
+    );
+
+    const mesh = new THREE.Mesh(geometry, material);
+    attach_updates(mesh, buffers, line_data.attributes, is_segments);
+    return mesh;
 }
 
 export function create_line(line_data) {
-    const geometry = create_line_geometry(line_data.attributes, false);
-    const material = create_line_material(
-        line_data.uniforms,
-        geometry.attributes
-    );
-    return new THREE.Mesh(geometry, material);
+    return _create_line(line_data, false)
 }
 
 export function create_linesegments(line_data) {
-    const geometry = create_line_geometry(line_data.attributes, true);
-    const material = create_line_material(
-        line_data.uniforms,
-        geometry.attributes
-    );
-    return new THREE.Mesh(geometry, material);
+    return _create_line(line_data, true)
 }
 
 function interpolate(p1, p2, t) {
