@@ -499,7 +499,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     register_events!(ax, scene)
 
     # these are the user defined limits
-    on(blockscene, ax.limits) do mlims
+    on(blockscene, ax.limits) do _
         reset_limits!(ax)
     end
 

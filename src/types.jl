@@ -387,7 +387,11 @@ struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
     logbase::String
     limits::NTuple{2,Float32}
     interval::I
-    function ReversibleScale(forward, backward; logbase = "", limits = (0f0, 10f0), interval = OpenInterval(-Inf32, Inf32))
+    function ReversibleScale(forward, backward; logbase = "", limits = (0f0, 10f0), interval = (-Inf32, Inf32))
+        if !(interval isa AbstractInterval)
+            interval = OpenInterval(Float32.(interval)...)
+        end
+        limits = Tuple(Float32.(limits))
         new{typeof(forward),typeof(backward),typeof(interval)}(forward, backward, logbase, limits, interval)
     end
 end
