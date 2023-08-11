@@ -17,17 +17,23 @@ function Base.size(screen::ThreeDisplay)
     return (width, height)
 end
 
-function JSServe.jsrender(session::Session, scene::Scene)
-    screen = Screen(scene)
+function render_with_init(screen, session, scene)
     screen.session = session
-    screen.display = true
+    @assert isready(screen.three)
     three, canvas, on_init = three_display(screen, session, scene)
-    c = Channel{ThreeDisplay}(1)
-    put!(c, three)
+    screen.display = true
     Makie.push_screen!(scene, screen)
     on(session, on_init) do i
+        put!(screen.three, three)
         mark_as_displayed!(screen, scene)
+        return
     end
+    return three, canvas, on_init
+end
+
+function JSServe.jsrender(session::Session, scene::Scene)
+    screen = Screen(scene)
+    three, canvas, on_init = render_with_init(screen, session, scene)
     return canvas
 end
 
@@ -99,18 +105,13 @@ function mark_as_displayed!(screen::Screen, scene::Scene)
     return
 end
 
+
+
 for M in Makie.WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
             inline_display = App() do session::Session
-                screen.session = session
-                three, canvas, init_obs = three_display(screen, session, scene)
-                Makie.push_screen!(scene, screen)
-                on(session, init_obs) do _
-                    put!(screen.three, three)
-                    mark_as_displayed!(screen, scene)
-                    return
-                end
+                three, canvas, init_obs = render_with_init(screen, session, scene)
                 return canvas
             end
             Base.show(io, m, inline_display)
