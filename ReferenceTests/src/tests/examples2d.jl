@@ -1290,7 +1290,7 @@ end
     tri = triangulate(points)
     vorn = voronoi(tri)
     fig, ax, sc = voronoiplot(vorn, show_generators = true, strokewidth = 4, color = [:red, :blue, :green])
-    fig 
+    fig
 end
 
 #=
