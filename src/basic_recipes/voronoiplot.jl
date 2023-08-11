@@ -49,20 +49,21 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
 end
 
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
+    inside(p, bb::NTuple{4}) = (bb[1] <= p[1] <= bb[2]) && (bb[3] <= p[2] <= bb[4])
+
     empty!(generators)
     empty!(polygons)
     sizehint!(generators, DelTri.num_generators(vorn))
     sizehint!(polygons, DelTri.num_polygons(vorn))
+
     for i in DelTri.each_generator(vorn)
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, bbox)
         polygon_coords_2f = map(polygon_coords) do coords
-            x, y = DelTri.getxy(coords)
-            return Point2f(x, y)
+            return Point2f(DelTri.getxy(coords))
         end
         push!(polygons, Polygon(polygon_coords_2f))
-        g = DelTri.get_generator(vorn, i)
-        gx, gy = DelTri.getxy(g)
-        !isempty(polygon_coords) && push!(generators, Point2f(gx, gy))
+        gp = Point2f(DelTri.getxy(DelTri.get_generator(vorn, i)))
+        inside(gp, bbox) && push!(generators, gp)
     end
     return generators, polygons
 end
