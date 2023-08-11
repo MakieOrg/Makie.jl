@@ -1,5 +1,3 @@
-#version 300 es
-
 in float position;
 in vec2 linepoint_prev;
 in vec2 linepoint_start;

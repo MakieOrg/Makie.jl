@@ -19,12 +19,13 @@ end
 
 function render_with_init(screen, session, scene)
     screen.session = session
-    @assert isready(screen.three)
     three, canvas, on_init = three_display(screen, session, scene)
     screen.display = true
     Makie.push_screen!(scene, screen)
     on(session, on_init) do i
-        put!(screen.three, three)
+        if !isready(screen.three)
+            put!(screen.three, three)
+        end
         mark_as_displayed!(screen, scene)
         return
     end

@@ -1,9 +1,6 @@
+import * as THREE from "./THREE.js";
 import * as Camera from "./Camera.js";
 import { create_line, create_linesegments } from "./Lines.js";
-
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
-
-
 
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
@@ -378,6 +375,7 @@ function create_material(program) {
         fragmentShader: program.fragment_source,
         side: is_volume ? THREE.BackSide : THREE.DoubleSide,
         transparent: true,
+        glslVersion: THREE.GLSL3,
         depthTest: !program.overdraw.value,
         depthWrite: !program.transparency.value,
     });

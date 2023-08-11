@@ -1,4 +1,4 @@
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
+import * as THREE from "./THREE.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
 import {
     delete_scenes,

@@ -33,8 +33,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
         attribute_type(attributes.color_start) ||
         uniform_type(uniforms.color_start);
 
-    return `#version 300 es
-        precision mediump int;
+    return `precision mediump int;
         precision highp float;
 
         ${attribute_decl}
@@ -90,8 +89,7 @@ function lines_fragment_shader(uniforms, attributes) {
     ]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
 
-    return `#version 300 es
-    #extension GL_OES_standard_derivatives : enable
+    return `#extension GL_OES_standard_derivatives : enable
 
     precision mediump int;
     precision highp float;
@@ -163,6 +161,7 @@ function create_line_material(uniforms, attributes) {
     const uniforms_des = deserialize_uniforms(uniforms);
     return new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
+        glslVersion: THREE.GLSL3,
         vertexShader: linesegments_vertex_shader(uniforms_des, attributes),
         fragmentShader: lines_fragment_shader(uniforms_des, attributes),
         transparent: true,

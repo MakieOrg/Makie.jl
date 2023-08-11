@@ -1,4 +1,4 @@
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
+import * as THREE from "./THREE.js";
 
 const pixelRatio = window.devicePixelRatio || 1.0;
 
@@ -69,7 +69,7 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             projection.elements,
             [width, height],
             [x, y, z]
-            );
+        );
     }
     cam3d.resolution.on(update);
 
