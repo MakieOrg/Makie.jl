@@ -1186,6 +1186,22 @@ end
     f
 end
 
+@reference_test "Triplot after adding points and make sure the representative_point_list is correctly updated" begin
+    points = [(0.0,0.0),(0.95,0.0),(1.0,1.4),(0.0,1.0)] # not 1 so that we have a unique triangulation
+    tri = Observable(triangulate(points; delete_ghosts = false))
+    fig, ax, sc = triplot(tri, show_points = true, markersize = 36, show_ghost_edges = true, recompute_centers = true)
+    map(tri) do tri 
+        for p in [(0.3, 0.5), (-1.5, 2.3), (0.2, 0.2), (0.2, 0.5)]
+            add_point!(tri, p)
+        end
+        convex_hull!(tri)
+    end
+    notify(tri)
+    ax = Axis(fig[1, 2])
+    triplot!(ax, tri[], show_points = true, markersize = 36, show_ghost_edges = true, recompute_centers = true)
+    fig
+end
+
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
     points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
     tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
@@ -1284,5 +1300,19 @@ end
     voronoiplot!(ax4, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, bounding_box = (10.0, 12.0, 2.0, 5.0))
     xlims!(ax4, -15, 15)
     ylims!(ax4, -15, 15)
+    fig
+end
+
+@reference_test "Voronoiplot after adding points" begin
+    points = Observable([(0.0,0.0), (1.0,0.0), (1.0,1.0), (0.0,1.0)])
+    fig, ax, sc = voronoiplot(points, show_generators=true, markersize=36) # make sure any regressions with missing generators are identified, so use 36
+    push!(points[], (2.0, 2.0), (0.5, 0.5), (0.25, 0.25), (0.25, 0.75), (0.75, 0.25), (0.75, 0.75))
+    notify(points)
+    ax2 = Axis(fig[1, 2])
+    voronoiplot!(ax2, voronoi(triangulate(points[])), show_generators=true, markersize=36)
+    xlims!(ax,-2.5,2.5)
+    ylims!(ax,-2.5,2.5)
+    xlims!(ax2,-2.5,2.5)
+    ylims!(ax2,-2.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
     fig
 end
