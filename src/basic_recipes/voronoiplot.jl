@@ -136,14 +136,14 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
 
     # from call pattern (::Vector, ::Vector, ::Matrix)
     if N == 3
-        ps = map(ps -> Point2f.(ps), p[1])
-        attr[:color] = map(ps -> last.(ps), p[1])
+        ps = map(ps -> Point2f.(ps), p, p[1])
+        attr[:color] = map(ps -> last.(ps), p, p[1])
     else
         ps = p[1]
     end
 
     # Handle transform_func early so tessellation is in cartesian space.
-    vorn = map(p.transformation.transform_func, ps, smooth) do tf, ps, smooth
+    vorn = map(p, p.transformation.transform_func, ps, smooth) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
         tri = DelTri.triangulate(transformed)
         vorn = DelTri.voronoi(tri)
@@ -154,7 +154,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     end
 
     # Default to circular clip for polar transformed data
-    attr[:bounding_box] = map(pop!(attr, :bounding_box), p.unbounded_edge_extension_factor,
+    attr[:bounding_box] = map(p, pop!(attr, :bounding_box), p.unbounded_edge_extension_factor,
                               transform_func_obs(p), ps) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
             rscaled = maximum(first, ps) * (1 + ext)
@@ -173,7 +173,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
     polygons = Observable(PolyType[])
 
-    p.attributes[:_calculated_colors] = map(p.color, p[1]) do color, vorn
+    p.attributes[:_calculated_colors] = map(p, p.color, p[1]) do color, vorn
         if color === automatic
             # generate some consistent distinguishable colors
             cs = [sum(DelTri.get_generator(vorn, i)) for i in DelTri.each_generator(vorn)]
@@ -203,7 +203,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
             notify(obs)
         end
     end
-    onany(update_plot, p[1])
+    onany(update_plot, p, p[1])
     update_plot(p[1][])
 
     poly!(p, polygons;
