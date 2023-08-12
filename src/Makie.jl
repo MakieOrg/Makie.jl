@@ -207,6 +207,7 @@ export theme_black
 export theme_minimal
 export theme_light
 export theme_dark
+export theme_latex
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange
