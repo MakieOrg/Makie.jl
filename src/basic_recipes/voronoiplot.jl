@@ -177,31 +177,28 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
         if color === automatic
             # generate some consistent distinguishable colors
             cs = [sum(DelTri.get_generator(vorn, i)) for i in DelTri.each_generator(vorn)]
-            reverse!(cs)
+            return reverse!(cs)
         elseif color isa AbstractArray
             @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
                     "Color vector must have the same length as the number of generators, including any not yet in the tessellation.")
-            [color[i] for i in DelTri.each_generator(vorn)] # this matches the polygon order
+            return [color[i] for i in DelTri.each_generator(vorn)] # this matches the polygon order
         else
-            color
+            return color # constant color
         end
     end
 
     function update_plot(vorn)
-        bbox = map(p.unbounded_edge_extension_factor, p.bounding_box) do extent, bnd
-            isempty(DelTri.get_unbounded_polygons(vorn)) && return nothing
-            if bnd === automatic
-                return DelTri.polygon_bounds(vorn, extent; include_polygon_vertices=false)
-            else
-                return bnd
-            end
+        if isempty(DelTri.get_unbounded_polygons(vorn))
+            bbox = nothing
+        elseif p.bounding_box[] === automatic
+            extent = p.unbounded_edge_extension_factor[]
+            bbox = DelTri.polygon_bounds(vorn, extent; include_polygon_vertices=false)
+        else
+            bbox = p.bounding_box[]
         end
-        map(generators_2f, polygons, bbox) do gens, polys, box
-            return get_voronoi_tiles!(gens, polys, vorn, box)
-        end
-        for obs in (generators_2f, polygons)
-            notify(obs)
-        end
+        get_voronoi_tiles!(generators_2f[], polygons[], vorn, bbox)
+        foreach(notify, (generators_2f, polygons))
+        return
     end
     onany(update_plot, p, p[1])
     update_plot(p[1][])
