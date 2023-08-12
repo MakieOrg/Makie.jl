@@ -298,7 +298,7 @@ end
 
     f, a, p = triplot(xs, ys)
     tri = p.plots[1][1][]
-    @test tri.points ≈ vcat(xs', ys')
+    @test tri.points ≈ ps
 end
 
 @testset "Voronoiplot" begin
