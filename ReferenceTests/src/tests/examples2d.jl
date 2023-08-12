@@ -1267,11 +1267,19 @@ end
     fig
 end
 
-@reference_test "Voronoiplot with a single patch color for a clipped tessellation" begin
+@reference_test "Voronoiplots with clipped tessellation and unbounded poylgons" begin
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, true)
     fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2), markersize = 20, strokewidth = 4)
+
+    # used to be bugged
+    points = [(0.0, 1.0), (-1.0, 2.0), (-2.0, -1.0)]
+    tri = triangulate(points)
+    vorn = voronoi(tri)
+    voronoiplot(fig[1,2], vorn, show_generators = true, strokewidth = 4,
+        color = [:red, :blue, :green], markercolor = :white, markersize = 20)
+
     fig
 end
 
@@ -1296,14 +1304,6 @@ end
     ax = PolarAxis(f[1, 2])
     tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
     f
-end
-
-@reference_test "Voronoiplot with no bounded polygons" begin # used to be bugged
-    points = [(0.0, 1.0), (-1.0, 2.0), (-2.0, -1.0)]
-    tri = triangulate(points)
-    vorn = voronoi(tri)
-    fig, ax, sc = voronoiplot(vorn, show_generators = true, strokewidth = 4, color = [:red, :blue, :green])
-    fig
 end
 
 @reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
