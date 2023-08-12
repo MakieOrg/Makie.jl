@@ -195,32 +195,25 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     ghost_edges_2f = Observable(Point2f[])
     convex_hull_2f = Observable(Point2f[])
     constrained_edges_2f = Observable(Point2f[])
+
     function update_plot(tri)
-        map(p.recompute_centers) do rc
-            return rc && DelTri.compute_representative_points!(tri)
+        p.recompute_centers[] && DelTri.compute_representative_points!(tri)
+        get_all_triangulation_points!(points_2f[], tri)
+
+        p.show_points[] && get_present_triangulation_points!(present_points_2f[], tri)
+        get_triangulation_triangles!(triangles_3f[], tri)
+
+        if p.show_ghost_edges[]
+            ge = ghost_edges_2f[]
+            extent = p.ghost_edge_extension_factor[]
+            bbox = p.bounding_box[]
+            get_triangulation_ghost_edges!(ge, extent, tri, bbox)
         end
-        map(points_2f) do pts
-            return get_all_triangulation_points!(pts, tri)
-        end
-        map(p.show_points, present_points_2f) do sp, pts
-            return sp && get_present_triangulation_points!(pts, tri)
-        end
-        map(triangles_3f) do tris
-            return get_triangulation_triangles!(tris, tri)
-        end
-        map(p.show_ghost_edges, p.ghost_edge_extension_factor, ghost_edges_2f,
-            p.bounding_box) do sge, extent, ge, bbox
-            return sge && get_triangulation_ghost_edges!(ge, extent, tri, bbox)
-        end
-        map(p.show_convex_hull, convex_hull_2f) do sch, ch
-            return sch && get_triangulation_convex_hull!(ch, tri)
-        end
-        map(p.show_constrained_edges, constrained_edges_2f) do sce, ce
-            return sce && get_triangulation_constrained_edges!(ce, tri)
-        end
-        for obs in (points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f, constrained_edges_2f)
-            notify(obs)
-        end
+
+        p.show_convex_hull[] && get_triangulation_convex_hull!(convex_hull_2f[], tri)
+        p.show_constrained_edges[] && get_triangulation_constrained_edges!(constrained_edges_2f[], tri)
+
+        foreach(notify, (points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f, constrained_edges_2f))
         return nothing
     end
     onany(update_plot, p, p[1])
