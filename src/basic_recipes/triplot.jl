@@ -178,10 +178,8 @@ Makie.convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
 function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     attr = copy(p.attributes)
 
-    ps = p[1]
-
     # Handle transform_func early so tessellation is in cartesian space.
-    tri = map(p.transformation.transform_func, ps) do tf, ps
+    tri = map(p, p.transformation.transform_func, p[1]) do tf, ps
         transformed = Makie.apply_transform(tf, ps)
         return DelTri.triangulate(transformed)
     end
@@ -225,7 +223,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
         end
         return nothing
     end
-    onany(update_plot, p[1])
+    onany(update_plot, p, p[1])
     update_plot(p[1][])
 
     poly!(p, points_2f, triangles_3f; strokewidth=p.strokewidth, strokecolor=p.strokecolor,
