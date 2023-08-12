@@ -58,7 +58,7 @@ function _clip_polygon(poly::Polygon, circle::Circle)
         a = dot(AB, AB) # > 0
         b = 2 * dot(CA, AB) # > 0
         c = dot(CA, CA) - radius(circle) * radius(circle)
-        t = (sqrt(b*b - 4 * a * c) - b) / (2a) # only solution > 0 matters
+        t = (sqrt(b * b - 4 * a * c) - b) / (2a) # only solution > 0 matters
         return A + AB * t
     end
 
@@ -66,7 +66,7 @@ function _clip_polygon(poly::Polygon, circle::Circle)
     output = sizehint!(Point2f[], length(input))
 
     for i in eachindex(input)
-        p1 = input[mod1(i-1, end)]
+        p1 = input[mod1(i - 1, end)]
         p2 = input[i]
 
         Cp1 = p1 - origin(circle)
@@ -91,11 +91,13 @@ _clip_polygon(poly::Polygon, ::Any) = poly
 
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     function voronoi_bbox(c::Circle)
-        o = Float64.(origin(c)); r = Float64(radius(c))
+        o = Float64.(origin(c))
+        r = Float64(radius(c))
         return (o[1] - r, o[1] + r, o[2] - r, o[2] + r)
     end
     function voronoi_bbox(r::Rect2)
-        mini = Float64.(minimum(r)); maxi = Float64.(maximum(r))
+        mini = Float64.(minimum(r))
+        maxi = Float64.(maximum(r))
         return (mini[1], maxi[1], mini[2], maxi[2])
     end
     voronoi_bbox(t::Tuple) = Float64.(t)
@@ -152,10 +154,8 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     end
 
     # Default to circular clip for polar transformed data
-    attr[:bounding_box] = map(
-            pop!(attr, :bounding_box), p.unbounded_edge_extension_factor,
-            transform_func_obs(p), ps) do bb, ext, tf, ps
-
+    attr[:bounding_box] = map(pop!(attr, :bounding_box), p.unbounded_edge_extension_factor,
+                              transform_func_obs(p), ps) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
             rscaled = maximum(first, ps) * (1 + ext)
             return Circle(Point2f(0), rscaled)
@@ -177,6 +177,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
         if color === automatic
             # generate some consistent distinguishable colors
             cs = [sum(DelTri.get_generator(vorn, i)) for i in DelTri.each_generator(vorn)]
+            reverse!(cs)
         elseif color isa AbstractArray
             @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
                     "Color vector must have the same length as the number of generators, including any not yet in the tessellation.")

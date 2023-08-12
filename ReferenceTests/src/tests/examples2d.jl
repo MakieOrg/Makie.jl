@@ -1310,9 +1310,10 @@ end
     notify(points)
     ax2 = Axis(fig[1, 2])
     voronoiplot!(ax2, voronoi(triangulate(points[])), show_generators=true, markersize=36)
-    xlims!(ax,-2.5,2.5)
-    ylims!(ax,-2.5,2.5)
-    xlims!(ax2,-2.5,2.5)
-    ylims!(ax2,-2.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
+    xlims!(ax,-0.5,2.5)
+    ylims!(ax,-0.5,2.5)
+    xlims!(ax2,-0.5,2.5)
+    ylims!(ax2,-0.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
     fig
 end
+
