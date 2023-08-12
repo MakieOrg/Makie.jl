@@ -1303,39 +1303,28 @@ end
     Makie.rlims!(ax, 12) # to make rect clip visible if circular clip doesn't happen
     ax = PolarAxis(f[1, 2])
     tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
+    Makie.rlims!(ax, 12)
     f
 end
 
 @reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
-    A = (-3.0, 7.0)
-    B = (1.0, 6.0)
-    C = (-1.0, 3.0)
-    D = (-2.0, 4.0)
-    E = (3.0, -2.0)
-    F = (5.0, 5.0)
-    G = (-4.0, -3.0)
-    H = (3.0, 8.0)
-    points = [A, B, C, D, E, F, G, H]
+    points = [(-3.0, 7.0), (1.0, 6.0), (-1.0, 3.0), (-2.0, 4.0), (3.0, -2.0), (5.0, 5.0), (-4.0, -3.0), (3.0, 8.0)]
     tri = triangulate(points)
     vorn = voronoi(tri)
     color = [:red, :blue, :green, :yellow, :cyan, :magenta, :black, :brown] # the polygon colors should not change even if some are not included (because they're outside of the box)
     fig = Figure()
     ax1 = Axis(fig[1, 1], title = "Default")
     voronoiplot!(ax1, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color)
-    xlims!(ax1, -15, 15)
-    ylims!(ax1, -15, 15)
     ax2 = Axis(fig[1, 2], title = "Some excluded")
     voronoiplot!(ax2, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, bounding_box = (0.0, 5.0, -15.0, 15.0))
-    xlims!(ax2, -15, 15)
-    ylims!(ax2, -15, 15)
     ax3 = Axis(fig[2, 1], title = "Bigger range")
     voronoiplot!(ax3, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, bounding_box = (-15.0, 15.0, -15.0, 15.0))
-    xlims!(ax2, -15, 15)
-    ylims!(ax2, -15, 15)
     ax4 = Axis(fig[2, 2], title = "Only one polygon")
     voronoiplot!(ax4, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, bounding_box = (10.0, 12.0, 2.0, 5.0))
-    xlims!(ax4, -15, 15)
-    ylims!(ax4, -15, 15)
+    for ax in fig.content
+        xlims!(ax4, -15, 15)
+        ylims!(ax4, -15, 15)
+    end
     fig
 end
 
