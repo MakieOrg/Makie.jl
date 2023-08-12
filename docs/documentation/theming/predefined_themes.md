@@ -118,3 +118,13 @@ with_theme(demofigure, theme_light())
 with_theme(demofigure, theme_dark())
 ```
 \end{examplefigure}
+
+## theme_pretty
+
+\begin{examplefigure}{}
+```julia
+with_theme(demofigure, theme_pretty())
+```
+\end{examplefigure}
+
+For Cycling available options with this theme go to [theming](https://makie.juliaplots.org/stable/documentation/theming/index.html#theming).
