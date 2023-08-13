@@ -34,7 +34,7 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
                       smooth=false,
 
                       # Point settings
-                      markersize=4,
+                      markersize=sc.markersize,
                       marker=sc.marker,
                       markercolor=sc.color,
 
@@ -176,8 +176,8 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     p.attributes[:_calculated_colors] = map(p, p.color, p[1]) do color, vorn
         if color === automatic
             # generate some consistent distinguishable colors
-            cs = [sum(DelTri.get_generator(vorn, i)) for i in DelTri.each_generator(vorn)]
-            return reverse!(cs)
+            cs = [i for i in DelTri.each_generator(vorn)]
+            return cs
         elseif color isa AbstractArray
             @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
                     "Color vector must have the same length as the number of generators, including any not yet in the tessellation.")
