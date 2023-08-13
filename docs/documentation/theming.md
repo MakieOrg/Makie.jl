@@ -29,6 +29,8 @@ function example_plot()
     for i in 1:2, j in 1:2
         lines(f[i, j], cumsum(randn(50)))
     end
+    Label(f[0, :], "A simple example plot")
+    Label(f[3, :], L"Random walks $x(t_n) = \sum_{i \leq n} z_i")
     f
 end
 
@@ -53,12 +55,32 @@ This theme will be active until we call `set_theme!()`.
 set_theme!()
 ```
 
+## merge
+
+Themes often only affect part of the plot attributes. Therefore it is possible to combine themes to get their respective effects together.
+
+For example, you can combine the dark theme with the LaTeX fonts theme to have both the dark colors and uniform fonts.
+
+\begin{examplefigure}{}
+```julia
+dark_latexfonts = merge(theme_dark(), theme_latexfonts())
+set_theme!(dark_latexfonts)
+example_plot()
+```
+\end{examplefigure}
+
 ## update_theme!
 
 If you have activated a theme already and want to update it partially, without removing the attributes not in the new theme, you can use `update_theme!`.
 
-For example, you can first call `set_theme!(my_theme)` and later update font and fontsize with `update_theme!(font = "Arial", fontsize = 18)`, leaving all other settings intact.
+For example, you can decide to change the text size after activating the dark and latex theme in the previous section.
 
+\begin{examplefigure}{}
+```julia
+update_theme!(fontsize=30)
+example_plot()
+```
+\end{examplefigure}
 
 ## with_theme
 
