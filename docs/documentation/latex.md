@@ -57,7 +57,7 @@ We provide a LaTeX theme to easily switch to the LaTeX default fonts for all the
 using CairoMakie
 CairoMakie.activate!() # hide
 
-set_theme!(theme_latex())
+set_theme!(theme_latexfonts())
 
 fig = Figure()
 Label(fig[1, 1], "A standard Label", tellwidth = false)

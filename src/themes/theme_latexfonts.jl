@@ -1,4 +1,4 @@
-function theme_latex()
+function theme_latexfonts()
     Theme(
         fonts = Attributes(
             :bold => texfont(:bold),
