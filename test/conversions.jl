@@ -335,4 +335,24 @@ end
 
     @test convert_arguments(Voronoiplot, zs)[1] == Point3f.(1:10, (1:10)', zs)[:]
     @test convert_arguments(Voronoiplot, xs, ys, zs)[1] == Point3f.(xs, ys', zs)[:]
+
+    # color sorting
+    zs = [exp(-(x-y)^2) for x in LinRange(-1, 1, 10), y in LinRange(-1, 1, 10)]
+    fig, ax, sc = voronoiplot(1:10, 1:10, zs, markersize = 10, strokewidth = 3)
+    ps = [Point2f(x, y) for x in 1:10 for y in 1:10]
+    vorn = Makie.DelTri.voronoi(Makie.DelTri.triangulate(ps))
+    sc2 = voronoiplot!(vorn, color = zs, markersize = 10, strokewidth = 3)
+
+    for plot in (sc.plots[1], sc2)
+        polycols = plot.plots[1].color[]
+        polys = plot.plots[1][1][]
+        cs = zeros(10, 10)
+        for (p, c) in zip(polys, polycols)
+            # calculate center of poly, round to indices
+            i, j = clamp.(round.(Int, sum(first.(p.exterior)) / length(p.exterior)), 1, 10)
+            cs[i, j] = c
+        end
+
+        @test isapprox(cs, zs, rtol = 1e-6)
+    end
 end
