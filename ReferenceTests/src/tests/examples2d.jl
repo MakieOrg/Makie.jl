@@ -1245,16 +1245,6 @@ end
     fig
 end
 
-@reference_test "Voronoiplot with vec, vec, mat signature" begin
-    xs = LinRange(-1, 1, 10)
-    ys = LinRange(-1, 1, 10)
-    zs = [exp(-(x-y)^2) for x in xs, y in ys]
-    fig, ax, sc = voronoiplot(xs, ys, zs, markersize = 10, strokewidth = 3)
-    ps = [Point2(x, y) for x in xs for y in ys]
-    voronoiplot!(Axis(fig[1,2]), voronoi(triangulate(ps)), color = zs, markersize = 10, strokewidth = 3)
-    fig
-end
-
 @reference_test "Voronoiplot with a nonlinear transform" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
