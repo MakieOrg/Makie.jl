@@ -58,8 +58,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
 
-        # we can hide the gaps by setting the line cap to round
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
+        # Butted segments look the best for varying colors, at least when connection angles are small.
+        # While round style has nicer sharp joins, it looks bad with alpha colors (double paint) and
+        # also messes with dash patterns (they are too long because of the caps)
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
         draw_multi(
             primitive, ctx,
             projected_positions,
