@@ -1227,14 +1227,14 @@ end
 @reference_test "Triplot after adding points and make sure the representative_point_list is correctly updated" begin
     points = [(0.0,0.0),(0.95,0.0),(1.0,1.4),(0.0,1.0)] # not 1 so that we have a unique triangulation
     tri = Observable(triangulate(points; delete_ghosts = false))
-    fig, ax, sc = triplot(tri, show_points = true, markersize = 36, show_ghost_edges = true, recompute_centers = true)
+    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
     for p in [(0.3, 0.5), (-1.5, 2.3), (0.2, 0.2), (0.2, 0.5)]
         add_point!(tri[], p)
     end
     convex_hull!(tri[])
     notify(tri)
     ax = Axis(fig[1, 2])
-    triplot!(ax, tri[], show_points = true, markersize = 36, show_ghost_edges = true, recompute_centers = true)
+    triplot!(ax, tri[], show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
     fig
 end
 
