@@ -1621,7 +1621,7 @@ end
 @Block PolarAxis begin
     scene::Scene
     overlay::Scene
-    target_radius::Observable{Float64}
+    target_radius::Observable{Tuple{Float64, Float64}}
     cycler::Cycler
     palette::Attributes
     @attributes begin
@@ -1641,8 +1641,10 @@ end
         alignmode = Inside()
         "The background color of the axis."
         backgroundcolor = inherit(scene, :backgroundcolor, :white)
-        "The maximum radius of the PolarAxis. This acts as the limit of the axis."
-        radius = nothing
+        "The radial limits of the PolarAxis."
+        rlimits = (0.0, nothing)
+        "The angle limits of the PolarAxis. (0.0, 2pi) results a full circle."
+        thetalimits = (0.0, 2pi)
         "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
         direction = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."

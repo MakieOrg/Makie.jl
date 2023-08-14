@@ -44,8 +44,8 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     # Handle tick label spacing by axis radius adjustments
     onany(
             po.blockscene, thetaticklabelplot.plots[1].plots[1][1],
-            po.thetaticklabelpad, po.overlay.px_area
-        ) do glyph_collections, pad, area
+            po.thetaticklabelpad, po.target_radius, po.overlay.px_area
+        ) do glyph_collections, pad, (rmin, rmax), area
 
         # get maximum size of tick label (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
@@ -59,7 +59,9 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
         space_from_center = 0.5 .* widths(area)
         space_for_ticks = 2pad .+ (max_width, max_height)
         space_for_axis = space_from_center .- space_for_ticks
-        axis_radius[] = max(0, minimum(space_for_axis) / space_from_center[1])
+
+        # TODO
+        axis_radius[] = (rmin / rmax, max(0, minimum(space_for_axis) / space_from_center[1]))
     end
 
     # Set up the title position
@@ -98,6 +100,38 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     return
 end
 
+function _polar_clip_polygon(
+        rmin, rmax, thetamin, thetamax; step = 2pi/360, outer = 1e4,
+        exterior = Makie.convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
+    )
+    @assert thetamin < thetamax "Starting angle $thetamin must be smaller than final angle $thetamax."
+    @assert rmin < rmax "Starting radius $rmin must be smaller than final radius $rmax."
+
+    function to_cart(r, angle)
+        s, c = sincos(angle)
+        return Point2f(r * c, r * s)
+    end
+
+    # make sure we have 2+ points per arc
+    N = max(2, ceil(Int, (thetamax - thetamin) / step) + 1)
+    if thetamax - thetamin ≈ 2pi
+        interior = map(theta -> to_cart(rmax, theta), LinRange(thetamin, thetamax, N))
+        if rmin > 1e-6
+            inner_clip = map(theta -> to_cart(rmin, theta), LinRange(thetamin, thetamax, N))
+            return [Makie.Polygon(exterior, [interior]), Makie.Polygon(inner_clip)]
+        end
+    else
+        interior = sizehint!(Point2f[], 2N)
+        for angle in LinRange(thetamin, thetamax, N)
+            push!(interior, to_cart(rmin, angle))
+        end
+        for angle in LinRange(thetamax, thetamin, N)
+            push!(interior, to_cart(rmax, angle))
+        end
+    end
+    return [Makie.Polygon(exterior, [interior])]
+end
+
 function draw_axis!(po::PolarAxis, axis_radius)
     thetalims = (0, 2pi)
 
@@ -109,7 +143,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
             po.blockscene,
             po.rticks, po.rminorticks, po.rtickformat,
             po.rtickangle, po.target_radius, axis_radius, po.sample_density,
-        ) do rticks, rminorticks, rtickformat, rtickangle, data_radius, axis_radius, sample_density
+        ) do rticks, rminorticks, rtickformat, rtickangle, (_, data_radius), (_, axis_radius), sample_density
 
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, 0, data_radius)
         _rtickpos = _rtickvalues .* (axis_radius / data_radius) # we still need the values
@@ -134,7 +168,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
             po.theta_0, axis_radius, po.overlay.px_area
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, axis_radius, pixelarea
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, (_, axis_radius), pixelarea
 
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
 
@@ -174,7 +208,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     onany(
             po.blockscene, po.sample_density, axis_radius
-        ) do sample_density, axis_radius
+        ) do sample_density, (_, axis_radius)
 
         thetas = LinRange(thetalims..., sample_density)
         spinepoints[] = Point2f.(axis_radius, thetas)
@@ -271,57 +305,25 @@ function draw_axis!(po::PolarAxis, axis_radius)
         thetaticklabelplot.align.val = align
     end
 
-    # inner clip
-    # scatter shouldn't interfere with lines and text in GLMakie, so this should
-    # look a bit cleaner
-    inverse_circle =  BezierPath([
-        MoveTo(Point( 1,  1)),
-        LineTo(Point( 1, -1)),
-        LineTo(Point(-1, -1)),
-        LineTo(Point(-1,  1)),
-        MoveTo(Point(1, 0)),
-        EllipticalArc(Point(0.0, 0), 0.5, 0.5, 0.0, 0.0, 2pi),
-        ClosePath(),
-    ])
-
-    ms = map(
-        (rect, radius) -> radius * widths(rect)[1],
-        po.blockscene, po.overlay.px_area, axis_radius
-    )
-
-    clipplot = scatter!(
-        po.overlay,
-        Point2f(0),
-        color = clipcolor,
-        markersize = ms,
-        marker = inverse_circle,
-        visible = po.clip,
-    )
-
-    # outer clip
-    # for when aspect ratios get extreme (> 2) or the axis very small
-    clippoints = let
-        v = 1000 # should keep `scene` covered up to this aspect ratio
-        exterior = Point2f[(-v, -v), (v, -v), (v, v), (-v, v)]
-        v = 0.99 # at edge of scattered marker (slightly less because of AA)
-        interior = Point2f[(-v, -v), (v, -v), (v, v), (-v, v)]
-        GeometryBasics.Polygon(exterior, [interior])
+    # TODO run global resizes through scale instead
+    clip_poly = map(axis_radius, po.thetalimits) do (rmin, rmax), (thetamin, thetamax)
+        _polar_clip_polygon(rmin, rmax, thetamin, thetamax)
     end
 
-    clipouter = poly!(
+    clipplot = poly!(
         po.overlay,
-        clippoints,
-        color = clipcolor,
+        clip_poly,
+        color = :green, # clipcolor,
         visible = po.clip,
-        fxaa = false,
-        transformation = Transformation() # no polar transform for this
+        fxaa = true,
+        transformation = Transformation(), # no polar transform for this
     )
-    on(po.blockscene, axis_radius) do radius
-        scale!(clipouter, 2 * Vec3f(radius, radius, 1))
-    end
+    # on(po.blockscene, axis_radius) do (_, radius)
+        # scale!(clipplot, Vec3f(radius, radius, 1))
+    # end
 
     translate!.((spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 9000)
-    translate!.((clipplot, clipouter), 0, 0, 8990)
+    translate!(clipplot, 0, 0, 8990)
 
     return thetaticklabelplot
 end
@@ -392,10 +394,11 @@ end
 
 function setup_camera_matrices!(po::PolarAxis)
     # Initialization
-    axis_radius = Observable(0.8)
-    init = Observable{Float64}(isnothing(po.radius[]) ? 10.0 : po.radius[])
+    axis_radius = Observable((0.0, 0.8))
+    rmin, rmax = po.rlimits[]
+    init = Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax))
     setfield!(po, :target_radius, init)
-    on(_ -> reset_limits!(po), po.blockscene, po.radius)
+    on(_ -> reset_limits!(po), po.blockscene, po.rlimits)
     camera(po.overlay).view[] = Mat4f(I)
 
     e = events(po.scene)
@@ -403,7 +406,7 @@ function setup_camera_matrices!(po::PolarAxis)
     # scroll to zoom
     on(po.blockscene, e.scroll) do scroll
         if Makie.is_mouseinside(po.scene)
-            po.target_radius[] = po.target_radius[] *  (1.1 ^ (-scroll[2]))
+            po.target_radius[] = po.target_radius[] .*  (0.9, 1.1) .^ -scroll[2]
             return Consume(true)
         end
         return Consume(false)
@@ -424,8 +427,8 @@ function setup_camera_matrices!(po::PolarAxis)
     end
 
     # update view matrix
-    onany(po.blockscene, axis_radius, po.target_radius) do ar, radius
-        ratio = ar / radius
+    onany(po.blockscene, axis_radius, po.target_radius) do ar, tr
+        ratio = ar[2] / tr[2]
         camera(po.scene).view[] = Makie.scalematrix(Vec3f(ratio, ratio, 1))
         return
     end
@@ -452,24 +455,24 @@ function setup_camera_matrices!(po::PolarAxis)
 end
 
 function reset_limits!(po::PolarAxis)
-    if isnothing(po.radius[])
+    if isnothing(po.rlimits[][2])
         if !isempty(po.scene.plots)
             # WTF, why does this include child scenes by default?
             lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
-            po.target_radius[] = maximum(lims3d)[1]
+            po.target_radius[] = (po.rlimits[][1], maximum(lims3d)[1])
         end
-    elseif po.target_radius[] != po.radius[]
-        po.target_radius[] = po.radius[]
+    elseif po.target_radius[] != po.rlimits[]
+        po.target_radius[] = po.rlimits[]
     end
     return
 end
 
 function autolimits!(po::PolarAxis)
-    po.radius[] = nothing
+    po.rlimits[] = (0.0, nothing)
     return
 end
 
 function rlims!(po::PolarAxis, r::Real)
-    po.radius[] = r
+    po.rlimits[] = (0.0, r)
     return
 end
