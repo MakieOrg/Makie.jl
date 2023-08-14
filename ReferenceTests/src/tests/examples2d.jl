@@ -1131,3 +1131,29 @@ end
     poly!(Axis(fig[3,2]), Makie.MultiPolygon([p, q]), color = [:black, :red])
     fig
 end 
+
+@reference_test "lines (some with NaNs) with array colors" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    lines!(ax, 1:10, 1:10, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5)
+    lines!(ax, 1:10, 2:11, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, [3, 4, NaN, 6, 7, NaN, 9, 10, 11, NaN], color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, 4:13, color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, fill(NaN, 10), color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, [6, 7, 8, NaN, 10, 11, 12, 13, 14, 15], color = [:red, :blue, fill(:red, 8)...], linewidth = 5)
+    lines!(ax, 1:3, [7, 8, 9], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [8, 9, NaN], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [NaN, 10, 11], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:5, [10, 11, NaN, 13, 14], color = [:red, :red, :blue, :blue, :blue], linewidth = [5, 5, 5, 10, 10])
+    lines!(ax, 1:10, 11:20, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5, linestyle = :dot)
+    lines!(ax, 1:10, 12:21, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5, linestyle = :dot)
+    f
+end
+
+@reference_test "contour with single alpha color" begin
+    x = range(-π, π; length=50)
+    z = @. sin(x) * cos(x')
+    fig, ax = contour(x, x, z, color=RGBAf(1,0,0,0.4), linewidth=6)
+end
