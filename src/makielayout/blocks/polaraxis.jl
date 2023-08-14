@@ -146,7 +146,8 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickpos = _rtickvalues .* (axis_radius / rlims[2]) # we still need the values
-        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, rtickangle))
+        _rtickangle = rtickangle === automatic ? thetalims[1] : rtickangle
+        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, _rtickangle))
 
         thetas = LinRange(thetalims..., sample_density)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
