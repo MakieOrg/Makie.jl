@@ -204,30 +204,11 @@ function draw_axis!(po::PolarAxis, axis_radius)
         return
     end
 
-    spinepoints = Observable{Vector{Point2f}}()
-
-    onany(
-            po.blockscene, po.sample_density, axis_radius
-        ) do sample_density, (_, axis_radius)
-
-        thetas = LinRange(thetalims..., sample_density)
-        spinepoints[] = Point2f.(axis_radius, thetas)
-
-        return
-    end
-
     # TODO - compute this based on text bb (which would replace this trigger)
     notify(axis_radius)
 
     # plot using the created observables
-    # spine
-    spineplot = lines!(
-        po.overlay, spinepoints;
-        color = po.spinecolor,
-        linestyle = po.spinestyle,
-        linewidth = po.spinewidth,
-        visible = po.spinevisible,
-    )
+
     # major grids
     rgridplot = lines!(
         po.overlay, rgridpoints;
@@ -317,12 +298,15 @@ function draw_axis!(po::PolarAxis, axis_radius)
         visible = po.clip,
         fxaa = true,
         transformation = Transformation(), # no polar transform for this
+        strokecolor = po.spinecolor,
+        strokewidth = map((v, w) -> v * w, po.spinevisible, po.spinewidth),
+        linestyle = po.spinestyle
     )
     # on(po.blockscene, axis_radius) do (_, radius)
         # scale!(clipplot, Vec3f(radius, radius, 1))
     # end
 
-    translate!.((spineplot, rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 9000)
+    translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 9000)
     translate!(clipplot, 0, 0, 8990)
 
     return thetaticklabelplot
