@@ -110,10 +110,12 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     if bounding_box === automatic
         if DelTri.has_boundary_nodes(tri)
             xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                           DelTri.get_boundary_nodes(tri))
+                                                           DelTri.get_boundary_nodes(tri),
+                                                           Val(true))
         else
             xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                           DelTri.get_convex_hull_indices(tri))
+                                                           DelTri.get_convex_hull_indices(tri),
+                                                           Val(true))
         end
         Δx = xmax - xmin
         Δy = ymax - ymin
@@ -213,7 +215,9 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
         p.show_convex_hull[] && get_triangulation_convex_hull!(convex_hull_2f[], tri)
         p.show_constrained_edges[] && get_triangulation_constrained_edges!(constrained_edges_2f[], tri)
 
-        foreach(notify, (points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f, constrained_edges_2f))
+        foreach(notify,
+                (points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f,
+                 constrained_edges_2f))
         return nothing
     end
     onany(update_plot, p, p[1])
@@ -224,10 +228,10 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
                   linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
     lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
-           linestyle=p.convex_hull_linestyle, depth_shift = -1f-5)
-    linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift = -2f-5,
+           linestyle=p.convex_hull_linestyle, depth_shift=-1.0f-5)
+    linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift=-2.0f-5,
                   linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
     scatter!(p, present_points_2f; markersize=p.markersize, color=p.markercolor,
-             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift = -3f-5)
+             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift=-3.0f-5)
     return p
 end
