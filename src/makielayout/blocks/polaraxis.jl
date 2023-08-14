@@ -61,7 +61,8 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
         space_for_axis = space_from_center .- space_for_ticks
 
         # TODO
-        axis_radius[] = (rmin / rmax, max(0, minimum(space_for_axis) / space_from_center[1]))
+        scale = max(0, minimum(space_for_axis) / space_from_center[1])
+        axis_radius[] = scale .* (rmin / rmax, 1.0)
     end
 
     # Set up the title position
@@ -105,7 +106,7 @@ function _polar_clip_polygon(
         exterior = Makie.convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
     )
     @assert thetamin < thetamax "Starting angle $thetamin must be smaller than final angle $thetamax."
-    @assert rmin < rmax "Starting radius $rmin must be smaller than final radius $rmax."
+    @assert rmin < rmax "Starting radius $rmin must be smaller than final radius $rmax." # TODO
 
     function to_cart(r, angle)
         s, c = sincos(angle)
@@ -133,27 +134,25 @@ function _polar_clip_polygon(
 end
 
 function draw_axis!(po::PolarAxis, axis_radius)
-    thetalims = (0, 2pi)
-
     rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
 
     onany(
             po.blockscene,
-            po.rticks, po.rminorticks, po.rtickformat,
-            po.rtickangle, po.target_radius, axis_radius, po.sample_density,
-        ) do rticks, rminorticks, rtickformat, rtickangle, (_, data_radius), (_, axis_radius), sample_density
+            po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
+            po.target_radius, axis_radius, po.thetalimits, po.sample_density,
+        ) do rticks, rminorticks, rtickformat, rtickangle, rlims, (_, axis_radius), thetalims, sample_density
 
-        _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, 0, data_radius)
-        _rtickpos = _rtickvalues .* (axis_radius / data_radius) # we still need the values
+        _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
+        _rtickpos = _rtickvalues .* (axis_radius / rlims[2]) # we still need the values
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, rtickangle))
 
         thetas = LinRange(thetalims..., sample_density)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
 
-        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, 0, data_radius)
-        _rminortickvalues .*= (axis_radius / data_radius)
+        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, rlims...)
+        _rminortickvalues .*= (axis_radius / rlims[2])
         rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
 
         return
@@ -167,10 +166,10 @@ function draw_axis!(po::PolarAxis, axis_radius)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.theta_0, axis_radius, po.overlay.px_area
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, (_, axis_radius), pixelarea
+            po.theta_0, axis_radius, po.thetalimits, po.overlay.px_area
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, axis_radius, thetalims, pixelarea
 
-        _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
+        _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, thetalims...)
 
         # Since theta = 0 is at the same position as theta = 2π, we remove the last tick
         # iff the difference between the first and last tick is exactly 2π
@@ -191,15 +190,15 @@ function draw_axis!(po::PolarAxis, axis_radius)
         tick_positions = map(_thetatickvalues) do angle
             s, c = sincos(angle)
             pad_mult = 1.0 + px_pad / sqrt(w2 * c * c + h2 * s * s)
-            Point2f(pad_mult * axis_radius, angle)
+            Point2f(pad_mult * axis_radius[2], angle)
         end
 
         thetatick_pos_lbl[] = tuple.(_thetaticklabels, tick_positions)
 
-        thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (0, axis_radius)]
+        thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in axis_radius]
 
         _thetaminortickvalues = Makie.get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
-        thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in (0, axis_radius)]
+        thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in axis_radius]
 
         return
     end
