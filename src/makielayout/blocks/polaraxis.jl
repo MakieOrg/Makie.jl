@@ -133,8 +133,8 @@ function draw_axis!(po::PolarAxis, axis_radius)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.theta_0, axis_radius, po.overlay.px_area
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, axis_radius, pixelarea
+            po.direction, po.theta_0, axis_radius, po.overlay.px_area
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, axis_radius, pixelarea
 
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
 
@@ -147,7 +147,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         end
 
         thetatick_align[] = map(_thetatickvalues) do angle
-            s, c = sincos(angle + theta_0)
+            s, c = sincos(dir * (angle + theta_0))
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
