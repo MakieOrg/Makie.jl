@@ -1238,7 +1238,7 @@ end
     fig
 end
 
-@reference_test "Triplot: Showing ghost edges for a triangulation with disjoint boundaries" begin
+@reference_test "Triplot Showing ghost edges for a triangulation with disjoint boundaries" begin
     θ = LinRange(0, 2π, 20) |> collect
     θ[end] = 0 # need to make sure that 2π gives the exact same coordinates as 0
     xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
