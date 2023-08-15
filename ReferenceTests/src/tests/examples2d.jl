@@ -1238,13 +1238,12 @@ end
     fig
 end
 
-@testset "Showing ghost edges for a triangulation with disjoint boundaries" begin 
+@testset "Showing ghost edges for a triangulation with disjoint boundaries" begin
     θ = LinRange(0, 2π, 20) |> collect
     θ[end] = 0 # need to make sure that 2π gives the exact same coordinates as 0
     xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
     cx = 0.0
     for i in 1:2
-        global cx
         ## Make the exterior circle
         push!(xy, [[(cx + cos(θ), sin(θ)) for θ in θ]])
         ## Now the interior circle - clockwise
