@@ -44,8 +44,8 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     # Handle tick label spacing by axis radius adjustments
     onany(
             po.blockscene, thetaticklabelplot.plots[1].plots[1][1],
-            po.thetaticklabelpad, po.target_radius, po.overlay.px_area
-        ) do glyph_collections, pad, (rmin, rmax), area
+            po.thetaticklabelpad, po.overlay.px_area
+        ) do glyph_collections, pad, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)
@@ -198,7 +198,7 @@ function draw_axis!(po::PolarAxis)
         # transform px_pad to radial pad
         w2, h2 = (0.5 .* widths(pixelarea)).^2
         tick_positions = map(_thetatickvalues) do angle
-            s, c = sincos(angle)
+            s, c = sincos(dir * (angle + theta_0))
             pad_mult = 1.0 + px_pad / sqrt(w2 * c * c + h2 * s * s)
             Point2f(pad_mult, angle)
         end
