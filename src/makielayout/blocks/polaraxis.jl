@@ -105,8 +105,9 @@ function _polar_clip_polygon(
         rmin, rmax, thetamin, thetamax; step = 2pi/360, outer = 1e4,
         exterior = Makie.convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
     )
-    @assert thetamin < thetamax "Starting angle $thetamin must be smaller than final angle $thetamax."
-    @assert rmin < rmax "Starting radius $rmin must be smaller than final radius $rmax." # TODO
+    if rmax < rmin
+        rmin, rmax = rmax, rmin
+    end
 
     function to_cart(r, angle)
         s, c = sincos(angle)
@@ -114,8 +115,8 @@ function _polar_clip_polygon(
     end
 
     # make sure we have 2+ points per arc
-    N = max(2, ceil(Int, (thetamax - thetamin) / step) + 1)
-    if thetamax - thetamin ≈ 2pi
+    N = max(2, ceil(Int, abs(thetamax - thetamin) / step) + 1)
+    if abs(thetamax - thetamin) ≈ 2pi
         interior = map(theta -> to_cart(rmax, theta), LinRange(thetamin, thetamax, N))
         if rmin > 1e-6
             inner_clip = map(theta -> to_cart(rmin, theta), LinRange(thetamin, thetamax, N))
@@ -299,7 +300,8 @@ function draw_axis!(po::PolarAxis, axis_radius)
     end
 
     # TODO run global resizes through scale instead
-    clip_poly = map(axis_radius, po.thetalimits) do (rmin, rmax), (thetamin, thetamax)
+    clip_poly = map(axis_radius, po.thetalimits, po.direction, po.theta_0) do (rmin, rmax), thetalims, dir, theta_0
+        thetamin, thetamax = dir .* (thetalims .+ theta_0)
         _polar_clip_polygon(rmin, rmax, thetamin, thetamax)
     end
 
