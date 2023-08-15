@@ -1206,7 +1206,6 @@ end
     xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
     cx = 0.0
     for i in 1:2
-        global cx
         ## Make the exterior circle
         push!(xy, [[(cx + cos(θ), sin(θ)) for θ in θ]])
         ## Now the interior circle - clockwise
@@ -1311,7 +1310,6 @@ end
     xlims!(ax2,-0.5,2.5)
     ylims!(ax2,-0.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
     fig
-
 end 
 
 @reference_test "Plotting empty polygons" begin
