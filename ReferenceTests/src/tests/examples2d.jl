@@ -1285,7 +1285,7 @@ end
     fig
 end
 
-@reference_test "Voronoiplots with clipped tessellation and unbounded poylgons" begin
+@reference_test "Voronoiplots with clipped tessellation and unbounded polygons" begin
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
     vorn = voronoi(tri, true)
