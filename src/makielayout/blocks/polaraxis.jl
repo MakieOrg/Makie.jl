@@ -297,8 +297,12 @@ function draw_axis!(po::PolarAxis)
     )
 
     # Hack to deal with synchronous update problems
-    on(thetatick_align) do align
+    on(thetaticklabelplot, thetatick_align) do align
         thetaticklabelplot.align.val = align
+        if length(align) == length(thetatick_pos_lbl[])
+            notify(thetaticklabelplot.align)
+        end
+        return
     end
 
     # TODO run global resizes through scale instead
