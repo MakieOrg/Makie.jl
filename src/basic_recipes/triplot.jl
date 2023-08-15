@@ -103,18 +103,6 @@ function get_triangulation_triangles!(triangles, tri)
     return triangles
 end
 
-function is_interior_curve(tri, curve_index)
-    points = DelTri.get_points(tri)
-    if DelTri.has_boundary_nodes(tri)
-        boundary_nodes = DelTri.get_boundary_nodes(tri)
-        curve_boundary_nodes = DelTri.get_boundary_nodes(boundary_nodes, curve_index)
-    else
-        curve_boundary_nodes = DelTri.get_convex_hull_indices(tri)
-    end
-    area = DelTri.polygon_features(points, curve_boundary_nodes)[1]
-    return area < 0.0
-end
-
 function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     @assert extent > 0.0 "The ghost_edge_extension_factor must be positive."
     empty!(ghost_edges)
@@ -148,7 +136,7 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
         @assert a ≤ rx ≤ b && c ≤ ry ≤ d "The representative point is not in the bounding box."
         p = DelTri.get_point(tri, v)
         px, py = DelTri.getxy(p)
-        if is_interior_curve(tri, curve_index)
+        if !DelTri.is_positively_oriented(tri, curve_index)
             ex, ey = rx, ry
         else
             e = DelTri.intersection_of_ray_with_bounding_box(representative_coordinates, p, a, b, c, d)
