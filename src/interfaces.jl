@@ -82,7 +82,8 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
         for attr in [:color, :linewidth]
             # taken from @edljk  in PR #77
             if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
-                plot[attr] = lift(plot, plot[attr]) do cols
+                # TODO, this is actually buggy for `plot.color = new_colors`, since we're overwriting the origin color input
+                attributes(plot.attributes)[attr] = lift(plot, plot[attr]) do cols
                     map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
                 end
             end

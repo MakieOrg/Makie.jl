@@ -90,6 +90,18 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
+function Base.show(io::IO, screen::Screen)
+    c = screen.config
+    ppu = c.px_per_unit
+    sf = c.scalefactor
+    print(io, """WGLMakie.Screen(
+        framerate = $(c.framerate),
+        resize_to_body = $(c.resize_to_body),
+        px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
+        scalefactor = $(isnothing(sf) ? :automatic : sf)
+    )""")
+end
+
 # Resizing the scene is enough for WGLMakie
 Base.resize!(::WGLMakie.Screen, w, h) = nothing
 

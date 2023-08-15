@@ -20,6 +20,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attributes = Dict{Symbol, Any}(
         :linepoint => lift(serialize_buffer_attribute, plot[1])
     )
+
     for (name, attr) in [:color => color, :linewidth => linewidth]
         if Makie.is_scalar_attribute(to_value(attr))
             uniforms[Symbol("$(name)_start")] = attr

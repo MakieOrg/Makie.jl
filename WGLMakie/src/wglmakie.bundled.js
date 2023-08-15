@@ -20794,8 +20794,7 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
             let buff = buffers[name];
             const ndims = new_points.type_length;
             const new_line_points = new_points.flat;
-            const old_count = buff.updateRange.count;
-            console.log(old_count);
+            const old_count = buff.array.length;
             if (old_count < new_line_points.length) {
                 mesh.geometry.dispose();
                 geometry = create_line_instance_geometry();
