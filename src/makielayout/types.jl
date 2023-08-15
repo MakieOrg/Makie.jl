@@ -1688,7 +1688,7 @@ end
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = automatic
         "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
-        thetaticks = MultiplesTicks(9, π/360, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        thetaticks = MultiplesTicks(9, π/180, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
         "The specifier for the minor `theta` ticks."
         thetaminorticks = IntervalsBetween(2)
         "The color of the `theta` grid."
