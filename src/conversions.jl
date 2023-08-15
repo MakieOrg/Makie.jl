@@ -133,9 +133,29 @@ function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
+function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real})
+    if length(x) != length(y)
+        error("Length of x & y need to be the same. Found x: $(length(x)), y: $(length(y)))")
+    end
+    # Manually iterate, since for comprehension / map / broadcast all preserve input array types, which we dont want here!
+    points = Vector{Point2f}(undef, length(x))
+    @inbounds for (i, xy) in enumerate(zip(x, y))
+        points[i] = Point2f(xy)
+    end
+    return (points,)
+end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
+function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real})
+    if length(x) != length(y) && length(z) != length(y)
+        error("Length of x & y & z need to be the same. Found x: $(length(x)), y: $(length(y))), z: $(length(z)))")
+    end
+    # Manually iterate, since for comprehension / map / broadcast all preserve input array types, which we dont want here!
+    points = Vector{Point3f}(undef, length(x))
+    @inbounds for (i, xyz) in enumerate(zip(x, y, z))
+        points[i] = Point3f(xyz)
+    end
+    return (points,)
+end
 
 """
     convert_arguments(P, y)::Vector
@@ -308,12 +328,12 @@ end
 function edges(v::AbstractVector)
     l = length(v)
     if l == 1
-        return [v[1] - 0.5, v[1] + 0.5]
+        return [v[begin] - 0.5, v[begin] + 0.5]
     else
         # Equivalent to
         # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
         # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
-        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
+        borders = [0.5 * (v[max(begin, i)] + v[min(end, i+1)]) for i in (firstindex(v) - 1):lastindex(v)]
         borders[1] = 2borders[1] - borders[2]
         borders[end] = 2borders[end] - borders[end-1]
         return borders
@@ -366,13 +386,13 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
+    start = Float32.(firstindex.((data,), 1:2) .- 1)
+    stop = Float32.(lastindex.((data,), 1:2))
+    convert_arguments(sl, start[1] .. stop[1], start[2] .. stop[2], el32convert(data))
 end
 
 function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
+    convert_arguments(ds, edges(axes(data, 1)), edges(axes(data, 2)), el32convert(data))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
@@ -431,8 +451,14 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
-    n, m, k = Float32.(size(data))
-    return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
+    start = Float32.(firstindex.((data,), 1:3) .- 1)
+    stop = Float32.(lastindex.((data,), 1:3))
+    return (
+        start[1] .. stop[1],
+        start[2] .. stop[2],
+        start[3] .. stop[3],
+        el32convert(data)
+    )
 end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
@@ -664,16 +690,6 @@ function tryrange(F, vec)
     error("$F is not a Function, or is not defined at any of the values $vec")
 end
 
-# OffsetArrays conversions
-function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
-  x1, y1 = wm.offsets .+ 1
-  nx, ny = size(wm)
-  x = range(x1, length = nx)
-  y = range(y1, length = ny)
-  v = parent(wm)
-  return convert_arguments(sl, x, y, v)
-end
-
 ################################################################################
 #                               Helper Functions                               #
 ################################################################################
@@ -691,7 +707,7 @@ float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
-el32convert(x::AbstractArray{Float32}) = x
+el32convert(x::AbstractArray{Float32, N}) where {N} = collect(x)
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 
