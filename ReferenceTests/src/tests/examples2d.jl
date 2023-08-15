@@ -1120,6 +1120,18 @@ end
     fig
 end
 
+@reference_test "Plotting empty polygons" begin
+    p = Makie.Polygon(Point2f[])
+    q = Makie.Polygon(Point2f[(-1.0, 0.0), (1.0, 0.0), (0.0, 1.0)])
+    fig, ax, sc = poly([p, q])
+    poly!(Axis(fig[1,2]), p, color = :black)
+    poly!(Axis(fig[2,1]), [p, q], color = [:red, :blue])
+    poly!(Axis(fig[2,2]), [p, q], color = :red)
+    poly!(Axis(fig[3,1]), Makie.MultiPolygon([p]), color = :green)
+    poly!(Axis(fig[3,2]), Makie.MultiPolygon([p, q]), color = [:black, :red])
+    fig
+end 
+
 @reference_test "lines (some with NaNs) with array colors" begin
     f = Figure()
     ax = Axis(f[1, 1])

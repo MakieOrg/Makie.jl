@@ -140,14 +140,21 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     onany(
             po.blockscene,
-            po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
+            po.rticks, po.rminorticks, po.rtickformat, po.rtickangle, po.rticklabelpad,
             po.target_radius, axis_radius, po.thetalimits, po.sample_density,
-        ) do rticks, rminorticks, rtickformat, rtickangle, rlims, (_, axis_radius), thetalims, sample_density
+            po.overlay.px_area
+        ) do rticks, rminorticks, rtickformat, rtickangle, px_pad, rlims,
+            (_, axis_radius), thetalims, sample_density, pixelarea
 
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickpos = _rtickvalues .* (axis_radius / rlims[2]) # we still need the values
         _rtickangle = rtickangle === automatic ? thetalims[1] : rtickangle
-        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, _rtickangle))
+        pad = let
+            w2, h2 = (0.5 .* widths(pixelarea)).^2
+            s, c = sincos(_rtickangle)
+            axis_radius * px_pad / sqrt(w2 * c * c + h2 * s * s)
+        end
+        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos .+ pad, _rtickangle))
 
         thetas = LinRange(thetalims..., sample_density)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
@@ -167,8 +174,8 @@ function draw_axis!(po::PolarAxis, axis_radius)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.theta_0, axis_radius, po.thetalimits, po.overlay.px_area
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, axis_radius, thetalims, pixelarea
+            po.direction, po.theta_0, axis_radius, po.thetalimits, po.overlay.px_area
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, axis_radius, thetalims, pixelarea
 
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, thetalims...)
 
@@ -181,7 +188,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         end
 
         thetatick_align[] = map(_thetatickvalues) do angle
-            s, c = sincos(angle + theta_0)
+            s, c = sincos(dir * (angle + theta_0))
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
@@ -264,7 +271,12 @@ function draw_axis!(po::PolarAxis, axis_radius)
         color = po.rticklabelcolor,
         strokewidth = po.rticklabelstrokewidth,
         strokecolor = rstrokecolor,
-        align = (:left, :bottom),
+        align = map(po.direction, po.theta_0, po.rtickangle, po.thetalimits) do dir, theta_0, rtickangle, thetalims
+            angle = rtickangle === automatic ? thetalims[1] : rtickangle
+            s, c = sincos(dir * (angle + theta_0))
+            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
+            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+        end
     )
 
     thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
