@@ -249,7 +249,7 @@ function connect_uniforms(mesh, updater) {
 function create_texture(data) {
     const buffer = data.data;
     if (data.size.length == 3) {
-        const tex = new THREE.DataTexture3D(
+        const tex = new THREE.Data3DTexture(
             buffer,
             data.size[0],
             data.size[1],
@@ -274,7 +274,7 @@ function create_texture(data) {
 
 function re_create_texture(old_texture, buffer, size) {
     if (size.length == 3) {
-        const tex = new THREE.DataTexture3D(buffer, size[0], size[1], size[2]);
+        const tex = new THREE.Data3DTexture(buffer, size[0], size[1], size[2]);
         tex.format = old_texture.format;
         tex.type = old_texture.type;
         return tex;
