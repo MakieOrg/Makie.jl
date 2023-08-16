@@ -105,13 +105,19 @@ function draw_axis!(po::PolarAxis, axis_radius)
 
     onany(
             po.blockscene,
-            po.rticks, po.rminorticks, po.rtickformat,
+            po.rticks, po.rminorticks, po.rtickformat, po.rticklabelpad,
             po.rtickangle, po.target_radius, axis_radius, po.sample_density,
-        ) do rticks, rminorticks, rtickformat, rtickangle, data_radius, axis_radius, sample_density
+            po.overlay.px_area
+        ) do rticks, rminorticks, rtickformat, px_pad, rtickangle, data_radius, axis_radius, sample_density, pixelarea
 
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, 0, data_radius)
         _rtickpos = _rtickvalues .* (axis_radius / data_radius) # we still need the values
-        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos, rtickangle))
+        pad = let
+            w2, h2 = (0.5 .* widths(pixelarea)).^2
+            s, c = sincos(rtickangle)
+            axis_radius * px_pad / sqrt(w2 * c * c + h2 * s * s)
+        end
+        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos .+ pad, rtickangle))
 
         thetas = LinRange(thetalims..., sample_density)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
@@ -131,8 +137,8 @@ function draw_axis!(po::PolarAxis, axis_radius)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.theta_0, axis_radius, po.overlay.px_area
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, theta_0, axis_radius, pixelarea
+            po.direction, po.theta_0, axis_radius, po.overlay.px_area
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, axis_radius, pixelarea
 
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, 0, 2pi)
 
@@ -145,7 +151,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         end
 
         thetatick_align[] = map(_thetatickvalues) do angle
-            s, c = sincos(angle + theta_0)
+            s, c = sincos(dir * (angle + theta_0))
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
@@ -247,7 +253,11 @@ function draw_axis!(po::PolarAxis, axis_radius)
         color = po.rticklabelcolor,
         strokewidth = po.rticklabelstrokewidth,
         strokecolor = rstrokecolor,
-        align = (:left, :bottom),
+        align = map(po.direction, po.theta_0, po.rtickangle) do dir, theta_0, angle
+            s, c = sincos(dir * (angle + theta_0))
+            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
+            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+        end
     )
 
     thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
