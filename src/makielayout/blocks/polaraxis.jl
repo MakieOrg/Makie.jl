@@ -144,7 +144,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
             pop!(_thetaticklabels)
         end
 
-        thetatick_align.val = map(_thetatickvalues) do angle
+        thetatick_align[] = map(_thetatickvalues) do angle
             s, c = sincos(angle + theta_0)
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
@@ -261,8 +261,13 @@ function draw_axis!(po::PolarAxis, axis_radius)
         color = po.thetaticklabelcolor,
         strokewidth = po.thetaticklabelstrokewidth,
         strokecolor = thetastrokecolor,
-        align = thetatick_align,
+        align = thetatick_align[]
     )
+
+    # Hack to deal with synchronous update problems
+    on(thetatick_align) do align
+        thetaticklabelplot.align.val = align
+    end
 
     # inner clip
     # scatter shouldn't interfere with lines and text in GLMakie, so this should
