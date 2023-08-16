@@ -2,6 +2,8 @@
 
 ## master
 
+## v0.19.8
+
 - Improved CairoMakie rendering of `lines` with repeating colors in an array [#3141](https://github.com/MakieOrg/Makie.jl/pull/3141).
 - Added `strokecolormap` to poly. [#3145](https://github.com/MakieOrg/Makie.jl/pull/3145)
 - Added `xreversed`, `yreversed` and `zreversed` attributes to `Axis3` [#3138](https://github.com/MakieOrg/Makie.jl/pull/3138).
