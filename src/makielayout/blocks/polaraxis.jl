@@ -106,10 +106,213 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     return
 end
 
+
+################################################################################
+### Camera and Controls
+################################################################################
+
+
 function polar2cartesian(r, angle)
     s, c = sincos(angle)
     return Point2f(r * c, r * s)
 end
+
+function transformed_bbox(rlims, thetalims, r0, dir, theta_0)
+    thetamin, thetamax = thetalims
+    rmin, rmax = max.(0.0, rlims .- r0)
+
+    if abs(thetamax - thetamin) > 3pi/2
+        return Rect2f(-rmax, -rmax, 2rmax, 2rmax)
+    end
+
+    @assert thetamin < thetamax # otherwise shift by 2pi I guess
+    thetamin, thetamax = dir .* (thetalims .+ theta_0)
+
+    # Normalize angles
+    # keep interval in order
+    if thetamin > thetamax
+        thetamin, thetamax = thetamax, thetamin
+    end
+    # keep in -2pi .. 2pi interval
+    shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
+    thetamin += shift
+    thetamax += shift
+
+    # Initial bbox from corners
+    p = polar2cartesian(rmin, thetamin)
+    bb = Rect2f(p, Vec2f(0))
+    bb = _update_rect(bb, polar2cartesian(rmax, thetamin))
+    bb = _update_rect(bb, polar2cartesian(rmin, thetamax))
+    bb = _update_rect(bb, polar2cartesian(rmax, thetamax))
+
+    # only outer circle can update bb
+    if thetamin < -3pi/2 < thetamax || thetamin < pi/2 < thetamax
+        bb = _update_rect(bb, polar2cartesian(rmax, pi/2))
+    end
+    if thetamin < -pi < thetamax || thetamin < pi < thetamax
+        bb = _update_rect(bb, polar2cartesian(rmax, pi))
+    end
+    if thetamin < -pi/2 < thetamax || thetamin < 3pi/2 < thetamax
+        bb = _update_rect(bb, polar2cartesian(rmax, 3pi/2))
+    end
+    if thetamin < 0 < thetamax
+        bb = _update_rect(bb, polar2cartesian(rmax, 0))
+    end
+
+    return bb
+end
+
+function setup_camera_matrices!(po::PolarAxis)
+    # Initialization
+    usable_fraction = Observable(Vec2f(1.0, 1.0))
+    rmin, rmax = po.rlimits[]
+    init = Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax))
+    setfield!(po, :target_radius, init)
+    on(_ -> reset_limits!(po), po.blockscene, po.rlimits)
+
+    # shift radius at origin if rmin exceeds some percentage of rmax
+    radius_at_origin = map(po.blockscene, po.target_radius, po.maximum_clip_radius) do (rmin, rmax), max_fraction
+        # max_fraction = (rmin - r0) / (rmax - r0) solved for r0
+        return max(0.0, (rmin - max_fraction * rmax) / (1 - max_fraction))
+    end
+
+    e = events(po.scene)
+
+    # scroll to zoom
+    on(po.blockscene, e.scroll) do scroll
+        if Makie.is_mouseinside(po.scene)
+            rmin, rmax = po.target_radius[]
+            rmax = rmin + (rmax - rmin) * (1.1 ^ -scroll[2])
+            po.target_radius[] = (rmin, rmax)
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # translation
+    drag_state = RefValue((false, false))
+    last_pos = RefValue(Point2f(0))
+    on(po.blockscene, e.mousebutton) do e
+        drag_state[] = (
+            ispressed(po.scene, po.radial_translation_button[]),
+            ispressed(po.scene, po.theta_translation_button[])
+        )
+        if is_mouseinside(po.scene) && (drag_state[][1] || drag_state[][2])
+            last_pos[] = Point2f(mouseposition(po.scene))
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    on(po.blockscene, e.mouseposition) do _
+        if drag_state[][1] || drag_state[][2]
+            pos = Point2f(mouseposition(po.scene))
+            diff = last_pos[] - pos
+            r = norm(last_pos[])
+            u_r = last_pos[] ./ r
+            u_θ = Point2f(-u_r[2], u_r[1])
+            Δr = dot(u_r, diff)
+            Δθ = dot(u_θ, diff ./ r)
+            if drag_state[][1]
+                rmin, rmax = po.target_radius[]
+                # keep the relative clip radius constant:
+                # f = (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
+                # f = (new_rmin - radius_at_origin[]) / (rmax - radius_at_origin[] + Δr)
+                Δrmin = Δr * (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
+                po.target_radius[] = max.(0, po.target_radius[] .+ (Δrmin, Δr))
+            end
+            if drag_state[][2]
+                thetamin, thetamax = po.thetalimits[] .- Δθ
+                shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
+                po.thetalimits[] = (thetamin, thetamax) .+ shift
+                po.theta_0[] = mod(po.theta_0[] .- Δθ, 0..2pi)
+            end
+            # Needs recomputation because target_radius may have changed
+            last_pos[] = Point2f(mouseposition(po.scene))
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # Reset button
+    onany(po.blockscene, e.mousebutton, e.keyboardbutton) do e1, e2
+        if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) &&
+            (e1.action == Mouse.press) && (e2.action == Keyboard.press)
+            if ispressed(e, Keyboard.left_shift)
+                autolimits!(po)
+            else
+                reset_limits!(po)
+            end
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # update view matrix
+    # cartesian bbox given by axis setup (limits, modifiers)
+    data_bbox = map(
+        transformed_bbox, po.blockscene,
+        po.target_radius, po.thetalimits, radius_at_origin, po.direction, po.theta_0
+    )
+
+    # fit data_bbox into the usable area of PolarAxis (i.e. with tick space subtracted)
+    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
+        mini = minimum(bb); ws = widths(bb)
+        scale = minimum(2usable_fraction ./ ws)
+        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
+        camera(po.scene).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
+        return
+    end
+
+    # fit axis components to the area used for data
+    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
+        mini = minimum(bb); ws = widths(bb)
+        rmax = po.target_radius[][2] - radius_at_origin[] # both update data_bbox
+        scale = minimum(2usable_fraction ./ ws)
+        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
+        scale *= rmax
+        camera(po.overlay).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
+    end
+
+    max_z = 10_000f0
+
+    # update projection matrices
+    # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -max_z ... max_z)
+    on(po.blockscene, po.scene.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
+    end
+
+    on(po.blockscene, po.overlay.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
+    end
+
+    return usable_fraction, radius_at_origin
+end
+
+function reset_limits!(po::PolarAxis)
+    if isnothing(po.rlimits[][2])
+        if !isempty(po.scene.plots)
+            # TODO: Why does this include child scenes by default?
+            lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
+            po.target_radius[] = (po.rlimits[][1], maximum(lims3d)[1])
+        end
+    elseif po.target_radius[] != po.rlimits[]
+        po.target_radius[] = po.rlimits[]
+    end
+    return
+end
+
+
+################################################################################
+### Axis visualization - grid lines, clip, ticks
+################################################################################
+
 
 function _polar_clip_polygon(
         rmin, rmax, thetamin, thetamax; step = 2pi/360, outer = 1e4,
@@ -339,6 +542,12 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     return thetaticklabelplot
 end
 
+
+################################################################################
+### Special sections
+################################################################################
+
+
 function calculate_polar_title_position(area, titlegap, align)
     w, h = area.widths
 
@@ -399,204 +608,18 @@ end
 
 
 ################################################################################
-### Limits and Camera
+### Utilities
 ################################################################################
 
-
-function transformed_bbox(rlims, thetalims, r0, dir, theta_0)
-    thetamin, thetamax = thetalims
-    rmin, rmax = max.(0.0, rlims .- r0)
-
-    if abs(thetamax - thetamin) > 3pi/2
-        return Rect2f(-rmax, -rmax, 2rmax, 2rmax)
-    end
-
-    @assert thetamin < thetamax # otherwise shift by 2pi I guess
-    thetamin, thetamax = dir .* (thetalims .+ theta_0)
-
-    # Normalize angles
-    # keep interval in order
-    if thetamin > thetamax
-        thetamin, thetamax = thetamax, thetamin
-    end
-    # keep in -2pi .. 2pi interval
-    shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
-    thetamin += shift
-    thetamax += shift
-
-    # Initial bbox from corners
-    p = polar2cartesian(rmin, thetamin)
-    bb = Rect2f(p, Vec2f(0))
-    bb = _update_rect(bb, polar2cartesian(rmax, thetamin))
-    bb = _update_rect(bb, polar2cartesian(rmin, thetamax))
-    bb = _update_rect(bb, polar2cartesian(rmax, thetamax))
-
-    # only outer circle can update bb
-    if thetamin < -3pi/2 < thetamax || thetamin < pi/2 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, pi/2))
-    end
-    if thetamin < -pi < thetamax || thetamin < pi < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, pi))
-    end
-    if thetamin < -pi/2 < thetamax || thetamin < 3pi/2 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, 3pi/2))
-    end
-    if thetamin < 0 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, 0))
-    end
-
-    return bb
-end
-
-function setup_camera_matrices!(po::PolarAxis)
-    # Initialization
-    usable_fraction = Observable(Vec2f(1.0, 1.0))
-    rmin, rmax = po.rlimits[]
-    init = Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax))
-    setfield!(po, :target_radius, init)
-    on(_ -> reset_limits!(po), po.blockscene, po.rlimits)
-
-    # shift radius at origin if rmin exceeds some percentage of rmax
-    radius_at_origin = map(po.blockscene, po.target_radius, po.maximum_clip_radius) do (rmin, rmax), max_fraction
-        # max_fraction = (rmin - r0) / (rmax - r0) solved for r0
-        return max(0.0, (rmin - max_fraction * rmax) / (1 - max_fraction))
-    end
-
-    e = events(po.scene)
-
-    # scroll to zoom
-    on(po.blockscene, e.scroll) do scroll
-        if Makie.is_mouseinside(po.scene)
-            rmin, rmax = po.target_radius[]
-            rmax = rmin + (rmax - rmin) * (1.1 ^ -scroll[2])
-            po.target_radius[] = (rmin, rmax)
-            return Consume(true)
-        end
-        return Consume(false)
-    end
-
-    # translation
-    drag_state = RefValue((false, false))
-    last_pos = RefValue(Point2f(0))
-    on(po.blockscene, e.mousebutton) do e
-        drag_state[] = (
-            ispressed(po.scene, po.radial_translation_button[]),
-            ispressed(po.scene, po.theta_translation_button[])
-        )
-        if is_mouseinside(po.scene) && (drag_state[][1] || drag_state[][2])
-            last_pos[] = Point2f(mouseposition(po.scene))
-            return Consume(true)
-        end
-        return Consume(false)
-    end
-
-    on(po.blockscene, e.mouseposition) do _
-        if drag_state[][1] || drag_state[][2]
-            pos = Point2f(mouseposition(po.scene))
-            diff = last_pos[] - pos
-            r = norm(last_pos[])
-            u_r = last_pos[] ./ r
-            u_θ = Point2f(-u_r[2], u_r[1])
-            Δr = dot(u_r, diff)
-            Δθ = dot(u_θ, diff ./ r)
-            if drag_state[][1]
-                rmin, rmax = po.target_radius[]
-                # keep the relative clip radius constant:
-                # f = (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
-                # f = (new_rmin - radius_at_origin[]) / (rmax - radius_at_origin[] + Δr)
-                Δrmin = Δr * (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
-                po.target_radius[] = max.(0, po.target_radius[] .+ (Δrmin, Δr))
-            end
-            if drag_state[][2]
-                thetamin, thetamax = po.thetalimits[] .- Δθ
-                shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
-                po.thetalimits[] = (thetamin, thetamax) .+ shift
-                po.theta_0[] = mod(po.theta_0[] .- Δθ, 0..2pi)
-            end
-            # Needs recomputation because target_radius may have changed
-            last_pos[] = Point2f(mouseposition(po.scene))
-            return Consume(true)
-        end
-        return Consume(false)
-    end
-
-    # Reset button
-    onany(po.blockscene, e.mousebutton, e.keyboardbutton) do e1, e2
-        if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) &&
-            (e1.action == Mouse.press) && (e2.action == Keyboard.press)
-            if ispressed(e, Keyboard.left_shift)
-                autolimits!(po)
-            else
-                reset_limits!(po)
-            end
-            return Consume(true)
-        end
-        return Consume(false)
-    end
-
-    # update view matrix
-    data_bbox = map(
-        transformed_bbox, po.blockscene,
-        po.target_radius, po.thetalimits, radius_at_origin, po.direction, po.theta_0
-    )
-
-    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
-        mini = minimum(bb); ws = widths(bb)
-        scale = minimum(2usable_fraction ./ ws)
-        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
-        camera(po.scene).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
-        return
-    end
-
-    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
-        mini = minimum(bb); ws = widths(bb)
-        rmax = po.target_radius[][2] - radius_at_origin[] # both update data_bbox
-        scale = minimum(2usable_fraction ./ ws)
-        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
-        scale *= rmax
-        camera(po.overlay).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
-    end
-
-    max_z = 10_000f0
-
-    # update projection matrices
-    # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -max_z ... max_z)
-    on(po.blockscene, po.scene.px_area) do area
-        aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
-        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
-    end
-
-    on(po.blockscene, po.overlay.px_area) do area
-        aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
-        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
-    end
-
-    return usable_fraction, radius_at_origin
-end
-
-function reset_limits!(po::PolarAxis)
-    if isnothing(po.rlimits[][2])
-        if !isempty(po.scene.plots)
-            # TODO: Why does this include child scenes by default?
-            lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
-            po.target_radius[] = (po.rlimits[][1], maximum(lims3d)[1])
-        end
-    elseif po.target_radius[] != po.rlimits[]
-        po.target_radius[] = po.rlimits[]
-    end
-    return
-end
 
 function autolimits!(po::PolarAxis)
     po.rlimits[] = (0.0, nothing)
     return
 end
 
-function rlims!(po::PolarAxis, r::Real)
-    po.rlimits[] = (0.0, r)
+rlims!(po::PolarAxis, r::Real) = rlims!(po, po.rlimits[][1], r)
+
+function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
+    po.rlimits[] = (rmin, rmax)
     return
 end
