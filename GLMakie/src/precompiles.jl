@@ -25,7 +25,7 @@ let
                 display(plot(x); visible=false)
             catch
             end
-            Makie._current_figure[] = nothing
+            Makie.CURRENT_FIGURE[] = nothing
             empty!(atlas_texture_cache)
             closeall()
             @assert isempty(SCREEN_REUSE_POOL)

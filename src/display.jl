@@ -59,7 +59,7 @@ function set_screen_config!(backend::Module, new_values)
     bkeys = keys(backend_defaults)
     for (k, v) in pairs(new_values)
         if !(k in bkeys)
-            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenCofig`")
+            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenConfig`")
         end
         backend_defaults[k] = v
     end
@@ -99,6 +99,25 @@ end
 
 wait_for_display(screen) = nothing
 
+function has_mime_display(mime)
+    for display in Base.Multimedia.displays
+        # Ugh, why would textdisplay say it supports HTML??
+        display isa TextDisplay && continue
+        displayable(display, mime) && return true
+    end
+    return false
+end
+
+can_show_inline(::Missing) = false # no backend
+function can_show_inline(Backend)
+    for mime in [MIME"juliavscode/html"(), MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
+        if backend_showable(Backend.Screen, mime)
+            return has_mime_display(mime)
+        end
+    end
+    return false
+end
+
 """
     Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
 
@@ -109,7 +128,8 @@ see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 
 `backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
 """
-function Base.display(figlike::FigureLike; backend=current_backend(), update=true, screen_config...)
+function Base.display(figlike::FigureLike; backend=current_backend(),
+                      inline=ALWAYS_INLINE_PLOTS[], update = true, screen_config...)
     if ismissing(backend)
         error("""
         No backend available!
@@ -120,13 +140,22 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
         """)
     end
 
-    if ALWAYS_INLINE_PLOTS[] == true
+    # We show inline if explicitely requested or if automatic and we can actually show something inline!
+    if (inline === true || inline === automatic) && can_show_inline(backend)
         Core.invoke(display, Tuple{Any}, figlike)
         # In WGLMakie, we need to wait for the display being done
         screen = getscreen(get_scene(figlike))
         wait_for_display(screen)
         return screen
     else
+        if inline === true
+            @warn """
+
+                Makie.inline!(do_inline) was set to true, but we didn't detect a display that can show the plot,
+                so we aren't inlining the plot and try to show the plot in a window.
+                If this wasn't set on purpose, call `Makie.inline!()` to restore the default.
+            """
+        end
         scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene; screen_config...)
@@ -162,7 +191,9 @@ const MIME_TO_TRICK_VSCODE = MIME"application/vnd.julia-vscode.diagnostics"
 
 function _backend_showable(mime::MIME{SYM}) where SYM
     if ALWAYS_INLINE_PLOTS[] == false
-        return mime isa MIME_TO_TRICK_VSCODE
+        if mime isa MIME_TO_TRICK_VSCODE
+            return true
+        end
     end
     Backend = current_backend()
     if ismissing(Backend)
@@ -238,8 +269,8 @@ Save a `Scene` with the specified filename and format.
 
 # Supported Formats
 
-- `GLMakie`: `.png`, `.jpeg`, and `.bmp`
-- `CairoMakie`: `.svg`, `.pdf`, `.png`, and `.jpeg`
+- `GLMakie`: `.png`
+- `CairoMakie`: `.svg`, `.pdf` and `.png`
 - `WGLMakie`: `.png`
 
 # Supported Keyword Arguments
@@ -247,6 +278,10 @@ Save a `Scene` with the specified filename and format.
 ## All Backends
 
 - `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+- `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
+- `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
+- Further keywords will be forwarded to the screen.
+
 
 ## CairoMakie
 
@@ -285,7 +320,8 @@ function FileIO.save(
             # If the scene already got displayed, we get the current screen its displayed on
             # Else, we create a new scene and update the state of the fig
             update && update_state_before_display!(fig)
-            screen = getscreen(backend, scene, io, mime; visible=false, screen_config...)
+            visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
+            screen = getscreen(backend, scene, io, mime; visible=visible, screen_config...)
             backend_show(screen, io, mime, scene)
         end
     catch e
@@ -373,9 +409,16 @@ function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; scree
     end
 end
 
+function get_sub_picture(image, format::ImageStorageFormat, rect)
+    xmin, ymin = minimum(rect) .- (1, 0)
+    xmax, ymax = maximum(rect)
+    start = size(image, 1) - ymax
+    stop = size(image, 1) - ymin
+    return image[start:stop, xmin:xmax]
+end
+
 """
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; backend=current_backend(), screen_config...)
-    colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors. The return type is backend-dependent, but will be some form of RGB
@@ -386,12 +429,19 @@ or RGBA.
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
 - `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
+- `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
     update && update_state_before_display!(fig)
-    screen = getscreen(backend, scene, format; start_renderloop=false, visible=false, screen_config...)
-    return colorbuffer(screen, format)
+    visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
+    screen = getscreen(backend, scene; start_renderloop=false, visible=visible, screen_config...)
+    img = colorbuffer(screen, format)
+    if !isroot(scene)
+        return get_sub_picture(img, format, pixelarea(scene)[])
+    else
+        return img
+    end
 end
 
 # Fallback for any backend that will just use colorbuffer to write out an image

@@ -1,9 +1,9 @@
 using FreeTypeAbstraction: hadvance, leftinkbound, inkwidth, get_extent, ascender, descender
 
-one_attribute_per_char(attribute, string) = (attribute for char in string)
+one_attribute_per_char(attribute, string) = [attribute for char in string]
 
 function one_attribute_per_char(font::NativeFont, string)
-    return (find_font_for_char(char, font) for char in string)
+    return [find_font_for_char(char, font) for char in string]
 end
 
 function attribute_per_char(string, attribute)

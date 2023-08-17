@@ -17,7 +17,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     if isempty(matrix)
         return empty
     else
-        all_children = Makie.flatten_plots(scene)
+        all_children = Makie.collect_atomic_plots(scene)
         lookup = Dict(Pair.(js_uuid.(all_children), all_children))
         return map(matrix) do (uuid, index)
             !haskey(lookup, uuid) && return (nothing, 0)
@@ -27,7 +27,7 @@ function pick_native(screen::Screen, rect::Rect2i)
 end
 
 function plot_lookup(scene::Scene)
-    all_plots = Makie.flatten_plots(scene)
+    all_plots = Makie.collect_atomic_plots(scene)
     return Dict(Pair.(js_uuid.(all_plots), all_plots))
 end
 
@@ -93,7 +93,7 @@ App() do session
     }
     \"\"\"
 
-    tooltip = WGLMakie.ToolTip(f, on_click_callback; plots=pl)
+    tooltip = WGL.ToolTip(f, on_click_callback; plots=pl)
     return DOM.div(f, tooltip)
 end
 ```
@@ -107,7 +107,7 @@ struct ToolTip
         if isnothing(plots)
             plots = scene.plots
         end
-        all_plots = WGLMakie.js_uuid.(filter!(x-> x.inspectable[], Makie.flatten_plots(plots)))
+        all_plots = js_uuid.(filter!(x-> x.inspectable[], Makie.collect_atomic_plots(plots)))
         new(scene, callback, all_plots)
     end
 end
@@ -121,7 +121,7 @@ function JSServe.jsrender(session::Session, tt::ToolTip)
         $(scene).then(scene => {
             const plots_to_pick = new Set($(tt.plot_uuids));
             const callback = $(tt.callback);
-            register_popup($popup, scene, plots_to_pick, callback)
+            WGL.register_popup($popup, scene, plots_to_pick, callback)
         })
     """)
     return DOM.span(JSServe.jsrender(session, POPUP_CSS), popup)

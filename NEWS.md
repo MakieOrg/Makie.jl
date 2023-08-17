@@ -2,9 +2,61 @@
 
 ## master
 
+## v0.19.8
+
+- Improved CairoMakie rendering of `lines` with repeating colors in an array [#3141](https://github.com/MakieOrg/Makie.jl/pull/3141).
+- Added `strokecolormap` to poly. [#3145](https://github.com/MakieOrg/Makie.jl/pull/3145)
+- Added `xreversed`, `yreversed` and `zreversed` attributes to `Axis3` [#3138](https://github.com/MakieOrg/Makie.jl/pull/3138).
+- Fixed incorrect placement of contourlabels with transform functions [#3083](https://github.com/MakieOrg/Makie.jl/pull/3083)
+- Fixed automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
+
+## v0.19.7
+
+- Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color`.  This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002).
+- `arrows` can now take input of the form `x::AbstractVector, y::AbstractVector, [z::AbstractVector,] f::Function`, where `f` must return a `VecTypes` of the appropriate dimension [#2597](https://github.com/MakieOrg/Makie.jl/pull/2597).
+- Exported colorbuffer, and added `colorbuffer(axis::Axis; include_decorations=false, colorbuffer_kws...)`, to get an image of an axis with or without decorations [#3078](https://github.com/MakieOrg/Makie.jl/pull/3078).
+- Fixed an issue where the `linestyle` of some polys was not applied to the stroke in CairoMakie. [#2604](https://github.com/MakieOrg/Makie.jl/pull/2604)
+- Add `colorscale = identity` to any plotting function using a colormap. This works with any scaling function like `log10`, `sqrt` etc. Consequently, `scale` for `hexbin` is replaced with `colorscale` [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
+- Add `alpha=1.0` argument to all basic plots, which supports independently adding an alpha component to colormaps and colors. Multiple alphas like in `plot(alpha=0.2, color=RGBAf(1, 0, 0, 0.5))`, will get multiplied [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
+- `hexbin` now supports any per-observation weights which StatsBase respects - `<: StatsBase.AbstractWeights`, `Vector{Real}`, or `nothing` (the default). [#2804](https://github.com/MakieOrg/Makie.jl/pulls/2804)
+- Added a new Axis type, `PolarAxis`, which is an axis with a polar projection.  Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation.
+  Generally, its attributes are very similar to the usual `Axis` attributes, but `x` is replaced by `r` and `y` by `θ`.
+  It also inherits from the theme of `Axis` in this manner, so should work seamlessly with Makie themes [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990).
+- `inherit` now has a new signature `inherit(scene, attrs::NTuple{N, Symbol}, default_value)`, allowing recipe authors to access nested attributes when trying to inherit from the parent Scene.
+  For example, one could inherit from `scene.Axis.yticks` by `inherit(scene, (:Axis, :yticks), $default_value)` [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990).
+- Fixed incorrect rendering of 3D heatmaps [#2959](https://github.com/MakieOrg/Makie.jl/pull/2959)
+- Deprecated `flatten_plots` in favor of `collect_atomic_plots`. Using the new `collect_atomic_plots` fixed a bug in CairoMakie where the z-level of plots within recipes was not respected. [#2793](https://github.com/MakieOrg/Makie.jl/pull/2793)
 - Fixed incorrect line depth in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
 - Fixed incorrect line alpha in dense lines in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843)
-- Change `scene.clear` to an observable and make changes in `Scene` Observables trigger renders in GLMakie [#2929](https://github.com/MakieOrg/Makie.jl/pull/2929)
+- Fixed DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002)
+- Added option `WGLMakie.activate!(resize_to_body=true)`, to make plots resize to the VSCode plotpane. Resizes to the HTML body element, so may work outside VSCode [#3044](https://github.com/MakieOrg/Makie.jl/pull/3044), [#3042](https://github.com/MakieOrg/Makie.jl/pull/3042).
+- Fixed DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002).
+- Fix incomplete stroke with some Bezier markers in CairoMakie and blurry strokes in GLMakie [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
+- Added the ability to use custom triangulations from DelaunayTriangulation.jl [#2896](https://github.com/MakieOrg/Makie.jl/pull/2896).
+- Adjusted scaling of scatter/text stroke, glow and anti-aliasing width under non-uniform 2D scaling (Vec2f markersize/fontsize) in GLMakie [#2950](https://github.com/MakieOrg/Makie.jl/pull/2950).
+- Scaled `errorbar` whiskers and `bracket` correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012).
+- Updated `bracket` when the screen is resized or transformations change [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012).
+
+## v0.19.6
+
+- Fixed broken AA for lines with strongly varying linewidth [#2953](https://github.com/MakieOrg/Makie.jl/pull/2953).
+- Fixed WGLMakie JS popup [#2976](https://github.com/MakieOrg/Makie.jl/pull/2976).
+- Fixed `legendelements` when children have no elements [#2982](https://github.com/MakieOrg/Makie.jl/pull/2982).
+- Bumped compat for StatsBase to 0.34 [#2915](https://github.com/MakieOrg/Makie.jl/pull/2915).
+- Improved thread safety [#2840](https://github.com/MakieOrg/Makie.jl/pull/2840).
+
+## v0.19.5
+
+- Added `loop` option for GIF outputs when recording videos with `record` [#2891](https://github.com/MakieOrg/Makie.jl/pull/2891).
+- Fixed line rendering issues in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843).
+- Fixed incorrect line alpha in dense lines in GLMakie [#2843](https://github.com/MakieOrg/Makie.jl/pull/2843).
+- Changed `scene.clear` to an observable and made changes in `Scene` Observables trigger renders in GLMakie [#2929](https://github.com/MakieOrg/Makie.jl/pull/2929).
+- Added contour labels [#2496](https://github.com/MakieOrg/Makie.jl/pull/2496).
+- Allowed rich text to be used in Legends [#2902](https://github.com/MakieOrg/Makie.jl/pull/2902).
+- Added more support for zero length Geometries [#2917](https://github.com/MakieOrg/Makie.jl/pull/2917).
+- Made CairoMakie drawing for polygons with holes order independent [#2918](https://github.com/MakieOrg/Makie.jl/pull/2918).
+- Fixes for `Makie.inline!()`, allowing now for `Makie.inline!(automatic)` (default), which is better at automatically opening a window/ inlining a plot into plotpane when needed [#2919](https://github.com/MakieOrg/Makie.jl/pull/2919) [#2937](https://github.com/MakieOrg/Makie.jl/pull/2937).
+- Block/Axis doc improvements [#2940](https://github.com/MakieOrg/Makie.jl/pull/2940) [#2932](https://github.com/MakieOrg/Makie.jl/pull/2932) [#2894](https://github.com/MakieOrg/Makie.jl/pull/2894).
 
 ## v0.19.4
 
@@ -12,7 +64,6 @@
 - Fixed an issue with GLMakie lines becoming discontinuous [#2828](https://github.com/MakieOrg/Makie.jl/pull/2828).
 
 ## v0.19.3
-
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
 - Added the `brackets` plotting function [#2356](https://github.com/MakieOrg/Makie.jl/pull/2356).
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478).
@@ -34,9 +85,9 @@
 - Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497).
 - Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
 - Fixed forced rasterization in CairoMakie svg files when polygons with colors specified as (color, alpha) tuples were used [#2535](https://github.com/MakieOrg/Makie.jl/pull/2535).
-- Do less copies of Observables in Attributes + plot pipeline [#2443](https://github.com/MakieOrg/Makie.jl/pull/2443). 
+- Do less copies of Observables in Attributes + plot pipeline [#2443](https://github.com/MakieOrg/Makie.jl/pull/2443).
 - Add Search Page and tweak Result Ordering [#2474](https://github.com/MakieOrg/Makie.jl/pull/2474).
-- Remove all global attributes from TextureAtlas implementation and fix julia#master [#2498](https://github.com/MakieOrg/Makie.jl/pull/2498). 
+- Remove all global attributes from TextureAtlas implementation and fix julia#master [#2498](https://github.com/MakieOrg/Makie.jl/pull/2498).
 - Use new JSServe, implement WGLMakie picking, improve performance and fix lots of WGLMakie bugs [#2428](https://github.com/MakieOrg/Makie.jl/pull/2428).
 
 ## v0.19.0
@@ -135,7 +186,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pu
 
 ## v0.17.7
 
-- Improved `Menu` performance, now it should me much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
+- Improved `Menu` performance, now it should be much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
 
 ## v0.17.6
 

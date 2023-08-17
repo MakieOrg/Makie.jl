@@ -47,7 +47,7 @@ end
 
 @reference_test "Arrows on hemisphere" begin
     s = Sphere(Point3f(0), 0.9f0)
-    fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
+    fig, ax, meshplot = mesh(s)
     pos = decompose(Point3f, s)
     dirs = decompose_normals(s)
     arrows!(ax, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
@@ -197,7 +197,7 @@ end
 
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
-    sf = Observable(Base.Fix2(v, 0e0))
+    sf = Observable(Base.Fix2(v, 0.0))
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2, colormap=:magma, axis=(;title=title_str))
@@ -243,7 +243,7 @@ end
 
     xs = 0:9        # data
     ys = zeros(10)
-    colors = Makie.default_palettes.color[]
+    colors = Makie.DEFAULT_PALETTES.color[]
     plots = map(1:N) do i # plot lines
         lines!(ax,
             xs, ys;
@@ -334,6 +334,15 @@ end
     fig, ax, scatterplot = scatter(x, y)
     errorbars!(ax, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
     errorbars!(ax, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5, color = :red, direction = :x)
+    fig
+end
+
+@reference_test "Errorbars log scale" begin
+    x = 1:5
+    y = sin.(x) .+ 5
+    fig = Figure()
+    errorbars(fig[1, 1], x, y, y .- 1, y .+ 1; linewidth = 3, whiskerwidth = 20, axis = (; yscale = log10, xscale = log10))
+    errorbars(fig[1, 2], y, x, y .- 1, y .+ 1; linewidth = 3, whiskerwidth = 20, direction = :x, axis = (; yscale = log10, xscale = log10))
     fig
 end
 
@@ -580,6 +589,43 @@ end
     fig
 end
 
+@reference_test "colorscale (heatmap)" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    fig, ax, hm = heatmap(x, y, (x, y) -> x; axis = (; xscale = log10), colorscale = log10)
+    Colorbar(fig[1, 2], hm)
+    fig
+end
+
+@reference_test "colorscale (lines)" begin
+    xs = 0:0.01:10
+    ys = 2 .* (1 .+ sin.(xs))
+    fig = Figure()
+    lines(fig[1, 1], xs, ys; linewidth=50, color=ys, colorscale=identity)
+    lines(fig[2, 1], xs, ys; linewidth=50, color=ys, colorscale=sqrt)
+    fig
+end
+
+@reference_test "colorscale (scatter)" begin
+    xs = range(0, 10; length = 30)
+    ys = 0.5 .* sin.(xs)
+    color = (1:30) .^ 2
+    markersize = 100
+    fig = Figure()
+    scatter(fig[1, 1], xs, ys; markersize, color, colorscale = identity)
+    scatter(fig[2, 1], xs, ys; markersize, color, colorscale = log10)
+    fig
+end
+
+@reference_test "colorscale (hexbin)" begin
+    x = RNG.randn(10_000)
+    y = RNG.randn(10_000)
+    fig = Figure()
+    hexbin(fig[1, 1], x, y; bins = 40, colorscale = identity)
+    hexbin(fig[1, 2], x, y; bins = 40, colorscale = log10)
+    fig
+end
+
 @reference_test "multi rect with poly" begin
     # use thick strokewidth, so it will make tests fail if something is missing
     poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
@@ -676,6 +722,73 @@ end
     f
 end
 
+@reference_test "tricontourf with boundary nodes" begin
+    n = 20
+    angles = range(0, 2pi, length = n+1)[1:end-1]
+    x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
+    y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
+    z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.* RNG.randn.()
+
+    inner = [n:-1:1; n] # clockwise inner
+    outer = [(n+1):(2n); n+1] # counter-clockwise outer
+    boundary_nodes = [[outer], [inner]]
+    tri = DelaunayTriangulation.triangulate([x'; y'], boundary_nodes = boundary_nodes)
+    f, ax, _ = tricontourf(tri, z)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    f
+end
+
+@reference_test "tricontourf with boundary nodes and edges" begin
+    curve_1 = [
+    [(0.0, 0.0), (5.0, 0.0), (10.0, 0.0), (15.0, 0.0), (20.0, 0.0), (25.0, 0.0)],
+    [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
+    [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
+    [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
+    ]
+    curve_2 = [
+        [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
+        [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
+        [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
+    ]
+    curve_3 = [
+        [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
+        (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
+    ]
+    curves = [curve_1, curve_2, curve_3]
+    points = [
+        (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
+        (23.0, 23.0), (22.6, 19.0), (23.8, 17.8), (22.0, 14.0), (22.0, 11.0),
+        (24.0, 6.0), (23.0, 2.0), (19.0, 1.0), (16.0, 3.0), (10.0, 1.0), (11.0, 3.0),
+        (6.0, 2.0), (6.2, 3.0), (2.0, 3.0), (2.6, 6.2), (2.0, 8.0), (2.0, 11.0),
+        (5.0, 12.0), (2.0, 17.0), (3.0, 19.0), (6.0, 18.0), (6.5, 14.5),
+        (13.0, 19.0), (13.0, 12.0), (16.0, 8.0), (9.8, 8.0), (7.5, 6.0),
+        (12.0, 13.0), (19.0, 15.0)
+    ]
+    boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+    edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
+
+    tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
+    z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)]
+    f, ax, _ = tricontourf(tri, z, levels = 30)
+    f
+end
+
+@reference_test "tricontourf with provided triangulation" begin
+    θ = [LinRange(0, 2π * (1 - 1/19), 20); 0]
+    xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
+    cx = [0.0, 3.0]
+    for i in 1:2
+        push!(xy, [[(cx[i] + cos(θ), sin(θ)) for θ in θ]])
+        push!(xy, [[(cx[i] + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
+    end
+    boundary_nodes, points = convert_boundary_points_to_indices(xy)
+    tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
+    z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)]
+
+    f, ax, tr = tricontourf(tri, z, colormap = :matter)
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
@@ -692,6 +805,16 @@ end
         labelsize = 15, labelfont = :bold, labelcolor = :orange,
     )
     fig
+end
+
+@reference_test "contour labels with transform_func" begin
+    f = Figure(resolution = (400, 400))
+    a = Axis(f[1, 1], xscale = log10)
+    xs = 10 .^ range(0, 3, length=101)
+    ys = range(1, 4, length=101)
+    zs = [sqrt(x*x + y*y) for x in -50:50, y in -50:50]
+    contour!(a, xs, ys, zs, labels = true, labelsize = 20)
+    f
 end
 
 @reference_test "contour labels 3D" begin
@@ -821,26 +944,26 @@ end
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
         axis = (aspect = DataAspect(), title = "scale = identity"))
-    hexbin(f[1, 2], x, y, bins = 40, scale=log10,
+    hexbin(f[1, 2], x, y, bins = 40, colorscale=log10,
         axis = (aspect = DataAspect(), title = "scale = log10"))
     f
 end
 
 # Scatter needs working highclip/lowclip first
-# @reference_test "hexbin colorrange highclip lowclip" begin
-#     x = RNG.randn(100000)
-#     y = RNG.randn(100000)
+@reference_test "hexbin colorrange highclip lowclip" begin
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
 
-#     hexbin(x, y,
-#         bins = 40,
-#         axis = (aspect = DataAspect(),),
-#         colorrange = (10, 300),
-#         highclip = :red,
-#         lowclip = :pink,
-#         strokewidth = 1,
-#         strokecolor = :gray30
-#     )
-# end
+    f, ax, pl = hexbin(x, y,
+        bins = 40,
+        axis = (aspect = DataAspect(),),
+        colorrange = (10, 300),
+        highclip = :red,
+        lowclip = :pink,
+        strokewidth = 1,
+        strokecolor = :gray30
+    )
+end
 
 @reference_test "Latex labels after the fact" begin
     f = Figure(fontsize = 50)
@@ -878,7 +1001,7 @@ end
         text = "Falling", offset = 10, orientation = :up, color = :purple, textcolor = :purple)
 
     bracket!(Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
-        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange, 
+        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange,
         fontsize = 30, textoffset = 30, width = 50)
     f
 end
@@ -906,6 +1029,34 @@ end
         fontsize = range(12, 24, length = 5),
     )
 
+    f
+end
+
+@reference_test "Log scale histogram (barplot)" begin
+    f = Figure()
+    hist(
+        f[1, 1],
+        RNG.randn(10^6);
+        axis=(; yscale=log2)
+    )
+    hist(
+        f[1, 2],
+        RNG.randn(10^6);
+        axis=(; xscale=log2),
+        direction = :x
+    )
+    # make a gap in histogram as edge case
+    hist(
+        f[2, 1],
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
+        axis=(; yscale=log10)
+    )
+    hist(
+        f[2, 2],
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
+        axis=(; xscale=log10),
+        direction = :x
+    )
     f
 end
 
@@ -942,4 +1093,67 @@ end
         poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange)
     end
     f
+end
+
+@reference_test "Z-translation within a recipe" begin
+    # This is testing whether backends respect the
+    # z-level of plots within recipes in 2d.
+    # Ideally, the output of this test
+    # would be a blue line with red scatter markers.
+    # However, if a backend does not correctly pick up on translations,
+    # then this will be drawn in the drawing order, and blue
+    # will completely obscure red.
+
+    # It seems like we can't define recipes in `@reference_test` yet,
+    # so we'll have to fake a recipe's structure.
+
+    fig = Figure(resolution = (600, 600))
+    # Create a recipe plot
+    ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
+    # Plot some recipes at the level below the contour
+    scatterlineplot_1 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
+    scatterlineplot_2 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
+    # Translate the lowest level plots (scatters)
+    translate!(scatterlineplot_1.plots[2], 0, 0, 1)
+    translate!(scatterlineplot_2.plots[2], 0, 0, -1)
+    # Display
+    fig
+end
+
+@reference_test "Plotting empty polygons" begin
+    p = Makie.Polygon(Point2f[])
+    q = Makie.Polygon(Point2f[(-1.0, 0.0), (1.0, 0.0), (0.0, 1.0)])
+    fig, ax, sc = poly([p, q])
+    poly!(Axis(fig[1,2]), p, color = :black)
+    poly!(Axis(fig[2,1]), [p, q], color = [:red, :blue])
+    poly!(Axis(fig[2,2]), [p, q], color = :red)
+    poly!(Axis(fig[3,1]), Makie.MultiPolygon([p]), color = :green)
+    poly!(Axis(fig[3,2]), Makie.MultiPolygon([p, q]), color = [:black, :red])
+    fig
+end 
+
+@reference_test "lines (some with NaNs) with array colors" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    lines!(ax, 1:10, 1:10, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5)
+    lines!(ax, 1:10, 2:11, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, [3, 4, NaN, 6, 7, NaN, 9, 10, 11, NaN], color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, 4:13, color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, fill(NaN, 10), color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, [6, 7, 8, NaN, 10, 11, 12, 13, 14, 15], color = [:red, :blue, fill(:red, 8)...], linewidth = 5)
+    lines!(ax, 1:3, [7, 8, 9], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [8, 9, NaN], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [NaN, 10, 11], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:5, [10, 11, NaN, 13, 14], color = [:red, :red, :blue, :blue, :blue], linewidth = [5, 5, 5, 10, 10])
+    lines!(ax, 1:10, 11:20, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5, linestyle = :dot)
+    lines!(ax, 1:10, 12:21, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5, linestyle = :dot)
+    f
+end
+
+@reference_test "contour with single alpha color" begin
+    x = range(-π, π; length=50)
+    z = @. sin(x) * cos(x')
+    fig, ax = contour(x, x, z, color=RGBAf(1,0,0,0.4), linewidth=6)
 end

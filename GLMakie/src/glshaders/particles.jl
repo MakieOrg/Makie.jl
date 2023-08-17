@@ -33,6 +33,14 @@ struct PointSizeRender
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 
+# For switching between ellipse method and faster circle method in shader
+is_all_equal_scale(o::Observable) = is_all_equal_scale(o[])
+is_all_equal_scale(::Real) = true
+is_all_equal_scale(::Vector{Real}) = true
+is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
+is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
+
+
 
 
 @nospecialize
@@ -94,7 +102,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Texture
-        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color        = nothing => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
@@ -174,6 +182,15 @@ function draw_scatter(screen, (marker, position), data)
         image       = nothing => Texture
     end
 
+    data[:shape] = map(
+            convert(Observable{Int}, pop!(data, :shape)), data[:scale]
+        ) do shape, scale
+        if shape == 0 && !is_all_equal_scale(scale)
+            return Cint(5) # scaled CIRCLE -> ELLIPSE
+        else
+            return shape
+        end
+    end
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -210,6 +227,7 @@ function draw_scatter(screen, (marker, position), data)
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)
     data[:len] = const_lift(length, position)
+
     return assemble_shader(data)
 end
 

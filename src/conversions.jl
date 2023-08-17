@@ -548,10 +548,10 @@ end
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
-        n = normals(mesh)
+        n = normals(metafree(decompose(Point, mesh)), faces(mesh))
         # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
+        if !isnothing(n)
+            mesh = GeometryBasics.pointmeta(mesh; normals=decompose(Vec3f, n))
         end
     end
     # If already correct eltypes for GL, we can pass the mesh through as is
@@ -611,6 +611,25 @@ function convert_arguments(
     )
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
+end
+                        
+################################################################################
+#                                   <:Arrows                                   #
+################################################################################
+
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+    points = Point2f.(x, y')
+    f_out = Vec2f.(f.(points))
+    return (vec(points), vec(f_out))
+end
+
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    points = [Point3f(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3f.(f.(points))
+    return (vec(points), vec(f_out))
 end
 
 ################################################################################
@@ -957,6 +976,7 @@ to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
 to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
+const FONT_CACHE_LOCK = Base.ReentrantLock()
 
 function load_font(filepath)
     font = FreeTypeAbstraction.try_load(filepath)
@@ -975,28 +995,30 @@ A font can either be specified by a file path, such as "folder/with/fonts/font.o
 or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.
 """
 function to_font(str::String)
-    get!(FONT_CACHE, str) do
-        # load default fonts without font search to avoid latency
-        if str == "default" || str == "TeX Gyre Heros Makie"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
-        elseif str == "TeX Gyre Heros Makie Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
-        # load fonts directly if they are given as font paths
-        elseif isfile(str)
-            return load_font(str)
+    lock(FONT_CACHE_LOCK) do
+        return get!(FONT_CACHE, str) do
+            # load default fonts without font search to avoid latency
+            if str == "default" || str == "TeX Gyre Heros Makie"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
+            elseif str == "TeX Gyre Heros Makie Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
+            # load fonts directly if they are given as font paths
+            elseif isfile(str)
+                return load_font(str)
+            end
+            # for all other cases, search for the best match on the system
+            fontpath = assetpath("fonts")
+            font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
+            if font === nothing
+                @warn("Could not find font $str, using TeX Gyre Heros Makie")
+                return to_font("TeX Gyre Heros Makie")
+            end
+            return font
         end
-        # for all other cases, search for the best match on the system
-        fontpath = assetpath("fonts")
-        font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
-        if font === nothing
-            @warn("Could not find font $str, using TeX Gyre Heros Makie")
-            return to_font("TeX Gyre Heros Makie")
-        end
-        return font
     end
 end
 to_font(x::Vector{String}) = to_font.(x)
@@ -1344,3 +1366,33 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+
+
+# SAMPLER overloads
+
+convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
+function convert_attribute(s::ShaderAbstractions.Sampler{T,N}, k::key"color") where {T,N}
+    return ShaderAbstractions.Sampler(el32convert(s.data); minfilter=s.minfilter, magfilter=s.magfilter,
+                                      x_repeat=s.repeat[1], y_repeat=s.repeat[min(2, N)],
+                                      z_repeat=s.repeat[min(3, N)],
+                                      anisotropic=s.anisotropic, color_swizzel=s.color_swizzel)
+end
+
+function el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
+    T32 = float32type(T)
+    T32 === T && return x
+    data = el32convert(x.data)
+    return ShaderAbstractions.Sampler{T32,N,typeof(data)}(data, x.minfilter, x.magfilter,
+                                       x.repeat,
+                                       x.anisotropic,
+                                       x.color_swizzel,
+                                       ShaderAbstractions.ArrayUpdater(data, x.updates.update))
+end
+
+to_color(sampler::ShaderAbstractions.Sampler) = el32convert(sampler)
+
+assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32convert(color[]))
+
+# BUFFER OVERLOAD
+
+GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec
