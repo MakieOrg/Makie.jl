@@ -21351,8 +21351,6 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         camera.updateProjectionMatrix();
         const size = new mod.Vector2();
         renderer.getDrawingBufferSize(size);
-        console.log("----");
-        console.log(size);
         const picking_target = new mod.WebGLRenderTarget(size.x, size.y);
         const screen = {
             renderer,

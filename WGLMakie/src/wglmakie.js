@@ -298,8 +298,6 @@ function create_scene(
         // 2) Only Area we pick
         //      It's currently not as easy to change the offset + area of the camera
         //      So, we'll need to make that easier first
-        console.log("----")
-        console.log(size);
         const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
         const screen = {
             renderer,
