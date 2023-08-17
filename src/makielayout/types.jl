@@ -1750,7 +1750,11 @@ end
         "Controls whether to activate the nonlinear clip feature.  Note that this should not be used when the background is ultimately transparent."
         clip = true
         "The maximum radius of the inner clip circle. This is relative to the outer clip radius."
-        maximum_clip_radius = 0.1
+        maximum_clip_radius = 0.2
+        "Sets the mouse button for translating the plot in r-direction."
+        radial_translation_button = Mouse.right
+        "Sets the mouse button for translating the plot in theta-direction. Note that this can be the same as `radial_translation_button`."
+        theta_translation_button = false
         "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
         reset_button = Keyboard.left_control & Mouse.left
     end

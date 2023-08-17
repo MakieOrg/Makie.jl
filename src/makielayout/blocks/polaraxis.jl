@@ -458,6 +458,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # shift radius at origin if rmin exceeds some percentage of rmax
     radius_at_origin = map(po.blockscene, po.target_radius, po.maximum_clip_radius) do (rmin, rmax), max_fraction
+        # max_fraction = (rmin - r0) / (rmax - r0) solved for r0
         return max(0.0, (rmin - max_fraction * rmax) / (1 - max_fraction))
     end
 
@@ -469,6 +470,46 @@ function setup_camera_matrices!(po::PolarAxis)
             rmin, rmax = po.target_radius[]
             rmax = rmin + (rmax - rmin) * (1.1 ^ -scroll[2])
             po.target_radius[] = (rmin, rmax)
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # translation
+    drag_state = RefValue((false, false))
+    last_pos = RefValue(Point2f(0))
+    on(po.blockscene, e.mousebutton) do e
+        drag_state[] = (
+            ispressed(po.scene, po.radial_translation_button[]),
+            ispressed(po.scene, po.theta_translation_button[])
+        )
+        if is_mouseinside(po.scene) && (drag_state[][1] || drag_state[][2])
+            last_pos[] = Point2f(mouseposition(po.scene))
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    on(po.blockscene, e.mouseposition) do _
+        if drag_state[][1] || drag_state[][2]
+            pos = Point2f(mouseposition(po.scene))
+            diff = last_pos[] - pos
+            r = norm(last_pos[])
+            u_r = last_pos[] ./ r
+            u_θ = Point2f(-u_r[2], u_r[1])
+            Δr = dot(u_r, diff)
+            Δθ = dot(u_θ, diff ./ r)
+            if drag_state[][1]
+                rmin, rmax = po.target_radius[]
+                # keep the relative clip radius constant:
+                # f = (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
+                # f = (new_rmin - radius_at_origin[]) / (rmax - radius_at_origin[] + Δr)
+                Δrmin = Δr * (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
+                po.target_radius[] = max.(0, po.target_radius[] .+ (Δrmin, Δr))
+            end
+            drag_state[][2] && (po.theta_0[] = mod(po.theta_0[] .- Δθ, 0..2pi))
+            # Needs recomputation because target_radius may have changed
+            last_pos[] = Point2f(mouseposition(po.scene))
             return Consume(true)
         end
         return Consume(false)
