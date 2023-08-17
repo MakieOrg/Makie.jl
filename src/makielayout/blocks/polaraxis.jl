@@ -222,7 +222,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 po.target_radius[] = max.(0, po.target_radius[] .+ (Δrmin, Δr))
             end
             if drag_state[][2]
-                thetamin, thetamax = po.thetalimits[] .- Δθ
+                thetamin, thetamax = po.thetalimits[] .+ Δθ
                 shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
                 po.thetalimits[] = (thetamin, thetamax) .+ shift
                 po.theta_0[] = mod(po.theta_0[] .- Δθ, 0..2pi)
