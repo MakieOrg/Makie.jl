@@ -50,12 +50,8 @@ f
 \end{examplefigure}
 
 
-When considering standard tessellations the unbounded polygons are clipped at a
-bounding box determined automatically by default, or from a user-provided
-bounding box. The automatic bounding
-box is determined by the bounding box of generators of the tessellation, meaning the provided points, extended out by
-some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to
-the lengths of the bounding box's sides.
+When considering standard tessellations the unbounded polygons are clipped at a bounding box determined automatically by default, or from a user-provided clipping shape (a rectangle or circle).
+The automatic bounding box is determined by the bounding box of generators of the tessellation, meaning the provided points, extended out by some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to the lengths of the bounding box's sides.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -85,7 +81,7 @@ x = LinRange(0, 16pi, 50)
 y = sin.(x)
 bb = BBox(-1, 16pi + 1, -30, 30) # (xmin, xmax, ymin, ymax)
 f, ax, tr = voronoiplot(x, y, show_generators=false,
-    bounding_box=bb, color=:white, strokewidth=2)
+    clip=bb, color=:white, strokewidth=2)
 f
 ```
 \end{examplefigure}

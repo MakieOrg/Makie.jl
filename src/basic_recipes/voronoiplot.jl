@@ -21,7 +21,7 @@ DelaunayTriangulation.jl.
 - `strokewidth = 1` sets the width of the polygon stroke.
 - `color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
 - `unbounded_edge_extension_factor = 0.1` sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
-- `bounding_box::Union{Automatic, Rect2, Circle, Tuple} = automatic` sets the bounding box for the generated polygons. It can be passed as a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be clipped. If the `bounding_box` is not set it is automatically determined with the `unbounded_edge_extension_factor`.
+- `clip::Union{Automatic, Rect2, Circle, Tuple} = automatic` sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`.
 
 $(Base.Docs.doc(MakieCore.colormap_attributes!))
 """
@@ -43,7 +43,7 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
                       strokewidth=1.0,
                       color=automatic,
                       unbounded_edge_extension_factor=0.1,
-                      bounding_box=automatic)
+                      clip=automatic)
     MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
     return attr
 end
@@ -154,7 +154,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     end
 
     # Default to circular clip for polar transformed data
-    attr[:bounding_box] = map(p, pop!(attr, :bounding_box), p.unbounded_edge_extension_factor,
+    attr[:clip] = map(p, pop!(attr, :clip), p.unbounded_edge_extension_factor,
                               transform_func_obs(p), ps) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
             rscaled = maximum(first, ps) * (1 + ext)
@@ -190,11 +190,11 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     function update_plot(vorn)
         if isempty(DelTri.get_unbounded_polygons(vorn))
             bbox = nothing
-        elseif p.bounding_box[] === automatic
+        elseif p.clip[] === automatic
             extent = p.unbounded_edge_extension_factor[]
             bbox = DelTri.polygon_bounds(vorn, extent; include_polygon_vertices=false)
         else
-            bbox = p.bounding_box[]
+            bbox = p.clip[]
         end
         get_voronoi_tiles!(generators_2f[], polygons[], vorn, bbox)
         foreach(notify, (generators_2f, polygons))
