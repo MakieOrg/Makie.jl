@@ -507,7 +507,12 @@ function setup_camera_matrices!(po::PolarAxis)
                 Δrmin = Δr * (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
                 po.target_radius[] = max.(0, po.target_radius[] .+ (Δrmin, Δr))
             end
-            drag_state[][2] && (po.theta_0[] = mod(po.theta_0[] .- Δθ, 0..2pi))
+            if drag_state[][2]
+                thetamin, thetamax = po.thetalimits[] .- Δθ
+                shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
+                po.thetalimits[] = (thetamin, thetamax) .+ shift
+                po.theta_0[] = mod(po.theta_0[] .- Δθ, 0..2pi)
+            end
             # Needs recomputation because target_radius may have changed
             last_pos[] = Point2f(mouseposition(po.scene))
             return Consume(true)
