@@ -207,7 +207,7 @@ function setup_camera_matrices!(po::PolarAxis)
     on(po.blockscene, e.mouseposition) do _
         if drag_state[][1] || drag_state[][2]
             pos = Point2f(mouseposition(po.scene))
-            diff = last_pos[] - pos
+            diff = pos - last_pos[]
             r = norm(last_pos[])
             u_r = last_pos[] ./ r
             u_θ = Point2f(-u_r[2], u_r[1])
@@ -215,17 +215,20 @@ function setup_camera_matrices!(po::PolarAxis)
             Δθ = dot(u_θ, diff ./ r)
             if drag_state[][1]
                 rmin, rmax = po.target_radius[]
-                # keep the relative clip radius constant:
-                # f = (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
-                # f = (new_rmin - radius_at_origin[]) / (rmax - radius_at_origin[] + Δr)
-                Δrmin = Δr * (rmin - radius_at_origin[]) / (rmax - radius_at_origin[])
-                po.target_radius[] = max.(0, po.target_radius[] .+ (Δrmin, Δr))
+                if rmin > 0
+                    dr = min(rmin, Δr)
+                    rmin = rmin - dr
+                    rmax = rmax - dr
+                else
+                    rmax = r * rmax / (r + Δr)
+                end
+                po.target_radius[] = (rmin, rmax)
             end
             if drag_state[][2]
-                thetamin, thetamax = po.thetalimits[] .+ Δθ
+                thetamin, thetamax = po.thetalimits[] .- Δθ
                 shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
                 po.thetalimits[] = (thetamin, thetamax) .+ shift
-                po.theta_0[] = mod(po.theta_0[] .- Δθ, 0..2pi)
+                po.theta_0[] = mod(po.theta_0[] .+ Δθ, 0..2pi)
             end
             # Needs recomputation because target_radius may have changed
             last_pos[] = Point2f(mouseposition(po.scene))
