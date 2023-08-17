@@ -123,10 +123,7 @@ end
 ### 2.7 billion OSM GPS points
 
 Download the data from [OSM GPS points](https://planet.osm.org/gps)
-and use the script from [drawing-2-7-billion-points-in-10s](https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa) to convert the CSV to a binary blob that we can memory map.
-
-The script needed some updates for the current Julia version
-that you can find [here](https://gist.github.com/SimonDanisch/c5a92afe63476343e5b6b45be84774b7#file-fast-csv-parse-jl).
+and use the [updated script](https://gist.github.com/SimonDanisch/c5a92afe63476343e5b6b45be84774b7#file-fast-csv-parse-jl) from [drawing-2-7-billion-points-in-10s](https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa) to convert the CSV to a binary blob that we can memory map.
 
 ```julia
 using GLMakie, Mmap
