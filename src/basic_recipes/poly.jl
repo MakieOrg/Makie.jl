@@ -30,7 +30,8 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency]
+        inspectable = plot[:inspectable], transparency = plot[:transparency],
+        colormap = plot[:strokecolormap]
     )
 end
 
@@ -40,7 +41,11 @@ function poly_convert(geometries)
     return triangle_mesh.(geometries)
 end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
-poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
+function poly_convert(polys::AbstractVector{<:Polygon})
+    # GLPlainMesh2D is not concrete?
+    T = GeometryBasics.Mesh{2, Float32, GeometryBasics.Ngon{2, Float32, 3, Point2f}, SimpleFaceView{2, Float32, 3, GLIndex, Point2f, GLTriangleFace}}
+    return isempty(polys) ? T[] : triangle_mesh.(polys)
+end
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
     return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
 end
@@ -81,7 +86,7 @@ end
 
 function to_lines(polygon::AbstractVector{<: VecTypes})
     result = Point2f.(polygon)
-    push!(result, polygon[1])
+    isempty(result) || push!(result, polygon[1])
     return result
 end
 
@@ -124,6 +129,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     lines!(
         plot, outline, visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
+        colormap = plot.strokecolormap,
         linewidth = plot.strokewidth, space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5

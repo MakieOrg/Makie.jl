@@ -182,3 +182,13 @@ end
     
     f
 end
+
+@reference_test "Axis3 axis reversal" begin
+    f = Figure(resolution = (1000, 1000))
+    revstr(dir, rev) = rev ? "$dir rev" : ""
+    for (i, (x, y, z)) in enumerate(Iterators.product(fill((false, true), 3)...))
+        Axis3(f[fldmod1(i, 3)...], title = "$(revstr("x", x)) $(revstr("y", y)) $(revstr("z", z))", xreversed = x, yreversed = y, zreversed = z)
+        surface!(0:0.5:10, 0:0.5:10, (x, y) -> (sin(x) + 0.5x) * (cos(y) + 0.5y))
+    end
+    f
+end

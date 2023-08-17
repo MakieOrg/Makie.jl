@@ -236,7 +236,7 @@ function assemble_colors(::T, @nospecialize(color), @nospecialize(plot)) where {
     colorrange_scaled = lift(colorrange, colorscale; ignore_equal_values=true) do range, scale
         return Vec2f(apply_scale(scale, range))
     end
-    color_scaled = lift(color_tight, colorscale; ignore_equal_values=true) do color, scale
+    color_scaled = lift(color_tight, colorscale) do color, scale
         return el32convert(apply_scale(scale, color))
     end
     return ColorMap{N, T, typeof(color_scaled[])}(
