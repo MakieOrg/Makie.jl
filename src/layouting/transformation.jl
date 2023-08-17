@@ -21,7 +21,8 @@ end
 function Transformation(transformable::Transformable;
                         scale=Vec3f(1),
                         translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        transform_func = copy(transformation(transformable).transform_func))
 
     scale_o = convert(Observable{Vec3f}, scale)
     translation_o = convert(Observable{Vec3f}, translation)
@@ -38,7 +39,7 @@ function Transformation(transformable::Transformable;
         scale_o,
         rotation_o,
         model,
-        copy(parent_transform.transform_func)
+        transform_func
     )
 
     trans.parent[] = parent_transform
@@ -210,13 +211,13 @@ transform_func_obs(x) = transformation(x).transform_func
     apply_transform_and_model(model, transfrom_func, pos, output_type = Point3f)
 
 
-Applies the transform function and model matrix (i.e. transformations from 
+Applies the transform function and model matrix (i.e. transformations from
 `translate!`, `rotate!` and `scale!`) to the given input
 """
 function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
     return apply_transform_and_model(
-        plot.model[], transform_func(plot), pos, 
-        to_value(get(plot, :space, :data)), 
+        plot.model[], transform_func(plot), pos,
+        to_value(get(plot, :space, :data)),
         output_type
     )
 end
@@ -430,27 +431,30 @@ end
 ################################################################################
 
 """
-    Polar(theta_0::Float64 = 0.0, direction::Int = +1)
+    Polar(theta_0::Float64 = 0.0, direction::Int = +1, r0::Float64 = 0)
 
 This struct defines a general polar-to-cartesian transformation, i.e.,
 ```math
-(r, theta) -> (r \\cos(direction * (theta + theta_0)), r \\sin(direction * (theta + theta_0)))
+(r, θ) -> ((r - r₀) ⋅ \\cos(direction ⋅ (θ + θ₀)), (r - r₀) ⋅ \\sin(direction \\cdot (θ + θ₀)))
 ```
 
 where theta is assumed to be in radians.
 
-`direction` should be either -1 or +1, and `theta_0` may be any value.
+`direction` should be either -1 or +1, `r0` should be positive and `theta_0` may be any value.
+
+Note that for `r0 != 0` the inversion may return wrong results.
 """
 struct Polar
     theta_0::Float64
     direction::Int
-    Polar(theta_0 = 0.0, direction = +1) = new(theta_0, direction)
+    r0::Float64
+    Polar(theta_0 = 0.0, direction = +1, r0 = 0) = new(theta_0, direction, r0)
 end
 
 Base.broadcastable(x::Polar) = (x,)
 
 function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
-    y, x = point[1] .* sincos((point[2] + trans.theta_0) * trans.direction)
+    y, x = max(0.0, point[1] - trans.r0) .* sincos((point[2] + trans.theta_0) * trans.direction)
     return Point2{T}(x, y)
 end
 
@@ -469,7 +473,7 @@ end
 function inverse_transform(trans::Polar)
     return Makie.PointTrans{2}() do point
         typeof(point)(
-            hypot(point[1], point[2]), 
+            hypot(point[1], point[2]) + trans.r0,
             mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
         )
     end

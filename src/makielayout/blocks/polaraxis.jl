@@ -6,8 +6,6 @@
 Makie.can_be_current_axis(ax::PolarAxis) = true
 
 function Makie.initialize_block!(po::PolarAxis; palette=nothing)
-
-
     # Setup Scenes
     cb = po.layoutobservables.computedbbox
     scenearea = map(po.blockscene, cb) do cb
@@ -19,7 +17,10 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     )
     map!(to_color, po.scene.backgroundcolor, po.backgroundcolor)
 
-    po.overlay = Scene(po.scene, scenearea, clear = false, backgroundcolor = :transparent)
+    po.overlay = Scene(
+        po.scene, scenearea, clear = false, backgroundcolor = :transparent,
+        transformation = Transformation(po.scene, transform_func = identity)
+    )
 
 
     # Setup Cycler
@@ -29,17 +30,21 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     end
     po.palette = palette isa Attributes ? palette : Attributes(palette)
 
-    # Setup camera/limits
-    usable_fraction = setup_camera_matrices!(po)
 
-    # TODO - theta_0 should affect ticks?
+    # Setup camera/limits
+    usable_fraction, radius_at_origin = setup_camera_matrices!(po)
+
     Observables.connect!(
         po.scene.transformation.transform_func,
+        @lift(Polar($(po.theta_0), $(po.direction), $(radius_at_origin)))
+    )
+    Observables.connect!(
+        po.overlay.transformation.transform_func,
         @lift(Polar($(po.theta_0), $(po.direction)))
     )
 
     # Outsource to `draw_axis` function
-    thetaticklabelplot = draw_axis!(po)
+    thetaticklabelplot = draw_axis!(po, radius_at_origin)
 
     # Handle tick label spacing by axis radius adjustments
     onany(
@@ -134,7 +139,7 @@ function _polar_clip_polygon(
     return [Makie.Polygon(exterior, [interior])]
 end
 
-function draw_axis!(po::PolarAxis)
+function draw_axis!(po::PolarAxis, radius_at_origin)
     rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
@@ -143,13 +148,13 @@ function draw_axis!(po::PolarAxis)
             po.blockscene,
             po.rticks, po.rminorticks, po.rtickformat, po.rtickangle, po.rticklabelpad,
             po.target_radius, po.thetalimits, po.sample_density,
-            po.overlay.px_area
+            po.overlay.px_area, radius_at_origin
         ) do rticks, rminorticks, rtickformat, rtickangle, px_pad, rlims,
-            thetalims, sample_density, pixelarea
+            thetalims, sample_density, pixelarea, radius_at_origin
 
-        rmaxinv = 1.0 / rlims[2]
+        rmaxinv = 1.0 / (rlims[2] - radius_at_origin)
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
-        _rtickpos = _rtickvalues .* rmaxinv
+        _rtickpos = (_rtickvalues .- radius_at_origin) .* rmaxinv
         _rtickangle = rtickangle === automatic ? thetalims[1] : rtickangle
         pad = let
             w2, h2 = (0.5 .* widths(pixelarea)).^2
@@ -162,7 +167,7 @@ function draw_axis!(po::PolarAxis)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
 
         _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, rlims...)
-        _rminortickvalues .*= rmaxinv
+        _rminortickvalues .= (_rminortickvalues .- radius_at_origin) .* rmaxinv
         rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
 
         return
@@ -176,8 +181,8 @@ function draw_axis!(po::PolarAxis)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.direction, po.theta_0, po.target_radius, po.thetalimits, po.overlay.px_area
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, pixelarea
+            po.direction, po.theta_0, po.target_radius, po.thetalimits, po.overlay.px_area, po.maximum_clip_radius
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, pixelarea, max_clip
 
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, thetalims...)
 
@@ -205,7 +210,7 @@ function draw_axis!(po::PolarAxis)
 
         thetatick_pos_lbl[] = tuple.(_thetaticklabels, tick_positions)
 
-        rmin = rlims[1] / rlims[2]
+        rmin = min(rlims[1] / rlims[2], max_clip)
         thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (rmin, 1)]
 
         _thetaminortickvalues = Makie.get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
@@ -306,9 +311,11 @@ function draw_axis!(po::PolarAxis)
     end
 
     # TODO run global resizes through scale instead
-    clip_poly = map(po.target_radius, po.thetalimits, po.direction, po.theta_0) do (rmin, rmax), thetalims, dir, theta_0
+    clip_poly = map(
+            po.target_radius, po.thetalimits, po.direction, po.theta_0, po.maximum_clip_radius
+        ) do (rmin, rmax), thetalims, dir, theta_0, max_clip
         thetamin, thetamax = dir .* (thetalims .+ theta_0)
-        _polar_clip_polygon(rmin/rmax, 1.0, thetamin, thetamax)
+        _polar_clip_polygon(min(rmin/rmax, max_clip), 1.0, thetamin, thetamax)
     end
 
     clipplot = poly!(
@@ -396,16 +403,16 @@ end
 ################################################################################
 
 
-function transformed_bbox(po::PolarAxis)
-    thetamin, thetamax = po.thetalimits[]
-    rmin, rmax = po.target_radius[]
+function transformed_bbox(rlims, thetalims, r0, dir, theta_0)
+    thetamin, thetamax = thetalims
+    rmin, rmax = max.(0.0, rlims .- r0)
 
     if abs(thetamax - thetamin) > 3pi/2
         return Rect2f(-rmax, -rmax, 2rmax, 2rmax)
     end
 
     @assert thetamin < thetamax # otherwise shift by 2pi I guess
-    thetamin, thetamax = po.direction[] .* (po.thetalimits[] .+ po.theta_0[])
+    thetamin, thetamax = dir .* (thetalims .+ theta_0)
 
     # Normalize angles
     # keep interval in order
@@ -449,15 +456,19 @@ function setup_camera_matrices!(po::PolarAxis)
     setfield!(po, :target_radius, init)
     on(_ -> reset_limits!(po), po.blockscene, po.rlimits)
 
+    # shift radius at origin if rmin exceeds some percentage of rmax
+    radius_at_origin = map(po.blockscene, po.target_radius, po.maximum_clip_radius) do (rmin, rmax), max_fraction
+        return max(0.0, (rmin - max_fraction * rmax) / (1 - max_fraction))
+    end
+
     e = events(po.scene)
 
     # scroll to zoom
     on(po.blockscene, e.scroll) do scroll
         if Makie.is_mouseinside(po.scene)
             rmin, rmax = po.target_radius[]
-            rcenter = 0.5 * (rmin + rmax)
-            Δr = 0.5 * (rmax - rmin) * (1.1 ^ -scroll[2])
-            po.target_radius[] = max.(0, rcenter .+ (-Δr, Δr))
+            rmax = rmin + (rmax - rmin) * (1.1 ^ -scroll[2])
+            po.target_radius[] = (rmin, rmax)
             return Consume(true)
         end
         return Consume(false)
@@ -478,9 +489,10 @@ function setup_camera_matrices!(po::PolarAxis)
     end
 
     # update view matrix
-    data_bbox = map(po.blockscene, po.target_radius, po.thetalimits, po.direction, po.theta_0) do _, _, _, _
-        return transformed_bbox(po)
-    end
+    data_bbox = map(
+        transformed_bbox, po.blockscene,
+        po.target_radius, po.thetalimits, radius_at_origin, po.direction, po.theta_0
+    )
 
     onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
         mini = minimum(bb); ws = widths(bb)
@@ -491,7 +503,8 @@ function setup_camera_matrices!(po::PolarAxis)
     end
 
     onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
-        mini = minimum(bb); ws = widths(bb); rmax = po.target_radius[][2]
+        mini = minimum(bb); ws = widths(bb)
+        rmax = po.target_radius[][2] - radius_at_origin[] # both update data_bbox
         scale = minimum(2usable_fraction ./ ws)
         trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
         scale *= rmax
@@ -516,13 +529,13 @@ function setup_camera_matrices!(po::PolarAxis)
         camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
-    return usable_fraction
+    return usable_fraction, radius_at_origin
 end
 
 function reset_limits!(po::PolarAxis)
     if isnothing(po.rlimits[][2])
         if !isempty(po.scene.plots)
-            # WTF, why does this include child scenes by default?
+            # TODO: Why does this include child scenes by default?
             lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
             po.target_radius[] = (po.rlimits[][1], maximum(lims3d)[1])
         end
