@@ -623,3 +623,8 @@ function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
     po.rlimits[] = (rmin, rmax)
     return
 end
+
+function thetalims!(po::PolarAxis, thetamin::Real, thetamax::Real)
+    po.thetalimits[] = (thetamin, thetamax)
+    return
+end
