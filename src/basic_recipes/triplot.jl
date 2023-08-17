@@ -29,7 +29,7 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
 - `ghost_edge_linestyle = :solid` sets the linestyle of the ghost edges.
 - `ghost_edge_linewidth = 1` sets the width of the ghost edges.
 - `ghost_edge_extension_factor = 0.1` sets the extension factor for the rectangle that the exterior ghost edges are extended onto.
-- `bounding_box = automatic`: Bounding box for truncating the ghost edges. Should be a `Tuple` of the form `(a, b, c, d)` that defines the bounding box `a ≤ x ≤ b` and `c ≤ y ≤ d`. Alternatively, by default, the rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the `ghost_edge_extension_factor`, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the points in the triangulation.
+- `bounding_box::Union{Automatic, Rect2, Tuple} = automatic`: Sets the bounding box for truncating ghost edges which can be a `Rect2` (or `BBox`) or a tuple of the form `(xmin, xmax, ymin, ymax)`. By default, the rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the `ghost_edge_extension_factor`, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the points in the triangulation.
 
 - `constrained_edge_color = :magenta` sets the color of the constrained edges.
 - `constrained_edge_linestyle = :solid` sets the linestyle of the constrained edges.
@@ -120,6 +120,9 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
         Δx = xmax - xmin
         Δy = ymax - ymin
         a, b, c, d = (xmin - extent * Δx, xmax + extent * Δx, ymin - extent * Δy, ymax + extent * Δy)
+    elseif bounding_box isa Rect2
+        a, c = minimum(bounding_box)
+        b, d = maximum(bounding_box)
     else
         a, b, c, d = bounding_box
     end
