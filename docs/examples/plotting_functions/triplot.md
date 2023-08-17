@@ -71,7 +71,7 @@ inner = [
 ]
 boundary_points = [[outer], [inner]]
 boundary_nodes, points = convert_boundary_points_to_indices(boundary_points)
-tri = triangulate(points; boundary_nodes = boundary_nodes, edges = Set(((1, 9),)))
+tri = triangulate(points; boundary_nodes = boundary_nodes)
 refine!(tri; max_area=1e-3get_total_area(tri))
 
 f, ax, tr = triplot(tri, show_constrained_edges = true, constrained_edge_linewidth = 4, show_convex_hull = true)
