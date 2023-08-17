@@ -16,11 +16,13 @@ CairoMakie.activate!() # hide
 using Random
 Random.seed!(1234)
 
-f = Figure()
-ax = Axis(f[1, 1], limits = ((-0.1, 1.1), (-0.1, 1.1)))
+f = Figure(resolution=(1320, 460))
+ax = Axis(f[1, 1], limits=((0, 1), (0, 1)),
+    width=600, height=400)
 voronoiplot!(ax, rand(Point2f, 50))
 
-ax = Axis(f[1, 2], limits = ((-0.1, 1.1), (-0.1, 1.1)))
+ax = Axis(f[1, 2], limits=((0, 1), (0, 1)),
+    width=600, height=400)
 voronoiplot!(ax, rand(10, 10), rand(10, 10), rand(10, 10))
 f
 ```
@@ -29,7 +31,7 @@ f
 `voronoiplot` uses the Voronoi tessellation from
 [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl)
 to generate the cells. You can also do this yourself and directly plot the
-`VoronoiTesselation` object returned.
+`VoronoiTessellation` object returned.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -88,7 +90,9 @@ y = sin.(x)
 points = [x'; y']
 tri = triangulate(points)
 vorn = voronoi(tri)
-f, ax, tr = voronoiplot(vorn, show_generators = false, bounding_box = (-1.0, 16pi + 1.0, -30, 30), polygon_color = :white, strokewidth = 2) # (xmin, xmax, ymin, ymax)
+bb = (-1, 16pi + 1, -30, 30) # (xmin, xmax, ymin, ymax)
+f, ax, tr = voronoiplot(vorn, show_generators=false,
+    bounding_box=bb, color=:white, strokewidth=2)
 f
 ```
 \end{examplefigure}
@@ -130,7 +134,7 @@ tri = triangulate(points)
 refine!(tri; max_area = 0.001)
 vorn = voronoi(tri, true)
 smooth_vorn = centroidal_smooth(vorn)
-f, ax, tr = voronoiplot(smooth_vorn)
+f, ax, tr = voronoiplot(smooth_vorn, show_generators=false)
 f
 ```
 \end{examplefigure}

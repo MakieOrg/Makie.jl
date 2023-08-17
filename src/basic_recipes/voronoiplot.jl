@@ -13,7 +13,7 @@ DelaunayTriangulation.jl.
 
 - `show_generators = true` determines whether to plot the individual generators.
 
-- `markersize = 4` sets the size of the points.
+- `markersize = 12` sets the size of the points.
 - `marker = :circle` sets the shape of the points.
 - `markercolor = :black` sets the color of the points.
 
