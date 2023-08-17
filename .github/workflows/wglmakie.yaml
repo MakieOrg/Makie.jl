@@ -6,14 +6,14 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-release
+      - sd/beta-20
   push:
     paths-ignore:
       - 'docs/**'
       - '*.md'
     branches:
       - master
-      - breaking-release
+      - sd/beta-20
     tags: '*'
 
 concurrency:
@@ -48,7 +48,7 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests; add JSServe#sd/fix-asset-server"
       - name: Run the tests
         continue-on-error: true
         run: >

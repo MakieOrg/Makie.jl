@@ -4,13 +4,13 @@ on:
     branches:
       - main
       - master
-      - breaking-release
+      - sd/beta-20
     tags: '*'
   pull_request:
     branches:
       - main
       - master
-      - breaking-release
+      - sd/beta-20
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}

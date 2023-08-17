@@ -7,11 +7,22 @@
     </picture>
 </div>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MakieOrg/Makie.jl/blob/main/LICENSE)
-[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+<div align="center">
+
+[![][docs-stable-img]][docs-stable-url]
+[![][docs-master-img]][docs-master-url]
+
 [![Build Status](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml?query=branch%3Amaster)
-[![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MakieOrg/Makie.jl/blob/main/LICENSE)
 [![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/Makie&label=Downloads)](https://pkgs.genieframework.com?packages=Makie)
+
+[![JOSS][joss-img]][joss-url]
+[![Citation Badge](https://api.juleskreuer.eu/citation-badge.php?doi=10.21105/joss.03349)](https://juleskreuer.eu/projekte/citation-badge)
+
+[![](https://img.shields.io/badge/Twitter-@MakiePlots-1DA1F2?&logo=twitter&logoColor=white)](https://twitter.com/MakiePlots)
+[![chat][discord-img]][discord-url]
+
+</div>
 
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is the gold and silver of our age, so let's spread it out beautifully on the screen!
@@ -20,12 +31,17 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
-[docs-stable-img]: https://img.shields.io/badge/docs-stable-lightgrey.svg
+[docs-stable-img]: https://img.shields.io/badge/Docs-Stable-lightgrey.svg
 [docs-stable-url]: http://docs.makie.org/stable/
-[docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
+[docs-master-img]: https://img.shields.io/badge/Docs-Dev-blue.svg
 [docs-master-url]: http://docs.makie.org/dev/
+[joss-url]: https://doi.org/10.21105/joss.03349
+[joss-img]: http://joss.theoj.org/papers/10.21105/joss.03349/status.svg
 
-# Citing Makie
+[discord-url]: https://discord.com/invite/2FBjYAT3cY
+[discord-img]: https://img.shields.io/discord/996787732149981214.svg?logo=discord&colorB=7289DA&label=Discord
+
+## Citing Makie
 
 If you use Makie for a scientific publication, please cite [our JOSS paper](https://joss.theoj.org/papers/10.21105/joss.03349) the following way:
 
@@ -56,7 +72,11 @@ Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.0334
 
 or [Download the BibTeX file](./assets/DanischKrumbiegel2021.bibtex).
 
-# Installation
+## Community Channels
+
+We are on [Discord](https://discord.com/invite/2FBjYAT3cY) and [Discourse](https://discourse.julialang.org/c/17?tags=Makie)! Community channels are a great way for you to ask questions and get help. Please join us!
+
+## Installation
 
 Please consider using the backends directly. As explained in the documentation, they re-export all of Makie's functionality.
 So, instead of installing Makie, just install e.g. GLMakie directly:
@@ -99,7 +119,7 @@ To run the tests, you also should add:
 For more info about ReferenceTests, check out its [README](./ReferenceUpdater/README.md)
 </details>
 
-# Examples
+## Examples
 
 The following examples are supposed to be self-explanatory. For further information [check out the documentation!](http://docs.makie.org/stable/)
 

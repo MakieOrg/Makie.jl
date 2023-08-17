@@ -521,6 +521,7 @@ Plots polygons, which are defined by
    Vector or Matrices of numbers can be used as well, which will use the colormap arguments to map the numbers to colors.
    One can also use `Makie.LinePattern`, to cover the poly with a regular stroke pattern.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
+- `strokecolormap`::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 
@@ -533,6 +534,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         color = theme(scene, :patchcolor),
 
         strokecolor = theme(scene, :patchstrokecolor),
+        strokecolormap = theme(scene, :colormap),
         strokewidth = theme(scene, :patchstrokewidth),
         linestyle = nothing,
 
