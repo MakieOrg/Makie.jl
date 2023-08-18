@@ -82,6 +82,26 @@ struct MultiplesTicks
     suffix::String
 end
 
+"""
+    AngularTicks(label_factor, suffix[, n_ideal::Vector{Vec2f}])
+
+Sets up AngularTicks with a predetermined amount of ticks. `label_factor` can be
+used to transform the tick labels from radians to degree. `suffix` is added to
+the end of the generated label strings. `n_ideal` can be used to affect the ideal
+number of ticks. It represents a set of linear function which are combined using
+`mapreduce(v -> v[1] * delta + v[2], min, m.n_ideal)` where
+`delta = maximum(limits) - minimum(limits)`.
+"""
+struct AngularTicks
+    label_factor::Float64
+    suffix::String
+    n_ideal::Vector{Vec2f}
+    function AngularTicks(label_factor, suffix, n_ideal = [Vec2f(0, 9), Vec2f(4, 4), Vec2f(8, 2)])
+        return new(label_factor, suffix, n_ideal)
+    end
+end
+
+
 
 # """
 #     LogitTicks{T}(linear_ticks::T)
@@ -1688,7 +1708,7 @@ end
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = automatic
         "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
-        thetaticks = MultiplesTicks(9, π/180, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        thetaticks = AngularTicks(180/pi, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
         "The specifier for the minor `theta` ticks."
         thetaminorticks = IntervalsBetween(2)
         "The color of the `theta` grid."
