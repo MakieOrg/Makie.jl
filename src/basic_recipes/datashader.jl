@@ -17,7 +17,13 @@ end
 
 function aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
     pix_reshaped = Base.ReshapedArray(canvas.pixelbuffer, canvas.resolution, ())
-    return operation(map!(local_operation, result, pix_reshaped))
+    # we want to make it easy to set local_operation or operation, without them clashing, while also being able to set both!
+    if operation === Makie.automatic
+        postfunc = local_operation === identity ? Makie.equalize_histogram : identity
+    else
+        postfunc = operation
+    end
+    return postfunc(map!(local_operation, result, pix_reshaped))
 end
 
 Base.size(c::Canvas) = c.resolution
@@ -298,8 +304,8 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
         async = true,
         # Defaults to equalize_histogram
         # just set to automatic, so that if one sets local_post, one doesn't do equalize_histogram on top of things.
-        global_post = automatic,
-        local_post = identity,
+        operation=automatic,
+        local_operation=identity,
 
         point_func = identity,
         binfactor = 1,
@@ -362,7 +368,9 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         canvas_with_aggregation[] = canvas
         return
     end
-    image!(p, canvas_with_aggregation; colorrange=p.colorrange, colormap=p.colormap)
+    image!(p, canvas_with_aggregation;
+        colorrange=p.colorrange, colormap=p.colormap,
+        operation=p.operation, local_operation=p.local_operation)
     return p
 end
 
@@ -374,7 +382,19 @@ function aggregate_categories!(canvases, categories; method=AggThreads())
 end
 
 
-Makie.convert_arguments(::Type{<: DataShader}, x::Dict{String,Vector{<:Point2}}) = (x,)
+Makie.convert_arguments(::Type{<:DataShader}, x::Dict{String,Vector{<:Point2}}) = (x,)
+
+function Makie.convert_arguments(::Type{<:DataShader}, groups::AbstractVector, points::AbstractVector{<:Point2})
+    if length(groups) != length(points)
+        error("Each point needs a group. Length $(length(groups)) != $(length(points))")
+    end
+    categories = Dict{String, Vector{Point2f}}()
+    for (g, p) in zip(groups, points)
+        gpoints = get!(()-> Point2f[], categories, string(g))
+        push!(gpoints, p)
+    end
+    return (categories,)
+end
 
 function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
     scene = parent_scene(p)
@@ -403,6 +423,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
         return
     end
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
+    p._categories = colors
     op = map(total -> (x -> log10(x + 1) / log10(total + 1)), toal_value)
     for (k, canvas) in canvases
         color = colors[k]
@@ -417,7 +438,7 @@ Makie.data_limits(p::DataShader) =  p._boundingbox[]
 Makie.used_attributes(::Type{<:Any}, ::Canvas) = (:operation, :local_operation)
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
-                           operation=equalize_histogram, local_operation=identity)
+                           operation=automatic, local_operation=identity)
     pixel = PixelAggregation.aggregation(canvas; operation=operation, local_operation=local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
     xrange = range(xmin, stop = xmax, length = size(pixel, 1))
@@ -425,16 +446,18 @@ function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Con
     return convert_arguments(P, xrange, yrange, pixel)
 end
 
-# function Makie.plot!(plot::Combined{PlotType, <: Tuple{<: Canvas}}) where PlotType
-#     println("jey")
-#     xrange = Observable((canvas[].xmin .. canvas[].xmax); ignore_equal_values=true)
-#     yrange = Observable((canvas[].ymin .. canvas[].ymax); ignore_equal_values=true)
-#     canvas = plot.canvas
-#     result = Observable(similar(canvas[].pixelbuffer, canvas[].resolution))
-#     lift(plot, canvas, plot.global_operation, local_operation, ) do canvas, global_op, local_op
-#         aggregation(canvas::Canvas; operation=global_op, local_operation=local_op, result=result[])
-#         notify(result)
-#         return
-#     end
-#     plot!(plot, PlotType, result)
-# end
+struct FakePlot <: AbstractPlot{Poly}
+    attributes::Attributes
+end
+Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key)
+
+function get_plots(plot::DataShader)
+    return map(collect(plot._categories[])) do (name, color)
+        colors = RGBAf.(Colors.color(color), [0, 1, 1, 0])
+        return FakePlot(Attributes(; label=name, color=colors))
+    end
+end
+
+function legendelements(plot::FakePlot, legend)
+    return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
+end

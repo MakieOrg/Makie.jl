@@ -103,11 +103,12 @@ Downloads.download(url, out)
     # a custom array type from Parquet2 supporting missing and some other things, which slows the whole thing down.
     # points = StructArray{Point2f}((dlon, dlat))
     points = Point2f.(dlon, dlat)
+    groups = Parquet2.load(ds, "vendor_id")
 end
 
 # ~0.06s
 @time begin
-    f, ax, ds = datashader(points;
+    f, ax, dsplot = datashader(points;
         colormap=:fire,
         axis=(; type=Axis, autolimitaspect = 1),
         figure=(;figure_padding=0, resolution=(1200, 600))
@@ -120,9 +121,9 @@ end
 ```
 ![](/assets/datashader-14million.gif)
 
-### 2.7 billion OSM GPS points
+#### 2.7 billion OSM GPS points
 
-Download the data from [OSM GPS points](https://planet.osm.org/gps)
+Download the data from [OSM GPS points](https://planet.osm.org/gps/simple-gps-points-120604.csv.xz)
 and use the [updated script](https://gist.github.com/SimonDanisch/c5a92afe63476343e5b6b45be84774b7#file-fast-csv-parse-jl) from [drawing-2-7-billion-points-in-10s](https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa) to convert the CSV to a binary blob that we can memory map.
 
 ```julia
@@ -164,3 +165,48 @@ aggregation took 0.866s
 aggregation took 0.724s
 ```
 ![](/assets/datashader_2-7_billion.gif)
+
+### Categorical Data
+
+There are two ways to plot categorical data right now:
+```julia
+datashader(one_category_per_point, points)
+datashader(Dict(:category_a => all_points_a, :category_b => all_points_b))
+```
+
+The type of the category doesn't matter, but will get converted to strings internally, to be displayed nicely in the legend.
+Categories are currently aggregated in one Canvas per category, and then overlayed with alpha blending.
+
+\begin{examplefigure}{}
+```julia
+normaldist = randn(Point2f, 1_000_000)
+ds1 = normaldist .+ (Point2f(-1, 0),)
+ds2 = normaldist .+ (Point2f(1, 0),)
+fig, ax, pl = datashader(Dict("a" => ds1, "b" => ds2))
+hidedecorations!(ax)
+fig
+```
+\end{examplefigure}
+
+We can also re-use the previous NYC example for a categorical plot:
+```julia
+@time begin
+    f = Figure(figure_padding=0, resolution=(1200, 600))
+    ax = Axis(
+        f[1, 1],
+        autolimitaspect=1,
+        limits=(-74.022, -73.827, 40.696, 40.793),
+        backgroundcolor=:black
+    )
+    datashader!(ax, groups, points)
+    hidedecorations!(ax)
+    hidespines!(ax)
+    # Create a styled legend
+    axislegend("Vendor ID"; titlecolor=:white, framecolor=:grey, polystrokewidth=2, polystrokecolor=(:white, 0.5), rowgap=10, bgcolor=:black, labelcolor=:white)
+    display(f)
+end
+```
+![](/assets/nyc-per-vendor.png)
+
+
+### Advanced API
