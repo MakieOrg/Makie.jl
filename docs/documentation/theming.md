@@ -29,9 +29,7 @@ function example_plot()
         lines(f[i, j], cumsum(randn(50)))
     end
     Label(f[0, :], "A simple example plot")
-    Label(f[3, :], L"Random walks $x(t_n) = \sum_{i \leq n} z_i")
-    f
-end
+    Label(f[3, :], L"Random walks $x(t_n)$")
 
 example_plot()
 ```
@@ -65,8 +63,6 @@ For example, you can combine the dark theme with the LaTeX fonts theme to have b
 dark_latexfonts = merge(theme_dark(), theme_latexfonts())
 set_theme!(dark_latexfonts)
 example_plot()
-
-set_theme!() # hide
 ```
 \end{examplefigure}
 
@@ -80,11 +76,13 @@ For example, you can decide to change the text size after activating the dark an
 ```julia
 update_theme!(fontsize=30)
 example_plot()
-
-set_theme!() # hide
 ```
 \end{examplefigure}
 
+```!
+# hideall
+set_theme!()
+```
 ## with_theme
 
 Because it can be tedious to remember to switch themes off which you need only temporarily, there's the function `with_theme(f, theme)` which handles the resetting for you automatically, even if you encounter an error while running `f`.
