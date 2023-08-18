@@ -23,7 +23,6 @@ Let's create a plot with the default theme:
 using CairoMakie
 CairoMakie.activate!() # hide
 
-
 function example_plot()
     f = Figure()
     for i in 1:2, j in 1:2
@@ -66,6 +65,8 @@ For example, you can combine the dark theme with the LaTeX fonts theme to have b
 dark_latexfonts = merge(theme_dark(), theme_latexfonts())
 set_theme!(dark_latexfonts)
 example_plot()
+
+set_theme!() # hide
 ```
 \end{examplefigure}
 
@@ -79,6 +80,8 @@ For example, you can decide to change the text size after activating the dark an
 ```julia
 update_theme!(fontsize=30)
 example_plot()
+
+set_theme!() # hide
 ```
 \end{examplefigure}
 
