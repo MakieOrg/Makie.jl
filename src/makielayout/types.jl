@@ -1767,8 +1767,10 @@ end
         thetaminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), false)
         "The density at which grid lines are sampled."
         sample_density = 100
-        "Controls whether to activate the nonlinear clip feature.  Note that this should not be used when the background is ultimately transparent."
+        "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
         clip = true
+        "Sets the color of the clip polygon. Mainly for debug purposes."
+        clipcolor = automatic
         "The maximum radius of the inner clip circle. This is relative to the outer clip radius."
         maximum_clip_radius = 0.2
         "Sets the mouse button for translating the plot in r-direction."

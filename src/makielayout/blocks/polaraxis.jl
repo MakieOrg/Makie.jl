@@ -471,13 +471,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     # tick labels
 
-    clipcolor = map(po.blockscene, po.backgroundcolor) do bgc
-        bgc = to_color(bgc)
-        if alpha(bgc) == 0f0
-            return to_color(:white)
-        else
-            return bgc
-        end
+    clipcolor = map(po.blockscene, po.clipcolor, po.backgroundcolor) do cc, bgc
+        return cc === automatic ? RGBf(to_color(bgc)) : RGBf(to_color(cc))
     end
 
     rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
@@ -541,7 +536,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     # handle placement with transform
     onany(po.overlay, po.thetalimits, po.direction, po.theta_0) do thetalims, dir, theta_0
         thetamin, thetamax = dir .* (thetalims .+ theta_0)
-        rotate!(outer_clip_plot, dir > 0 ? thetamin : thetamax)
+        rotate!(outer_clip_plot, Vec3f(0,0,1), dir > 0 ? thetamin : thetamax)
     end
 
     # inner clip is a plain circle which needs to be scaled to match rlimits
@@ -599,6 +594,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         linestyle = po.spinestyle,
         visible = po.spinevisible
     )
+
+    notify(po.thetalimits)
 
     translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot, spineplot), 0, 0, 9000)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 8990)
