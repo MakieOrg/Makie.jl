@@ -352,25 +352,19 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     onany(
             po.blockscene,
-            po.rticks, po.rminorticks, po.rtickformat, po.rtickangle, po.rticklabelpad,
-            po.target_radius, po.thetalimits, po.sample_density,
-            po.overlay.px_area, radius_at_origin
-        ) do rticks, rminorticks, rtickformat, rtickangle, px_pad, rlims,
-            thetalims, sample_density, pixelarea, radius_at_origin
+            po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
+            po.target_radius, po.thetalimits, po.sample_density, radius_at_origin
+        ) do rticks, rminorticks, rtickformat, rtickangle, rlims,
+            thetalims, sample_density, radius_at_origin
 
         rmaxinv = 1.0 / (rlims[2] - radius_at_origin)
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
-        _rtickpos = (_rtickvalues .- radius_at_origin) .* rmaxinv
+        _rtickradius = (_rtickvalues .- radius_at_origin) .* rmaxinv
         _rtickangle = rtickangle === automatic ? thetalims[1] : rtickangle
-        pad = let
-            w2, h2 = (0.5 .* widths(pixelarea)).^2
-            s, c = sincos(_rtickangle)
-            rmaxinv * px_pad / sqrt(w2 * c * c + h2 * s * s)
-        end
-        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickpos .+ pad, _rtickangle))
+        rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickradius, _rtickangle))
 
         thetas = LinRange(thetalims..., sample_density)
-        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickpos])
+        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickradius])
 
         _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, rlims...)
         _rminortickvalues .= (_rminortickvalues .- radius_at_origin) .* rmaxinv
@@ -486,10 +480,19 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         strokewidth = po.rticklabelstrokewidth,
         strokecolor = rstrokecolor,
         align = map(po.direction, po.theta_0, po.rtickangle, po.thetalimits) do dir, theta_0, rtickangle, thetalims
-            angle = rtickangle === automatic ? thetalims[1] : rtickangle
+            thetamin, thetamax = thetalims
+            angle = rtickangle === automatic ? thetamin : rtickangle
+            (thetamax - thetamin) < 6.0 && (angle -= pi/2)
             s, c = sincos(dir * (angle + theta_0))
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+        end,
+        offset = map(po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad) do dir, theta_0, rtickangle, thetalims, pad
+            thetamin, thetamax = thetalims
+            angle = rtickangle === automatic ? thetamin : rtickangle
+            (thetamax - thetamin) < 6.0 && (angle -= pi/2)
+            s, c = sincos(dir * (angle + theta_0))
+            Point2f(pad * c, pad * s)
         end
     )
 
