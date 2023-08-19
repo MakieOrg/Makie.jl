@@ -400,15 +400,16 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
 
     thetatick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
-    thetatick_align = Observable{Vector{Point2f}}()
+    thetatick_align = Observable(Point2f[])
+    thetatick_offset = Observable(Point2f[])
     thetagridpoints = Observable{Vector{Point2f}}()
     thetaminorgridpoints = Observable{Vector{Point2f}}()
 
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.direction, po.theta_0, po.target_radius, po.thetalimits, po.overlay.px_area, po.maximum_clip_radius
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, pixelarea, max_clip
+            po.direction, po.theta_0, po.target_radius, po.thetalimits, po.maximum_clip_radius
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, max_clip
 
         _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, thetalims...)
 
@@ -420,22 +421,20 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
             pop!(_thetaticklabels)
         end
 
-        thetatick_align[] = map(_thetatickvalues) do angle
+        # Text
+        resize!(thetatick_align.val, length(_thetatickvalues))
+        resize!(thetatick_offset.val, length(_thetatickvalues))
+        for (i, angle) in enumerate(_thetatickvalues)
             s, c = sincos(dir * (angle + theta_0))
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
-            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+            thetatick_align.val[i] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+            thetatick_offset.val[i] = Point2f(px_pad * c, px_pad * s)
         end
+        foreach(notify, (thetatick_align, thetatick_offset))
 
-        # transform px_pad to radial pad
-        w2, h2 = (0.5 .* widths(pixelarea)).^2
-        tick_positions = map(_thetatickvalues) do angle
-            s, c = sincos(dir * (angle + theta_0))
-            pad_mult = 1.0 + px_pad / sqrt(w2 * c * c + h2 * s * s)
-            Point2f(pad_mult, angle)
-        end
+        thetatick_pos_lbl[] = tuple.(_thetaticklabels, Point2f.(1, _thetatickvalues))
 
-        thetatick_pos_lbl[] = tuple.(_thetaticklabels, tick_positions)
-
+        # Grid lines
         rmin = min(rlims[1] / rlims[2], max_clip)
         thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (rmin, 1)]
 
@@ -523,6 +522,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         strokecolor = thetastrokecolor,
         align = thetatick_align[]
     )
+    thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
 
     # Hack to deal with synchronous update problems
     on(thetaticklabelplot, thetatick_align) do align
