@@ -31,7 +31,7 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     po.palette = palette isa Attributes ? palette : Attributes(palette)
 
 
-    # Setup camera/limits
+    # Setup camera/limits and Polar transform
     usable_fraction, radius_at_origin = setup_camera_matrices!(po)
 
     Observables.connect!(
@@ -43,10 +43,11 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
         @lift(Polar($(po.theta_0), $(po.direction)))
     )
 
-    # Outsource to `draw_axis` function
+    # Draw clip, grid lines, spine, ticks
     thetaticklabelplot = draw_axis!(po, radius_at_origin)
 
     # Calculate fraction of screen usable after reserving space for theta ticks
+    # TODO: Should we include rticks here?
     # OPT: only update on relevant text attributes rather than glyphcollection
     onany(
             po.blockscene,
@@ -70,7 +71,7 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
         space_for_ticks = 2pad .+ (max_width, max_height)
         space_for_axis = space_from_center .- space_for_ticks
 
-        # divide by width because aspect ratios
+        # divide by width only because aspect ratios
         usable_fraction[] = space_for_axis ./ space_from_center[1]
     end
 
@@ -121,7 +122,8 @@ function polar2cartesian(r, angle)
     return Point2f(r * c, r * s)
 end
 
-function transformed_bbox(rlims, thetalims, r0, dir, theta_0)
+# Bounding box specified by limits in Cartesian coordinates
+function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
     thetamin, thetamax = thetalims
     rmin, rmax = max.(0.0, rlims .- r0)
 
@@ -174,12 +176,57 @@ function setup_camera_matrices!(po::PolarAxis)
     setfield!(po, :target_radius, init)
     on(_ -> reset_limits!(po), po.blockscene, po.rlimits)
 
-    # shift radius at origin if rmin exceeds some percentage of rmax
+    # To keep the inner clip radius below a certain fraction of the outer clip
+    # radius we map all r > r0 to 0. This computes that r0.
     radius_at_origin = map(po.blockscene, po.target_radius, po.maximum_clip_radius) do (rmin, rmax), max_fraction
         # max_fraction = (rmin - r0) / (rmax - r0) solved for r0
         return max(0.0, (rmin - max_fraction * rmax) / (1 - max_fraction))
     end
 
+    # get cartesian bbox defined by axis limits
+    # OPT: target_radius update triggers radius_at_origin update
+    data_bbox = map(po.blockscene, po.thetalimits, radius_at_origin, po.direction, po.theta_0) do tlims, ro, dir, t0
+        polaraxis_bbox(po.target_radius[], tlims, ro, dir, t0)
+    end
+
+    # fit data_bbox into the usable area of PolarAxis (i.e. with tick space subtracted)
+    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
+        mini = minimum(bb); ws = widths(bb)
+        scale = minimum(2usable_fraction ./ ws)
+        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
+        camera(po.scene).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
+        return
+    end
+
+    # same as above, but with rmax scaled to 1
+    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
+        mini = minimum(bb); ws = widths(bb)
+        rmax = po.target_radius[][2] - radius_at_origin[] # both update data_bbox
+        scale = minimum(2usable_fraction ./ ws)
+        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
+        scale *= rmax
+        camera(po.overlay).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
+    end
+
+    max_z = 10_000f0
+
+    # update projection matrices
+    # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -max_z ... max_z)
+    on(po.blockscene, po.scene.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
+    end
+
+    on(po.blockscene, po.overlay.px_area) do area
+        aspect = Float32((/)(widths(area)...))
+        w = 1f0
+        h = 1f0 / aspect
+        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
+    end
+
+    # Interactivity
     e = events(po.scene)
 
     # scroll to zoom
@@ -255,50 +302,6 @@ function setup_camera_matrices!(po::PolarAxis)
         return Consume(false)
     end
 
-    # update view matrix
-    # cartesian bbox given by axis setup (limits, modifiers)
-    # OPT: target_radius update triggers radius_at_origin update
-    data_bbox = map(po.blockscene, po.thetalimits, radius_at_origin, po.direction, po.theta_0) do tlims, ro, dir, t0
-        transformed_bbox(po.target_radius[], tlims, ro, dir, t0)
-    end
-
-    # fit data_bbox into the usable area of PolarAxis (i.e. with tick space subtracted)
-    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
-        mini = minimum(bb); ws = widths(bb)
-        scale = minimum(2usable_fraction ./ ws)
-        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
-        camera(po.scene).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
-        return
-    end
-
-    # fit axis components to the area used for data
-    onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
-        mini = minimum(bb); ws = widths(bb)
-        rmax = po.target_radius[][2] - radius_at_origin[] # both update data_bbox
-        scale = minimum(2usable_fraction ./ ws)
-        trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
-        scale *= rmax
-        camera(po.overlay).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
-    end
-
-    max_z = 10_000f0
-
-    # update projection matrices
-    # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -max_z ... max_z)
-    on(po.blockscene, po.scene.px_area) do area
-        aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
-        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
-    end
-
-    on(po.blockscene, po.overlay.px_area) do area
-        aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
-        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
-    end
-
     return usable_fraction, radius_at_origin
 end
 
@@ -321,6 +324,7 @@ end
 ################################################################################
 
 
+# generates large square with circle sector cutout
 function _polar_clip_polygon(
         thetamin, thetamax; step = 2pi/360, outer = 1e4,
         exterior = Makie.convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
@@ -366,12 +370,11 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         return
     end
 
+    # doesn't have a lot of overlap with the inputs above so calculate this independently
     onany(
             po.overlay,
             po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad
         ) do dir, theta_0, rtickangle, thetalims, pad
-        thetamin, thetamax = thetalims
-        angle = rtickangle === automatic ? thetamin : rtickangle
         angle = (rtickangle === automatic ? thetalims[1] : rtickangle) - pi/2
         s, c = sincos(dir * (angle + theta_0))
 
@@ -488,7 +491,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         strokecolor = rstrokecolor,
         align = rtick_align,
     )
-    # OPT: skip glyphcollection update
+    # OPT: skip glyphcollection update on offset changes
     rticklabelplot.plots[1].plots[1].offset = rtick_offset
 
 
@@ -516,37 +519,39 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         return
     end
 
-
     # Clipping
+
+    # create large square with r=1 circle sector cutout
+    # only regenerate if circle sector angle changes
     thetadiff = map(lims -> abs(lims[2] - lims[1]), po.overlay, po.thetalimits, ignore_equal_values = true)
     outer_clip = map(po.overlay, thetadiff) do diff
         return _polar_clip_polygon(0, diff)
     end
-
     outer_clip_plot = poly!(
         po.overlay,
         outer_clip,
-        color = :green, # clipcolor,
+        color = clipcolor,
         visible = po.clip,
         fxaa = false,
         transformation = Transformation(), # no polar transform for this
         shading = false
     )
+    # handle placement with transform
     onany(po.overlay, po.thetalimits, po.direction, po.theta_0) do thetalims, dir, theta_0
         thetamin, thetamax = dir .* (thetalims .+ theta_0)
         rotate!(outer_clip_plot, dir > 0 ? thetamin : thetamax)
     end
 
+    # inner clip is a plain circle which needs to be scaled to match rlimits
     inner_clip_plot = mesh!(
         po.overlay,
         Circle(Point2f(0), 1f0),
-        color = :green, # clipcolor,
+        color = clipcolor,
         visible = po.clip,
         fxaa = false,
         transformation = Transformation(),
         shading = false
     )
-
     onany(
             po.overlay, po.target_radius, po.maximum_clip_radius
         ) do lims, maxclip
@@ -555,7 +560,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     end
     notify(po.maximum_clip_radius)
 
-
+    # spine traces circle sector - inner circle
     spine_points = map(
             po.target_radius, po.thetalimits, po.maximum_clip_radius
         ) do (rmin, rmax), thetalims, max_clip
