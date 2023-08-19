@@ -389,7 +389,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         ) do dir, theta_0, rtickangle, thetalims, pad
         thetamin, thetamax = thetalims
         angle = rtickangle === automatic ? thetamin : rtickangle
-        (thetamax - thetamin) < 6.0 && (angle -= pi/2)
+        angle = (rtickangle === automatic ? thetalims[1] : rtickangle) - pi/2
         s, c = sincos(dir * (angle + theta_0))
 
         scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
