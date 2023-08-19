@@ -2,6 +2,9 @@
 
 ## master
 
+- Added `rlimits` and `thetalimits` to `PolarAxis`. [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- Added camera translations in r and theta direction to `PolarAxis`. [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+
 ## v0.19.8
 
 - Improved CairoMakie rendering of `lines` with repeating colors in an array [#3141](https://github.com/MakieOrg/Makie.jl/pull/3141).
