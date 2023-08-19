@@ -151,13 +151,13 @@ end
     f = Figure(resolution = (800, 400))
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
-    
+
     ax2 = PolarAxis(f[1, 2], title = "Modified spine")
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
     scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
-    
+
     f
 end
 
@@ -166,9 +166,9 @@ end
 @reference_test "PolarAxis decorations" begin
     f = Figure(resolution = (400, 400), backgroundcolor = :black)
     ax = PolarAxis(
-        f[1, 1], 
+        f[1, 1],
         backgroundcolor = :black,
-        rminorgridvisible = true, rminorgridcolor = :red, 
+        rminorgridvisible = true, rminorgridcolor = :red,
         rminorgridwidth = 1.0, rminorgridstyle = :dash,
         thetaminorgridvisible = true, thetaminorgridcolor = :blue,
         thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
@@ -179,7 +179,24 @@ end
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
     )
-    
+
+    f
+end
+
+@reference_test "PolarAxis limits" begin
+    f = Figure(resolution = (800, 600))
+    for (i, theta_0) in enumerate((0, -pi/6, pi/2))
+        for (j, thetalims) in enumerate(((0, 2pi), (-pi/2, pi/2), (0, pi/12)))
+            po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (2, 6))
+            po.scene.backgroundcolor[] = RGBAf(1,0.5,0.5,1)
+            lines!(po, range(0, 10, length=201), range(0, 20pi, length=201), color = :white, linewidth = 5)
+
+            b = Box(f[i, j], color = (:blue, 0.2))
+            translate!(b.blockscene, 0, 0, 9001)
+        end
+    end
+    colgap!(f.layout, 5)
+    rowgap!(f.layout, 5)
     f
 end
 
