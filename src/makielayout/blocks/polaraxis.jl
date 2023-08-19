@@ -46,16 +46,20 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     # Outsource to `draw_axis` function
     thetaticklabelplot = draw_axis!(po, radius_at_origin)
 
-    # Handle tick label spacing by axis radius adjustments
+    # Calculate fraction of screen usable after reserving space for theta ticks
+    # OPT: only update on relevant text attributes rather than glyphcollection
     onany(
-            po.blockscene, thetaticklabelplot.plots[1].plots[1][1],
+            po.blockscene,
+            thetaticklabelplot.plots[1].text,
+            thetaticklabelplot.plots[1].fontsize,
+            thetaticklabelplot.plots[1].font,
             po.thetaticklabelpad, po.overlay.px_area
-        ) do glyph_collections, pad, area
+        ) do _, _, _, pad, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
-        for gc in glyph_collections
+        for gc in thetaticklabelplot.plots[1].plots[1][1][]
             bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
@@ -253,10 +257,10 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # update view matrix
     # cartesian bbox given by axis setup (limits, modifiers)
-    data_bbox = map(
-        transformed_bbox, po.blockscene,
-        po.target_radius, po.thetalimits, radius_at_origin, po.direction, po.theta_0
-    )
+    # OPT: target_radius update triggers radius_at_origin update
+    data_bbox = map(po.blockscene, po.thetalimits, radius_at_origin, po.direction, po.theta_0) do tlims, ro, dir, t0
+        transformed_bbox(po.target_radius[], tlims, ro, dir, t0)
+    end
 
     # fit data_bbox into the usable area of PolarAxis (i.e. with tick space subtracted)
     onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
@@ -347,22 +351,28 @@ end
 
 function draw_axis!(po::PolarAxis, radius_at_origin)
     rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
+    rtick_align = Observable{Point2f}()
+    rtick_offset = Observable{Point2f}()
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
 
+    # OPT: target_radius update triggers radius_at_origin update
     onany(
             po.blockscene,
             po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
-            po.target_radius, po.thetalimits, po.sample_density, radius_at_origin
-        ) do rticks, rminorticks, rtickformat, rtickangle, rlims,
+            po.thetalimits, po.sample_density, radius_at_origin
+        ) do rticks, rminorticks, rtickformat, rtickangle,
             thetalims, sample_density, radius_at_origin
 
+        # For text:
+        rlims = po.target_radius[]
         rmaxinv = 1.0 / (rlims[2] - radius_at_origin)
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickradius = (_rtickvalues .- radius_at_origin) .* rmaxinv
         _rtickangle = rtickangle === automatic ? thetalims[1] : rtickangle
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickradius, _rtickangle))
 
+        # For grid lines
         thetas = LinRange(thetalims..., sample_density)
         rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickradius])
 
@@ -372,6 +382,22 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
         return
     end
+
+    onany(
+            po.overlay,
+            po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad
+        ) do dir, theta_0, rtickangle, thetalims, pad
+        thetamin, thetamax = thetalims
+        angle = rtickangle === automatic ? thetamin : rtickangle
+        (thetamax - thetamin) < 6.0 && (angle -= pi/2)
+        s, c = sincos(dir * (angle + theta_0))
+
+        scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
+        rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+        rtick_offset[] = Point2f(pad * c, pad * s)
+        return
+    end
+
 
     thetatick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
     thetatick_align = Observable{Vector{Point2f}}()
@@ -419,8 +445,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         return
     end
 
-    # TODO - compute this based on text bb (which would replace this trigger)
-    notify(po.target_radius)
+    notify(po.thetalimits)
 
     # plot using the created observables
 
@@ -479,22 +504,11 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         color = po.rticklabelcolor,
         strokewidth = po.rticklabelstrokewidth,
         strokecolor = rstrokecolor,
-        align = map(po.direction, po.theta_0, po.rtickangle, po.thetalimits) do dir, theta_0, rtickangle, thetalims
-            thetamin, thetamax = thetalims
-            angle = rtickangle === automatic ? thetamin : rtickangle
-            (thetamax - thetamin) < 6.0 && (angle -= pi/2)
-            s, c = sincos(dir * (angle + theta_0))
-            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
-            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
-        end,
-        offset = map(po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad) do dir, theta_0, rtickangle, thetalims, pad
-            thetamin, thetamax = thetalims
-            angle = rtickangle === automatic ? thetamin : rtickangle
-            (thetamax - thetamin) < 6.0 && (angle -= pi/2)
-            s, c = sincos(dir * (angle + theta_0))
-            Point2f(pad * c, pad * s)
-        end
+        align = rtick_align,
     )
+    # OPT: skip glyphcollection update
+    rticklabelplot.plots[1].plots[1].offset = rtick_offset
+
 
     thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
         sc === automatic ? bg : Makie.to_color(sc)
