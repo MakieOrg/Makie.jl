@@ -322,30 +322,13 @@ end
 
 
 function _polar_clip_polygon(
-        rmin, rmax, thetamin, thetamax; step = 2pi/360, outer = 1e4,
+        thetamin, thetamax; step = 2pi/360, outer = 1e4,
         exterior = Makie.convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
     )
-    if rmax < rmin
-        rmin, rmax = rmax, rmin
-    end
-
     # make sure we have 2+ points per arc
     N = max(2, ceil(Int, abs(thetamax - thetamin) / step) + 1)
-    if abs(thetamax - thetamin) ≈ 2pi
-        interior = map(theta -> polar2cartesian(rmax, theta), LinRange(thetamin, thetamax, N))
-        if rmin > 1e-6
-            inner_clip = map(theta -> polar2cartesian(rmin, theta), LinRange(thetamin, thetamax, N))
-            return [Makie.Polygon(exterior, [interior]), Makie.Polygon(inner_clip)]
-        end
-    else
-        interior = sizehint!(Point2f[], 2N)
-        for angle in LinRange(thetamin, thetamax, N)
-            push!(interior, polar2cartesian(rmin, angle))
-        end
-        for angle in LinRange(thetamax, thetamin, N)
-            push!(interior, polar2cartesian(rmax, angle))
-        end
-    end
+    interior = map(theta -> polar2cartesian(1.0, theta), LinRange(thetamin, thetamax, N))
+    (abs(thetamax - thetamin) ≈ 2pi) || push!(interior, Point2f(0))
     return [Makie.Polygon(exterior, [interior])]
 end
 
@@ -533,31 +516,85 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         return
     end
 
-    # TODO run global resizes through scale instead
-    clip_poly = map(
-            po.target_radius, po.thetalimits, po.direction, po.theta_0, po.maximum_clip_radius
-        ) do (rmin, rmax), thetalims, dir, theta_0, max_clip
-        thetamin, thetamax = dir .* (thetalims .+ theta_0)
-        _polar_clip_polygon(min(rmin/rmax, max_clip), 1.0, thetamin, thetamax)
+
+    # Clipping
+    thetadiff = map(lims -> abs(lims[2] - lims[1]), po.overlay, po.thetalimits, ignore_equal_values = true)
+    outer_clip = map(po.overlay, thetadiff) do diff
+        return _polar_clip_polygon(0, diff)
     end
 
-    clipplot = poly!(
+    outer_clip_plot = poly!(
         po.overlay,
-        clip_poly,
+        outer_clip,
         color = :green, # clipcolor,
         visible = po.clip,
-        fxaa = true,
+        fxaa = false,
         transformation = Transformation(), # no polar transform for this
-        strokecolor = po.spinecolor,
-        strokewidth = map((v, w) -> v * w, po.spinevisible, po.spinewidth),
-        linestyle = po.spinestyle
+        shading = false
     )
-    # on(po.blockscene, axis_radius) do (_, radius)
-        # scale!(clipplot, Vec3f(radius, radius, 1))
-    # end
+    onany(po.overlay, po.thetalimits, po.direction, po.theta_0) do thetalims, dir, theta_0
+        thetamin, thetamax = dir .* (thetalims .+ theta_0)
+        rotate!(outer_clip_plot, dir > 0 ? thetamin : thetamax)
+    end
 
-    translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot), 0, 0, 9000)
-    translate!(clipplot, 0, 0, 8990)
+    inner_clip_plot = mesh!(
+        po.overlay,
+        Circle(Point2f(0), 1f0),
+        color = :green, # clipcolor,
+        visible = po.clip,
+        fxaa = false,
+        transformation = Transformation(),
+        shading = false
+    )
+
+    onany(
+            po.overlay, po.target_radius, po.maximum_clip_radius
+        ) do lims, maxclip
+        s = min(lims[1] / lims[2], maxclip)
+        scale!(inner_clip_plot, Vec3f(s, s, 1))
+    end
+    notify(po.maximum_clip_radius)
+
+
+    spine_points = map(
+            po.target_radius, po.thetalimits, po.maximum_clip_radius
+        ) do (rmin, rmax), thetalims, max_clip
+        thetamin, thetamax = thetalims
+        rmin = min(rmin/rmax, max_clip)
+        rmax = 1.0
+        step = 2pi/100
+
+        # make sure we have 2+ points per arc
+        N = max(2, ceil(Int, abs(thetamax - thetamin) / step) + 1)
+        if abs(thetamax - thetamin) ≈ 2pi
+            ps = Point2f.(rmax, LinRange(thetamin, thetamax, N))
+            if rmin > 1e-6
+                push!(ps, Point2f(NaN))
+                append!(ps, Point2f.(rmin, LinRange(thetamin, thetamax, N)))
+            end
+        else
+            ps = sizehint!(Point2f[], 2N+1)
+            for angle in LinRange(thetamin, thetamax, N)
+                push!(ps, Point2f(rmin, angle))
+            end
+            for angle in LinRange(thetamax, thetamin, N)
+                push!(ps, Point2f(rmax, angle))
+            end
+            push!(ps, first(ps))
+        end
+        return ps
+    end
+    spineplot = lines!(
+        po.overlay,
+        spine_points,
+        strokecolor = po.spinecolor,
+        strokewidth = po.spinewidth,
+        linestyle = po.spinestyle,
+        visible = po.spinevisible
+    )
+
+    translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot, spineplot), 0, 0, 9000)
+    translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 8990)
 
     return thetaticklabelplot
 end
