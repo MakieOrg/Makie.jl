@@ -246,13 +246,18 @@ function setup_camera_matrices!(po::PolarAxis)
     drag_state = RefValue((false, false))
     last_pos = RefValue(Point2f(0))
     on(po.blockscene, e.mousebutton) do e
-        drag_state[] = (
-            ispressed(po.scene, po.radial_translation_button[]),
-            ispressed(po.scene, po.theta_translation_button[])
-        )
-        if is_mouseinside(po.scene) && (drag_state[][1] || drag_state[][2])
+        if e.action == Mouse.press && is_mouseinside(po.scene)
+            drag_state[] = (
+                ispressed(po.scene, po.radial_translation_button[]),
+                ispressed(po.scene, po.theta_translation_button[])
+            )
             last_pos[] = Point2f(mouseposition(po.scene))
             return Consume(true)
+        elseif e.action == Mouse.release
+            drag_state[] = (
+                ispressed(po.scene, po.radial_translation_button[]),
+                ispressed(po.scene, po.theta_translation_button[])
+            )
         end
         return Consume(false)
     end
