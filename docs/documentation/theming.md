@@ -30,6 +30,7 @@ function example_plot()
     end
     Label(f[0, :], "A simple example plot")
     Label(f[3, :], L"Random walks $x(t_n)$")
+end
 
 example_plot()
 ```
