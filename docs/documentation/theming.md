@@ -79,16 +79,13 @@ example_plot()
 ```
 \end{examplefigure}
 
-```!
-# hideall
-set_theme!()
-```
 ## with_theme
 
 Because it can be tedious to remember to switch themes off which you need only temporarily, there's the function `with_theme(f, theme)` which handles the resetting for you automatically, even if you encounter an error while running `f`.
 
 \begin{examplefigure}{}
 ```julia
+set_theme!() # hide
 with_theme(fontsize_theme) do
     example_plot()
 end
