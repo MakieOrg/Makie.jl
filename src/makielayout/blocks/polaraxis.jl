@@ -100,10 +100,12 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     protrusions = map(
             po.blockscene, po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize
         ) do _, _, _, _, _, _
-        GridLayoutBase.RectSides(
-            0f0, 0f0, 0f0,
-            (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(po.scene)[])),
-        )
+        titlespace = if po.title[] != ""
+            (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(po.scene)[]))
+        else
+            0f0
+        end
+        return GridLayoutBase.RectSides(0f0, 0f0, 0f0, titlespace)
     end
 
     connect!(po.layoutobservables.protrusions, protrusions)

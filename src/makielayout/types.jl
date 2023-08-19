@@ -1736,7 +1736,7 @@ end
         "Controls if the `theta` ticks are visible."
         thetaticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
         "The title of the plot"
-        title = " "
+        title = ""
         "The gap between the title and the top of the axis"
         titlegap = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
         "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
