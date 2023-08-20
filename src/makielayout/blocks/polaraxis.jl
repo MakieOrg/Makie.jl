@@ -3,9 +3,9 @@
 ################################################################################
 
 
-Makie.can_be_current_axis(ax::PolarAxis) = true
+can_be_current_axis(ax::PolarAxis) = true
 
-function Makie.initialize_block!(po::PolarAxis; palette=nothing)
+function initialize_block!(po::PolarAxis; palette=nothing)
     # Setup Scenes
     cb = po.layoutobservables.computedbbox
     scenearea = map(po.blockscene, cb) do cb
@@ -26,7 +26,7 @@ function Makie.initialize_block!(po::PolarAxis; palette=nothing)
     # Setup Cycler
     po.cycler = Cycler()
     if palette === nothing
-        palette = fast_deepcopy(get(po.blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
+        palette = fast_deepcopy(get(po.blockscene.theme, :palette, DEFAULT_PALETTES))
     end
     po.palette = palette isa Attributes ? palette : Attributes(palette)
 
@@ -218,14 +218,14 @@ function setup_camera_matrices!(po::PolarAxis)
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
-        camera(po.scene).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
+        camera(po.scene).projection[] = orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
     on(po.blockscene, po.overlay.px_area) do area
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
-        camera(po.overlay).projection[] = Makie.orthographicprojection(-w, w, -h, h, -max_z, max_z)
+        camera(po.overlay).projection[] = orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
     # Interactivity
@@ -233,7 +233,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # scroll to zoom
     on(po.blockscene, e.scroll) do scroll
-        if Makie.is_mouseinside(po.scene)
+        if is_mouseinside(po.scene)
             rmin, rmax = po.target_radius[]
             rmax = rmin + (rmax - rmin) * (1.0 - po.zoomspeed) ^ scroll[2]
             po.target_radius[] = (rmin, rmax)
@@ -334,21 +334,21 @@ end
 # generates large square with circle sector cutout
 function _polar_clip_polygon(
         thetamin, thetamax; step = 2pi/360, outer = 1e4,
-        exterior = Makie.convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
+        exterior = convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
     )
     # make sure we have 2+ points per arc
     N = max(2, ceil(Int, abs(thetamax - thetamin) / step) + 1)
     interior = map(theta -> polar2cartesian(1.0, theta), LinRange(thetamin, thetamax, N))
     (abs(thetamax - thetamin) ≈ 2pi) || push!(interior, Point2f(0))
-    return [Makie.Polygon(exterior, [interior])]
+    return [Polygon(exterior, [interior])]
 end
 
 function draw_axis!(po::PolarAxis, radius_at_origin)
     rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
     rtick_align = Observable{Point2f}()
     rtick_offset = Observable{Point2f}()
-    rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
-    rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
+    rgridpoints = Observable{Vector{GeometryBasics.LineString}}()
+    rminorgridpoints = Observable{Vector{GeometryBasics.LineString}}()
 
     function default_rtickangle(rtickangle, direction, thetalims)
         if rtickangle === automatic
@@ -373,18 +373,18 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         # For text:
         rlims = po.target_radius[]
         rmaxinv = 1.0 / (rlims[2] - radius_at_origin)
-        _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
+        _rtickvalues, _rticklabels = get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickradius = (_rtickvalues .- radius_at_origin) .* rmaxinv
         _rtickangle = default_rtickangle(rtickangle, dir, thetalims)
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickradius, _rtickangle))
 
         # For grid lines
         thetas = LinRange(thetalims..., sample_density)
-        rgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickradius])
+        rgridpoints[] = GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickradius])
 
-        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, rlims...)
+        _rminortickvalues = get_minor_tickvalues(rminorticks, identity, _rtickvalues, rlims...)
         _rminortickvalues .= (_rminortickvalues .- radius_at_origin) .* rmaxinv
-        rminorgridpoints[] = Makie.GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
+        rminorgridpoints[] = GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
 
         return
     end
@@ -415,7 +415,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
             po.direction, po.theta_0, po.target_radius, po.thetalimits, po.maximum_clip_radius
         ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, max_clip
 
-        _thetatickvalues, _thetaticklabels = Makie.get_ticks(thetaticks, identity, thetatickformat, thetalims...)
+        _thetatickvalues, _thetaticklabels = get_ticks(thetaticks, identity, thetatickformat, thetalims...)
 
         # Since theta = 0 is at the same position as theta = 2π, we remove the last tick
         # iff the difference between the first and last tick is exactly 2π
@@ -442,7 +442,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         rmin = min(rlims[1] / rlims[2], max_clip)
         thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (rmin, 1)]
 
-        _thetaminortickvalues = Makie.get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
+        _thetaminortickvalues = get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
         thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in (rmin, 1)]
 
         return
@@ -492,7 +492,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     end
 
     rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : Makie.to_color(sc)
+        sc === automatic ? bg : to_color(sc)
     end
 
     rticklabelplot = text!(
@@ -509,7 +509,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
 
     thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : Makie.to_color(sc)
+        sc === automatic ? bg : to_color(sc)
     end
 
     thetaticklabelplot = text!(
@@ -660,9 +660,9 @@ end
 ################################################################################
 
 
-function Makie.plot!(
-    po::PolarAxis, P::Makie.PlotFunc,
-    attributes::Makie.Attributes, args...;
+function plot!(
+    po::PolarAxis, P::PlotFunc,
+    attributes::Attributes, args...;
     kw_attributes...)
 
     allattrs = merge(attributes, Attributes(kw_attributes))
@@ -670,7 +670,7 @@ function Makie.plot!(
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, po.cycler, po.palette)
 
-    plot = Makie.plot!(po.scene, P, allattrs, args...)
+    plot = plot!(po.scene, P, allattrs, args...)
 
     reset_limits!(po)
 
@@ -678,9 +678,9 @@ function Makie.plot!(
 end
 
 
-function Makie.plot!(P::Makie.PlotFunc, po::PolarAxis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(po, P, attributes, args...)
+function plot!(P::PlotFunc, po::PolarAxis, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot!(po, P, attributes, args...)
 end
 
 
