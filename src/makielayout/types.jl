@@ -1773,6 +1773,8 @@ end
         clipcolor = automatic
         "The maximum radius of the inner clip circle. This is relative to the outer clip radius."
         maximum_clip_radius = 0.2
+        "Sets the speed of scroll based zooming. Setting this to 0 effectively disables zooming."
+        zoomspeed = 0.1
         "Sets the mouse button for translating the plot in r-direction."
         radial_translation_button = Mouse.right
         "Sets the mouse button for translating the plot in theta-direction. Note that this can be the same as `radial_translation_button`."

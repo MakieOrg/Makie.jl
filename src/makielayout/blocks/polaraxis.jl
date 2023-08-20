@@ -235,7 +235,7 @@ function setup_camera_matrices!(po::PolarAxis)
     on(po.blockscene, e.scroll) do scroll
         if Makie.is_mouseinside(po.scene)
             rmin, rmax = po.target_radius[]
-            rmax = rmin + (rmax - rmin) * (1.1 ^ -scroll[2])
+            rmax = rmin + (rmax - rmin) * (1.0 - po.zoomspeed) ^ scroll[2]
             po.target_radius[] = (rmin, rmax)
             return Consume(true)
         end

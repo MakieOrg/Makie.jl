@@ -106,12 +106,12 @@ f
 
 ## Interactivity
 
-The `PolarAxis` currently implements zooming by scrolling and allows you to 
-reset the view with left control + left mouse button. You can change the key
-combination for resetting the view with the `reset_button` attribute, which 
-accepts anything `ispressed` accepts.
+The `PolarAxis` currently implements zooming by scrolling, radial translations by dragging while the right mouse button is pressed and allows you to reset the view by pressing left control + left mouse button.
+Angular translations are also implemented but disabled by default.
+You can make adjustments to these interactions with the attributes `ax.scrollspeed[] = 0.1`, `ax.radial_translation_button[] = Mouse.right`, `ax.theta_translation_button[] = false` and `ax.reset_button[] = Keyboard.left_control & Mouse.left`.
+For example you can enable angular translations by setting `ax.theta_translation_button[] = Mouse.right`.
 
-Note that `PolarAxis` currently does not implement the interaction itnerface 
+Note that `PolarAxis` currently does not implement the interaction interface
 used by `Axis`.
 
 ## Other Notes
