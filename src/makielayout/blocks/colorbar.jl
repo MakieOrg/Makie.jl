@@ -70,7 +70,7 @@ end
 
 colorbar_range(start, stop, length, _::typeof(identity)) = LinRange(start, stop, length)
 function colorbar_range(start, stop, length, _)
-    @warn "cannot determine inverse_transform"
+    @warn "Cannot determine inverse transform: maybe use `Makie.ReverseibleScale` instead ? "
     colorbar_range(start, stop, length, identity)  # noop (nothing we can do, bailing out)
 end
 

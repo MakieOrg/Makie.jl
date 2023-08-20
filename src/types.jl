@@ -404,7 +404,7 @@ struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
     """
     ticks base (e.g. "10" for pseudo `log10` ticks) (optional)
     """
-    logbase::String
+    logbase::Union{Nothing,String}
     """
     default limits (optional)
     """
@@ -413,7 +413,7 @@ struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
     valid limits interval (optional)
     """
     interval::I
-    function ReversibleScale(forward, backward; logbase = "", limits = (0f0, 10f0), interval = (-Inf32, Inf32))
+    function ReversibleScale(forward, backward; logbase = nothing, limits = (0f0, 10f0), interval = (-Inf32, Inf32))
         if !(interval isa AbstractInterval)
             interval = OpenInterval(Float32.(interval)...)
         end

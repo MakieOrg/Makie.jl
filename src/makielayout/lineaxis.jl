@@ -585,11 +585,11 @@ _logbase(s::ReversibleScale) = s.logbase
 _logbase(::typeof(log10)) = "10"
 _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
-_logbase(::Any) = ""
+_logbase(::Any) = nothing
 
 function get_ticks(::Automatic, scale::Union{LogFunctions,ReversibleScale}, any_formatter, vmin, vmax)
     wt = WilkinsonTicks(5, k_min = 3)
-    ticks = isempty(_logbase(scale)) ? wt : LogTicks(wt)
+    ticks = isnothing(_logbase(scale)) ? wt : LogTicks(wt)
     get_ticks(ticks, scale, any_formatter, vmin, vmax)
 end
 
