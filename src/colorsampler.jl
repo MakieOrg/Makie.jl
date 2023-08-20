@@ -179,7 +179,7 @@ end
 struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
     color::Observable{T}
     colormap::Observable{Vector{RGBAf}}
-    scale::Observable{Union{ReversibleScale,Function}}
+    scale::Observable{Union{ReversibleScale, Function}}
     mapping::Observable{Union{Nothing, Vector{Float64}}}
     colorrange::Observable{Vec{2,Float64}}
 
@@ -198,7 +198,7 @@ function assemble_colors(::T, @nospecialize(color), @nospecialize(plot)) where {
     color_tight = convert(Observable{T}, color)
     colormap = Observable(RGBAf[]; ignore_equal_values=true)
     categorical = Observable(false)
-    colorscale = convert(Observable, plot.colorscale)
+    colorscale = convert(Observable{Union{ReversibleScale, Function}}, plot.colorscale)
     mapping = Observable{Union{Nothing, Vector{Float64}}}(nothing)
 
     function update_colors(cmap, a)
