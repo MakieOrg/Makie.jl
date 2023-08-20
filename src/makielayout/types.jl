@@ -1679,6 +1679,8 @@ end
         rticklabelstrokewidth = 0.0
         "The color of the outline of `r` ticks. By default this uses the background color."
         rticklabelstrokecolor = automatic
+        "Padding of the `r` ticks label."
+        rticklabelpad = 4f0
         "Controls if the `r` ticks are visible."
         rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."
