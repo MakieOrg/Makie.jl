@@ -613,8 +613,13 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     notify(po.thetalimits)
 
-    translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot, rticklabelplot, thetaticklabelplot, spineplot), 0, 0, 9000)
-    translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 8990)
+    translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
+    translate!(spineplot, 0, 0, 9001)
+    translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
+    on(po.griddepth) do depth
+        translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
+    end
+    notify(po.griddepth)
 
     return thetaticklabelplot
 end

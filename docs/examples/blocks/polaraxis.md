@@ -150,13 +150,20 @@ f
 
 ## Other Notes
 
+### Drawing over grid lines
+
+By default grid lines are drawn in front of plots.
+If you want to draw them behind plots set `ax.griddepth[]` to a value between -10_000 and 0 (exclusive), e.g. `ax.griddepth[] = -100`.
+
 ### Plotting outside a PolarAxis
 
-Currently there is a scatter and poly plot outside the area of the `PolarAxis`
-which clips the content to the relevant area. If you want to draw outside the
-circle limiting the polar axis but still within it's scene area, you will need
+Currently there are two poly plots outside the area of the `PolarAxis`
+which clip the content to the relevant area. If you want to draw outside the
+clip limiting the polar axis but still within it's scene area, you need
 to translate those plots to a z range between `9000` and `10_000` or disable
 clipping via the `clip` attribute.
+
+For reference, the z values used by `PolarAxis` are `po.griddepth[] = 8999` for grid lines, 9000 for the clip polygons, 9001 for spines and 9002 for tick labels.
 
 ## Attributes
 

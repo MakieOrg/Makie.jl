@@ -1687,6 +1687,8 @@ end
         rgridwidth = inherit(scene, (:Axis, :xgridwidth), 1)
         "The linestyle of the `r` grid."
         rgridstyle = inherit(scene, (:Axis, :xgridstyle), nothing)
+        "Sets the depth of grid lines. To place the grid behind plots set it to -10_000 < griddepth < 0."
+        griddepth = 8999
         "Controls if the `r` grid is visible."
         rgridvisible = inherit(scene, (:Axis, :xgridvisible), true)
         "The formatter for the `r` ticks"
