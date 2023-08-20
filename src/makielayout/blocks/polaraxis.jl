@@ -350,20 +350,32 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
 
+    function default_rtickangle(rtickangle, direction, thetalims)
+        if rtickangle === automatic
+            if direction == -1
+                return thetalims[2]
+            else
+                return thetalims[1]
+            end
+        else
+            return rtickangle
+        end
+    end
+
     # OPT: target_radius update triggers radius_at_origin update
     onany(
             po.blockscene,
             po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
-            po.thetalimits, po.sample_density, radius_at_origin
+            po.direction, po.thetalimits, po.sample_density, radius_at_origin
         ) do rticks, rminorticks, rtickformat, rtickangle,
-            thetalims, sample_density, radius_at_origin
+            dir, thetalims, sample_density, radius_at_origin
 
         # For text:
         rlims = po.target_radius[]
         rmaxinv = 1.0 / (rlims[2] - radius_at_origin)
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickradius = (_rtickvalues .- radius_at_origin) .* rmaxinv
-        _rtickangle = rtickangle === automatic ? thetalims[1] : rtickangle
+        _rtickangle = default_rtickangle(rtickangle, dir, thetalims)
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickradius, _rtickangle))
 
         # For grid lines
@@ -382,9 +394,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
             po.overlay,
             po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad
         ) do dir, theta_0, rtickangle, thetalims, pad
-        angle = (rtickangle === automatic ? thetalims[1] : rtickangle) - pi/2
-        s, c = sincos(dir * (angle + theta_0))
-
+        angle = default_rtickangle(rtickangle, dir, thetalims) - pi/2
+        s, c = sincos(angle + theta_0)
         scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
         rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         rtick_offset[] = Point2f(pad * c, pad * s)
@@ -683,6 +694,11 @@ function autolimits!(po::PolarAxis)
     return
 end
 
+"""
+    rlims!(ax::PolarAxis[, rmin = ax.rlimits[][1]], rmax)
+
+Sets the radial limits of a given `PolarAxis`.
+"""
 rlims!(po::PolarAxis, r::Real) = rlims!(po, po.rlimits[][1], r)
 
 function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
@@ -690,6 +706,11 @@ function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
     return
 end
 
+"""
+    thetalims!(ax::PolarAxis, thetamin, thetamax)
+
+Sets the angular limits of a given `PolarAxis`.
+"""
 function thetalims!(po::PolarAxis, thetamin::Real, thetamax::Real)
     po.thetalimits[] = (thetamin, thetamax)
     return

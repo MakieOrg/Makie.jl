@@ -1,6 +1,6 @@
 # PolarAxis
 
-The `PolarAxis` is an axis for data in polar coordinates `(radius, angle)`. It 
+The `PolarAxis` is an axis for data in polar coordinates `(radius, angle)`. It
 is currently an experimental feature, meaning that some functionality might be
 missing or broken, and that the `PolarAxis` is (more) open to breaking changes.
 
@@ -23,7 +23,7 @@ f
 
 ## Plotting into an PolarAxis
 
-Like with an `Axis` you can use mutating 2D plot functions directly on a 
+Like with an `Axis` you can use mutating 2D plot functions directly on a
 `PolarAxis`. The input arguments of the plot functions will then be interpreted
 in polar coordinates, i.e. as a radius and angle (in radians).
 
@@ -36,10 +36,10 @@ f
 ```
 \end{examplefigure}
 
-Note that not every plot type is compatible with polar transforms. For example 
-`image` is not as it expects to be drawn on a rectangle. `heatmap` works to a 
-degree in CairoMakie, but not GLMakie due to differences in the backend 
-implementation. `surface` works in both, as it is designed to generate a 
+Note that not every plot type is compatible with polar transforms. For example
+`image` is not as it expects to be drawn on a rectangle. `heatmap` works to a
+degree in CairoMakie, but not GLMakie due to differences in the backend
+implementation. `surface` works in both, as it is designed to generate a
 triangle mesh.
 
 \begin{examplefigure}{svg = false}
@@ -75,17 +75,17 @@ f
 ```
 \end{examplefigure}
 
-Decorations such as grid lines and tick labels can be adjusted through 
+Decorations such as grid lines and tick labels can be adjusted through
 attributes in much the same way.
 
 \begin{examplefigure}{svg = true}
 ```julia
 f = Figure(resolution = (600, 600), backgroundcolor = :black)
 ax = PolarAxis(
-    f[1, 1], 
+    f[1, 1],
     backgroundcolor = :black,
     # r minor grid
-    rminorgridvisible = true, rminorgridcolor = :red, 
+    rminorgridvisible = true, rminorgridcolor = :red,
     rminorgridwidth = 1.0, rminorgridstyle = :dash,
     # theta minor grid
     thetaminorgridvisible = true, thetaminorgridcolor = :lightblue,
@@ -114,6 +114,40 @@ For example you can enable angular translations by setting `ax.theta_translation
 Note that `PolarAxis` currently does not implement the interaction interface
 used by `Axis`.
 
+## Limits and Orientation of PolarAxis
+
+The PolarAxis includes radial limits `ax.rlimits[] = (rmin, rmax)` and `ax.thetalimits[] = (thetamin, thetamax)`.
+They can be set either directly or with the helper functions `rlims!(ax, rmin, rmax)` and `thetalims!(ax, thetamin, thetamax)`.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure(resolution = (600, 300))
+ax = PolarAxis(f[1, 1], rlimits = (4, 8))
+lines!(ax, range(0, 10, length=301), range(0, 20pi, length=301), linewidth = 5, color = :orange)
+ax = PolarAxis(f[1, 2])
+lines!(ax, range(0, 10, length=301), range(0, 20pi, length=301), linewidth = 5, color = :orange)
+thetalims!(ax, -pi/2, pi/2)
+f
+```
+\end{examplefigure}
+
+As you can see adjusting the limits has an effect on the shape of the `PolarAxis`.
+Setting `rmin > 0` will result in part of the center being removed, up to a maximum relative to `rmax` set by `ax.maximum_clip_radius[] = 0.2`.
+Setting angular limits to a range smaller than `2pi` will result in the matching sector being shown.
+You can adjust the orientation and placement of this sector with `ax.theta_0[] = 0.0` and `ax.direction[] = 1`.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure(resolution = (500, 300))
+ax = PolarAxis(f[1, 1],
+    rlimits = (4, 8), thetalimits = (-pi/2, pi/2),
+    theta_0 = -pi/2, direction = -1, maximum_clip_radius = 1/3)
+lines!(ax, range(0, 10, length=301), range(0, 20pi, length=301), linewidth = 5, color = :orange)
+f
+```
+\end{examplefigure}
+
+
 ## Other Notes
 
 ### Plotting outside a PolarAxis
@@ -121,7 +155,7 @@ used by `Axis`.
 Currently there is a scatter and poly plot outside the area of the `PolarAxis`
 which clips the content to the relevant area. If you want to draw outside the
 circle limiting the polar axis but still within it's scene area, you will need
-to translate those plots to a z range between `9000` and `10_000` or disable 
+to translate those plots to a z range between `9000` and `10_000` or disable
 clipping via the `clip` attribute.
 
 ## Attributes
