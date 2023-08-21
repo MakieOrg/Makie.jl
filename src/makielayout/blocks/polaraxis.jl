@@ -235,7 +235,7 @@ function setup_camera_matrices!(po::PolarAxis)
     on(po.blockscene, e.scroll) do scroll
         if is_mouseinside(po.scene)
             rmin, rmax = po.target_radius[]
-            rmax = rmin + (rmax - rmin) * (1.0 - po.zoomspeed) ^ scroll[2]
+            rmax = rmin + (rmax - rmin) * (1.0 - po.zoomspeed[]) ^ scroll[2]
             po.target_radius[] = (rmin, rmax)
             return Consume(true)
         end
@@ -524,7 +524,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
 
     # Hack to deal with synchronous update problems
-    on(po.blockscene, thetaticklabelplot, thetatick_align) do align
+    on(po.blockscene, thetatick_align) do align
         thetaticklabelplot.align.val = align
         if length(align) == length(thetatick_pos_lbl[])
             notify(thetaticklabelplot.align)
