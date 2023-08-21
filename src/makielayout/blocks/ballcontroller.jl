@@ -597,7 +597,6 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
         scene, Point2f(0), space = :clip,
         marker = Circle, markersize = 1.75, markerspace = :clip,
         color = controller.backgroundcolor, fxaa = true,
-        # glowcolor = :white, glowwidth = 5
     )
     translate!(bg, 0, 0, 1)
 
@@ -622,9 +621,8 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
     end
     lp = lines!(
         scene, region,
-        color = controller.angle_indicator_color,
-        linewidth = controller.angle_indicator_linewidth,
-        # strokecolor = :black, strokewidth = 1,
+        color = controller.direction_indicator_color,
+        linewidth = controller.direction_indicator_linewidth,
         visible = false, fxaa = true#, depth_shift = -0.001
     )
 

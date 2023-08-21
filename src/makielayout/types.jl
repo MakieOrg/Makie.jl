@@ -1772,19 +1772,26 @@ end
         "The size of controller scene when it is not placed in a layout."
         float_size = 150
 
-        "Sets the font color for the direction picking angle indicator."
+        # Text that appears on scroll
+        "Sets the font color for the current angle popup."
         angle_indicator_fontcolor = :black
-        "Sets the font size for the direction picking angle indicator."
+        "Sets the font size for the current angle popup."
         angle_indicator_fontsize = 20
-        "Sets the font outline size for the direction picking angle indicator."
+        "Sets the font outline size for the current angle popup."
         angle_indicator_strokesize = 2
-        "Sets the font outline color for the direction picking angle indicator."
+        "Sets the font outline color for the current angle popup."
         angle_indicator_strokecolor = :white
-        "Sets the color for the direction picking rect."
-        angle_indicator_color = :white
-        "Sets the line width for the direction picking rect."
-        angle_indicator_linewidth = 1
+        "Sets how long the angle indicator is visible after switching to a finer or coarser direction selection."
+        angle_indicator_timeout = 3.0
 
+        "Controls the number of different selectable directions. The elements represent different zoom levels of the selection with each value being the number of direction over 360°."
+        step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
+
+        # Rect that shows on hover
+        "Sets the color for the direction picking rect."
+        direction_indicator_color = :black
+        "Sets the line width for the direction picking rect."
+        direction_indicator_linewidth = 1
 
         # Controller visuals
         "Sets the background color for the circle behind the displayed ball"
@@ -1810,11 +1817,5 @@ end
         rotationspeed = 1.0
         "Sets the maximum time between pressing and releasing a mouse button for it to still count as a click."
         click_timeout = 0.3
-
-        # Other Controls
-        "Controls the number of different selectable directions. The elements represent different zoom levels of the selection with each value being the number of direction over 360°."
-        step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
-        "Sets how long the angle indicator is visible after switching to a finer or coarser direction selection."
-        angle_indicator_timeout = 3.0
     end
 end
