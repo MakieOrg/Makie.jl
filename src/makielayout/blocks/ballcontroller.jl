@@ -180,6 +180,7 @@ function generate_ball_controller_texture(;
     return parent
 end
 
+
 ################################################################################
 ### Camera setup
 ################################################################################
@@ -473,10 +474,6 @@ end
 
 function spherical_to_cartesian(phi, theta, radius = 1f0)
     return radius * Vec3f(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta))
-end
-
-function cartesian_to_spherical(v::Vec3f)
-
 end
 
 
