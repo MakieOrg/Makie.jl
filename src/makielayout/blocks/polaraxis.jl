@@ -15,7 +15,7 @@ function initialize_block!(po::PolarAxis; palette=nothing)
     po.scene = Scene(
         po.blockscene, scenearea, backgroundcolor = po.backgroundcolor, clear = true
     )
-    map!(to_color, po.scene.backgroundcolor, po.backgroundcolor)
+    map!(to_color, po.scene, po.scene.backgroundcolor, po.backgroundcolor)
 
     po.overlay = Scene(
         po.scene, scenearea, clear = false, backgroundcolor = :transparent,
@@ -391,7 +391,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     # doesn't have a lot of overlap with the inputs above so calculate this independently
     onany(
-            po.overlay,
+            po.blockscene,
             po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad
         ) do dir, theta_0, rtickangle, thetalims, pad
         angle = default_rtickangle(rtickangle, dir, thetalims) - pi/2
@@ -524,7 +524,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
 
     # Hack to deal with synchronous update problems
-    on(thetaticklabelplot, thetatick_align) do align
+    on(po.blockscene, thetaticklabelplot, thetatick_align) do align
         thetaticklabelplot.align.val = align
         if length(align) == length(thetatick_pos_lbl[])
             notify(thetaticklabelplot.align)
@@ -536,8 +536,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     # create large square with r=1 circle sector cutout
     # only regenerate if circle sector angle changes
-    thetadiff = map(lims -> abs(lims[2] - lims[1]), po.overlay, po.thetalimits, ignore_equal_values = true)
-    outer_clip = map(po.overlay, thetadiff) do diff
+    thetadiff = map(lims -> abs(lims[2] - lims[1]), po.blockscene, po.thetalimits, ignore_equal_values = true)
+    outer_clip = map(po.blockscene, thetadiff) do diff
         return _polar_clip_polygon(0, diff)
     end
     outer_clip_plot = poly!(
@@ -550,7 +550,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         shading = false
     )
     # handle placement with transform
-    onany(po.overlay, po.thetalimits, po.direction, po.theta_0) do thetalims, dir, theta_0
+    onany(po.blockscene, po.thetalimits, po.direction, po.theta_0) do thetalims, dir, theta_0
         thetamin, thetamax = dir .* (thetalims .+ theta_0)
         rotate!(outer_clip_plot, Vec3f(0,0,1), dir > 0 ? thetamin : thetamax)
     end
@@ -566,7 +566,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         shading = false
     )
     onany(
-            po.overlay, po.target_radius, po.maximum_clip_radius
+            po.blockscene, po.target_radius, po.maximum_clip_radius
         ) do lims, maxclip
         s = min(lims[1] / lims[2], maxclip)
         scale!(inner_clip_plot, Vec3f(s, s, 1))
@@ -575,7 +575,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     # spine traces circle sector - inner circle
     spine_points = map(
-            po.target_radius, po.thetalimits, po.maximum_clip_radius
+            po.blockscene, po.target_radius, po.thetalimits, po.maximum_clip_radius
         ) do (rmin, rmax), thetalims, max_clip
         thetamin, thetamax = thetalims
         rmin = min(rmin/rmax, max_clip)
@@ -616,7 +616,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
     translate!(spineplot, 0, 0, 9001)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
-    on(po.griddepth) do depth
+    on(po.blockscene, po.griddepth) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end
     notify(po.griddepth)
