@@ -128,7 +128,7 @@ end
 #### 2.7 billion OSM GPS points
 
 Download the data from [OSM GPS points](https://planet.osm.org/gps/simple-gps-points-120604.csv.xz)
-and use the [updated script](https://gist.github.com/SimonDanisch/c5a92afe63476343e5b6b45be84774b7#file-fast-csv-parse-jl) from [drawing-2-7-billion-points-in-10s](https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa) to convert the CSV to a binary blob that we can memory map.
+and use the [updated script](https://gist.github.com/SimonDanisch/69788fce47c13020d9ae9dbe08546f89#file-datashader-2-7-billion-points-jl) from [drawing-2-7-billion-points-in-10s](https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa) to convert the CSV to a binary blob that we can memory map.
 
 ```julia
 using GLMakie, Mmap
