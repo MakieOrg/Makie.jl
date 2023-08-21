@@ -18,6 +18,9 @@ fig, ax, ds = datashader(airports,
     # use type=Axis, so that Makie doesn't need to infer
     # the axis type, which can be expensive for a large amount of points
     axis = (; type=Axis),
+    # for documentation output we shouldn't calculate the image async,
+    # since it won't wait for the render to finish and inline a blank image
+    async = false,
     figure = (; figurepadding=0, resolution=(360*3, 160*3))
 )
 hidedecorations!(ax); hidespines!(ax)
@@ -67,6 +70,7 @@ for (i, arg) in enumerate(cargs)
     r, c = Tuple(fig_grid[i])
     ax, plot = datashader(fig[r, c], points;
         colormap=cmap,
+        async=false,
         axis=(; type=Axis, title=join(string.(arg), ", ")))
     hidedecorations!(ax)
     hidespines!(ax)
