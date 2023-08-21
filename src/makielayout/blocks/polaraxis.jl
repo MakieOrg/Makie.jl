@@ -44,23 +44,30 @@ function initialize_block!(po::PolarAxis; palette=nothing)
     )
 
     # Draw clip, grid lines, spine, ticks
-    thetaticklabelplot = draw_axis!(po, radius_at_origin)
+    rticklabelplot, thetaticklabelplot = draw_axis!(po, radius_at_origin)
 
     # Calculate fraction of screen usable after reserving space for theta ticks
     # TODO: Should we include rticks here?
     # OPT: only update on relevant text attributes rather than glyphcollection
     onany(
             po.blockscene,
+            rticklabelplot.plots[1].text,
+            rticklabelplot.plots[1].fontsize,
+            rticklabelplot.plots[1].font,
             thetaticklabelplot.plots[1].text,
             thetaticklabelplot.plots[1].fontsize,
             thetaticklabelplot.plots[1].font,
             po.thetaticklabelpad, po.overlay.px_area
-        ) do _, _, _, pad, area
+        ) do _, _, _, _, _, _, pad, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
         for gc in thetaticklabelplot.plots[1].plots[1][1][]
+            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
+        end
+        for gc in rticklabelplot.plots[1].plots[1][1][]
             bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
@@ -618,7 +625,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     end
     notify(po.griddepth)
 
-    return thetaticklabelplot
+    return rticklabelplot, thetaticklabelplot
 end
 
 
