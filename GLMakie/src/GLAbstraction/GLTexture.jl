@@ -381,10 +381,7 @@ function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
     # dangerous code right here...Better write a few tests for this
     newtex = similar(t, newdims)
     old_size = size(t)
-
-    if ND === 2
-        gpu_setindex!(newtex, t)
-    end
+    gpu_setindex!(newtex, t)
     t.size = newdims
     free(t)
     t.id = newtex.id
