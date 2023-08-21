@@ -282,6 +282,7 @@ function _hovered_angles(scene, cam, step)
     mini = max.(minimum(scene.px_area[]) .+ 1, mp .- 2)
     maxi = min.(maximum(scene.px_area[]), mp .+ 2)
     selections = Makie.pick(scene, Rect2i(mini, maxi-mini))
+    isempty(selections) && return NaN, NaN
 
     if any(pidx -> pidx[1] isa Mesh, selections)
         ray = Ray(scene, cam, mouseposition_px(scene))
