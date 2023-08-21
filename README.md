@@ -3,7 +3,7 @@
       <source media="(prefers-color-scheme: dark)" 
         srcset="/assets/makie_logo_canvas_dark.svg" >
       <img alt="Makie.jl logo" 
-        src="/assets/makie_logo_canvas.svg" width="250">
+        src="/assets/makie_logo_canvas.svg" width="350">
     </picture>
 </div>
 
@@ -24,10 +24,15 @@
 
 </div>
 
-From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
+Makie is an interactive data visualization and plotting ecosystem for the [Julia programming language](https://julialang.org/), available on Windows, Linux and Mac.
+The backend packages **GLMakie**, **WGLMakie**, **CairoMakie** and **RPRMakie** add different functionalities:
+You can use Makie to interactively explore your data and create simple GUIs
+in native windows or web browsers, export high-quality vector graphics or even raytrace with physically accurate lighting.
+
+The name Makie (we pronounce it Mah-kee) is derived from the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is the gold and silver of our age, so let's spread it out beautifully on the screen!
 
-[Check out the documentation here!](http://docs.makie.org/stable/)
+To learn more, we invite you to visit the documentation at [docs.makie.org](http://docs.makie.org/stable/).
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
@@ -43,7 +48,7 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 
 ## Citing Makie
 
-If you use Makie for a scientific publication, please cite [our JOSS paper](https://joss.theoj.org/papers/10.21105/joss.03349) the following way:
+If you use Makie for a scientific publication, please acknowledge and support our work by citing [our JOSS paper](https://joss.theoj.org/papers/10.21105/joss.03349) the following way:
 
 ```
 Danisch & Krumbiegel, (2021). Makie.jl: Flexible high-performance data visualization for Julia.
@@ -78,15 +83,17 @@ We are on [Discord](https://discord.com/invite/2FBjYAT3cY) and [Discourse](https
 
 ## Installation
 
-Please consider using the backends directly. As explained in the documentation, they re-export all of Makie's functionality.
-So, instead of installing Makie, just install e.g. GLMakie directly:
+Choose one or more backend packages: **GLMakie** (interactive OpenGL in native OS windows), **WGLMakie** (interactive WebGL in browsers, IDEs, notebooks), **CairoMakie** (static 2D vector graphics and images) and **RPRMakie** (raytracing).
+Each backend re-exports all of Makie.jl so you don't have to install or load it explicitly.
+
+Install:
 
 ```julia
 julia>]
 pkg> add GLMakie
 ```
 
-You may check the installed version with:
+Check the installed version:
 
 ```julia
 ]st GLMakie
@@ -135,7 +142,7 @@ save("./assets/parabola.png", fig)
 fig
 ```
 
-<img src="./assets/parabola.png">
+<img src="./assets/parabola.png" width="600">
 
 ### A more complex plot with unicode characters and LaTeX strings:
 [Similar to the one on this link](<https://github.com/gcalderone/Gnuplot.jl#a-slightly-more-complex-plot-with-unicode-on-x-tics>)
@@ -147,26 +154,27 @@ fig
 x = -2pi:0.1:2pi
 approx = fill(0.0, length(x))
 cmap = [:gold, :deepskyblue3, :orangered, "#e82051"]
-set_theme!(palette = (; patchcolor = cgrad(cmap, alpha=0.45)))
-fig, axis, lineplot = lines(x, sin.(x); label = L"sin(x)", linewidth = 3, color = :black,
-    axis = (; title = "Polynomial approximation of sin(x)",
-        xgridstyle = :dash, ygridstyle = :dash,
-        xticksize = 10, yticksize = 10, xtickalign = 1, ytickalign = 1,
-        xticks = (-π:π/2:π, ["π", "-π/2", "0", "π/2", "π"])
-    ))
-translate!(lineplot, 0, 0, 2) # move line to foreground
-band!(x, sin.(x), approx .+= x; label = L"n = 0")
-band!(x, sin.(x), approx .+= -x .^ 3 / 6; label = L"n = 1")
-band!(x, sin.(x), approx .+= x .^ 5 / 120; label = L"n = 2")
-band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
-limits!(-3.8, 3.8, -1.5, 1.5)
-axislegend(; position = :ct, bgcolor = (:white, 0.75), framecolor = :orange)
-save("./assets/approxsin.png", fig, resolution = (800, 600))
-fig
+with_theme(palette = (; patchcolor = cgrad(cmap, alpha=0.45))) do
+    fig, axis, lineplot = lines(x, sin.(x); label = L"sin(x)", linewidth = 3, color = :black,
+        axis = (; title = "Polynomial approximation of sin(x)",
+            xgridstyle = :dash, ygridstyle = :dash,
+            xticksize = 10, yticksize = 10, xtickalign = 1, ytickalign = 1,
+            xticks = (-π:π/2:π, ["π", "-π/2", "0", "π/2", "π"])
+        ))
+    translate!(lineplot, 0, 0, 2) # move line to foreground
+    band!(x, sin.(x), approx .+= x; label = L"n = 0")
+    band!(x, sin.(x), approx .+= -x .^ 3 / 6; label = L"n = 1")
+    band!(x, sin.(x), approx .+= x .^ 5 / 120; label = L"n = 2")
+    band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
+    limits!(-3.8, 3.8, -1.5, 1.5)
+    axislegend(; position = :ct, bgcolor = (:white, 0.75), framecolor = :orange)
+    save("./assets/approxsin.png", fig, resolution = (800, 600))
+    fig
+end
 ```
 </details>
 
-<img src="./assets/approxsin.png">
+<img src="./assets/approxsin.png" width="600">
 
 ### Simple layout: Heatmap, contour and 3D surface plot
 
@@ -177,28 +185,27 @@ fig
 x = y = -5:0.5:5
 z = x .^ 2 .+ y' .^ 2
 cmap = :plasma
-set_theme!(colormap = cmap)
-fig = Figure(fontsize = 22)
-ax3d = Axis3(fig[1, 1]; aspect = (1, 1, 1),
-    perspectiveness = 0.5, azimuth = 2.19, elevation = 0.57)
-ax2d = Axis(fig[1, 2]; aspect = 1, xlabel = "x", ylabel="y")
-pltobj = surface!(ax3d, x, y, z; transparency = true)
-heatmap!(ax2d, x, y, z; colormap = (cmap, 0.65))
-contour!(ax2d, x, y, z; linewidth = 2, levels = 12, color = :black)
-contour3d!(ax3d, x, y, z; linewidth = 4, levels = 12,
-    transparency = true)
-Colorbar(fig[1, 3], pltobj; label="z", labelrotation=pi)
-colsize!(fig.layout, 1, Aspect(1, 1.0))
-colsize!(fig.layout, 2, Aspect(1, 1.0))
-resize_to_layout!(fig)
-save("./assets/simpleLayout.png", fig)
-fig
+with_theme(colormap = cmap) do
+    fig = Figure(fontsize = 22)
+    ax3d = Axis3(fig[1, 1]; aspect = (1, 1, 1),
+        perspectiveness = 0.5, azimuth = 2.19, elevation = 0.57)
+    ax2d = Axis(fig[1, 2]; aspect = 1, xlabel = "x", ylabel="y")
+    pltobj = surface!(ax3d, x, y, z; transparency = true)
+    heatmap!(ax2d, x, y, z; colormap = (cmap, 0.65))
+    contour!(ax2d, x, y, z; linewidth = 2, levels = 12, color = :black)
+    contour3d!(ax3d, x, y, z; linewidth = 4, levels = 12,
+        transparency = true)
+    Colorbar(fig[1, 3], pltobj; label="z", labelrotation=pi)
+    colsize!(fig.layout, 1, Aspect(1, 1.0))
+    colsize!(fig.layout, 2, Aspect(1, 1.0))
+    resize_to_layout!(fig)
+    save("./assets/simpleLayout.png", fig)
+    fig
+end
 ```
 </details>
 
-<img src="./assets/simpleLayout.png">
-
-⚠️WARNING⚠️. Don't forget to reset to the default Makie settings by doing `set_theme!()`.
+<img src="./assets/simpleLayout.png" width="600">
 
 Interactive example by [AlexisRenchon](https://github.com/AlexisRenchon):
 
