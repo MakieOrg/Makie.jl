@@ -6,12 +6,12 @@
 function generate_textures()
     for i in 1:3
         Makie.generate_ball_controller_texture(;
-            majortick_step = (10, 15, 30)[i], 
-            minortick_step = (5, 5, 10)[i], 
+            majortick_step = (10, 15, 30)[i],
+            minortick_step = (5, 5, 10)[i],
             merge_angle = (74, 74, 55)[i],
-            majortick_linewidth = (6, 4, 3)[i], 
+            majortick_linewidth = (6, 4, 3)[i],
             minortick_linewidth = 2.5 - 0.5i,
-            minorticklength = (0.01, 0.01, 0.02)[i], 
+            minorticklength = (0.01, 0.01, 0.02)[i],
             majorticklength = (0.02, 0.02, 0.04)[i],
             ticklabelpad = (0.02, 0.02, 0.04)[i],
             ticklabel_strokewidth = (2, 2, 1.5)[i],
@@ -24,19 +24,19 @@ function generate_textures()
 end
 
 function generate_ball_controller_texture(;
-        top_color = RGBf(0.75, 0.9, 1), 
+        top_color = RGBf(0.75, 0.9, 1),
         bottom_color = RGBf(0.65, 0.85, 0.5),
         majortick_step = 10, minortick_step = 5, merge_angle = 74,
         majortick_linewidth = 6, minortick_linewidth = 2,
         minorticklength = 0.01, majorticklength = 0.02,
         ticklabelpad = 0.02,
-        ticklabelcolor = :white, ticklabeloutline = :black, 
+        ticklabelcolor = :white, ticklabeloutline = :black,
         ticklabel_strokewidth = 2,
         resolution = (1600, 800),
         fontsize = 28,
-        linecolor = :black, 
+        linecolor = :black,
         hide_ring_labels = false,
-        save = true, 
+        save = true,
         filename = Makie.assetpath("ball_controller_texture.png")
     )
 
@@ -45,8 +45,8 @@ function generate_ball_controller_texture(;
 
     parent = Scene(resolution = resolution, backgroundcolor = top_color, clear = true)
     Scene(
-        parent, 
-        px_area = map(r -> Rect2i(0, 0, widths(r)[1], 0.5widths(r)[2]), parent.px_area), 
+        parent,
+        px_area = map(r -> Rect2i(0, 0, widths(r)[1], 0.5widths(r)[2]), parent.px_area),
         backgroundcolor = bottom_color, clear = true
     )
     scene = Scene(parent, backgroundcolor = :transparent, clear = false)
@@ -55,8 +55,8 @@ function generate_ball_controller_texture(;
     zs = range(-1, 1, length = 301)
     for x in (-1.0, -0.5, 0.0, 0.5, 1.0)
         lines!(
-            scene, fill(x, length(zs)), zs, linewidth = majortick_linewidth * scaling.(zs), 
-            #fxaa = fxaa, 
+            scene, fill(x, length(zs)), zs, linewidth = majortick_linewidth * scaling.(zs),
+            #fxaa = fxaa,
             color = linecolor
         )
     end
@@ -65,7 +65,7 @@ function generate_ball_controller_texture(;
     zs = range(-1, 1, length = 301)
     for x in (-0.75, -0.25, 0.25, 0.75)
         lines!(
-            scene, fill(x, length(zs)), zs, linewidth = minortick_linewidth * scaling.(zs), 
+            scene, fill(x, length(zs)), zs, linewidth = minortick_linewidth * scaling.(zs),
             color = linecolor
         )
     end
@@ -81,7 +81,7 @@ function generate_ball_controller_texture(;
 
     minor_tick_positions = vcat(reverse(0:-minortick_step:-81), (0:minortick_step:81))
     major_tick_positions = vcat(reverse(0:-majortick_step:-81), (0:majortick_step:81))
-    
+
     # discard overlapping ticks
     for (trg, src) in zip(
             (minor_tick_positions, minor_tick_positions, major_tick_positions),
@@ -151,7 +151,7 @@ function generate_ball_controller_texture(;
     # Horizontal Labels
     horizontal_labels = ("-X", "225", "-Y", "315", "X", "45", "Y", "135", "-X")
     text!(
-        scene, 
+        scene,
         [Point2f(x, 0) for x in range(-1, 1, length = 9)],
         text = [str for str in horizontal_labels],
         color = ticklabelcolor, fontsize = fontsize,
@@ -160,7 +160,7 @@ function generate_ball_controller_texture(;
     )
     if !hide_ring_labels
         text!(
-            scene, 
+            scene,
             [Point2f(x, z) for x in range(-1, 1, length = 9) for z in (-0.5, 0.5)],
             text = [str for str in horizontal_labels for z in 1:2],
             color = ticklabelcolor, fontsize = fontsize * Vec2f(scaling(0.5), 1),
@@ -171,7 +171,7 @@ function generate_ball_controller_texture(;
 
     # Frame
     linesegments!(
-        scene, [-1, 1, -1, 1], [1, 1, -1, -1], 
+        scene, [-1, 1, -1, 1], [1, 1, -1, -1],
         color = linecolor, linewidth = 2*majortick_linewidth#, fxaa = fxaa
     )
 
@@ -206,13 +206,13 @@ function BallControllerCamera(scene::Scene, axis; kwargs...)
 
     if axis isa Axis3
         cam = BallControllerCamera(
-            Observable{Float32}(axis.azimuth[]), 
+            Observable{Float32}(axis.azimuth[]),
             Observable{Float32}(axis.elevation[]),
             attr
         )
     else
         cam = BallControllerCamera(
-            Observable{Float32}(pi/4), 
+            Observable{Float32}(pi/4),
             Observable{Float32}(0.61547977f0),
             attr
         )
@@ -237,7 +237,7 @@ function BallControllerCamera(scene::Scene, axis; kwargs...)
     cameracontrols!(scene, cam)
 
     # Trigger updates on scene resize and settings change
-    # scene.px_area, 
+    # scene.px_area,
     on(camera(scene), scene.px_area, attr[:fov], attr[:projectiontype]) do _, _, _
         update_cam!(scene, cam)
     end
@@ -266,7 +266,7 @@ function Ray(scene::Scene, cam::BallControllerCamera, xy::VecTypes{2})
     rel_pos = 2 .* xy ./ (px_width, px_height) .- 1
 
     if cam.attributes.projectiontype[] === Perspective
-        dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) * 
+        dir = (rel_pos[1] * aspect * u_x + rel_pos[2] * u_y) *
                 tand(0.5 * cam.attributes.fov[]) + u_z
         return Ray(eyepos, normalize(dir))
     else
@@ -291,11 +291,11 @@ function _hovered_angles(scene, cam, step)
         b = 2 * dot(ray.origin, ray.direction)
         c = dot(ray.origin, ray.origin) - 1 # radius 1
         # goes below 0 only because rect pick may trigger outside sphere
-        t2 = (-b - sqrt(max(0, b*b - 4*a*c))) / (2*a) 
+        t2 = (-b - sqrt(max(0, b*b - 4*a*c))) / (2*a)
         p = ray.origin + t2 * ray.direction
 
         # to spherical
-        theta = asin(clamp(p[3], -1.0, 1.0)) 
+        theta = asin(clamp(p[3], -1.0, 1.0))
         if abs(p[3]) > 0.999
             phi = 0.0
         else
@@ -371,7 +371,7 @@ function rotate_cam!(scene, cam::BallControllerCamera, dphi::Real, dtheta::Real,
     reverse = ifelse(pi/2 <= cam.theta[] <= 3pi/2, -1, 1)
     cam.phi[] = mod(cam.phi[] + reverse * dphi, 2pi)
 
-    update_cam!(scene, cam)    
+    update_cam!(scene, cam)
     update_camera!(axis, cam.phi[], cam.theta[])
 
     return
@@ -434,7 +434,7 @@ function connect_camera!(lscene::LScene, scene::Scene)
         @extractvalue cam (lookat, eyeposition, upvector)
 
         dir = normalize(eyeposition - lookat)
-        theta = asin(dir[3]) 
+        theta = asin(dir[3])
         theta = mod(2pi + ifelse(upvector[3] > 0, theta, pi - theta), 2pi)
         if abs(dir[3]) > 0.9
             right = cross(upvector, dir)
@@ -453,7 +453,7 @@ function connect_camera!(lscene::LScene, scene::Scene)
     return
 end
 
-# Update axis based on controller 
+# Update axis based on controller
 function update_camera!(ax::Axis3, phi, theta)
     ax.azimuth[] = phi
     ax.elevation[] = theta
@@ -502,7 +502,7 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
             return Vec2f(halign2num(halign), valign2num(valign))
         end
 
-        scene_region = map(blockscene, 
+        scene_region = map(blockscene,
             axis.layoutobservables.computedbbox, controller.float_size, align
         ) do parent_bb, size, align
             mini = minimum(parent_bb); ws = widths(parent_bb)
@@ -568,7 +568,7 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
 
     # Generate camera controls + linking
     cam = BallControllerCamera(
-        scene, axis, step = step, fov = controller.fov, 
+        scene, axis, step = step, fov = controller.fov,
         projectiontype = controller.projectiontype,
         rotationspeed = controller.rotationspeed,
         click_timeout = controller.click_timeout
@@ -584,19 +584,19 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
     end
 
     text!(
-        scene, 
+        scene,
         Point2f(0.9), space = :clip, align = (:right, :top),
         text = map((r, i) -> "$(360/r[i])°", controller.step_choices, step_index),
-        fontsize = controller.angle_indicator_fontsize, 
-        color = map((c, a) -> (c, a), controller.angle_indicator_fontcolor, timeout), 
-        strokewidth = controller.angle_indicator_strokesize, 
-        strokecolor = map(a -> (:white, a), timeout), 
+        fontsize = controller.angle_indicator_fontsize,
+        color = map((c, a) -> (c, a), controller.angle_indicator_fontcolor, timeout),
+        strokewidth = controller.angle_indicator_strokesize,
+        strokecolor = map(a -> (:white, a), timeout),
         visible = map(remaining -> remaining > 0, timeout)
     )
 
     # sphere background
     bg = scatter!(
-        scene, Point2f(0), space = :clip, 
+        scene, Point2f(0), space = :clip,
         marker = Circle, markersize = 1.75, markerspace = :clip,
         color = controller.backgroundcolor, fxaa = true,
         # glowcolor = :white, glowwidth = 5
@@ -623,9 +623,9 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
         end
     end
     lp = lines!(
-        scene, region, 
+        scene, region,
         color = controller.angle_indicator_color,
-        linewidth = controller.angle_indicator_linewidth, 
+        linewidth = controller.angle_indicator_linewidth,
         # strokecolor = :black, strokewidth = 1,
         visible = false, fxaa = true#, depth_shift = -0.001
     )
