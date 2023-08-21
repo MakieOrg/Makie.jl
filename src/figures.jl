@@ -36,7 +36,7 @@ const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 """
     current_figure()
 
-Returns the current active figure (or the last figure created). 
+Returns the current active figure (or the last figure created).
 Returns `nothing` if there is no current active figure.
 """
 current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
@@ -100,11 +100,11 @@ function Figure(; kwargs...)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
-    alignmode = lift(Outside ∘ to_rectsides, scene, padding)
+    alignmode = lift(Outside ∘ to_rectsides, padding)
 
     layout = GridLayout(scene)
 
-    on(scene, alignmode) do al
+    on(alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end
@@ -202,4 +202,4 @@ end
 Resizes the given `Figure` to the resolution given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
-Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)
+Makie.resize!(figure::Figure, width::Integer, height::Integer) = resize!(figure.scene, width, height)

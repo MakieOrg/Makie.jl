@@ -236,7 +236,7 @@ function assemble_colors(::T, @nospecialize(color), @nospecialize(plot)) where {
     colorrange_scaled = lift(colorrange, colorscale; ignore_equal_values=true) do range, scale
         return Vec2f(apply_scale(scale, range))
     end
-    color_scaled = lift(color_tight, colorscale; ignore_equal_values=true) do color, scale
+    color_scaled = lift(color_tight, colorscale) do color, scale
         return el32convert(apply_scale(scale, color))
     end
     return ColorMap{N, T, typeof(color_scaled[])}(
@@ -269,7 +269,7 @@ function assemble_colors(colortype, color, plot)
 end
 
 function assemble_colors(::Number, color, plot)
-    plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value $intensity. Pass an explicit colorrange.")
+    plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value. Pass an explicit colorrange.")
 
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
     return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
