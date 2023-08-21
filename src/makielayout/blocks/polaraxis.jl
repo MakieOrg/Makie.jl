@@ -333,7 +333,7 @@ end
 
 # generates large square with circle sector cutout
 function _polar_clip_polygon(
-        thetamin, thetamax; steps = 120, outer = 1e4,
+        thetamin, thetamax, steps = 120, outer = 1e4,
         exterior = convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
     )
     # make sure we have 2+ points per arc
@@ -536,8 +536,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     # create large square with r=1 circle sector cutout
     # only regenerate if circle sector angle changes
     thetadiff = map(lims -> abs(lims[2] - lims[1]), po.blockscene, po.thetalimits, ignore_equal_values = true)
-    outer_clip = map(po.blockscene, thetadiff) do diff
-        return _polar_clip_polygon(0, diff)
+    outer_clip = map(po.blockscene, thetadiff, po.sample_density) do diff, sample_density
+        return _polar_clip_polygon(0, diff, sample_density)
     end
     outer_clip_plot = poly!(
         po.overlay,
@@ -573,15 +573,14 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     notify(po.maximum_clip_radius)
 
     # spine traces circle sector - inner circle
-    spine_points = map(
-            po.blockscene, po.target_radius, po.thetalimits, po.maximum_clip_radius
-        ) do (rmin, rmax), thetalims, max_clip
+    spine_points = map(po.blockscene,
+            po.target_radius, po.thetalimits, po.maximum_clip_radius, po.sample_density
+        ) do (rmin, rmax), thetalims, max_clip, N
         thetamin, thetamax = thetalims
         rmin = min(rmin/rmax, max_clip)
         rmax = 1.0
 
         # make sure we have 2+ points per arc
-        N = 120
         if abs(thetamax - thetamin) ≈ 2pi
             ps = Point2f.(rmax, LinRange(thetamin, thetamax, N))
             if rmin > 1e-6
