@@ -270,7 +270,7 @@ function setup_camera_matrices!(po::PolarAxis)
             u_r = last_pos[] ./ r
             u_θ = Point2f(-u_r[2], u_r[1])
             Δr = dot(u_r, diff)
-            Δθ = dot(u_θ, diff ./ r)
+            Δθ = po.direction[] * dot(u_θ, diff ./ r)
             if drag_state[][1]
                 rmin, rmax = po.target_radius[]
                 if rmin > 0
