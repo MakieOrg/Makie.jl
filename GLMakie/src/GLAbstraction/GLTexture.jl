@@ -352,14 +352,19 @@ function similar(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
     buff = similar(t.buffer, newdims...)
     return TextureBuffer(buff)
 end
+
 function similar(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
-    Texture(
-        Ptr{T}(C_NULL),
-        newdims, t.texturetype,
+    id = glGenTextures()
+    glBindTexture(t.texturetype, id)
+    glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
+    return Texture{T, NDim}(
+        id,
+        t.texturetype,
         t.pixeltype,
         t.internalformat,
         t.format,
-        t.parameters
+        t.parameters,
+        newdims
     )
 end
 # Resize Texture
@@ -376,7 +381,10 @@ function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
     # dangerous code right here...Better write a few tests for this
     newtex = similar(t, newdims)
     old_size = size(t)
-    gpu_setindex!(newtex, t)
+
+    if ND === 2
+        gpu_setindex!(newtex, t)
+    end
     t.size = newdims
     free(t)
     t.id = newtex.id
@@ -398,7 +406,6 @@ texsubimage(t::Texture{T, 3}, newvalue::Array{T, 3}, xrange::UnitRange, yrange::
     first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
     t.format, t.pixeltype, newvalue
 )
-
 
 Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
 function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
