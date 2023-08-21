@@ -257,7 +257,7 @@ end
 function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
-        plot_data = serialize_plots(scene, [plot])
+        plot_data = serialize_plots(disp.session, scene, [plot])
         JSServe.evaljs_value(disp.session, js"""
         $(WGL).then(WGL=> {
             WGL.insert_plot($(js_uuid(scene)), $plot_data);
