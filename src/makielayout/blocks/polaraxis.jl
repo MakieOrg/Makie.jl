@@ -394,8 +394,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
             po.blockscene,
             po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad
         ) do dir, theta_0, rtickangle, thetalims, pad
-        angle = default_rtickangle(rtickangle, dir, thetalims) - pi/2
-        s, c = sincos(angle + theta_0)
+        angle = default_rtickangle(rtickangle, dir, thetalims) - dir * pi/2
+        s, c = sincos(dir * (angle + theta_0))
         scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
         rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         rtick_offset[] = Point2f(pad * c, pad * s)
