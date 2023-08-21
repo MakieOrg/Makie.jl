@@ -132,7 +132,7 @@ f
 \end{examplefigure}
 
 As you can see adjusting the limits has an effect on the shape of the `PolarAxis`.
-Setting `rmin > 0` will result in part of the center being removed, up to a maximum relative to `rmax` set by `ax.maximum_clip_radius[] = 0.2`.
+Setting `rmin > 0` will result in part of the center being removed, up to a maximum relative to `rmax` set by `ax.maximum_clip_radius[] = 1.0`. Note that if `rmin/rmax > maximum_clip_radius` the center of the PolarAxis will no longer be `r = 0`, leading to distortion.
 Setting angular limits to a range smaller than `2pi` will result in the matching sector being shown.
 You can adjust the orientation and placement of this sector with `ax.theta_0[] = 0.0` and `ax.direction[] = 1`.
 

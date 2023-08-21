@@ -1773,8 +1773,8 @@ end
         clip = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
         clipcolor = automatic
-        "The maximum radius of the inner clip circle. This is relative to the outer clip radius."
-        maximum_clip_radius = 0.2
+        "Sets the maximum radius of the inner clip circle relative to the outer. This leads to a distortion of the polar axis if `rmin / rmax > maximum_clip_radius`."
+        maximum_clip_radius = 1.0
         "Sets the speed of scroll based zooming. Setting this to 0 effectively disables zooming."
         zoomspeed = 0.1
         "Sets the mouse button for translating the plot in r-direction."
