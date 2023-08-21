@@ -333,12 +333,11 @@ end
 
 # generates large square with circle sector cutout
 function _polar_clip_polygon(
-        thetamin, thetamax; step = 2pi/360, outer = 1e4,
+        thetamin, thetamax; steps = 120, outer = 1e4,
         exterior = convert_arguments(PointBased(), Rect2f(-outer, -outer, 2outer, 2outer))[1]
     )
     # make sure we have 2+ points per arc
-    N = max(2, ceil(Int, abs(thetamax - thetamin) / step) + 1)
-    interior = map(theta -> polar2cartesian(1.0, theta), LinRange(thetamin, thetamax, N))
+    interior = map(theta -> polar2cartesian(1.0, theta), LinRange(thetamin, thetamax, steps))
     (abs(thetamax - thetamin) ≈ 2pi) || push!(interior, Point2f(0))
     return [Polygon(exterior, [interior])]
 end
@@ -580,10 +579,9 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         thetamin, thetamax = thetalims
         rmin = min(rmin/rmax, max_clip)
         rmax = 1.0
-        step = 2pi/100
 
         # make sure we have 2+ points per arc
-        N = max(2, ceil(Int, abs(thetamax - thetamin) / step) + 1)
+        N = 120
         if abs(thetamax - thetamin) ≈ 2pi
             ps = Point2f.(rmax, LinRange(thetamin, thetamax, N))
             if rmin > 1e-6
