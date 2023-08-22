@@ -21,7 +21,8 @@ end
 function Transformation(transformable::Transformable;
                         scale=Vec3f(1),
                         translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        transform_func = copy(transformation(transformable).transform_func))
 
     scale_o = convert(Observable{Vec3f}, scale)
     translation_o = convert(Observable{Vec3f}, translation)
@@ -38,7 +39,7 @@ function Transformation(transformable::Transformable;
         scale_o,
         rotation_o,
         model,
-        copy(parent_transform.transform_func)
+        transform_func
     )
 
     trans.parent[] = parent_transform
@@ -210,13 +211,13 @@ transform_func_obs(x) = transformation(x).transform_func
     apply_transform_and_model(model, transfrom_func, pos, output_type = Point3f)
 
 
-Applies the transform function and model matrix (i.e. transformations from 
+Applies the transform function and model matrix (i.e. transformations from
 `translate!`, `rotate!` and `scale!`) to the given input
 """
 function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
     return apply_transform_and_model(
-        plot.model[], transform_func(plot), pos, 
-        to_value(get(plot, :space, :data)), 
+        plot.model[], transform_func(plot), pos,
+        to_value(get(plot, :space, :data)),
         output_type
     )
 end
@@ -469,7 +470,7 @@ end
 function inverse_transform(trans::Polar)
     return Makie.PointTrans{2}() do point
         typeof(point)(
-            hypot(point[1], point[2]), 
+            hypot(point[1], point[2]),
             mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
         )
     end
