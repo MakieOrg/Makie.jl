@@ -715,7 +715,7 @@ function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
         multiples = collect(vmin:ideal_step:vmax+ϵ)
     else
         s = 360/2pi
-        multiples = Makie.get_tickvalues(LinearTicks(2), s * dvmin, s * dvmax) ./ s
+        multiples = Makie.get_tickvalues(LinearTicks(3), s * dvmin, s * dvmax) ./ s
     end
 
     multiples, Showoff.showoff(multiples .* m.label_factor) .* m.suffix

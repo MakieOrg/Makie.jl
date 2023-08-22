@@ -96,7 +96,7 @@ struct AngularTicks
     label_factor::Float64
     suffix::String
     n_ideal::Vector{Vec2f}
-    function AngularTicks(label_factor, suffix, n_ideal = [Vec2f(0, 9), Vec2f(4, 4), Vec2f(8, 2)])
+    function AngularTicks(label_factor, suffix, n_ideal = [Vec2f(0, 9), Vec2f(4, 4)])
         return new(label_factor, suffix, n_ideal)
     end
 end
