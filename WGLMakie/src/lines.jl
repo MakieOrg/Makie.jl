@@ -2,6 +2,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     Makie.@converted_attribute plot (linewidth,)
     uniforms = Dict(
         :model => plot.model,
+        :object_id => 1,
+        :picking => false,
     )
 
     color = plot.calculated_colors

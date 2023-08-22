@@ -41,7 +41,6 @@ end
 function three_display(screen::Screen, session::Session, scene::Scene)
     config = screen.config
     scene_serialized = serialize_scene(scene)
-
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))

@@ -20214,22 +20214,21 @@ function attributes_to_type_declaration(attributes_dict) {
     }
     return result;
 }
-const pixelRatio1 = window.devicePixelRatio || 1.0;
-function event2scene_pixel(scene, event) {
-    const { canvas  } = scene.screen;
+function events2unitless(screen, event) {
+    const { canvas , winscale , renderer  } = screen;
     const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * pixelRatio1;
-    const y = (rect.height - (event.clientY - rect.top)) * pixelRatio1;
+    const x = (event.clientX - rect.left) / winscale;
+    const y = (event.clientY - rect.top) / winscale;
     return [
         x,
-        y
+        renderer._height - y
     ];
 }
 function Identity4x4() {
     return new Ot();
 }
 function in_scene(scene, mouse_event) {
-    const [x, y] = event2scene_pixel(scene, mouse_event);
+    const [x, y] = events2unitless(scene.screen, mouse_event);
     const [sx, sy, sw, sh] = scene.pixelarea.value;
     return x >= sx && x < sx + sw && y >= sy && y < sy + sh;
 }
@@ -21222,51 +21221,31 @@ function throttle_function(func, delay) {
     }
     return inner_throttle;
 }
-function threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit, scalefactor) {
-    let context = canvas.getContext("webgl2", {
-        preserveDrawingBuffer: true
-    });
-    if (!context) {
-        console.warn("WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)");
-        context = canvas.getContext("webgl", {
-            preserveDrawingBuffer: true
-        });
-    }
-    if (!context) {
-        return;
-    }
-    const pixel_ratio = window.devicePixelRatio || 1.0;
-    const winscale = scalefactor / pixel_ratio;
-    const renderer = new mod.WebGLRenderer({
-        antialias: true,
-        canvas: canvas,
-        context: context,
-        powerPreference: "high-performance"
-    });
-    renderer.setClearColor("#ffffff");
-    const [swidth, sheight] = [
-        winscale * width,
-        winscale * height
+function get_body_size() {
+    const bodyStyle = window.getComputedStyle(document.body);
+    const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
+    const height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) + parseInt(bodyStyle.marginTop, 10) + parseInt(bodyStyle.marginBottom, 10);
+    const width = window.innerWidth - width_padding;
+    const height = window.innerHeight - height_padding;
+    return [
+        width,
+        height
     ];
-    renderer._width = width;
-    renderer._height = height;
-    canvas.width = Math.floor(width * scalefactor);
-    canvas.height = Math.floor(height * scalefactor);
-    canvas.style.width = swidth + "px";
-    canvas.style.height = sheight + "px";
-    renderer.setViewport(0, 0, swidth, sheight);
-    const mouse_callback = (x, y)=>comm.notify({
+}
+function add_canvas_events(screen, comm, resize_to_body) {
+    const { canvas , winscale  } = screen;
+    function mouse_callback(event) {
+        const [x, y] = events2unitless(screen, event);
+        comm.notify({
             mouseposition: [
                 x,
                 y
             ]
         });
+    }
     const notify_mouse_throttled = throttle_function(mouse_callback, 40);
     function mousemove(event) {
-        var rect = canvas.getBoundingClientRect();
-        var x = (event.clientX - rect.left) / winscale;
-        var y = (event.clientY - rect.top) / winscale;
-        notify_mouse_throttled(x, y);
+        notify_mouse_throttled(event);
         return false;
     }
     canvas.addEventListener("mousemove", mousemove);
@@ -21318,15 +21297,11 @@ function threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit
     canvas.addEventListener("contextmenu", (e)=>e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
     function resize_callback() {
-        const bodyStyle = window.getComputedStyle(document.body);
-        const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
-        const height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) + parseInt(bodyStyle.marginTop, 10) + parseInt(bodyStyle.marginBottom, 10);
-        const width = (window.innerWidth - width_padding) * pixelRatio;
-        const height = (window.innerHeight - height_padding) * pixelRatio;
+        const [width, height] = get_body_size();
         comm.notify({
             resize: [
-                width,
-                height
+                width / winscale,
+                height / winscale
             ]
         });
     }
@@ -21335,7 +21310,60 @@ function threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit
         window.addEventListener("resize", (event)=>resize_callback_throttled());
         resize_callback_throttled();
     }
+}
+function threejs_module(canvas) {
+    let context = canvas.getContext("webgl2", {
+        preserveDrawingBuffer: true
+    });
+    if (!context) {
+        console.warn("WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)");
+        context = canvas.getContext("webgl", {
+            preserveDrawingBuffer: true
+        });
+    }
+    if (!context) {
+        return;
+    }
+    const renderer = new mod.WebGLRenderer({
+        antialias: true,
+        canvas: canvas,
+        context: context,
+        powerPreference: "high-performance"
+    });
+    renderer.setClearColor("#ffffff");
     return renderer;
+}
+function set_render_size(screen, width, height) {
+    const { renderer , canvas , scalefactor , winscale  } = screen;
+    const [swidth, sheight] = [
+        winscale * width,
+        winscale * height
+    ];
+    renderer._width = width;
+    renderer._height = height;
+    canvas.width = Math.floor(width * scalefactor);
+    canvas.height = Math.floor(height * scalefactor);
+    canvas.style.width = swidth + "px";
+    canvas.style.height = sheight + "px";
+    renderer.setViewport(0, 0, swidth, sheight);
+    add_picking_target(screen);
+    return;
+}
+function add_picking_target(screen) {
+    const { picking_target , canvas  } = screen;
+    const [w, h] = [
+        canvas.width,
+        canvas.height
+    ];
+    if (picking_target) {
+        if (picking_target.width == w && picking_target.height == h) {
+            return;
+        } else {
+            picking_target.dispose();
+        }
+    }
+    screen.picking_target = new mod.WebGLRenderTarget(w, h);
+    return;
 }
 function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, texture_atlas_obs, fps, resize_to_body, px_per_unit, scalefactor) {
     if (!scalefactor) {
@@ -21344,34 +21372,32 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     if (!px_per_unit) {
         px_per_unit = scalefactor;
     }
-    const renderer = threejs_module(canvas, comm, width, height, resize_to_body, px_per_unit, scalefactor);
+    const renderer = threejs_module(canvas);
     TEXTURE_ATLAS[0] = texture_atlas_obs;
-    if (renderer) {
-        const camera = new mod.PerspectiveCamera(45, 1, 0, 100);
-        camera.updateProjectionMatrix();
-        const size = new mod.Vector2();
-        renderer.getDrawingBufferSize(size);
-        const picking_target = new mod.WebGLRenderTarget(size.x, size.y);
-        const screen = {
-            renderer,
-            picking_target,
-            camera,
-            fps,
-            canvas,
-            px_per_unit,
-            scalefactor
-        };
-        const three_scene = deserialize_scene(scenes, screen);
-        start_renderloop(three_scene);
-        const pixel_ratio = window.devicePixelRatio || 1.0;
-        const winscale = scalefactor / pixel_ratio;
-        canvas_width.on((w_h)=>{
-            renderer.setSize(Math.round(winscale * w_h[0]), Math.round(winscale * w_h[1]));
-        });
-    } else {
+    if (!renderer) {
         const warning = getWebGLErrorMessage();
         wrapper.appendChild(warning);
     }
+    const camera = new mod.PerspectiveCamera(45, 1, 0, 100);
+    camera.updateProjectionMatrix();
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
+    const screen = {
+        renderer,
+        camera,
+        fps,
+        canvas,
+        px_per_unit,
+        scalefactor,
+        winscale
+    };
+    add_canvas_events(screen, comm, resize_to_body);
+    set_render_size(screen, width, height);
+    const three_scene = deserialize_scene(scenes, screen);
+    start_renderloop(three_scene);
+    canvas_width.on((w_h)=>{
+        set_render_size(screen, ...w_h);
+    });
 }
 function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_to_plot) {
     scene.children.forEach((plot, index)=>{
@@ -21400,8 +21426,20 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_t
     });
     return next_id;
 }
-function pick_native(scene, x, y, w, h) {
-    const { renderer , picking_target  } = scene.screen;
+function pick_native(scene, _x, _y, _w, _h) {
+    const { renderer , picking_target , px_per_unit  } = scene.screen;
+    [_x, _y, _w, _h] = [
+        _x,
+        _y,
+        _w,
+        _h
+    ].map((x)=>Math.round(x * px_per_unit));
+    const [x, y, w, h] = [
+        _x,
+        _y,
+        _w,
+        _h
+    ];
     renderer.setRenderTarget(picking_target);
     set_picking_uniforms(scene, 1, true);
     render_scene(scene, true);
@@ -21542,17 +21580,17 @@ function register_popup(popup, scene, plots_to_pick, callback) {
     }
     const { canvas  } = scene.screen;
     canvas.addEventListener("mousedown", (event)=>{
-        if (!popup.classList.contains("show")) {
-            popup.classList.add("show");
-        }
-        popup.style.left = event.pageX + "px";
-        popup.style.top = event.pageY + "px";
-        const [x, y] = event2scene_pixel(scene, event);
+        const [x, y] = events2unitless(scene.screen, event);
         const [_, picks] = pick_native(scene, x, y, 1, 1);
         if (picks.length == 1) {
             const [plot, index] = picks[0];
             if (plots_to_pick.has(plot.plot_uuid)) {
                 const result = callback(plot, index);
+                if (!popup.classList.contains("show")) {
+                    popup.classList.add("show");
+                }
+                popup.style.left = event.pageX + "px";
+                popup.style.top = event.pageY + "px";
                 if (typeof result === "string" || result instanceof String) {
                     popup.innerText = result;
                 } else {
@@ -21582,12 +21620,12 @@ window.WGL = {
     plot_cache,
     delete_scenes,
     create_scene,
-    event2scene_pixel,
+    events2unitless,
     on_next_insert,
     register_popup,
     render_scene
 };
-export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, event2scene_pixel as event2scene_pixel, on_next_insert as on_next_insert };
+export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert };
 export { render_scene as render_scene };
 export { pick_native as pick_native };
 export { pick_closest as pick_closest };
