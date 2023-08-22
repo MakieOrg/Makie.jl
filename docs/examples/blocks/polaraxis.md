@@ -39,17 +39,33 @@ f
 Note that not every plot type is compatible with polar transforms. For example
 `image` is not as it expects to be drawn on a rectangle. `heatmap` works to a
 degree in CairoMakie, but not GLMakie due to differences in the backend
-implementation. `surface` works in both, as it is designed to generate a
-triangle mesh.
+implementation.
+`surface` can be used as a replacement for `image` as it generates a triangle
+mesh. However it also has a component in z-direction which will affect drawing
+order. You can use `translate!(plot, 0, 0, z_shift)` to work around that.
+As a replacement for `heatmap` you can use `voronoiplot`, which generates cells
+of arbitrary shape around points given to it. Here you will generally need to
+set `rlims!(ax, rmax)` yourself.
 
 \begin{examplefigure}{svg = false}
 ```julia
-f = Figure()
-ax = PolarAxis(f[1, 1])
-# The first two arguments should be set to a sensible radial and angular range
-zs = [r*cos(phi) for r in range(1, 2, length=100), phi in range(0, 4pi, length=100)]
-p = surface!(ax, 0..10, 0..2pi, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
-Colorbar(f[1, 2], p)
+f = Figure(resolution = (800, 500))
+
+ax = PolarAxis(f[1, 1], title = "Surface")
+rs = 0:10
+phis = range(0, 2pi, 37)
+cs = [r+cos(4phi) for r in rs, phi in phis]
+p = surface!(ax, 0..10, 0..2pi, cs, shading = false, colormap = :coolwarm)
+Colorbar(f[2, 1], p, vertical = false, flipaxis = false)
+
+ax = PolarAxis(f[1, 2], title = "Voronoi")
+rs = 1:10
+phis = range(0, 2pi, 37)[1:36]
+cs = [r+cos(4phi) for r in rs, phi in phis]
+p = voronoiplot!(ax, rs, phis, cs, show_generators = false, strokewidth = 0)
+Makie.rlims!(ax, 10.5)
+Colorbar(f[2, 2], p, vertical = false, flipaxis = false)
+
 f
 ```
 \end{examplefigure}

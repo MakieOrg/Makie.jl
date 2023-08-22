@@ -514,6 +514,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         strokewidth = po.rticklabelstrokewidth,
         strokecolor = rstrokecolor,
         align = rtick_align,
+        visible = po.rticklabelsvisible
     )
     # OPT: skip glyphcollection update on offset changes
     rticklabelplot.plots[1].plots[1].offset = rtick_offset
@@ -530,7 +531,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         color = po.thetaticklabelcolor,
         strokewidth = po.thetaticklabelstrokewidth,
         strokecolor = thetastrokecolor,
-        align = thetatick_align[]
+        align = thetatick_align[],
+        visible = po.thetaticklabelsvisible
     )
     thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
 
