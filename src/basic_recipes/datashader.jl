@@ -5,6 +5,12 @@ import Base.Threads: @threads
 import Makie: Makie, (..), Rect2, widths
 abstract type AggOp end
 
+
+"""
+    Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
+    Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
+
+"""
 mutable struct Canvas
     bounds::Rect2{Float64}
     resolution::Tuple{Int,Int}
@@ -331,7 +337,6 @@ function fast_bb(points, f)
     end
     return Rect3f(Rect2f(vec(results)))
 end
-
 
 
 function canvas_obs(limits::Observable, pixel_area::Observable, op, binfactor::Observable)
