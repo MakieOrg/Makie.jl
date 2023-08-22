@@ -109,9 +109,16 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f.(x, y', z)),)
 end
+function convert_arguments(::PointBased, x::AbstractMatrix, y::AbstractVector, z::AbstractArray)
+    (vec(Point3f.(x, y', z)),)
+end
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
+    (vec(Point3f.(x, y, z)),)
+end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 
@@ -607,7 +614,7 @@ function convert_arguments(
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
-                        
+
 ################################################################################
 #                                   <:Arrows                                   #
 ################################################################################
