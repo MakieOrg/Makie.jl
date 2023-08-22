@@ -255,6 +255,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         color = po.rticklabelcolor,
         strokewidth = po.rticklabelstrokewidth,
         strokecolor = rstrokecolor,
+        visible = po.rticklabelsvisible,
         align = map(po.direction, po.theta_0, po.rtickangle) do dir, theta_0, angle
             s, c = sincos(dir * (angle + theta_0))
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
@@ -273,7 +274,8 @@ function draw_axis!(po::PolarAxis, axis_radius)
         color = po.thetaticklabelcolor,
         strokewidth = po.thetaticklabelstrokewidth,
         strokecolor = thetastrokecolor,
-        align = thetatick_align[]
+        align = thetatick_align[],
+        visible = po.thetaticklabelsvisible
     )
 
     # Hack to deal with synchronous update problems
