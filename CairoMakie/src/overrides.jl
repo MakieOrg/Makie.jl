@@ -102,6 +102,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
 end
 
 function polypath(ctx, polygon)
+    isempty(polygon) && return nothing
     ext = decompose(Point2f, polygon.exterior)
     Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_EVEN_ODD)
     Cairo.move_to(ctx, ext[1]...)

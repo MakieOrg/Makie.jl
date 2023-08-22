@@ -15,7 +15,7 @@ using Base64
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG # get FFMPEG on any system!
+using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
 using PlotUtils
