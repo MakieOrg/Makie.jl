@@ -241,9 +241,65 @@ function setup_camera_matrices!(po::PolarAxis)
     # scroll to zoom
     on(po.blockscene, e.scroll) do scroll
         if is_mouseinside(po.scene)
+            mp = mouseposition(po.scene)
+            r = norm(mp)
+            zoom_scale = (1.0 - po.zoomspeed[]) ^ scroll[2]
             rmin, rmax = po.target_rlims[]
-            rmax = rmin + (rmax - rmin) * (1.0 - po.zoomspeed[]) ^ scroll[2]
-            po.target_rlims[] = (rmin, rmax)
+            thetamin, thetamax =  po.target_thetalims[]
+
+            # keep circumference to radial length ratio constant by default
+            dtheta = thetamax - thetamin
+            aspect = r * dtheta / (rmax - rmin)
+
+            # change in radial length
+            dr = (zoom_scale - 1) * (rmax - rmin)
+
+            # to keep the point under the cursor roughly in place we keep
+            # r at the same percentage between rmin and rmax
+            w = (r - rmin) / (rmax - rmin)
+
+            # keep rmin at 0 when zooming near zero
+            if rmin != 0 || r > 0.1rmax
+                rmin = max(0, rmin - w * dr)
+            end
+            rmax = max(rmin + 1e-6, rmax + (1 - w) * dr)
+
+            if !ispressed(e, po.thetazoomkey[])
+                po.target_rlims[] = (rmin, rmax)
+            end
+
+            if abs(thetamax - thetamin) < 2pi
+
+                # angle of mouse position normalized to range
+                theta = po.direction[] * atan(mp[2], mp[1]) - po.theta_0[]
+                thetacenter = 0.5 * (thetamin + thetamax)
+                theta = mod(theta, thetacenter-pi .. thetacenter+pi)
+
+                w = (theta - thetamin) / (thetamax - thetamin)
+                dtheta = (thetamax - thetamin) - clamp(aspect * (rmax - rmin) / r, 0, 2pi)
+                thetamin = thetamin + w * dtheta
+                thetamax = thetamax - (1-w) * dtheta
+
+                if !ispressed(e, po.rzoomkey[])
+                    po.target_thetalims[] = (thetamin, thetamax)
+                end
+
+            # don't open a gap when zooming a full circle near the center
+            elseif r > 0.1rmax && zoom_scale < 1
+
+                # open angle on the opposite site of theta
+                theta = po.direction[] * atan(mp[2], mp[1]) - po.theta_0[]
+                theta = mod(theta + pi, -pi..pi)
+
+                dtheta = (thetamax - thetamin) - clamp(aspect * (rmax - rmin) / r, 1e-6, 2pi)
+                thetamin = theta + 0.5 * dtheta
+                thetamax = theta + 2pi - 0.5 * dtheta
+
+                if !ispressed(e, po.rzoomkey[])
+                    po.target_thetalims[] = (thetamin, thetamax)
+                end
+            end
+
             return Consume(true)
         end
         return Consume(false)
