@@ -181,21 +181,21 @@ function setup_camera_matrices!(po::PolarAxis)
     # Initialization
     usable_fraction = Observable(Vec2f(1.0, 1.0))
     rmin, rmax = po.rlimits[]
-    init = Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax))
-    setfield!(po, :target_radius, init)
-    on(_ -> reset_limits!(po), po.blockscene, po.rlimits)
+    setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax)))
+    setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax)))
+    onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
 
     # To keep the inner clip radius below a certain fraction of the outer clip
     # radius we map all r > r0 to 0. This computes that r0.
-    radius_at_origin = map(po.blockscene, po.target_radius, po.maximum_clip_radius) do (rmin, rmax), max_fraction
+    radius_at_origin = map(po.blockscene, po.target_rlims, po.maximum_clip_radius) do (rmin, rmax), max_fraction
         # max_fraction = (rmin - r0) / (rmax - r0) solved for r0
         return max(0.0, (rmin - max_fraction * rmax) / (1 - max_fraction))
     end
 
     # get cartesian bbox defined by axis limits
     # OPT: target_radius update triggers radius_at_origin update
-    data_bbox = map(po.blockscene, po.thetalimits, radius_at_origin, po.direction, po.theta_0) do tlims, ro, dir, t0
-        polaraxis_bbox(po.target_radius[], tlims, ro, dir, t0)
+    data_bbox = map(po.blockscene, po.target_thetalims, radius_at_origin, po.direction, po.theta_0) do tlims, ro, dir, t0
+        polaraxis_bbox(po.target_rlims[], tlims, ro, dir, t0)
     end
 
     # fit data_bbox into the usable area of PolarAxis (i.e. with tick space subtracted)
@@ -210,7 +210,7 @@ function setup_camera_matrices!(po::PolarAxis)
     # same as above, but with rmax scaled to 1
     onany(po.blockscene, usable_fraction, data_bbox) do usable_fraction, bb
         mini = minimum(bb); ws = widths(bb)
-        rmax = po.target_radius[][2] - radius_at_origin[] # both update data_bbox
+        rmax = po.target_rlims[][2] - radius_at_origin[] # both update data_bbox
         scale = minimum(2usable_fraction ./ ws)
         trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
         scale *= rmax
@@ -241,9 +241,9 @@ function setup_camera_matrices!(po::PolarAxis)
     # scroll to zoom
     on(po.blockscene, e.scroll) do scroll
         if is_mouseinside(po.scene)
-            rmin, rmax = po.target_radius[]
+            rmin, rmax = po.target_rlims[]
             rmax = rmin + (rmax - rmin) * (1.0 - po.zoomspeed[]) ^ scroll[2]
-            po.target_radius[] = (rmin, rmax)
+            po.target_rlims[] = (rmin, rmax)
             return Consume(true)
         end
         return Consume(false)
@@ -259,7 +259,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 ispressed(po.scene, po.theta_translation_button[])
             )
             last_pos[] = Point2f(mouseposition(po.scene))
-            return Consume(true)
+            return Consume(drag_state[][1] || drag_state[][2])
         elseif e.action == Mouse.release
             drag_state[] = (
                 ispressed(po.scene, po.radial_translation_button[]),
@@ -279,7 +279,7 @@ function setup_camera_matrices!(po::PolarAxis)
             Δr = dot(u_r, diff)
             Δθ = po.direction[] * dot(u_θ, diff ./ r)
             if drag_state[][1]
-                rmin, rmax = po.target_radius[]
+                rmin, rmax = po.target_rlims[]
                 if rmin > 0
                     dr = min(rmin, Δr)
                     rmin = rmin - dr
@@ -287,12 +287,12 @@ function setup_camera_matrices!(po::PolarAxis)
                 else
                     rmax = r * rmax / (r + Δr)
                 end
-                po.target_radius[] = (rmin, rmax)
+                po.target_rlims[] = (rmin, rmax)
             end
             if drag_state[][2]
-                thetamin, thetamax = po.thetalimits[] .- Δθ
+                thetamin, thetamax = po.target_thetalims[] .- Δθ
                 shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
-                po.thetalimits[] = (thetamin, thetamax) .+ shift
+                po.target_thetalims[] = (thetamin, thetamax) .+ shift
                 po.theta_0[] = mod(po.theta_0[] .+ Δθ, 0..2pi)
             end
             # Needs recomputation because target_radius may have changed
@@ -324,11 +324,16 @@ function reset_limits!(po::PolarAxis)
         if !isempty(po.scene.plots)
             # TODO: Why does this include child scenes by default?
             lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
-            po.target_radius[] = (po.rlimits[][1], maximum(lims3d)[1])
+            po.target_rlims[] = (po.rlimits[][1], maximum(lims3d)[1])
         end
-    elseif po.target_radius[] != po.rlimits[]
-        po.target_radius[] = po.rlimits[]
+    elseif po.target_rlims[] != po.rlimits[]
+        po.target_rlims[] = po.rlimits[]
     end
+
+    if po.target_thetalims[] != po.thetalimits[]
+        po.target_thetalims[] = po.thetalimits[]
+    end
+
     return
 end
 
@@ -372,12 +377,12 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     onany(
             po.blockscene,
             po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
-            po.direction, po.thetalimits, po.sample_density, radius_at_origin
+            po.direction, po.target_thetalims, po.sample_density, radius_at_origin
         ) do rticks, rminorticks, rtickformat, rtickangle,
             dir, thetalims, sample_density, radius_at_origin
 
         # For text:
-        rlims = po.target_radius[]
+        rlims = po.target_rlims[]
         rmaxinv = 1.0 / (rlims[2] - radius_at_origin)
         _rtickvalues, _rticklabels = get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickradius = (_rtickvalues .- radius_at_origin) .* rmaxinv
@@ -398,7 +403,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     # doesn't have a lot of overlap with the inputs above so calculate this independently
     onany(
             po.blockscene,
-            po.direction, po.theta_0, po.rtickangle, po.thetalimits, po.rticklabelpad
+            po.direction, po.theta_0, po.rtickangle, po.target_thetalims, po.rticklabelpad
         ) do dir, theta_0, rtickangle, thetalims, pad
         angle = default_rtickangle(rtickangle, dir, thetalims) - dir * pi/2
         s, c = sincos(dir * (angle + theta_0))
@@ -418,7 +423,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.direction, po.theta_0, po.target_radius, po.thetalimits, po.maximum_clip_radius
+            po.direction, po.theta_0, po.target_rlims, po.target_thetalims, po.maximum_clip_radius
         ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, max_clip
 
         _thetatickvalues, _thetaticklabels = get_ticks(thetaticks, identity, thetatickformat, thetalims...)
@@ -454,7 +459,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         return
     end
 
-    notify(po.thetalimits)
+    notify(po.target_thetalims)
 
     # plot using the created observables
 
@@ -542,7 +547,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     # create large square with r=1 circle sector cutout
     # only regenerate if circle sector angle changes
-    thetadiff = map(lims -> abs(lims[2] - lims[1]), po.blockscene, po.thetalimits, ignore_equal_values = true)
+    thetadiff = map(lims -> abs(lims[2] - lims[1]), po.blockscene, po.target_thetalims, ignore_equal_values = true)
     outer_clip = map(po.blockscene, thetadiff, po.sample_density) do diff, sample_density
         return _polar_clip_polygon(0, diff, sample_density)
     end
@@ -556,7 +561,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         shading = false
     )
     # handle placement with transform
-    onany(po.blockscene, po.thetalimits, po.direction, po.theta_0) do thetalims, dir, theta_0
+    onany(po.blockscene, po.target_thetalims, po.direction, po.theta_0) do thetalims, dir, theta_0
         thetamin, thetamax = dir .* (thetalims .+ theta_0)
         rotate!(outer_clip_plot, Vec3f(0,0,1), dir > 0 ? thetamin : thetamax)
     end
@@ -572,7 +577,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         shading = false
     )
     onany(
-            po.blockscene, po.target_radius, po.maximum_clip_radius
+            po.blockscene, po.target_rlims, po.maximum_clip_radius
         ) do lims, maxclip
         s = min(lims[1] / lims[2], maxclip)
         scale!(inner_clip_plot, Vec3f(s, s, 1))
@@ -581,7 +586,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
 
     # spine traces circle sector - inner circle
     spine_points = map(po.blockscene,
-            po.target_radius, po.thetalimits, po.maximum_clip_radius, po.sample_density
+            po.target_rlims, po.target_thetalims, po.maximum_clip_radius, po.sample_density
         ) do (rmin, rmax), thetalims, max_clip, N
         thetamin, thetamax = thetalims
         rmin = min(rmin/rmax, max_clip)
@@ -615,7 +620,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         visible = po.spinevisible
     )
 
-    notify(po.thetalimits)
+    notify(po.target_thetalims)
 
     translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
     translate!(spineplot, 0, 0, 9001)
@@ -721,6 +726,6 @@ end
 Sets the angular limits of a given `PolarAxis`.
 """
 function thetalims!(po::PolarAxis, thetamin::Real, thetamax::Real)
-    po.thetalimits[] = (thetamin, thetamax)
+    po.target_thetalims[] = (thetamin, thetamax)
     return
 end

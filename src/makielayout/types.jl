@@ -1641,11 +1641,12 @@ end
 @Block PolarAxis begin
     scene::Scene
     overlay::Scene
-    target_radius::Observable{Tuple{Float64, Float64}}
+    target_rlims::Observable{Tuple{Float64, Float64}}
+    target_thetalims::Observable{Tuple{Float64, Float64}}
     cycler::Cycler
     palette::Attributes
     @attributes begin
-        # Genric
+        # Generic
 
         "The height setting of the scene."
         height = nothing
