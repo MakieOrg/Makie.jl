@@ -25,14 +25,48 @@ function colorbar_check(keys, kwargs_keys)
     end
 end
 
+function extract_colormap(plot)
+    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMap
+        return plot.calculated_colors[]
+    elseif all(x -> haskey(plot, x), [:colormap, :colorrange]) && !(plot.colorrange[] isa Makie.Automatic)
+        result = Dict{Symbol,Any}()
+        for key in [:colormap, :colorrange, :highclip, :lowclip, :colorscale, :color]
+            if haskey(plot, key)
+                result[key] = plot[key]
+            end
+        end
+        return result
+    else
+        colormaps = [extract_colormap(child) for child in plot.plots]
+        if length(colormaps) == 1
+            return colormaps[1]
+        else
+            idx = findfirst(x -> x isa Makie.ColorMap, colormaps)
+            !isnothing(idx) && return colormaps[idx]
+            idx = findfirst(x -> x isa Dict, colormaps)
+            !isnothing(idx) && return colormaps[idx]
+            return nothing
+        end
+    end
+end
+
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
-    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa ColorMap
-        cmap = plot.calculated_colors[]
+    cmap = extract_colormap(plot)
+    func = plotfunc(plot)
+    if cmap isa ColorMap
         scale = cmap.scale
+    elseif cmap isa Dict
+        cmap = (
+            colormap = cmap[:colormap],
+            colorrange = cmap[:colorrange],
+            highclip = get(cmap, :highclip, automatic),
+            lowclip = get(cmap, :lowclip, automatic),
+            color = cmap[:color]
+        )
+        scale = plot[:colorscale]
     else
         # Atomic plots should always have calculated_colors set, if they actually use a colormap
-        func = plotfunc(plot)
         if func in Makie.atomic_functions
             error("Plot `$(func)` doesn't have a color attribute that uses a colormap to map to colors, so it cannot be used to create a colorbar. Found color attribute: $(typeof(plot.calculated_colors[]))). Needs to be a number of vector of numbers!")
         end
@@ -49,10 +83,15 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
             E.g. `f, ax, pl = barplot(1:3; color=1:3)` will not work, but `Colorbar(f[1, 2], pl.plots[1].plots[1])` will.
             """)
         end
-        cmap = plot
-        scale = plot.colorscale
     end
-
+    if to_value(cmap.color) isa Union{AbstractVector{<: Colorant}, Colorant}
+        error("""
+            Plot $(func) doesn't have a color attribute that uses a colormap to map to colors, so it cannot be used to create a colorbar.
+            Please create the colorbar manually e.g. via `Colorbar(f[1, 2], colorrange=the_range, colormap=the_colormap)`.
+            This could also mean, that you're using a recipe, which itself doesn't calculate the colorrange, and leaves it to its children.
+            E.g. `f, ax, pl = barplot(1:3; color=1:3)` will not work, but `Colorbar(f[1, 2], pl.plots[1].plots[1])` will.
+       """)
+    end
     Colorbar(
         fig_or_scene;
         colormap=cmap.colormap,

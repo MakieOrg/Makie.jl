@@ -176,6 +176,11 @@ end
         @test_throws ErrorException Colorbar(f[1, 2], pl2)
         @test_throws ErrorException Colorbar(f[1, 2], pl3)
     end
+    @testset "Recipes" begin
+        f, ax, pl = barplot(1:3; color=1:3)
+        cbar = Colorbar(f[1, 2], pl)
+        @test cbar.limits[] == Vec(1.0, 3.0)
+    end
 end
 
 @testset "cycling" begin
