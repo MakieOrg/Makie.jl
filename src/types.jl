@@ -387,22 +387,22 @@ const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
 """
     ReversibleScale
 
-Custom scale struct, taking a forward and reverse arbitrary scale function.
+Custom scale struct, taking a forward and inverse arbitrary scale function.
 
 ## Fields
 $(TYPEDFIELDS)
 """
-struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
+struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval}
     """
     forward transformation (e.g. `log10`)
     """
     forward::F
     """
-    reverse transformation (e.g. `exp10` for `log10` such that reverse ∘ forward ≡ identity)
+    inverse transformation (e.g. `exp10` for `log10` such that inverse ∘ forward ≡ identity)
     """
-    reverse::B
+    inverse::I
     """
-    ticks base (e.g. "10" for pseudo `log10` ticks) (optional)
+    LogTicks base (e.g. "10" for pseudo log ticks) (optional)
     """
     logbase::Union{Nothing,String}
     """
@@ -412,21 +412,21 @@ struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
     """
     valid limits interval (optional)
     """
-    interval::I
-    function ReversibleScale(forward, reverse = Automatic(); logbase = nothing, limits = (0f0, 10f0), interval = (-Inf32, Inf32))
-        reverse isa Automatic && (reverse = inverse_transform(forward))
-        isnothing(reverse) && throw(ArgumentError(
-            "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(forward), reverse($(forward)))` instead."
+    interval::T
+    function ReversibleScale(forward, inverse = Automatic(); logbase = nothing, limits = (0f0, 10f0), interval = (-Inf32, Inf32))
+        inverse isa Automatic && (inverse = inverse_transform(forward))
+        isnothing(inverse) && throw(ArgumentError(
+            "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(forward), inverse($(forward)))` instead."
         ))
         interval isa AbstractInterval || (interval = OpenInterval(Float32.(interval)...))
 
         lft, rgt = limits = Tuple(Float32.(limits))
 
-        Id = reverse ∘ forward
+        Id = inverse ∘ forward
         lft ≈ Id(lft) || throw(ArgumentError("Invalid inverse transform: $lft !≈ $(Id(lft))"))
         rgt ≈ Id(rgt) || throw(ArgumentError("Invalid inverse transform: $rgt !≈ $(Id(rgt))"))
 
-        new{typeof(forward),typeof(reverse),typeof(interval)}(forward, reverse, logbase, limits, interval)
+        new{typeof(forward),typeof(inverse),typeof(interval)}(forward, inverse, logbase, limits, interval)
     end
 end
 

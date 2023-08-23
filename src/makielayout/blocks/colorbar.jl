@@ -93,11 +93,12 @@ end
 function colorbar_range(start, stop, length, colorscale)
     colorscale === identity && return LinRange(start, stop, length)
 
-    reverse = inverse_transform(colorscale)
-    isnothing(reverse) && throw(ArgumentError(
-        "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(colorscale), reverse($(colorscale)))` instead."
+    inverse = inverse_transform(colorscale)
+    isnothing(inverse) && throw(ArgumentError(
+        "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(colorscale), inverse($(colorscale)))` instead."
     ))
-    reverse.(range(start, stop; length))
+
+    inverse.(range(start, stop; length))
 end
 
 function initialize_block!(cb::Colorbar)
