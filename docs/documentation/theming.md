@@ -30,7 +30,6 @@ function example_plot()
         lines(f[i, j], cumsum(randn(50)))
     end
     Label(f[0, :], "A simple example plot")
-    Label(f[3, :], L"\sum_a^b{xy} + \mathscr{L}")
 end
 
 example_plot()
