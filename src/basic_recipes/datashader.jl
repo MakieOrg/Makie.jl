@@ -1,15 +1,24 @@
 # originally from https://github.com/cjdoris/ShadeYourData.jl
-module PixelAggregation
+module Aggregation
 
 import Base.Threads: @threads
 import Makie: Makie, (..), Rect2, widths
 abstract type AggOp end
 
-
 """
     Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
     Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
 
+# Example
+
+```Julia
+canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
+aggregate!(canvas, points; point_func=reverse, method=AggThreads())
+rgb_image = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
+# Recipes are defined for canvas as well and incorperate the `get_aggregation`, but `aggregate!` must be called manually.
+image!(canvas; operation=equalize_histogram, local_operation=identiy)
+surface!(canvas; operation=equalize_histogram, local_operation=identiy)
+```
 """
 mutable struct Canvas
     bounds::Rect2{Float64}
@@ -21,7 +30,14 @@ mutable struct Canvas
     data_extrema::Tuple{Float64,Float64}
 end
 
-function aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
+"""
+    get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
+
+Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
+simplifies passing a local or global operation.
+Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
+"""
+function get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
     pix_reshaped = Base.ReshapedArray(canvas.pixelbuffer, canvas.resolution, ())
     # we want to make it easy to set local_operation or operation, without them clashing, while also being able to set both!
     if operation === Makie.automatic
@@ -108,6 +124,12 @@ end
 
 using InteractiveUtils
 
+"""
+    aggregate!(c::Canvas, points; point_func=identity, method::AggMethod=AggSerial())
+
+Aggregate points into a canvas. The points are transformed by `point_func` before aggregation.
+Method can be `AggSerial()` or `AggThreads()`.
+"""
 function aggregate!(c::Canvas, points; point_func=identity, method::AggMethod=AggSerial())
     resize!(c, c.resolution, n_threads(method)) # make sure we have the right size for the method
     aggbuffer, pixelbuffer = c.aggbuffer, c.pixelbuffer
@@ -232,8 +254,8 @@ export AggAny, AggCount, AggMean, AggSum, AggSerial, AggThreads
 
 end
 
-using ..PixelAggregation
-using ..PixelAggregation: Canvas, change_op!
+using ..Aggregation
+using ..Aggregation: Canvas, change_op!
 
 function equalize_histogram(matrix; nbins=256 * 256)
     h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins=nbins)
@@ -269,17 +291,17 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     ```Julia
         struct MyAgg{T} <: Makie.AggOp end
         MyAgg() = MyAgg{Float64}()
-        Makie.PixelAggregation.null(::MyAgg{T}) where {T} = zero(T)
-        Makie.PixelAggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
-        Makie.PixelAggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
-        Makie.PixelAggregation.value(::MyAgg{T}, x::T) where {T} = x
+        Makie.Aggregation.null(::MyAgg{T}) where {T} = zero(T)
+        Makie.Aggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
+        Makie.Aggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
+        Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
     ```
 
 - `method = AggThreads()` can be `AggThreads()` or `AggSerial()`.
-- `async::Bool = true` will calculate aggregation in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in documenter.
+- `async::Bool = true` will calculate get_aggregation in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in documenter.
 
-- `global_post::Function = Makie.equalize_histogram` function which gets called on the whole aggregation array before display (`global_post(final_aggregation_result)`).
-- `local_post::Function = identity` function which gets call on each element after aggregation (`map!(x-> local_post(x), final_aggregation_result)`).
+- `global_post::Function = Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`global_post(final_aggregation_result)`).
+- `local_post::Function = identity` function which gets call on each element after get_aggregation (`map!(x-> local_post(x), final_aggregation_result)`).
 
 - `point_func::Function = identity` function which gets applied to every point before aggregating it.
 - `binfactor::Number = 1` factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a corser image.
@@ -366,10 +388,10 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     canvas = canvas_obs(limits, px_area, p.agg, p.binfactor)
     p._boundingbox = lift(fast_bb, p.points, p.point_func)
     on_func = p.async[] ? onany_latest : onany
-    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after aggregation happened
+    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
     p.canvas = canvas_with_aggregation
     on_func(canvas, p.points, p.point_func) do canvas, points, f
-        PixelAggregation.aggregate!(canvas, points; point_func=f, method=p.method[])
+        Aggregation.aggregate!(canvas, points; point_func=f, method=p.method[])
         canvas_with_aggregation[] = canvas
         return
     end
@@ -382,7 +404,7 @@ end
 function aggregate_categories!(canvases, categories; method=AggThreads())
     for (k, canvas) in canvases
         points = categories[k]
-        PixelAggregation.aggregate!(canvas, points; method=method)
+        Aggregation.aggregate!(canvas, points; method=method)
     end
 end
 
@@ -415,7 +437,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
                     for (k, v) in categories)
 
     on_func = p.async[] ? onany_latest : onany
-    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after aggregation happened
+    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
     p.canvas = canvas_with_aggregation
     toal_value = Observable(0f0)
     onany(canvas, p.points) do canvas, cats
@@ -444,7 +466,7 @@ Makie.used_attributes(::Type{<:Any}, ::Canvas) = (:operation, :local_operation)
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
                            operation=automatic, local_operation=identity)
-    pixel = PixelAggregation.aggregation(canvas; operation=operation, local_operation=local_operation)
+    pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
     xrange = range(xmin, stop = xmax, length = size(pixel, 1))
     yrange = range(ymin, stop = ymax, length = size(pixel, 2))
