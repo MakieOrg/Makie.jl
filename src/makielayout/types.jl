@@ -1506,11 +1506,11 @@ end
         "The z tick width"
         ztickwidth = 1
         "The size of the xtick marks."
-        xticksize::Float64 = 12f0
+        xticksize::Float64 = 6
         "The size of the ytick marks."
-        yticksize::Float64 = 12f0
+        yticksize::Float64 = 6
         "The size of the ztick marks."
-        zticksize::Float64 = 12f0
+        zticksize::Float64 = 6
         "The color of x spine 1 where the ticks are displayed"
         xspinecolor_1 = :black
         "The color of y spine 1 where the ticks are displayed"
@@ -1547,7 +1547,19 @@ end
         ygridvisible = true
         "Controls if the z grid is visible"
         zgridvisible = true
-        "The protrusions on the sides of the axis, how much gap space is reserved for labels etc."
+        """
+        The protrusions control how much gap space is reserved for labels etc. on the sides of the `Axis3`.
+        Unlike `Axis`, `Axis3` currently does not set these values automatically depending on the properties
+        of ticks and labels. This is because the effective protrusions also depend on the rotation and scaling
+        of the axis cuboid, which changes whenever the `Axis3` shifts in the layout. Therefore, auto-updating
+        protrusions could lead to an endless layout update cycle.
+
+        The default value of `30` for all sides is just a heuristic and might lead to collisions of axis
+        decorations with the `Figure` boundary or other plot elements. If that's the case, you can try increasing
+        the value(s).
+
+        The `protrusions` attribute accepts a single number for all sides, or a tuple of `(left, right, bottom, top)`.
+        """
         protrusions = 30
         "The x ticks"
         xticks = WilkinsonTicks(5; k_min = 3)
@@ -1597,6 +1609,12 @@ end
         yautolimitmargin = (0.05, 0.05)
         "The relative margins added to the autolimits in z direction."
         zautolimitmargin = (0.05, 0.05)
+        "Controls if the x axis goes rightwards (false) or leftwards (true) in default camera orientation."
+        xreversed::Bool = false
+        "Controls if the y axis goes leftwards (false) or rightwards (true) in default camera orientation."
+        yreversed::Bool = false
+        "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
+        zreversed::Bool = false
     end
 end
 
@@ -1661,6 +1679,8 @@ end
         rticklabelstrokewidth = 0.0
         "The color of the outline of `r` ticks. By default this uses the background color."
         rticklabelstrokecolor = automatic
+        "Padding of the `r` ticks label."
+        rticklabelpad = 4f0
         "Controls if the `r` ticks are visible."
         rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."

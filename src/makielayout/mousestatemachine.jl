@@ -122,6 +122,9 @@ function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2}; 
 end
 
 
+# don't react to buttons beyond the first three
+_isstandardmousebutton(b) = (b == Mouse.left || b == Mouse.middle || b == Mouse.right)
+
 function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     Mouse = Makie.Mouse
     dblclick_max_interval = 0.2
@@ -156,7 +159,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         # this can mean a new drag started, or a drag continues if it is ongoing.
         # it can also mean that a drag that started outside and isn't related to this
         # object is going across it and should be ignored here
-        if last_mouseevent[] == Mouse.press
+        if last_mouseevent[] == Mouse.press && _isstandardmousebutton(mouse_downed_button[])
 
             if drag_ongoing[]
                 # continue the drag
@@ -241,7 +244,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
         # mouse went down, this can either happen inside or outside the objects of interest
         # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)
-        if event.action == Mouse.press
+        if event.action == Mouse.press && _isstandardmousebutton(first(pressed_buttons))
             if length(pressed_buttons) == 1
                 button = first(pressed_buttons)
                 mouse_downed_button[] = button
@@ -267,7 +270,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                 end
             end
             last_mouseevent[] = Mouse.press
-        elseif event.action == Mouse.release
+        elseif event.action == Mouse.release && _isstandardmousebutton(mouse_downed_button[])
             # only register up events and clicks if the upped button matches
             # the recorded downed one
             # and it can't be nothing (if the first up event comes from outside)
