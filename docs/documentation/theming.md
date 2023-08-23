@@ -22,7 +22,7 @@ Let's create a plot with the default theme:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-using Makie.LaTeXStrings: @L_str # hide
+using Makie.LaTeXStrings # hide
 
 function example_plot()
     f = Figure()
@@ -30,7 +30,7 @@ function example_plot()
         lines(f[i, j], cumsum(randn(50)))
     end
     Label(f[0, :], "A simple example plot")
-    Label(f[3, :], L"Random walks $x(t_n)$")
+    Label(f[3, :], LaTeXStrings.L"Random walks $x(t_n)$")
 end
 
 example_plot()
