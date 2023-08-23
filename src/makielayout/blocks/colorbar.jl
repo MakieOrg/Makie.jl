@@ -35,7 +35,6 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         cmap = plot
         scale = plot.colorscale
     end
-
     Colorbar(
         fig_or_scene;
         colormap=cmap.colormap,

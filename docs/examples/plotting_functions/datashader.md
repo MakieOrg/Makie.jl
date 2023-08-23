@@ -63,17 +63,19 @@ fig = Figure(resolution=(1000, 1000))
 fig_grid = CartesianIndices((3, 4))
 cmap = to_colormap(:BuPu_9)
 cmap[1] = RGBAf(1, 1, 1, 1) # make sure background is white
-for (i, arg) in enumerate(cargs)
-    # localy, one can go pretty crazy with n,
-    # e.g. 4*(10^7), but we don't want the docbuild to become too slow.
-    points = trajectory(Clifford, arg...; n=10^6)
-    r, c = Tuple(fig_grid[i])
-    ax, plot = datashader(fig[r, c], points;
-        colormap=cmap,
-        async=false,
-        axis=(; type=Axis, title=join(string.(arg), ", ")))
-    hidedecorations!(ax)
-    hidespines!(ax)
+let
+    for (i, arg) in enumerate(cargs)
+        # localy, one can go pretty crazy with n,
+        # e.g. 4*(10^7), but we don't want the docbuild to become too slow.
+        points = trajectory(Clifford, arg...; n=10^6)
+        r, c = Tuple(fig_grid[i])
+        ax, plot = datashader(fig[r, c], points;
+            colormap=cmap,
+            async=false,
+            axis=(; type=Axis, title=join(string.(arg), ", ")))
+        hidedecorations!(ax)
+        hidespines!(ax)
+    end
 end
 rowgap!(fig.layout,5)
 colgap!(fig.layout,1)

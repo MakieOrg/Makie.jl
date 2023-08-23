@@ -12,11 +12,12 @@ abstract type AggOp end
 # Example
 
 ```Julia
+using Makie
 canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
 aggregate!(canvas, points; point_func=reverse, method=AggThreads())
-rgb_image = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
+aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
 # Recipes are defined for canvas as well and incorperate the `get_aggregation`, but `aggregate!` must be called manually.
-image!(canvas; operation=equalize_histogram, local_operation=identiy)
+image!(canvas; operation=equalize_histogram, local_operation=identiy, colormap=:viridis, colorrange=(0, 20))
 surface!(canvas; operation=equalize_histogram, local_operation=identiy)
 ```
 """
@@ -255,7 +256,7 @@ export AggAny, AggCount, AggMean, AggSum, AggSerial, AggThreads
 end
 
 using ..Aggregation
-using ..Aggregation: Canvas, change_op!
+using ..Aggregation: Canvas, change_op!, aggregate!
 
 function equalize_histogram(matrix; nbins=256 * 256)
     h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins=nbins)
@@ -397,7 +398,6 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     end
     image!(p, canvas_with_aggregation;
         operation=p.operation, local_operation=p.local_operation, interpolate=p.interpolate,
-        colorrange=colorrange,
         MakieCore.generic_plot_attributes(p)...,
         MakieCore.colormap_attributes(p)...)
     return p

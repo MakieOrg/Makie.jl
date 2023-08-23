@@ -9,10 +9,10 @@ xx = Rect2f(points)
 all(x-> x in xx, points)
 
 
-canvas = PixelAggregation.Canvas(Rect2f(points))
-PixelAggregation.aggregate!(canvas, points);
+canvas = Canvas(Rect2f(points))
+aggregate!(canvas, points);
 
-m = collect(PixelAggregation.aggregation(canvas))
+m = collect(Makie.get_aggregation(canvas))
 
 (xmin, ymin), (xmax, ymax) = map(x-> x./widths(canvas.bounds), extrema(canvas.bounds))
 
