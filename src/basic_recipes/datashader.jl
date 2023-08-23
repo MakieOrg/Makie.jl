@@ -14,7 +14,7 @@ abstract type AggOp end
 ```Julia
 using Makie
 canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
-aggregate!(canvas, points; point_func=reverse, method=AggThreads())
+aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
 aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
 # Recipes are defined for canvas as well and incorperate the `get_aggregation`, but `aggregate!` must be called manually.
 image!(canvas; operation=equalize_histogram, local_operation=identiy, colormap=:viridis, colorrange=(0, 20))
@@ -126,22 +126,22 @@ end
 using InteractiveUtils
 
 """
-    aggregate!(c::Canvas, points; point_func=identity, method::AggMethod=AggSerial())
+    aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
 
-Aggregate points into a canvas. The points are transformed by `point_func` before aggregation.
+Aggregate points into a canvas. The points are transformed by `point_transform` before aggregation.
 Method can be `AggSerial()` or `AggThreads()`.
 """
-function aggregate!(c::Canvas, points; point_func=identity, method::AggMethod=AggSerial())
+function aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
     resize!(c, c.resolution, n_threads(method)) # make sure we have the right size for the method
     aggbuffer, pixelbuffer = c.aggbuffer, c.pixelbuffer
     fill!(aggbuffer, null(c.op))
-    return aggregation_implementation!(method, aggbuffer, pixelbuffer, c, c.op, points, point_func)
+    return aggregation_implementation!(method, aggbuffer, pixelbuffer, c, c.op, points, point_transform)
 end
 
 function aggregation_implementation!(::AggSerial,
                                      aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
                                      c::Canvas, op::AggOp,
-                                     points, point_func)
+                                     points, point_transform)
     (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
     xsize, ysize = size(c)
     xwidth, ywidth = widths(c.bounds)
@@ -155,7 +155,7 @@ function aggregation_implementation!(::AggSerial,
     # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
     out = Base.ReshapedArray(aggbuffer, (xsize, ysize), ())
     for point in points
-        p = point_func(point)
+        p = point_transform(point)
         x = p[1]
         y = p[2]
         if length(p) > 2 # should compile away
@@ -188,7 +188,7 @@ end
 function aggregation_implementation!(::AggThreads,
                                      aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
                                      c::Canvas, op::AggOp,
-                                     points, point_func)
+                                     points, point_transform)
     (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
     xsize, ysize = size(c)
     # by adding eps to width we can use the scaling factor plus floor directly to compute the bin indices
@@ -213,7 +213,7 @@ function aggregation_implementation!(::AggThreads,
         from = chunks[t]
         to = chunks[t + 1]
         @inbounds for idx in from:to
-            p = point_func(points[idx])
+            p = point_transform(points[idx])
             x = p[1]
             y = p[2]
             if length(p) > 2 # should compile away
@@ -258,7 +258,7 @@ end
 using ..Aggregation
 using ..Aggregation: Canvas, change_op!, aggregate!
 
-function equalize_histogram(matrix; nbins=256 * 256)
+function equalize_histogram(matrix; nbins=256)
     h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins=nbins)
     h_eq = normalize(h_eq; mode=:density)
     cdf = cumsum(h_eq.weights)
@@ -272,7 +272,7 @@ end
     datashader(points::AbstractVector{<: Point})
 
 Points can be any array type supporting iteration & getindex, including memory mapped arrays.
-If you have x + y coordinates seperated and want to avoid conversion + copy, consider using:
+If you have separate arrays for x and y coordinates and want to avoid conversion and copy, consider using:
 ```Julia
 using Makie.StructArrays
 points = StructArray{Point2f}((x, y))
@@ -280,7 +280,7 @@ datashader(points)
 ```
 Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower then just copying it into a new array.
 
-For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -t8` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
 
 ## Attributes
 
@@ -304,8 +304,8 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 - `operation::Function = automatic` Defaults to `Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`operation(final_aggregation_result)`).
 - `local_operation::Function = identity` function which gets call on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
 
-- `point_func::Function = identity` function which gets applied to every point before aggregating it.
-- `binfactor::Number = 1` factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a corser image.
+- `point_transform::Function = identity` function which gets applied to every point before aggregating it.
+- `binsize::Number = 1` factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a corser image.
 - `show_timings::Bool = false` show how long it takes to aggregate each frame.
 - `interpolate::Bool = true` If the resulting image should be displayed interpolated.
 
@@ -324,8 +324,8 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         operation=automatic,
         local_operation=identity,
 
-        point_func = identity,
-        binfactor = 1,
+        point_transform = identity,
+        binsize = 1,
         show_timings = false,
 
         interpolate = true
@@ -351,12 +351,12 @@ function fast_bb(points, f)
 end
 
 
-function canvas_obs(limits::Observable, pixel_area::Observable, op, binfactor::Observable)
+function canvas_obs(limits::Observable, pixel_area::Observable, op, binsize::Observable)
     canvas = Canvas(limits[]; resolution=(widths(pixel_area[])...,), op=op[])
     canvas_obs = Observable(canvas)
-    onany(limits, pixel_area, binfactor, op) do lims, pxarea, binfactor, op
-        binfactor isa Int || error("Bin factor $binfactor is not an Int.")
-        xsize, ysize = round.(Int, Makie.widths(pxarea) ./ binfactor)
+    onany(limits, pixel_area, binsize, op) do lims, pxarea, binsize, op
+        binsize isa Int || error("Bin factor $binsize is not an Int.")
+        xsize, ysize = round.(Int, Makie.widths(pxarea) ./ binsize)
         has_changed = Base.resize!(canvas, (xsize, ysize))
         has_changed = has_changed || change_op!(canvas, op)
         lims64 = Rect2{Float64}(lims)
@@ -375,8 +375,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
     px_area = lift(identity, p, scene.px_area; ignore_equal_values=true)
-    canvas = canvas_obs(limits, px_area, p.agg, p.binfactor)
-    p._boundingbox = lift(fast_bb, p.points, p.point_func)
+    canvas = canvas_obs(limits, px_area, p.agg, p.binsize)
+    p._boundingbox = lift(fast_bb, p.points, p.point_transform)
     on_func = p.async[] ? onany_latest : onany
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
     p.canvas = canvas_with_aggregation
@@ -387,8 +387,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         end
     end
 
-    on_func(canvas, p.points, p.point_func) do canvas, points, f
-        Aggregation.aggregate!(canvas, points; point_func=f, method=p.method[])
+    on_func(canvas, p.points, p.point_transform) do canvas, points, f
+        Aggregation.aggregate!(canvas, points; point_transform=f, method=p.method[])
         canvas_with_aggregation[] = canvas
         # If not automatic, it will get updated by the above on(p.colorrange)
         if p.colorrange[] isa Automatic
@@ -429,8 +429,8 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     scene = parent_scene(p)
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
     px_area = lift(identity, p, scene.px_area; ignore_equal_values=true)
-    canvas = canvas_obs(limits, px_area, Observable(AggCount{Float32}()), p.binfactor)
-    p._boundingbox = lift(p.points, p.point_func) do cats, func
+    canvas = canvas_obs(limits, px_area, Observable(AggCount{Float32}()), p.binsize)
+    p._boundingbox = lift(p.points, p.point_transform) do cats, func
         rects = map(points -> fast_bb(points, func), values(cats))
         return reduce(union, rects)
     end

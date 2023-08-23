@@ -63,11 +63,13 @@ fig = Figure(resolution=(1000, 1000))
 fig_grid = CartesianIndices((3, 4))
 cmap = to_colormap(:BuPu_9)
 cmap[1] = RGBAf(1, 1, 1, 1) # make sure background is white
+
 let
+    # locally, one can go pretty high with n_points,
+    # e.g. 4*(10^7), but we don't want the docbuild to become too slow.
+    n_points = 10^6
     for (i, arg) in enumerate(cargs)
-        # localy, one can go pretty crazy with n,
-        # e.g. 4*(10^7), but we don't want the docbuild to become too slow.
-        points = trajectory(Clifford, arg...; n=10^6)
+        points = trajectory(Clifford, arg...; n=n_points)
         r, c = Tuple(fig_grid[i])
         ax, plot = datashader(fig[r, c], points;
             colormap=cmap,
@@ -125,7 +127,10 @@ end
     display(f)
 end
 ```
-![](/assets/datashader-14million.gif)
+~~~
+<video autoplay src="/assets/datashader-14million.mp4">
+</video>
+~~~
 
 #### 2.7 billion OSM GPS points
 
@@ -147,10 +152,10 @@ points = Mmap.mmap(open(path, "r"), Vector{Point2f});
         local_post=x-> log10(x + 1),
         #=
             in the code we used to save the binary, we had the points in the wrong order.
-            A good chance to demonstrate the `point_func` argument,
+            A good chance to demonstrate the `point_transform` argument,
             Which gets applied to every point before aggregating it
         =#
-        point_func=reverse,
+        point_transform=reverse,
         axis=(; type=Axis, autolimitaspect = 1),
         figure=(;figure_padding=0, resolution=(1200, 600))
     )
@@ -170,7 +175,10 @@ aggregation took 1.117s
 aggregation took 0.866s
 aggregation took 0.724s
 ```
-![](/assets/datashader_2-7_billion.gif)
+~~~
+<video autoplay src="/assets/datashader_2-7_billion.mp4">
+</video>
+~~~
 
 ### Categorical Data
 
