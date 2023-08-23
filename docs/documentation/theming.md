@@ -22,6 +22,7 @@ Let's create a plot with the default theme:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
+using Makie.LaTeXStrings: @L_str # hide
 
 function example_plot()
     f = Figure()
