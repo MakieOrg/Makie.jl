@@ -376,3 +376,15 @@ end
     @test_nowarn axislegend()
     f
 end
+
+@testset "ReversibleScale" begin
+    @test Makie.ReversibleScale(identity).reverse === identity
+    @test Makie.ReversibleScale(log).reverse === exp
+    @test_throws ArgumentError Makie.ReversibleScale(x -> log10(x))  # missing reverse scale
+    @test_throws ArgumentError Makie.ReversibleScale(sqrt, exp10)  # incorrect reverse scale
+end
+
+@testset "Invalid inverse transform" begin
+    f = Figure()
+    @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
+end

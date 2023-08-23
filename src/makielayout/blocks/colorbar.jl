@@ -91,13 +91,13 @@ function Colorbar(fig_or_scene, voronoi::Voronoiplot; kwargs...)
 end
 
 function colorbar_range(start, stop, length, colorscale)
-    rev = inverse_transform(colorscale)
-    if isnothing(rev)
-        @warn "Cannot determine inverse transform: you can use `colorscale=Makie.ReversibleScale($(colorscale), reverse($(colorscale)))` instead.
-Falling back to `identity`, which leads to sub optimal ticks!"
-        return LinRange(start, stop, length)
-    end
-    rev.(range(start, stop; length))
+    colorscale === identity && return LinRange(start, stop, length)
+
+    reverse = inverse_transform(colorscale)
+    isnothing(reverse) && throw(ArgumentError(
+        "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(colorscale), reverse($(colorscale)))` instead."
+    ))
+    reverse.(range(start, stop; length))
 end
 
 function initialize_block!(cb::Colorbar)

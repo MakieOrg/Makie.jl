@@ -387,7 +387,7 @@ const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
 """
     ReversibleScale
 
-Custom scale struct, taking a scaling (forward) and an inverse (backward) arbitrary scale function.
+Custom scale struct, taking a forward and reverse arbitrary scale function.
 
 ## Fields
 $(TYPEDFIELDS)
@@ -398,9 +398,9 @@ struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
     """
     forward::F
     """
-    inverse transformation (e.g. `exp10` for `log10` such that backward ∘ forward ≡ identity)
+    reverse transformation (e.g. `exp10` for `log10` such that reverse ∘ forward ≡ identity)
     """
-    backward::B
+    reverse::B
     """
     ticks base (e.g. "10" for pseudo `log10` ticks) (optional)
     """
@@ -413,12 +413,20 @@ struct ReversibleScale{F <: Function, B <: Function, I <: AbstractInterval}
     valid limits interval (optional)
     """
     interval::I
-    function ReversibleScale(forward, backward; logbase = nothing, limits = (0f0, 10f0), interval = (-Inf32, Inf32))
-        if !(interval isa AbstractInterval)
-            interval = OpenInterval(Float32.(interval)...)
-        end
-        limits = Tuple(Float32.(limits))
-        new{typeof(forward),typeof(backward),typeof(interval)}(forward, backward, logbase, limits, interval)
+    function ReversibleScale(forward, reverse = Automatic(); logbase = nothing, limits = (0f0, 10f0), interval = (-Inf32, Inf32))
+        reverse isa Automatic && (reverse = inverse_transform(forward))
+        isnothing(reverse) && throw(ArgumentError(
+            "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(forward), reverse($(forward)))` instead."
+        ))
+        interval isa AbstractInterval || (interval = OpenInterval(Float32.(interval)...))
+
+        lft, rgt = limits = Tuple(Float32.(limits))
+
+        Id = reverse ∘ forward
+        lft ≈ Id(lft) || throw(ArgumentError("Invalid inverse transform: $lft !≈ $(Id(lft))"))
+        rgt ≈ Id(rgt) || throw(ArgumentError("Invalid inverse transform: $rgt !≈ $(Id(rgt))"))
+
+        new{typeof(forward),typeof(reverse),typeof(interval)}(forward, reverse, logbase, limits, interval)
     end
 end
 

@@ -401,15 +401,15 @@ end
 
 inverse_transform(::typeof(identity)) = identity
 inverse_transform(::typeof(log10)) = exp10
-inverse_transform(::typeof(log)) = exp
 inverse_transform(::typeof(log2)) = exp2
+inverse_transform(::typeof(log)) = exp
 inverse_transform(::typeof(sqrt)) = x -> x ^ 2
 inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
-inverse_transform(s::ReversibleScale) = s.backward
+inverse_transform(s::ReversibleScale) = s.reverse
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
-inverse_transform(s) = nothing
+inverse_transform(::Any) = nothing
 
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)
