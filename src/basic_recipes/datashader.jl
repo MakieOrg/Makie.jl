@@ -300,38 +300,26 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 - `method = AggThreads()` can be `AggThreads()` or `AggSerial()`.
 - `async::Bool = true` will calculate get_aggregation in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in documenter.
 
-- `global_post::Function = Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`global_post(final_aggregation_result)`).
-- `local_post::Function = identity` function which gets call on each element after get_aggregation (`map!(x-> local_post(x), final_aggregation_result)`).
+- `operation::Function = automatic` Defaults to `Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`operation(final_aggregation_result)`).
+- `local_operation::Function = identity` function which gets call on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
 
 - `point_func::Function = identity` function which gets applied to every point before aggregating it.
 - `binfactor::Number = 1` factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a corser image.
 - `show_timings::Bool = false` show how long it takes to aggregate each frame.
 - `interpolate::Bool = true` If the resulting image should be displayed interpolated.
 
-### Generic
+$(Base.Docs.doc(colormap_attributes!))
 
-- `visible::Bool = true` sets whether the plot will be rendered or not.
-- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
-- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
-- `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
-- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
-- `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
-- `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
-- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
-- `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
-- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
-- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
-- `space::Symbol = :data` sets the transformation space for the plot
+$(Base.Docs.doc(generic_plot_attributes!))
 """
 @recipe(DataShader, points) do scene
-    Theme(
+    attr = Theme(
 
         agg = AggCount(),
         method = AggThreads(),
         async = true,
         # Defaults to equalize_histogram
-        # just set to automatic, so that if one sets local_post, one doesn't do equalize_histogram on top of things.
+        # just set to automatic, so that if one sets local_operation, one doesn't do equalize_histogram on top of things.
         operation=automatic,
         local_operation=identity,
 
@@ -339,9 +327,10 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
         binfactor = 1,
         show_timings = false,
 
-        colormap = theme(scene, :colormap),
-        colorrange = automatic
+        interpolate = true
     )
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 function fast_bb(points, f)
@@ -390,14 +379,27 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     on_func = p.async[] ? onany_latest : onany
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
     p.canvas = canvas_with_aggregation
+    colorrange = Observable(Vec2f(0, 1))
+    on(p.colorrange; update=true) do crange
+        if !(crange isa Automatic)
+            colorrange[] = Vec2f(crange)
+        end
+    end
+
     on_func(canvas, p.points, p.point_func) do canvas, points, f
         Aggregation.aggregate!(canvas, points; point_func=f, method=p.method[])
         canvas_with_aggregation[] = canvas
+        # If not automatic, it will get updated by the above on(p.colorrange)
+        if p.colorrange[] isa Automatic
+            colorrange[] = Vec2f(canvas.data_extrema)
+        end
         return
     end
     image!(p, canvas_with_aggregation;
-        colorrange=p.colorrange, colormap=p.colormap,
-        operation=p.operation, local_operation=p.local_operation)
+        operation=p.operation, local_operation=p.local_operation, interpolate=p.interpolate,
+        colorrange=colorrange,
+        generic_plot_attributes(p)...,
+        colormap_attributes(p)...)
     return p
 end
 

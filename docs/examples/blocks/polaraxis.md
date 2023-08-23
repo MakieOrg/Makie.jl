@@ -1,6 +1,6 @@
 # PolarAxis
 
-The `PolarAxis` is an axis for data in polar coordinates `(radius, angle)`. It 
+The `PolarAxis` is an axis for data in polar coordinates `(radius, angle)`. It
 is currently an experimental feature, meaning that some functionality might be
 missing or broken, and that the `PolarAxis` is (more) open to breaking changes.
 
@@ -23,7 +23,7 @@ f
 
 ## Plotting into an PolarAxis
 
-Like with an `Axis` you can use mutating 2D plot functions directly on a 
+Like with an `Axis` you can use mutating 2D plot functions directly on a
 `PolarAxis`. The input arguments of the plot functions will then be interpreted
 in polar coordinates, i.e. as a radius and angle (in radians).
 
@@ -36,20 +36,36 @@ f
 ```
 \end{examplefigure}
 
-Note that not every plot type is compatible with polar transforms. For example 
-`image` is not as it expects to be drawn on a rectangle. `heatmap` works to a 
-degree in CairoMakie, but not GLMakie due to differences in the backend 
-implementation. `surface` works in both, as it is designed to generate a 
-triangle mesh.
+Note that not every plot type is compatible with polar transforms. For example
+`image` is not as it expects to be drawn on a rectangle. `heatmap` works to a
+degree in CairoMakie, but not GLMakie due to differences in the backend
+implementation.
+`surface` can be used as a replacement for `image` as it generates a triangle
+mesh. However it also has a component in z-direction which will affect drawing
+order. You can use `translate!(plot, 0, 0, z_shift)` to work around that.
+As a replacement for `heatmap` you can use `voronoiplot`, which generates cells
+of arbitrary shape around points given to it. Here you will generally need to
+set `rlims!(ax, rmax)` yourself.
 
 \begin{examplefigure}{svg = false}
 ```julia
-f = Figure()
-ax = PolarAxis(f[1, 1])
-# The first two arguments should be set to a sensible radial and angular range
-zs = [r*cos(phi) for r in range(1, 2, length=100), phi in range(0, 4pi, length=100)]
-p = surface!(ax, 0..10, 0..2pi, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
-Colorbar(f[1, 2], p)
+f = Figure(resolution = (800, 500))
+
+ax = PolarAxis(f[1, 1], title = "Surface")
+rs = 0:10
+phis = range(0, 2pi, 37)
+cs = [r+cos(4phi) for r in rs, phi in phis]
+p = surface!(ax, 0..10, 0..2pi, cs, shading = false, colormap = :coolwarm)
+Colorbar(f[2, 1], p, vertical = false, flipaxis = false)
+
+ax = PolarAxis(f[1, 2], title = "Voronoi")
+rs = 1:10
+phis = range(0, 2pi, 37)[1:36]
+cs = [r+cos(4phi) for r in rs, phi in phis]
+p = voronoiplot!(ax, rs, phis, cs, show_generators = false, strokewidth = 0)
+Makie.rlims!(ax, 10.5)
+Colorbar(f[2, 2], p, vertical = false, flipaxis = false)
+
 f
 ```
 \end{examplefigure}
@@ -75,17 +91,17 @@ f
 ```
 \end{examplefigure}
 
-Decorations such as grid lines and tick labels can be adjusted through 
+Decorations such as grid lines and tick labels can be adjusted through
 attributes in much the same way.
 
 \begin{examplefigure}{svg = true}
 ```julia
 f = Figure(resolution = (600, 600), backgroundcolor = :black)
 ax = PolarAxis(
-    f[1, 1], 
+    f[1, 1],
     backgroundcolor = :black,
     # r minor grid
-    rminorgridvisible = true, rminorgridcolor = :red, 
+    rminorgridvisible = true, rminorgridcolor = :red,
     rminorgridwidth = 1.0, rminorgridstyle = :dash,
     # theta minor grid
     thetaminorgridvisible = true, thetaminorgridcolor = :lightblue,
@@ -106,12 +122,12 @@ f
 
 ## Interactivity
 
-The `PolarAxis` currently implements zooming by scrolling and allows you to 
+The `PolarAxis` currently implements zooming by scrolling and allows you to
 reset the view with left control + left mouse button. You can change the key
-combination for resetting the view with the `reset_button` attribute, which 
+combination for resetting the view with the `reset_button` attribute, which
 accepts anything `ispressed` accepts.
 
-Note that `PolarAxis` currently does not implement the interaction itnerface 
+Note that `PolarAxis` currently does not implement the interaction itnerface
 used by `Axis`.
 
 ## Other Notes
@@ -121,7 +137,7 @@ used by `Axis`.
 Currently there is a scatter and poly plot outside the area of the `PolarAxis`
 which clips the content to the relevant area. If you want to draw outside the
 circle limiting the polar axis but still within it's scene area, you will need
-to translate those plots to a z range between `9000` and `10_000` or disable 
+to translate those plots to a z range between `9000` and `10_000` or disable
 clipping via the `clip` attribute.
 
 ## Attributes
