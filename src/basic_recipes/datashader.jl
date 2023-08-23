@@ -308,9 +308,9 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 - `show_timings::Bool = false` show how long it takes to aggregate each frame.
 - `interpolate::Bool = true` If the resulting image should be displayed interpolated.
 
-$(Base.Docs.doc(colormap_attributes!))
+$(Base.Docs.doc(MakieCore.colormap_attributes!))
 
-$(Base.Docs.doc(generic_plot_attributes!))
+$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(DataShader, points) do scene
     attr = Theme(
@@ -329,8 +329,8 @@ $(Base.Docs.doc(generic_plot_attributes!))
 
         interpolate = true
     )
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+    MakieCore.generic_plot_attributes!(attr)
+    return MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
 end
 
 function fast_bb(points, f)
@@ -398,8 +398,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     image!(p, canvas_with_aggregation;
         operation=p.operation, local_operation=p.local_operation, interpolate=p.interpolate,
         colorrange=colorrange,
-        generic_plot_attributes(p)...,
-        colormap_attributes(p)...)
+        MakieCore.generic_plot_attributes(p)...,
+        MakieCore.colormap_attributes(p)...)
     return p
 end
 
