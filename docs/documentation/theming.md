@@ -30,6 +30,7 @@ function example_plot()
         lines(f[i, j], cumsum(randn(50)))
     end
     Label(f[0, :], "A simple example plot")
+    f
 end
 
 example_plot()
