@@ -2,6 +2,8 @@
 
 ## master
 
+- Improved Barplot Label Alignment [#3160](https://github.com/MakieOrg/Makie.jl/issues/3160).
+
 ## v0.19.8
 
 - Improved CairoMakie rendering of `lines` with repeating colors in an array [#3141](https://github.com/MakieOrg/Makie.jl/pull/3141).

@@ -161,6 +161,33 @@ function stack_grouped_from_to(i_stack, y, grp)
     (from = from, to = to)
 end
 
+function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direction::Bool, flip::Bool)
+    is_align_type(::Any) = false
+    is_align_type(::Vec2f) = true
+    is_align_type(::Point2f) = true
+    is_align_type(::NTuple{2, <:Real}) = true
+    is_align_type(::Tuple{<:Real, <:Real}) = true
+    is_align_type(::NTuple{2, Symbol}) = true
+    make_align(a) = Vec2f(a)
+    make_align(a::NTuple{2, Symbol}) = to_align(a)
+    if label_align == automatic
+        if flip
+            label_rotation += π
+        end
+        if !in_y_direction
+            label_rotation += π/2
+        end
+        s, c = sincos(label_rotation)
+        scale = 1 / max(abs(s), abs(c))
+        align = Vec2f(0.5 - 0.5scale * s, 0.5 - 0.5scale * c)
+        return align
+    elseif is_align_type(label_align)
+        return make_align(label_align)
+    else
+        error("`label_align` needs to be of type NTuple{2, <:Real}, not of type $(typeof(label_align))")
+    end
+end
+
 function text_attributes(values, in_y_direction, flip_labels_at, color_over_background, color_over_bar,
                          label_offset, label_rotation, label_align)
     aligns = Vec2f[]
@@ -178,29 +205,12 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
             error("flip_labels_at needs to be a tuple of two numbers (low, high), or a single number (high)")
         end
     end
-    function calculate_align(angle, in_y_direction::Bool, flip::Bool)
-        if flip
-            angle += π
-        end
-        if !in_y_direction
-            angle += π/2
-        end
-        s, c = sincos(angle)
-        scale = 1 / max(abs(s), abs(c))
-        # (0.5, 0.0) for angle = 0, (0.0, 0.5) for angle = π/2
-        align = Point2f(0.5 - 0.5scale * s, 0.5 - 0.5scale * c)
-        return align
-    end
 
     for (i, k) in enumerate(values)
 
         isflipped = flip(k)
 
-        if label_align == automatic
-            push!(aligns, calculate_align(label_rotation, in_y_direction, isflipped))
-        else # custom align
-            push!(aligns, label_align)
-        end
+        push!(aligns, calculate_bar_label_align(label_align, label_rotation, in_y_direction, isflipped))
 
         if isflipped
             # plot text inside bar
