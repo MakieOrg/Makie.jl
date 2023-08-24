@@ -239,7 +239,7 @@ end
 function plot_to_screen(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    spvm = clip_to_space(cam, :data) * space_to_clip(cam, space) * transformationmatrix(plot)[]
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
 
     return map(points) do p
         transformed = apply_transform(transform_func(plot), p, space)
@@ -280,6 +280,6 @@ function screen_to_plot(plot, p::VecTypes)
 end
 
 # ignore whiskers when determining data limits
-function data_limits(bars::Union{Errorbars, Rangebars})
-    data_limits(bars.plots[1])
+function point_iterator(bars::Union{Errorbars, Rangebars})
+    point_iterator(bars.plots[1])
 end
