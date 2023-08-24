@@ -15,7 +15,7 @@ using Base64
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG # get FFMPEG on any system!
+using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
 using PlotUtils
@@ -151,7 +151,9 @@ include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
+include("basic_recipes/voronoiplot.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
@@ -276,7 +278,7 @@ export abline! # until deprecation removal
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record, Record
-export save
+export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients

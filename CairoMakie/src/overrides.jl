@@ -37,12 +37,13 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, poly.strokewidth[])
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokecolor, strokewidth)
+        model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
@@ -56,15 +57,18 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
     Cairo.fill_preserve(screen.context)
     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
     Cairo.set_line_width(screen.context, strokewidth)
+    isnothing(strokestyle) || Cairo.set_dash(screen.context, diff(Float64.(strokestyle)) .* strokewidth)
     Cairo.stroke(screen.context)
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+
     broadcast_foreach(points_list, color,
-        strokecolor, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokewidth, model
-            draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
+        strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokestyle, strokewidth, model
+            draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     end
 end
 
@@ -76,12 +80,21 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
 
+    linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    if isnothing(linestyle)
+        linestyle_diffed = nothing
+    elseif linestyle isa AbstractVector{Float64}
+        linestyle_diffed = diff(Float64.(linestyle))
+    else
+        error("Wrong type for linestyle: $(poly.linestyle[]).")
+    end
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
     broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
         Cairo.rectangle(screen.context, origin(r)..., widths(r)...)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
+        isnothing(linestyle_diffed) || Cairo.set_dash(screen.context, linestyle_diffed .* sw)
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
@@ -89,6 +102,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
 end
 
 function polypath(ctx, polygon)
+    isempty(polygon) && return nothing
     ext = decompose(Point2f, polygon.exterior)
     Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_EVEN_ODD)
     Cairo.move_to(ctx, ext[1]...)
@@ -119,8 +133,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
-    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
+    broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do po, c, sc, ss, sw
         polypath(screen.context, po)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
@@ -138,13 +153,14 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-
-    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do mpo, c, sc, ss, sw
         for po in mpo.polygons
             polypath(screen.context, po)
             set_source(screen.context, c)
             Cairo.fill_preserve(screen.context)
             set_source(screen.context, sc)
+            isnothing(ss) || Cairo.set_dash(screen.context, diff(Float64.(ss)) .* sw)
             Cairo.set_line_width(screen.context, sw)
             Cairo.stroke(screen.context)
         end

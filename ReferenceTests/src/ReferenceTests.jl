@@ -11,7 +11,6 @@ using FileIO
 using MacroTools
 using Makie
 using Makie: Record, Stepper, Axis
-using Makie.FFMPEG
 using Printf
 using Tar
 using Downloads

@@ -90,7 +90,7 @@ We can fix this by translating the scene further back:
 \begin{examplefigure}{}
 ```julia
 GLMakie.activate!() # hide
-translate!(scene.plots[1], 0, 0, -1000)
+translate!(scene.plots[1], 0, 0, -10000)
 scene
 ```
 \end{examplefigure}

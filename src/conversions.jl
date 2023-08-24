@@ -109,9 +109,16 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f.(x, y', z)),)
 end
+function convert_arguments(::PointBased, x::AbstractMatrix, y::AbstractVector, z::AbstractArray)
+    (vec(Point3f.(x, y', z)),)
+end
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
+    (vec(Point3f.(x, y, z)),)
+end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 
@@ -543,10 +550,10 @@ end
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
-        n = normals(mesh)
+        n = normals(metafree(decompose(Point, mesh)), faces(mesh))
         # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
+        if !isnothing(n)
+            mesh = GeometryBasics.pointmeta(mesh; normals=decompose(Vec3f, n))
         end
     end
     # If already correct eltypes for GL, we can pass the mesh through as is
@@ -606,6 +613,25 @@ function convert_arguments(
     )
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
+end
+
+################################################################################
+#                                   <:Arrows                                   #
+################################################################################
+
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+    points = Point2f.(x, y')
+    f_out = Vec2f.(f.(points))
+    return (vec(points), vec(f_out))
+end
+
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    points = [Point3f(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3f.(f.(points))
+    return (vec(points), vec(f_out))
 end
 
 ################################################################################
