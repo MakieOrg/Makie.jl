@@ -239,7 +239,7 @@ end
 function plot_to_screen(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
+    spvm = clip_to_space(cam, :data) * space_to_clip(cam, space) * transformationmatrix(plot)[]
 
     return map(points) do p
         transformed = apply_transform(transform_func(plot), p, space)
