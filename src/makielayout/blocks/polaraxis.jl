@@ -182,7 +182,8 @@ function setup_camera_matrices!(po::PolarAxis)
     usable_fraction = Observable(Vec2f(1.0, 1.0))
     rmin, rmax = po.rlimits[]
     setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax)))
-    setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax)))
+    thetamin, thetamax = po.thetalimits[]
+    setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((thetamin, thetamax)))
     onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
 
     # To keep the inner clip radius below a certain fraction of the outer clip
