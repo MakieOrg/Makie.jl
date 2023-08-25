@@ -1663,8 +1663,18 @@ end
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
 
+        # Background / clip settings
+
         "The background color of the axis."
         backgroundcolor = inherit(scene, :backgroundcolor, :white)
+        "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
+        sample_density = 120
+        "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
+        clip = true
+        "Sets the color of the clip polygon. Mainly for debug purposes."
+        clipcolor = automatic
+        "Sets the maximum radius of the inner clip circle relative to the outer. This leads to a distortion of the polar axis if `rmin / rmax > maximum_clip_radius`."
+        maximum_clip_radius = 1.0
 
         # Limits & transformation settings
 
@@ -1799,16 +1809,8 @@ end
         "Controls if the title is visible."
         titlevisible = inherit(scene, (:Axis, :titlevisible), true)
 
-        # Other settings
+        # Interactive Controls
 
-        "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
-        sample_density = 120
-        "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
-        clip = true
-        "Sets the color of the clip polygon. Mainly for debug purposes."
-        clipcolor = automatic
-        "Sets the maximum radius of the inner clip circle relative to the outer. This leads to a distortion of the polar axis if `rmin / rmax > maximum_clip_radius`."
-        maximum_clip_radius = 1.0
         "Sets the speed of scroll based zooming. Setting this to 0 effectively disables zooming."
         zoomspeed = 0.1
         "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
