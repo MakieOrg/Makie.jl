@@ -258,6 +258,11 @@ function to_color(c::ColorMap)
     return numbers_to_colors(c.color_scaled[], c.colormap[], identity, c.colorrange_scaled[], lowclip(c)[], highclip(c)[], c.nan_color[])
 end
 
+function Base.get(c::ColorMap, value::Number)
+    return numbers_to_colors([value], c.colormap[], c.scale[], c.colorrange_scaled[], lowclip(c)[],
+                             highclip(c)[], c.nan_color[])[1]
+end
+
 function assemble_colors(colortype, color, plot)
     return lift(plot, color, plot.alpha) do color, a
         if a < 1.0
