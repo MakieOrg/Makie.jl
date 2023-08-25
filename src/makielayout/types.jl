@@ -1724,6 +1724,8 @@ end
         rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = automatic
+        "Sets the rotation of `r` tick labels. If set to `true` rtick are always rotated, `false` keeps them horizontal, `automatic` rotates them up to 45° angles and any other number rotates them accordingly."
+        rtickrotation = automatic
 
         # Theta ticks
 
