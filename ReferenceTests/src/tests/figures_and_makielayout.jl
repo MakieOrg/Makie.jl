@@ -140,8 +140,9 @@ end
 @reference_test "PolarAxis surface" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    zs = [r*cos(phi) for r in range(1, 2, length=100), phi in range(0, 4pi, length=100)]
-    p = surface!(ax, 0..10, 0..2pi, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
+    p = surface!(ax, 0..2pi, 0..10, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    translate!(p, 0, 0, -200)
     Colorbar(f[1, 2], p)
     f
 end
@@ -149,14 +150,14 @@ end
 # may fail in WGLMakie due to missing dashes
 @reference_test "PolarAxis scatterlines spine" begin
     f = Figure(resolution = (800, 400))
-    ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
+    ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false, theta_as_x = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
     ax2 = PolarAxis(f[1, 2], title = "Modified spine")
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
-    scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
+    scatterlines!(ax2, range(0, 10pi, length=100), range(0, 1, length=100), color = 1:100)
 
     f
 end
@@ -187,9 +188,9 @@ end
     f = Figure(resolution = (800, 600))
     for (i, theta_0) in enumerate((0, -pi/6, pi/2))
         for (j, thetalims) in enumerate(((0, 2pi), (-pi/2, pi/2), (0, pi/12)))
-            po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (2, 6))
+            po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (1 + 2(j-1), 7))
             po.scene.backgroundcolor[] = RGBAf(1,0.5,0.5,1)
-            lines!(po, range(0, 10, length=201), range(0, 20pi, length=201), color = :white, linewidth = 5)
+            lines!(po, range(0, 20pi, length=201), range(0, 10, length=201), color = :white, linewidth = 5)
 
             b = Box(f[i, j], color = (:blue, 0.2))
             translate!(b.blockscene, 0, 0, 9001)
