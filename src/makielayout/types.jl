@@ -1740,8 +1740,8 @@ end
 
         # r minor and major grid
 
-        "Sets the depth of grid lines. To place the grid behind plots set it to -10_000 < griddepth < 0."
-        griddepth = 8999
+        "Sets the depth of grid lines. To place the grid above plots set this to a value between 1 and 8999."
+        griddepth = -100
 
         "The color of the `r` grid."
         rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
