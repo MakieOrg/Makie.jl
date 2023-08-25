@@ -1816,7 +1816,9 @@ end
         "Sets the mouse button for translating the plot in r-direction."
         radial_translation_button = Mouse.right
         "Sets the mouse button for translating the plot in theta-direction. Note that this can be the same as `radial_translation_button`."
-        theta_translation_button = false
+        theta_translation_button = Mouse.right
+        "Sets the button for rotating the PolarAxis as a whole. This replaces theta translation when triggered and must include a mouse button."
+        clip_rotation_button = Keyboard.left_control & Mouse.right
         "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
         reset_button = Keyboard.left_control & Mouse.left
     end
