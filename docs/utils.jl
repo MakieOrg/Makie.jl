@@ -43,7 +43,7 @@ function env_showhtml(com, _)
     name = "example_$(hash(code))"
     str = """
     ```julia:$name
-    using CairoMakie, Makie.LaTeXStrings # hide
+    using Makie.LaTeXStrings: @L_str # hide
     __result = begin # hide
         $code
     end # hide
