@@ -307,12 +307,14 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # translation
     last_pos = RefValue(Point2f(0))
+    last_px_pos = RefValue(Point2f(0))
     on(po.blockscene, e.mousebutton) do e
         if e.action == Mouse.press && is_mouseinside(po.scene) && (
                 ispressed(po.scene, po.radial_translation_button[]) ||
                 ispressed(po.scene, po.theta_translation_button[]) ||
                 ispressed(po.scene, po.clip_rotation_button[])
             )
+            last_px_pos[] = Point2f(mouseposition_px(po.scene))
             last_pos[] = Point2f(mouseposition(po.scene))
             return Consume(true)
         end
@@ -322,10 +324,24 @@ function setup_camera_matrices!(po::PolarAxis)
     on(po.blockscene, e.mouseposition) do _
         state = (
             ispressed(po.scene, po.radial_translation_button[]),
-            ispressed(po.scene, po.theta_translation_button[]),
-            ispressed(po.scene, po.clip_rotation_button[])
+            ispressed(po.scene, po.theta_translation_button[])
         )
-        if any(state)
+        if ispressed(po.scene, po.clip_rotation_button[])
+            w = widths(po.scene.px_area[])
+            p0 = (last_px_pos[] .- 0.5w) ./ w
+            p1 = Point2f(mouseposition_px(po.scene) .- 0.5w) ./ w
+            if norm(p0) * norm(p1) < 1e-6
+                Δθ = 0.0
+            else
+                Δθ = mod(po.direction[] * (atan(p1[2], p1[1]) - atan(p0[2], p0[1])), -pi..pi)
+            end
+
+            po.theta_0[] = mod(po.theta_0[] .+ Δθ, 0..2pi)
+
+            last_px_pos[] = Point2f(mouseposition_px(po.scene))
+            last_pos[] = Point2f(mouseposition(po.scene))
+
+        elseif any(state)
             pos = Point2f(mouseposition(po.scene))
             diff = pos - last_pos[]
             r = norm(last_pos[])
@@ -340,21 +356,20 @@ function setup_camera_matrices!(po::PolarAxis)
                 Δθ = po.direction[] * dot(u_θ, diff ./ r)
             end
 
-            if state[1] && !state[3]
+            if state[1]
                 rmin, rmax = po.target_rlims[]
                 dr = min(rmin, Δr)
                 po.target_rlims[] = (rmin - dr, rmax - dr)
             end
-            if state[2] || state[3]
+            if state[2]
                 thetamin, thetamax = po.target_thetalims[] .- Δθ
                 shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
-                if state[2] && !state[3]
-                    po.target_thetalims[] = (thetamin, thetamax) .+ shift
-                end
-                po.theta_0[] = mod(po.theta_0[] .+ (1 + state[3]) * Δθ, 0..2pi)
+                po.target_thetalims[] = (thetamin, thetamax) .+ shift
+                po.theta_0[] = mod(po.theta_0[] .+ Δθ, 0..2pi)
             end
 
             # Needs recomputation because target_radius may have changed
+            last_px_pos[] = Point2f(mouseposition_px(po.scene))
             last_pos[] = Point2f(mouseposition(po.scene))
             return Consume(true)
         end
