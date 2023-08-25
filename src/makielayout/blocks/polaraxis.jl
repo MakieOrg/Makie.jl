@@ -494,12 +494,10 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         elseif rot === automatic
             N = div(angle + pi/4, pi/2) % 4
             rtick_rotation[] = angle - (N) * pi/2 # mod(angle, -pi/4 .. pi/4)
-            @info theta_0, thetalims
-            @info angle, N, rtick_rotation[]
             rtick_align[] = Point2f((0.5, 0.0, 0.5, 1.0)[N+1], (1.0, 0.5, 0.0, 0.5)[N+1])
         else
             rtick_rotation[] = rot
-            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
+            scale = 1 / max(abs(s), abs(c))
             rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
         return
