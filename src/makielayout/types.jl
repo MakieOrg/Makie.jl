@@ -1676,6 +1676,8 @@ end
         direction = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
         theta_0 = 0f0
+        "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
+        theta_as_x::Bool = true
 
         # Spine
 

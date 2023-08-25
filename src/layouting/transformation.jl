@@ -445,16 +445,26 @@ where theta is assumed to be in radians.
 Note that for `r0 != 0` the inversion may return wrong results.
 """
 struct Polar
+    theta_as_x::Bool
     theta_0::Float64
     direction::Int
     r0::Float64
-    Polar(theta_0 = 0.0, direction = +1, r0 = 0) = new(theta_0, direction, r0)
+    function Polar(theta_as_x = true, theta_0 = 0.0, direction = +1, r0 = 0)
+        return new(theta_as_x, theta_0, direction, r0)
+    end
 end
 
 Base.broadcastable(x::Polar) = (x,)
 
 function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
-    y, x = max(0.0, point[1] - trans.r0) .* sincos((point[2] + trans.theta_0) * trans.direction)
+    if trans.theta_as_x
+        r = max(0.0, point[2] - trans.r0)
+        θ = trans.direction * (point[1] + trans.theta_0)
+    else
+        r = max(0.0, point[1] - trans.r0)
+        θ = trans.direction * (point[2] + trans.theta_0)
+    end
+    y, x = r .* sincos(θ)
     return Point2{T}(x, y)
 end
 
@@ -471,11 +481,20 @@ function apply_transform(f::Polar, point::VecTypes{N2, T}) where {N2, T}
 end
 
 function inverse_transform(trans::Polar)
-    return Makie.PointTrans{2}() do point
-        typeof(point)(
-            hypot(point[1], point[2]) + trans.r0,
-            mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
-        )
+    if trans.theta_as_x
+        return Makie.PointTrans{2}() do point
+            typeof(point)(
+                mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi),
+                hypot(point[1], point[2]) + trans.r0
+            )
+        end
+    else
+        return Makie.PointTrans{2}() do point
+            typeof(point)(
+                hypot(point[1], point[2]) + trans.r0,
+                mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
+            )
+        end
     end
 end
 
