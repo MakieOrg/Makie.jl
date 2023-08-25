@@ -621,28 +621,41 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         transformation = Transformation(), # no polar transform for this
         shading = false
     )
-    # handle placement with transform
-    onany(po.blockscene, po.target_thetalims, po.direction, po.theta_0) do thetalims, dir, theta_0
-        thetamin, thetamax = dir .* (thetalims .+ theta_0)
-        rotate!(outer_clip_plot, Vec3f(0,0,1), dir > 0 ? thetamin : thetamax)
-    end
 
-    # inner clip is a plain circle which needs to be scaled to match rlimits
-    inner_clip_plot = mesh!(
+    # inner clip is a (filled) circle sector which also needs to regenerate with
+    # changes in thetadiff
+    inner_clip = map(po.blockscene, thetadiff, po.sample_density) do diff, sample_density
+        pad = diff / sample_density
+        if diff > 2pi - 2pad
+            ps = polar2cartesian.(1.0, LinRange(0, 2pi, sample_density))
+        else
+            ps = polar2cartesian.(1.0, LinRange(-pad, diff + pad, sample_density))
+            push!(ps, Point2f(0))
+        end
+        return Polygon(ps)
+    end
+    inner_clip_plot = poly!(
         po.overlay,
-        Circle(Point2f(0), 1f0),
+        inner_clip,
         color = clipcolor,
         visible = po.clip,
         fxaa = false,
         transformation = Transformation(),
         shading = false
     )
-    onany(
-            po.blockscene, po.target_rlims, po.maximum_clip_radius
-        ) do lims, maxclip
+
+    # handle placement with transform
+    onany(po.blockscene, po.target_thetalims, po.direction, po.theta_0) do thetalims, dir, theta_0
+        thetamin, thetamax = dir .* (thetalims .+ theta_0)
+        angle = dir > 0 ? thetamin : thetamax
+        rotate!.((outer_clip_plot, inner_clip_plot), (Vec3f(0,0,1),), angle)
+    end
+
+    onany(po.blockscene, po.target_rlims, po.maximum_clip_radius) do lims, maxclip
         s = min(lims[1] / lims[2], maxclip)
         scale!(inner_clip_plot, Vec3f(s, s, 1))
     end
+
     notify(po.maximum_clip_radius)
 
     # spine traces circle sector - inner circle
