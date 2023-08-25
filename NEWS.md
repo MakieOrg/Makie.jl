@@ -4,6 +4,7 @@
 
 - Added `rlimits` and `thetalimits` to `PolarAxis`. [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 - Added camera translations in r and theta direction to `PolarAxis`. [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- Fixed regression in determining axis limits [#3179](https://github.com/MakieOrg/Makie.jl/pull/3179)
 
 ## v0.19.8
 
