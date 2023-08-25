@@ -398,7 +398,11 @@ function reset_limits!(po::PolarAxis)
         if !isempty(po.scene.plots)
             # TODO: Why does this include child scenes by default?
             lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
-            po.target_rlims[] = (po.rlimits[][1], maximum(lims3d)[1])
+            if po.theta_as_x[]
+                po.target_rlims[] = (po.rlimits[][1], maximum(lims3d)[2])
+            else
+                po.target_rlims[] = (po.rlimits[][1], maximum(lims3d)[1])
+            end
         end
     elseif po.target_rlims[] != po.rlimits[]
         po.target_rlims[] = po.rlimits[]
