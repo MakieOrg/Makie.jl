@@ -88,9 +88,11 @@ end
 end
 
 @testset "Polar Transform" begin
-    tf = Makie.Polar()
+    tf = Makie.Polar(false)
+    @test tf.theta_as_x == false
     @test tf.theta_0 == 0.0
     @test tf.direction == 1
+    @test tf.r0 == 0.0
 
     input = Point2f.(1:6, [0, pi/3, pi/2, pi, 2pi, 3pi])
     output = [r * Point2f(cos(phi), sin(phi)) for (r, phi) in input]
@@ -98,13 +100,25 @@ end
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(pi/2)
+    tf = Makie.Polar(false, pi/2)
     output = [r * Point2f(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(pi/2, -1)
+    tf = Makie.Polar(false, pi/2, -1)
     output = [r * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
+    @test apply_transform(tf, input) ≈ output
+    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+
+    tf = Makie.Polar(false, pi/2, -1, 0.5)
+    output = [(r - 0.5) * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
+    @test apply_transform(tf, input) ≈ output
+    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+
+    tf = Makie.Polar(true)
+    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
+    output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
+    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 end
@@ -147,8 +161,8 @@ end
     p3 = Point(2.0, 5.0, 4.0)
 
     spaces_and_desired_transforms = Dict(
-        :data => (x,y) -> y, # uses changes 
-        :clip => (x,y) -> x, # no change 
+        :data => (x,y) -> y, # uses changes
+        :clip => (x,y) -> x, # no change
         :relative => (x,y) -> x, # no change
         :pixel => (x,y) -> x, # no transformation
     )
@@ -163,5 +177,5 @@ end
         @test apply_transform(t2, p3, space) == desired_transform(p3, Point3f(sqrt(2.0), log(5.0), 4.0))
 
         @test apply_transform(t3, p3, space) == desired_transform(p3, Point3f(sqrt(2.0), log(5.0), log10(4.0)))
-    end 
+    end
 end
