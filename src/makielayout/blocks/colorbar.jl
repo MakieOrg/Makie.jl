@@ -144,7 +144,6 @@ end
 function initialize_block!(cb::Colorbar)
     blockscene = cb.blockscene
 
-
     onany(blockscene, cb.size, cb.vertical) do sz, vertical
         if vertical
             cb.layoutobservables.autosize[] = (sz, nothing)
@@ -154,7 +153,6 @@ function initialize_block!(cb::Colorbar)
     end
 
     framebox = lift(round_to_IRect2D, blockscene, cb.layoutobservables.computedbbox)
-
     # TODO, always convert to ColorMap!
     if cb.colormap[] isa ColorMap
         cmap = cb.colormap[]
@@ -164,18 +162,26 @@ function initialize_block!(cb::Colorbar)
     else
         cgradient = Observable{Any}()
         map_is_categorical = Observable(false)
-        colormap = cb.colormap
+        colormap = cgradient
         map!(blockscene, cgradient, cb.colormap) do cmap
             if cmap isa PlotUtils.CategoricalColorGradient
                 map_is_categorical[] = true
+            else
+                map_is_categorical[] = false
             end
             if cmap isa PlotUtils.ColorGradient
-                map_is_categorical[] = false
                 return cmap
             end
             map_is_categorical[] = false
             return cgrad(to_colormap(cmap))
         end
+    end
+
+    _limits = lift(blockscene, cb.limits, cb.colorrange; ignore_equal_values=true) do limits, colorrange
+        if all(!isnothing, (limits, colorrange))
+            error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
+        end
+        return something(limits, colorrange, (0, 1))
     end
 
     function isvisible(x, cmap, start_end)
@@ -187,8 +193,8 @@ function initialize_block!(cb::Colorbar)
         return c != compare
     end
 
-    lowclip_tri_visible = lift(isvisible, blockscene, cb.lowclip, cgradient, true)
-    highclip_tri_visible = lift(isvisible, blockscene, cb.highclip, cgradient, false)
+    lowclip_tri_visible = lift(isvisible, blockscene, cb.lowclip, colormap, true)
+    highclip_tri_visible = lift(isvisible, blockscene, cb.highclip, colormap, false)
 
     tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
         if cb.vertical[]
@@ -224,15 +230,32 @@ function initialize_block!(cb::Colorbar)
     # at the same time, then we just set one of them invisible
     # depending on the type of colormap
     # this should solve most white-line issues
-    colors = lift(blockscene, cgradient, cb.nsteps, cb.scale) do cgradient, n, scale
+    colors = lift(blockscene, cgradient, cb.nsteps, cb.scale, _limits) do cgradient, n, scale, limits
         if cgradient isa ColorMap && cgradient.categorical[]
             return sort!(unique(convert(Vector{Float64}, cgradient.color[])))
+        elseif cgradient isa PlotUtils.CategoricalColorGradient
+            mini, maxi = limits
+            return map(2:length(cgradient.values)) do i
+                prev = cgradient.values[i - 1]
+                v = cgradient.values[i]
+                return round(((prev + v) / 2) .* (maxi - mini) .+ mini; digits=3)
+            end
         else
             return collect(Makie.colorbar_range(0, 1, n, scale))
         end::Vector{Float64}
     end
     # for categorical colormaps we make a number of rectangle polys
     n_colors = lift(length, colors; ignore_equal_values=true)
+
+
+    limits = lift(blockscene, _limits,  map_is_categorical,  n_colors) do limits, categorical, n
+        if categorical
+            return (0.5, n + 0.5)
+        else
+            return limits
+        end
+    end
+
     categorical_rects = lift(blockscene, barbox, cb.vertical, n_colors) do bbox, v, n
         r = range(0, length=n, step=1/n)
         xmin, ymin = minimum(bbox)
@@ -252,6 +275,7 @@ function initialize_block!(cb::Colorbar)
 
     poly!(blockscene, categorical_rects;
         color = colors,
+        colormap = lift(to_colormap, colormap),
         visible = map_is_categorical,
         inspectable = false
     )
@@ -263,7 +287,6 @@ function initialize_block!(cb::Colorbar)
         n = length(colors)
         return v ? reshape(colors, 1, n) : reshape(colors, n, 1)
     end
-
     image!(blockscene,
         lift(bb -> range(left(bb), right(bb); length=2), blockscene, barbox),
         lift(bb -> range(bottom(bb), top(bb); length=2), blockscene, barbox),
@@ -366,26 +389,16 @@ function initialize_block!(cb::Colorbar)
     end
     ticks = lift(cb.ticks, colors, map_is_categorical) do ticks, colors, categorical
         if categorical
-            if ticks isa Automatic
-                return (1:length(colors), string.(colors))
-            else
-                return ticks
-            end
+            return (1:length(colors), string.(colors))
+            # if ticks isa Automatic
+            # else
+                # return ticks
+            # end
         else
             return ticks
         end
     end
-    limits = lift(blockscene, cb.limits, cb.colorrange, map_is_categorical, n_colors) do limits, colorrange, categorical, n
-        if all(!isnothing, (limits, colorrange))
-            error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
-        end
-        lims = something(limits, colorrange, (0, 1))
-        if categorical
-            return (0.5, n + 0.5)
-        else
-            return lims
-        end
-    end
+
     axis = LineAxis(blockscene, endpoints = axispoints, flipped = cb.flipaxis,
             limits=limits, ticklabelalign=cb.ticklabelalign, label=cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
