@@ -35,7 +35,9 @@ function write_redirection_html(redirect_file, existing_file; dry_run)
     @info "Adding redirect from $redirect_file to $existing_file"
     if !dry_run
         cd("__site") do
-            open("." * redirect_file, "w") do io
+            filepath = "." * redirect_file
+            mkpath(splitdir(filepath)[1])
+            open(filepath, "w") do io
                 print(io, """
                 <!DOCTYPE HTML>
                 <html lang="en-US">
@@ -48,7 +50,7 @@ function write_redirection_html(redirect_file, existing_file; dry_run)
                         <title>Page Redirection</title>
                     </head>
                     <body>
-                        If you are not redirected automatically, follow this <a href='$ref'>link</a>.
+                        If you are not redirected automatically, follow this <a href='$rel'>link</a>.
                     </body>
                 </html>
                 """)

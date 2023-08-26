@@ -1,4 +1,4 @@
-# Blocks & Widgets
+# Blocks
 
 All examples in this section are presented as static CairoMakie vector graphics for clarity of visuals.
 Keep in mind that CairoMakie is not interactive.

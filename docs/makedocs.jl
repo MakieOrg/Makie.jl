@@ -65,8 +65,9 @@ run_stork()
 make_links_relative()
 
 generate_redirects([
-    r"/reference/plots/(.*)" => s"/examples/plotting_functions/\1",
+    "/reference/index.html" => "/examples/index.html",
     r"/reference/blocks/(.*)" => s"/examples/blocks/\1",
+    r"/reference/plots/(.*)" => s"/examples/plotting_functions/\1",
 ], dry_run = false)
 
 deploy(
