@@ -89,9 +89,7 @@ Replaces all absolute links in all html files in the __site folder with
 relative links.
 """
 function make_links_relative()
-    old = pwd()
-    try
-        cd("__site")
+    cd("__site") do
         for (root, _, files) in walkdir(".")
             path = join(splitpath(root)[2:end], "/")
 
@@ -104,7 +102,7 @@ function make_links_relative()
 
                 for e in PreOrderDFS(html.root)
                     if (e isa HTMLElement{:script} || e isa HTMLElement{:img} || e isa HTMLElement{:video}) &&
-                       haskey(e.attributes, "src")
+                    haskey(e.attributes, "src")
                         link = e.attributes["src"]
                         e.attributes["src"] = make_relative(link, path)
 
@@ -123,8 +121,6 @@ function make_links_relative()
                 end
             end
         end
-    finally
-        cd(old)
     end
 end
 
