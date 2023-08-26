@@ -30,6 +30,7 @@ using Dates
 include("buildutils/deploydocs.jl")
 include("buildutils/relative_links.jl")
 include("buildutils/stork.jl")
+include("buildutils/redirect_generation.jl")
 
 docs_url = "docs.makie.org"
 repo = "github.com/MakieOrg/Makie.jl.git"
@@ -58,6 +59,11 @@ run_stork()
 # copy & paste versioned links if they started out on `stable`
 @info "Rewriting all absolute links as relative"
 make_links_relative()
+
+generate_redirects([
+    r"/reference/plots/(.*)" => s"/examples/plotting_functions/\1",
+    r"/reference/blocks/(.*)" => s"/examples/blocks/\1",
+], dry_run = false)
 
 deploy(
     params;
