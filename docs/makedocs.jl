@@ -68,6 +68,7 @@ generate_redirects([
     "/reference/index.html" => "/examples/index.html",
     r"/reference/blocks/(.*)" => s"/examples/blocks/\1",
     r"/reference/plots/(.*)" => s"/examples/plotting_functions/\1",
+    r"/explanations/(.*)" => s"/documentation/\1",
 ], dry_run = false)
 
 deploy(
