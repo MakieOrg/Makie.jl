@@ -44,9 +44,13 @@ params = deployparameters(; repo, devbranch, devurl, push_preview)
 ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = docs_url
 
 using GLMakie
-GLMakie.activate!(pause_renderloop=true)
+# remove GLMakie's renderloop completely, because any time `GLMakie.activate!()`
+# is called somewhere, it's reactivated and slows down CI needlessly
+function GLMakie.renderloop(screen)
+    return
+end
 
-serve(; single=true, cleanup=false, fail_on_warning=true)
+serve(; single=true, cleanup=false, clear=true, fail_on_warning=true)
 # for interactive development of the docs, use:
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 
