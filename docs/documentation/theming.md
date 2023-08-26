@@ -213,6 +213,11 @@ For example, to access the third color in a cycler, instead of plotting three pl
 
 The cycler's internal counter is not advanced when using `Cycled` for any attribute, and only attributes with `Cycled` access the cycled values, all other usually cycled attributes fall back to their non-cycled defaults.
 
+You can also optionally pass a function to `Cycled` as the first argument.
+This function will be applied to the value pulled from the
+cycler before being passed on to the plot object.
+This can be used, for example, to give a cycled color a different alpha value.
+
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
@@ -232,6 +237,7 @@ lines!(0..10, x -> sin(x) - 3)
 lines!(0..10, x -> sin(x) - 5, color = Cycled(3))
 lines!(0..10, x -> sin(x) - 6, color = Cycled(2))
 lines!(0..10, x -> sin(x) - 7, color = Cycled(1))
+lines!(0..10, x -> sin(x) - 8, color = Cycled(x -> (x, 0.5), 1))
 
 f
 ```
