@@ -1673,8 +1673,8 @@ end
         clip = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
         clipcolor = automatic
-        "Sets the maximum radius of the inner clip circle relative to the outer. This leads to a distortion of the polar axis if `rmin / rmax > maximum_clip_radius`."
-        maximum_clip_radius = 1.0
+        "Sets a threshold relative to `rmin/rmax` after which radii are distorted to fit more on the screen. No distortion is applied if `radial_distortion_threshhold ≥ 1`"
+        radial_distortion_threshhold = 1.0
 
         # Limits & transformation settings
 
@@ -1725,7 +1725,7 @@ end
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = automatic
         "Sets the rotation of `r` tick labels. If set to `true` rtick are always rotated, `false` keeps them horizontal, `automatic` rotates them up to 45° angles and any other number rotates them accordingly."
-        rtickrotation = automatic
+        rticklabelrotation = automatic
 
         # Theta ticks
 

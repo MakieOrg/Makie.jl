@@ -188,7 +188,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # To keep the inner clip radius below a certain fraction of the outer clip
     # radius we map all r > r0 to 0. This computes that r0.
-    radius_at_origin = map(po.blockscene, po.target_rlims, po.maximum_clip_radius) do (rmin, rmax), max_fraction
+    radius_at_origin = map(po.blockscene, po.target_rlims, po.radial_distortion_threshhold) do (rmin, rmax), max_fraction
         # max_fraction = (rmin - r0) / (rmax - r0) solved for r0
         return max(0.0, (rmin - max_fraction * rmax) / (1 - max_fraction))
     end
@@ -484,7 +484,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     onany(
             po.blockscene,
             po.direction, po.theta_0, po.rtickangle, po.target_thetalims, po.rticklabelpad,
-            po.rtickrotation
+            po.rticklabelrotation
         ) do dir, theta_0, rtickangle, thetalims, pad, rot
         angle = mod(dir * (default_rtickangle(rtickangle, dir, thetalims) + theta_0), 0..2pi)
         s, c = sincos(angle - pi/2)
@@ -518,7 +518,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.direction, po.theta_0, po.target_rlims, po.target_thetalims, po.maximum_clip_radius
+            po.direction, po.theta_0, po.target_rlims, po.target_thetalims, po.radial_distortion_threshhold
         ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, max_clip
 
         _thetatickvalues, _thetaticklabels = get_ticks(thetaticks, identity, thetatickformat, thetalims...)
@@ -688,16 +688,16 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         rotate!.((outer_clip_plot, inner_clip_plot), (Vec3f(0,0,1),), angle)
     end
 
-    onany(po.blockscene, po.target_rlims, po.maximum_clip_radius) do lims, maxclip
+    onany(po.blockscene, po.target_rlims, po.radial_distortion_threshhold) do lims, maxclip
         s = min(lims[1] / lims[2], maxclip)
         scale!(inner_clip_plot, Vec3f(s, s, 1))
     end
 
-    notify(po.maximum_clip_radius)
+    notify(po.radial_distortion_threshhold)
 
     # spine traces circle sector - inner circle
     spine_points = map(po.blockscene,
-            po.target_rlims, po.target_thetalims, po.maximum_clip_radius, po.sample_density
+            po.target_rlims, po.target_thetalims, po.radial_distortion_threshhold, po.sample_density
         ) do (rmin, rmax), thetalims, max_clip, N
         thetamin, thetamax = thetalims
         rmin = min(rmin/rmax, max_clip)
