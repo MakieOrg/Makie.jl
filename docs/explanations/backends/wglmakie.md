@@ -79,7 +79,37 @@ What it does is purely reset the state for a new multi-page output, which is usu
 
 Here is an example of how to use this in Franklin:
 
+\begin{showhtml}{}
+```julia
+using WGLMakie
+using JSServe, Markdown
+Page(exportable=true, offline=true) # for Franklin, you still need to configure
+WGLMakie.activate!()
+Makie.inline!(true) # Make sure to inline plots into Documenter output!
+scatter(1:4, color=1:4)
+```
+\end{showhtml}
 
+
+As you can see, the output is completely static, because we don't have a running Julia server, as it would be the case with e.g. Pluto.
+To make the plot interactive, we will need to write more parts of WGLMakie in JS, which is an ongoing effort.
+As you can see, the interactivity already keeps working for 3D:
+
+\begin{showhtml}{}
+```julia
+N = 60
+function xy_data(x, y)
+    r = sqrt(x^2 + y^2)
+    r == 0.0 ? 1f0 : (sin(r)/r)
+end
+l = range(-10, stop = 10, length = N)
+z = Float32[xy_data(x, y) for x in l, y in l]
+surface(
+    -1..1, -1..1, z,
+    colormap = :Spectral
+)
+```
+\end{showhtml}
 
 There are a couple of ways to keep interacting with Plots in a static export.
 
@@ -156,6 +186,72 @@ The good news is, all attributes should be in either `three_scene.material.unifo
 Going forward, we should create an API in WGLMakie, that makes it as easy as in Julia: `plot.attribute = value`.
 But while this isn't in place, logging the the returned object makes it pretty easy to figure out what to do - btw, the JS console + logging is amazing and makes it very easy to play around with the object once logged.
 
+\begin{showhtml}{}
+```julia
+using JSServe: on_document_load
+using WGLMakie
+
+App() do session::Session
+    s1 = Slider(1:100)
+    slider_val = DOM.p(s1[]) # initialize with current value
+
+    fig, ax, splot = scatter(1:4)
+
+    # With on_document_load one can run JS after everything got loaded.
+    # This is an alternative to `evaljs`, which we can't use here,
+    # since it gets run asap, which means the plots won't be found yet.
+    on_document_load(session, js"""
+        // you get a promise for an array of plots, when interpolating into JS:
+        $(splot).then(plots=>{
+            // just one plot for atomics like scatter, but for recipes it can be multiple plots
+            const scatter_plot = plots[0]
+            // open the console with ctr+shift+i, to inspect the values
+            // tip - you can right click on the log and store the actual variable as a global, and directly interact with it to change the plot.
+            console.log(scatter_plot)
+            console.log(scatter_plot.material.uniforms)
+            console.log(scatter_plot.geometry.attributes)
+        })
+    """)
+
+    # with the above, we can find out that the positions are stored in `offset`
+    # (*sigh*, this is because threejs special cases `position` attributes so it can't be used)
+    # Now, lets go and change them when using the slider :)
+    onjs(session, s1.value, js"""function on_update(new_value) {
+        $(splot).then(plots=>{
+            const scatter_plot = plots[0]
+            // change first point x + y value
+            scatter_plot.geometry.attributes.pos.array[0] = (new_value/100) * 4
+            scatter_plot.geometry.attributes.pos.array[1] = (new_value/100) * 4
+            // this always needs to be set of geometry attributes after an update
+            scatter_plot.geometry.attributes.pos.needsUpdate = true
+        })
+    }
+    """)
+    # and for got measures, add a slider to change the color:
+    color_slider = Slider(LinRange(0, 1, 100))
+    onjs(session, color_slider.value, js"""function on_update(hue) {
+        $(splot).then(plots=>{
+            const scatter_plot = plots[0]
+            const color = new THREE.Color()
+            color.setHSL(hue, 1.0, 0.5)
+            scatter_plot.material.uniforms.color.value.x = color.r
+            scatter_plot.material.uniforms.color.value.y = color.g
+            scatter_plot.material.uniforms.color.value.z = color.b
+        })
+    }""")
+
+    markersize = Slider(1:100)
+    onjs(session, markersize.value, js"""function on_update(size) {
+        $(splot).then(plots=>{
+            const scatter_plot = plots[0]
+            scatter_plot.material.uniforms.markersize.value.x = size
+            scatter_plot.material.uniforms.markersize.value.y = size
+        })
+    }""")
+    return DOM.div(s1, color_slider, markersize, fig)
+end
+```
+\end{showhtml}
 
 This summarizes the current state of interactivity with WGLMakie inside static pages.
 
