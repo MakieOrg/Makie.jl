@@ -137,14 +137,12 @@ serve(; single=true, cleanup=false, fail_on_warning=true)
 
 
 function populate_stork_config(subfolder)
-    wd = pwd()
     sites = []
     tempdir = mktempdir()
 
     _get(el, type) = el.children[findfirst(x -> x isa type, el.children)]
 
-    try
-        cd("__site/")
+    cd("__site/") do
         for (root, dirs, files) in walkdir(".")
             if any(x -> startswith(root, x), ["libs", "css", "assets"])
                 continue
@@ -179,8 +177,6 @@ function populate_stork_config(subfolder)
                 ))
             end
         end
-    finally
-        cd(wd)
     end
 
     for file in ["config_box", "config_page"]
