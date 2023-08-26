@@ -6,7 +6,6 @@ Pkg.precompile()
 
 using NodeJS
 run(`$(npm_cmd()) install highlight.js`)
-run(`$(npm_cmd()) install lunr`)
 run(`$(npm_cmd()) install cheerio`)
 
 using Downloads
@@ -52,9 +51,6 @@ serve(; single=true, cleanup=false, fail_on_warning=true)
 
 populate_stork_config(params.subfolder)
 run_stork()
-
-# lunr()
-# optimize(; minify=false, prerender=false)
 
 # by making all links relative, we can forgo the `prepath` setting of Franklin
 # which means that files in some `vX.Y.Z` subfolder which happens to be `stable`
