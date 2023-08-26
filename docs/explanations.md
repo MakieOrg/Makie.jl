@@ -2,4 +2,4 @@
 
 # Explanations
 
-{{list_folder Explanations}}
+{{list_folder explanations}}
