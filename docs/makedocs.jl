@@ -197,13 +197,9 @@ function populate_stork_config(subfolder)
 end
 
 function run_stork()
-    wd = pwd()
-    try
-        cd("__site/libs/stork")
+    cd("__site/libs/stork") do
         run(`$stork build --input config_box_filled.toml --output index_box.st`)
         run(`$stork build --input config_page_filled.toml --output index_page.st`)
-    finally
-        cd(wd)
     end
 end
 
