@@ -24,7 +24,7 @@
                 s, c = sincos(angles[j + 3(i-1)] - pi/2)
                 @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
                 @test rticklabelplot.align[] ≈ align
-                @test isapprox(mod(rticklabelplot.rotation[], -pi..pi), (-pi/4+0.01, 0, pi/4-0.01)[j], rtol = 1e-3)
+                @test isapprox(mod(rticklabelplot.rotation[], -pi..pi), (-pi/4+0.01, 0, pi/4-0.01)[j], atol = 1e-3)
             end
         end
 
