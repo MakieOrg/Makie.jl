@@ -314,7 +314,7 @@ function setup_camera_matrices!(po::PolarAxis)
     last_px_pos = RefValue(Point2f(0))
     on(po.blockscene, e.mousebutton) do e
         if e.action == Mouse.press && is_mouseinside(po.scene) && (
-                ispressed(po.scene, po.radial_translation_button[]) ||
+                ispressed(po.scene, po.r_translation_button[]) ||
                 ispressed(po.scene, po.theta_translation_button[]) ||
                 ispressed(po.scene, po.clip_rotation_button[])
             )
@@ -327,7 +327,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     on(po.blockscene, e.mouseposition) do _
         state = (
-            ispressed(po.scene, po.radial_translation_button[]),
+            ispressed(po.scene, po.r_translation_button[]),
             ispressed(po.scene, po.theta_translation_button[])
         )
         if ispressed(po.scene, po.clip_rotation_button[])
@@ -884,7 +884,7 @@ function restrict_to_full_circle!(po::PolarAxis, enabled = true)
     po.rzoomkey[]     = enabled ? true : Keyboard.r
     po.thetazoomkey[] = enabled ? false : Keyboard.t
     # onyl translate in theta
-    po.radial_translation_button[] = enabled ? false : Mouse.right
+    po.r_translation_button[] = enabled ? false : Mouse.right
     reset_limits!(po)
     return
 end
