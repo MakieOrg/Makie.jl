@@ -23,7 +23,7 @@ pagefind = let
         error()
     end
     d = Downloads.download(url)
-    dir = Tar.extract(`gzcat $d`)
+    dir = Tar.extract(`gunzip -c $d`)
     p = joinpath(dir, "pagefind")
     run(`chmod +x $p`)
     p
