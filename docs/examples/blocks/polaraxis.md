@@ -1,8 +1,7 @@
 # PolarAxis
 
-The `PolarAxis` is an axis for data in polar coordinates `(radius, angle)`. It
-is currently an experimental feature, meaning that some functionality might be
-missing or broken, and that the `PolarAxis` is (more) open to breaking changes.
+The `PolarAxis` is an axis for data given in polar coordinates, i.e a radius and an angle.
+It is currently an experimental feature, meaning that some functionality might be missing or broken, and that the `PolarAxis` is (more) open to breaking changes.
 
 ## Creating a PolarAxis
 
@@ -23,29 +22,95 @@ f
 
 ## Plotting into an PolarAxis
 
-Like with an `Axis` you can use mutating 2D plot functions directly on a
-`PolarAxis`. The input arguments of the plot functions will then be interpreted
-in polar coordinates, i.e. as a radius and angle (in radians).
+Like with an `Axis` you can use mutating 2D plot functions directly on a `PolarAxis`.
+The input arguments of the plot functions will then be interpreted in polar coordinates, i.e. as an angle (in radians) and a radius.
+The order of a arguments can be changed with `ax.theta_as_x`.
 
 \begin{examplefigure}{svg = true}
 ```julia
-lineobject = lines!(ax, 0..10, sin, color = :red)
-scatobject = scatter!(0:0.5:10, cos, color = :orange)
+f = Figure()
+
+ax = PolarAxis(f[1, 1], title = "Theta as x")
+lineobject = lines!(ax, 0..2pi, sin, color = :red)
+
+ax = PolarAxis(f[1, 2], title = "R as x", theta_as_x = false)
+scatobject = scatter!(range(0, 10, length=100), cos, color = :orange)
 
 f
 ```
 \end{examplefigure}
 
-Note that not every plot type is compatible with polar transforms. For example
-`image` is not as it expects to be drawn on a rectangle. `heatmap` works to a
-degree in CairoMakie, but not GLMakie due to differences in the backend
-implementation.
-`surface` can be used as a replacement for `image` as it generates a triangle
-mesh. However it also has a component in z-direction which will affect drawing
-order. You can use `translate!(plot, 0, 0, z_shift)` to work around that.
-As a replacement for `heatmap` you can use `voronoiplot`, which generates cells
-of arbitrary shape around points given to it. Here you will generally need to
-set `rlims!(ax, rmax)` yourself.
+## PolarAxis Limits
+
+As you can see in the previous example the PolarAxis can be a full circle or a sector thereof.
+This is controlled by the angular limits.
+When none are provided the axis will automatically determine limits from plotted data and choose to draw a sector at `thetamax - thetamin < 1.5pi` or a circle otherwise.
+This can be overwritten by setting `ax.thetalimits[]` or by calling `thetalims!(ax, thetamin, thetamax)`.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure(resolution = (600, 600))
+
+ax = PolarAxis(f[1, 1], title = "Auto < 1.5pi")
+lines!(ax, range(0, 1.4pi, length=100), range(0, 10, length=100))
+ax = PolarAxis(f[1, 2], title = "Auto > 1.5pi")
+lines!(ax, range(0, 1.6pi, length=100), range(0, 10, length=100))
+
+ax = PolarAxis(f[2, 1], title = "set limits", thetalimits = (0, 2pi))
+lines!(ax, range(0, 1.4pi, length=100), range(0, 10, length=100))
+ax = PolarAxis(f[2, 2], title = "set limits")
+lines!(ax, range(0, 1.6pi, length=100), range(0, 10, length=100))
+thetalims!(ax, 0.0, 1.6pi)
+
+f
+```
+\end{examplefigure}
+
+Radial limits work in the same way.
+If the minimum radius falls above 5% of `rmax - rmin` for automatic limits, the center of the PolarAxis will be cut out.
+This way you can plot curved segments of polar space.
+Again, you can set the radial limits by setting `ax.rlimits` or calling `rlims!(ax, rmin, rmax)`.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure()
+
+ax = PolarAxis(f[1, 1], title = "Autolimits")
+lines!(ax, range(-0.1, 0.1, length=100), 10 .+ rand(100))
+ax = PolarAxis(f[1, 2], title = "Set limits")
+scatter!(ax, range(-0.1, 0.1, length=300), 5.5 .+ 3 .* randn(300))
+rlims!(ax, 5.0, 6.0)
+
+f
+```
+\end{examplefigure}
+
+You can make further adjustments to the orientation of the PolarAxis by adjusting `ax.theta_0` and `ax.direction`.
+These adjust how angles are interpreted by the polar transform following the formula `output_angle = direction * (input_angle + theta_0)`.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure()
+
+ax = PolarAxis(f[1, 1], title = "Autolimits", theta_0 = -pi/2, direction = -1)
+lines!(ax, range(-0.1, 0.1, length=100), 10 .+ rand(100))
+
+f
+```
+\end{examplefigure}
+
+Note that you can restrict the PolarAxis to a full circle with the convenience function `restrict_to_full_circle!(polaraxis)`.
+This will adjust limits and disable interactions that deform the axis.
+
+## Plot type compatability
+
+Not every plot type is compatible with the polar transform.
+For example `image` is not as it expects to be drawn on a rectangle.
+`heatmap` works to a degree in CairoMakie, but not GLMakie due to differences in the backend implementation.
+`surface` can be used as a replacement for `image` as it generates a triangle mesh.
+However it also has a component in z-direction which will affect drawing order.
+You can use `translate!(plot, 0, 0, z_shift)` to work around that.
+As a replacement for `heatmap` you can use `voronoiplot`, which generates cells of arbitrary shape around points given to it. Here you will generally need to set `rlims!(ax, rmax)` yourself.
 
 \begin{examplefigure}{svg = false}
 ```julia
@@ -54,21 +119,25 @@ f = Figure(resolution = (800, 500))
 ax = PolarAxis(f[1, 1], title = "Surface")
 rs = 0:10
 phis = range(0, 2pi, 37)
-cs = [r+cos(4phi) for r in rs, phi in phis]
-p = surface!(ax, 0..10, 0..2pi, cs, shading = false, colormap = :coolwarm)
+cs = [r+cos(4phi) for phi in phis, r in rs]
+p = surface!(ax, 0..2pi, 0..10, cs, shading = false, colormap = :coolwarm)
+ax.gridz[] = 100
 Colorbar(f[2, 1], p, vertical = false, flipaxis = false)
 
 ax = PolarAxis(f[1, 2], title = "Voronoi")
 rs = 1:10
 phis = range(0, 2pi, 37)[1:36]
-cs = [r+cos(4phi) for r in rs, phi in phis]
-p = voronoiplot!(ax, rs, phis, cs, show_generators = false, strokewidth = 0)
-Makie.rlims!(ax, 10.5)
+cs = [r+cos(4phi) for phi in phis, r in rs]
+p = voronoiplot!(ax, phis, rs, cs, show_generators = false, strokewidth = 0)
+rlims!(ax, 0.0, 10.5)
 Colorbar(f[2, 2], p, vertical = false, flipaxis = false)
 
 f
 ```
 \end{examplefigure}
+
+Note that in order to see the grid we need to adjust its depth with `ax.gridz[] = 100` (higher z means lower depth).
+The hard limits for `ax.gridz` are `(-10_000, 10_000)` with `9000` being a soft limit where axis components may order incorrectly.
 
 ## Hiding spines and decorations
 
@@ -122,54 +191,22 @@ f
 
 ## Interactivity
 
-The `PolarAxis` currently implements zooming by scrolling, radial translations by dragging while the right mouse button is pressed and allows you to reset the view by pressing left control + left mouse button.
-Angular translations are also implemented but disabled by default.
-You can make adjustments to these interactions with the attributes `ax.scrollspeed[] = 0.1`, `ax.radial_translation_button[] = Mouse.right`, `ax.theta_translation_button[] = false` and `ax.reset_button[] = Keyboard.left_control & Mouse.left`.
-For example you can enable angular translations by setting `ax.theta_translation_button[] = Mouse.right`.
+The `PolarAxis` currently implements zooming, translation and resetting.
+Zooming is implemented via scrolling, with `ax.rzoomkey = Keyboard.r` restricting zooming to the radial direction and `ax.thetazoomkey = Keyboard.t` restring to angular zooming.
+If you want to always restrict zooming to the r direction you can set `ax.rzoomkey = true` and vice versa.
+Furthermore you can disable zooming from changing rmin with `ax.fixrmin = true` and adjust its speed with `ax.zoomspeed = 0.1`.
+
+Translations are implemented with mouse drag.
+By default radial translations use `ax.r_translation_button = Mouse.right` and angular translations also use `ax.theta_translation_button = Mouse.right`.
+If you want to disable one of these interaction you can set corresponding button to `false`.
+
+There is also an interaction for rotating the whole axis using `ax.axis_rotation_button = Keyboard.left_control & Mouse.right`.
+Finally resetting the axis view uses `ax.reset_button = Keyboard.left_control & Mouse.left`, matching `Axis`.
 
 Note that `PolarAxis` currently does not implement the interaction interface
 used by `Axis`.
 
-## Limits and Orientation of PolarAxis
-
-The PolarAxis includes radial limits `ax.rlimits[] = (rmin, rmax)` and `ax.thetalimits[] = (thetamin, thetamax)`.
-They can be set either directly or with the helper functions `rlims!(ax, rmin, rmax)` and `thetalims!(ax, thetamin, thetamax)`.
-
-\begin{examplefigure}{svg = true}
-```julia
-f = Figure(resolution = (600, 300))
-ax = PolarAxis(f[1, 1], rlimits = (4, 8))
-lines!(ax, range(0, 10, length=301), range(0, 20pi, length=301), linewidth = 5, color = :orange)
-ax = PolarAxis(f[1, 2])
-lines!(ax, range(0, 10, length=301), range(0, 20pi, length=301), linewidth = 5, color = :orange)
-thetalims!(ax, -pi/2, pi/2)
-f
-```
-\end{examplefigure}
-
-As you can see adjusting the limits has an effect on the shape of the `PolarAxis`.
-Setting `rmin > 0` will result in part of the center being removed, up to a maximum relative to `rmax` set by `ax.maximum_clip_radius[] = 1.0`. Note that if `rmin/rmax > maximum_clip_radius` the center of the PolarAxis will no longer be `r = 0`, leading to distortion.
-Setting angular limits to a range smaller than `2pi` will result in the matching sector being shown.
-You can adjust the orientation and placement of this sector with `ax.theta_0[] = 0.0` and `ax.direction[] = 1`.
-
-\begin{examplefigure}{svg = true}
-```julia
-f = Figure(resolution = (500, 300))
-ax = PolarAxis(f[1, 1],
-    rlimits = (4, 8), thetalimits = (-pi/2, pi/2),
-    theta_0 = -pi/2, direction = -1, maximum_clip_radius = 1/3)
-lines!(ax, range(0, 10, length=301), range(0, 20pi, length=301), linewidth = 5, color = :orange)
-f
-```
-\end{examplefigure}
-
-
 ## Other Notes
-
-### Drawing over grid lines
-
-By default grid lines are drawn in front of plots.
-If you want to draw them behind plots set `ax.griddepth[]` to a value between -10_000 and 0 (exclusive), e.g. `ax.griddepth[] = -100`.
 
 ### Plotting outside a PolarAxis
 
@@ -180,6 +217,37 @@ to translate those plots to a z range between `9000` and `10_000` or disable
 clipping via the `clip` attribute.
 
 For reference, the z values used by `PolarAxis` are `po.griddepth[] = 8999` for grid lines, 9000 for the clip polygons, 9001 for spines and 9002 for tick labels.
+
+### Radial Distortion
+
+If you have a plot with a large rmin and rmax over a wide range of angles you will end up with a narrow PolarAxis.
+Consider for example:
+
+\begin{examplefigure}{svg = true}
+```julia
+fig = Figure()
+ax = PolarAxis(fig[1, 1], thetalimits = (0, pi))
+lines!(ax, range(0, pi, length=100), 10 .+ rand(100))
+fig
+```
+\end{examplefigure}
+
+In this case you may want to distort the r-direction to make more of your data visible.
+This can be done by setting `ax.radial_distortion_threshhold` to a value between 0 and 1.
+
+\begin{examplefigure}{svg = true}
+```julia
+fig = Figure()
+ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radial_distortion_threshhold = 0.2)
+lines!(ax, range(0, pi, length=100), 10 .+ rand(100))
+fig
+```
+\end{examplefigure}
+
+Internally PolarAxis will check `rmin/rmax` against the set threshold.
+If that ratio exceed the threshhold, the polar transform is adjusted to shift all radii by some `r0` such that `(rmin - r0) / rmax - r0) == ax.radial_distortion_threshhold`.
+In effect this will hold the inner cutout/clip radius at a fraction of the outer radius.
+Note that at `ax.radial_distortion_threshhold >= 1.0` (default) this will never distort your data.
 
 ## Attributes
 
