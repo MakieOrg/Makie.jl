@@ -1679,9 +1679,9 @@ end
         # Limits & transformation settings
 
         "The radial limits of the PolarAxis."
-        rlimits = (0.0, nothing)
+        rlimits = (nothing, nothing)
         "The angle limits of the PolarAxis. (0.0, 2pi) results a full circle."
-        thetalimits = (0.0, 2pi)
+        thetalimits = (nothing, nothing)
         "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
         direction = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."

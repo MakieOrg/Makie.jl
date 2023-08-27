@@ -180,10 +180,9 @@ end
 function setup_camera_matrices!(po::PolarAxis)
     # Initialization
     usable_fraction = Observable(Vec2f(1.0, 1.0))
-    rmin, rmax = po.rlimits[]
-    setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((rmin, isnothing(rmax) ? 10.0 : rmax)))
-    thetamin, thetamax = po.thetalimits[]
-    setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((thetamin, thetamax)))
+    setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((0.0, 10.0)))
+    setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((0.0, 2pi)))
+    reset_limits!(po)
     onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
 
     # To keep the inner clip radius below a certain fraction of the outer clip
@@ -395,22 +394,44 @@ function setup_camera_matrices!(po::PolarAxis)
 end
 
 function reset_limits!(po::PolarAxis)
-    if isnothing(po.rlimits[][2])
+    # at least one derived limit
+    if any(isnothing, po.rlimits[]) || any(isnothing, po.thetalimits[])
         if !isempty(po.scene.plots)
             # TODO: Why does this include child scenes by default?
-            lims3d = data_limits(po.scene, p -> !(p in po.scene.plots))
-            if po.theta_as_x[]
-                po.target_rlims[] = (po.rlimits[][1], maximum(lims3d)[2])
-            else
-                po.target_rlims[] = (po.rlimits[][1], maximum(lims3d)[1])
-            end
-        end
-    elseif po.target_rlims[] != po.rlimits[]
-        po.target_rlims[] = po.rlimits[]
-    end
 
-    if po.target_thetalims[] != po.thetalimits[]
-        po.target_thetalims[] = po.thetalimits[]
+            # Generate auto limits
+            lims2d = Rect2f(data_limits(po.scene, p -> !(p in po.scene.plots)))
+            if po.theta_as_x[]
+                ws = (widths(lims2d)[1] > 1.9pi ? 0.0 : widths(lims2d)[1], widths(lims2d)[2])
+                thetamin, rmin = minimum(lims2d) .- 0.05 .* ws
+                thetamax, rmax = maximum(lims2d) .+ 0.05 .* ws
+            else
+                ws = (widths(lims2d)[1], widths(lims2d)[2] > 1.9pi ? 0.0 : widths(lims2d)[2])
+                rmin, thetamin = minimum(lims2d) .- 0.05 .* ws
+                rmax, thetamax = maximum(lims2d) .+ 0.05 .* ws
+            end
+
+            # cleanup autolimits (0 width, negative rmin)
+            rmin = max(0.0, rmin)
+            if rmin == rmax
+                rmin = max(0.0, rmin - 5.0)
+                rmax = rmin + 10.0
+            end
+            if thetamin == thetamax
+                thetamin, thetamax = (0.0, 2pi)
+            end
+
+            # apply
+            po.target_rlims[]     = ifelse.(isnothing.(po.rlimits[]),     (rmin, rmax),         po.rlimits[])
+            po.target_thetalims[] = ifelse.(isnothing.(po.thetalimits[]), (thetamin, thetamax), po.thetalimits[])
+        end
+    else # all limits set
+        if po.target_rlims[] != po.rlimits[]
+            po.target_rlims[] = po.rlimits[]
+        end
+        if po.target_thetalims[] != po.thetalimits[]
+            po.target_thetalims[] = po.thetalimits[]
+        end
     end
 
     return
@@ -808,6 +829,8 @@ function plot!(P::PlotFunc, po::PolarAxis, args...; kw_attributes...)
     plot!(po, P, attributes, args...)
 end
 
+delete!(ax::PolarAxis, p::AbstractPlot) = delete!(ax.scene, p)
+
 
 ################################################################################
 ### Utilities
@@ -816,6 +839,7 @@ end
 
 function autolimits!(po::PolarAxis)
     po.rlimits[] = (0.0, nothing)
+    po.thetalimits[] = (nothing, nothing)
     return
 end
 
@@ -837,6 +861,6 @@ end
 Sets the angular limits of a given `PolarAxis`.
 """
 function thetalims!(po::PolarAxis, thetamin::Real, thetamax::Real)
-    po.target_thetalims[] = (thetamin, thetamax)
+    po.thetalimits[] = (thetamin, thetamax)
     return
 end

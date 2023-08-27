@@ -33,4 +33,5 @@ using Makie: volume
     include("text.jl")
     include("boundingboxes.jl")
     include("ray_casting.jl")
+    include("PolarAxis.jl")
 end
