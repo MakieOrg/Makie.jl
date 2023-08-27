@@ -86,11 +86,52 @@ function initialize_block!(po::PolarAxis; palette=nothing)
 
     # Set up the title position
     title_position = map(
-            po.blockscene, scenearea, po.titlegap, po.titlealign
-        ) do area, titlegap, titlealign
-        calculate_polar_title_position(area, titlegap, titlealign)
+            po.blockscene,
+            po.target_rlims, po.target_thetalims, po.theta_0, po.direction,
+            po.rticklabelsize, po.rticklabelpad,
+            po.thetaticklabelsize, po.thetaticklabelpad,
+            po.overlay.px_area, po.overlay.camera.projectionview,
+            po.titlegap, po.titlesize, po.titlealign
+        ) do rlims, thetalims, theta_0, dir, r_fs, r_pad, t_fs, t_pad, area, pv, gap, size, align
+
+        # derive y position
+        # transform to pixel space
+        w, h = widths(area)
+        m = 0.5h * pv[2, 2]
+        b = 0.5h * (pv[2, 4] + 1)
+
+        thetamin, thetamax = extrema(dir .* (thetalims .+ theta_0))
+        shift = 2pi * div(thetamin, 2pi, RoundDown)
+        thetamin, thetamax = (thetamin, thetamax) .- shift
+
+        if thetamin < pi/2 < thetamax
+            # clip at 1 in overlay scene
+            # theta fontsize & pad relevant
+            ypx = (m * 1.0 + b) + (2t_pad + t_fs + gap)
+        else
+            y1 = sin(thetamin); y2 = sin(thetamax)
+            rscale = rlims[1] / rlims[2]
+            y = max(rscale * y1, rscale * y2, y1, y2)
+            ypx = (m * y + b) + (2max(t_pad, r_pad) + max(t_fs, r_fs) + gap)
+        end
+
+        xpx::Float32 = if align === :center
+            area.origin[1] + w / 2
+        elseif align === :left
+            area.origin[1]
+        elseif align === :right
+            area.origin[1] + w
+        elseif align isa Real
+            area.origin[1] + align * w
+        else
+            error("Title align $align not supported.")
+        end
+
+        return Point2f(xpx, area.origin[2] + ypx)
     end
 
+    # p = scatter!(po.blockscene, title_position, color = :red, overdraw = true)
+    # translate!(p, 0, 0, 9100)
     titleplot = text!(
         po.blockscene,
         title_position;
@@ -98,22 +139,18 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         font = po.titlefont,
         fontsize = po.titlesize,
         color = po.titlecolor,
-        align = @lift(($(po.titlealign), :center)),
-        visible = po.titlevisible
+        align = @lift(($(po.titlealign), :bottom)),
+        visible = po.titlevisible,
     )
-    translate!(titleplot, 0, 0, 9001) # Make sure this draws on top of clip
+    translate!(titleplot, 0, 0, 9100) # Make sure this draws on top of clip
 
     # Protrusions are space reserved for ticks and labels outside `scenearea`.
-    # Since we handle ticks within out `scenearea` this only needs to reservse
+    # Since we handle ticks within out `scenearea` this only needs to reserve
     # space for the title
     protrusions = map(
-            po.blockscene, po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize
-        ) do _, _, _, _, _, _
-        titlespace = if po.title[] != ""
-            (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(po.scene)[]))
-        else
-            0f0
-        end
+            po.blockscene, po.title, po.titlegap, po.titlesize
+        ) do title, gap, size
+        titlespace = po.title[] == "" ? 0f0 : Float32(2gap + size)
         return GridLayoutBase.RectSides(0f0, 0f0, 0f0, titlespace)
     end
 
@@ -197,7 +234,7 @@ function setup_camera_matrices!(po::PolarAxis)
     # get cartesian bbox defined by axis limits
     # OPT: target_radius update triggers radius_at_origin update
     data_bbox = map(po.blockscene, po.target_thetalims, radius_at_origin, po.direction, po.theta_0) do tlims, ro, dir, t0
-        polaraxis_bbox(po.target_rlims[], tlims, ro, dir, t0)
+        return polaraxis_bbox(po.target_rlims[], tlims, ro, dir, t0)
     end
 
     # fit data_bbox into the usable area of PolarAxis (i.e. with tick space subtracted)
@@ -771,41 +808,6 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     notify(po.griddepth)
 
     return rticklabelplot, thetaticklabelplot
-end
-
-
-################################################################################
-### Special sections
-################################################################################
-
-
-function calculate_polar_title_position(area, titlegap, align)
-    w, h = area.widths
-
-    x::Float32 = if align === :center
-        area.origin[1] + w / 2
-    elseif align === :left
-        area.origin[1]
-    elseif align === :right
-        area.origin[1] + w
-    else
-        error("Title align $align not supported.")
-    end
-
-    # local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
-    #     boundingbox(subtitlet).widths[2] + subtitlegap
-    # else
-    #     0f0
-    # end
-
-    # The scene area is a rectangle that can include a lot of empty space. With
-    # this we allow the title to draw in that empty space
-    mini = min(w, h)
-    h = top(area) - 0.5 * (h - mini)
-
-    yoffset::Float32 = h + titlegap
-
-    return Point2f(x, yoffset)
 end
 
 
