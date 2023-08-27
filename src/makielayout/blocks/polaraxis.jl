@@ -423,6 +423,8 @@ function reset_limits!(po::PolarAxis)
             end
             if thetamin == thetamax
                 thetamin, thetamax = (0.0, 2pi)
+            elseif thetamax - thetamin > 1.5pi
+                thetamax = thetamin + 2pi
             end
 
             # apply
