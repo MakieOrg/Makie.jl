@@ -1817,8 +1817,10 @@ end
         zoomspeed = 0.1
         "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
         rzoomkey = Keyboard.r
-        "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
+        "Sets the key used to restrict zooming to the theta-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
         thetazoomkey = Keyboard.t
+        "Controls whether rmin remains fixed during zooming."
+        fixrmin = false
         "Sets the mouse button for translating the plot in r-direction."
         radial_translation_button = Mouse.right
         "Sets the mouse button for translating the plot in theta-direction. Note that this can be the same as `radial_translation_button`."

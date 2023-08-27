@@ -265,6 +265,10 @@ function setup_camera_matrices!(po::PolarAxis)
             rmax = max(rmin + 1e-6, rmax + (1 - w) * dr)
 
             if !ispressed(e, po.thetazoomkey[])
+                if po.fixrmin[]
+                    rmin = po.target_rlims[][1]
+                    rmax = max(rmin + 1e-6, rmax + dr)
+                end
                 po.target_rlims[] = (rmin, rmax)
             end
 
@@ -844,13 +848,13 @@ function autolimits!(po::PolarAxis)
 end
 
 """
-    rlims!(ax::PolarAxis[, rmin = ax.rlimits[][1]], rmax)
+    rlims!(ax::PolarAxis[, rmin], rmax)
 
 Sets the radial limits of a given `PolarAxis`.
 """
-rlims!(po::PolarAxis, r::Real) = rlims!(po, po.rlimits[][1], r)
+rlims!(po::PolarAxis, r::Union{Nothing, Real}) = rlims!(po, po.rlimits[][1], r)
 
-function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
+function rlims!(po::PolarAxis, rmin::Union{Nothing, Real}, rmax::Union{Nothing, Real})
     po.rlimits[] = (rmin, rmax)
     return
 end
@@ -860,7 +864,27 @@ end
 
 Sets the angular limits of a given `PolarAxis`.
 """
-function thetalims!(po::PolarAxis, thetamin::Real, thetamax::Real)
+function thetalims!(po::PolarAxis, thetamin::Union{Nothing, Real}, thetamax::Union{Nothing, Real})
     po.thetalimits[] = (thetamin, thetamax)
+    return
+end
+
+"""
+    restrict_to_full_circle!(ax::PolarAxis[, enable = true])
+
+Restricts a given PolarAxis to not show partial views of a circle. Can be reset
+by passing `false`.
+"""
+function restrict_to_full_circle!(po::PolarAxis, enabled = true)
+    # no center cutout, always 0..2pi
+    rlims!(po, enabled ? 0.0 : nothing, po.rlimits[][2])
+    po.thetalimits[] = enabled ? (0.0, 2pi) : (nothing, nothing)
+    # only rmax zooming
+    po.fixrmin[]      = enabled ? true : false
+    po.rzoomkey[]     = enabled ? true : Keyboard.r
+    po.thetazoomkey[] = enabled ? false : Keyboard.t
+    # onyl translate in theta
+    po.radial_translation_button[] = enabled ? false : Mouse.right
+    reset_limits!(po)
     return
 end
