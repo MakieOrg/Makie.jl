@@ -581,20 +581,17 @@ function get_ticks(tickfunction::Function, _, formatter, vmin, vmax)
     return tickvalues, ticklabels
 end
 
-_logbase(s::ReversibleScale) = s.logbase
 _logbase(::typeof(log10)) = "10"
 _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
-_logbase(::Any) = nothing
 
-function get_ticks(::Automatic, scale::Union{LogFunctions,ReversibleScale}, any_formatter, vmin, vmax)
-    wt = WilkinsonTicks(5, k_min = 3)
-    ticks = isnothing(_logbase(scale)) ? wt : LogTicks(wt)
+function get_ticks(::Automatic, scale::LogFunctions, any_formatter, vmin, vmax)
+    ticks = LogTicks(WilkinsonTicks(5, k_min = 3))
     get_ticks(ticks, scale, any_formatter, vmin, vmax)
 end
 
 # log ticks just use the normal pipeline but with log'd limits, then transform the labels
-function get_ticks(l::LogTicks, scale::Union{LogFunctions,ReversibleScale}, ::Automatic, vmin, vmax)
+function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
 
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
@@ -607,7 +604,7 @@ function get_ticks(l::LogTicks, scale::Union{LogFunctions,ReversibleScale}, ::Au
     )
     labels = rich.(_logbase(scale), superscript.(labels_scaled, offset = Vec2f(0.1f0, 0f0)))
 
-    (ticks, labels)
+    ticks, labels
 end
 
 # function get_ticks(::Automatic, scale::typeof(Makie.logit), any_formatter, vmin, vmax)
@@ -685,7 +682,6 @@ get_ticklabels(formatfunction::Function, values) = formatfunction(values)
 Gets tick labels by formatting each value in `values` according to a `Formatting.format` format string.
 """
 get_ticklabels(formatstring::AbstractString, values) = [Formatting.format(formatstring, v) for v in values]
-
 
 function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmin = vmin / m.multiple

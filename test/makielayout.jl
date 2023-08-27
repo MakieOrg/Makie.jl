@@ -388,3 +388,17 @@ end
     f = Figure()
     @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
 end
+
+@testset "Colorscales" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    z = broadcast((x, y) -> x, x, y')
+
+    scale = Makie.Symlog10(2)
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+
+    scale = Makie.pseudolog10
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+end

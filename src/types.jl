@@ -402,10 +402,6 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval}
     """
     inverse::I
     """
-    LogTicks base (e.g. "10" for pseudo log ticks) (optional)
-    """
-    logbase::Union{Nothing,String}
-    """
     default limits (optional)
     """
     limits::NTuple{2,Float32}
@@ -413,7 +409,7 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval}
     valid limits interval (optional)
     """
     interval::T
-    function ReversibleScale(forward, inverse = Automatic(); logbase = nothing, limits = (0f0, 10f0), interval = (-Inf32, Inf32))
+    function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32))
         inverse isa Automatic && (inverse = inverse_transform(forward))
         isnothing(inverse) && throw(ArgumentError(
             "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(forward), inverse($(forward)))` instead."
@@ -426,7 +422,7 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval}
         lft ≈ Id(lft) || throw(ArgumentError("Invalid inverse transform: $lft !≈ $(Id(lft))"))
         rgt ≈ Id(rgt) || throw(ArgumentError("Invalid inverse transform: $rgt !≈ $(Id(rgt))"))
 
-        new{typeof(forward),typeof(inverse),typeof(interval)}(forward, inverse, logbase, limits, interval)
+        new{typeof(forward),typeof(inverse),typeof(interval)}(forward, inverse, limits, interval)
     end
 end
 
