@@ -451,25 +451,30 @@ function reset_limits!(po::PolarAxis)
             # Generate auto limits
             lims2d = Rect2f(data_limits(po.scene, p -> !(p in po.scene.plots)))
             if po.theta_as_x[]
-                ws = (widths(lims2d)[1] > 1.9pi ? 0.0 : widths(lims2d)[1], widths(lims2d)[2])
-                thetamin, rmin = minimum(lims2d) .- 0.05 .* ws
-                thetamax, rmax = maximum(lims2d) .+ 0.05 .* ws
+                dtheta, dr = 0.05 .* (widths(lims2d)[1] > 1.9pi ? 0.0 : widths(lims2d)[1], widths(lims2d)[2])
+                thetamin, rmin = minimum(lims2d)
+                thetamax, rmax = maximum(lims2d)
             else
-                ws = (widths(lims2d)[1], widths(lims2d)[2] > 1.9pi ? 0.0 : widths(lims2d)[2])
-                rmin, thetamin = minimum(lims2d) .- 0.05 .* ws
-                rmax, thetamax = maximum(lims2d) .+ 0.05 .* ws
+                dr, dtheta = 0.05 .* (widths(lims2d)[1], widths(lims2d)[2] > 1.9pi ? 0.0 : widths(lims2d)[2])
+                rmin, thetamin = minimum(lims2d)
+                rmax, thetamax = maximum(lims2d)
             end
 
             # cleanup autolimits (0 width, negative rmin)
-            rmin = max(0.0, rmin)
             if rmin == rmax
                 rmin = max(0.0, rmin - 5.0)
                 rmax = rmin + 10.0
+            else
+                rmin = max(0.0, rmin - dr)
+                rmax += dr
             end
             if thetamin == thetamax
                 thetamin, thetamax = (0.0, 2pi)
             elseif thetamax - thetamin > 1.5pi
                 thetamax = thetamin + 2pi
+            else
+                thetamin -= dtheta
+                thetamax += dtheta
             end
 
             # apply
