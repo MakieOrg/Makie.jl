@@ -808,10 +808,10 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
     translate!(spineplot, 0, 0, 9001)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
-    on(po.blockscene, po.griddepth) do depth
+    on(po.blockscene, po.gridz) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end
-    notify(po.griddepth)
+    notify(po.gridz)
 
     return rticklabelplot, thetaticklabelplot
 end
