@@ -316,7 +316,7 @@ function setup_camera_matrices!(po::PolarAxis)
         if e.action == Mouse.press && is_mouseinside(po.scene) && (
                 ispressed(po.scene, po.r_translation_button[]) ||
                 ispressed(po.scene, po.theta_translation_button[]) ||
-                ispressed(po.scene, po.clip_rotation_button[])
+                ispressed(po.scene, po.axis_rotation_button[])
             )
             last_px_pos[] = Point2f(mouseposition_px(po.scene))
             last_pos[] = Point2f(mouseposition(po.scene))
@@ -330,7 +330,7 @@ function setup_camera_matrices!(po::PolarAxis)
             ispressed(po.scene, po.r_translation_button[]),
             ispressed(po.scene, po.theta_translation_button[])
         )
-        if ispressed(po.scene, po.clip_rotation_button[])
+        if ispressed(po.scene, po.axis_rotation_button[])
             w = widths(po.scene.px_area[])
             p0 = (last_px_pos[] .- 0.5w) ./ w
             p1 = Point2f(mouseposition_px(po.scene) .- 0.5w) ./ w
