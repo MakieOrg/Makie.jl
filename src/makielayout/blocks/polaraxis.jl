@@ -101,10 +101,7 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         b = 0.5h * (pv[2, 4] + 1)
 
         thetamin, thetamax = extrema(dir .* (thetalims .+ theta_0))
-        shift = 2pi * div(thetamin, 2pi, RoundDown)
-        thetamin, thetamax = (thetamin, thetamax) .- shift
-
-        if thetamin < pi/2 < thetamax
+        if thetamin - div(thetamax - 0.5pi, 2pi, RoundDown) * 2pi < 0.5pi
             # clip at 1 in overlay scene
             # theta fontsize & pad relevant
             ypx = (m * 1.0 + b) + (2t_pad + t_fs + gap)
