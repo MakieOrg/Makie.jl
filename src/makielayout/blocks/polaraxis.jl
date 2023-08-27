@@ -301,12 +301,12 @@ function setup_camera_matrices!(po::PolarAxis)
             if rmin != 0 || r > 0.1rmax
                 rmin = max(0, rmin - w * dr)
             end
-            rmax = max(rmin + 1e-6, rmax + (1 - w) * dr)
+            rmax = max(rmin + 100eps(rmin), rmax + (1 - w) * dr)
 
             if !ispressed(e, po.thetazoomkey[])
                 if po.fixrmin[]
                     rmin = po.target_rlims[][1]
-                    rmax = max(rmin + 1e-6, rmax + dr)
+                    rmax = max(rmin + 100eps(rmin), rmax + dr)
                 end
                 po.target_rlims[] = (rmin, rmax)
             end
