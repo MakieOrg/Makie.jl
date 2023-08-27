@@ -1653,9 +1653,9 @@ end
         "The width setting of the scene."
         width = nothing
         "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
+        tellwidth::Bool = true
         "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
+        tellheight::Bool = true
         "The horizontal alignment of the scene in its suggested bounding box."
         halign = :center
         "The vertical alignment of the scene in its suggested bounding box."
@@ -1668,13 +1668,13 @@ end
         "The background color of the axis."
         backgroundcolor = inherit(scene, :backgroundcolor, :white)
         "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
-        sample_density = 120
+        sample_density::Int = 120
         "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
-        clip = true
+        clip::Bool = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
         clipcolor = automatic
         "Sets a threshold relative to `rmin/rmax` after which radii are distorted to fit more on the screen. No distortion is applied if `radial_distortion_threshhold ≥ 1`"
-        radial_distortion_threshhold = 1.0
+        radial_distortion_threshhold::Float64 = 1.0
 
         # Limits & transformation settings
 
@@ -1683,20 +1683,20 @@ end
         "The angle limits of the PolarAxis. (0.0, 2pi) results a full circle."
         thetalimits = (nothing, nothing)
         "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
-        direction = 1
+        direction::Int = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
-        theta_0 = 0f0
+        theta_0::Float32 = 0f0
         "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
         theta_as_x::Bool = true
 
         # Spine
 
         "The width of the spine."
-        spinewidth = 2
+        spinewidth::Float32 = 2
         "The color of the spine."
         spinecolor = :black
         "Controls whether the spine is visible."
-        spinevisible = true
+        spinevisible::Bool = true
         "The linestyle of the spine."
         spinestyle = nothing
 
@@ -1709,19 +1709,19 @@ end
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
         "The fontsize of the `r` tick labels."
-        rticklabelsize = inherit(scene, (:Axis, :xticklabelsize), 16)
+        rticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), 16)
         "The font of the `r` tick labels."
         rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `r` tick labels."
         rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
-        rticklabelstrokewidth = 0.0
+        rticklabelstrokewidth::Float32 = 0.0
         "The color of the outline of `r` ticks. By default this uses the background color."
         rticklabelstrokecolor = automatic
         "Padding of the `r` ticks label."
-        rticklabelpad = 4f0
+        rticklabelpad::Float32 = 4f0
         "Controls if the `r` ticks are visible."
-        rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
+        rticklabelsvisible::Bool = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = automatic
         "Sets the rotation of `r` tick labels. If set to `true` rtick are always rotated, `false` keeps them horizontal, `automatic` rotates them up to 45° angles and any other number rotates them accordingly."
@@ -1736,89 +1736,89 @@ end
         "The formatter for the `theta` ticks."
         thetatickformat = Makie.automatic
         "The fontsize of the `theta` tick labels."
-        thetaticklabelsize = inherit(scene, (:Axis, :yticklabelsize), 16)
+        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), 16)
         "The font of the `theta` tick labels."
         thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `theta` tick labels."
         thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Padding of the `theta` ticks label."
-        thetaticklabelpad = 4f0
+        thetaticklabelpad::Float32 = 4f0
         "The width of the outline of `theta` ticks. Setting this to 0 will remove the outline."
-        thetaticklabelstrokewidth = 0.0
+        thetaticklabelstrokewidth::Float32 = 0.0
         "The color of the outline of `theta` ticks. By default this uses the background color."
         thetaticklabelstrokecolor = automatic
         "Controls if the `theta` ticks are visible."
-        thetaticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
+        thetaticklabelsvisible::Bool = inherit(scene, (:Axis, :yticklabelsvisible), true)
 
         # r minor and major grid
 
         "Sets the z value of grid lines. To place the grid above plots set this to a value between 1 and 8999."
-        gridz = -100
+        gridz::Float32 = -100
 
         "The color of the `r` grid."
         rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
         "The linewidth of the `r` grid."
-        rgridwidth = inherit(scene, (:Axis, :xgridwidth), 1)
+        rgridwidth::Float32 = inherit(scene, (:Axis, :xgridwidth), 1)
         "The linestyle of the `r` grid."
         rgridstyle = inherit(scene, (:Axis, :xgridstyle), nothing)
         "Controls if the `r` grid is visible."
-        rgridvisible = inherit(scene, (:Axis, :xgridvisible), true)
+        rgridvisible::Bool = inherit(scene, (:Axis, :xgridvisible), true)
 
         "The color of the `r` minor grid."
         rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
         "The linewidth of the `r` minor grid."
-        rminorgridwidth = inherit(scene, (:Axis, :xminorgridwidth), 1)
+        rminorgridwidth::Float32 = inherit(scene, (:Axis, :xminorgridwidth), 1)
         "The linestyle of the `r` minor grid."
         rminorgridstyle = inherit(scene, (:Axis, :xminorgridstyle), nothing)
         "Controls if the `r` minor grid is visible."
-        rminorgridvisible = inherit(scene, (:Axis, :xminorgridvisible), false)
+        rminorgridvisible::Bool = inherit(scene, (:Axis, :xminorgridvisible), false)
 
         # Theta minor and major grid
 
         "The color of the `theta` grid."
         thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
         "The linewidth of the `theta` grid."
-        thetagridwidth = inherit(scene, (:Axis, :ygridwidth), 1)
+        thetagridwidth::Float32 = inherit(scene, (:Axis, :ygridwidth), 1)
         "The linestyle of the `theta` grid."
         thetagridstyle = inherit(scene, (:Axis, :ygridstyle), nothing)
         "Controls if the `theta` grid is visible."
-        thetagridvisible = inherit(scene, (:Axis, :ygridvisible), true)
+        thetagridvisible::Bool = inherit(scene, (:Axis, :ygridvisible), true)
 
 
         "The color of the `theta` minor grid."
         thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
         "The linewidth of the `theta` minor grid."
-        thetaminorgridwidth = inherit(scene, (:Axis, :yminorgridwidth), 1)
+        thetaminorgridwidth::Float32 = inherit(scene, (:Axis, :yminorgridwidth), 1)
         "The linestyle of the `theta` minor grid."
         thetaminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
         "Controls if the `theta` minor grid is visible."
-        thetaminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), false)
+        thetaminorgridvisible::Bool = inherit(scene, (:Axis, :yminorgridvisible), false)
 
         # Title
 
         "The title of the plot"
         title = ""
         "The gap between the title and the top of the axis"
-        titlegap = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
+        titlegap::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
         "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
         titlealign = :center
         "The fontsize of the title."
-        titlesize = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
+        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
         "The font of the title."
         titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the title."
         titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
         "Controls if the title is visible."
-        titlevisible = inherit(scene, (:Axis, :titlevisible), true)
+        titlevisible::Bool = inherit(scene, (:Axis, :titlevisible), true)
 
         # Interactive Controls
 
         "Sets the speed of scroll based zooming. Setting this to 0 effectively disables zooming."
-        zoomspeed = 0.1
+        zoomspeed::Float32 = 0.1
         "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
         rzoomkey = Keyboard.r
         "Controls whether rmin remains fixed during zooming."
-        fixrmin = false
+        fixrmin::Bool = false
         "Sets the key used to restrict zooming to the theta-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
         thetazoomkey = Keyboard.t
         "Sets the mouse button for translating the plot in r-direction."
