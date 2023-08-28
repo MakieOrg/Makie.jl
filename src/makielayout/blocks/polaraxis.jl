@@ -474,10 +474,14 @@ function reset_limits!(po::PolarAxis)
                 thetamax += dtheta
             end
 
-            # apply
-            po.target_rlims[]     = ifelse.(isnothing.(po.rlimits[]),     (rmin, rmax),         po.rlimits[])
-            po.target_thetalims[] = ifelse.(isnothing.(po.thetalimits[]), (thetamin, thetamax), po.thetalimits[])
+        else
+            # no plot limits, use defaults
+            rmin = 0.0; rmax = 10.0; thetamin = 0.0; thetamax = 2pi
         end
+
+        # apply
+        po.target_rlims[]     = ifelse.(isnothing.(po.rlimits[]),     (rmin, rmax),         po.rlimits[])
+        po.target_thetalims[] = ifelse.(isnothing.(po.thetalimits[]), (thetamin, thetamax), po.thetalimits[])
     else # all limits set
         if po.target_rlims[] != po.rlimits[]
             po.target_rlims[] = po.rlimits[]

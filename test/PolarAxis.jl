@@ -93,4 +93,18 @@
         @test ax.thetalimits[] == (0.0, 2pi)
         @test ax.target_thetalims[] == (0.0, 2pi)
     end
+
+    @testset "Radial Distortion" begin
+        fig = Figure()
+        ax = PolarAxis(fig[1, 1], radial_distortion_threshhold = 0.2, rlimits = (0, 10))
+        tf = ax.scene.transformation.transform_func
+        @test /(ax.target_rlims[]...) == 0.0
+        @test /((ax.target_rlims[] .- tf[].r0)...) == 0.0
+        rlims!(ax, 1, 10)
+        @test /(ax.target_rlims[]...) == 0.1
+        @test /((ax.target_rlims[] .- tf[].r0)...) == 0.1
+        rlims!(ax, 5, 10)
+        @test /(ax.target_rlims[]...) == 0.5
+        @test /((ax.target_rlims[] .- tf[].r0)...) ≈ 0.2
+    end
 end
