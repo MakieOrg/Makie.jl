@@ -3,6 +3,7 @@
 ## master
 
 - Improved Barplot Label Alignment [#3160](https://github.com/MakieOrg/Makie.jl/issues/3160).
+- Fixed regression in determining axis limits [#3179](https://github.com/MakieOrg/Makie.jl/pull/3179)
 
 ## v0.19.8
 
