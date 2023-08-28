@@ -128,7 +128,7 @@ end
 end
 ```
 ~~~
-<video autoplay src="/assets/datashader-14million.mp4">
+<video autoplay mute loop src="/assets/datashader-14million.mp4">
 </video>
 ~~~
 
@@ -176,7 +176,7 @@ aggregation took 0.866s
 aggregation took 0.724s
 ```
 ~~~
-<video autoplay src="/assets/datashader_2-7_billion.mp4">
+<video mute autoplay loop src="/assets/datashader_2-7_billion.mp4">
 </video>
 ~~~
 

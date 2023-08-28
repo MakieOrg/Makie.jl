@@ -427,6 +427,6 @@ Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, ang
 end
 ```
 ~~~
-<video autoplay controls src="/assets/lego_walk.mp4">
+<video mute autoplay controls src="/assets/lego_walk.mp4">
 </video>
 ~~~
