@@ -117,8 +117,8 @@ function change_op!(canvas::Canvas, op::AggOp)
     op == canvas.op && return false
     o0 = null(op)
     if eltype(canvas.aggbuffer) != typeof(o0)
-        c.aggbuffer = fill(o0, size(c.aggbuffer))
-        c.pixelbuffer = fill(o0, size(c.pixelbuffer))
+        canvas.aggbuffer = fill(o0, size(c.aggbuffer))
+        canvas.pixelbuffer = fill(o0, size(c.pixelbuffer))
     end
     return true
 end
@@ -409,7 +409,6 @@ function aggregate_categories!(canvases, categories; method=AggThreads())
         Aggregation.aggregate!(canvas, points; method=method)
     end
 end
-
 
 Makie.convert_arguments(::Type{<:DataShader}, x::Dict{String,Vector{<:Point2}}) = (x,)
 
