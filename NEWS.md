@@ -2,8 +2,8 @@
 
 ## master
 
-- Added `rlimits` and `thetalimits` to `PolarAxis`. [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
-- Added camera translations in r and theta direction to `PolarAxis`. [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 - Fixed regression in determining axis limits [#3179](https://github.com/MakieOrg/Makie.jl/pull/3179)
 
 ## v0.19.8
