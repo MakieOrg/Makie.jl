@@ -22,7 +22,6 @@ Let's create a plot with the default theme:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-using Makie.LaTeXStrings # hide
 
 function example_plot()
     f = Figure()
@@ -42,7 +41,7 @@ Now we define a theme which changes the default fontsize, activate it, and plot.
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Makie.LaTeXStrings # hide
+using CairoMakie # hide
 fontsize_theme = Theme(fontsize = 10)
 set_theme!(fontsize_theme)
 
@@ -64,7 +63,7 @@ For example, you can combine the dark theme with the LaTeX fonts theme to have b
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Makie.LaTeXStrings # hide
+using CairoMakie # hide
 dark_latexfonts = merge(theme_dark(), theme_latexfonts())
 set_theme!(dark_latexfonts)
 example_plot()
@@ -79,7 +78,7 @@ For example, you can decide to change the text size after activating the dark an
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Makie.LaTeXStrings # hide
+using CairoMakie # hide
 update_theme!(fontsize=30)
 example_plot()
 ```
@@ -91,7 +90,7 @@ Because it can be tedious to remember to switch themes off which you need only t
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Makie.LaTeXStrings # hide
+using CairoMakie # hide
 set_theme!() # hide
 with_theme(fontsize_theme) do
     example_plot()
@@ -103,7 +102,7 @@ You can also pass additional keywords to add or override attributes in your them
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Makie.LaTeXStrings # hide
+using CairoMakie # hide
 with_theme(fontsize_theme, fontsize = 25) do
     example_plot()
 end
@@ -116,7 +115,7 @@ You can theme plot objects by using their uppercase type names as a key in your 
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Makie.LaTeXStrings # hide
+using CairoMakie # hide
 lines_theme = Theme(
     Lines = (
         linewidth = 4,
@@ -136,7 +135,7 @@ Here is how you could define a simple ggplot-like style for your axes:
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Makie.LaTeXStrings # hide
+using CairoMakie # hide
 ggplot_theme = Theme(
     Axis = (
         backgroundcolor = :gray90,
@@ -248,7 +247,6 @@ The cycler's internal counter is not advanced when using `Cycled` for any attrib
 using CairoMakie
 CairoMakie.activate!() # hide
 
-
 f = Figure()
 
 Axis(f[1, 1])
@@ -277,7 +275,6 @@ Here's an example that shows how density plots react to different palette option
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-
 
 set_theme!() # hide
 
