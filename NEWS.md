@@ -5,6 +5,7 @@
 - [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 - General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 - Fixed regression in determining axis limits [#3179](https://github.com/MakieOrg/Makie.jl/pull/3179)
+- Added a theme `theme_latexfonts` that uses the latex font family as default fonts [#3147](https://github.com/MakieOrg/Makie.jl/pull/3147).
 
 ## v0.19.8
 
