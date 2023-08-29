@@ -280,6 +280,6 @@ function screen_to_plot(plot, p::VecTypes)
 end
 
 # ignore whiskers when determining data limits
-function data_limits(bars::Union{Errorbars, Rangebars})
-    data_limits(bars.plots[1])
+function point_iterator(bars::Union{Errorbars, Rangebars})
+    point_iterator(bars.plots[1])
 end
