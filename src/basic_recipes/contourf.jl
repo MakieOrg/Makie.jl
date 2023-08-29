@@ -58,7 +58,7 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges
 end
 
-conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
+conversion_trait(::Type{<:Contourf}) = VertexBasedGrid()
 
 function _get_isoband_levels(::Val{:normal}, levels, values)
     _get_isoband_levels(levels, extrema_nan(values)...)

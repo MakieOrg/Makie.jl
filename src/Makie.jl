@@ -73,7 +73,7 @@ using Observables: listeners, to_value, notify
 
 using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
 using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
-using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexBasedGrid, CellBasedGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
 using MakieCore: not_implemented_for
@@ -85,7 +85,7 @@ import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshs
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 
 export @L_str, @colorant_str
-export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+export ConversionTrait, NoConversion, PointBased, GridBased, VertexBasedGrid, CellBasedGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
 const RealVector{T} = AbstractVector{T} where T <: Number

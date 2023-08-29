@@ -110,8 +110,8 @@ function to_levels(n::Integer, cnorm)
     range(zmin + dz; step = dz, length = n)
 end
 
-conversion_trait(::Type{<: Contour3d}) = ContinuousSurface()
-conversion_trait(::Type{<: Contour}) = ContinuousSurface()
+conversion_trait(::Type{<: Contour3d}) = VertexBasedGrid()
+conversion_trait(::Type{<: Contour}) = VertexBasedGrid()
 conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<: Number, 3}}) = VolumeLike()
 conversion_trait(::Type{<: Contour}, ::AbstractArray{<: Number, 3}) = VolumeLike()
 
