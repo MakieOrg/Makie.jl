@@ -3,6 +3,7 @@
 ## master
 
 - Fixed some errors around dynamic changes of `ax.xscale` or `ax.yscale` [#3084](https://github.com/MakieOrg/Makie.jl/pull/3084)
+- Fixed regression in determining axis limits [#3179](https://github.com/MakieOrg/Makie.jl/pull/3179)
 
 ## v0.19.8
 
