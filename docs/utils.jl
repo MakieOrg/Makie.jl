@@ -43,6 +43,7 @@ function env_showhtml(com, _)
     name = "example_$(hash(code))"
     str = """
     ```julia:$name
+    using Makie.LaTeXStrings: @L_str # hide
     __result = begin # hide
         $code
     end # hide
@@ -81,6 +82,7 @@ function env_examplefigure(com, _)
 
     str = """
     ```julia:example_figure
+    using Makie.LaTeXStrings: @L_str # hide
     __result = begin # hide
         $code
     end # hide
@@ -463,7 +465,7 @@ function lx_attrdocs(lxc, _)
         println(io)
         println(io, "Defaults to `$default_str`")
         println(io)
-        
+
         if docs === nothing
             println(io, "No docstring defined for attribute `$attrkey`.")
         else
@@ -485,10 +487,9 @@ function lx_attrdocs(lxc, _)
             println(io, "\\end{examplefigure}")
             println(io)
         end
-        
+
         println(io)
     end
 
     return String(take!(io))
 end
-

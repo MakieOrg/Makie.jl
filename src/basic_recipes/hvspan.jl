@@ -48,9 +48,8 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     mi = p isa HSpan ? p.xmin : p.ymin
     ma = p isa HSpan ? p.xmax : p.ymax
-    
+
     onany(limits, p[1], p[2], mi, ma, transf) do lims, lows, highs, mi, ma, transf
-        inv = inverse_transform(transf)
         empty!(rects[])
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)
@@ -58,14 +57,14 @@ function Makie.plot!(p::Union{HSpan, VSpan})
             if p isa HSpan
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
-                x_mi = _apply_x_transform(inv, x_mi)
-                x_ma = _apply_x_transform(inv, x_ma)
+                low  = _apply_y_transform(transf, low)
+                high = _apply_y_transform(transf, high)
                 push!(rects[], Rect2f(Point2f(x_mi, low), Vec2f(x_ma - x_mi, high - low)))
             elseif p isa VSpan
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
-                y_mi = _apply_y_transform(inv, y_mi)
-                y_ma = _apply_y_transform(inv, y_ma)
+                low  = _apply_x_transform(transf, low)
+                high = _apply_x_transform(transf, high)
                 push!(rects[], Rect2f(Point2f(low, y_mi), Vec2f(high - low, y_ma - y_mi)))
             end
         end
@@ -74,7 +73,12 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     notify(p[1])
 
-    poly!(p, rects; p.attributes...)
+    poly_attributes = copy(p.attributes)
+    foreach(x-> delete!(poly_attributes, x), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
+
+    # we handle transform_func manually
+    T = Transformation(p, transform_func = identity)
+    poly!(p, poly_attributes, rects; transformation = T)
     p
 end
 

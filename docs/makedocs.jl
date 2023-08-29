@@ -9,9 +9,23 @@ run(`$(npm_cmd()) install highlight.js`)
 run(`$(npm_cmd()) install cheerio`)
 
 using Downloads
-stork = Downloads.download("https://files.stork-search.net/releases/v1.4.2/stork-ubuntu-20-04")
-run(`chmod +x $stork`)
-success(`$stork`)
+using Tar
+
+pagefind = let
+    url = if Sys.isapple()
+        "https://github.com/CloudCannon/pagefind/releases/download/v0.12.0/pagefind-v0.12.0-aarch64-apple-darwin.tar.gz"
+    elseif Sys.islinux()
+        "https://github.com/CloudCannon/pagefind/releases/download/v0.12.0/pagefind-v0.12.0-x86_64-unknown-linux-musl.tar.gz"
+    else
+        error()
+    end
+    d = Downloads.download(url)
+    dir = Tar.extract(`gunzip -c $d`)
+    p = joinpath(dir, "pagefind")
+    run(`chmod +x $p`)
+    p
+end
+success(`$pagefind`)
 
 # copy NEWS file over to documentation
 cp(
@@ -54,8 +68,12 @@ serve(; single=true, cleanup=false, clear=true, fail_on_warning=true)
 # for interactive development of the docs, use:
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 
-populate_stork_config(params.subfolder)
-run_stork()
+cd("__site") do
+    run(`$pagefind --source . --root-selector .franklin-content`)
+end
+
+# lunr()
+# optimize(; minify=false, prerender=false)
 
 # by making all links relative, we can forgo the `prepath` setting of Franklin
 # which means that files in some `vX.Y.Z` subfolder which happens to be `stable`
