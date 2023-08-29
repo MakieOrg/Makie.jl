@@ -174,7 +174,7 @@ function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direc
         align = Vec2f(0.5 - 0.5scale * s, 0.5 - 0.5scale * c)
         return align
     else
-        return to_align(label_align, "Failed to convert `label_align` $label_align. Should be a `VecTypes{2}` or `Tuple` containing `<:Real` values or appropriate Symbols.")
+        return to_align(label_align, "Failed to convert `label_align` $label_align.")
     end
 end
 

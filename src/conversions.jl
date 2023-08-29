@@ -972,22 +972,22 @@ convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = 
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
 """
-    to_align(align[, error_msg])
+    to_align(align[, error_prefix])
 
 Converts the given align to a `Vec2f`. Can convert `VecTypes{2}` and two
 component `Tuple`s with `Real` and `Symbol` elements.
 
-To specify a custom error message use `halign2num(value, msg)` and
-`valign2num(value, msg)` respectively.
+To specify a custom error message you can add an `error_prefix` or use
+`halign2num(value, error_msg)` and `valign2num(value, error_msg)` respectively.
 """
 to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(2))
 to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
 
-function to_align(v::Union{VecTypes{2}, Tuple}, error_msg::String)
+function to_align(v::Union{VecTypes{2}, Tuple}, error_prefix::String)
     try
         return to_align(v)
-    catch e
-        error(error_msg)
+    catch
+        error(error_prefix)
     end
 end
 
