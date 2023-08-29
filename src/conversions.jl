@@ -980,7 +980,7 @@ component `Tuple`s with `Real` and `Symbol` elements.
 To specify a custom error message you can add an `error_prefix` or use
 `halign2num(value, error_msg)` and `valign2num(value, error_msg)` respectively.
 """
-to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(2))
+to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(x[2]))
 to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
 
 function to_align(v::Union{VecTypes{2}, Tuple}, error_prefix::String)
