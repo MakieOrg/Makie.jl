@@ -476,10 +476,9 @@ end
 function draw_atomic(screen::Screen, scene::Scene, x::Image)
     return cached_robj!(screen, scene, x) do gl_attributes
         position = lift(x, x[1], x[2]) do x, y
-            r = to_range(x, y)
-            x, y = minimum(r[1]), minimum(r[2])
-            xmax, ymax = maximum(r[1]), maximum(r[2])
-            rect =  Rect2f(x, y, xmax - x, ymax - y)
+            xmin, xmax = extrema(x)
+            ymin, ymax = extrema(y)
+            rect =  Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2f, rect)
         end
         gl_attributes[:vertices] = apply_transform(transform_func_obs(x), position, x.space)
