@@ -461,9 +461,9 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     return p
 end
 
-Makie.data_limits(p::DataShader) =  p._boundingbox[]
+data_limits(p::DataShader) =  p._boundingbox[]
 
-Makie.used_attributes(::Type{<:Any}, ::Canvas) = (:operation, :local_operation)
+used_attributes(::Type{<:Any}, ::Canvas) = (:operation, :local_operation)
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
                            operation=automatic, local_operation=identity)
