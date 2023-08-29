@@ -43,15 +43,14 @@ function env_showhtml(com, _)
     name = "example_$(hash(code))"
     str = """
     ```julia:$name
-    __time = @elapsed begin
-        __result = begin # hide
-            $code
-        end # hide
-        println("~~~") # hide
-        show(stdout, MIME"text/html"(), __result) # hide
-        println("~~~") # hide
-    end
-    println(stderr, "html time: ", __time)
+    __time_start = time()
+    __result = begin # hide
+        $code
+    end # hide
+    println("~~~") # hide
+    show(stdout, MIME"text/html"(), __result) # hide
+    println("~~~") # hide
+    println(stderr, "html time: ", time() - __time_start)
     nothing # hide
     ```
     \\textoutput{$name}
@@ -84,14 +83,13 @@ function env_examplefigure(com, _)
 
     str = """
     ```julia:example_figure
-    __time = @elapsed begin
-        __result = begin # hide
-            $code
-        end # hide
-        save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide
-        $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str) # hide" : "")
-    end
-    println(stderr, "time: ", __time)
+    __time_start = time()
+    __result = begin # hide
+        $code
+    end # hide
+    save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide
+    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str) # hide" : "")
+    println(stderr, "time: ", time() - __time_start)
     nothing # hide
     ```
     ~~~
