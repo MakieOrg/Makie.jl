@@ -983,7 +983,7 @@ To specify a custom error message you can add an `error_prefix` or use
 to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(x[2]))
 to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
 
-function to_align(v::Union{VecTypes{2}, Tuple}, error_prefix::String)
+function to_align(v, error_prefix::String)
     try
         return to_align(v)
     catch
