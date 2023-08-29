@@ -972,10 +972,68 @@ convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = 
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
 """
-    Text align, e.g.:
+    to_align(align[, error_msg])
+
+Converts the given align to a `Vec2f`. Can convert `VecTypes{2}` and two
+component `Tuple`s with `Real` and `Symbol` elements.
+
+To specify a custom error message use `halign2num(value, msg)` and
+`valign2num(value, msg)` respectively.
 """
-to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
-to_align(x::Vec2f) = x
+to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(2))
+to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
+
+function to_align(v::Union{VecTypes{2}, Tuple}, error_msg::String)
+    try
+        return to_align(v)
+    catch e
+        error(error_msg)
+    end
+end
+
+"""
+    halign2num(align[, error_msg])
+
+Attempts to convert a horizontal align to a Float32 and errors with `error_msg`
+if it fails to do so.
+"""
+halign2num(v::Real, error_msg = "") = Float32(v)
+function halign2num(v::Symbol, error_msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
+    if v === :left
+        return 0.0f0
+    elseif v === :center
+        return 0.5f0
+    elseif v === :right
+        return 1.0f0
+    else
+        error(msg)
+    end
+end
+function halign2num(v, msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
+    error(msg)
+end
+
+"""
+    valign2num(align[, error_msg])
+
+Attempts to convert a vertical align to a Float32 and errors with `error_msg`
+if it fails to do so.
+"""
+valign2num(v::Real, error_msg = "") = Float32(v)
+function valign2num(v::Symbol, error_msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
+    if v === :top
+        return 1f0
+    elseif v === :bottom
+        return 0f0
+    elseif v === :center
+        return 0.5f0
+    else
+        error(msg)
+    end
+end
+function valign2num(v, msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
+    error(msg)
+end
 
 const FONT_CACHE = Dict{String, NativeFont}()
 const FONT_CACHE_LOCK = Base.ReentrantLock()

@@ -436,15 +436,8 @@ function initialize_block!(ax::Axis; palette = nothing)
                        ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
 
-        x = if align === :center
-            a.origin[1] + a.widths[1] / 2
-        elseif align === :left
-            a.origin[1]
-        elseif align === :right
-            a.origin[1] + a.widths[1]
-        else
-            error("Title align $align not supported.")
-        end
+        align_factor = halign2num(align, "Horizontal title align $align not supported.")
+        x = a.origin[1] + align_factor * a.widths[1]
 
         yoffset = top(a) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0)
 

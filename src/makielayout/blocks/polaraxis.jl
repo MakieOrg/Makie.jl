@@ -341,15 +341,8 @@ end
 function calculate_polar_title_position(area, titlegap, align)
     w, h = area.widths
 
-    x::Float32 = if align === :center
-        area.origin[1] + w / 2
-    elseif align === :left
-        area.origin[1]
-    elseif align === :right
-        area.origin[1] + w
-    else
-        error("Title align $align not supported.")
-    end
+    align_factor = halign2num(align, "Horizontal title align $align not supported.")
+    x::Float32 = area.origin[1] + align_factor * w
 
     # local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
     #     boundingbox(subtitlet).widths[2] + subtitlegap

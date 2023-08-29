@@ -5,15 +5,15 @@ end
 """
     bar_default_fillto(tf, ys, offset)::(ys, offset)
 
-Returns the default y-positions and offset positions for the given transform `tf`.  
+Returns the default y-positions and offset positions for the given transform `tf`.
 
-In order to customize this for your own transformation type, you can dispatch on 
+In order to customize this for your own transformation type, you can dispatch on
 `tf`.
 
 Returns a Tuple of new y positions and offset arrays.
 
 ## Arguments
-- `tf`: `plot.transformation.transform_func[]`. 
+- `tf`: `plot.transformation.transform_func[]`.
 - `ys`: The y-values passed to `barplot`.
 - `offset`: The `offset` parameter passed to `barplot`.
 """
@@ -162,9 +162,6 @@ function stack_grouped_from_to(i_stack, y, grp)
 end
 
 function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direction::Bool, flip::Bool)
-    make_align(a::VecTypes{2, <:Real}) = Vec2f(a)
-    make_align(a::NTuple{2, Symbol}) = to_align(a)
-    make_align(a) = error("`label_align` needs to be of type NTuple{2, <:Real}, not of type $(typeof(a))")
     if label_align == automatic
         if flip
             label_rotation += π
@@ -177,7 +174,7 @@ function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direc
         align = Vec2f(0.5 - 0.5scale * s, 0.5 - 0.5scale * c)
         return align
     else
-        return make_align(label_align)
+        return to_align(label_align, "Failed to convert `label_align` $label_align. Should be a `VecTypes{2}` or `Tuple` containing `<:Real` values or appropriate Symbols.")
     end
 end
 
