@@ -44,6 +44,7 @@ function env_showhtml(com, _)
     str = """
     ```julia:$name
     __time_start = time()
+    using Makie.LaTeXStrings: @L_str # hide
     __result = begin # hide
         $code
     end # hide
@@ -84,6 +85,7 @@ function env_examplefigure(com, _)
     str = """
     ```julia:example_figure
     __time_start = time()
+    using Makie.LaTeXStrings: @L_str # hide
     __result = begin # hide
         $code
     end # hide
