@@ -11,6 +11,10 @@
 
 ## master
 
+- Improved Barplot Label Alignment [#3160](https://github.com/MakieOrg/Makie.jl/issues/3160).
+- Fixed regression in determining axis limits [#3179](https://github.com/MakieOrg/Makie.jl/pull/3179)
+- Added a theme `theme_latexfonts` that uses the latex font family as default fonts [#3147](https://github.com/MakieOrg/Makie.jl/pull/3147).
+
 ## v0.19.8
 
 - Improved CairoMakie rendering of `lines` with repeating colors in an array [#3141](https://github.com/MakieOrg/Makie.jl/pull/3141).
@@ -18,6 +22,7 @@
 - Added `xreversed`, `yreversed` and `zreversed` attributes to `Axis3` [#3138](https://github.com/MakieOrg/Makie.jl/pull/3138).
 - Fixed incorrect placement of contourlabels with transform functions [#3083](https://github.com/MakieOrg/Makie.jl/pull/3083)
 - Fixed automatic normal generation for meshes with shading and no normals [#3041](https://github.com/MakieOrg/Makie.jl/pull/3041).
+- Added the `triplot` and `voronoiplot` recipes from DelaunayTriangulation.jl [#3102](https://github.com/MakieOrg/Makie.jl/pull/3102), [#3159](https://github.com/MakieOrg/Makie.jl/pull/3159).
 
 ## v0.19.7
 
