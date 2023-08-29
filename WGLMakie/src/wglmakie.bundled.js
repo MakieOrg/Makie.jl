@@ -20743,9 +20743,6 @@ function create_line_material(uniforms, attributes) {
 function attach_interleaved_line_buffer(attr_name, geometry, points, ndim, is_segments) {
     const skip_elems = is_segments ? 2 * ndim : ndim;
     const buffer = new THREE.InstancedInterleavedBuffer(points, skip_elems, 1);
-    if (!is_segments) {
-        buffer.count = points.length / ndim - 1;
-    }
     geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer, ndim, 0));
     geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer, ndim, ndim));
     return buffer;
@@ -20794,6 +20791,7 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
             const ndims = new_points.type_length;
             const new_line_points = new_points.flat;
             const old_count = buff.array.length;
+            const new_count = new_line_points.length / ndims;
             if (old_count < new_line_points.length) {
                 mesh.geometry.dispose();
                 geometry = create_line_instance_geometry();
@@ -20801,9 +20799,11 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
                 mesh.geometry = geometry;
                 buffers[name] = buff;
             } else {
-                buff.set(new_line_points, 0);
+                buff.set(new_line_points);
             }
-            geometry.instanceCount = new_line_points.length / ndims;
+            const ls_factor = is_segments ? 2 : 1;
+            const offset = is_segments ? 0 : 1;
+            mesh.geometry.instanceCount = new_count / ls_factor - offset;
             buff.needsUpdate = true;
             mesh.needsUpdate = true;
         });
@@ -20815,6 +20815,10 @@ function _create_line(line_data, is_segments) {
     create_line_buffers(geometry, buffers, line_data.attributes, is_segments);
     const material = create_line_material(line_data.uniforms, geometry.attributes);
     const mesh = new THREE.Mesh(geometry, material);
+    const offset = is_segments ? 0 : 1;
+    const new_count = geometry.attributes.linepoint_start.count;
+    mesh.geometry.instanceCount = new_count - offset;
+    console.log(mesh.geometry);
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
