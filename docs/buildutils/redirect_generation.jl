@@ -28,7 +28,7 @@ function generate_redirects(rules; dry_run = true)
 end
 
 function write_redirection_html(redirect_file, existing_file; dry_run)
-    rel = relpath(existing_file, redirect_file)
+    rel = relpath(dirname(existing_file), redirect_file)
     @assert startswith(redirect_file, "/")
     @assert startswith(existing_file, "/")
     
