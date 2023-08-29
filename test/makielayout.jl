@@ -402,3 +402,29 @@ end
     fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
     Colorbar(fig[1, 2], hm)
 end
+
+@testset "Axis scale" begin
+    # This just shouldn't error
+    try
+        fig, ax, li = lines(1:10, 1:10)
+        vlines!(ax, 3)
+        hlines!(ax, 3)
+        bp = barplot!(ax, 1 .+ 5 .* rand(10))
+        vspan!(ax, 3, 4)
+        hspan!(ax, 3, 4)
+        bracket!(ax, 1, 1, 2, 2)
+        eb = errorbars!(ax, 1:10, 1:10, [0.3 for _ in 1:10], whiskerwidth = 5)
+        text!(ax, Point2f(2), text = "abba")
+        tooltip!(ax, Point2f(8), "baab")
+        tricontourf!(ax, 1 .+ 4 .* rand(5), 1 .+ 4 .* rand(5), rand(5))
+        qqplot!(ax, 5:10, 1:5)
+        ax.yscale = log10
+        ax.yscale = identity
+        ax.yscale = log10
+        ax.yscale = identity
+        @test true
+    catch e
+        @test false
+        rethrow(e)
+    end
+end

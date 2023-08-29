@@ -39,7 +39,7 @@ function Transformation(transformable::Transformable;
         scale_o,
         rotation_o,
         model,
-        transform_func
+        convert(Observable{Any}, transform_func)
     )
 
     trans.parent[] = parent_transform
