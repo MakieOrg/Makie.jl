@@ -116,3 +116,25 @@ Colorbar(fig[:, end+1], colorrange = joint_limits)  # equivalent
 fig
 ```
 \end{examplefigure}
+
+
+### Using a custom colorscale
+
+One can define a custom (color)scale using the `ReversibleScale` type. When the transformation is simple enough (`log`, `sqrt`, ...), the reverse transform is automatically deduced.
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+x = 10.0.^(1:0.1:4)
+y = 1.0:0.1:5.0
+z = broadcast((x, y) -> x, x, y')
+
+scale = ReversibleScale(log10)
+fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+Colorbar(fig[1, 2], hm)
+
+fig
+```
+\end{examplefigure}
