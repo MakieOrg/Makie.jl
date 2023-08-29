@@ -43,12 +43,15 @@ function env_showhtml(com, _)
     name = "example_$(hash(code))"
     str = """
     ```julia:$name
-    __result = begin # hide
-        $code
-    end # hide
-    println("~~~") # hide
-    show(stdout, MIME"text/html"(), __result) # hide
-    println("~~~") # hide
+    __time = @elapsed begin
+        __result = begin # hide
+            $code
+        end # hide
+        println("~~~") # hide
+        show(stdout, MIME"text/html"(), __result) # hide
+        println("~~~") # hide
+    end
+    println(stderr, "html time: ", __time)
     nothing # hide
     ```
     \\textoutput{$name}
@@ -81,11 +84,14 @@ function env_examplefigure(com, _)
 
     str = """
     ```julia:example_figure
-    __result = begin # hide
-        $code
-    end # hide
-    save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide
-    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str) # hide" : "")
+    __time = @elapsed begin
+        __result = begin # hide
+            $code
+        end # hide
+        save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide
+        $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str) # hide" : "")
+    end
+    println(stderr, "time: ", __time)
     nothing # hide
     ```
     ~~~
@@ -463,7 +469,7 @@ function lx_attrdocs(lxc, _)
         println(io)
         println(io, "Defaults to `$default_str`")
         println(io)
-        
+
         if docs === nothing
             println(io, "No docstring defined for attribute `$attrkey`.")
         else
@@ -485,10 +491,9 @@ function lx_attrdocs(lxc, _)
             println(io, "\\end{examplefigure}")
             println(io)
         end
-        
+
         println(io)
     end
 
     return String(take!(io))
 end
-
