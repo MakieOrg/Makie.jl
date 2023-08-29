@@ -217,7 +217,7 @@ function glyph_collection(
     ys_aligned = if valign === :baseline
         ys .- first_line_ascender .+ overall_height .+ last_line_descender
     else
-        va = valign2num(valign)
+        va = valign2num(valign, "Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
         ys .- first_line_ascender .+ (1 - va) .* overall_height
     end
 
