@@ -95,7 +95,7 @@ function colorbar_range(start, stop, length, colorscale)
 
     inverse = inverse_transform(colorscale)
     isnothing(inverse) && throw(ArgumentError(
-        "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(colorscale), inverse($(colorscale)))` instead."
+        "Cannot determine inverse transform: you can use `ReversibleScale($(colorscale), inverse($(colorscale)))` instead."
     ))
 
     inverse.(range(start, stop; length))

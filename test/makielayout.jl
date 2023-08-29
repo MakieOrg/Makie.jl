@@ -378,10 +378,10 @@ end
 end
 
 @testset "ReversibleScale" begin
-    @test Makie.ReversibleScale(identity).inverse === identity
-    @test Makie.ReversibleScale(log).inverse === exp
-    @test_throws ArgumentError Makie.ReversibleScale(x -> log10(x))  # missing inverse scale
-    @test_throws ArgumentError Makie.ReversibleScale(sqrt, exp10)  # incorrect inverse scale
+    @test ReversibleScale(identity).inverse === identity
+    @test ReversibleScale(log).inverse === exp
+    @test_throws ArgumentError ReversibleScale(x -> log10(x))  # missing inverse scale
+    @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
 end
 
 @testset "Invalid inverse transform" begin

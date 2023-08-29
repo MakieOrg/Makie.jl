@@ -412,7 +412,7 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval}
     function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32))
         inverse isa Automatic && (inverse = inverse_transform(forward))
         isnothing(inverse) && throw(ArgumentError(
-            "Cannot determine inverse transform: you can use `Makie.ReversibleScale($(forward), inverse($(forward)))` instead."
+            "Cannot determine inverse transform: you can use `ReversibleScale($(forward), inverse($(forward)))` instead."
         ))
         interval isa AbstractInterval || (interval = OpenInterval(Float32.(interval)...))
 

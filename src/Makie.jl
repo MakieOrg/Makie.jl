@@ -286,6 +286,7 @@ export save, colorbuffer
 export cgrad, available_gradients, showgradients
 
 export Pattern
+export ReversibleScale
 
 export assetpath
 # default icon for Makie
