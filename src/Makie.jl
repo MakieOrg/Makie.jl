@@ -119,6 +119,7 @@ include("themes/theme_black.jl")
 include("themes/theme_minimal.jl")
 include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
+include("themes/theme_latexfonts.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
@@ -152,7 +153,9 @@ include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
+include("basic_recipes/voronoiplot.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
@@ -208,6 +211,7 @@ export theme_black
 export theme_minimal
 export theme_light
 export theme_dark
+export theme_latexfonts
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange

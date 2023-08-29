@@ -54,7 +54,7 @@ function Makie.plot!(pl::Bracket)
         return to === automatic ? Float32.(0.75 .* fs) : Float32.(to)
     end
 
-    onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl), 
+    onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
           scene.px_area, pl.offset, pl.width, pl.orientation, realtextoffset,
           pl.style) do points, _, _, _, _, offset, width, orientation, textoff, style
 
@@ -108,7 +108,7 @@ function Makie.plot!(pl::Bracket)
     end
 
     # Avoid scale!() / translate!() / rotate!() to affect these
-    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, 
+    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
         linestyle = pl.linestyle, transformation = Transformation())
     text!(pl, textpoints, text = texts, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
@@ -116,8 +116,8 @@ function Makie.plot!(pl::Bracket)
     pl
 end
 
-data_limits(pl::Bracket) = mapreduce(union, pl[1][]) do points
-    Rect3f([points...])
+function point_iterator(pl::Bracket)
+    point_iterator(pl.plots[1])
 end
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)

@@ -109,8 +109,12 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z::AbstractArray)
     (vec(Point3f.(x, y', z)),)
+end
+
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
+    (vec(Point3f.(x, y, z)),)
 end
 
 """
@@ -585,17 +589,10 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    vs = to_vertices(vertices)
-    fs = to_triangles(indices)
-    if eltype(vs) <: Point{3}
-        ns = normals(vs, fs)
-        m = GeometryBasics.Mesh(meta(vs; normals=ns), fs)
-    else
-        # TODO, we don't need to add normals here, but maybe nice for type stability?
-        m = GeometryBasics.Mesh(meta(vs; normals=fill(Vec3f(0, 0, 1), length(vs))), fs)
-    end
-    return (m,)
+    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
+    (m,)
 end
+
 
 ################################################################################
 #                             Function Conversions                             #
