@@ -54,7 +54,8 @@ jobs:
               name: "Reference Check Status",
               conclusion: process.env.n_missing_refimages === '0' ? 'success' : 'action_required',
               output: {
-                title: process.env.n_missing_refimages + " tests without reference images detected",
+                title: process.env.n_missing_refimages + " missing refimages",
+                summary: process.env.n_missing_refimages + " tests without reference images detected",
               },
             });
       - name: Checkout
