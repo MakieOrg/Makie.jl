@@ -23,6 +23,7 @@ using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
+using CRC32c
 using Packing
 using SignedDistanceFields
 using Markdown
