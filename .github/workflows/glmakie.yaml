@@ -57,16 +57,27 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
-      - name: Comment if there are missing refimages
-        if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
-        uses: mshick/add-pr-comment@v2
+      - name: Add reference images status
+        uses: actions/github-script@v6
+        if: matrix.version == '1'
+        env:
+          n_missing_refimages: ${{ steps.referencetests.outputs.n_missing_refimages }}
         with:
-          message: |
-            ## Missing reference images
-            Found ${{steps.referencetests.outputs.n_missing_refimages}} new images without existing references.
-            Upload new reference images before merging this PR.
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
+          debug: ${{ secrets.ACTIONS_STEP_DEBUG || false }}
+          script: |
+            // Docs: https://docs.github.com/en/rest/checks/runs#create-a-check-run
+            // Rest: https://octokit.github.io/rest.js/v18#checks-create
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head_sha: context.sha,
+              name: "reference-check-status",
+              conclusion: process.env.n_missing_refimages === '0' ? 'success' : 'action_required',
+              output: {
+                title: "Reference images",
+                summary: process.env.n_missing_refimages + " tests without reference images detected",
+              },
+            });
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v3
         with:
