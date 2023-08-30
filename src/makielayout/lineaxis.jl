@@ -720,7 +720,7 @@ function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
 
     # We need to round this to avoid showoff giving us 179 for 179.99999999999997
     # We also need to be careful that we don't remove significant digits
-    sigdigits = ceil(Int, log10(1000 * vmax / delta))
+    sigdigits = ceil(Int, log10(1000 * max(abs(vmin), abs(vmax)) / delta))
 
     return multiples, Showoff.showoff(round.(multiples .* m.label_factor, sigdigits = sigdigits)) .* m.suffix
 end

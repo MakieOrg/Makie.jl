@@ -28,7 +28,7 @@ The order of a arguments can be changed with `ax.theta_as_x`.
 
 \begin{examplefigure}{svg = true}
 ```julia
-f = Figure()
+f = Figure(resolution = (800, 400))
 
 ax = PolarAxis(f[1, 1], title = "Theta as x")
 lineobject = lines!(ax, 0..2pi, sin, color = :red)
@@ -42,44 +42,25 @@ f
 
 ## PolarAxis Limits
 
-As you can see in the previous example the PolarAxis can be a full circle or a sector thereof.
-This is controlled by the angular limits.
-When none are provided the axis will automatically determine limits from plotted data and choose to draw a sector at `thetamax - thetamin < 1.5pi` or a circle otherwise.
-This can be overwritten by setting `ax.thetalimits[]` or by calling `thetalims!(ax, thetamin, thetamax)`.
+By default the PolarAxis will assume `po.rlimits[] = (0.0, nothing)` and `po.thetalimits[] = (0.0, 2pi)`, showing a full circle.
+You can adjust these limits to show different cut-outs of the PolarAxis.
+For example, we can limit `thetalimits` to a smaller range to generate a circle sector and further limit rmin through `rlimits` to cut out the center to an arc.
 
 \begin{examplefigure}{svg = true}
 ```julia
 f = Figure(resolution = (600, 600))
 
-ax = PolarAxis(f[1, 1], title = "Auto < 1.5pi")
-lines!(ax, range(0, 1.4pi, length=100), range(0, 10, length=100))
-ax = PolarAxis(f[1, 2], title = "Auto > 1.5pi")
-lines!(ax, range(0, 1.6pi, length=100), range(0, 10, length=100))
+ax = PolarAxis(f[1, 1], title = "Default")
+lines!(ax, range(0, 8pi, length=300), range(0, 10, length=300))
+ax = PolarAxis(f[1, 2], title = "thetalimits", thetalimits = (-pi/6, pi/6))
+lines!(ax, range(0, 8pi, length=300), range(0, 10, length=300))
 
-ax = PolarAxis(f[2, 1], title = "set limits", thetalimits = (0, 2pi))
-lines!(ax, range(0, 1.4pi, length=100), range(0, 10, length=100))
-ax = PolarAxis(f[2, 2], title = "set limits")
-lines!(ax, range(0, 1.6pi, length=100), range(0, 10, length=100))
-thetalims!(ax, 0.0, 1.6pi)
-
-f
-```
-\end{examplefigure}
-
-Radial limits work in the same way.
-If the minimum radius falls above 5% of `rmax - rmin` for automatic limits, the center of the PolarAxis will be cut out.
-This way you can plot curved segments of polar space.
-Again, you can set the radial limits by setting `ax.rlimits` or calling `rlims!(ax, rmin, rmax)`.
-
-\begin{examplefigure}{svg = true}
-```julia
-f = Figure()
-
-ax = PolarAxis(f[1, 1], title = "Autolimits")
-lines!(ax, range(-0.1, 0.1, length=100), 10 .+ rand(100))
-ax = PolarAxis(f[1, 2], title = "Set limits")
-scatter!(ax, range(-0.1, 0.1, length=300), 5.5 .+ 3 .* randn(300))
-rlims!(ax, 5.0, 6.0)
+ax = PolarAxis(f[2, 1], title = "rlimits", rlimits = (5, 10))
+lines!(ax, range(0, 8pi, length=300), range(0, 10, length=300))
+ax = PolarAxis(f[2, 2], title = "both")
+lines!(ax, range(0, 8pi, length=300), range(0, 10, length=300))
+thetalims!(ax, -pi/6, pi/6)
+rlims!(ax, 5, 10)
 
 f
 ```
@@ -92,15 +73,16 @@ These adjust how angles are interpreted by the polar transform following the for
 ```julia
 f = Figure()
 
-ax = PolarAxis(f[1, 1], title = "Autolimits", theta_0 = -pi/2, direction = -1)
-lines!(ax, range(-0.1, 0.1, length=100), 10 .+ rand(100))
+ax = PolarAxis(f[1, 1], title = "Reoriented Axis", theta_0 = -pi/2, direction = -1)
+lines!(ax, range(0, 8pi, length=300), range(0, 10, length=300))
+thetalims!(ax, -pi/6, pi/6)
+rlims!(ax, 5, 10)
 
 f
 ```
 \end{examplefigure}
 
-Note that you can restrict the PolarAxis to a full circle with the convenience function `restrict_to_full_circle!(polaraxis)`.
-This will adjust limits and disable interactions that deform the axis.
+Note that you may want to adjust the interactive components of the PolarAxis depending on the limits you choose.
 
 ## Plot type compatability
 
@@ -200,8 +182,8 @@ Translations are implemented with mouse drag.
 By default radial translations use `ax.r_translation_button = Mouse.right` and angular translations also use `ax.theta_translation_button = Mouse.right`.
 If you want to disable one of these interaction you can set corresponding button to `false`.
 
-There is also an interaction for rotating the whole axis using `ax.axis_rotation_button = Keyboard.left_control & Mouse.right`.
-Finally resetting the axis view uses `ax.reset_button = Keyboard.left_control & Mouse.left`, matching `Axis`.
+There is also an interaction for rotating the whole axis using `ax.axis_rotation_button = Keyboard.left_control & Mouse.right` and resetting the axis view uses `ax.reset_button = Keyboard.left_control & Mouse.left`, matching `Axis`.
+You can adjust whether this resets the rotation of the axis with `ax.reset_axis_orientation = false`.
 
 Note that `PolarAxis` currently does not implement the interaction interface
 used by `Axis`.

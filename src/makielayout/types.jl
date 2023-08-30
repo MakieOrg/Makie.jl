@@ -96,7 +96,7 @@ struct AngularTicks
     label_factor::Float64
     suffix::String
     n_ideal::Vector{Vec2f}
-    function AngularTicks(label_factor, suffix, n_ideal = [Vec2f(0, 9), Vec2f(4, 4)])
+    function AngularTicks(label_factor, suffix, n_ideal = [Vec2f(0, 9), Vec2f(3.8, 4)])
         return new(label_factor, suffix, n_ideal)
     end
 end
@@ -1821,7 +1821,7 @@ end
         "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
         rzoomkey = Keyboard.r
         "Controls whether rmin remains fixed during zooming."
-        fixrmin::Bool = false
+        fixrmin::Bool = true
         "Sets the key used to restrict zooming to the theta-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
         thetazoomkey = Keyboard.t
         "Sets the mouse button for translating the plot in r-direction."
