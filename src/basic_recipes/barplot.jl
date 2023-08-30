@@ -301,14 +301,14 @@ function Makie.plot!(p::BarPlot)
 
     bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
-                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align)
-
+                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align; priority = 1)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
         inspectable = p.inspectable, transparency = p.transparency,
-        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha
+        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
     )
+
     if !isnothing(p.bar_labels[])
         text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
     end
