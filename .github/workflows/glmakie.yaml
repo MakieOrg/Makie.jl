@@ -51,11 +51,10 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               head_sha: "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
-              name: "reference-check-status",
+              name: "Reference Check Status",
               conclusion: process.env.n_missing_refimages === '0' ? 'success' : 'action_required',
               output: {
-                title: "Reference images",
-                summary: process.env.n_missing_refimages + " tests without reference images detected",
+                title: process.env.n_missing_refimages + " tests without reference images detected",
               },
             });
       - name: Checkout
