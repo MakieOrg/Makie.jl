@@ -177,11 +177,12 @@ f
 
 The `PolarAxis` currently implements zooming, translation and resetting.
 Zooming is implemented via scrolling, with `ax.rzoomkey = Keyboard.r` restricting zooming to the radial direction and `ax.thetazoomkey = Keyboard.t` restring to angular zooming.
-If you want to always restrict zooming to the r direction you can set `ax.rzoomkey = true` and vice versa.
-Furthermore you can disable zooming from changing rmin with `ax.fixrmin = true` and adjust its speed with `ax.zoomspeed = 0.1`.
+You can block zooming in the r-direction by setting `ax.rzoomlock = true` and `ax.thetazoomlock = true` for theta direction.
+Furthermore you can disable zooming from changing just rmin with `ax.fixrmin = true` and adjust its speed with `ax.zoomspeed = 0.1`.
 
 Translations are implemented with mouse drag.
 By default radial translations use `ax.r_translation_button = Mouse.right` and angular translations also use `ax.theta_translation_button = Mouse.right`.
+If `ax.fixrmin = true` translation in the r direction are not allowed.
 If you want to disable one of these interaction you can set corresponding button to `false`.
 
 There is also an interaction for rotating the whole axis using `ax.axis_rotation_button = Keyboard.left_control & Mouse.right` and resetting the axis view uses `ax.reset_button = Keyboard.left_control & Mouse.left`, matching `Axis`.
