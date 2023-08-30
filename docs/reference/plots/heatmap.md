@@ -120,7 +120,7 @@ fig
 
 ### Using a custom colorscale
 
-One can define a custom (color)scale using the `ReversibleScale` type. When the transformation is simple enough (`log`, `sqrt`, ...), the reverse transform is automatically deduced.
+One can define a custom (color)scale using the `ReversibleScale` type. When the transformation is simple enough (`log`, `sqrt`, ...), the inverse transform is automatically deduced.
 
 \begin{examplefigure}{}
 ```julia
