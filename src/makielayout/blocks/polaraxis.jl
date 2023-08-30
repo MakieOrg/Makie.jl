@@ -322,7 +322,15 @@ function setup_camera_matrices!(po::PolarAxis)
                 thetamax = thetamax - (1-w) * dtheta
 
                 if !ispressed(e, po.rzoomkey[])
-                    po.target_thetalims[] = (thetamin, thetamax)
+                    if po.normalize_theta_ticks[]
+                        if thetamax - thetamin < 2pi - 1e-5
+                            po.target_thetalims[] = normalize_thetalims(thetamin, thetamax)
+                        else
+                            po.target_thetalims[] = (0.0, 2pi)
+                        end
+                    else
+                        po.target_thetalims[] = (thetamin, thetamax)
+                    end
                 end
 
             # don't open a gap when zooming a full circle near the center
@@ -330,14 +338,18 @@ function setup_camera_matrices!(po::PolarAxis)
 
                 # open angle on the opposite site of theta
                 theta = po.direction[] * atan(mp[2], mp[1]) - po.target_theta_0[]
-                theta = mod(theta + pi, -pi..pi)
+                theta = theta + pi + thetamin # (-pi, pi) -> (thetamin, thetamin+2pi)
 
                 dtheta = (thetamax - thetamin) - clamp(aspect * (rmax - rmin) / r, 1e-6, 2pi)
                 thetamin = theta + 0.5 * dtheta
                 thetamax = theta + 2pi - 0.5 * dtheta
 
                 if !ispressed(e, po.rzoomkey[])
-                    po.target_thetalims[] = (thetamin, thetamax)
+                    if po.normalize_theta_ticks[]
+                        po.target_thetalims[] = normalize_thetalims(thetamin, thetamax)
+                    else
+                        po.target_thetalims[] = (thetamin, thetamax)
+                    end
                 end
             end
 
@@ -409,10 +421,20 @@ function setup_camera_matrices!(po::PolarAxis)
                 po.target_rlims[] = (rmin - dr, rmax - dr)
             end
             if drag_state[][2]
-                thetamin, thetamax = po.target_thetalims[] .- Δθ
-                shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
-                po.target_thetalims[] = (thetamin, thetamax) .+ shift
-                po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
+                thetamin, thetamax = po.target_thetalims[]
+                if thetamax - thetamin > 2pi - 1e-5
+                    # full circle -> rotate view
+                    po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
+                else
+                    # partial circle -> rotate and adjust limits
+                    thetamin, thetamax = (thetamin, thetamax) .- Δθ
+                    if po.normalize_theta_ticks[]
+                        po.target_thetalims[] = normalize_thetalims(thetamin, thetamax)
+                    else
+                        po.target_thetalims[] = (thetamin, thetamax)
+                    end
+                    po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
+                end
             end
 
             # Needs recomputation because target_radius may have changed
@@ -866,6 +888,18 @@ delete!(ax::PolarAxis, p::AbstractPlot) = delete!(ax.scene, p)
 ### Utilities
 ################################################################################
 
+
+function normalize_thetalims(thetamin, thetamax)
+    diff = thetamax - thetamin
+    if diff < 2pi
+        # displayed limits may go from -diff .. 0 to 0 .. diff
+        thetamin_norm = mod(thetamin, -diff..(2pi-diff))
+        thetamax_norm = thetamin_norm + clamp(diff, 0, 2pi)
+        return thetamin_norm, thetamax_norm
+    else
+        return thetamin, thetamax
+    end
+end
 
 function autolimits!(po::PolarAxis)
     po.rlimits[] = (nothing, nothing)

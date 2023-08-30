@@ -1750,6 +1750,8 @@ end
         thetaticklabelstrokecolor = automatic
         "Controls if the `theta` ticks are visible."
         thetaticklabelsvisible::Bool = inherit(scene, (:Axis, :yticklabelsvisible), true)
+        "Sets whether shown theta ticks get normalized to a -2pi to 2pi range. If not, the limits such as (2pi, 4pi) will be shown as that range."
+        normalize_theta_ticks::Bool = true
 
         # r minor and major grid
 
