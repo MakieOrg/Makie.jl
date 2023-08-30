@@ -50,8 +50,9 @@ jobs:
               repo: context.repo.repo,
               sha: "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
               state: process.env.n_missing_refimages === '0' ? 'success' : 'failure',
-              target_url: 'https://example.com/build/status',
+              target_url: null,
               description: process.env.n_missing_refimages + " missing refimages",
+              context: 'Reference Tests',
               headers: {
                 'X-GitHub-Api-Version': '2022-11-28'
               }
