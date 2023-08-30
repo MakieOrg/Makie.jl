@@ -178,12 +178,6 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.cycler = Cycler()
 
-    # the first thing to do when setting a new scale is
-    # resetting the limits because simply through expanding they might be invalid for log
-    onany(blockscene, ax.xscale, ax.yscale) do _, _
-        reset_limits!(ax)
-    end
-
     on(blockscene, targetlimits) do lims
         # this should validate the targetlimits before anything else happens with them
         # so there should be nothing before this lifting `targetlimits`
@@ -247,14 +241,23 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(yminorgridlines, 0, 0, -10)
     elements[:yminorgridlines] = yminorgridlines
 
+    # When the transform function (xscale, yscale) of a plot changes we
+    # 1. communicate this change to plots (barplot needs this to make bars
+    #    compatible with the new transform function/scale)
     onany(blockscene, ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
         return
     end
 
+    # 2. Update the limits of the plot
+    onany(blockscene, scene.transformation.transform_func, priority = -1) do _
+        reset_limits!(ax)
+    end
+
     notify(ax.xscale)
 
-    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed)
+    # 3. Update the view onto the plot (camera matrices)
+    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.px_area;
                            ignore_equal_values=true) do xaxisposition, area
@@ -815,6 +818,13 @@ function needs_tight_limits(c::Contourf)
     # we know that all values are included and the contourf is rectangular
     # otherwise here it could be in an arbitrary shape
     return c.levels[] isa Int
+end
+function needs_tight_limits(p::Triplot)
+    return p.show_ghost_edges[]
+end
+function needs_tight_limits(p::Voronoiplot)
+    p = p.plots[1] isa Voronoiplot ? p.plots[1] : p
+    return !isempty(DelTri.get_unbounded_polygons(p[1][]))
 end
 
 function expandbboxwithfractionalmargins(bb, margins)

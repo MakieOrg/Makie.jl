@@ -732,7 +732,7 @@ end
     inner = [n:-1:1; n] # clockwise inner
     outer = [(n+1):(2n); n+1] # counter-clockwise outer
     boundary_nodes = [[outer], [inner]]
-    tri = DelaunayTriangulation.triangulate([x'; y'], boundary_nodes = boundary_nodes)
+    tri = triangulate([x'; y'], boundary_nodes = boundary_nodes)
     f, ax, _ = tricontourf(tri, z)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
     f
@@ -1117,5 +1117,235 @@ end
     translate!(scatterlineplot_1.plots[2], 0, 0, 1)
     translate!(scatterlineplot_2.plots[2], 0, 0, -1)
     # Display
+    fig
+end
+
+@reference_test "Plotting empty polygons" begin
+    p = Makie.Polygon(Point2f[])
+    q = Makie.Polygon(Point2f[(-1.0, 0.0), (1.0, 0.0), (0.0, 1.0)])
+    fig, ax, sc = poly([p, q])
+    poly!(Axis(fig[1,2]), p, color = :black)
+    poly!(Axis(fig[2,1]), [p, q], color = [:red, :blue])
+    poly!(Axis(fig[2,2]), [p, q], color = :red)
+    poly!(Axis(fig[3,1]), Makie.MultiPolygon([p]), color = :green)
+    poly!(Axis(fig[3,2]), Makie.MultiPolygon([p, q]), color = [:black, :red])
+    fig
+end
+
+@reference_test "lines (some with NaNs) with array colors" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    lines!(ax, 1:10, 1:10, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5)
+    lines!(ax, 1:10, 2:11, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, [3, 4, NaN, 6, 7, NaN, 9, 10, 11, NaN], color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, 4:13, color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, fill(NaN, 10), color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, [6, 7, 8, NaN, 10, 11, 12, 13, 14, 15], color = [:red, :blue, fill(:red, 8)...], linewidth = 5)
+    lines!(ax, 1:3, [7, 8, 9], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [8, 9, NaN], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [NaN, 10, 11], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:5, [10, 11, NaN, 13, 14], color = [:red, :red, :blue, :blue, :blue], linewidth = [5, 5, 5, 10, 10])
+    lines!(ax, 1:10, 11:20, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5, linestyle = :dot)
+    lines!(ax, 1:10, 12:21, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5, linestyle = :dot)
+    f
+end
+
+@reference_test "contour with single alpha color" begin
+    x = range(-π, π; length=50)
+    z = @. sin(x) * cos(x')
+    fig, ax = contour(x, x, z, color=RGBAf(1,0,0,0.4), linewidth=6)
+end
+
+@reference_test "Triplot with points, ghost edges, and convex hull" begin
+    pts = RNG.rand(2, 50)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri,
+        triangle_color = :lightgray, strokewidth = 4,
+        show_points=true, markersize = 20, markercolor = :orange,
+        show_ghost_edges=true, ghost_edge_linewidth = 4,
+        show_convex_hull=true, convex_hull_linewidth = 4
+
+    )
+    fig
+end
+
+@reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
+    curve_1 = [[
+        (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
+        (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
+        (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
+        (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
+        (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
+        (-4.0, 0.0), (0.0, 0.0),
+    ]]
+    curve_2 = [[
+        (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
+        (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
+        (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
+    ]]
+    curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
+    curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
+    curves = [curve_1, curve_2, curve_3, curve_4]
+    points = [
+        (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
+        (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
+        (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
+        (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
+        (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
+        (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
+        (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
+        (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
+        (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
+        (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
+        (7.0, 7.8), (7.0, 7.4)]
+    boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+    tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
+    refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri,
+        show_points=true,
+        show_constrained_edges=true,
+        constrained_edge_linewidth=2,
+        strokewidth=0.2,
+        markersize=15,
+        point_color=:blue,
+        show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
+        marker='x',
+        bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
+    fig
+end
+
+@reference_test "Triplot with nonlinear transformation" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1])
+    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    tr = triplot!(ax, points)
+    f
+end
+
+@reference_test "Triplot after adding points and make sure the representative_point_list is correctly updated" begin
+    points = [(0.0,0.0),(0.95,0.0),(1.0,1.4),(0.0,1.0)] # not 1 so that we have a unique triangulation
+    tri = Observable(triangulate(points; delete_ghosts = false))
+    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
+    for p in [(0.3, 0.5), (-1.5, 2.3), (0.2, 0.2), (0.2, 0.5)]
+        add_point!(tri[], p)
+    end
+    convex_hull!(tri[])
+    notify(tri)
+    ax = Axis(fig[1, 2])
+    triplot!(ax, tri[], show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
+    fig
+end
+
+@reference_test "Triplot Showing ghost edges for a triangulation with disjoint boundaries" begin
+    θ = LinRange(0, 2π, 20) |> collect
+    θ[end] = 0 # need to make sure that 2π gives the exact same coordinates as 0
+    xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
+    cx = 0.0
+    for i in 1:2
+        ## Make the exterior circle
+        push!(xy, [[(cx + cos(θ), sin(θ)) for θ in θ]])
+        ## Now the interior circle - clockwise
+        push!(xy, [[(cx + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
+        cx += 3.0
+    end
+    boundary_nodes, points = convert_boundary_points_to_indices(xy)
+    tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
+    fig, ax, sc = triplot(tri, show_ghost_edges=true)
+    fig
+end
+
+@reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
+    points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
+    tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
+    refine!(tri; max_area=1e-2, min_angle = 29.871, rng = RNG.STABLE_RNG)
+    vorn = voronoi(tri)
+    smooth_vorn = centroidal_smooth(vorn; maxiters = 250, rng = RNG.STABLE_RNG)
+    cmap = cgrad(:matter)
+    fig, ax, sc = voronoiplot(smooth_vorn, markersize=10, strokewidth = 4, markercolor = :red)
+    fig
+end
+
+@reference_test "Voronoiplot for a tessellation with a custom bounding box" begin
+    pts = 25RNG.randn(2, 50)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    vorn = voronoi(tri, false)
+    fig, ax, sc = voronoiplot(vorn,
+        show_generators=true,
+        colormap=:RdBu,
+        strokecolor=:white,
+        strokewidth=4,
+        markersize=25,
+        marker = 'x',
+        markercolor=:green,
+        unbounded_edge_extension_factor=5.0)
+    xlims!(ax, -120, 120)
+    ylims!(ax, -120, 120)
+    fig
+end
+
+@reference_test "Voronoiplots with clipped tessellation and unbounded polygons" begin
+    pts = 25RNG.randn(2, 10)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    vorn = voronoi(tri, true)
+    fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2), markersize = 20, strokewidth = 4)
+
+    # used to be bugged
+    points = [(0.0, 1.0), (-1.0, 2.0), (-2.0, -1.0)]
+    tri = triangulate(points)
+    vorn = voronoi(tri)
+    voronoiplot(fig[1,2], vorn, show_generators = true, strokewidth = 4,
+        color = [:red, :blue, :green], markercolor = :white, markersize = 20)
+
+    fig
+end
+
+@reference_test "Voronoiplot with a nonlinear transform" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1])
+    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
+    Makie.rlims!(ax, 12) # to make rect clip visible if circular clip doesn't happen
+    ax = PolarAxis(f[1, 2])
+    tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
+    Makie.rlims!(ax, 12)
+    f
+end
+
+@reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
+    points = [(-3.0, 7.0), (1.0, 6.0), (-1.0, 3.0), (-2.0, 4.0), (3.0, -2.0), (5.0, 5.0), (-4.0, -3.0), (3.0, 8.0)]
+    tri = triangulate(points)
+    vorn = voronoi(tri)
+    color = [:red, :blue, :green, :yellow, :cyan, :magenta, :black, :brown] # the polygon colors should not change even if some are not included (because they're outside of the box)
+    fig = Figure()
+    ax1 = Axis(fig[1, 1], title = "Default")
+    voronoiplot!(ax1, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color)
+    ax2 = Axis(fig[1, 2], title = "Some excluded")
+    voronoiplot!(ax2, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, clip = BBox(0.0, 5.0, -15.0, 15.0))
+    ax3 = Axis(fig[2, 1], title = "Bigger range")
+    voronoiplot!(ax3, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, clip = (-15.0, 15.0, -15.0, 15.0))
+    ax4 = Axis(fig[2, 2], title = "Only one polygon")
+    voronoiplot!(ax4, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, clip = (10.0, 12.0, 2.0, 5.0))
+    for ax in fig.content
+        xlims!(ax4, -15, 15)
+        ylims!(ax4, -15, 15)
+    end
+    fig
+end
+
+@reference_test "Voronoiplot after adding points" begin
+    points = Observable([(0.0,0.0), (1.0,0.0), (1.0,1.0), (0.0,1.0)])
+    fig, ax, sc = voronoiplot(points, show_generators=true, markersize=36) # make sure any regressions with missing generators are identified, so use 36
+    push!(points[], (2.0, 2.0), (0.5, 0.5), (0.25, 0.25), (0.25, 0.75), (0.75, 0.25), (0.75, 0.75))
+    notify(points)
+    ax2 = Axis(fig[1, 2])
+    voronoiplot!(ax2, voronoi(triangulate(points[])), show_generators=true, markersize=36)
+    xlims!(ax,-0.5,2.5)
+    ylims!(ax,-0.5,2.5)
+    xlims!(ax2,-0.5,2.5)
+    ylims!(ax2,-0.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
     fig
 end

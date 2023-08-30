@@ -25,7 +25,7 @@ you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
 applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
 - `loop = 0`: Number of times the video is repeated, for a `gif`. Defaults to `0`, which
-means infinite looping. A value of `-1` turns off looping, and a value of `n > 0` and above 
+means infinite looping. A value of `-1` turns off looping, and a value of `n > 0` and above
 means `n` repetitions (i.e. the video is played `n+1` times).
 
     !!! warning
@@ -48,12 +48,12 @@ struct VideoStreamOptions
     function VideoStreamOptions(
             format::AbstractString, framerate::Real, compression, profile,
             pixel_format, loop, loglevel::String, input::String, rawvideo::Bool=true)
-        
+
         if !isa(framerate, Integer)
             @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
             framerate = round(Int, framerate)
         end
-        
+
         if format == "mp4"
             (profile === nothing) && (profile = "high422")
             (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
@@ -62,7 +62,7 @@ struct VideoStreamOptions
         if format in ("mp4", "webm")
             (compression === nothing) && (compression = 20)
         end
-        
+
         if format == "gif"
             (loop === nothing) && (loop = 0)
         end
@@ -131,7 +131,6 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
 
     cpu_cores = length(Sys.cpu_info())
     ffmpeg_prefix = `
-        $(FFMPEG.ffmpeg)
         -y
         -loglevel $(vso.loglevel)
         -threads $(cpu_cores)`
@@ -229,7 +228,7 @@ function VideoStream(fig::FigureLike;
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
     vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
-    process = @ffmpeg_env open(`$cmd $path`, "w")
+    process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
     return VideoStream(process.in, process, screen, buffer, abspath(path), vso)
 end
 
@@ -277,10 +276,10 @@ function convert_video(input_path, output_path; video_options...)
     format = lstrip(typ, '.')
     vso = VideoStreamOptions(; format=format, input=input_path, rawvideo=false, video_options...)
     cmd = to_ffmpeg_cmd(vso)
-    @ffmpeg_env run(`$cmd $output_path`)
+    return run(`$(FFMPEG_jll.ffmpeg()) $cmd $output_path`)
 end
 
 function extract_frames(video, frame_folder; loglevel="quiet")
     path = joinpath(frame_folder, "frame%04d.png")
-    FFMPEG.ffmpeg_exe(`-loglevel $(loglevel) -i $video -y $path`)
+    run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end

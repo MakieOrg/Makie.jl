@@ -65,7 +65,29 @@ function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs..
         scale = contourf.colorscale,
         kwargs...
     )
+end
 
+function Colorbar(fig_or_scene, voronoi::Voronoiplot; kwargs...)
+    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
+
+    # switch to lowered version
+    if voronoi.plots[1] isa Voronoiplot
+        voronoi = voronoi.plots[1]
+    end
+
+    range = map(voronoi._calculated_colors, voronoi.colorrange) do cs, cr
+        cr === automatic ? extrema(cs) : cr
+    end
+
+    Colorbar(
+        fig_or_scene;
+        colormap=voronoi.colormap,
+        limits=range,
+        scale=voronoi.colorscale,
+        highclip=voronoi.highclip,
+        lowclip=voronoi.lowclip,
+        kwargs...
+    )
 end
 
 colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
