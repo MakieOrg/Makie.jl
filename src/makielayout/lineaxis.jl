@@ -718,7 +718,11 @@ function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
         multiples = Makie.get_tickvalues(LinearTicks(3), s * dvmin, s * dvmax) ./ s
     end
 
-    multiples, Showoff.showoff(multiples .* m.label_factor) .* m.suffix
+    # We need to round this to avoid showoff giving us 179 for 179.99999999999997
+    # We also need to be careful that we don't remove significant digits
+    sigdigits = ceil(Int, log10(1000 * vmax / delta))
+
+    return multiples, Showoff.showoff(round.(multiples .* m.label_factor, sigdigits = sigdigits)) .* m.suffix
 end
 
 # identity or unsupported scales
