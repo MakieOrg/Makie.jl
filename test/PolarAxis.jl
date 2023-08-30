@@ -56,7 +56,17 @@
         fig = Figure()
         ax = PolarAxis(fig[1, 1])
         p = scatter!(ax, Point2f(0))
-        # Should generate default limits
+
+        # default should have mostly set default limits
+        @test ax.rlimits[] == (0.0, nothing)
+        @test ax.thetalimits[] == (0.0, 2pi)
+        @test ax.target_rlims[] == (0.0, 10.0)
+        @test ax.target_thetalims[] == (0.0, 2pi)
+
+        # but we want to test automatic limits here
+        autolimits!(ax)
+        @test ax.rlimits[] == (nothing, nothing)
+        @test ax.thetalimits[] == (nothing, nothing)
         @test ax.target_rlims[] == (0.0, 10.0)
         @test ax.target_thetalims[] == (0.0, 2pi)
 
