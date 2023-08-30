@@ -861,7 +861,16 @@ convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
 
-convert_attribute(x::Nothing, ::key"linestyle") = x
+####
+## LineStyle conversions
+####
+
+convert_attribute(style, ::key"linestyle") = to_linestyle(style)
+# add deprecation for old conversion
+function convert_attribute(style::AbstractVector, ::key"linestyle")
+    @warn "Using a `Vector{<:Real}` as a linestyle attribute is deprecated. Wrap it in a `Linestyle`."
+    return to_linestyle(LineStyle(style))
+end
 
 """
     Linestyle(value::Vector{<:Real})
@@ -880,39 +889,36 @@ struct Linestyle
     value::Vector{Float32}
 end
 
-convert_attribute(A::Linestyle, ::key"linestyle") = [float(x - A.value[1]) for x in A.value]
-# add deprecation for old conversion
-function convert_attribute(A::AbstractVector, ::key"linestyle")
-    @warn "Using a `Vector{<:Real}` as a linestyle attribute is deprecated. Wrap it in a `Linestyle`."
-    return [float(x - A[1]) for x in A]
-end
+to_linestyle(style::Linestyle, ::key"linestyle") = Float32[x - style.value[1] for x in style.value]
 
+# TODO only use NTuple{2, <: Real} and not any other container
+const GapType = Union{Real, Symbol, Tuple, AbstractVector}
 
 # A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
+to_linestyle(ls::Union{Symbol, AbstractString}) = line_pattern(ls, :normal)
 
-function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
-    line_pattern(ls[1], ls[2])
+function to_linestyle(ls::Tuple{<:Union{Symbol, AbstractString}, <: GapType})
+    return line_pattern(ls[1], ls[2])
 end
 
-function line_pattern(linestyle, gaps)
+function line_pattern(linestyle::Symbol, gaps::GapType)
     pattern = line_diff_pattern(linestyle, gaps)
-    isnothing(pattern) ? pattern : float.([0.0; cumsum(pattern)])
+    return isnothing(pattern) ? pattern : Float32[0.0; cumsum(pattern)]
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
-function line_diff_pattern(ls::Symbol, gaps = :normal)
+function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     if ls === :solid
-        nothing
+        return nothing
     elseif ls === :dash
-        line_diff_pattern("-", gaps)
+        return line_diff_pattern("-", gaps)
     elseif ls === :dot
-        line_diff_pattern(".", gaps)
+        return line_diff_pattern(".", gaps)
     elseif ls === :dashdot
-        line_diff_pattern("-.", gaps)
+        return line_diff_pattern("-.", gaps)
     elseif ls === :dashdotdot
-        line_diff_pattern("-..", gaps)
+        return line_diff_pattern("-..", gaps)
     else
         error(
             """
@@ -925,7 +931,7 @@ function line_diff_pattern(ls::Symbol, gaps = :normal)
     end
 end
 
-function line_diff_pattern(ls_str::AbstractString, gaps = :normal)
+function line_diff_pattern(ls_str::AbstractString, gaps::GapType = :normal)
     dot = 1
     dash = 3
     check_line_pattern(ls_str)
@@ -960,24 +966,24 @@ function check_line_pattern(ls_str)
     nothing
 end
 
-function convert_gaps(gaps)
-  error_msg = "You provided the gaps modifier $gaps when specifying the linestyle. The modifier must be `∈ ([:normal, :dense, :loose])`, a real number or a collection of two real numbers."
-  if gaps isa Symbol
-      gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
-      dot_gaps  = (normal = 2, dense = 1, loose = 4)
-      dash_gaps = (normal = 3, dense = 2, loose = 6)
+function convert_gaps(gaps::GapType)
+    error_msg = "You provided the gaps modifier $gaps when specifying the linestyle. The modifier must be one of the symbols `:normal`, `:dense` or `:loose`, a real number or a tuple of two real numbers."
+    if gaps isa Symbol
+        gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
+        dot_gaps  = (normal = 2, dense = 1, loose = 4)
+        dash_gaps = (normal = 3, dense = 2, loose = 6)
 
-      dot_gap  = getproperty(dot_gaps, gaps)
-      dash_gap = getproperty(dash_gaps, gaps)
-  elseif gaps isa Real
-      dot_gap = gaps
-      dash_gap = gaps
-  elseif length(gaps) == 2 && eltype(gaps) <: Real
-      dot_gap, dash_gap = gaps
-  else
-      throw(ArgumentError(error_msg))
-  end
-  (dot_gap = dot_gap, dash_gap = dash_gap)
+        dot_gap  = getproperty(dot_gaps, gaps)
+        dash_gap = getproperty(dash_gaps, gaps)
+    elseif gaps isa Real
+        dot_gap = gaps
+        dash_gap = gaps
+    elseif length(gaps) == 2 && eltype(gaps) <: Real
+        dot_gap, dash_gap = gaps
+    else
+        throw(ArgumentError(error_msg))
+    end
+    return (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])
