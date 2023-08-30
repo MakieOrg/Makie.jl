@@ -1643,6 +1643,7 @@ end
     overlay::Scene
     target_rlims::Observable{Tuple{Float64, Float64}}
     target_thetalims::Observable{Tuple{Float64, Float64}}
+    target_theta_0::Observable{Float32}
     cycler::Cycler
     palette::Attributes
     @attributes begin
@@ -1829,5 +1830,7 @@ end
         axis_rotation_button = Keyboard.left_control & Mouse.right
         "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
         reset_button = Keyboard.left_control & Mouse.left
+        "Sets whether the axis orientation (changed with the axis_rotation_button) gets reset when resetting the axis. If set to false only the limits will reset."
+        reset_axis_orientation::Bool = false
     end
 end

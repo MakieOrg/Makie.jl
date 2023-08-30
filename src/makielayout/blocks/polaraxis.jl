@@ -36,11 +36,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
 
     Observables.connect!(
         po.scene.transformation.transform_func,
-        @lift(Polar($(po.theta_as_x), $(po.theta_0), $(po.direction), $(radius_at_origin)))
+        @lift(Polar($(po.theta_as_x), $(po.target_theta_0), $(po.direction), $(radius_at_origin)))
     )
     Observables.connect!(
         po.overlay.transformation.transform_func,
-        @lift(Polar(false, $(po.theta_0), $(po.direction)))
+        @lift(Polar(false, $(po.target_theta_0), $(po.direction)))
     )
 
     # Draw clip, grid lines, spine, ticks
@@ -87,7 +87,7 @@ function initialize_block!(po::PolarAxis; palette=nothing)
     # Set up the title position
     title_position = map(
             po.blockscene,
-            po.target_rlims, po.target_thetalims, po.theta_0, po.direction,
+            po.target_rlims, po.target_thetalims, po.target_theta_0, po.direction,
             po.rticklabelsize, po.rticklabelpad,
             po.thetaticklabelsize, po.thetaticklabelpad,
             po.overlay.px_area, po.overlay.camera.projectionview,
@@ -218,6 +218,7 @@ function setup_camera_matrices!(po::PolarAxis)
     usable_fraction = Observable(Vec2f(1.0, 1.0))
     setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((0.0, 10.0)))
     setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((0.0, 2pi)))
+    setfield!(po, :target_theta_0, map(identity, po.theta_0))
     reset_limits!(po)
     onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
 
@@ -230,7 +231,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # get cartesian bbox defined by axis limits
     # OPT: target_radius update triggers radius_at_origin update
-    data_bbox = map(po.blockscene, po.target_thetalims, radius_at_origin, po.direction, po.theta_0) do tlims, ro, dir, t0
+    data_bbox = map(po.blockscene, po.target_thetalims, radius_at_origin, po.direction, po.target_theta_0) do tlims, ro, dir, t0
         return polaraxis_bbox(po.target_rlims[], tlims, ro, dir, t0)
     end
 
@@ -311,7 +312,7 @@ function setup_camera_matrices!(po::PolarAxis)
             if abs(thetamax - thetamin) < 2pi
 
                 # angle of mouse position normalized to range
-                theta = po.direction[] * atan(mp[2], mp[1]) - po.theta_0[]
+                theta = po.direction[] * atan(mp[2], mp[1]) - po.target_theta_0[]
                 thetacenter = 0.5 * (thetamin + thetamax)
                 theta = mod(theta, thetacenter-pi .. thetacenter+pi)
 
@@ -328,7 +329,7 @@ function setup_camera_matrices!(po::PolarAxis)
             elseif r > 0.1rmax && zoom_scale < 1
 
                 # open angle on the opposite site of theta
-                theta = po.direction[] * atan(mp[2], mp[1]) - po.theta_0[]
+                theta = po.direction[] * atan(mp[2], mp[1]) - po.target_theta_0[]
                 theta = mod(theta + pi, -pi..pi)
 
                 dtheta = (thetamax - thetamin) - clamp(aspect * (rmax - rmin) / r, 1e-6, 2pi)
@@ -382,7 +383,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 Δθ = mod(po.direction[] * (atan(p1[2], p1[1]) - atan(p0[2], p0[1])), -pi..pi)
             end
 
-            po.theta_0[] = mod(po.theta_0[] + Δθ, 0..2pi)
+            po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
 
             last_px_pos[] = Point2f(mouseposition_px(po.scene))
             last_pos[] = Point2f(mouseposition(po.scene))
@@ -411,7 +412,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 thetamin, thetamax = po.target_thetalims[] .- Δθ
                 shift = 2pi * (max(0, div(thetamin, -2pi)) - max(0, div(thetamax, 2pi)))
                 po.target_thetalims[] = (thetamin, thetamax) .+ shift
-                po.theta_0[] = mod(po.theta_0[] .+ Δθ, 0..2pi)
+                po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
             end
 
             # Needs recomputation because target_radius may have changed
@@ -426,10 +427,17 @@ function setup_camera_matrices!(po::PolarAxis)
     onany(po.blockscene, e.mousebutton, e.keyboardbutton) do e1, e2
         if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) &&
             (e1.action == Mouse.press) && (e2.action == Keyboard.press)
+            old_thetalims = po.target_thetalims[]
             if ispressed(e, Keyboard.left_shift)
                 autolimits!(po)
             else
                 reset_limits!(po)
+            end
+            if po.reset_axis_orientation[]
+                notify(po.theta_0)
+            else
+                diff = 0.5 * sum(po.target_thetalims[] .- old_thetalims)
+                po.target_theta_0[] = mod(po.target_theta_0[] - diff, 0..2pi)
             end
             return Consume(true)
         end
@@ -561,7 +569,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     # doesn't have a lot of overlap with the inputs above so calculate this independently
     onany(
             po.blockscene,
-            po.direction, po.theta_0, po.rtickangle, po.target_thetalims, po.rticklabelpad,
+            po.direction, po.target_theta_0, po.rtickangle, po.target_thetalims, po.rticklabelpad,
             po.rticklabelrotation
         ) do dir, theta_0, rtickangle, thetalims, pad, rot
         angle = mod(dir * (default_rtickangle(rtickangle, dir, thetalims) + theta_0), 0..2pi)
@@ -596,7 +604,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.direction, po.theta_0, po.target_rlims, po.target_thetalims, po.radial_distortion_threshhold
+            po.direction, po.target_theta_0, po.target_rlims, po.target_thetalims, po.radial_distortion_threshhold
         ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, max_clip
 
         _thetatickvalues, _thetaticklabels = get_ticks(thetaticks, identity, thetatickformat, thetalims...)
@@ -760,7 +768,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     )
 
     # handle placement with transform
-    onany(po.blockscene, po.target_thetalims, po.direction, po.theta_0) do thetalims, dir, theta_0
+    onany(po.blockscene, po.target_thetalims, po.direction, po.target_theta_0) do thetalims, dir, theta_0
         thetamin, thetamax = dir .* (thetalims .+ theta_0)
         angle = dir > 0 ? thetamin : thetamax
         rotate!.((outer_clip_plot, inner_clip_plot), (Vec3f(0,0,1),), angle)
