@@ -454,3 +454,5 @@ function rlims!(po::PolarAxis, r::Real)
     po.radius[] = r
     return
 end
+
+tightlimits!(ax::PolarAxis) = nothing # TODO, not implemented yet

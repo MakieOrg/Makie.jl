@@ -3,7 +3,6 @@ using FileIO
 using GeometryBasics
 using GeometryBasics: origin
 using Makie
-using ImageMagick
 using Pkg
 using Random
 
