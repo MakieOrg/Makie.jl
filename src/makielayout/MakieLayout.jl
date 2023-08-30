@@ -37,7 +37,7 @@ include("blocks/textbox.jl")
 
 export Axis
 export Axis3
-export PolarAxis, restrict_to_full_circle!
+export PolarAxis
 export Slider
 export SliderGrid
 export IntervalSlider

@@ -82,7 +82,9 @@ f
 ```
 \end{examplefigure}
 
-Note that you may want to adjust the interactive components of the PolarAxis depending on the limits you choose.
+Note that by default translations in adjustments of rmin and thetalimits are blocked.
+These can be unblocked by calling `autolimits!(ax[, true])` which also tells the PolarAxis to derive r- and thetalimits freely from data, or by setting `ax.fixrmin[] = false` and `ax.thetazoomlock[] = false`.
+
 
 ## Plot type compatability
 

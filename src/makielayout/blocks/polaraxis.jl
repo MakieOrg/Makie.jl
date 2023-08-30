@@ -277,7 +277,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # scroll to zoom
     on(po.blockscene, e.scroll) do scroll
-        if is_mouseinside(po.scene)
+        if is_mouseinside(po.scene) && (!po.rzoomlock[] || !po.thetazoomlock[])
             mp = mouseposition(po.scene)
             r = norm(mp)
             zoom_scale = (1.0 - po.zoomspeed[]) ^ scroll[2]
@@ -301,7 +301,7 @@ function setup_camera_matrices!(po::PolarAxis)
             end
             rmax = max(rmin + 100eps(rmin), rmax + (1 - w) * dr)
 
-            if !ispressed(e, po.thetazoomkey[])
+            if !ispressed(e, po.thetazoomkey[]) && !po.rzoomlock[]
                 if po.fixrmin[]
                     rmin = po.target_rlims[][1]
                     rmax = max(rmin + 100eps(rmin), rmax + dr)
@@ -321,7 +321,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 thetamin = thetamin + w * dtheta
                 thetamax = thetamax - (1-w) * dtheta
 
-                if !ispressed(e, po.rzoomkey[])
+                if !ispressed(e, po.rzoomkey[]) && !po.thetazoomlock[]
                     if po.normalize_theta_ticks[]
                         if thetamax - thetamin < 2pi - 1e-5
                             po.target_thetalims[] = normalize_thetalims(thetamin, thetamax)
@@ -344,7 +344,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 thetamin = theta + 0.5 * dtheta
                 thetamax = theta + 2pi - 0.5 * dtheta
 
-                if !ispressed(e, po.rzoomkey[])
+                if !ispressed(e, po.rzoomkey[]) && !po.thetazoomlock[]
                     if po.normalize_theta_ticks[]
                         po.target_thetalims[] = normalize_thetalims(thetamin, thetamax)
                     else
@@ -415,7 +415,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 Δθ = po.direction[] * dot(u_θ, diff ./ r)
             end
 
-            if drag_state[][1]
+            if drag_state[][1] && !po.fixrmin[]
                 rmin, rmax = po.target_rlims[]
                 dr = min(rmin, Δr)
                 po.target_rlims[] = (rmin - dr, rmax - dr)
@@ -901,9 +901,22 @@ function normalize_thetalims(thetamin, thetamax)
     end
 end
 
-function autolimits!(po::PolarAxis)
+"""
+    autolimits!(ax::PolarAxis[, unlock_zoom = true])
+
+Calling this tells the PolarAxis to derive limits freely from the plotted data,
+which allows rmin > 0 and thetalimits spanning less than a full circle. If
+`unlock_zoom = true` this also unlocks zooming in r and theta direction and
+allows for translations in r direction.
+"""
+function autolimits!(po::PolarAxis, unlock_zoom = true)
     po.rlimits[] = (nothing, nothing)
     po.thetalimits[] = (nothing, nothing)
+    if unlock_zoom
+        po.fixrmin[] = false
+        po.rzoomlock[] = false
+        po.thetazoomlock[] = false
+    end
     return
 end
 
@@ -926,25 +939,5 @@ Sets the angular limits of a given `PolarAxis`.
 """
 function thetalims!(po::PolarAxis, thetamin::Union{Nothing, Real}, thetamax::Union{Nothing, Real})
     po.thetalimits[] = (thetamin, thetamax)
-    return
-end
-
-"""
-    restrict_to_full_circle!(ax::PolarAxis[, enable = true])
-
-Restricts a given PolarAxis to not show partial views of a circle. Can be reset
-by passing `false`.
-"""
-function restrict_to_full_circle!(po::PolarAxis, enabled = true)
-    # no center cutout, always 0..2pi
-    rlims!(po, enabled ? 0.0 : nothing, po.rlimits[][2])
-    po.thetalimits[] = enabled ? (0.0, 2pi) : (nothing, nothing)
-    # only rmax zooming
-    po.fixrmin[]      = enabled ? true : false
-    po.rzoomkey[]     = enabled ? true : Keyboard.r
-    po.thetazoomkey[] = enabled ? false : Keyboard.t
-    # onyl translate in theta
-    po.r_translation_button[] = enabled ? false : Mouse.right
-    reset_limits!(po)
     return
 end
