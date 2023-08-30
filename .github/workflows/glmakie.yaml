@@ -45,19 +45,17 @@ jobs:
         with:
           debug: true
           script: |
-            // Docs: https://docs.github.com/en/rest/checks/runs#create-a-check-run
-            // Rest: https://octokit.github.io/rest.js/v18#checks-create
-            await github.rest.checks.create({
+            await github.request('POST /repos/{owner}/{repo}/statuses/{sha}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              head_sha: "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
-              name: "Reference Check Status",
-              conclusion: process.env.n_missing_refimages === '0' ? 'success' : 'action_required',
-              output: {
-                title: process.env.n_missing_refimages + " missing refimages",
-                summary: process.env.n_missing_refimages + " tests without reference images detected",
-              },
-            });
+              sha: "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
+              state: process.env.n_missing_refimages === '0' ? 'success' : 'failure',
+              target_url: 'https://example.com/build/status',
+              description: process.env.n_missing_refimages + " missing refimages",
+              headers: {
+                'X-GitHub-Api-Version': '2022-11-28'
+              }
+            })
       - name: Checkout
         uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
