@@ -868,7 +868,7 @@ delete!(ax::PolarAxis, p::AbstractPlot) = delete!(ax.scene, p)
 
 
 function autolimits!(po::PolarAxis)
-    po.rlimits[] = (0.0, nothing)
+    po.rlimits[] = (nothing, nothing)
     po.thetalimits[] = (nothing, nothing)
     return
 end
