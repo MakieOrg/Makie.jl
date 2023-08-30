@@ -869,7 +869,7 @@ convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
 
 ####
-## LineStyle conversions
+## Line style conversions
 ####
 
 convert_attribute(style, ::key"linestyle") = to_linestyle(style)
