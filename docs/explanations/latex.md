@@ -57,13 +57,12 @@ We provide a LaTeX theme to easily switch to the LaTeX default fonts for all the
 using CairoMakie
 CairoMakie.activate!() # hide
 
-set_theme!(theme_latexfonts())
-
-fig = Figure()
-Label(fig[1, 1], "A standard Label", tellwidth = false)
-Label(fig[2, 1], L"A LaTeXString with a small formula $x^2$", tellwidth = false)
-Axis(fig[3, 1], title = "An axis with matching font for the tick labels")
-
-fig
+with_theme(theme_latexfonts()) do
+    fig = Figure()
+    Label(fig[1, 1], "A standard Label", tellwidth = false)
+    Label(fig[2, 1], L"A LaTeXString with a small formula $x^2$", tellwidth = false)
+    Axis(fig[3, 1], title = "An axis with matching font for the tick labels")
+    fig
+end
 ```
 \end{examplefigure}
