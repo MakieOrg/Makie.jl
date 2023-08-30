@@ -1,5 +1,6 @@
+import * as THREE from "./THREE.js";
 import * as Camera from "./Camera.js";
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
+import { create_line, create_linesegments } from "./Lines.js";
 
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
@@ -54,7 +55,7 @@ export function insert_plot(scene_id, plot_data) {
 }
 
 export function delete_plots(scene_id, plot_uuids) {
-    console.log(`deleting plots!: ${plot_uuids}`)
+    console.log(`deleting plots!: ${plot_uuids}`);
     const scene = find_scene(scene_id);
     const plots = find_plots(plot_uuids);
     plots.forEach((p) => {
@@ -120,7 +121,7 @@ function to_uniform(data) {
     return data;
 }
 
-function deserialize_uniforms(data) {
+export function deserialize_uniforms(data) {
     const result = {};
     // Deno may change constructor names..so...
 
@@ -141,7 +142,16 @@ function deserialize_uniforms(data) {
 
 export function deserialize_plot(data) {
     let mesh;
-    if ("instance_attributes" in data) {
+    const update_visible = (v) => {
+        mesh.visible = v;
+        // don't return anything, since that will disable on_update callback
+        return;
+    };
+    if (data.plot_type === "lines") {
+        mesh = create_line(data);
+    } else if (data.plot_type === "linesegments") {
+        mesh = create_linesegments(data);
+    } else if ("instance_attributes" in data) {
         mesh = create_instanced_mesh(data);
     } else {
         mesh = create_mesh(data);
@@ -150,15 +160,12 @@ export function deserialize_plot(data) {
     mesh.frustumCulled = false;
     mesh.matrixAutoUpdate = false;
     mesh.plot_uuid = data.uuid;
-    const update_visible = (v) => {
-        mesh.visible = v;
-        // don't return anything, since that will disable on_update callback
-        return;
-    };
     update_visible(data.visible.value);
     data.visible.on(update_visible);
     connect_uniforms(mesh, data.uniform_updater);
-    connect_attributes(mesh, data.attribute_updater);
+    if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
+        connect_attributes(mesh, data.attribute_updater);
+    }
     return mesh;
 }
 
@@ -172,7 +179,6 @@ export function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
     const identity = new THREE.Uniform(new THREE.Matrix4());
-
     if (plot_data.cam_space == "data") {
         plot_data.uniforms.view = cam.view;
         plot_data.uniforms.projection = cam.projection;
@@ -192,8 +198,9 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-
+    const {px_per_unit} = scene.screen;
     plot_data.uniforms.resolution = cam.resolution;
+    plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
     if (plot_data.uniforms.preprojection) {
         const { space, markerspace } = plot_data;
@@ -242,7 +249,7 @@ function connect_uniforms(mesh, updater) {
 function create_texture(data) {
     const buffer = data.data;
     if (data.size.length == 3) {
-        const tex = new THREE.DataTexture3D(
+        const tex = new THREE.Data3DTexture(
             buffer,
             data.size[0],
             data.size[1],
@@ -267,7 +274,7 @@ function create_texture(data) {
 
 function re_create_texture(old_texture, buffer, size) {
     if (size.length == 3) {
-        const tex = new THREE.DataTexture3D(buffer, size[0], size[1], size[2]);
+        const tex = new THREE.Data3DTexture(buffer, size[0], size[1], size[2]);
         tex.format = old_texture.format;
         tex.type = old_texture.type;
         return tex;
@@ -368,6 +375,7 @@ function create_material(program) {
         fragmentShader: program.fragment_source,
         side: is_volume ? THREE.BackSide : THREE.DoubleSide,
         transparent: true,
+        glslVersion: THREE.GLSL3,
         depthTest: !program.overdraw.value,
         depthWrite: !program.transparency.value,
     });
@@ -519,9 +527,9 @@ export function deserialize_scene(data, screen) {
 
 export function delete_plot(plot) {
     delete plot_cache[plot.plot_uuid];
-    const {parent} = plot
+    const { parent } = plot;
     if (parent) {
-        parent.remove(plot)
+        parent.remove(plot);
     }
     plot.geometry.dispose();
     plot.material.dispose();
@@ -530,8 +538,8 @@ export function delete_plot(plot) {
 export function delete_three_scene(scene) {
     delete scene_cache[scene.scene_uuid];
     scene.scene_children.forEach(delete_three_scene);
-    while(scene.children.length > 0) {
-        delete_plot(scene.children[0])
+    while (scene.children.length > 0) {
+        delete_plot(scene.children[0]);
     }
 }
 

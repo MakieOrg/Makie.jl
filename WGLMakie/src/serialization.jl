@@ -264,10 +264,12 @@ function serialize_three(program::Program)
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
     register_geometry_updates(attribute_updater, program)
+    update_shader(x) = replace(x,  "#version 300 es" => "")
+
     return Dict(:vertexarrays => serialize_named_buffer(program.vertexarray),
                 :faces => indices, :uniforms => uniforms,
-                :vertex_source => program.vertex_source,
-                :fragment_source => program.fragment_source,
+                :vertex_source => update_shader(program.vertex_source),
+                :fragment_source => update_shader(program.fragment_source),
                 :uniform_updater => uniform_updater(program.uniforms),
                 :attribute_updater => attribute_updater)
 end

@@ -88,7 +88,7 @@ void main(){
         0.0,         0.0,         1.0/vclip.w, 0.0,
         -vclip.xyz/(vclip.w*vclip.w),          0.0
     );
-    mat2 dxyv_dxys = diagm(0.5 * get_resolution()) * mat2(d_ndc_d_clip*trans);
+    mat2 dxyv_dxys = diagm(0.5 * px_per_unit * get_resolution()) * mat2(d_ndc_d_clip*trans);
     // Now, our buffer size is expressed in viewport pixels but we get back to
     // the sprite coordinate system using the scale factor of the
     // transformation (for isotropic transformations). For anisotropic

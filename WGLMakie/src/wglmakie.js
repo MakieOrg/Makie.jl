@@ -1,4 +1,4 @@
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
+import * as THREE from "./THREE.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
 import {
     delete_scenes,
@@ -15,14 +15,12 @@ import {
     find_scene,
 } from "./Serialization.js";
 
-import { event2scene_pixel } from "./Camera.js";
+import { events2unitless } from "./Camera.js";
 
 window.THREE = THREE;
 
-const pixelRatio = window.devicePixelRatio || 1.0;
-
 export function render_scene(scene, picking = false) {
-    const { camera, renderer } = scene.screen;
+    const { camera, renderer, scalefactor } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("EXITING WGL");
@@ -38,7 +36,7 @@ export function render_scene(scene, picking = false) {
     renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
-        const [x, y, w, h] = area.map((t) => t / pixelRatio);
+        const [x, y, w, h] = area.map((x) => x * scalefactor);
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
@@ -112,46 +110,38 @@ function throttle_function(func, delay) {
     return inner_throttle;
 }
 
-function threejs_module(canvas, comm, width, height, resize_to_body) {
-    let context = canvas.getContext("webgl2", {
-        preserveDrawingBuffer: true,
-    });
-    if (!context) {
-        console.warn(
-            "WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)"
-        );
-        context = canvas.getContext("webgl", {
-            preserveDrawingBuffer: true,
-        });
+
+
+
+function get_body_size() {
+    const bodyStyle = window.getComputedStyle(document.body);
+    // Subtract padding that is added by VSCode
+    const width_padding =
+        parseInt(bodyStyle.paddingLeft, 10) +
+        parseInt(bodyStyle.paddingRight, 10) +
+        parseInt(bodyStyle.marginLeft, 10) +
+        parseInt(bodyStyle.marginRight, 10);
+    const height_padding =
+        parseInt(bodyStyle.paddingTop, 10) +
+        parseInt(bodyStyle.paddingBottom, 10) +
+        parseInt(bodyStyle.marginTop, 10) +
+        parseInt(bodyStyle.marginBottom, 10);
+    const width = (window.innerWidth - width_padding);
+    const height = (window.innerHeight - height_padding);
+    return [width, height];
+}
+
+
+function add_canvas_events(screen, comm, resize_to_body) {
+    const { canvas,  winscale } = screen;
+    function mouse_callback(event) {
+        const [x, y] = events2unitless(screen, event);
+        comm.notify({ mouseposition: [x, y] });
     }
-    if (!context) {
-        // Sigh, safari or something
-        // we return nothing which will be handled by caller
-        return;
-    }
-    const renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        canvas: canvas,
-        context: context,
-        powerPreference: "high-performance",
-    });
-
-    renderer.setClearColor("#ffffff");
-
-    // The following handles high-DPI devices
-    // `renderer.setSize` also updates `canvas` size
-    renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(width / pixelRatio, height / pixelRatio);
-
-    const mouse_callback = (x, y) => comm.notify({ mouseposition: [x, y] });
     const notify_mouse_throttled = throttle_function(mouse_callback, 40);
 
     function mousemove(event) {
-        var rect = canvas.getBoundingClientRect();
-        var x = (event.clientX - rect.left) * pixelRatio;
-        var y = (event.clientY - rect.top) * pixelRatio;
-
-        notify_mouse_throttled(x, y);
+        notify_mouse_throttled(event);
         return false;
     }
 
@@ -217,32 +207,90 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
     canvas.addEventListener("focusout", contextmenu);
 
     function resize_callback() {
-        const bodyStyle = window.getComputedStyle(document.body);
-        // Subtract padding that is added by VSCode
-        const width_padding =
-            parseInt(bodyStyle.paddingLeft, 10) +
-            parseInt(bodyStyle.paddingRight, 10) +
-            parseInt(bodyStyle.marginLeft, 10) +
-            parseInt(bodyStyle.marginRight, 10);
-        const height_padding =
-            parseInt(bodyStyle.paddingTop, 10) +
-            parseInt(bodyStyle.paddingBottom, 10) +
-            parseInt(bodyStyle.marginTop, 10) +
-            parseInt(bodyStyle.marginBottom, 10);
-        const width = (window.innerWidth - width_padding) * pixelRatio;
-        const height = (window.innerHeight - height_padding) * pixelRatio;
-
+        const [width, height] = get_body_size();
         // Send the resize event to Julia
-        comm.notify({ resize: [width, height] });
+        comm.notify({ resize: [width / winscale, height / winscale] });
     }
     if (resize_to_body) {
-        const resize_callback_throttled = throttle_function(resize_callback, 100);
-        window.addEventListener("resize", (event) => resize_callback_throttled());
+        const resize_callback_throttled = throttle_function(
+            resize_callback,
+            100
+        );
+        window.addEventListener("resize", (event) =>
+            resize_callback_throttled()
+        );
         // Fire the resize event once at the start to auto-size our window
         resize_callback_throttled();
     }
+}
+
+function threejs_module(canvas) {
+
+    let context = canvas.getContext("webgl2", {
+        preserveDrawingBuffer: true,
+    });
+    if (!context) {
+        console.warn(
+            "WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)"
+        );
+        context = canvas.getContext("webgl", {
+            preserveDrawingBuffer: true,
+        });
+    }
+    if (!context) {
+        // Sigh, safari or something
+        // we return nothing which will be handled by caller
+        return;
+    }
+
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        canvas: canvas,
+        context: context,
+        powerPreference: "high-performance",
+    });
+
+    renderer.setClearColor("#ffffff");
 
     return renderer;
+}
+
+function set_render_size(screen, width, height) {
+    const { renderer, canvas, scalefactor, winscale } = screen;
+    const [swidth, sheight] = [winscale * width, winscale * height];
+    renderer._width = width;
+    renderer._height = height;
+    canvas.width = Math.floor(width * scalefactor);
+    canvas.height = Math.floor(height * scalefactor);
+    canvas.style.width = swidth + "px";
+    canvas.style.height = sheight + "px";
+    renderer.setViewport(0, 0, swidth, sheight);
+    add_picking_target(screen);
+    return;
+}
+
+function add_picking_target(screen) {
+    const { picking_target, canvas } = screen;
+    const [w, h] = [canvas.width, canvas.height];
+    if (picking_target) {
+        if (picking_target.width == w && picking_target.height == h) {
+            return
+        } else {
+            picking_target.dispose();
+        }
+    }
+    // BIG TODO here...
+    // We should only make the picking target as big as the area we're picking
+    // e.g. for just the mouse position it should be 1x1
+    // Or we should just always bind the target and render to it in one pass
+    // 1) One Pass:
+    //      Only works on WebGL 2.0, which is still not as widely supported
+    //      Also it's a bit more complicated to setup
+    // 2) Only Area we pick
+    //      It's currently not as easy to change the offset + area of the camera
+    //      So, we'll need to make that easier first
+    screen.picking_target = new THREE.WebGLRenderTarget(w, h);
+    return;
 }
 
 function create_scene(
@@ -255,49 +303,51 @@ function create_scene(
     height,
     texture_atlas_obs,
     fps,
-    resize_to_body
+    resize_to_body,
+    px_per_unit,
+    scalefactor
 ) {
-    const renderer = threejs_module(
-        canvas,
-        comm,
-        width,
-        height,
-        resize_to_body
-    );
+    if (!scalefactor) {
+        scalefactor = window.devicePixelRatio || 1.0;
+    }
+    if (!px_per_unit) {
+        px_per_unit = scalefactor;
+    }
+
+    const renderer = threejs_module(canvas);
+
     TEXTURE_ATLAS[0] = texture_atlas_obs;
 
-    if (renderer) {
-        const camera = new THREE.PerspectiveCamera(45, 1, 0, 100);
-        camera.updateProjectionMatrix();
-        const size = new THREE.Vector2();
-        renderer.getDrawingBufferSize(size);
-        // BIG TODO here...
-        // We should only make the picking target as big as the area we're picking
-        // e.g. for just the mouse position it should be 1x1
-        // Or we should just always bind the target and render to it in one pass
-        // 1) One Pass:
-        //      Only works on WebGL 2.0, which is still not as widely supported
-        //      Also it's a bit more complicated to setup
-        // 2) Only Area we pick
-        //      It's currently not as easy to change the offset + area of the camera
-        //      So, we'll need to make that easier first
-        const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
-        const screen = { renderer, picking_target, camera, fps, canvas };
-
-        const three_scene = deserialize_scene(scenes, screen);
-        console.log(three_scene);
-        start_renderloop(three_scene);
-
-        canvas_width.on((w_h) => {
-            // `renderer.setSize` correctly updates `canvas` dimensions
-            const pixelRatio = renderer.getPixelRatio();
-            renderer.setSize(w_h[0] / pixelRatio, w_h[1] / pixelRatio);
-        });
-    } else {
+    if (!renderer) {
         const warning = getWebGLErrorMessage();
         // wrapper.removeChild(canvas)
         wrapper.appendChild(warning);
     }
+
+    const camera = new THREE.PerspectiveCamera(45, 1, 0, 100);
+    camera.updateProjectionMatrix();
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
+    const screen = {
+        renderer,
+        camera,
+        fps,
+        canvas,
+        px_per_unit,
+        scalefactor,
+        winscale,
+    };
+    add_canvas_events(screen, comm, resize_to_body);
+    set_render_size(screen, width, height);
+
+    const three_scene = deserialize_scene(scenes, screen);
+
+    start_renderloop(three_scene);
+
+    canvas_width.on((w_h) => {
+        // `renderer.setSize` correctly updates `canvas` dimensions
+        set_render_size(screen, ...w_h);
+    });
 }
 
 function set_picking_uniforms(
@@ -341,14 +391,24 @@ function set_picking_uniforms(
     return next_id;
 }
 
-export function pick_native(scene, x, y, w, h) {
-    const { renderer, picking_target } = scene.screen;
+/**
+ *
+ * @param {*} scene
+ * @param {*} x in scene unitless pixel space
+ * @param {*} y in scene unitless pixel space
+ * @param {*} w in scene unitless pixel space
+ * @param {*} h in scene unitless pixel space
+ * @returns
+ */
+export function pick_native(scene, _x, _y, _w, _h) {
+    const { renderer, picking_target, px_per_unit } = scene.screen;
+    [_x, _y, _w, _h] = [_x, _y, _w, _h].map((x) => Math.round(x * px_per_unit));
+    const [x, y, w, h] = [_x, _y, _w, _h];
     // render the scene
     renderer.setRenderTarget(picking_target);
     set_picking_uniforms(scene, 1, true);
     render_scene(scene, true);
     renderer.setRenderTarget(null); // reset render target
-
     const nbytes = w * h * 4;
     const pixel_bytes = new Uint8Array(nbytes);
     //read the pixel
@@ -360,6 +420,8 @@ export function pick_native(scene, x, y, w, h) {
         h, // height
         pixel_bytes
     );
+
+
     const picked_plots = {};
     const picked_plots_array = [];
 
@@ -485,17 +547,17 @@ export function register_popup(popup, scene, plots_to_pick, callback) {
     }
     const { canvas } = scene.screen;
     canvas.addEventListener("mousedown", (event) => {
-        if (!popup.classList.contains("show")) {
-            popup.classList.add("show");
-        }
-        popup.style.left = event.pageX + "px";
-        popup.style.top = event.pageY + "px";
-        const [x, y] = event2scene_pixel(scene, event);
+        const [x, y] = events2unitless(scene.screen, event);
         const [_, picks] = pick_native(scene, x, y, 1, 1);
         if (picks.length == 1) {
             const [plot, index] = picks[0];
             if (plots_to_pick.has(plot.plot_uuid)) {
                 const result = callback(plot, index);
+                if (!popup.classList.contains("show")) {
+                    popup.classList.add("show");
+                }
+                popup.style.left = event.pageX + "px";
+                popup.style.top = event.pageY + "px";
                 if (typeof result === "string" || result instanceof String) {
                     popup.innerText = result;
                 } else {
@@ -526,7 +588,7 @@ window.WGL = {
     plot_cache,
     delete_scenes,
     create_scene,
-    event2scene_pixel,
+    events2unitless,
     on_next_insert,
     register_popup,
     render_scene,
@@ -545,6 +607,6 @@ export {
     plot_cache,
     delete_scenes,
     create_scene,
-    event2scene_pixel,
+    events2unitless,
     on_next_insert,
 };

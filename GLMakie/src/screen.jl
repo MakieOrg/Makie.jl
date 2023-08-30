@@ -340,7 +340,6 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     end
     screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
-
     function replace_processor!(postprocessor, idx)
         fb = screen.framebuffer
         shader_cache = screen.shader_cache
