@@ -1,9 +1,6 @@
 name: Docs build and deploy
 on:
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
     branches:
       - master
       - sd/beta-20
