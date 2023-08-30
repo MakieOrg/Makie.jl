@@ -1006,11 +1006,11 @@ function halign2num(v::Symbol, error_msg = "Invalid halign $v. Valid values are 
     elseif v === :right
         return 1.0f0
     else
-        error(msg)
+        error(error_msg)
     end
 end
-function halign2num(v, msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
-    error(msg)
+function halign2num(v, error_msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
+    error(error_msg)
 end
 
 """
@@ -1028,12 +1028,25 @@ function valign2num(v::Symbol, error_msg = "Invalid valign $v. Valid values are 
     elseif v === :center
         return 0.5f0
     else
-        error(msg)
+        error(error_msg)
     end
 end
-function valign2num(v, msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
-    error(msg)
+function valign2num(v, error_msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
+    error(error_msg)
 end
+
+"""
+    angle2align(angle::Real)
+
+Converts a given angle to an alignment by projecting the resulting direction on
+a unit square and scaling the result to a 0..1 range appropriate for alignments.
+"""
+function angle2align(angle::Real)
+    s, c = sincos(angle)
+    scale = 1 / max(abs(s), abs(c))
+    return Vec2f(0.5scale * c + 0.5, 0.5scale * s + 0.5)
+end
+
 
 const FONT_CACHE = Dict{String, NativeFont}()
 const FONT_CACHE_LOCK = Base.ReentrantLock()
