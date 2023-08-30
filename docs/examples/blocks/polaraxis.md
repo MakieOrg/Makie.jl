@@ -233,21 +233,21 @@ fig
 \end{examplefigure}
 
 In this case you may want to distort the r-direction to make more of your data visible.
-This can be done by setting `ax.radial_distortion_threshhold` to a value between 0 and 1.
+This can be done by setting `ax.radial_distortion_threshold` to a value between 0 and 1.
 
 \begin{examplefigure}{svg = true}
 ```julia
 fig = Figure()
-ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radial_distortion_threshhold = 0.2)
+ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radial_distortion_threshold = 0.2)
 lines!(ax, range(0, pi, length=100), 10 .+ rand(100))
 fig
 ```
 \end{examplefigure}
 
 Internally PolarAxis will check `rmin/rmax` against the set threshold.
-If that ratio exceed the threshhold, the polar transform is adjusted to shift all radii by some `r0` such that `(rmin - r0) / rmax - r0) == ax.radial_distortion_threshhold`.
+If that ratio exceed the threshold, the polar transform is adjusted to shift all radii by some `r0` such that `(rmin - r0) / rmax - r0) == ax.radial_distortion_threshold`.
 In effect this will hold the inner cutout/clip radius at a fraction of the outer radius.
-Note that at `ax.radial_distortion_threshhold >= 1.0` (default) this will never distort your data.
+Note that at `ax.radial_distortion_threshold >= 1.0` (default) this will never distort your data.
 
 ## Attributes
 

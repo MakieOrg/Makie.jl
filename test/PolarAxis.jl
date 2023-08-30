@@ -96,7 +96,7 @@
 
     @testset "Radial Distortion" begin
         fig = Figure()
-        ax = PolarAxis(fig[1, 1], radial_distortion_threshhold = 0.2, rlimits = (0, 10))
+        ax = PolarAxis(fig[1, 1], radial_distortion_threshold = 0.2, rlimits = (0, 10))
         tf = ax.scene.transformation.transform_func
         @test /(ax.target_rlims[]...) == 0.0
         @test /((ax.target_rlims[] .- tf[].r0)...) == 0.0

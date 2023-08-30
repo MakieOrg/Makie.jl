@@ -1674,8 +1674,8 @@ end
         clip::Bool = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
         clipcolor = automatic
-        "Sets a threshold relative to `rmin/rmax` after which radii are distorted to fit more on the screen. No distortion is applied if `radial_distortion_threshhold ≥ 1`"
-        radial_distortion_threshhold::Float64 = 1.0
+        "Sets a threshold relative to `rmin/rmax` after which radii are distorted to fit more on the screen. No distortion is applied if `radial_distortion_threshold ≥ 1`"
+        radial_distortion_threshold::Float64 = 1.0
 
         # Limits & transformation settings
 
