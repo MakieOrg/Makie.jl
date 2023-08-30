@@ -42,10 +42,10 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - name: Install Julia dependencies
+      - name: Develop and test Makie
         shell: julia --project=monorepo {0}
         run: |
-          using Pkg;
+          using Pkg
           # dev mono repo versions
           pkg"dev . ./MakieCore"
           Pkg.test("Makie"; coverage=true)
