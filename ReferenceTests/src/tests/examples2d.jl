@@ -1349,3 +1349,7 @@ end
     ylims!(ax2,-0.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
     fig
 end
+
+@reference_test "temporary test" begin
+    lines(1:10)
+end
