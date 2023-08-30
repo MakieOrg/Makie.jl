@@ -50,7 +50,7 @@ jobs:
             await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              head_sha: context.sha,
+              head_sha: ${{ github.event.pull_request.head.sha }},
               name: "reference-check-status",
               conclusion: process.env.n_missing_refimages === '0' ? 'success' : 'action_required',
               output: {
