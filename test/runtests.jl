@@ -34,4 +34,5 @@ using Makie: volume
     include("boundingboxes.jl")
     include("ray_casting.jl")
     include("PolarAxis.jl")
+    include("barplot_labels.jl")
 end
