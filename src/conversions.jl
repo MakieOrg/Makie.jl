@@ -873,10 +873,11 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 ####
 
 convert_attribute(style, ::key"linestyle") = to_linestyle(style)
+to_linestyle(::Nothing) = nothing
 # add deprecation for old conversion
 function convert_attribute(style::AbstractVector, ::key"linestyle")
     @warn "Using a `Vector{<:Real}` as a linestyle attribute is deprecated. Wrap it in a `Linestyle`."
-    return to_linestyle(LineStyle(style))
+    return to_linestyle(Linestyle(style))
 end
 
 """
@@ -896,7 +897,7 @@ struct Linestyle
     value::Vector{Float32}
 end
 
-to_linestyle(style::Linestyle, ::key"linestyle") = Float32[x - style.value[1] for x in style.value]
+to_linestyle(style::Linestyle) = Float32[x - style.value[1] for x in style.value]
 
 # TODO only use NTuple{2, <: Real} and not any other container
 const GapType = Union{Real, Symbol, Tuple, AbstractVector}
