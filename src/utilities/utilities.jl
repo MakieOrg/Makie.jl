@@ -150,6 +150,8 @@ end
 @inline getindex_value(x::Union{Dict,Attributes,AbstractPlot}, key::Symbol) = to_value(x[key])
 @inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 
+@inline get_value(obj, key, default) = to_value(get(obj, key, default))
+
 """
 usage @extractvalue scene (a, b, c, d)
 will become:
@@ -242,6 +244,9 @@ function same_length_array(arr, value::Vector)
 end
 same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
 
+function to_ndim(T::Type{<: VecTypes}, vecs::AbstractArray{<: VecTypes}, fillval)
+    return map(vec -> to_ndim(T, vec, fillval), vecs)
+end
 function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
     T(ntuple(Val(N)) do i
         i > N2 && return ET(fillval)
@@ -249,7 +254,20 @@ function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {
     end)
 end
 
+function to_ndim(trg::VT, src::VecTypes{N2}) where {N, N2, VT <: VecTypes{N}}
+    VT(ntuple(Val(N)) do i
+        @inbounds i > N2 ? trg[i] : src[i]
+    end)
+end
+
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
+
+function angle(p1::VecTypes{2, T}, p2::VecTypes{2, T}) where T
+    return atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+end
+function projected_angle(plot, p1, p2)
+    return angle(project_to_pixel(plot, p1), project_to_pixel(plot, p2))
+end
 
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))

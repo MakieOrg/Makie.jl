@@ -49,6 +49,7 @@ function Makie.plot!(p::Union{HLines, VLines})
     scene = parent_scene(p)
     transf = transform_func_obs(scene)
 
+    # TODO switch to projecting?
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
 
     points = Observable(Point2f[])

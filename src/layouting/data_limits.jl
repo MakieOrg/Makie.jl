@@ -115,6 +115,7 @@ function foreach_plot(f, plot::Combined)
     end
 end
 
+# TODO - may need some reorganization?
 function foreach_transformed(f, point_iterator, model, trans_func)
     for point in point_iterator
         point_t = apply_transform(trans_func, point)
@@ -134,17 +135,9 @@ function foreach_transformed(f, plot)
 end
 
 function iterate_transformed(plot)
-    points = point_iterator(plot)
-    t = transformation(plot)
-    model = model_transform(t)
-    # TODO: without this, axes with log scales error.  Why?
-    trans_func = identity # transform_func(t)
-    # trans_func = identity
-    iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
-end
-
-function iterate_transformed(points, model, space, trans_func)
-    (to_ndim(Point3f, project(model, apply_transform(trans_func, point, space)), 0f0) for point in points)
+    # TODO:
+    # We skip transform_func here because axes with log scales error. Fix this!
+    return project_to_world(plot, :transformed, point_iterator(plot))
 end
 
 function update_boundingbox!(bb_ref, point)

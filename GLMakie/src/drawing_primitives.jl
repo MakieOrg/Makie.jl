@@ -41,11 +41,24 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         # Overwrite these, user defined attributes shouldn't use those!
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
+
+    # TODO should these be input -> eye and eye -> clip?
+    # They are used for lighting (check)
     get!(gl_attributes, :view) do
         return lift(plot, cam.view, space) do view, space
-            return is_data_space(space) ? view : Mat4f(I)
+            return space in (:data, :transformed, :world) ? view : Mat4f(I)
         end
     end
+    get!(gl_attributes, :projection) do
+        return lift(cam.projection, cam.pixel_space, space) do _, _, space
+            if space in (:data, :transformed, :world)
+                return Makie._space_to_space_matrix(cam, :eye, :clip)
+            else
+                return Makie._space_to_space_matrix(cam, space, :clip)
+            end
+        end
+    end
+
     get!(gl_attributes, :normalmatrix) do
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
@@ -53,15 +66,9 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         end
     end
 
-    get!(gl_attributes, :projection) do
-        return lift(cam.projection, cam.pixel_space, space) do _, _, space
-            return Makie.space_to_clip(cam, space, false)
-        end
-    end
-
     get!(gl_attributes, :projectionview) do
         return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_clip(cam, space, true)
+            Makie._space_to_space_matrix(cam, space, :clip)
         end
     end
 
@@ -106,8 +113,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
                 :lightposition, :material,
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
-                        :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
-                        :calculated_colors
+                :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
+                :calculated_colors
             ))
         end
 
@@ -117,6 +124,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end)
+
+        gl_attributes[:model] = Makie._get_model_obs(x)
 
         pointlight = Makie.get_point_light(scene)
         if !isnothing(pointlight)
@@ -200,8 +209,8 @@ pixel2world(scene, msize::Number) = pixel2world(scene, Point2f(msize))[1]
 
 function pixel2world(scene, msize::StaticVector{2})
     # TODO figure out why Vec(x, y) doesn't work correctly
-    p0 = Makie.to_world(scene, Point2f(0.0))
-    p1 = Makie.to_world(scene, Point2f(msize))
+    p0 = Makie.to_world(scene, :pixel, Point2f(0.0))
+    p1 = Makie.to_world(scene, :pixel, Point2f(msize))
     diff = p1 - p0
     return diff
 end
@@ -223,7 +232,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             mspace = x.markerspace
             cam = scene.camera
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
-                return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
+                return Makie._space_to_space_matrix(cam, space, mspace)
             end
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
@@ -293,17 +302,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             linewidth = gl_attributes[:thickness]
             data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
             data[:fast] = false
-
-            pvm = map(*, data[:projectionview], data[:model])
-            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
-                transformed = apply_transform(f, ps, space)
-                output = Vector{Point3f}(undef, length(transformed))
-                scale = Vec3f(res[1], res[2], 1f0)
-                for i in eachindex(transformed)
-                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                    output[i] = scale .* Point3f(clip) ./ clip[4]
-                end
-                output
+            
+            positions = map(Makie.projection_obs(x), positions) do _, ps
+                # The shader uses scaled pixel space
+                w, h = data[:resolution][]
+                mat = Makie.scalematrix(Vec3f(w, h, 1f0)) * 
+                    Makie.space_to_space_matrix(x, space[], :clip)
+                Makie.project(mat, transform_func[], space[], :other, ps)
             end
         end
         return draw_lines(screen, positions, data)
@@ -399,7 +404,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         cam = scene.camera
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-            Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
+            Makie._space_to_space_matrix(cam, s, ms)
         end
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)

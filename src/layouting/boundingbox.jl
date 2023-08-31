@@ -6,7 +6,7 @@ end
 function boundingbox(x, exclude = (p)-> false)
     return parent_transform(x) * data_limits(x, exclude)
 end
-
+#
 function project_widths(matrix, vec)
     pr = project(matrix, vec)
     zero = project(matrix, zeros(typeof(vec)))
@@ -91,24 +91,12 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
 end
 
 function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
-    if x.space[] == x.markerspace[]
-        pos = to_ndim(Point3f, x.position[], 0)
-    else
-        cam = parent_scene(x).camera
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
-    end
+    pos = project(x, x.position[], output_space = x.markerspace[])
     return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
 function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
-    if x.space[] == x.markerspace[]
-        pos = to_ndim.(Point3f, x.position[], 0)
-    else
-        cam = (parent_scene(x).camera,)
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project.(cam, x.space[], x.markerspace[], transformed)
-    end
+    pos = project(x, x.position[], output_space = x.markerspace[])
     return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 

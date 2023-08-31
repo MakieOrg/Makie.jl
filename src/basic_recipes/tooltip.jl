@@ -82,9 +82,8 @@ end
 function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     # TODO align
 
-    scene = parent_scene(p)
-    px_pos = map(scene.camera.projectionview, scene.camera.resolution, p[1]) do _, _, p
-        project(scene, p)
+    px_pos = map(projection_obs(p), p[1]) do _, pos
+        project(p, pos)
     end
 
     # Text
