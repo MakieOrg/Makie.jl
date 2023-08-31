@@ -776,6 +776,9 @@ button.copy-code {
     font-size: 1.2em;
     display: flex;
     align-items: center;
+}
+
+button.copy-code .far {
     font-family: "Font Awesome 5 Free";
 }
 
