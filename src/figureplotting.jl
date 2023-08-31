@@ -47,7 +47,8 @@ function args_preferred_axis(P::Type, args...)
     return args_preferred_axis(args...)
 end
 
-function args_preferred_axis(::Type{<: Union{Wireframe, Surface, Contour3d}}, x::AbstractArray, y::AbstractArray, z::AbstractArray)
+function args_preferred_axis(::Type{<:Union{Wireframe,Surface,Contour3d}}, x::AbstractArray, y::AbstractArray,
+                             z::AbstractArray)
     return all(x -> z[1] ≈ x, z) ? Axis : LScene
 end
 
@@ -65,7 +66,7 @@ args_preferred_axis(x) = nothing
 args_preferred_axis(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function) = LScene
 args_preferred_axis(m::AbstractArray{T,3}) where {T} = LScene
 
-function args_preferred_axis(m::AbstractVector{<: Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}}) where {DIM}
+function args_preferred_axis(m::AbstractVector{<:Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
 function args_preferred_axis(m::Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}) where {DIM}

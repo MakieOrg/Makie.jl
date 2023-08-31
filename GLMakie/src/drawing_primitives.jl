@@ -282,6 +282,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         positions = handle_view(x[1], data)
+
         transform_func = transform_func_obs(x)
         ls = to_value(linestyle)
         space = x.space
@@ -331,6 +332,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
             data[:fast] = false
         end
         positions = handle_view(x.converted[1], data)
+
         positions = apply_transform(transform_func_obs(x), positions, x.space)
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
