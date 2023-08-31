@@ -2,11 +2,8 @@ using FileIO
 using WGLMakie, Makie, Test
 using Pkg
 using WGLMakie.JSServe
-import Electron
-
-path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
-Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
+import Electron
 
 @testset "mimes" begin
     Makie.inline!(true)
