@@ -281,12 +281,15 @@ function Transformation(parent::Transformable;
                         scale=Vec3f(1),
                         translation=Vec3f(0),
                         rotation=Quaternionf(0, 0, 0, 1),
-                        transform_func=identity)
+                        transform_func=nothing)
+    connect_func = isnothing(transform_func)
+    trans = isnothing(transform_func) ? identity : transform_func
+
     trans = Transformation(translation,
                            scale,
                            rotation,
-                           transform_func)
-    connect!(transformation(parent), trans)
+                           trans)
+    connect!(transformation(parent), trans; connect_func=connect_func)
     return trans
 end
 

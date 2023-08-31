@@ -101,8 +101,6 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
-
-
 function convert_arguments!(plot::Combined{F}) where {F}
     P = Combined{F,Any}
     function on_update(args...)
@@ -293,7 +291,9 @@ function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     # TODO, move transformation into attributes?
     # This hacks around transformation being already constructed in the constructor
     # So here we don't want to connect to the scene if an explicit Transformation was passed to the plot
-    t = to_value(getfield(plot, :kw)[:transformation])
+    kw = getfield(plot, :kw)
+    attr = getfield(plot, :attributes)
+    t = to_value(get(() -> get(kw, :transformation, nothing), attr, :transformation))
     if t isa Automatic
         connect!(transformation(scene), transformation(plot))
     end
