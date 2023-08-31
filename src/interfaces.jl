@@ -188,10 +188,11 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     )
 
     # Transformation is a field of the plot type, but can be given as an attribute
-    trans = pop!(plot_attributes, :transformation, automatic)
+    # TODO probably pop! instead? but generic_plot_attributes() incompatible atm
+    trans = get!(plot_attributes, :transformation, automatic)
     transform_func = pop!(plot_attributes, :transform_func, automatic)
     transval = to_value(trans)
-    
+
     transformation = if transval === automatic
         Transformation(scene, transform_func = transform_func)
     elseif isa(transval, Transformation)
@@ -199,7 +200,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
             transval
         else
             trans = Transformation(
-                transval.translation, transval.scale, transval.rotation, 
+                transval.translation, transval.scale, transval.rotation,
                 transval.model, transform_func
             )
             if isassigned(transval.parent)

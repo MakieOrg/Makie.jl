@@ -499,8 +499,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     ticksize = attr(:ticksize)
 
     tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
-            scene.camera.projectionview, scene.px_area, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
-                pview, pxa, tsize, xrev, yrev, zrev
+            projection_obs(topscene), ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
+                _, tsize, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -513,8 +513,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
-
-        o = pxa.origin
 
         return map(ticks) do t
             p1 = dpoint(t, f1, f2)
@@ -529,8 +527,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
                 dpoint(t, f1 + diff_f1, f2)
             end
 
-            pp1 = Point2f(o + Makie.project(scene, p1))
-            pp2 = Point2f(o + Makie.project(scene, p2))
+            pp1 = project_to_screen(scene, p1)
+            pp2 = project_to_screen(scene, p2)
             diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)

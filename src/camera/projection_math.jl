@@ -58,8 +58,8 @@ end
 """
     decompose_transformation_matrix(matrix::Mat4)
 
-Attempts to decompose a matrix into a translation, scale and rotation. Note 
-that this will still return a result even if the matrix cannot be decomposed. 
+Attempts to decompose a matrix into a translation, scale and rotation. Note
+that this will still return a result even if the matrix cannot be decomposed.
 """
 function decompose_transformation_matrix(model::Mat4{T}) where T
     trans = model[Vec(1,2,3), 4]
@@ -293,12 +293,12 @@ end
     space_to_space_matrix(scenelike, spaces::Pair)
     space_to_space_matrix(scenelike, input_space::Symbol, output_space::Symbol)
 
-Returns a matrix which transforms positional data from a given input space to a 
+Returns a matrix which transforms positional data from a given input space to a
 given output space. This will not include the transform function, as it is not
-representable as a matrix, but will include the model matrix if applicable. 
+representable as a matrix, but will include the model matrix if applicable.
 (I.e. this includes `scale!()`, `translate!()` and `rotate!()`.)
 
-If you wish to exclude the model matrix, call 
+If you wish to exclude the model matrix, call
 `_space_to_space_matrix(camera(scenelike), ...)`.
 """
 function space_to_space_matrix(obj, input_space::Symbol, output_space::Symbol)
@@ -331,7 +331,7 @@ function _space_to_space_matrix(cam::Camera, input::Symbol, output::Symbol)
         return Mat4f(I)
     elseif input == output
         return Mat4f(I)
-    
+
     # direct conversions (no calculations)
     elseif input === :world && output === :eye
         return cam.view[]
@@ -355,7 +355,7 @@ function _space_to_space_matrix(cam::Camera, input::Symbol, output::Symbol)
     elseif input === :clip
         return inv(_space_to_space_matrix(cam, output, input))
     elseif input in spaces() && output in spaces()
-        return _space_to_space_matrix(cam, :clip, output) * 
+        return _space_to_space_matrix(cam, :clip, output) *
                 _space_to_space_matrix(cam, input, :clip)
     else
         error("Space $input or $output not recognized. Must be one of $(spaces())")
@@ -370,17 +370,17 @@ end
 """
     project(scenelike, pos[; input_space, output_space = :pixel, target = Point3f(0)])
 
-Projects the given positional data from the space of the given plot, scene or 
+Projects the given positional data from the space of the given plot, scene or
 axis (`scenelike`) to pixel space. Optionally the input and output space can be
 changed via the respective keyword arguments.
 
 ## Notes
 
 Depending on the `scenelike` object passed the context of what data,
-transformed, world and eye space is may change. A `scene` with a pixel-space 
+transformed, world and eye space is may change. A `scene` with a pixel-space
 camera will yield different results than a `scene` with a 3D camera, for example.
 
-Transformations and the input space can be different between a plot and its 
+Transformations and the input space can be different between a plot and its
 parent scene and also between child plots and their parent plots. In some cases
 you may also see varying results because of this.
 
@@ -391,7 +391,7 @@ may need to add `minimum(pixelarea(scene))`. `project_to_screen` does this for
 you.
 """
 function project(
-        @nospecialize(plot::AbstractPlot), pos; 
+        @nospecialize(plot::AbstractPlot), pos;
         input_space::Symbol = get_value(plot, :space, :data),
         output_space::Symbol = :pixel, target = _point3_target(pos)
     )
@@ -402,7 +402,7 @@ function project(
 end
 
 function project(
-        obj, pos; 
+        obj, pos;
         input_space::Symbol = :data, output_space::Symbol = :pixel,
         target = _point3_target(pos)
     )
@@ -433,7 +433,7 @@ transform function and input space.
 For a simpler interface, use `project(scenelike, pos)`.
 """
 function project(
-        mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
+        mat::Mat4, tf, input_space::Symbol, output_space::Symbol,
         pos::AbstractArray{<: VecTypes{N, T}}, target::VecTypes = Point3{T}(0)
     ) where {N, T <: Real}
     if input_space === output_space
@@ -446,7 +446,7 @@ function project(
     end
 end
 function project(
-        mat::Mat4, tf, input_space::Symbol, output_space::Symbol, 
+        mat::Mat4, tf, input_space::Symbol, output_space::Symbol,
         pos::VecTypes{N, T}, target = Point3{T}(0)) where {N, T <: Real}
     if input_space === output_space
         return to_ndim(target, pos)
@@ -469,7 +469,7 @@ function inv_project(mat::Mat4f, itf, pos::VecTypes{N, T}, target = Point3{T}(0)
 end
 
 function project(mat::Mat4, pos::VecTypes{N, T}, target = Point3{T}(0)) where {N, T}
-    # TODO is to_ndim slow? It alone seems to 
+    # TODO is to_ndim slow? It alone seems to
     # p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
     p4d = to_ndim(Point4{T}(0,0,0,1), pos)
     p4d = mat * p4d
@@ -511,7 +511,7 @@ end
 """
     project_to_screen(scenelike[, input_space], pos[; target = Point2f(0)])
 
-Transforms the given position(s) to (2D) screen/pixel space, using the space of 
+Transforms the given position(s) to (2D) screen/pixel space, using the space of
 `scenelike` as the default input space. The returned positions will be relative
 to the screen/window/figure origin, rather than the (parent) scene.
 """
@@ -545,7 +545,7 @@ end
     project_to_pixel(scenelike[, input_space], pos[; target = Point2f(0)])
 
 Transforms the given position(s) to (2D) pixel space, using the space of `scenelike`
-as the default input space. The returned positions will be relative to the 
+as the default input space. The returned positions will be relative to the
 scene derived from scenelike, not the screen/window/figure origin.
 
 This is equivalent to `project(scenelike, pos[; input_space], target = Point2f(0))`.
@@ -564,30 +564,32 @@ end
 Returns an observable that triggers whenever the result of `project` could change
 """
 function projection_obs(@nospecialize(plot::AbstractPlot))
-    return lift(
+    return map(
         (_, _, _, _, _) -> nothing,
         plot,
-        camera(plot).projectionview, 
+        camera(plot).projectionview,
         get_scene(plot).px_area,
         transformationmatrix(plot),
         transform_func_obs(plot),
         get(plot, :space, Observable(:data)),
+        priority = 100
     )
 end
 function projection_obs(scene::Scene)
-    return lift(
+    return map(
         (_, _, _, _) -> nothing,
         scene,
-        camera(scene).projectionview, 
+        camera(scene).projectionview,
         scene.px_area,
         transformationmatrix(scene),
-        transform_func_obs(scene)
+        transform_func_obs(scene),
+        priority = 100
     )
 end
 
 # TODO
 # naming, do we keep this?
-function _get_model_obs(plot::AbstractPlot)
+function _get_model_obs(plot::Union{AbstractPlot, Attributes})
     space = get(plot, :space, Observable(:data))
     return map((s, m) -> s in (:data, :transformed) ? m : Mat4f(I), space, plot.model)
 end
