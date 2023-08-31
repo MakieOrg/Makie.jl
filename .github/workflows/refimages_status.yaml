@@ -56,10 +56,10 @@ jobs:
               sha: commit_sha,
               state: n_missing === 0 ? 'success' : 'failure',
               target_url: null,
-              description: n_missing + " missing refimages must be uploaded",
+              description: `${n_missing == 0 ? 'No' : n_missing} missing reference image${n_missing == 1 ? '' : 's'} must be uploaded`,
               context: 'Reference Tests',
               headers: {
                 'X-GitHub-Api-Version': '2022-11-28'
               }
-            })            
+            })   
       
