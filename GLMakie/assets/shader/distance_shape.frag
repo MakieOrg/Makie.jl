@@ -25,7 +25,6 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 uniform float           stroke_width;
 uniform float           glow_width;
 uniform int             shape; // shape is a uniform for now. Making them a in && using them for control flow is expected to kill performance
-uniform vec2            resolution;
 uniform float           px_per_unit;
 uniform bool            transparent_picking;
 
@@ -91,7 +90,7 @@ float ellipse(vec2 uv, vec2 scale)
     // initial value
     vec2 q = wh * (p - wh);
     vec2 cs = normalize( (q.x<q.y) ? vec2(0.01,1) : vec2(1,0.01) );
-    
+
     // find root with Newton solver
     for( int i=0; i<5; i++ )
     {
@@ -102,10 +101,10 @@ float ellipse(vec2 uv, vec2 scale)
         float b = sqrt(c*c-a*a);
         cs = vec2( cs.x*b-cs.y*a, cs.y*b+cs.x*a )/c;
     }
-    
+
     // compute final point and distance
     float d = length(p - wh*cs);
-    
+
     // return signed distance
     return (dot(p/wh,p/wh)>1.0) ? -d : d;
 }
