@@ -20,7 +20,7 @@ import { events2unitless } from "./Camera.js";
 window.THREE = THREE;
 
 export function render_scene(scene, picking = false) {
-    const { camera, renderer, scalefactor } = scene.screen;
+    const { camera, renderer, px_per_unit } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("EXITING WGL");
@@ -36,7 +36,7 @@ export function render_scene(scene, picking = false) {
     renderer.autoClear = scene.clearscene.value;
     const area = scene.pixelarea.value;
     if (area) {
-        const [x, y, w, h] = area.map((x) => x * scalefactor);
+        const [x, y, w, h] = area.map((x) => x * px_per_unit);
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
@@ -109,9 +109,6 @@ function throttle_function(func, delay) {
     };
     return inner_throttle;
 }
-
-
-
 
 function get_body_size() {
     const bodyStyle = window.getComputedStyle(document.body);
@@ -256,15 +253,23 @@ function threejs_module(canvas) {
 }
 
 function set_render_size(screen, width, height) {
-    const { renderer, canvas, scalefactor, winscale } = screen;
+    const { renderer, canvas, scalefactor, winscale, px_per_unit } = screen;
+    // The displayed size of the canvas, in CSS pixels - which get scaled by the device pixel ratio
     const [swidth, sheight] = [winscale * width, winscale * height];
+
+    const real_pixel_width = Math.ceil(width * px_per_unit);
+    const real_pixel_height = Math.ceil(height * px_per_unit);
+
     renderer._width = width;
     renderer._height = height;
-    canvas.width = Math.floor(width * scalefactor);
-    canvas.height = Math.floor(height * scalefactor);
+
+    canvas.width = real_pixel_width;
+    canvas.height = real_pixel_height;
+
     canvas.style.width = swidth + "px";
     canvas.style.height = sheight + "px";
-    renderer.setViewport(0, 0, swidth, sheight);
+
+    renderer.setViewport(0, 0, real_pixel_width, real_pixel_height);
     add_picking_target(screen);
     return;
 }
@@ -402,7 +407,7 @@ function set_picking_uniforms(
  */
 export function pick_native(scene, _x, _y, _w, _h) {
     const { renderer, picking_target, px_per_unit } = scene.screen;
-    [_x, _y, _w, _h] = [_x, _y, _w, _h].map((x) => Math.round(x * px_per_unit));
+    [_x, _y, _w, _h] = [_x, _y, _w, _h].map((x) => Math.ceil(x * px_per_unit));
     const [x, y, w, h] = [_x, _y, _w, _h];
     // render the scene
     renderer.setRenderTarget(picking_target);
@@ -447,8 +452,8 @@ export function pick_native(scene, _x, _y, _w, _h) {
 }
 
 export function pick_closest(scene, xy, range) {
-    const { picking_target } = scene.screen;
-    const { width, height } = picking_target;
+    const { renderer } = scene.screen;
+    const [ width, height ] = [renderer._width, renderer._height];
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return [null, 0];
@@ -458,6 +463,7 @@ export function pick_closest(scene, xy, range) {
     const y0 = Math.max(1, xy[1] - range);
     const x1 = Math.min(width, Math.floor(xy[0] + range));
     const y1 = Math.min(height, Math.floor(xy[1] + range));
+
     const dx = x1 - x0;
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
@@ -482,8 +488,8 @@ export function pick_closest(scene, xy, range) {
 }
 
 export function pick_sorted(scene, xy, range) {
-    const { picking_target } = scene.screen;
-    const { width, height } = picking_target;
+    const { renderer } = scene.screen;
+    const [width, height] = [renderer._width, renderer._height];
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return null;
@@ -496,11 +502,11 @@ export function pick_sorted(scene, xy, range) {
 
     const dx = x1 - x0;
     const dy = y1 - y0;
+
     const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
     if (selected.length == 0) {
         return null;
     }
-
     const plot_matrix = plot_data.data;
     const distances = selected.map((x) => range ^ 2);
     const x = xy[0] + 1 - x0;
@@ -517,6 +523,7 @@ export function pick_sorted(scene, xy, range) {
             if (plot_index >= 0 && d < distances[plot_index]) {
                 distances[plot_index] = d;
             }
+
         }
     }
 

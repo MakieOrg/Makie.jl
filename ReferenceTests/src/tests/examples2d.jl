@@ -1349,3 +1349,31 @@ end
     ylims!(ax2,-0.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
     fig
 end
+
+function ppu_test_plot(resolution, px_per_unit, scalefactor)
+    fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; resolution=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
+    DataInspector(ax)
+    hidedecorations!(ax)
+    return fig
+end
+
+@reference_test "px_per_unit and scalefactor" begin
+    fig = Figure(; resolution=resolution, padding=0)
+    @testset begin
+        matr = [(px, scale) for px in [0.5, 1, 2], scale in [0.5, 1, 2]]
+        resolution = (800, 800)
+        imgs = map(matr) do (px_per_unit, scalefactor)
+            img = colorbuffer(ppu_test_plot(resolution, px_per_unit, scalefactor); px_per_unit=px_per_unit, scalefactor=scalefactor)
+            @test size(img) == (800, 800) .* px_per_unit
+            return img
+        end
+        foreach(CartesianIndices(imgs)) do i
+            img = imgs[i]
+            ax, pl = image(fig[Tuple(i)...], rotr90(img); axis=(; aspect=1), interpolate=false)
+            hidedecorations!(ax); hidespines!(ax)
+        end
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+    end
+    fig
+end
