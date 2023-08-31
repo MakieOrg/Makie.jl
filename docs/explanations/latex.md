@@ -47,3 +47,22 @@ Axis(f[1,1], title=L"Some %$(t) and some math: $\frac{2\alpha+1}{y}$")
 f
 ```
 \end{examplefigure}
+
+## Uniformizing the fonts
+
+We provide a LaTeX theme to easily switch to the LaTeX default fonts for all the text.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+with_theme(theme_latexfonts()) do
+    fig = Figure()
+    Label(fig[1, 1], "A standard Label", tellwidth = false)
+    Label(fig[2, 1], L"A LaTeXString with a small formula $x^2$", tellwidth = false)
+    Axis(fig[3, 1], title = "An axis with matching font for the tick labels")
+    fig
+end
+```
+\end{examplefigure}

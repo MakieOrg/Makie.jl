@@ -57,22 +57,25 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
-      - name: Comment if there are missing refimages
-        if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
-        uses: mshick/add-pr-comment@v2
-        with:
-          message: |
-            ## Missing reference images
-            Found ${{steps.referencetests.outputs.n_missing_refimages}} new images without existing references.
-            Upload new reference images before merging this PR.
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: |
             ./GLMakie/test/recorded_reference_images/
+      - name: Save number of missing refimages to file
+        env:
+          N_MISSING: ${{ steps.referencetests.outputs.n_missing_refimages }}
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p ./n_missing
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v3
+        with:
+          name: n_missing_refimages
+          path: n_missing/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1

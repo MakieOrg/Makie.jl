@@ -82,7 +82,7 @@ function initialize_block!(ax::Axis3)
 
     titlepos = lift(scene, scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
 
-        align_factor = halign2num(align, "Title align $align not supported.")
+        align_factor = halign2num(align, "Horizontal title align $align not supported.")
         x = a.origin[1] + align_factor * a.widths[1]
 
         yoffset = top(a) + titlegap
@@ -1115,7 +1115,7 @@ function attribute_examples(::Type{Axis3})
                 name = "`zreversed` on and off",
                 code = """
                     using FileIO
-                    
+
                     fig = Figure()
 
                     brain = load(assetpath("brain.stl"))

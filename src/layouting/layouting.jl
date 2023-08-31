@@ -180,7 +180,7 @@ function glyph_collection(
             0.5f0
         end
     else
-        halign2num(justification, "Invalid justification $justification. Valid values are <:Number, :left, :center and :right.")
+        halign2num(justification, "Invalid justification $justification. Valid values are <:Real, :left, :center and :right.")
     end
 
     xs_justified = map(xs, width_differences) do xsgroup, wd
