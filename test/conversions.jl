@@ -414,3 +414,30 @@ end
         @test isapprox(cs, zs, rtol = 1e-6)
     end
 end
+
+@testset "align conversions" begin
+    for (val, halign) in zip((0f0, 0.5f0, 1f0), (:left, :center, :right))
+        @test Makie.halign2num(halign) == val
+    end
+    @test_throws ErrorException Makie.halign2num(:bottom)
+    @test_throws ErrorException Makie.halign2num("center")
+    @test Makie.halign2num(0.73) == 0.73f0
+
+    for (val, valign) in zip((0f0, 0.5f0, 1f0), (:bottom, :center, :top))
+        @test Makie.valign2num(valign) == val
+    end
+    @test_throws ErrorException Makie.valign2num(:right)
+    @test_throws ErrorException Makie.valign2num("center")
+    @test Makie.valign2num(0.23) == 0.23f0
+
+    @test Makie.to_align((:center, :bottom)) == Vec2f(0.5, 0.0)
+    @test Makie.to_align((:right, 0.3)) == Vec2f(1.0, 0.3)
+
+    for angle in 4pi .* rand(10)
+        s, c = sincos(angle)
+        @test Makie.angle2align(angle) ≈ Vec2f(0.5c, 0.5s) ./ max(abs(s), abs(c)) .+ Vec2f(0.5)
+    end
+    # sanity checks
+    @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
+    @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
+end

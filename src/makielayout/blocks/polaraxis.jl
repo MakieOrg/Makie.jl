@@ -151,9 +151,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         end
 
         thetatick_align[] = map(_thetatickvalues) do angle
-            s, c = sincos(dir * (angle + theta_0))
-            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
-            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+            return angle2align(dir * (angle + theta_0) + pi)
         end
 
         # transform px_pad to radial pad
@@ -255,9 +253,7 @@ function draw_axis!(po::PolarAxis, axis_radius)
         strokecolor = rstrokecolor,
         visible = po.rticklabelsvisible,
         align = map(po.direction, po.theta_0, po.rtickangle) do dir, theta_0, angle
-            s, c = sincos(dir * (angle + theta_0))
-            scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
-            Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+            return angle2align(dir * (angle + theta_0) + pi)
         end
     )
 
@@ -339,15 +335,8 @@ end
 function calculate_polar_title_position(area, titlegap, align)
     w, h = area.widths
 
-    x::Float32 = if align === :center
-        area.origin[1] + w / 2
-    elseif align === :left
-        area.origin[1]
-    elseif align === :right
-        area.origin[1] + w
-    else
-        error("Title align $align not supported.")
-    end
+    align_factor = halign2num(align, "Horizontal title align $align not supported.")
+    x::Float32 = area.origin[1] + align_factor * w
 
     # local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
     #     boundingbox(subtitlet).widths[2] + subtitlegap

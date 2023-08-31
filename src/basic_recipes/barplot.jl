@@ -162,22 +162,10 @@ function stack_grouped_from_to(i_stack, y, grp)
 end
 
 function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direction::Bool, flip::Bool)
-    make_align(a::VecTypes{2, <:Real}) = Vec2f(a)
-    make_align(a::NTuple{2, Symbol}) = to_align(a)
-    make_align(a) = error("`label_align` needs to be of type NTuple{2, <:Real}, not of type $(typeof(a))")
     if label_align == automatic
-        if flip
-            label_rotation += π
-        end
-        if !in_y_direction
-            label_rotation += π/2
-        end
-        s, c = sincos(label_rotation)
-        scale = 1 / max(abs(s), abs(c))
-        align = Vec2f(0.5 - 0.5scale * s, 0.5 - 0.5scale * c)
-        return align
+        return angle2align(-label_rotation - !flip * pi + in_y_direction * pi/2)
     else
-        return make_align(label_align)
+        return to_align(label_align, "Failed to convert `label_align` $label_align.")
     end
 end
 
