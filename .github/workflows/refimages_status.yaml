@@ -45,12 +45,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             let fs = require('fs');
-            let n_missing = Number(fs.readFileSync('./n_missing_refimages'));
+            let content = fs.readFileSync('./n_missing_refimages', { encoding: 'utf8' });
+            let lines = content.split('\n');
+            let n_missing = Number(lines[0]);
+            let commit_sha = lines[1];
 
             await github.request('POST /repos/{owner}/{repo}/statuses/{sha}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
+              sha: commit_sha,
               state: n_missing === 0 ? 'success' : 'failure',
               target_url: null,
               description: n_missing + " missing refimages must be uploaded",
@@ -58,7 +61,5 @@ jobs:
               headers: {
                 'X-GitHub-Api-Version': '2022-11-28'
               }
-            })
-
-            
+            })            
       

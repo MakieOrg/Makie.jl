@@ -66,9 +66,11 @@ jobs:
       - name: Save number of missing refimages to file
         env:
           N_MISSING: ${{ steps.referencetests.outputs.n_missing_refimages }}
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p ./n_missing
           echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
       - name: Upload artifact with number of missing refimages
         uses: actions/upload-artifact@v3
         with:
