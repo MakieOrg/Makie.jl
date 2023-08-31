@@ -63,26 +63,17 @@ jobs:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: |
             ./GLMakie/test/recorded_reference_images/
-      - name: Add reference images status
-        uses: actions/github-script@v6
-        if: matrix.version == '1'
+      - name: Save number of missing refimages to file
         env:
-          n_missing_refimages: ${{ steps.referencetests.outputs.n_missing_refimages }}
+          N_MISSING: ${{ steps.referencetests.outputs.n_missing_refimages }}
+        run: |
+          mkdir -p ./n_missing
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v3
         with:
-          debug: false
-          script: |
-            await github.request('POST /repos/{owner}/{repo}/statuses/{sha}', {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
-              state: process.env.n_missing_refimages === '0' ? 'success' : 'failure',
-              target_url: null,
-              description: process.env.n_missing_refimages + " missing refimages must be uploaded",
-              context: 'Reference Tests',
-              headers: {
-                'X-GitHub-Api-Version': '2022-11-28'
-              }
-            })
+          name: n_missing_refimages
+          path: n_missing/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
