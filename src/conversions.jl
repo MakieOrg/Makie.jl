@@ -589,8 +589,16 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
-    (m,)
+    vs = to_vertices(vertices)
+    fs = to_triangles(indices)
+    if eltype(vs) <: Point{3}
+        ns = normals(vs, fs)
+        m = GeometryBasics.Mesh(meta(vs; normals=ns), fs)
+    else
+        # TODO, we don't need to add normals here, but maybe nice for type stability?
+        m = GeometryBasics.Mesh(meta(vs; normals=fill(Vec3f(0, 0, 1), length(vs))), fs)
+    end
+    return (m,)
 end
 
 
