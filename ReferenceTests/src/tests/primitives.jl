@@ -5,7 +5,7 @@
     points = Point2f[(1, 1), (1, 2), (2, 3), (2, 1)]
     linestyles = [
         :solid, :dash, :dot, :dashdot, :dashdotdot,
-        [1, 2, 3], [1, 2, 4, 5]
+        Linestyle([1, 2, 3]), Linestyle([1, 2, 4, 5])
     ]
     for linewidth in 1:10
         for (i, linestyle) in enumerate(linestyles)

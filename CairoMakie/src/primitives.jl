@@ -3,8 +3,7 @@
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
-    fields = @get_attribute(primitive, (color, linewidth, linestyle))
-    linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
+    @get_attribute(primitive, (color, linewidth, linestyle))
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
@@ -245,7 +244,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     Cairo.line_to(ctx, this_position...)
                     prev_continued = true
-                    
+
                     if i == lastindex(positions)
                         # this is the last element so stroke this
                         Cairo.set_line_width(ctx, this_linewidth)
@@ -293,8 +292,7 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
-    fields = @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotations))
-    @get_attribute(primitive, (transform_marker,))
+    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotations, transform_marker))
 
     ctx = screen.context
     model = primitive.model[]
@@ -306,21 +304,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
 
     colors = to_color(primitive.calculated_colors[])
 
-    markerspace = to_value(get(primitive, :markerspace, :pixel))
-    space = to_value(get(primitive, :space, :data))
-
+    markerspace = primitive.markerspace[]
+    space = primitive.space[]
     transfunc = Makie.transform_func(primitive)
 
-    marker_conv = _marker_convert(marker)
-
-    draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker_conv, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+    return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
+                               marker_offset, rotations, model, positions, size_model, font, markerspace,
+                               space)
 end
-
-# an array of markers is converted to string by itself, which is inconvenient for the iteration logic
-_marker_convert(markers::AbstractArray) = map(m -> convert_attribute(m, key"marker"(), key"scatter"()), markers)
-_marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"())
-# image arrays need to be converted as a whole
-_marker_convert(marker::AbstractMatrix{<:Colorant}) = [ convert_attribute(marker, key"marker"(), key"scatter"()) ]
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
     broadcast_foreach(positions, colors, markersize, strokecolor,
@@ -336,15 +327,14 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
 
         Cairo.save(ctx)
-        marker_converted = Makie.to_spritemarker(m)
         # Setting a markersize of 0.0 somehow seems to break Cairos global state?
         # At least it stops drawing any marker afterwards
         # TODO, maybe there's something wrong somewhere else?
         if !(norm(scale) ≈ 0.0)
-            if marker_converted isa Char
-                draw_marker(ctx, marker_converted, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
+            if m isa Char
+                draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
             else
-                draw_marker(ctx, marker_converted, pos, scale, strokecolor, strokewidth, offset, rotation)
+                draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
             end
         end
         Cairo.restore(ctx)
@@ -870,22 +860,18 @@ nan2zero(x) = !isnan(x) * x
 
 
 function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
-    # Priorize colors of the mesh if present
-    @get_attribute(attributes, (color,))
+    @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling))
 
     matcap = to_value(get(attributes, :matcap, nothing))
-
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
+    # Priorize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
 
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
-
-    @get_attribute(attributes, (shading, diffuse,
-        specular, shininess, faceculling))
 
     model = attributes.model[]::Mat4f
     space = to_value(get(attributes, :space, :data))::Symbol
@@ -1059,8 +1045,6 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
     @get_attribute(primitive, (model, marker, markersize, rotations))
-
-    m = convert_attribute(marker, key"marker"(), key"meshscatter"())
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(model)
@@ -1100,7 +1084,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh, m, pos = p,
+            scene, screen, submesh, marker, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0)
         )
     end
