@@ -2,6 +2,7 @@
 
 ## master
 
+- Deprecated `linestyle=vector_of_gaps` in favor of `linestyle=Linestyle(vector_of_gaps)` [3135](https://github.com/MakieOrg/Makie.jl/pull/3135), [3193](https://github.com/MakieOrg/Makie.jl/pull/3193).
 - Fixed some errors around dynamic changes of `ax.xscale` or `ax.yscale` [#3084](https://github.com/MakieOrg/Makie.jl/pull/3084)
 - Improved Barplot Label Alignment [#3160](https://github.com/MakieOrg/Makie.jl/issues/3160).
 - Fixed regression in determining axis limits [#3179](https://github.com/MakieOrg/Makie.jl/pull/3179)
