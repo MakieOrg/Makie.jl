@@ -1,9 +1,10 @@
 name: Docs build and deploy
 on:
-  push:
+  pull_request:
     branches:
       - master
       - sd/beta-20
+  push:
     tags:
       - '*'
 

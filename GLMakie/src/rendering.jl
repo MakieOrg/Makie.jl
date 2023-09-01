@@ -1,14 +1,14 @@
 function setup!(screen::Screen)
     glEnable(GL_SCISSOR_TEST)
     if isopen(screen) && !isnothing(screen.root_scene)
-        sf = screen.px_per_unit[]
-        glScissor(0, 0, round.(Int, size(screen.root_scene) .* sf)...)
+        ppu = screen.px_per_unit[]
+        glScissor(0, 0, round.(Int, size(screen.root_scene) .* ppu)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
             if scene.visible[]
                 a = pixelarea(scene)[]
-                rt = (round.(Int, sf .* minimum(a))..., round.(Int, sf .* widths(a))...)
+                rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
                 glViewport(rt...)
                 if scene.clear[]
                     c = scene.backgroundcolor[]
@@ -44,8 +44,8 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     fb = screen.framebuffer
     if resize_buffers && !isnothing(screen.root_scene)
-        sf = screen.px_per_unit[]
-        resize!(fb, round.(Int, sf .* size(screen.root_scene))...)
+        ppu = screen.px_per_unit[]
+        resize!(fb, round.(Int, ppu .* size(screen.root_scene))...)
     end
 
     # prepare stencil (for sub-scenes)
@@ -118,9 +118,9 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             found, scene = id2scene(screen, screenid)
             found || continue
             scene.visible[] || continue
-            sf = screen.px_per_unit[]
+            ppu = screen.px_per_unit[]
             a = pixelarea(scene)[]
-            glViewport(round.(Int, sf .* minimum(a))..., round.(Int, sf .* widths(a))...)
+            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             render(elem)
         end
     catch e

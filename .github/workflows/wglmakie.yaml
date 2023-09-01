@@ -1,12 +1,13 @@
 name: WGLMakie CI
 on:
-  push:
+  pull_request:
     paths-ignore:
       - 'docs/**'
       - '*.md'
     branches:
       - master
       - sd/beta-20
+  push:
     tags:
       - '*'
 
