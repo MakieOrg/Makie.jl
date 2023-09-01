@@ -37,7 +37,7 @@ function to_glvisualize_key(k)
 end
 
 function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space])
-    for key in (:pixel_space, :resolution, :eyeposition)
+    for key in (:pixel_space, :eyeposition)
         # Overwrite these, user defined attributes shouldn't use those!
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
@@ -52,17 +52,19 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
             return transpose(inv(v[i, i] * m[i, i]))
         end
     end
-
     get!(gl_attributes, :projection) do
         return lift(cam.projection, cam.pixel_space, space) do _, _, space
             return Makie.space_to_clip(cam, space, false)
         end
     end
-
     get!(gl_attributes, :projectionview) do
         return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
             Makie.space_to_clip(cam, space, true)
         end
+    end
+    # resolution in real hardware pixels, not scaled pixels/units
+    get!(gl_attributes, :resolution) do
+        return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
     end
 
     delete!(gl_attributes, :space)
@@ -279,14 +281,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-
         positions = handle_view(x[1], data)
-        transform_func = transform_func_obs(x)
-
-        # Tweak things for px_per_unit
-        resolution = pop!(data, :resolution)
-        px_per_unit = data[:px_per_unit]
-        data[:resolution] = map((ppu, res) -> ppu .* res, px_per_unit, resolution)
 
         transform_func = transform_func_obs(x)
         ls = to_value(linestyle)
@@ -298,6 +293,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
+            px_per_unit = data[:px_per_unit]
             data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
                 ppu * _mean(lw) .* ls
             end
@@ -342,9 +338,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
             data[:color] = pop!(data, :intensity)
         end
 
-        # Tweak things for px_per_unit
-        resolution = pop!(data, :resolution)
-        data[:resolution] = map((ppu, res) -> ppu .* res, px_per_unit, resolution)
         return draw_linesegments(screen, positions, data)
     end
 end

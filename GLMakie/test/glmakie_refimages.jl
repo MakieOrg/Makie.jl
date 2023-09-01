@@ -65,7 +65,6 @@ end
         markersize=size,
         axis = (; scenekw = (;limits=Rect3f(Point3(0), Point3(1))))
     )
-    update_cam!(ax.scene, Point3f(2.224431, 2.224431, 2.128731), Point3f(0.5957, 0.5957, 0.50000006))
     Record(fig, [10, 5, 100, 60, 177]) do i
         makenew[] = i
     end
@@ -83,7 +82,6 @@ end
         end
     end
     fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0)
-    update_cam!(ax.scene, Point3f(45.383663, 45.38298, 43.136826), Point3f(12.246061, 12.245379, 9.999225))
     screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false), fig.scene)
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
