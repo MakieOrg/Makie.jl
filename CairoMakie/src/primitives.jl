@@ -4,7 +4,6 @@
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
-    linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
@@ -245,7 +244,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     Cairo.line_to(ctx, this_position...)
                     prev_continued = true
-                    
+
                     if i == lastindex(positions)
                         # this is the last element so stroke this
                         Cairo.set_line_width(ctx, this_linewidth)
@@ -691,7 +690,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     t = Makie.transform_func(primitive)
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    xy_aligned = let 
+    xy_aligned = let
         # Only allow scaling and translation
         pv = scene.camera.projectionview[]
         M = Mat4f(
@@ -720,7 +719,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
 
-    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform && 
+    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
         (interpolate || xy_aligned)
     use_fast_path = can_use_fast_path && !disable_fast_path
 
