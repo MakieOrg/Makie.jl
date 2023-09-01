@@ -1358,10 +1358,10 @@ function ppu_test_plot(resolution, px_per_unit, scalefactor)
 end
 
 @reference_test "px_per_unit and scalefactor" begin
+    resolution = (800, 800)
     fig = Figure(; resolution=resolution, padding=0)
     @testset begin
         matr = [(px, scale) for px in [0.5, 1, 2], scale in [0.5, 1, 2]]
-        resolution = (800, 800)
         imgs = map(matr) do (px_per_unit, scalefactor)
             img = colorbuffer(ppu_test_plot(resolution, px_per_unit, scalefactor); px_per_unit=px_per_unit, scalefactor=scalefactor)
             @test size(img) == (800, 800) .* px_per_unit
