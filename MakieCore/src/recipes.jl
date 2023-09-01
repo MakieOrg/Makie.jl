@@ -21,6 +21,7 @@ func2type(f::Function) = Combined{f}
 plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
 plotkey(::T) where T <: AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
+plotkey(any) = nothing
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
