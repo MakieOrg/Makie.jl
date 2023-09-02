@@ -45,7 +45,7 @@ function compare_media(a, b)
             @warn "not the same number of frames in video, difference will be Inf"
             return Inf
         end
-        return mean(compare_media.(aframes, bframes))
+        return maximum(compare_media.(aframes, bframes))
     else
         error("Unknown media extension: $ext")
     end
