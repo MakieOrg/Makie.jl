@@ -1,7 +1,3 @@
-function get_frames(a, b)
-    return (get_frames(a), get_frames(b))
-end
-
 rgbf_convert(x) = convert(Matrix{RGBf}, x)
 
 function get_frames(video)
@@ -31,14 +27,15 @@ function compare_media(a::Matrix{RGBf}, b::Matrix{RGBf})
     Images.test_approx_eq_sigma_eps(a, b, sigma, Inf)
 end
 
-function compare_media(a, b)
+function compare_media(a::AbstractString, b::AbstractString)
     _, ext = splitext(a)
     if ext in (".png", ".jpg", ".jpeg", ".JPEG", ".JPG")
         imga = rgbf_convert(load(a))
         imgb = rgbf_convert(load(b))
         return compare_media(imga, imgb)
     elseif ext in (".mp4", ".gif")
-        aframes, bframes = get_frames(a, b)
+        aframes = get_frames(a)
+        bframes = get_frames(b)
         # Frames can differ in length, which usually shouldn't be the case but can happen
         # when the implementation of record changes, or when the example changes its number of frames
         # In that case, we just return inf + warn
