@@ -1,6 +1,6 @@
 rgbf_convert(x) = convert(Matrix{RGBf}, x)
 
-function get_frames(video)
+function get_frames(video::AbstractString)
     mktempdir() do folder
         afolder = joinpath(folder, "a")
         mkpath(afolder)
@@ -18,7 +18,7 @@ function get_frames(video)
     end
 end
 
-function compare_media(a::Matrix{RGBf}, b::Matrix{RGBf})
+function compare_images(a::Matrix{RGBf}, b::Matrix{RGBf})
     if size(a) != size(b)
         @warn "images don't have the same size, difference will be Inf"
         return Inf
@@ -32,7 +32,7 @@ function compare_media(a::AbstractString, b::AbstractString)
     if ext in (".png", ".jpg", ".jpeg", ".JPEG", ".JPG")
         imga = rgbf_convert(load(a))
         imgb = rgbf_convert(load(b))
-        return compare_media(imga, imgb)
+        return compare_images(imga, imgb)
     elseif ext in (".mp4", ".gif")
         aframes = get_frames(a)
         bframes = get_frames(b)
@@ -43,7 +43,7 @@ function compare_media(a::AbstractString, b::AbstractString)
             @warn "not the same number of frames in video, difference will be Inf"
             return Inf
         end
-        return maximum(compare_media.(aframes, bframes))
+        return maximum(compare_images.(aframes, bframes))
     else
         error("Unknown media extension: $ext")
     end
