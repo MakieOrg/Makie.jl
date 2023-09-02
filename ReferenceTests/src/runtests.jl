@@ -23,8 +23,8 @@ function compare_images(a::Matrix{RGBf}, b::Matrix{RGBf})
         @warn "images don't have the same size, difference will be Inf"
         return Inf
     end
-
-    Images.test_approx_eq_sigma_eps(a, b, sigma, Inf)
+    _norm(rgb1, rgb2) = sqrt(sum(((rgb1.r - rgb2.r)^2, (rgb1.g - rgb2.g)^2, (rgb1.b = rgb2.b)^2)))
+    error("what's a good metric here?")
 end
 
 function compare_media(a::AbstractString, b::AbstractString)
