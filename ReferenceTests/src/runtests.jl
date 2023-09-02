@@ -22,20 +22,20 @@ function get_frames(video)
     end
 end
 
-function compare_media(a::Matrix{RGBf}, b::Matrix{RGBf}; sigma=[1,1])
+function compare_media(a::Matrix{RGBf}, b::Matrix{RGBf})
+    if size(a) != size(b)
+        @warn "images don't have the same size, difference will be Inf"
+        return Inf
+    end
     Images.test_approx_eq_sigma_eps(a, b, sigma, Inf)
 end
 
-function compare_media(a, b; sigma=[1,1])
-    file, ext = splitext(a)
+function compare_media(a, b)
+    _, ext = splitext(a)
     if ext in (".png", ".jpg", ".jpeg", ".JPEG", ".JPG")
         imga = conv_rgbf(load(a))
         imgb = conv_rgbf(load(b))
-        if size(imga) != size(imgb)
-            @warn "images don't have the same size, difference will be Inf"
-            return Inf
-        end
-        return compare_media(imga, imgb, sigma=sigma)
+        return compare_media(imga, imgb)
     elseif ext in (".mp4", ".gif")
         aframes, bframes = get_frames(a, b)
         # Frames can differ in length, which usually shouldn't be the case but can happen
@@ -45,7 +45,7 @@ function compare_media(a, b; sigma=[1,1])
             @warn "not the same number of frames in video, difference will be Inf"
             return Inf
         end
-        return mean(compare_media.(aframes, bframes; sigma=sigma))
+        return mean(compare_media.(aframes, bframes))
     else
         error("Unknown media extension: $ext")
     end
