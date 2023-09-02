@@ -2,7 +2,7 @@ function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
 
-conv_rgbf(x) = convert(Matrix{RGBf}, x)
+rgbf_convert(x) = convert(Matrix{RGBf}, x)
 
 function get_frames(video)
     mktempdir() do folder
@@ -18,7 +18,7 @@ function get_frames(video)
             samples = 1:istep:length(aframes)
             aframes = aframes[samples]
         end
-        return conv_rgbf.(load.(aframes))
+        return rgbf_convert.(load.(aframes))
     end
 end
 
@@ -27,14 +27,15 @@ function compare_media(a::Matrix{RGBf}, b::Matrix{RGBf})
         @warn "images don't have the same size, difference will be Inf"
         return Inf
     end
+
     Images.test_approx_eq_sigma_eps(a, b, sigma, Inf)
 end
 
 function compare_media(a, b)
     _, ext = splitext(a)
     if ext in (".png", ".jpg", ".jpeg", ".JPEG", ".JPG")
-        imga = conv_rgbf(load(a))
-        imgb = conv_rgbf(load(b))
+        imga = rgbf_convert(load(a))
+        imgb = rgbf_convert(load(b))
         return compare_media(imga, imgb)
     elseif ext in (".mp4", ".gif")
         aframes, bframes = get_frames(a, b)
