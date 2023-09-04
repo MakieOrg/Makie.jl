@@ -280,8 +280,11 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         labels || return
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
+            any(isnan, pt) && return Rect2f()
             px_pos = project(scene, apply_transform(transform_func(plot), pt, space))
-            Rect2f(boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot)))
+            bb = unsafe_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
+            isfinite_rect(bb) || return Rect2f()
+            Rect2f(bb)
         end
     end
 

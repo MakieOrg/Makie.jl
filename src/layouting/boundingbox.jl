@@ -48,11 +48,11 @@ end
 
 _inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
 
-function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
-    return boundingbox(glyphcollection, rotation) + position
+function unsafe_boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
+    return unsafe_boundingbox(glyphcollection, rotation) + position
 end
 
-function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
+function unsafe_boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
     if isempty(glyphcollection.glyphs)
         return Rect3f(Point3f(0), Vec3f(0))
     end
@@ -69,11 +69,10 @@ function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
             bb = union(bb, charbb)
         end
     end
-    !isfinite_rect(bb) && error("Invalid text boundingbox")
     return bb
 end
 
-function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
+function unsafe_boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
     if isempty(layouts)
         return Rect3f((0, 0, 0), (0, 0, 0))
     else
@@ -85,9 +84,14 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
                 bb = union(bb, boundingbox(layout, pos, rot))
             end
         end
-        !isfinite_rect(bb) && error("Invalid text boundingbox")
         return bb
     end
+end
+
+function boundingbox(args...)
+    bb = unsafe_boundingbox(args...)
+    isfinite_rect(bb) || error("Invalid text boundingbox")
+    bb
 end
 
 function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
