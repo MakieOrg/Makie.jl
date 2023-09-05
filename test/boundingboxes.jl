@@ -59,6 +59,9 @@ end
 
 @testset "invalid contour bounding box" begin
     a = b = 1:3
-    c = [0 1 2;1 2 3;4 5 NaN]
-    contour(a, b, c; levels = collect(1:3), labels = true)
+    levels = collect(1:3)
+    c = [0 1 2; 1 2 3; 4 5 NaN]
+    contour(a, b, c; levels, labels = true)
+    c = [0 1 2; 1 2 3; 4 5 Inf]
+    contour(a, b, c; levels, labels = true)
 end
