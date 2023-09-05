@@ -778,6 +778,10 @@ button.copy-code {
     align-items: center;
 }
 
+button.copy-code .far {
+    font-family: "Font Awesome 5 Free";
+}
+
 .copied-text {
     font-size: 0.6em;
     margin-right: 0.2em;
