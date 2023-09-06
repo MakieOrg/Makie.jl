@@ -62,6 +62,7 @@ angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
 
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
+    # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
     (
         lev,
@@ -194,11 +195,9 @@ end
 function has_changed(old_args, new_args)
     length(old_args) === length(new_args) || return true
     for (old, new) in zip(old_args, new_args)
-        if old != new
-            return true
-        end
+        old != new && return true
     end
-    return false
+    false
 end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
@@ -228,8 +227,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         # We need to copy, since the values may get mutated in place
         if has_changed(old_values, args)
             old_values = map(copy, args)
-            _points, _colors, _lev_pos_col = contourlines(args..., T)
-            points[] = _points; colors[] = _colors; lev_pos_col[] = _lev_pos_col
+            points[], colors[], lev_pos_col[] = contourlines(args..., T)
             return
         end
     end
@@ -270,7 +268,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             push!(col, labelcolor === nothing ? color : to_color(labelcolor))
             push!(rot, rot_from_vert)
             push!(lbl, labelformatter(lev))
-            push!(pos, p1)
+            p = p2  # try to position label around center
+            isnan(p) && (p = p1)
+            isnan(p) && (p = p3)
+            push!(pos, p)
         end
         notify(texts.text)
         return
@@ -280,7 +281,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         labels || return Rect2f()
         broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
-            any(isnan, pt) || return Rect2f()
+            isnan(pt) || return Rect2f()
             px_pos = project(scene, apply_transform(transform_func(plot), pt, space))
             bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
             isfinite_rect(bb) || return Rect2f()
