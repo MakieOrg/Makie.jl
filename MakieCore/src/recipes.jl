@@ -56,8 +56,8 @@ end
 # Since we can use Combined like a scene in some circumstances, we define this alias
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::AbstractScene) = x.theme
-theme(x::AbstractScene, key) = deepcopy(x.theme[key])
-theme(x::AbstractPlot, key) = deepcopy(x.attributes[key])
+theme(x::AbstractScene, key; default=nothing) = deepcopy(get(x.theme, key, default))
+theme(x::AbstractPlot, key; default=nothing) = deepcopy(get(x.attributes, key, default))
 
 Attributes(x::AbstractPlot) = x.attributes
 
