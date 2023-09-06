@@ -129,9 +129,9 @@ CairoMakie.activate!() # hide
 
 x = 10.0.^(1:0.1:4)
 y = 1.0:0.1:5.0
-z = broadcast((x, y) -> x, x, y')
+z = broadcast((x, y) -> x - 10, x, y')
 
-scale = ReversibleScale(log10)
+scale = ReversibleScale(x -> asinh(x / 2) / log(10), x -> 2sinh(log(10) * x))
 fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
 Colorbar(fig[1, 2], hm)
 
