@@ -25,20 +25,30 @@ function colorbar_check(keys, kwargs_keys)
     end
 end
 
-function extract_colormap(@nospecialize(plot::T)) where {T <: AbstractPlot}
+function extract_colormap(@nospecialize(plot::AbstractPlot))
+    has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMap
         return plot.calculated_colors[]
-    elseif all(x -> haskey(plot, x), [:colormap, :colorrange, :color]) &&
-           !(plot.colorrange[] isa Makie.Automatic)
-        result = Dict{Symbol,Any}()
-        for key in [:colormap, :colorrange, :highclip, :lowclip, :colorscale, :color]
-            if haskey(plot, key)
-                result[key] = plot[key]
-            end
-        end
-        return result
+    elseif has_colorrange && all(x -> haskey(plot, x), [:colormap, :colorrange, :color])
+        return ColorMap(
+            plot.color[], plot.color, plot.colormap, plot.colorrange,
+            get(plot, :colorscale, Observable(identity)),
+            get(plot, :alpha, Observable(1.0)),
+            get(plot, :highclip, Observable(automatic)),
+            get(plot, :lowclip, Observable(automatic)),
+            get(plot, :nan_color, Observable(RGBAf(0,0,0,0))),
+        )
     else
-        colormaps = [extract_colormap(child) for child in plot.plots]
+        return nothing
+    end
+end
+
+function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
+    cmap = extract_colormap(plot)
+    if !isnothing(cmap)
+        return cmap
+    else
+        colormaps = [extract_colormap_recursive(child) for child in plot.plots]
         if length(colormaps) == 1
             return colormaps[1]
         elseif isempty(colormaps)
@@ -54,26 +64,14 @@ end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
-    cmap = extract_colormap(plot)
+    cmap = extract_colormap_recursive(plot)
     func = plotfunc(plot)
     if isnothing(cmap)
         error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
         If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Combined{func}))` to allow for the automatical creation of a Colorbar.")
     end
-    if cmap isa ColorMap
-        scale = cmap.scale
-        colormap = cmap
-    elseif cmap isa Dict
-        colormap = cmap[:colormap]
-        cmap = (
-            colorrange = cmap[:colorrange],
-            highclip = get(cmap, :highclip, automatic),
-            lowclip = get(cmap, :lowclip, automatic),
-            color = cmap[:color]
-        )
-        scale = plot[:colorscale]
-    else
-        error("extract_colormap(::$(Combined{func})) returned an invalid value: $cmap. Needs to return either a `Dict` or `Makie.ColorMap`.")
+    if !(cmap isa ColorMap)
+        error("extract_colormap(::$(Combined{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMap`.")
     end
 
     if to_value(cmap.color) isa Union{AbstractVector{<: Colorant}, Colorant}
@@ -82,58 +80,19 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
        """)
     end
 
-    Colorbar(
+    return Colorbar(
         fig_or_scene;
-        colormap=colormap,
-        limits=cmap.colorrange,
-        scale=scale,
-        highclip=cmap.highclip,
-        lowclip=cmap.lowclip,
+        colormap=cmap,
         kwargs...
     )
 end
 
-function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs...)
-    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
-
-    steps = contourf._computed_levels
-
-    limits = lift(steps) do steps
-        steps[1], steps[end]
-    end
-
-    Colorbar(
-        fig_or_scene;
-        colormap = contourf._computed_colormap,
-        limits = limits,
-        lowclip = contourf._computed_extendlow,
-        highclip = contourf._computed_extendhigh,
-        scale = contourf.colorscale,
-        kwargs...
-    )
-end
-
-function Colorbar(fig_or_scene, voronoi::Voronoiplot; kwargs...)
-    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
-
-    # switch to lowered version
-    if voronoi.plots[1] isa Voronoiplot
-        voronoi = voronoi.plots[1]
-    end
-
-    range = map(voronoi._calculated_colors, voronoi.colorrange) do cs, cr
-        cr === automatic ? extrema(cs) : cr
-    end
-
-    Colorbar(
-        fig_or_scene;
-        colormap=voronoi.colormap,
-        limits=range,
-        scale=voronoi.colorscale,
-        highclip=voronoi.highclip,
-        lowclip=voronoi.lowclip,
-        kwargs...
-    )
+function extract_colormap(plot::Union{Contourf,Tricontourf})
+    levels = plot._computed_levels
+    limits = lift(l-> (l[1], l[end]), levels)
+    return ColorMap(levels[], levels, plot._computed_colormap, limits, plot.colorscale, Observable(1.0),
+             plot._computed_extendlow,
+             plot._computed_extendhigh, plot.nan_color, color_edge)
 end
 
 colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
@@ -156,71 +115,57 @@ function initialize_block!(cb::Colorbar)
     # TODO, always convert to ColorMap!
     if cb.colormap[] isa ColorMap
         cmap = cb.colormap[]
-        map_is_categorical = cmap.categorical
-        cgradient = lift(x-> cmap, cmap.colormap)
-        colormap = cmap.colormap
     else
-        cgradient = Observable{Any}()
-        map_is_categorical = Observable(false)
-        colormap = cgradient
-        map!(blockscene, cgradient, cb.colormap) do cmap
-            if cmap isa PlotUtils.CategoricalColorGradient
-                map_is_categorical[] = true
+        limits = lift(blockscene, cb.limits, cb.colorrange) do limits, colorrange
+            if all(!isnothing, (limits, colorrange))
+                error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
+            end
+            return something(limits, colorrange, (0, 1))
+        end
+        c = cb.colormap
+        color = if c[] isa PlotUtils.ColorGradient
+            lift((c, l) -> l[1] .+ c.values .* (l[end] - l[1]), c, limits)
+        else
+            lift((n, s) -> collect(Makie.colorbar_range(0, 1, n, s)), cb.nsteps, cb.scale)
+        end
+        cmap = ColorMap(color[], color, cb.colormap, limits, cb.scale, Observable(1.0), cb.lowclip,
+                 cb.highclip, Observable(RGBAf(0,0,0,0)))
+    end
+
+
+    map_is_categorical = cmap.categorical
+    colormap = cmap.colormap
+    _limits = cmap.colorrange
+    colors = lift(blockscene, cmap.color, cmap.categorical, cb.nsteps, cb.scale) do values, categorical, n, scale
+        if categorical
+            if cmap.value_position == color_center
+                return sort!(unique(convert(Vector{Float64}, values)))
             else
-                map_is_categorical[] = false
+                return convert(Vector{Float64}, values)
             end
-            if cmap isa PlotUtils.ColorGradient
-                return cmap
-            end
-            map_is_categorical[] = false
-            return cgrad(to_colormap(cmap))
-        end
-    end
-
-    _limits = lift(blockscene, cb.limits, cb.colorrange; ignore_equal_values=true) do limits, colorrange
-        if all(!isnothing, (limits, colorrange))
-            error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
-        end
-        return something(limits, colorrange, (0, 1))
-    end
-
-    function isvisible(x, cmap, start_end)
-        x isa Automatic && return false
-        x isa Nothing && return false
-        compare = start_end ? cmap[begin] : cmap[end]
-        c = to_color(x)
-        alpha(c) <= 0.0 && return false
-        return c != compare
-    end
-
-    lowclip_tri_visible = lift(isvisible, blockscene, cb.lowclip, colormap, true)
-    highclip_tri_visible = lift(isvisible, blockscene, cb.highclip, colormap, false)
-
-    tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
-        if cb.vertical[]
-            (lv * width(box), hv * width(box))
         else
-            (lv * height(box), hv * height(box))
-        end .* sin(pi/3)
+            return collect(Makie.colorbar_range(0, 1, n, scale))
+        end::Vector{Float64}
     end
 
-    barsize = lift(blockscene, tri_heights) do heights
+    lowclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.lowclip; ignore_equal_values=true)
+    highclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.highclip; ignore_equal_values=true)
+
+    tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox; ignore_equal_values=true) do hv, lv, box
         if cb.vertical[]
-            max(1, height(framebox[]) - sum(heights))
+            return (lv * width(box), hv * width(box))
         else
-            max(1, width(framebox[]) - sum(heights))
+            return (lv * height(box), hv * height(box))
+        end .* sin(pi / 3)
+    end
+
+    barbox = lift(blockscene, framebox; ignore_equal_values=true) do fbox
+        if cb.vertical[]
+            return BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[][1], top(fbox) - tri_heights[][2])
+        else
+            return BBox(left(fbox) + tri_heights[][1], right(fbox) - tri_heights[][2], bottom(fbox), top(fbox))
         end
     end
-
-    barbox = lift(blockscene, barsize) do sz
-        fbox = framebox[]
-        if cb.vertical[]
-            BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[][1], top(fbox) - tri_heights[][2])
-        else
-            BBox(left(fbox) + tri_heights[][1], right(fbox) - tri_heights[][2], bottom(fbox), top(fbox))
-        end
-    end
-
 
     # it's hard to draw categorical and continous colormaps well
     # with the same primitives
@@ -230,27 +175,18 @@ function initialize_block!(cb::Colorbar)
     # at the same time, then we just set one of them invisible
     # depending on the type of colormap
     # this should solve most white-line issues
-    colors = lift(blockscene, cgradient, cb.nsteps, cb.scale, _limits) do cgradient, n, scale, limits
-        if cgradient isa ColorMap && cgradient.categorical[]
-            return sort!(unique(convert(Vector{Float64}, cgradient.color[])))
-        elseif cgradient isa PlotUtils.CategoricalColorGradient
-            mini, maxi = limits
-            return map(2:length(cgradient.values)) do i
-                prev = cgradient.values[i - 1]
-                v = cgradient.values[i]
-                return round(((prev + v) / 2) .* (maxi - mini) .+ mini; digits=3)
-            end
-        else
-            return collect(Makie.colorbar_range(0, 1, n, scale))
-        end::Vector{Float64}
-    end
+
+
     # for categorical colormaps we make a number of rectangle polys
     n_colors = lift(length, colors; ignore_equal_values=true)
 
-
     limits = lift(blockscene, _limits,  map_is_categorical,  n_colors) do limits, categorical, n
         if categorical
-            return (0.5, n + 0.5)
+            if cmap.value_position == color_center
+                return (0.5, n + 0.5)
+            else
+                (0, n - 1)
+            end
         else
             return limits
         end
@@ -262,20 +198,22 @@ function initialize_block!(cb::Colorbar)
         xmax, ymax = maximum(bbox)
         xwidth = (xmax - xmin)
         ywidth = (ymax - ymin)
+        yw_scaled = (1 / n) * ywidth
+        xw_scaled = (1 / n) * xwidth
         if v
             return map(r) do s
-                return Rect2f(xmin, ymin + (s * ywidth), xmax - xmin, (1/n) * ywidth)
+                return Rect2f(xmin, ymin + (s * ywidth), xwidth, yw_scaled)
             end
         else
             return map(r) do s
-                return Rect2f(xmin + (s * xwidth), ymin, (1 / n) * xwidth, ymax - ymin)
+                return Rect2f(xmin + (s * xwidth), ymin, xw_scaled, ywidth)
             end
         end
     end
 
     poly!(blockscene, categorical_rects;
         color = colors,
-        colormap = lift(to_colormap, colormap),
+        colormap = colormap,
         visible = map_is_categorical,
         inspectable = false
     )
@@ -287,12 +225,13 @@ function initialize_block!(cb::Colorbar)
         n = length(colors)
         return v ? reshape(colors, 1, n) : reshape(colors, n, 1)
     end
+
     image!(blockscene,
         lift(bb -> range(left(bb), right(bb); length=2), blockscene, barbox),
         lift(bb -> range(bottom(bb), top(bb); length=2), blockscene, barbox),
         lift((x, s)-> s.(x), continous_pixels, cb.scale),
         colormap = colormap,
-        visible=lift(!, blockscene, map_is_categorical),
+        visible= true,#lift(!, blockscene, map_is_categorical),
         interpolate = true,
         inspectable = false
     )
@@ -390,10 +329,6 @@ function initialize_block!(cb::Colorbar)
     ticks = lift(cb.ticks, colors, map_is_categorical) do ticks, colors, categorical
         if categorical
             return (1:length(colors), string.(colors))
-            # if ticks isa Automatic
-            # else
-                # return ticks
-            # end
         else
             return ticks
         end
@@ -445,6 +380,7 @@ function initialize_block!(cb::Colorbar)
 
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)
+    notify(barbox)
 
     return
 end
