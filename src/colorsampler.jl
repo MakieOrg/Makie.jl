@@ -201,11 +201,11 @@ _array_value_type(A::AbstractArray{<:Number}) = typeof(A)
 _array_value_type(r::AbstractRange) = Vector{eltype(r)} # use vector instead, to have a few less types to worry about
 
 
-function ColorMap(color::T, colors_obs, colormap, colorrange, colorscale, alpha, lowclip,
+function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, colorrange, colorscale, alpha, lowclip,
                   highclip, nan_color,
-                  value_position=automatic) where {N, T<:AbstractArray{<:Number, N}}
-
-    color_tight = convert(Observable{_array_value_type(color)}, colors_obs)
+                  value_position=automatic) where {N}
+    T = _array_value_type(color)
+    color_tight = convert(Observable{T}, colors_obs)
     _colormap = Observable(RGBAf[]; ignore_equal_values=true)
     categorical = Observable(false)
     colorscale = convert(Observable{Function}, colorscale)

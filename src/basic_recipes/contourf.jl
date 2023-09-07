@@ -90,7 +90,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, highcolor)
-
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
     polys = Observable(PolyType[])

@@ -91,8 +91,8 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
     levels = plot._computed_levels
     limits = lift(l-> (l[1], l[end]), levels)
     return ColorMap(levels[], levels, plot._computed_colormap, limits, plot.colorscale, Observable(1.0),
-             plot._computed_extendlow,
-             plot._computed_extendhigh, plot.nan_color, color_edge)
+             plot.extendlow,
+             plot.extendhigh, plot.nan_color, color_edge)
 end
 
 colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
@@ -100,7 +100,7 @@ function colorbar_range(start, stop, length, scale::REVERSIBLE_SCALES)
     inverse_transform(scale).(range(start, stop; length))
 end
 
-function initialize_block!(cb::Colorbar)
+function initialize_block!(cb::Colorbar; categorical=false)
     blockscene = cb.blockscene
 
     onany(blockscene, cb.size, cb.vertical) do sz, vertical
@@ -131,18 +131,17 @@ function initialize_block!(cb::Colorbar)
         cmap = ColorMap(color[], color, cb.colormap, limits, cb.scale, Observable(1.0), cb.lowclip,
                  cb.highclip, Observable(RGBAf(0,0,0,0)))
     end
-
-
     map_is_categorical = cmap.categorical
+    is_real_cat = categorical || cmap.value_position == color_center
     colormap = cmap.colormap
-    _limits = cmap.colorrange
-    colors = lift(blockscene, cmap.color, cmap.categorical, cb.nsteps, cb.scale) do values, categorical, n, scale
-        if categorical
-            if cmap.value_position == color_center
-                return sort!(unique(convert(Vector{Float64}, values)))
-            else
-                return convert(Vector{Float64}, values)
-            end
+    limits = cmap.colorrange
+
+    colors = lift(blockscene, cmap.color, cmap.categorical, cb.nsteps,
+                  cmap.scale) do values, categorical, n, scale
+        if categorical && !is_real_cat
+            return convert(Vector{Float64}, unique(values))
+        elseif categorical && is_real_cat
+            return 1:length(values)
         else
             return collect(Makie.colorbar_range(0, 1, n, scale))
         end::Vector{Float64}
@@ -167,72 +166,25 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    # it's hard to draw categorical and continous colormaps well
-    # with the same primitives
-
-    # therefore we make one interpolated image for continous
-    # colormaps and number of polys for categorical colormaps
-    # at the same time, then we just set one of them invisible
-    # depending on the type of colormap
-    # this should solve most white-line issues
-
-
-    # for categorical colormaps we make a number of rectangle polys
-    n_colors = lift(length, colors; ignore_equal_values=true)
-
-    limits = lift(blockscene, _limits,  map_is_categorical,  n_colors) do limits, categorical, n
-        if categorical
-            if cmap.value_position == color_center
-                return (0.5, n + 0.5)
-            else
-                (0, n - 1)
-            end
-        else
-            return limits
-        end
-    end
-
-    categorical_rects = lift(blockscene, barbox, cb.vertical, n_colors) do bbox, v, n
-        r = range(0, length=n, step=1/n)
-        xmin, ymin = minimum(bbox)
-        xmax, ymax = maximum(bbox)
-        xwidth = (xmax - xmin)
-        ywidth = (ymax - ymin)
-        yw_scaled = (1 / n) * ywidth
-        xw_scaled = (1 / n) * xwidth
-        if v
-            return map(r) do s
-                return Rect2f(xmin, ymin + (s * ywidth), xwidth, yw_scaled)
-            end
-        else
-            return map(r) do s
-                return Rect2f(xmin + (s * xwidth), ymin, xw_scaled, ywidth)
-            end
-        end
-    end
-
-    poly!(blockscene, categorical_rects;
-        color = colors,
-        colormap = colormap,
-        visible = map_is_categorical,
-        inspectable = false
-    )
-
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
 
-    continous_pixels = lift(blockscene, cb.vertical, colors) do v, colors
+    continous_pixels = lift(blockscene, cb.vertical, colors, map_is_categorical) do v, colors, iscat
         n = length(colors)
+        if iscat && !is_real_cat
+            colors = (colors[1:end-1] .+ colors[2:end]) ./2
+            n = n - 1
+        end
         return v ? reshape(colors, 1, n) : reshape(colors, n, 1)
     end
 
     image!(blockscene,
         lift(bb -> range(left(bb), right(bb); length=2), blockscene, barbox),
         lift(bb -> range(bottom(bb), top(bb); length=2), blockscene, barbox),
-        lift((x, s)-> s.(x), continous_pixels, cb.scale),
+           continous_pixels;
         colormap = colormap,
-        visible= true,#lift(!, blockscene, map_is_categorical),
-        interpolate = true,
+        colorscale = cmap.scale,
+        interpolate = lift(!, map_is_categorical),
         inspectable = false
     )
 
@@ -250,7 +202,7 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    highclip_tri_color = lift(blockscene, cb.highclip) do hc
+    highclip_tri_color = lift(blockscene, cmap.highclip) do hc
         to_color(hc isa Automatic || isnothing(hc) ? :transparent : hc)
     end
 
@@ -272,7 +224,7 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    lowclip_tri_color = lift(blockscene, cb.lowclip) do lc
+    lowclip_tri_color = lift(blockscene, cmap.lowclip) do lc
         to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc)
     end
 
@@ -326,16 +278,16 @@ function initialize_block!(cb::Colorbar)
         end
 
     end
-    ticks = lift(cb.ticks, colors, map_is_categorical) do ticks, colors, categorical
-        if categorical
-            return (1:length(colors), string.(colors))
-        else
-            return ticks
-        end
+
+    ticks = lift(colors, map_is_categorical, cb.ticks) do cs, iscat, ticks
+        iscat && is_real_cat ? (1:length(cs), string.(cs)) : ticks
+    end
+    lims = lift(colors, map_is_categorical, limits) do cs, iscat, limits
+        return iscat && is_real_cat ? (0.5, length(cs) + 0.5) : limits
     end
 
     axis = LineAxis(blockscene, endpoints = axispoints, flipped = cb.flipaxis,
-            limits=limits, ticklabelalign=cb.ticklabelalign, label=cb.label,
+                    limits=lims, ticklabelalign=cb.ticklabelalign, label=cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
                     labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont, ticks=ticks,
@@ -348,10 +300,9 @@ function initialize_block!(cb::Colorbar)
         spinecolor = :transparent, spinevisible = :false, flip_vertical_label = cb.flip_vertical_label,
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
-        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale)
+        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cmap.scale)
 
     cb.axis = axis
-
 
     onany(blockscene, axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
             vertical, flipaxis
