@@ -208,11 +208,20 @@ function initialize_block!(cb::Colorbar; categorical=false)
         n = length(colors)
         return v ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
+    # TODO, implement interpolate = true for irregular grics in CairoMakie
+    # Then, we can just use heatmap! and don't need the image plot!
     heatmap!(blockscene,
-        xrange, yrange, continous_pixels;
+           xrange, yrange, continous_pixels;
+           colormap=colormap,
+           colorscale=cmap.scale,
+           isible=map_is_categorical,
+           inspectable=false)
+
+    image!(blockscene,
+        lift(x-> LinRange(extrema(x)..., 2), xrange), lift(y-> LinRange(extrema(y)..., 2), yrange), continous_pixels;
         colormap = colormap,
         colorscale = cmap.scale,
-        interpolate = lift(!, map_is_categorical),
+        visible = lift(!, map_is_categorical),
         inspectable = false
     )
 
@@ -356,7 +365,12 @@ function initialize_block!(cb::Colorbar; categorical=false)
 
     # trigger protrusions with one of the attributes
     notify(cb.vertical)
-
+    # We set everything via the ColorMap now. To be backwards compatible, we always set those fields:
+    setfield!(cb, :limits, convert(Observable{Any}, limits))
+    setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
+    setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
+    setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
+    setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)
     notify(barbox)
