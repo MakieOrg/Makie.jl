@@ -67,7 +67,6 @@ fig
 ```
 \end{examplefigure}
 
-
 ## Attributes
 
 \attrdocs{Colorbar}

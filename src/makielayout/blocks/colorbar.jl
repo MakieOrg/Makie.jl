@@ -87,6 +87,10 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     )
 end
 
+function extract_colormap(plot::StreamPlot)
+    return extract_colormap(plot.plots[1])
+end
+
 function extract_colormap(plot::Union{Contourf,Tricontourf})
     levels = plot._computed_levels
     limits = lift(l-> (l[1], l[end]), levels)
@@ -133,17 +137,16 @@ function initialize_block!(cb::Colorbar; categorical=false)
     end
     map_is_categorical = cmap.categorical
     is_real_cat = categorical || cmap.value_position == color_center
-    colormap = cmap.colormap
+    colormap = cmap.raw_colormap
     limits = cmap.colorrange
 
-    colors = lift(blockscene, cmap.color, cmap.categorical, cb.nsteps,
-                  cmap.scale) do values, categorical, n, scale
+    colors = lift(blockscene, cmap.color, cmap.categorical, cb.nsteps, limits) do values, categorical, n, lims
         if categorical && !is_real_cat
             return convert(Vector{Float64}, unique(values))
         elseif categorical && is_real_cat
             return 1:length(values)
         else
-            return collect(Makie.colorbar_range(0, 1, n, scale))
+            return collect(LinRange(lims..., n))
         end::Vector{Float64}
     end
 
@@ -165,23 +168,42 @@ function initialize_block!(cb::Colorbar; categorical=false)
             return BBox(left(fbox) + tri_heights[][1], right(fbox) - tri_heights[][2], bottom(fbox), top(fbox))
         end
     end
+    xrange = Observable(Float32[]; ignore_equal_values=true)
+    yrange = Observable(Float32[]; ignore_equal_values=true)
+    function update_xyrange(bb, v, colors, scale)
+        xmin, ymin = minimum(bb)
+        xmax, ymax = maximum(bb)
+        if is_real_cat
+            colors = edges(colors)
+        end
+        s_scaled = scale.(colors)
+        mini, maxi = extrema(s_scaled)
+        s_scaled = (s_scaled .- mini) ./ (maxi - mini)
+        if v
+            xrange[] = LinRange(xmin, xmax, 2)
+            yrange[] = s_scaled .* (ymax - ymin) .+ ymin
+        else
+            xrange[] = s_scaled .* (xmax - xmin) .+ xmin
+            yrange[] = LinRange(ymin, ymax, 2)
+        end
+        return
+    end
+
+    update_xyrange(barbox[], cb.vertical[], colors[], cmap.scale[])
+    onany(update_xyrange, blockscene, barbox, cb.vertical, colors, cmap.scale)
 
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
 
-    continous_pixels = lift(blockscene, cb.vertical, colors, map_is_categorical) do v, colors, iscat
-        n = length(colors)
-        if iscat && !is_real_cat
+    continous_pixels = lift(blockscene, cb.vertical, colors) do v, colors
+        if !is_real_cat
             colors = (colors[1:end-1] .+ colors[2:end]) ./2
-            n = n - 1
         end
-        return v ? reshape(colors, 1, n) : reshape(colors, n, 1)
+        n = length(colors)
+        return v ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
-
-    image!(blockscene,
-        lift(bb -> range(left(bb), right(bb); length=2), blockscene, barbox),
-        lift(bb -> range(bottom(bb), top(bb); length=2), blockscene, barbox),
-           continous_pixels;
+    heatmap!(blockscene,
+        xrange, yrange, continous_pixels;
         colormap = colormap,
         colorscale = cmap.scale,
         interpolate = lift(!, map_is_categorical),

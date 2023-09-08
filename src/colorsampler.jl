@@ -181,6 +181,7 @@ end
 struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
     color::Observable{T}
     colormap::Observable{Vector{RGBAf}}
+    raw_colormap::Observable{Vector{RGBAf}} # the above is scaled (when coming from cgrad), this is not
     scale::Observable{Function}
     mapping::Observable{Union{Nothing, Vector{Float64}}}
     colorrange::Observable{Vec{2,Float64}}
@@ -200,6 +201,8 @@ end
 _array_value_type(A::AbstractArray{<:Number}) = typeof(A)
 _array_value_type(r::AbstractRange) = Vector{eltype(r)} # use vector instead, to have a few less types to worry about
 
+_to_colormap(x::PlotUtils.ColorGradient) = to_colormap(x.colors)
+_to_colormap(x) = to_colormap(x)
 
 function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, colorrange, colorscale, alpha, lowclip,
                   highclip, nan_color,
@@ -207,6 +210,7 @@ function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, color
     T = _array_value_type(color)
     color_tight = convert(Observable{T}, colors_obs)
     _colormap = Observable(RGBAf[]; ignore_equal_values=true)
+    raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
     categorical = Observable(false)
     colorscale = convert(Observable{Function}, colorscale)
     mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing)
@@ -217,10 +221,13 @@ function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, color
 
     function update_colors(cmap, a)
         colors = to_colormap(cmap)
+        raw_colors = _to_colormap(cmap) # dont do the scaling from cgrad
         if a < 1.0
             colors = map(c -> RGBAf(Colors.color(c), Colors.alpha(c) * a), colors)
+            raw_colors = map(c -> RGBAf(Colors.color(c), Colors.alpha(c) * a), raw_colors)
         end
         _colormap[] = colors
+        raw_colormap[] = raw_colors
         categorical[] = cmap isa PlotUtils.CategoricalColorGradient
         if cmap isa PlotUtils.ColorGradient
             mapping[] = cmap.values
@@ -256,6 +263,7 @@ function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, color
     CT = ColorMap{N,T,typeof(color_scaled[])}
     return CT(color_tight,
             _colormap,
+            raw_colormap,
             colorscale,
             mapping,
             colorrange,
