@@ -278,10 +278,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     end
 
     bboxes = lift(labels, texts.text; ignore_equal_values=true) do labels, _
-        labels || return Rect2f()
+        labels || return
         broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
-            isnan(pt) || return Rect2f()
             px_pos = project(scene, apply_transform(transform_func(plot), pt, space))
             bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
             isfinite_rect(bb) || return Rect2f()
