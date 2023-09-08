@@ -142,7 +142,7 @@ function initialize_block!(cb::Colorbar; categorical=false)
                  cb.highclip, Observable(RGBAf(0,0,0,0)))
     end
     map_is_categorical = cmap.categorical
-    is_real_cat = categorical || cmap.value_position == color_center
+    is_real_cat = categorical || (cmap.value_position == color_center && map_is_categorical[])
     colormap = cmap.raw_colormap
     limits = cmap.colorrange
 

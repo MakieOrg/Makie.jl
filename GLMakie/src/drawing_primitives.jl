@@ -417,7 +417,7 @@ function draw_atomic(screen::Screen, scene::Scene, heatmap::Heatmap)
         t = Makie.transform_func_obs(heatmap)
         mat = heatmap[3]
         space = heatmap.space # needs to happen before connect_camera! call
-        xypos = map(t, heatmap[1], heatmap[2], space) do t, x, y, space
+        xypos = lift(t, heatmap[1], heatmap[2], space) do t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
