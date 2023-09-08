@@ -43,6 +43,25 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
     end
 end
 
+function extract_colormap(plot::StreamPlot)
+    return extract_colormap(plot.plots[1])
+end
+
+function extract_colormap(plot::Union{Contourf,Tricontourf})
+    levels = plot._computed_levels
+    limits = lift(l -> (l[1], l[end]), levels)
+    function extend_color(color, computed)
+        color === nothing && return automatic
+        color == :auto || color == automatic && return computed
+        return computed
+    end
+    elow = lift(extend_color, plot.extendlow, plot._computed_extendlow)
+    ehigh = lift(extend_color, plot.extendhigh, plot._computed_extendhigh)
+    return ColorMap(levels[], levels, plot._computed_colormap, limits, plot.colorscale, Observable(1.0),
+                    elow, ehigh, plot.nan_color, color_edge)
+end
+
+
 function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
     cmap = extract_colormap(plot)
     if !isnothing(cmap)
@@ -87,17 +106,6 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     )
 end
 
-function extract_colormap(plot::StreamPlot)
-    return extract_colormap(plot.plots[1])
-end
-
-function extract_colormap(plot::Union{Contourf,Tricontourf})
-    levels = plot._computed_levels
-    limits = lift(l-> (l[1], l[end]), levels)
-    return ColorMap(levels[], levels, plot._computed_colormap, limits, plot.colorscale, Observable(1.0),
-             plot.extendlow,
-             plot.extendhigh, plot.nan_color, color_edge)
-end
 
 function colorbar_range(start, stop, length, colorscale)
     colorscale === identity && return LinRange(start, stop, length)
@@ -155,10 +163,8 @@ function initialize_block!(cb::Colorbar; categorical=false)
             return collect(LinRange(lims..., n))
         end::Vector{Float64}
     end
-
     lowclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.lowclip; ignore_equal_values=true)
     highclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.highclip; ignore_equal_values=true)
-
     tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox; ignore_equal_values=true) do hv, lv, box
         if cb.vertical[]
             return (lv * width(box), hv * width(box))
