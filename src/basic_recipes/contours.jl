@@ -290,6 +290,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     masked_lines = lift(labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
+        # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
+        count(isnan, segments) > length(segments) / 10 && return segments
         n = 1
         bb = bboxes[n]
         nlab = length(bboxes)
