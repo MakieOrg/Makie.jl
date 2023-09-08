@@ -5,7 +5,7 @@
     points = Point2f[(1, 1), (1, 2), (2, 3), (2, 1)]
     linestyles = [
         :solid, :dash, :dot, :dashdot, :dashdotdot,
-        [1, 2, 3], [1, 2, 4, 5]
+        Linestyle([1, 2, 3]), Linestyle([1, 2, 4, 5])
     ]
     for linewidth in 1:10
         for (i, linestyle) in enumerate(linestyles)
@@ -270,13 +270,13 @@ end
 
     # Same as above
     markers = [
-        :rect, :circle, :cross, :x, :utriangle, :rtriangle, :dtriangle, :ltriangle, :pentagon, 
+        :rect, :circle, :cross, :x, :utriangle, :rtriangle, :dtriangle, :ltriangle, :pentagon,
         :hexagon, :octagon, :star4, :star5, :star6, :star8, :vline, :hline, 'x', 'X'
     ]
 
     for (i, marker) in enumerate(markers)
         scatter!(
-            Point2f.(1:5, i), marker = marker, 
+            Point2f.(1:5, i), marker = marker,
             markersize = range(10, 30, length = 5), color = :orange,
             strokewidth = 2, strokecolor = :black
         )
@@ -451,7 +451,7 @@ end
     lab1 = L"\int f(x) dx"
     lab2 = lab1
     # lab2 = L"\frac{a}{b} - \sqrt{b}" # this will not work until #2667 is fixed
-    
+
     barplot(fig[1,1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction=:x)
     barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
 

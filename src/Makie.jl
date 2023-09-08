@@ -23,6 +23,7 @@ using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
+using CRC32c
 using Packing
 using SignedDistanceFields
 using Markdown
@@ -86,6 +87,7 @@ import MakieCore: convert_arguments, convert_attribute, default_theme, conversio
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
+export Linestyle
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 const RGBAf = RGBA{Float32}
@@ -118,6 +120,7 @@ include("themes/theme_black.jl")
 include("themes/theme_minimal.jl")
 include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
+include("themes/theme_latexfonts.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
@@ -209,6 +212,7 @@ export theme_black
 export theme_minimal
 export theme_light
 export theme_dark
+export theme_latexfonts
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange
@@ -284,6 +288,7 @@ export save, colorbuffer
 export cgrad, available_gradients, showgradients
 
 export Pattern
+export ReversibleScale
 
 export assetpath
 # default icon for Makie

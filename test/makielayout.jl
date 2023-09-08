@@ -389,3 +389,55 @@ end
     @test_nowarn axislegend()
     f
 end
+
+@testset "ReversibleScale" begin
+    @test ReversibleScale(identity).inverse === identity
+    @test ReversibleScale(log).inverse === exp
+    @test_throws ArgumentError ReversibleScale(x -> log10(x))  # missing inverse scale
+    @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
+end
+
+@testset "Invalid inverse transform" begin
+    f = Figure()
+    @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
+end
+
+@testset "Colorscales" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    z = broadcast((x, y) -> x, x, y')
+
+    scale = Makie.Symlog10(2)
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+
+    scale = Makie.pseudolog10
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+end
+
+@testset "Axis scale" begin
+    # This just shouldn't error
+    try
+        fig, ax, li = lines(1:10, 1:10)
+        vlines!(ax, 3)
+        hlines!(ax, 3)
+        bp = barplot!(ax, 1 .+ 5 .* rand(10))
+        vspan!(ax, 3, 4)
+        hspan!(ax, 3, 4)
+        bracket!(ax, 1, 1, 2, 2)
+        eb = errorbars!(ax, 1:10, 1:10, [0.3 for _ in 1:10], whiskerwidth = 5)
+        text!(ax, Point2f(2), text = "abba")
+        tooltip!(ax, Point2f(8), "baab")
+        tricontourf!(ax, 1 .+ 4 .* rand(5), 1 .+ 4 .* rand(5), rand(5))
+        qqplot!(ax, 5:10, 1:5)
+        ax.yscale = log10
+        ax.yscale = identity
+        ax.yscale = log10
+        ax.yscale = identity
+        @test true
+    catch e
+        @test false
+        rethrow(e)
+    end
+end

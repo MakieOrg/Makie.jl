@@ -29,7 +29,7 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
     has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMap
         return plot.calculated_colors[]
-    elseif has_colorrange && all(x -> haskey(plot, x), [:colormap, :colorrange, :color])
+    elseif has_colorrange && all(x -> haskey(plot, x), [:colormap, :colorrange, :color]) && plot.color[] isa AbstractVector{<:Colorant}
         return ColorMap(
             plot.color[], plot.color, plot.colormap, plot.colorrange,
             get(plot, :colorscale, Observable(identity)),
@@ -99,9 +99,15 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
              plot.extendhigh, plot.nan_color, color_edge)
 end
 
-colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
-function colorbar_range(start, stop, length, scale::REVERSIBLE_SCALES)
-    inverse_transform(scale).(range(start, stop; length))
+function colorbar_range(start, stop, length, colorscale)
+    colorscale === identity && return LinRange(start, stop, length)
+
+    inverse = inverse_transform(colorscale)
+    isnothing(inverse) && throw(ArgumentError(
+        "Cannot determine inverse transform: you can use `ReversibleScale($(colorscale), inverse($(colorscale)))` instead."
+    ))
+
+    inverse.(range(start, stop; length))
 end
 
 function initialize_block!(cb::Colorbar; categorical=false)
@@ -363,17 +369,13 @@ end
 
 Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
 """
-function tight_ticklabel_spacing!(cb::Colorbar)
-    space = tight_ticklabel_spacing!(cb.axis)
-    return space
-end
+tight_ticklabel_spacing!(cb::Colorbar) = tight_ticklabel_spacing!(cb.axis)
 
 function scaled_steps(steps, scale, lims)
-    # first scale to limits so we can actually apply the scale to the values
-    # (log(0) doesn't work etc.)
-    s_limits = steps .* (lims[2] - lims[1]) .+ lims[1]
     # scale with scaling function
-    s_limits_scaled = scale.(s_limits)
+    steps_scaled = scale.(steps)
+    # normalize to lims range
+    steps_lim_scaled = @. steps_scaled * (scale(lims[2]) -  scale(lims[1])) + scale(lims[1])
     # then rescale to 0 to 1
-    return (s_limits_scaled .- s_limits_scaled[1]) ./ (s_limits_scaled[end] - s_limits_scaled[1])
+    return @. (steps_lim_scaled - steps_lim_scaled[begin]) / (steps_lim_scaled[end] - steps_lim_scaled[begin])
 end
