@@ -409,7 +409,8 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: F
     valid limits interval (optional)
     """
     interval::T
-    function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32))
+    name::Symbol
+    function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32), name=Symbol(forward))
         inverse isa Automatic && (inverse = inverse_transform(forward))
         isnothing(inverse) && throw(ArgumentError(
             "Cannot determine inverse transform: you can use `ReversibleScale($(forward), inverse($(forward)))` instead."
@@ -422,10 +423,10 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: F
         lft ≈ Id(lft) || throw(ArgumentError("Invalid inverse transform: $lft !≈ $(Id(lft))"))
         rgt ≈ Id(rgt) || throw(ArgumentError("Invalid inverse transform: $rgt !≈ $(Id(rgt))"))
 
-        new{typeof(forward),typeof(inverse),typeof(interval)}(forward, inverse, limits, interval)
+        return new{typeof(forward),typeof(inverse),typeof(interval)}(forward, inverse, limits, interval, name)
     end
 end
 
-function (s::ReversibleScale)(args...)  # functor
-    s.forward(args...)
-end
+(s::ReversibleScale)(args...) = s.forward(args...) # functor
+Base.show(io::IO, s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
+Base.show(io::IO, ::MIME"text/plain", s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
