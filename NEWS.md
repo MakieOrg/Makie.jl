@@ -1,6 +1,7 @@
 # News
 
 ## master
+- Allow arbitrary reversible scale functions through `ReversibleScale`.
 
 - Deprecated `linestyle=vector_of_gaps` in favor of `linestyle=Linestyle(vector_of_gaps)` [3135](https://github.com/MakieOrg/Makie.jl/pull/3135), [3193](https://github.com/MakieOrg/Makie.jl/pull/3193).
 - Fixed some errors around dynamic changes of `ax.xscale` or `ax.yscale` [#3084](https://github.com/MakieOrg/Makie.jl/pull/3084)

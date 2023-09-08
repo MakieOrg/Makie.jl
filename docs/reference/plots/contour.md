@@ -57,8 +57,8 @@ x = y = range(-6, 6; length=100)
 z = himmelblau.(x, y')
 
 levels = 10.0.^range(0.3, 3.5; length=10)
-colormap = Makie.sampler(:hsv, 100; scaling=Makie.Scaling(x -> x^(1 / 10), nothing))
-f, ax, ct = contour(x, y, z; labels=true, levels, colormap)
+colorscale = ReversibleScale(x -> x^(1 / 10), x -> x^10)
+f, ax, ct = contour(x, y, z; labels=true, levels, colormap=:hsv, colorscale)
 f
 ```
 \end{examplefigure}

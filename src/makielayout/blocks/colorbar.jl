@@ -90,9 +90,15 @@ function Colorbar(fig_or_scene, voronoi::Voronoiplot; kwargs...)
     )
 end
 
-colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
-function colorbar_range(start, stop, length, scale::REVERSIBLE_SCALES)
-    inverse_transform(scale).(range(start, stop; length))
+function colorbar_range(start, stop, length, colorscale)
+    colorscale === identity && return LinRange(start, stop, length)
+
+    inverse = inverse_transform(colorscale)
+    isnothing(inverse) && throw(ArgumentError(
+        "Cannot determine inverse transform: you can use `ReversibleScale($(colorscale), inverse($(colorscale)))` instead."
+    ))
+
+    inverse.(range(start, stop; length))
 end
 
 function initialize_block!(cb::Colorbar)
@@ -168,7 +174,7 @@ function initialize_block!(cb::Colorbar)
     map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, blockscene, cgradient)
 
     steps = lift(blockscene, cgradient, cb.nsteps, cb.scale) do cgradient, n, scale
-        s = if cgradient isa PlotUtils.CategoricalColorGradient
+        if cgradient isa PlotUtils.CategoricalColorGradient
             cgradient.values
         else
             collect(colorbar_range(0, 1, n, scale))
@@ -385,17 +391,13 @@ end
 
 Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
 """
-function tight_ticklabel_spacing!(cb::Colorbar)
-    space = tight_ticklabel_spacing!(cb.axis)
-    return space
-end
+tight_ticklabel_spacing!(cb::Colorbar) = tight_ticklabel_spacing!(cb.axis)
 
 function scaled_steps(steps, scale, lims)
-    # first scale to limits so we can actually apply the scale to the values
-    # (log(0) doesn't work etc.)
-    s_limits = steps .* (lims[2] - lims[1]) .+ lims[1]
     # scale with scaling function
-    s_limits_scaled = scale.(s_limits)
+    steps_scaled = scale.(steps)
+    # normalize to lims range
+    steps_lim_scaled = @. steps_scaled * (scale(lims[2]) -  scale(lims[1])) + scale(lims[1])
     # then rescale to 0 to 1
-    s_scaled = (s_limits_scaled .- s_limits_scaled[1]) ./ (s_limits_scaled[end] - s_limits_scaled[1])
+    @. (steps_lim_scaled - steps_lim_scaled[begin]) / (steps_lim_scaled[end] - steps_lim_scaled[begin])
 end
