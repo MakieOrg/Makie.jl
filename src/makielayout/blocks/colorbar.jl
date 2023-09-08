@@ -322,9 +322,11 @@ function initialize_block!(cb::Colorbar; categorical=false)
 
     end
 
-    ticks = lift(colors, map_is_categorical, cb.ticks) do cs, iscat, ticks
+    ticks = Observable{Any}()
+    map!(ticks, colors, map_is_categorical, cb.ticks) do cs, iscat, ticks
         iscat && is_real_cat ? (1:length(cs), string.(cs)) : ticks
     end
+
     lims = lift(colors, map_is_categorical, limits) do cs, iscat, limits
         return iscat && is_real_cat ? (0.5, length(cs) + 0.5) : limits
     end
