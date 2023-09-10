@@ -1,3 +1,4 @@
+const SERIALIZATION_FORMAT_VERSION = "v4"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -69,8 +70,6 @@ function Base.show(io::IO, atlas::TextureAtlas)
     println(io, "  downsample: ", atlas.downsample)
     println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
-
-const SERIALIZATION_FORMAT_VERSION = "v3"
 
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
@@ -292,14 +291,16 @@ function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
     return atlas.uv_rectangles[glyph_index!(atlas, b)]
 end
 
+crc(x, seed=UInt32(0)) = crc32c(collect(x), seed)
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
-    hash = StableHashTraits.stable_hash((glyphindex, FreeTypeAbstraction.fontname(font)))
+    hash = StableHashTraits.stable_hash((glyphindex, FreeTypeAbstraction.fontname(font));
+                                        alg=crc)
     return insert_glyph!(atlas, hash, (glyphindex, font))
 end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
-    return insert_glyph!(atlas, StableHashTraits.stable_hash(path), path)
+    return insert_glyph!(atlas, StableHashTraits.stable_hash(path; alg=crc), path)
 end
 
 

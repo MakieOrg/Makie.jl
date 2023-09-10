@@ -377,6 +377,31 @@ end
     f
 end
 
+@testset "ReversibleScale" begin
+    @test ReversibleScale(identity).inverse === identity
+    @test ReversibleScale(log).inverse === exp
+    @test_throws ArgumentError ReversibleScale(x -> log10(x))  # missing inverse scale
+    @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
+end
+
+@testset "Invalid inverse transform" begin
+    f = Figure()
+    @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
+end
+
+@testset "Colorscales" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    z = broadcast((x, y) -> x, x, y')
+
+    scale = Makie.Symlog10(2)
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+
+    scale = Makie.pseudolog10
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+end
 
 @testset "Axis scale" begin
     # This just shouldn't error

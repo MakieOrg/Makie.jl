@@ -45,7 +45,7 @@ for (i, lw) in enumerate([1, 2, 3])
     lines!(xs, ys .- i/6 .- 2, linestyle = :dot, linewidth = lw)
     lines!(xs, ys .- i/6 .- 3, linestyle = :dashdot, linewidth = lw)
     lines!(xs, ys .- i/6 .- 4, linestyle = :dashdotdot, linewidth = lw)
-    lines!(xs, ys .- i/6 .- 5, linestyle = [0.5, 1.0, 1.5, 2.5], linewidth = lw)
+    lines!(xs, ys .- i/6 .- 5, linestyle = Linestyle([0.5, 1.0, 1.5, 2.5]), linewidth = lw)
 end
 
 f
