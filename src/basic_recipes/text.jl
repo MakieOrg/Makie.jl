@@ -161,10 +161,13 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
 
-        strings.val != strs && (strings.val = strs)
-        positions.val != poss && (positions.val = poss)
-        notify(strings)
-        notify(positions)
+        strings_unequal = strings.val != strs
+        pos_unequal = positions.val != poss
+        strings_unequal && (strings.val = strs)
+        pos_unequal && (positions.val = poss)
+        # Check for equality very imortant, otherwise we get an infinite loop
+        strings_unequal && notify(strings)
+        pos_unequal && notify(positions)
 
         return
     end
