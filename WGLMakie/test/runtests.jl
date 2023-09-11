@@ -1,6 +1,5 @@
 using FileIO
 using WGLMakie, Makie, Test
-using Pkg
 using WGLMakie.JSServe
 import Electron
 using ReferenceTests

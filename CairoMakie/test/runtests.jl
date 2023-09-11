@@ -1,6 +1,5 @@
 using Test
 using CairoMakie
-using Pkg
 using Makie.FileIO
 using ReferenceTests
 
