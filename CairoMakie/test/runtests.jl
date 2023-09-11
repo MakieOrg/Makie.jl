@@ -2,9 +2,8 @@ using Test
 using CairoMakie
 using Pkg
 using Makie.FileIO
+using ReferenceTests
 
-path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
-Pkg.develop(PackageSpec(path = path))
 # Before changing Pkg environment, try the test in #864
 @testset "Runs without error" begin
     fig = Figure()
