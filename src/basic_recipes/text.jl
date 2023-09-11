@@ -161,8 +161,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
 
-        strings.val != strs && (strings[] = strs)
-        positions.val != poss && (positions[] = poss)
+        strings.val != strs && (strings.val = strs)
+        positions.val != poss && (positions.val = poss)
+        notify(strings)
+        notify(positions)
 
         return
     end
