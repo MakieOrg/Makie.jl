@@ -108,6 +108,7 @@ end
 ############################################################################
 
 function _chosen_limits(rz, ax)
+
     r = positivize(Rect2f(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
@@ -124,9 +125,8 @@ end
 function _selection_vertices(ax_scene, outer, inner)
     _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
     proj(point) = project(ax_scene, point) .+ minimum(ax_scene.px_area[])
-    transf = Makie.transform_func(ax_scene)
-    outer = positivize(Makie.apply_transform(transf, outer))
-    inner = positivize(Makie.apply_transform(transf, inner))
+    outer = positivize(outer)
+    inner = positivize(inner)
 
     obl = bottomleft(outer)
     obr = bottomright(outer)
@@ -143,8 +143,7 @@ function _selection_vertices(ax_scene, outer, inner)
 end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
-    # only rectangle zoom if modifier is pressed (defaults to true)
-    ispressed(ax.scene, r.modifier) || return Consume(false)
+
     # TODO: actually, the data from the mouse event should be transformed already
     # but the problem is that these mouse events are generated all the time
     # and outside of log axes, you would quickly run into domain errors
@@ -180,7 +179,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         try
             r.callback(r.rectnode[])
         catch e
-            @warn "error in rectangle zoom" exception=e
+            @warn "error in rectangle zoom" exception=CapturedException(e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)
@@ -204,11 +203,11 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     return Consume(true)
 end
 
-function positivize(r::Rect2)
+function positivize(r::Rect2f)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
-    return Rect2(newori, newwidths)
+    return Rect2f(newori, newwidths)
 end
 
 function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
