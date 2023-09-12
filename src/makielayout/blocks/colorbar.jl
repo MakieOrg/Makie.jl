@@ -158,7 +158,7 @@ function initialize_block!(cb::Colorbar)
             end
         else
             # Mapping is always 0..1, but color should be scaled
-            return limits[1] + (mapping .* (limits[2] - limits[1]))
+            return limits[1] .+ (mapping .* (limits[2] - limits[1]))
         end
     end
 
