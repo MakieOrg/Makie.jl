@@ -73,8 +73,6 @@ function point_iterator(list::AbstractVector)
     end
 end
 
-point_iterator(plot::Combined) = point_iterator(plot.plots)
-
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
 function br_getindex(vector::AbstractVector, idx::CartesianIndex, dim::Int)
@@ -168,7 +166,14 @@ function update_boundingbox!(bb_ref, bb::Rect)
 end
 
 function data_limits(plot::AbstractPlot)
-    limits_from_transformed_points(iterate_transformed(plot))
+    isempty(plot.plots) && return Rect3f()
+
+    bb_ref = Ref(data_limits(plot.plots[1]))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
+    end
+
+    return bb_ref[]
 end
 
 function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
