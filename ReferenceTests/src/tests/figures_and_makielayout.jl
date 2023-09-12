@@ -142,6 +142,7 @@ end
     ax = PolarAxis(f[1, 1])
     zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
     p = surface!(ax, 0..2pi, 0..10, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
     translate!(p, 0, 0, -200)
     Colorbar(f[1, 2], p)
     f

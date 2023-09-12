@@ -57,6 +57,10 @@
         ax = PolarAxis(fig[1, 1])
         p = scatter!(ax, Point2f(0))
 
+        # verify defaults
+        @test ax.rautolimitmargin[] == (0.05, 0.05)
+        @test ax.thetaautolimitmargin[] == (0.05, 0.05)
+
         # default should have mostly set default limits
         @test ax.rlimits[] == (0.0, nothing)
         @test ax.thetalimits[] == (0.0, 2pi)
@@ -65,6 +69,7 @@
 
         # but we want to test automatic limits here
         autolimits!(ax)
+        reset_limits!(ax) # needed because window isn't open
         @test ax.rlimits[] == (nothing, nothing)
         @test ax.thetalimits[] == (nothing, nothing)
         @test ax.target_rlims[] == (0.0, 10.0)
@@ -72,6 +77,7 @@
 
         # derived r, default theta
         scatter!(ax, Point2f(0, 1))
+        reset_limits!(ax)
         @test ax.target_rlims[] == (0.0, 1.05)
         @test ax.target_thetalims[] == (0.0, 2pi)
 
@@ -83,25 +89,52 @@
 
         # default r, derived theta
         scatter!(ax, Point2f(0.5pi, 1))
+        reset_limits!(ax)
         @test ax.target_rlims[] == (0.0, 10.0)
         @test all(isapprox.(ax.target_thetalims[], (-0.025pi, 0.525pi), rtol=1e-6))
 
         # derive both
         scatter!(ax, Point2f(pi, 2))
+        reset_limits!(ax)
         @test all(isapprox.(ax.target_rlims[], (0.95, 2.05), rtol=1e-6))
         @test all(isapprox.(ax.target_thetalims[], (-0.05pi, 1.05pi), rtol=1e-6))
 
         # set limits
         rlims!(ax, 0.0, 3.0)
+        reset_limits!(ax)
         @test ax.rlimits[] == (0.0, 3.0)
         @test ax.target_rlims[] == (0.0, 3.0)
         @test all(isapprox.(ax.target_thetalims[], (-0.05pi, 1.05pi), rtol=1e-6))
 
         thetalims!(ax, 0.0, 2pi)
+        reset_limits!(ax)
         @test ax.rlimits[] == (0.0, 3.0)
         @test ax.target_rlims[] == (0.0, 3.0)
         @test ax.thetalimits[] == (0.0, 2pi)
         @test ax.target_thetalims[] == (0.0, 2pi)
+
+        # surface should result in tight limits (indirectly tests tightlimits!())
+        fig = Figure()
+        ax = PolarAxis(fig[1, 1])
+        surface!(ax, 0.5pi..pi, 2..5, rand(10, 10))
+
+        @test ax.rautolimitmargin[] == (0.0, 0.0)
+        @test ax.thetaautolimitmargin[] == (0.0, 0.0)
+
+        # with default limits
+        reset_limits!(ax)
+        @test ax.rlimits[] == (0.0, nothing)
+        @test ax.thetalimits[] == (0.0, 2pi)
+        @test ax.target_rlims[] == (0.0, 5.0)
+        @test ax.target_thetalims[] == (0.0, 2pi)
+
+        # with fully automatic limits
+        autolimits!(ax)
+        reset_limits!(ax)
+        @test ax.rlimits[] == (nothing, nothing)
+        @test ax.thetalimits[] == (nothing, nothing)
+        @test ax.target_rlims[] == (2.0, 5.0)
+        @test all(isapprox.(ax.target_thetalims[], (0.5pi, 1.0pi), rtol=1e-6))
     end
 
     @testset "Radial Distortion" begin

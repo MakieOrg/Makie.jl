@@ -1690,9 +1690,9 @@ end
         "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
         theta_as_x::Bool = true
         "The relative margins added to the autolimits in r direction."
-        rautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
+        rautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
         "The relative margins added to the autolimits in theta direction."
-        thetaautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
+        thetaautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
 
         # Spine
 
