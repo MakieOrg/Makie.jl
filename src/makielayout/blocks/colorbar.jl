@@ -147,18 +147,29 @@ function initialize_block!(cb::Colorbar)
         end
     end
     limits = cmap.colorrange
-    colors = lift(blockscene, cmap.mapping, cmap.color_mapping_type, cmap.color, limits, cb.nsteps; ignore_equal_values=true) do mapping, mapping_type, values, limits, n
+    colors = lift(blockscene, cmap.mapping, cmap.color_mapping_type, cmap.color, cb.nsteps, limits;
+                  ignore_equal_values=true) do mapping, mapping_type, values, n, limits
         if mapping === nothing
             if mapping_type === Makie.banded
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             elseif mapping_type === Makie.categorical
                 return convert(Vector{Float64},1:length(unique(values)))
             else
-                return convert(Vector{Float64}, LinRange(limits[1], limits[2], n))
+                return convert(Vector{Float64}, LinRange(limits..., n))
             end
         else
-            # Mapping is always 0..1, but color should be scaled
-            return limits[1] .+ (mapping .* (limits[2] - limits[1]))
+            if mapping_type === Makie.categorical
+                # This is because cmap.mapping comes from cgrad.values, which doesn't encode categorical colormapping correctly
+                error("Mapping should not be used for categorical colormaps")
+            end
+            if mapping_type === Makie.continuous
+                # we need at least nsteps, to correctly sample from the colormap (which has the mapping applied already)
+                return convert(Vector{Float64}, LinRange(limits..., n))
+            else
+                # Mapping is always 0..1, but color should be scaled
+                return limits[1] .+ (mapping .* (limits[2] - limits[1]))
+            end
+            return
         end
     end
 
@@ -235,7 +246,6 @@ function initialize_block!(cb::Colorbar)
         visible=show_cats,
         inspectable=false
     )
-
     image!(blockscene,
         lift(x-> LinRange(extrema(x)..., 2), xrange), lift(y-> LinRange(extrema(y)..., 2), yrange), continous_pixels;
         colormap = colormap,

@@ -179,7 +179,6 @@ end
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
     )
-
     f
 end
 
@@ -194,7 +193,7 @@ end
 end
 
 @reference_test "Colorbar for recipes" begin
-    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
+    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;resolution=(800, 800)))
     Colorbar(fig[1, 2], pl; size=100)
     x = LinRange(-1, 1, 20)
     y = LinRange(-1, 1, 20)
