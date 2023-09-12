@@ -477,12 +477,11 @@ function reset_limits!(po::PolarAxis)
 
             # Generate auto limits
             lims2d = Rect2f(data_limits(po.scene, p -> !(p in po.scene.plots)))
+
             if po.theta_as_x[]
-                dtheta, dr = 0.05 .* (widths(lims2d)[1] > 1.9pi ? 0.0 : widths(lims2d)[1], widths(lims2d)[2])
                 thetamin, rmin = minimum(lims2d)
                 thetamax, rmax = maximum(lims2d)
             else
-                dr, dtheta = 0.05 .* (widths(lims2d)[1], widths(lims2d)[2] > 1.9pi ? 0.0 : widths(lims2d)[2])
                 rmin, thetamin = minimum(lims2d)
                 rmax, thetamax = maximum(lims2d)
             end
@@ -492,16 +491,19 @@ function reset_limits!(po::PolarAxis)
                 rmin = max(0.0, rmin - 5.0)
                 rmax = rmin + 10.0
             else
-                rmin = max(0.0, rmin - dr)
-                rmax += dr
+                dr = rmax - rmin
+                rmin = max(0.0, rmin - po.rautolimitmargin[][1] * dr)
+                rmax += po.rautolimitmargin[][2] * dr
             end
+
+            dtheta = thetamax - thetamin
             if thetamin == thetamax
                 thetamin, thetamax = (0.0, 2pi)
-            elseif thetamax - thetamin > 1.5pi
+            elseif dtheta > 1.5pi
                 thetamax = thetamin + 2pi
             else
-                thetamin -= dtheta
-                thetamax += dtheta
+                thetamin -= po.thetaautolimitmargin[][1] * dtheta
+                thetamax += po.thetaautolimitmargin[][2] * dtheta
             end
 
         else
@@ -858,6 +860,8 @@ end
 ################################################################################
 
 
+needs_tight_limits(::Surface) = true
+
 function plot!(
     po::PolarAxis, P::PlotFunc,
     attributes::Attributes, args...;
@@ -870,7 +874,11 @@ function plot!(
 
     plot = plot!(po.scene, P, allattrs, args...)
 
-    reset_limits!(po)
+    needs_tight_limits(plot) && tightlimits!(po)
+
+    if is_open_or_any_parent(po.scene)
+        reset_limits!(po)
+    end
 
     plot
 end
@@ -919,6 +927,13 @@ function autolimits!(po::PolarAxis, unlock_zoom = true)
     end
     return
 end
+
+function tightlimits!(po::PolarAxis)
+    po.rautolimitmargin = (0, 0)
+    po.thetaautolimitmargin = (0, 0)
+    reset_limits!(po)
+end
+
 
 """
     rlims!(ax::PolarAxis[, rmin], rmax)
