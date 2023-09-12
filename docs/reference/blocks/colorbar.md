@@ -1,5 +1,3 @@
-
-
 # Colorbar
 
 A Colorbar needs a colormap and a tuple of low/high limits.

@@ -176,13 +176,27 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
     end
 end
 
-@enum ColorValuePosition color_edge color_center
+"""
+    ColorMappingType
 
-struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
+* categorical: there are n categories, and n colors are assigned to each category
+* banded: there are ranges edge_start..edge_end, inside which values are mapped to one color
+* continous: colors are mapped continuously to values
+"""
+@enum ColorMappingType categorical banded continuous
+
+
+struct ColorMapping{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
+    # The pure color values from the plot this colormapping is associated to
+    # Will be always an array of numbers
     color::Observable{T}
     colormap::Observable{Vector{RGBAf}}
     raw_colormap::Observable{Vector{RGBAf}} # the above is scaled (when coming from cgrad), this is not
+
+    # Scaling function that gets applied to color
     scale::Observable{Function}
+
+    # The 0-1 scaled values from crange, which describe the colormapping
     mapping::Observable{Union{Nothing, Vector{Float64}}}
     colorrange::Observable{Vec{2,Float64}}
 
@@ -190,34 +204,43 @@ struct ColorMap{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}}
     highclip::Observable{Union{Automatic, RGBAf}} # Defaults to last color in colormap
     nan_color::Observable{RGBAf}
 
-    categorical::Observable{Bool}
-    value_position::ColorValuePosition
+    color_mapping_type::Observable{ColorMappingType}
 
     # scaled attributes
     colorrange_scaled::Observable{Vec2f}
     color_scaled::Observable{T2}
 end
 
+struct Categorical{T} <: AbstractVector{RGBAf}
+    values::Vector{T}
+end
+Categorical(values) = Categorical(to_colormap(values))
+Base.getindex(c::Categorical, i) = c.values[i]
+Base.size(c::Categorical) = size(c.values)
+
+_array_value_type(::Categorical{T}) where T = Vector{T}
 _array_value_type(A::AbstractArray{<:Number}) = typeof(A)
 _array_value_type(r::AbstractRange) = Vector{eltype(r)} # use vector instead, to have a few less types to worry about
 
 _to_colormap(x::PlotUtils.ColorGradient) = to_colormap(x.colors)
 _to_colormap(x) = to_colormap(x)
 
-function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, colorrange, colorscale, alpha, lowclip,
-                  highclip, nan_color,
-                  value_position=automatic) where {N}
+
+colormapping_type(@nospecialize(colormap)) = continuous
+colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
+colormapping_type(::Categorical) = categorical
+
+function ColorMapping(
+        color::AbstractArray{<:Number, N}, colors_obs, colormap, colorrange,
+        colorscale, alpha, lowclip, highclip, nan_color,
+        color_mapping_type=lift(colormapping_type, colormap; ignore_equal_values=true)) where {N}
+
     T = _array_value_type(color)
     color_tight = convert(Observable{T}, colors_obs)
-    _colormap = Observable(RGBAf[]; ignore_equal_values=true)
+    map_colors = Observable(RGBAf[]; ignore_equal_values=true)
     raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
-    categorical = Observable(false)
+    mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing; ignore_equal_values=true)
     colorscale = convert(Observable{Function}, colorscale)
-    mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing)
-
-    if !(value_position isa ColorValuePosition)
-        value_position = colormap[] isa PlotUtils.CategoricalColorGradient ? color_edge : color_center
-    end
 
     function update_colors(cmap, a)
         colors = to_colormap(cmap)
@@ -226,9 +249,8 @@ function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, color
             colors = map(c -> RGBAf(Colors.color(c), Colors.alpha(c) * a), colors)
             raw_colors = map(c -> RGBAf(Colors.color(c), Colors.alpha(c) * a), raw_colors)
         end
-        _colormap[] = colors
+        map_colors[] = colors
         raw_colormap[] = raw_colors
-        categorical[] = cmap isa PlotUtils.CategoricalColorGradient
         if cmap isa PlotUtils.ColorGradient
             mapping[] = cmap.values
         end
@@ -260,32 +282,33 @@ function ColorMap(color::AbstractArray{<:Number, N}, colors_obs, colormap, color
     color_scaled = lift(color_tight, colorscale) do color, scale
         return el32convert(apply_scale(scale, color))
     end
-    CT = ColorMap{N,T,typeof(color_scaled[])}
-    return CT(color_tight,
-            _colormap,
-            raw_colormap,
-            colorscale,
-            mapping,
-            colorrange,
-            _lowclip,
-            _highclip,
-            lift(to_color, nan_color),
-            categorical,
-            value_position,
-            colorrange_scaled,
-            color_scaled)
+    CT = ColorMapping{N,T,typeof(color_scaled[])}
+
+    return CT(
+        color_tight,
+        map_colors,
+        raw_colormap,
+        colorscale,
+        mapping,
+        colorrange,
+        _lowclip,
+        _highclip,
+        lift(to_color, nan_color),
+        color_mapping_type,
+        colorrange_scaled,
+        color_scaled)
 end
 
 function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nospecialize(plot))
-    return ColorMap(c, color, plot.colormap, plot.colorrange, plot.colorscale, plot.alpha, plot.lowclip,
+    return ColorMapping(c, color, plot.colormap, plot.colorrange, plot.colorscale, plot.alpha, plot.lowclip,
                     plot.highclip, plot.nan_color)
 end
 
-function to_color(c::ColorMap)
+function to_color(c::ColorMapping)
     return numbers_to_colors(c.color_scaled[], c.colormap[], identity, c.colorrange_scaled[], lowclip(c)[], highclip(c)[], c.nan_color[])
 end
 
-function Base.get(c::ColorMap, value::Number)
+function Base.get(c::ColorMapping, value::Number)
     return numbers_to_colors([value], c.colormap[], c.scale[], c.colorrange_scaled[], lowclip(c)[],
                              highclip(c)[], c.nan_color[])[1]
 end
@@ -308,5 +331,5 @@ function assemble_colors(::Number, color, plot)
                       cm.nan_color)
 end
 
-highclip(cmap::ColorMap) = lift((cm, hc) -> hc isa Automatic ? last(cm) : hc, cmap.colormap, cmap.highclip)
-lowclip(cmap::ColorMap) = lift((cm, hc) -> hc isa Automatic ? first(cm) : hc, cmap.colormap, cmap.lowclip)
+highclip(cmap::ColorMapping) = lift((cm, hc) -> hc isa Automatic ? last(cm) : hc, cmap.colormap, cmap.highclip)
+lowclip(cmap::ColorMapping) = lift((cm, hc) -> hc isa Automatic ? first(cm) : hc, cmap.colormap, cmap.lowclip)

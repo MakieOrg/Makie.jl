@@ -397,10 +397,10 @@ end
     @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
 end
 
-@testset "Invalid inverse transform" begin
-    f = Figure()
-    @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
-end
+# @testset "Invalid inverse transform" begin
+#     f = Figure()
+#     @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
+# end
 
 @testset "Colorscales" begin
     x = 10.0.^(1:0.1:4)

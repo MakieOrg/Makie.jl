@@ -72,9 +72,9 @@ end
 
 function handle_intensities!(attributes, plot)
     color = plot.calculated_colors
-    if color[] isa Makie.ColorMap
+    if color[] isa Makie.ColorMapping
         attributes[:intensity] = color[].color_scaled
-        interp = color[].categorical[] ? :nearest : :linear
+        interp = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
         attributes[:color_map] = Texture(color[].colormap; minfilter=interp)
         attributes[:color_norm] = color[].colorrange_scaled
         attributes[:nan_color] = color[].nan_color

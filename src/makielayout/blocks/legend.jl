@@ -394,7 +394,7 @@ choose_scalar(attr, default) = is_scalar_attribute(to_value(attr)) ? attr : defa
 
 function extract_color(@nospecialize(plot), color_default)
     color = haskey(plot, :calculated_color) ? plot.calculated_color : plot.color
-    color[] isa ColorMap && return color_default
+    color[] isa ColorMapping && return color_default
     return choose_scalar(color, color_default)
 end
 
