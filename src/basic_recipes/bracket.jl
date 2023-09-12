@@ -37,7 +37,7 @@ function Makie.convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, 
     points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
         (Point2f(x1, y1), Point2f(x2, y2))
     end
-    (points,)
+    return (points,)
 end
 
 function Makie.plot!(pl::Bracket)
@@ -117,7 +117,7 @@ function Makie.plot!(pl::Bracket)
 end
 
 function point_iterator(pl::Bracket)
-    point_iterator(pl.plots[1])
+    return Point2f[tupl[i] for tupl in pl[1][] for i in 1:2]
 end
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
