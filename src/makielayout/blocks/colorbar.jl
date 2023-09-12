@@ -137,7 +137,15 @@ function initialize_block!(cb::Colorbar)
             cb.scale, alpha, cb.lowclip, cb.highclip, nan_color)
     end
 
-    colormap = cmap.raw_colormap
+    colormap = lift(cmap.raw_colormap, cmap.colormap, cmap.mapping) do rcm, cm, mapping
+        if isnothing(mapping)
+            return rcm
+        else
+            # if there is a mapping, we want to apply it to the colormap, which is already done for cmap.colormap (by calling to_colormap(cgrad(...)))
+            # In the future, we may want to use cmap.mapping to do this ourselves
+            return cm
+        end
+    end
     limits = cmap.colorrange
     colors = lift(blockscene, cmap.mapping, cmap.color_mapping_type, cmap.color, limits, cb.nsteps; ignore_equal_values=true) do mapping, mapping_type, values, limits, n
         if mapping === nothing
@@ -149,7 +157,8 @@ function initialize_block!(cb::Colorbar)
                 return convert(Vector{Float64}, LinRange(limits[1], limits[2], n))
             end
         else
-            return mapping
+            # Mapping is always 0..1, but color should be scaled
+            return limits[1] + (mapping .* (limits[2] - limits[1]))
         end
     end
 
@@ -206,7 +215,6 @@ function initialize_block!(cb::Colorbar)
         n = length(colors)
         return v ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
-
     # TODO, implement interpolate = true for irregular grics in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
     show_cats = Observable(false; ignore_equal_values=true)
@@ -220,18 +228,18 @@ function initialize_block!(cb::Colorbar)
             show_cats[] = true
         end
     end
+
     heatmap!(blockscene,
-           xrange, yrange, continous_pixels;
-           colormap=colormap,
-           colorscale=cmap.scale,
-           visible=show_cats,
-           inspectable=false)
+        xrange, yrange, continous_pixels;
+        colormap=colormap,
+        visible=show_cats,
+        inspectable=false
+    )
 
     image!(blockscene,
         lift(x-> LinRange(extrema(x)..., 2), xrange), lift(y-> LinRange(extrema(y)..., 2), yrange), continous_pixels;
         colormap = colormap,
-        colorscale = cmap.scale,
-           visible=show_continous,
+        visible = show_continous,
         inspectable = false
     )
 
