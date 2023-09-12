@@ -166,9 +166,13 @@ function update_boundingbox!(bb_ref, bb::Rect)
 end
 
 function data_limits(plot::AbstractPlot)
-    isempty(plot.plots) && return Rect3f()
+    # Assume primitive plot
+    if isempty(plot.plots)
+        return limits_from_transformed_points(iterate_transformed(plot))
+    end
 
-    bb_ref = Ref(data_limits(plot.plots[1]))
+    # Assume Combined Plot
+    bb_ref = Base.RefValue(data_limits(plot.plots[1]))
     for i in 2:length(plot.plots)
         update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
     end
