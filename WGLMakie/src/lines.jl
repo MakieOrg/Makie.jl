@@ -38,7 +38,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
     linewidth = converted_attribute(plot, :linewidth)
     cmap = plot.calculated_colors[]
 
-    color = cmap isa Makie.ColorMap ? cmap.color_scaled : plot.calculated_colors
+    color = cmap isa Makie.ColorMapping ? cmap.color_scaled : plot.calculated_colors
 
     for (k, attribute) in [:linewidth => linewidth, :color => color]
         attribute = lift(attribute) do x
@@ -52,7 +52,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
             uniforms[Symbol("$(k)_end")] = attribute
         else
             if attribute[] isa AbstractVector{<:Number} && k == :color
-                @assert cmap isa Makie.ColorMap
+                @assert cmap isa Makie.ColorMapping
                 attribute = lift(Makie.numbers_to_colors, attribute, cmap.colormap, identity,
                                  cmap.colorrange_scaled, cmap.lowclip,
                                  cmap.highclip,
