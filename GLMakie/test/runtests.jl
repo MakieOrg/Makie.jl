@@ -3,7 +3,6 @@ using GLMakie, Test
 using FileIO
 using GeometryBasics
 using GeometryBasics: origin
-using Pkg
 using Random
 using ReferenceTests
 

@@ -260,7 +260,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 - `color=theme(scene, :linecolor)` sets the color of the line. If no color is set, multiple calls to `line!` will cycle through the axis color palette.
   Otherwise, one can set one color per line point by passing a `Vector{<:Colorant}`, or one colorant for the whole line. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
-- `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
+- `linestyle::Union{Nothing, Symbol, Linestyle} = nothing` sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`.
 - `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
 
 $(Base.Docs.doc(colormap_attributes!))
