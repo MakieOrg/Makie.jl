@@ -212,7 +212,9 @@ end
              colormap=cgrad(:Spectral, 5; categorical=true), vertical=false)
     Colorbar(fig[1, 3][4, 1]; limits=(-1, 1), colormap=:heat, vertical=false, flipaxis=false,
              highclip=:cyan, lowclip=:red)
-
+    xs = LinRange(0, 20, 50)
+    ys = LinRange(0, 15, 50)
+    zs = [cos(x) * sin(y) for x in xs, y in ys]
     ax, hm = contourf(fig[2, 3][1, 1], xs, ys, zs;
                       colormap=:Spectral, levels=[-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
     Colorbar(fig[2, 3][1, 2], hm; ticks=-1:0.25:1)
