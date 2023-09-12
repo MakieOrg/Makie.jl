@@ -72,9 +72,9 @@ end
 
 function handle_intensities!(attributes, plot)
     color = plot.calculated_colors
-    if color[] isa Makie.ColorMap
+    if color[] isa Makie.ColorMapping
         attributes[:intensity] = color[].color_scaled
-        interp = color[].categorical[] ? :nearest : :linear
+        interp = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
         attributes[:color_map] = Texture(color[].colormap; minfilter=interp)
         attributes[:color_norm] = color[].colorrange_scaled
         attributes[:nan_color] = color[].nan_color
@@ -417,7 +417,7 @@ function draw_atomic(screen::Screen, scene::Scene, heatmap::Heatmap)
         t = Makie.transform_func_obs(heatmap)
         mat = heatmap[3]
         space = heatmap.space # needs to happen before connect_camera! call
-        xypos = map(t, heatmap[1], heatmap[2], space) do t, x, y, space
+        xypos = lift(t, heatmap[1], heatmap[2], space) do t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
