@@ -123,6 +123,7 @@ function initialize_block!(cb::Colorbar)
     if cb.colormap[] isa ColorMapping
         cmap = cb.colormap[]
     else
+        # Old way without Colormapping. We keep it, to be able to create a colormap directly
         limits = lift(blockscene, cb.limits, cb.colorrange) do limits, colorrange
             if all(!isnothing, (limits, colorrange))
                 error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
@@ -141,7 +142,7 @@ function initialize_block!(cb::Colorbar)
     colors = lift(blockscene, cmap.mapping, cmap.color_mapping_type, cmap.color, limits, cb.nsteps; ignore_equal_values=true) do mapping, mapping_type, values, limits, n
         if mapping === nothing
             if mapping_type === Makie.banded
-                return sort!(convert(Vector{Float64}, mapping))
+                error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             elseif mapping_type === Makie.categorical
                 return convert(Vector{Float64},1:length(unique(values)))
             else
@@ -197,7 +198,6 @@ function initialize_block!(cb::Colorbar)
 
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
-
     continous_pixels = lift(blockscene, cb.vertical, colors,
                             cmap.color_mapping_type) do v, colors, mapping_type
         if mapping_type !== Makie.categorical
@@ -206,9 +206,9 @@ function initialize_block!(cb::Colorbar)
         n = length(colors)
         return v ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
+
     # TODO, implement interpolate = true for irregular grics in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
-
     show_cats = Observable(false; ignore_equal_values=true)
     show_continous = Observable(false; ignore_equal_values=true)
     on(blockscene, cmap.color_mapping_type; update=true) do type
@@ -328,6 +328,7 @@ function initialize_block!(cb::Colorbar)
 
     ticks = Observable{Any}()
     map!(ticks, colors, cmap.color_mapping_type, cb.ticks) do cs, type, ticks
+        # For categorical we just enumerate
         type === Makie.categorical ? (1:length(cs), string.(cs)) : ticks
     end
 

@@ -151,13 +151,13 @@ end
     f = Figure(resolution = (800, 400))
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
-    
+
     ax2 = PolarAxis(f[1, 2], title = "Modified spine")
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
     scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
-    
+
     f
 end
 
@@ -166,9 +166,9 @@ end
 @reference_test "PolarAxis decorations" begin
     f = Figure(resolution = (400, 400), backgroundcolor = :black)
     ax = PolarAxis(
-        f[1, 1], 
+        f[1, 1],
         backgroundcolor = :black,
-        rminorgridvisible = true, rminorgridcolor = :red, 
+        rminorgridvisible = true, rminorgridcolor = :red,
         rminorgridwidth = 1.0, rminorgridstyle = :dash,
         thetaminorgridvisible = true, thetaminorgridcolor = :blue,
         thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
@@ -179,7 +179,7 @@ end
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
     )
-    
+
     f
 end
 
@@ -191,4 +191,35 @@ end
         surface!(0:0.5:10, 0:0.5:10, (x, y) -> (sin(x) + 0.5x) * (cos(y) + 0.5y))
     end
     f
+end
+
+@reference_test "Colorbar for recipes" begin
+    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
+    Colorbar(fig[1, 2], pl; size=100)
+    x = LinRange(-1, 1, 20)
+    y = LinRange(-1, 1, 20)
+    z = LinRange(-1, 1, 20)
+    values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
+
+    # TO not make this fail in CairoMakie, we dont actually plot the volume
+    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    Colorbar(fig[2, :], cp; size=300)
+
+    # horizontal colorbars
+    Colorbar(fig[1, 3][2, 1]; limits=(0, 10), colormap=:viridis,
+             vertical=false)
+    Colorbar(fig[1, 3][3, 1]; limits=(0, 5), size=25,
+             colormap=cgrad(:Spectral, 5; categorical=true), vertical=false)
+    Colorbar(fig[1, 3][4, 1]; limits=(-1, 1), colormap=:heat, vertical=false, flipaxis=false,
+             highclip=:cyan, lowclip=:red)
+
+    ax, hm = contourf(fig[2, 3][1, 1], xs, ys, zs;
+                      colormap=:Spectral, levels=[-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
+    Colorbar(fig[2, 3][1, 2], hm; ticks=-1:0.25:1)
+
+    ax, hm = contourf(fig[3, :][1, 1], xs, ys, zs;
+                      colormap=:Spectral, colorscale=sqrt, levels=[ 0, 0.25, 0.5, 1])
+    Colorbar(fig[3, :][1, 2], hm; width=200)
+
+    fig
 end
