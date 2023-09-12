@@ -234,9 +234,6 @@ function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_
     px_o = extents[1]
     px_width = extents[2] - extents[1]
 
-    lim_o = limits[1]
-    lim_w = limits[2] - limits[1]
-
     tickvalues_scaled = scale.(minortickvalues)
 
     tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
@@ -494,6 +491,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # before other stuff is triggered by them, which accesses the
     # ticklabel boundingbox (which needs to be updated already)
     # so we move the new listener from text! to the front
+
     pushfirst!(ticklabel_annotation_obs.listeners, pop!(ticklabel_annotation_obs.listeners))
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore
