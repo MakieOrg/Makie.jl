@@ -44,9 +44,8 @@
 
     @testset "error" begin
         input = 0.0, false, false
-        for align in ("center", 0.5, ("center", "center"), (0.5, :center))
-            msg = "`label_align` needs to be of type NTuple{2, <:Real}, not of type $(typeof(align))"
-            @test_throws ErrorException(msg) Makie.calculate_bar_label_align(align, input...)
+        for align in ("center", 0.5, ("center", "center"))
+            @test_throws ErrorException Makie.calculate_bar_label_align(align, input...)
         end
     end
 

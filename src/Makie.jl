@@ -23,6 +23,7 @@ using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
+using CRC32c
 using Packing
 using SignedDistanceFields
 using Markdown
@@ -86,6 +87,7 @@ import MakieCore: convert_arguments, convert_attribute, default_theme, conversio
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
+export Linestyle
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 const RGBAf = RGBA{Float32}
@@ -287,6 +289,7 @@ export save, colorbuffer
 export cgrad, available_gradients, showgradients
 
 export Pattern
+export ReversibleScale
 
 export assetpath
 # default icon for Makie

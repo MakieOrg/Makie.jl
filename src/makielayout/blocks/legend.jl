@@ -257,10 +257,10 @@ function connect_block_layoutobservables!(leg::Legend, layout_width, layout_heig
 end
 
 
+
 function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
-
     fracpoints = attrs.markerpoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
@@ -390,44 +390,43 @@ function _rename_attributes!(T, a)
     a
 end
 
+choose_scalar(attr, default) = is_scalar_attribute(to_value(attr)) ? attr : default
 
-function scalar_lift(plot, attr, default)
-    observable = Observable{Any}()
-    map!(plot, observable, attr, default) do at, def
-        Makie.is_scalar_attribute(at) ? at : def
-    end
-    return observable
+function extract_color(@nospecialize(plot), color_default)
+    color = haskey(plot, :calculated_color) ? plot.calculated_color : plot.color
+    color[] isa ColorMapping && return color_default
+    return choose_scalar(color, color_default)
 end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
-        color = scalar_lift(plot, plot.color, legend.linecolor),
-        linestyle = scalar_lift(plot, plot.linestyle, legend.linestyle),
-        linewidth = scalar_lift(plot, plot.linewidth, legend.linewidth))]
+        color = extract_color(plot, legend.linecolor),
+        linestyle = choose_scalar(plot.linestyle, legend.linestyle),
+        linewidth = choose_scalar(plot.linewidth, legend.linewidth))]
 end
-
 
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
-        color = scalar_lift(plot, plot.color, legend.markercolor),
-        marker = scalar_lift(plot, plot.marker, legend.marker),
-        markersize = scalar_lift(plot, plot.markersize, legend.markersize),
-        strokewidth = scalar_lift(plot, plot.strokewidth, legend.markerstrokewidth),
-        strokecolor = scalar_lift(plot, plot.strokecolor, legend.markerstrokecolor),
+        color = extract_color(plot, legend.markercolor),
+        marker = choose_scalar(plot.marker, legend.marker),
+        markersize = choose_scalar(plot.markersize, legend.markersize),
+        strokewidth = choose_scalar(plot.strokewidth, legend.markerstrokewidth),
+        strokecolor = choose_scalar(plot.strokecolor, legend.markerstrokecolor),
     )]
 end
 
 function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
+    color = extract_color(plot, legend.polycolor)
     LegendElement[PolyElement(
-        color = scalar_lift(plot, plot.color, legend.polycolor),
-        strokecolor = scalar_lift(plot, plot.strokecolor, legend.polystrokecolor),
-        strokewidth = scalar_lift(plot, plot.strokewidth, legend.polystrokewidth),
+        color = color,
+        strokecolor = choose_scalar(plot.strokecolor, legend.polystrokecolor),
+        strokewidth = choose_scalar(plot.strokewidth, legend.polystrokewidth),
     )]
 end
 
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(polycolor = scalar_lift(plot, plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+    LegendElement[PolyElement(polycolor = choose_scalar(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack

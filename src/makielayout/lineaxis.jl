@@ -234,9 +234,6 @@ function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_
     px_o = extents[1]
     px_width = extents[2] - extents[1]
 
-    lim_o = limits[1]
-    lim_w = limits[2] - limits[1]
-
     tickvalues_scaled = scale.(minortickvalues)
 
     tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
@@ -494,6 +491,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # before other stuff is triggered by them, which accesses the
     # ticklabel boundingbox (which needs to be updated already)
     # so we move the new listener from text! to the front
+
     pushfirst!(ticklabel_annotation_obs.listeners, pop!(ticklabel_annotation_obs.listeners))
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore
@@ -556,12 +554,12 @@ end
 get_tickvalues(::Automatic, ::typeof(identity), vmin, vmax) = get_tickvalues(WilkinsonTicks(5, k_min = 3), vmin, vmax)
 
 # fall back to identity if not overloaded scale function is used with automatic
-get_tickvalues(::Automatic, F, vmin, vmax) = get_tickvalues(automatic, identity, vmin, vmax)
+get_tickvalues(::Automatic, _, vmin, vmax) = get_tickvalues(automatic, identity, vmin, vmax)
 
 # fall back to non-scale aware behavior if no special version is overloaded
-get_tickvalues(ticks, scale, vmin, vmax) = get_tickvalues(ticks, vmin, vmax)
+get_tickvalues(ticks, _, vmin, vmax) = get_tickvalues(ticks, vmin, vmax)
 
-function get_ticks(ticks_and_labels::Tuple{Any, Any}, any_scale, ::Automatic, vmin, vmax)
+function get_ticks(ticks_and_labels::Tuple{Any, Any}, _, ::Automatic, vmin, vmax)
     n1 = length(ticks_and_labels[1])
     n2 = length(ticks_and_labels[2])
     if n1 != n2
@@ -570,7 +568,7 @@ function get_ticks(ticks_and_labels::Tuple{Any, Any}, any_scale, ::Automatic, vm
     ticks_and_labels
 end
 
-function get_ticks(tickfunction::Function, any_scale, formatter, vmin, vmax)
+function get_ticks(tickfunction::Function, _, formatter, vmin, vmax)
     result = tickfunction(vmin, vmax)
     if result isa Tuple{Any, Any}
         tickvalues, ticklabels = result
@@ -585,14 +583,13 @@ _logbase(::typeof(log10)) = "10"
 _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
 
-
-function get_ticks(::Automatic, scale::Union{typeof(log10), typeof(log2), typeof(log)},
-        any_formatter, vmin, vmax)
-    get_ticks(LogTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
+function get_ticks(::Automatic, scale::LogFunctions, any_formatter, vmin, vmax)
+    ticks = LogTicks(WilkinsonTicks(5, k_min = 3))
+    get_ticks(ticks, scale, any_formatter, vmin, vmax)
 end
 
 # log ticks just use the normal pipeline but with log'd limits, then transform the labels
-function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof(log)}, ::Automatic, vmin, vmax)
+function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
 
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
@@ -605,7 +602,7 @@ function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof
     )
     labels = rich.(_logbase(scale), superscript.(labels_scaled, offset = Vec2f(0.1f0, 0f0)))
 
-    (ticks, labels)
+    ticks, labels
 end
 
 # function get_ticks(::Automatic, scale::typeof(Makie.logit), any_formatter, vmin, vmax)
@@ -684,7 +681,6 @@ Gets tick labels by formatting each value in `values` according to a `Formatting
 """
 get_ticklabels(formatstring::AbstractString, values) = [Formatting.format(formatstring, v) for v in values]
 
-
 function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmin = vmin / m.multiple
     dvmax = vmax / m.multiple
@@ -727,8 +723,7 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
 end
 
 # for log scales, we need to step in log steps at the edges
-function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log),typeof(log2),typeof(log10)},
-                              tickvalues, vmin, vmax)
+function get_minor_tickvalues(i::IntervalsBetween, scale::LogFunctions, tickvalues, vmin, vmax)
     vals = Float64[]
     length(tickvalues) < 2 && return vals
     n = i.n

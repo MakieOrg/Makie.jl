@@ -5,15 +5,15 @@ end
 """
     bar_default_fillto(tf, ys, offset)::(ys, offset)
 
-Returns the default y-positions and offset positions for the given transform `tf`.  
+Returns the default y-positions and offset positions for the given transform `tf`.
 
-In order to customize this for your own transformation type, you can dispatch on 
+In order to customize this for your own transformation type, you can dispatch on
 `tf`.
 
 Returns a Tuple of new y positions and offset arrays.
 
 ## Arguments
-- `tf`: `plot.transformation.transform_func[]`. 
+- `tf`: `plot.transformation.transform_func[]`.
 - `ys`: The y-values passed to `barplot`.
 - `offset`: The `offset` parameter passed to `barplot`.
 """
@@ -162,22 +162,10 @@ function stack_grouped_from_to(i_stack, y, grp)
 end
 
 function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direction::Bool, flip::Bool)
-    make_align(a::VecTypes{2, <:Real}) = Vec2f(a)
-    make_align(a::NTuple{2, Symbol}) = to_align(a)
-    make_align(a) = error("`label_align` needs to be of type NTuple{2, <:Real}, not of type $(typeof(a))")
     if label_align == automatic
-        if flip
-            label_rotation += π
-        end
-        if !in_y_direction
-            label_rotation += π/2
-        end
-        s, c = sincos(label_rotation)
-        scale = 1 / max(abs(s), abs(c))
-        align = Vec2f(0.5 - 0.5scale * s, 0.5 - 0.5scale * c)
-        return align
+        return angle2align(-label_rotation - !flip * pi + in_y_direction * pi/2)
     else
-        return make_align(label_align)
+        return to_align(label_align, "Failed to convert `label_align` $label_align.")
     end
 end
 
@@ -313,14 +301,14 @@ function Makie.plot!(p::BarPlot)
 
     bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
-                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align)
-
+                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align; priority = 1)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
         inspectable = p.inspectable, transparency = p.transparency,
-        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha
+        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
     )
+
     if !isnothing(p.bar_labels[])
         text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
     end
