@@ -1,4 +1,4 @@
-# Colorbar
++# Colorbar
 
 A Colorbar needs a colormap and a tuple of low/high limits.
 The colormap's axis will then span from low to high along the visual representation of the colormap.
@@ -75,10 +75,12 @@ You can create a true categorical map with good default ticks, by wrapping a col
 \begin{examplefigure}{}
 ```julia
 fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
+Colorbar(fig[1, 2], pl)
+fig
 ```
 \end{examplefigure}
 
-Sadly, we couldn't use `cgrad(...; categorical=true)` for this, since it has an ambigious meaning for true categorical values.
+We can't use `cgrad(...; categorical=true)` for this, since it has an ambigious meaning for true categorical values.
 
 ## Attributes
 
