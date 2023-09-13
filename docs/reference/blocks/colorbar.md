@@ -65,6 +65,21 @@ fig
 ```
 \end{examplefigure}
 
+### Experimental Categorical support
+
+!!! warning
+    This feature might change outside breaking releases, since the API is not yet finalized
+
+You can create a true categorical map with good default ticks, by wrapping a colormap into `Makie.Categorical(cmap)`:
+
+\begin{examplefigure}{}
+```julia
+fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
+```
+\end{examplefigure}
+
+Sadly, we couldn't use `cgrad(...; categorical=true)` for this, since it has an ambigious meaning for true categorical values.
+
 ## Attributes
 
 \attrdocs{Colorbar}
