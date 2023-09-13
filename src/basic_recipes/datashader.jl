@@ -271,6 +271,9 @@ end
 """
     datashader(points::AbstractVector{<: Point})
 
+!!! warning
+    This feature might change outside breaking releases, since the API is not yet finalized.
+
 Points can be any array type supporting iteration & getindex, including memory mapped arrays.
 If you have separate arrays for x and y coordinates and want to avoid conversion and copy, consider using:
 ```Julia
@@ -338,7 +341,6 @@ function fast_bb(points, f)
     N = length(points)
     NT = Threads.nthreads()
     slices = ceil(Int, N / NT)
-    offset = 1
     results = fill(Point2f(0), NT, 2)
     Threads.@threads for i in 1:NT
         start = ((i - 1) * slices + 1)
@@ -396,11 +398,27 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         end
         return
     end
+    p.raw_colorrange = colorrange
     image!(p, canvas_with_aggregation;
         operation=p.operation, local_operation=p.local_operation, interpolate=p.interpolate,
         MakieCore.generic_plot_attributes(p)...,
         MakieCore.colormap_attributes(p)...)
     return p
+end
+
+# Sadly we must define the colorbar here and cant use the default fallback,
+# Since the Image plot will only see the scaled data, and since its hard to make Colorbar support the equalize_histogram
+# transform, we just create the colorbar form the raw data.
+# TODO, should we merge the local/global op with colorscale?
+function extract_colormap(plot::DataShader)
+    color = map(x -> x.aggbuffer, plot.canvas)
+    return ColorMapping(
+       color[], color, plot.colormap, plot.raw_colorrange,
+        plot.colorscale,
+        plot.alpha,
+        plot.highclip,
+        plot.lowclip,
+        plot.nan_color)
 end
 
 function aggregate_categories!(canvases, categories; method=AggThreads())

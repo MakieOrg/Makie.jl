@@ -23,6 +23,7 @@ fig, ax, ds = datashader(airports,
     async = false,
     figure = (; figurepadding=0, resolution=(360*3, 160*3))
 )
+Colorbar(fig[1, 2], ds, label="Number of airports")
 hidedecorations!(ax); hidespines!(ax)
 fig
 ```
