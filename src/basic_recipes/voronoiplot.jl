@@ -170,7 +170,8 @@ end
 
 function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     if transform_func(p) isa Polar
-        limits_from_transformed_points(p.converted[1][])
+        iter = (to_ndim(Point3f, p, 0f0) for p in p.converted[1][])
+        limits_from_transformed_points(iter)
     else
         limits_from_transformed_points(iterate_transformed(p))
     end
