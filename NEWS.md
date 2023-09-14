@@ -2,6 +2,8 @@
 
 ## master
 
+- Added the `dragging` attribute to `Slider` and `IntervalSlider` which can be used, for example, to react to value changes only when a drag ends [3231](https://github.com/MakieOrg/Makie.jl/pull/3231).
+
 ## v0.19.9
 
 - Allow arbitrary reversible scale functions through `ReversibleScale`.
