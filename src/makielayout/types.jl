@@ -876,7 +876,10 @@ end
         tellheight::Bool = true
         "The start value of the slider or the value that is closest in the slider range."
         startvalue = 0
-        "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
+        """
+        The current value of the slider. Don't change this attribute manually, use the function `set_close_to!` instead.
+        To trigger other (possibly expensive) behavior only at the end of a drag interaction, update only when the `dragging` attribute is `false`.
+        """
         value = 0
         "The width of the slider line"
         linewidth::Float32 = 15
@@ -958,7 +961,10 @@ end
         tellheight::Bool = true
         "The start values of the slider or the values that are closest in the slider range."
         startvalues = Makie.automatic
-        "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
+        """
+        The current interval of the slider. Don't change this attribute manually, use the function `set_close_to!` instead.
+        To trigger other (possibly expensive) behavior only at the end of a drag interaction, update only when the `dragging` attribute is `false`.
+        """
         interval = (0, 0)
         "The width of the slider line"
         linewidth::Float64 = 15.0
