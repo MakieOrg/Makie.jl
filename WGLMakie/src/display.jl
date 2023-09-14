@@ -234,7 +234,7 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     if js_uuid(scene) in screen.displayed_scenes
         return true
     else
-        scene_ser = serialize_scene(scene)
+        scene_ser = serialize_scene(disp.session, scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
         insert_scene!(disp, screen, parent) # make sure parent is also already displayed
@@ -257,7 +257,7 @@ end
 function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
-        plot_data = serialize_plots(scene, [plot])
+        plot_data = serialize_plots(disp.session, scene, [plot])
         JSServe.evaljs_value(disp.session, js"""
         $(WGL).then(WGL=> {
             WGL.insert_plot($(js_uuid(scene)), $plot_data);

@@ -253,15 +253,25 @@ function create_texture(data) {
         return tex;
     } else {
         // a little optimization to not send the texture atlas over & over again
-        const tex_data =
-            buffer == "texture_atlas" ? TEXTURE_ATLAS[0].value : buffer;
-        return new THREE.DataTexture(
-            tex_data,
-            data.size[0],
-            data.size[1],
-            THREE[data.three_format],
-            THREE[data.three_type]
-        );
+        if (typeof buffer === "string" && buffer.startsWith("http")) {
+            console.log("loading texture from url")
+            console.log(buffer);
+            const tex = new THREE.TextureLoader().load(buffer);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.rotation = 0.5 * Math.PI;
+            tex.flipY = true;
+            return tex;
+        } else {
+            const tex_data =
+                buffer == "texture_atlas" ? TEXTURE_ATLAS[0].value : buffer;
+            return new THREE.DataTexture(
+                tex_data,
+                data.size[0],
+                data.size[1],
+                THREE[data.three_format],
+                THREE[data.three_type]
+            );
+        }
     }
 }
 

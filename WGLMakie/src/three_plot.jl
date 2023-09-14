@@ -40,7 +40,7 @@ end
 
 function three_display(session::Session, scene::Scene; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
-    scene_serialized = serialize_scene(scene)
+    scene_serialized = serialize_scene(session, scene)
 
     window_open = scene.events.window_open
     width, height = size(scene)

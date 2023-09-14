@@ -12,7 +12,7 @@ macro compile(block)
             session = Session(JSServe.NoConnection(); asset_server=JSServe.NoServer())
             three_display(session, scene)
             JSServe.jsrender(session, figlike)
-            s = serialize_scene(scene)
+            s = serialize_scene(session, scene)
             JSServe.SerializedMessage(session, Dict(:data => s))
             close(session)
             return nothing
