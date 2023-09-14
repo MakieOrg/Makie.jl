@@ -40,8 +40,6 @@ function initialize_block!(isl::IntervalSlider)
         end
     end
 
-    dragging = Observable(false)
-
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)
     displayed_sliderfractions = Observable((0.0, 0.0))
@@ -50,7 +48,7 @@ function initialize_block!(isl::IntervalSlider)
     on(sliderfractions) do fracs
         # only update displayed fraction through sliderfraction if not dragging
         # dragging overrides the value so there is clear mouse interaction
-        if !dragging[]
+        if !isl.dragging[]
             displayed_sliderfractions[] = fracs
         end
     end
@@ -87,7 +85,7 @@ function initialize_block!(isl::IntervalSlider)
         [ci, ci]
     end
 
-    endbuttons = scatter!(blockscene, endpoints, color = endbuttoncolors,
+    endbuttons = scatter!(blockscene, endpoints, color = endbuttoncolors, marker = Circle,
         markersize = isl.linewidth, strokewidth = 0, inspectable = false)
 
     linesegs = linesegments!(blockscene, linepoints, color = linecolors,
@@ -107,7 +105,7 @@ function initialize_block!(isl::IntervalSlider)
     end
     buttonsizes = @lift($(isl.linewidth) .* $button_magnifications)
     buttons = scatter!(blockscene, middlepoints, color = isl.color_active, strokewidth = 0,
-        markersize = buttonsizes, inspectable = false)
+        marker = Circle, markersize = buttonsizes, inspectable = false)
 
     mouseevents = addmouseevents!(blockscene, isl.layoutobservables.computedbbox)
 
@@ -118,15 +116,17 @@ function initialize_block!(isl::IntervalSlider)
     start_disp_fractions = Ref((0.0, 0.0))
     startindices = Ref((1, 1))
 
-    onmouseleftdrag(mouseevents) do event
-
-        dragging[] = true
+    function get_fraction(event)
         fraction = if isl.horizontal[]
             (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
         else
             (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
         end
         fraction = clamp(fraction, 0, 1)
+    end
+
+    function handle_event(event)
+        fraction = get_fraction(event)
 
         if state[] in (:min, :max)
             if isl.snap[]
@@ -178,47 +178,42 @@ function initialize_block!(isl::IntervalSlider)
                 isl.selected_indices[] = newindices
             end
         end
+    end
 
+    onmouseleftdrag(mouseevents) do event
+        handle_event(event)
         return Consume(true)
     end
 
     onmouseleftdragstop(mouseevents) do event
-        dragging[] = false
+        isl.dragging[] = false
         # adjust slider to closest legal value
         sliderfractions[] = sliderfractions[]
+        notify(isl.selected_indices)
         return Consume(true)
     end
 
     onmouseleftdown(mouseevents) do event
+        isl.dragging[] = true
 
-        pos = event.px
-
-        dim = isl.horizontal[] ? 1 : 2
-        frac = clamp(
-            (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim]),
-            0, 1
-        )
-
-        startfraction[] = frac
+        fraction = get_fraction(event)
+        startfraction[] = fraction
         startindices[] = isl.selected_indices[]
         start_disp_fractions[] = displayed_sliderfractions[]
 
-        if state[] in (:both, :none)
-            return Consume(true)
-        end
-
-        newindex = closest_fractionindex(isl.range[], frac)
-        if abs(newindex - isl.selected_indices[][1]) < abs(newindex - isl.selected_indices[][2])
-            isl.selected_indices[] = (newindex, isl.selected_indices[][2])
-        else
-            isl.selected_indices[] = (isl.selected_indices[][1], newindex)
-        end
-        # linecolors[] = [color_active[], color_inactive[]]
+        handle_event(event)
 
         return Consume(true)
     end
 
+    onmouseleftclick(mouseevents) do event
+        isl.dragging[] = false
+        notify(isl.selected_indices)
+        return Consume(true)
+    end
+
     onmouseleftdoubleclick(mouseevents) do event
+        isl.dragging[] = false
         isl.selected_indices[] = isl.selected_indices[] = if isl.startvalues[] === Makie.automatic
             (1, lastindex(isl.range[]))
         else

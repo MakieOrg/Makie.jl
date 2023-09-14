@@ -892,6 +892,24 @@ end
         alignmode = Inside()
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
+        """
+        Set to `true` when the user starts dragging the slider and to `false` when
+        they stop.
+        This attribute should not be changed by the user.
+        The dragging status changes before the `value` observable changes, therefore
+        the first `value` in a new drag action has `dragging === true` and the last one `false`.
+        To ignore `value` change events happening during a drag (for example because
+        your update logic is expensive), you can check that `dragging === false`:
+
+        ```
+        on(slider.value) do value
+            if !slider.dragging[]
+                # do expensive update with value
+            end
+        end
+        ```
+        """
+        dragging::Bool = false
     end
 end
 
@@ -956,6 +974,24 @@ end
         alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
+        """
+        Set to `true` when the user starts dragging the slider and to `false` when
+        they stop.
+        This attribute should not be changed by the user.
+        The dragging status changes before the `interval` observable changes, therefore
+        the first `interval` in a new drag action has `dragging === true` and the last one `false`.
+        To ignore `interval` change events happening during a drag (for example because
+        your update logic is expensive), you can check that `dragging === false`:
+
+        ```
+        on(slider.interval) do interval
+            if !slider.dragging[]
+                # do expensive update with interval
+            end
+        end
+        ```
+        """
+        dragging::Bool = false
     end
 end
 
