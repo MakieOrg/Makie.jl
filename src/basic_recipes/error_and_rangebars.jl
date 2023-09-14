@@ -28,7 +28,8 @@ $(ATTRIBUTES)
         colorscale = identity,
         colorrange = automatic,
         inspectable = theme(scene, :inspectable),
-        transparency = false
+        transparency = false,
+        cycle = [:color]
     )
 end
 
@@ -57,7 +58,8 @@ $(ATTRIBUTES)
         colorscale = identity,
         colorrange = automatic,
         inspectable = theme(scene, :inspectable),
-        transparency = false
+        transparency = false,
+        cycle = [:color]
     )
 end
 
