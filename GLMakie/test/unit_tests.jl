@@ -91,6 +91,59 @@ end
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
         GLMakie.destroy!(screen)
     end
+
+    @testset "Mouse state machine" begin
+        s = Scene(camera = campixel!, resolution = (400, 400))
+
+        p1 = poly!(s, BBox(100, 200, 100, 200))
+        p2 = poly!(s, BBox(200, 300, 200, 300))
+
+        me = addmouseevents!(s, p1)
+
+        events = []
+
+        on(me.obs) do event
+            push!(events, event)
+        end
+
+        display(s) # don't immediately run next code, needs to wait for render first it seems?
+
+        sleep(0.1)
+
+        s.events.mouseposition[] = (0, 0)
+        s.events.mouseposition[] = (150, 150)
+        s.events.mouseposition[] = (170, 170)
+        s.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+        s.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.release)
+        s.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+        s.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.release)
+        s.events.mouseposition[] = (160, 160)
+        s.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+        s.events.mouseposition[] = (150, 150)
+        s.events.mouseposition[] = (140, 140)
+        s.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.release)
+
+        MT = Makie.MouseEventTypes
+
+        @test map(e -> (e.type, (e.px...,)), events) == [
+            (MT.enter, (150, 150)),
+            (MT.over, (170, 170)),
+            (MT.leftdown, (170, 170)),
+            (MT.leftup, (170, 170)),
+            (MT.leftclick, (170, 170)),
+            (MT.leftdown, (170, 170)),
+            (MT.leftup, (170, 170)),
+            (MT.leftclick, (170, 170)),
+            (MT.leftdoubleclick, (170, 170)),
+            (MT.over, (160, 160)),
+            (MT.leftdown, (160, 160)),
+            (MT.leftdragstart, (150, 150)), # not sure about position here? should it be previous where the drag starts?
+            (MT.leftdrag, (150, 150)),
+            (MT.leftdrag, (140, 140)),
+            (MT.leftdragstop, (140, 140)), # should leftup come before this or not?
+            (MT.leftup, (140, 140)),
+        ]
+    end
 end
 
 @testset "emtpy!(fig)" begin
