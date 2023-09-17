@@ -18,7 +18,21 @@ f
 
 ## GLMakie
 
-For technical reasons, GLMakie's color buffer does not have an alpha component.
+For technical reasons, GLMakie's color buffer does not have an alpha component:
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(backgroundcolor = (:blue, 0.4))
+Axis(f[1, 1], backgroundcolor = (:tomato, 0.5))
+f
+```
+\end{examplefigure}
+
+
 With the following trick you can still save an image with transparent background.
 It works by setting two different background colors and calculating the foreground color with alpha from the difference.
 
