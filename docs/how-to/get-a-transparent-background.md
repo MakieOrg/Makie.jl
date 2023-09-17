@@ -54,7 +54,7 @@ function alpha_colorbuffer(figure)
     end
 end
 
-f = Figure(backgroundcolor = :blue)
+f = Figure(backgroundcolor = (:blue, 0.4))
 Axis(f[1, 1], backgroundcolor = (:tomato, 0.5))
 f
 
