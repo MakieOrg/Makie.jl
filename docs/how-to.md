@@ -1,5 +1,5 @@
 @def order = 3
 
-# How To
+# How-Tos
 
 {{list_folder how-to}}
