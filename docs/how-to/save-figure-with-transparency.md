@@ -1,4 +1,4 @@
-# How to get a transparent background
+# How to save a `Figure` with transparency
 
 ## CairoMakie
 
