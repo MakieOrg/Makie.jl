@@ -330,7 +330,8 @@ apply_transform(f::NTuple{3, typeof(identity)}, r::Rect) = r
 const pseudolog10 = ReversibleScale(
     x -> sign(x) * log10(abs(x) + 1),
     x -> sign(x) * (exp10(abs(x)) - 1);
-    limits=(0f0, 3f0)
+    limits=(0f0, 3f0),
+    name=:pseudolog10
 )
 
 Symlog10(hi) = Symlog10(-hi, hi)
@@ -351,7 +352,7 @@ function Symlog10(lo, hi)
     else
         x
     end
-    ReversibleScale(forward, inverse; limits=(0f0, 3f0))
+    return ReversibleScale(forward, inverse; limits=(0.0f0, 3.0f0), name=:Symlog10)
 end
 
 inverse_transform(::typeof(identity)) = identity

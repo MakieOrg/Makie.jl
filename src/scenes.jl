@@ -564,19 +564,6 @@ function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     list
 end
 
-"""
-Flattens all the combined plots and returns a Vector of Atomic plots
-"""
-function flatten_combined(plots::Vector, flat=AbstractPlot[])
-    for elem in plots
-        if (elem isa Combined)
-            flatten_combined(elem.plots, flat)
-        else
-            push!(flat, elem)
-        end
-    end
-    flat
-end
 
 function insertplots!(screen::AbstractDisplay, scene::Scene)
     for elem in scene.plots

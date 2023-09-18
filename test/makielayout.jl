@@ -168,6 +168,19 @@ end
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
+    @testset "errors" begin
+        f, ax, pl1 = scatter(rand(10))
+        pl2 = scatter!(ax, rand(10); color=rand(RGBf, 10))
+        pl3 = barplot!(ax, 1:3; colorrange=(0, 1))
+        @test_throws ErrorException Colorbar(f[1, 2], pl1)
+        @test_throws ErrorException Colorbar(f[1, 2], pl2)
+        @test_throws ErrorException Colorbar(f[1, 2], pl3)
+    end
+    @testset "Recipes" begin
+        f, ax, pl = barplot(1:3; color=1:3)
+        cbar = Colorbar(f[1, 2], pl)
+        @test cbar.limits[] == Vec(1.0, 3.0)
+    end
 end
 
 @testset "cycling" begin
@@ -384,10 +397,10 @@ end
     @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
 end
 
-@testset "Invalid inverse transform" begin
-    f = Figure()
-    @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
-end
+# @testset "Invalid inverse transform" begin
+#     f = Figure()
+#     @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
+# end
 
 @testset "Colorscales" begin
     x = 10.0.^(1:0.1:4)

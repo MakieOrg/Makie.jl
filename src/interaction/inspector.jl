@@ -219,7 +219,7 @@ disable!(inspector::DataInspector) = inspector.attributes.enabled[] = false
 Creates a data inspector which will show relevant information in a tooltip
 when you hover over a plot.
 
-This functionality can eb disabled on a per-plot basis by setting
+This functionality can be disabled on a per-plot basis by setting
 `plot.inspectable[] = false`. The displayed text can be adjusted by setting
 `plot.inspector_label` to a function `(plot, index, position) -> "my_label"`
 returning a label. See Makie documentation for more detail.
