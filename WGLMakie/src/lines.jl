@@ -7,7 +7,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     )
 
     color = plot.calculated_colors
-    if color[] isa Makie.ColorMap
+    if color[] isa Makie.ColorMapping
         uniforms[:colormap] = Sampler(color[].colormap)
         uniforms[:colorrange] = color[].colorrange_scaled
         uniforms[:highclip] = Makie.highclip(color[])
