@@ -273,6 +273,7 @@ end
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
+    Please be vary of bugs in the implementation and open issues if you encounter odd behaviour.
 
 Points can be any array type supporting iteration & getindex, including memory mapped arrays.
 If you have separate arrays for x and y coordinates and want to avoid conversion and copy, consider using:

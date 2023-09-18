@@ -11,7 +11,7 @@
 using DelimitedFiles, GLMakie
 GLMakie.activate!() # hide
 # For saving/showing/inlining into documentation we need to disable async calculation.
-Makie.set_theme!(DataShader = (; async_latest=false))
+Makie.set_theme!(DataShader = (; async=false))
 airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
 fig, ax, ds = datashader(airports,
     colormap=[:white, :black],
