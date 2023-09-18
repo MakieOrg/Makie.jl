@@ -406,20 +406,6 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     return p
 end
 
-# Sadly we must define the colorbar here and cant use the default fallback,
-# Since the Image plot will only see the scaled data, and since its hard to make Colorbar support the equalize_histogram
-# transform, we just create the colorbar form the raw data.
-# TODO, should we merge the local/global op with colorscale?
-function extract_colormap(plot::DataShader)
-    color = map(x -> x.aggbuffer, plot.canvas)
-    return ColorMapping(
-       color[], color, plot.colormap, plot.raw_colorrange,
-        plot.colorscale,
-        plot.alpha,
-        plot.highclip,
-        plot.lowclip,
-        plot.nan_color)
-end
 
 function aggregate_categories!(canvases, categories; method=AggThreads())
     for (k, canvas) in canvases
@@ -459,7 +445,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
     p.canvas = canvas_with_aggregation
     toal_value = Observable(0f0)
-    onany(canvas, p.points) do canvas, cats
+    on_func(canvas, p.points) do canvas, cats
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
@@ -492,6 +478,7 @@ function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Con
     return convert_arguments(P, xrange, yrange, pixel)
 end
 
+# TODO improve color legend API, to not need a fake plot like this
 struct FakePlot <: AbstractPlot{Poly}
     attributes::Attributes
 end
@@ -506,4 +493,19 @@ end
 
 function legendelements(plot::FakePlot, legend)
     return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
+end
+
+# Sadly we must define the colorbar here and cant use the default fallback,
+# Since the Image plot will only see the scaled data, and since its hard to make Colorbar support the equalize_histogram
+# transform, we just create the colorbar form the raw data.
+# TODO, should we merge the local/global op with colorscale?
+function extract_colormap(plot::DataShader)
+    color = map(x -> x.aggbuffer, plot.canvas)
+    return ColorMapping(
+       color[], color, plot.colormap, plot.raw_colorrange,
+        plot.colorscale,
+        plot.alpha,
+        plot.highclip,
+        plot.lowclip,
+        plot.nan_color)
 end
