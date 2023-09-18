@@ -2,6 +2,10 @@
 
 ## master
 
+## v0.19.10
+
+- Fix bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).
+
 ## v0.19.9
 
 - Allow arbitrary reversible scale functions through `ReversibleScale`.
