@@ -213,7 +213,7 @@ function isa_gl_struct(x::T) where T
 end
 function gl_convert_struct(x::T, uniform_name::Symbol) where T
     if isa_gl_struct(x)
-        return Dict{Symbol, Any}(map(fieldnames(x)) do name
+        return Dict{Symbol, Any}(map(fieldnames(T)) do name
             (Symbol("$uniform_name.$name") => gl_convert(getfield(x, name)))
         end)
     else

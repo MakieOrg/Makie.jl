@@ -423,8 +423,10 @@ function RenderObject(
         else
             k in (:indices, :visible, :ssao, :label, :cycle) && continue
             # structs are treated differently, since they have to be composed into their fields
+            # NOTE that merge!(data, ...) will break the iteration, so struct uniforms must
+            # be added after this iteration
             if isa_gl_struct(v)
-                merge!(data, gl_convert_struct(v, k))
+                merge!(passthrough, gl_convert_struct(v, k))
             elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
                 try
                     data[k] = gl_convert(v)
