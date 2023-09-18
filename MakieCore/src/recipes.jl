@@ -51,8 +51,8 @@ function _create_plot!(F, kw, scene::SceneLike, args...)
     return plot
 end
 
-plot(args...; kw...) = _create_plot(plot, kw, args...)
-plot!(args...; kw...) = _create_plot!(plot, kw, args...)
+plot(args...; kw...) = _create_plot(plot, Dict(kw), args...)
+plot!(args...; kw...) = _create_plot!(plot, Dict(kw), args...)
 
 
 """
