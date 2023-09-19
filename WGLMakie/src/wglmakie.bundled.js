@@ -20010,7 +20010,7 @@ function re_create_texture(old_texture, buffer, size) {
         tex.format = old_texture.format;
         tex.type = old_texture.type;
     } else {
-        tex = mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
+        tex = new mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
     }
     tex.minFilter = old_texture.minFilter;
     tex.magFilter = old_texture.magFilter;

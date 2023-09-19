@@ -272,7 +272,7 @@ function re_create_texture(old_texture, buffer, size) {
         tex.format = old_texture.format;
         tex.type = old_texture.type;
     } else {
-        tex = THREE.DataTexture(
+        tex = new THREE.DataTexture(
             buffer,
             size[0],
             size[1] ? size[1] : 1,
