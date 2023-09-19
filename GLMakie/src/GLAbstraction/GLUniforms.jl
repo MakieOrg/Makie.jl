@@ -200,6 +200,7 @@ gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
 gl_convert(s::Nothing) = s
 
 
+isa_gl_struct(x::Observable) = isa_gl_struct(to_value(x))
 isa_gl_struct(x::AbstractArray) = false
 isa_gl_struct(x::NATIVE_TYPES) = false
 isa_gl_struct(x::Colorant) = false
@@ -211,10 +212,19 @@ function isa_gl_struct(x::T) where T
     fnames = fieldnames(T)
     !isempty(fnames) && all(name -> isconcretetype(fieldtype(T, name)) && isbits(getfield(x, name)), fnames)
 end
+function gl_convert_struct(obs::Observable{T}, uniform_name::Symbol) where T
+    if isa_gl_struct(obs)
+        return Dict{Symbol, Any}(map(fieldnames(T)) do name
+            Symbol("$uniform_name.$name") => map(x -> gl_convert(getfield(x, name)), obs)
+        end)
+    else
+        error("can't convert $obs to a OpenGL type. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
+    end
+end
 function gl_convert_struct(x::T, uniform_name::Symbol) where T
     if isa_gl_struct(x)
         return Dict{Symbol, Any}(map(fieldnames(T)) do name
-            (Symbol("$uniform_name.$name") => gl_convert(getfield(x, name)))
+            Symbol("$uniform_name.$name") => gl_convert(getfield(x, name))
         end)
     else
         error("can't convert $x to a OpenGL type. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
