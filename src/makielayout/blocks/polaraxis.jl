@@ -835,8 +835,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
     spineplot = lines!(
         po.overlay,
         spine_points,
-        strokecolor = po.spinecolor,
-        strokewidth = po.spinewidth,
+        color = po.spinecolor,
+        linewidth = po.spinewidth,
         linestyle = po.spinestyle,
         visible = po.spinevisible
     )
