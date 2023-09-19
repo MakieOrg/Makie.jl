@@ -20004,14 +20004,25 @@ function create_texture(data) {
     }
 }
 function re_create_texture(old_texture, buffer, size) {
+    let tex;
     if (size.length == 3) {
-        const tex = new mod.DataTexture3D(buffer, size[0], size[1], size[2]);
+        tex = new mod.DataTexture3D(buffer, size[0], size[1], size[2]);
         tex.format = old_texture.format;
         tex.type = old_texture.type;
-        return tex;
     } else {
-        return new mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
+        tex = mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
     }
+    tex.minFilter = old_texture.minFilter;
+    tex.magFilter = old_texture.magFilter;
+    tex.anisotropy = old_texture.anisotropy;
+    tex.wrapS = old_texture.wrapS;
+    if (size.length > 1) {
+        tex.wrapT = old_texture.wrapT;
+    }
+    if (size.length > 2) {
+        tex.wrapR = old_texture.wrapR;
+    }
+    return tex;
 }
 function BufferAttribute(buffer) {
     const jsbuff = new mod.BufferAttribute(buffer.flat, buffer.type_length);
