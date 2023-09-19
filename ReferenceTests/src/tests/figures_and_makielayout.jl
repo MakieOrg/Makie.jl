@@ -236,7 +236,7 @@ end
     normaldist = RNG.randn(Point2f, 100000)
     ds1 = normaldist .+ (Point2f(-1, 0),)
     ds2 = normaldist .+ (Point2f(1, 0),)
-    ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2))
+    ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2); async=false)
     hidedecorations!(ax)
     axislegend(ax)
     fig

@@ -395,7 +395,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         canvas_with_aggregation[] = canvas
         # If not automatic, it will get updated by the above on(p.colorrange)
         if p.colorrange[] isa Automatic
-            colorrange[] = Vec2f(canvas.data_extrema)
+            colorrange[] = Vec2f(distinct_extrema_nan(canvas.data_extrema))
         end
         return
     end
