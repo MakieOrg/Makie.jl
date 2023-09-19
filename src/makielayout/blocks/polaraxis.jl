@@ -891,6 +891,10 @@ end
 
 delete!(ax::PolarAxis, p::AbstractPlot) = delete!(ax.scene, p)
 
+function update_state_before_display!(ax::PolarAxis)
+    reset_limits!(ax)
+    return
+end
 
 ################################################################################
 ### Utilities
