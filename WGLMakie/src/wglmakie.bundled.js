@@ -20642,7 +20642,7 @@ function traceMethodCalls(obj) {
             return function(...args) {
                 JSServe.Connection.send_to_julia({
                     msg_type: "4",
-                    message: JSON.stringify(args)
+                    message: String(args)
                 });
                 return;
             };

@@ -523,7 +523,7 @@ function traceMethodCalls(obj) {
                 // call origin method
                 JSServe.Connection.send_to_julia({
                     msg_type: "4",
-                    message: JSON.stringify(args),
+                    message: String(args),
                 });
                 return
             };
