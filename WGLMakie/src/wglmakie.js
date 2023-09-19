@@ -513,27 +513,7 @@ export function register_popup(popup, scene, plots_to_pick, callback) {
     });
 }
 
-function traceMethodCalls(obj) {
-    return new Proxy(obj, {
-        get(target, methodName, receiver) {
-            // get origin method
-            return function (...args) {
-                // write to file here
-                // _console[methodName].apply(this, args);
-                // call origin method
-                JSServe.Connection.send_to_julia({
-                    msg_type: "4",
-                    message: String(args),
-                });
-                return
-            };
-        },
-    });
-}
-// Oh boi! This is a bit of a hack...
-// But helps to debug on the CI!
-window._console = console;
-window.console = traceMethodCalls(console);
+
 
 window.WGL = {
     deserialize_scene,
