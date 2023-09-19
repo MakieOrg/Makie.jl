@@ -487,8 +487,7 @@ Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key
 
 function get_plots(plot::DataShader)
     return map(collect(plot._categories[])) do (name, color)
-        colors = RGBAf.(Colors.color(color), [0, 1, 1, 0])
-        return FakePlot(Attributes(; label=name, color=colors))
+        return FakePlot(Attributes(; label=name, color=color))
     end
 end
 
