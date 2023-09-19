@@ -226,12 +226,14 @@ end
 end
 
 @reference_test "datashader" begin
-    fig, ax, ds = datashader(rand(Point2f, 100); async=false)
+    airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
+    fewer = airports[RNG.rand(1:length(airports), 1000)]
+    fig, ax, ds = datashader(fewer; async=false)
     Colorbar(fig[1, 2], ds; width=100)
     hidedecorations!(ax)
     hidespines!(ax)
 
-    normaldist = randn(Point2f, 100000)
+    normaldist = RNG.randn(Point2f, 100000)
     ds1 = normaldist .+ (Point2f(-1, 0),)
     ds2 = normaldist .+ (Point2f(1, 0),)
     ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2))
