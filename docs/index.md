@@ -113,10 +113,10 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
 
   @@box
     ~~~<a class="boxlink" href="reference/plots/">~~~
-    @@title Plot Examples @@
+    @@title Plot Reference @@
     @@box-content
       @@description
-      Have a look at this list of examples for the available plotting functions.
+      A visual reference of all available plotting functions and their attributes.
       @@
       ~~~
       <img src="/assets/reference/plots/heatmap/code/output/mandelbrot_heatmap.png">
