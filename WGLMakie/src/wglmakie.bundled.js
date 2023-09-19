@@ -20636,6 +20636,21 @@ function register_popup(popup, scene, plots_to_pick, callback) {
         }
     });
 }
+function traceMethodCalls(obj) {
+    return new Proxy(obj, {
+        get (target, methodName, receiver) {
+            return function(...args) {
+                JSServe.Connection.send_to_julia({
+                    msg_type: "4",
+                    message: JSON.stringify(args)
+                });
+                return;
+            };
+        }
+    });
+}
+window._console = console;
+window.console = traceMethodCalls(console);
 window.WGL = {
     deserialize_scene,
     threejs_module,
