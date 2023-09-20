@@ -242,3 +242,21 @@ end
 
     fig
 end
+
+@reference_test "datashader" begin
+    airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
+    # Dont use the full dataset, since WGLMakie seems to time out if it's too big
+    fewer = airports[RNG.rand(1:length(airports), 1000)]
+    fig, ax, ds = datashader(fewer; async=false)
+    Colorbar(fig[1, 2], ds; width=100)
+    hidedecorations!(ax)
+    hidespines!(ax)
+
+    normaldist = RNG.randn(Point2f, 100000)
+    ds1 = normaldist .+ (Point2f(-1, 0),)
+    ds2 = normaldist .+ (Point2f(1, 0),)
+    ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2); async=false)
+    hidedecorations!(ax)
+    axislegend(ax)
+    fig
+end

@@ -513,6 +513,8 @@ export function register_popup(popup, scene, plots_to_pick, callback) {
     });
 }
 
+
+
 window.WGL = {
     deserialize_scene,
     threejs_module,
