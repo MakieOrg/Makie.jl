@@ -106,6 +106,7 @@ phis = range(0, 2pi, 37)
 cs = [r+cos(4phi) for phi in phis, r in rs]
 p = surface!(ax, 0..2pi, 0..10, cs, shading = false, colormap = :coolwarm)
 ax.gridz[] = 100
+tightlimits!(ax) # surface plots include padding by default
 Colorbar(f[2, 1], p, vertical = false, flipaxis = false)
 
 ax = PolarAxis(f[1, 2], title = "Voronoi")
@@ -212,7 +213,7 @@ Consider for example:
 ```julia
 fig = Figure()
 ax = PolarAxis(fig[1, 1], thetalimits = (0, pi))
-lines!(ax, range(0, pi, length=100), 10 .+ rand(100))
+lines!(ax, range(0, pi, length=100), 10 .+ sin.(0.3 .* (1:100)))
 fig
 ```
 \end{examplefigure}
@@ -223,8 +224,8 @@ This can be done by setting `ax.radial_distortion_threshold` to a value between 
 \begin{examplefigure}{svg = true}
 ```julia
 fig = Figure()
-ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radial_distortion_threshold = 0.2)
-lines!(ax, range(0, pi, length=100), 10 .+ rand(100))
+ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radial_distortion_threshold = 0.2, rlimits = (nothing, nothing))
+lines!(ax, range(0, pi, length=100), 10 .+ sin.(0.3 .* (1:100)))
 fig
 ```
 \end{examplefigure}
