@@ -398,10 +398,6 @@ end
 
             print(io, "</div>")
 
-            if active
-                print(io, contenttable())
-            end
-
             printlist(io, naventry.children, this_level)
             print(io, "</li>\n")
         end
