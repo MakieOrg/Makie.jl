@@ -227,6 +227,7 @@ end
 
 @reference_test "datashader" begin
     airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
+    # Dont use the full dataset, since WGLMakie seems to time out if it's too big
     fewer = airports[RNG.rand(1:length(airports), 1000)]
     fig, ax, ds = datashader(fewer; async=false)
     Colorbar(fig[1, 2], ds; width=100)
