@@ -487,6 +487,33 @@ a.boxlink:hover {
     margin-top: 0;
 }
 
+#content-table-container.content-table-hidden #on-this-page {
+    border-radius: 0.5rem;
+}
+
+#on-this-page {
+    width: 100%;
+    border: 0;
+    border-radius: 0.5rem 0.5rem 0 0;
+    padding: 0.4rem;
+    transition: 0.2s;
+}
+
+#content-table {
+    background-color: rgb(244, 244, 244);
+    max-height: 66vh;
+    transition: 0.6s;
+}
+
+#content-table .page-content {
+    padding: 0.2rem 0.5rem;
+}
+
+#content-table-container.content-table-hidden #content-table {
+    max-height: 0px;
+}
+
+
 .franklin-content {
     grid-column: 2;
     grid-row: 1;
@@ -498,6 +525,7 @@ a.boxlink:hover {
     max-width: none;
     display: block;
     margin-bottom: 1em;
+    padding-top: 1rem;
 }
 
 #navbar-container {
@@ -637,6 +665,13 @@ a.boxlink:hover {
         font-size: .85rem;
         border-left: 1px solid #f2f3f3;
         padding-left: calc(var(--grid-gap) / 3);
+    }
+    #on-this-page {
+        display: none;
+    }
+    #content-table-container.content-table-hidden #content-table {
+        max-height: 100vh;
+        background-color: transparent;
     }
 }
 
