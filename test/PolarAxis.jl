@@ -113,10 +113,11 @@
         @test ax.thetalimits[] == (0.0, 2pi)
         @test ax.target_thetalims[] == (0.0, 2pi)
 
-        # surface should result in tight limits (indirectly tests tightlimits!())
+        # test tightlimits
         fig = Figure()
         ax = PolarAxis(fig[1, 1])
         surface!(ax, 0.5pi..pi, 2..5, rand(10, 10))
+        tightlimits!(ax)
 
         @test ax.rautolimitmargin[] == (0.0, 0.0)
         @test ax.thetaautolimitmargin[] == (0.0, 0.0)
