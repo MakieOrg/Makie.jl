@@ -1,3 +1,4 @@
+const SERIALIZATION_FORMAT_VERSION = "v4"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -69,8 +70,6 @@ function Base.show(io::IO, atlas::TextureAtlas)
     println(io, "  downsample: ", atlas.downsample)
     println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
-
-const SERIALIZATION_FORMAT_VERSION = "v2"
 
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
@@ -292,14 +291,16 @@ function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
     return atlas.uv_rectangles[glyph_index!(atlas, b)]
 end
 
+crc(x, seed=UInt32(0)) = crc32c(collect(x), seed)
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
-    hash = StableHashTraits.stable_hash((glyphindex, FreeTypeAbstraction.fontname(font)))
+    hash = StableHashTraits.stable_hash((glyphindex, FreeTypeAbstraction.fontname(font));
+                                        alg=crc)
     return insert_glyph!(atlas, hash, (glyphindex, font))
 end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
-    return insert_glyph!(atlas, StableHashTraits.stable_hash(path), path)
+    return insert_glyph!(atlas, StableHashTraits.stable_hash(path; alg=crc), path)
 end
 
 
@@ -481,12 +482,15 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas))
     # left + right pad - cutoff from pixel centering
     full_pad = 2f0 * atlas.glyph_padding - 1
-    return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
+    # size without padding
+    unpadded_pixel_size = full_pixel_size_in_atlas .- full_pad
+    # See offset_bezierpath
+    return full_pixel_size_in_atlas ./ maximum(unpadded_pixel_size)
 end
 
 function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
-    # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* widths(Makie.bbox(path))
+    # See offset_bezierpath
+    return bezierpath_pad_scale_factor(atlas, path) * maximum(widths(bbox(path)))
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, markersize)
@@ -510,9 +514,28 @@ function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
 end
 
 function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
+    # - wh = widths(bbox(bp)) is the untouched size of the given bezierpath
+    # - full_pixel_size_in_atlas is the size of the signed distance field in the
+    #   texture atlas. This includes glyph padding
+    # - px_size is the size of signed distance field without padding
+    # To correct scaling on glow, stroke and AA widths in GLMakie we need to
+    # keep the aspect ratio of the aspect ratio (somewhat) correct when
+    # generating the sdf. This results in direct proportionality only for the
+    # longer dimension of wh and px_size. The shorter side becomes inaccurate
+    # due to integer rounding issues.
+    # 1. To calculate the width we can use the ratio of the proportional sides
+    #   scale = maximum(wh) / maximum(px_size)
+    # to scale the padded_size we need to display
+    #   scale * full_pixel_size_in_atlas
+    # (Part of this is moved to bezierpath_pad_scale_factor)
+    # 2. To calculate the offset we can simple move to the center of the bezier
+    #    path and consider that the center of the final marker. (From the center
+    #    scaling should be equal in ±x and ±y direction respectively.)
+
     bb = bbox(bp)
-    pad_offset = origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb)
-    return markersize .* pad_offset
+    scaled_size = bezierpath_pad_scale_factor(atlas, bp) * maximum(widths(bb))
+    return markersize * (origin(bb) .+ 0.5f0 * widths(bb) .- 0.5f0 .* scaled_size)
+
 end
 
 function offset_bezierpath(atlas::TextureAtlas, bp, scale, offset)

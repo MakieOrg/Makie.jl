@@ -109,7 +109,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
 
     WGLMakie = Attributes(
-        framerate = 30.0
+        framerate = 30.0,
+        resize_to_body = false
     ),
 
     RPRMakie = Attributes(
@@ -196,7 +197,7 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
-theme(::Nothing, key::Symbol) = theme(key)
+theme(::Nothing, key::Symbol; default=nothing) = theme(key; default)
 function theme(key::Symbol; default=nothing)
     if haskey(CURRENT_DEFAULT_THEME, key)
         val = to_value(CURRENT_DEFAULT_THEME[key])

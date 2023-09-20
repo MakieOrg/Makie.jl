@@ -278,12 +278,108 @@ end
 
 
 @testset "empty poly" begin
+    # Geometry Primitive
     f, ax, pl = poly(Rect2f[]);
     pl[1] = [Rect2f(0, 0, 1, 1)];
     @test pl.plots[1][1][] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
 
-    f, ax, pl = poly(Vector{Point2f}[])
+    # Empty Polygon
+    f, ax, pl = poly(Polygon(Point2f[]));
+    pl[1] = Polygon(Point2f[(1,0), (1,1), (0,1)]);
+    @test pl.plots[1][1][] == GeometryBasics.triangle_mesh(pl[1][])
+
+    f, ax, pl = poly(Polygon[]);
+    pl[1] = [Polygon(Point2f[(1,0), (1,1), (0,1)])];
+    @test pl.plots[1][1][] == GeometryBasics.triangle_mesh.(pl[1][])
+
+    # PointBased inputs
+    f, ax, pl = poly(Point2f[])
     points = decompose(Point2f, Circle(Point2f(0),1))
+    pl[1] = points
+    @test pl.plots[1][1][] == Makie.poly_convert(points)
+
+    f, ax, pl = poly(Vector{Point2f}[])
     pl[1] = [points]
     @test pl.plots[1][1][] == Makie.poly_convert(points)
+end
+
+@testset "Triplot" begin
+    xs = rand(Float32, 10)
+    ys = rand(Float32, 10)
+    ps = Point2f.(xs, ys)
+
+    @test convert_arguments(Triplot, xs, ys)[1] == ps
+    @test convert_arguments(Triplot, ps)[1] == ps
+
+    f, a, p = triplot(xs, ys)
+    tri = p.plots[1][1][]
+    @test tri.points ≈ ps
+end
+
+@testset "Voronoiplot" begin
+    xs = rand(Float32, 10)
+    ys = rand(Float32, 10)
+    ps = Point2f.(xs, ys)
+
+    @test convert_arguments(Voronoiplot, xs, ys)[1] == ps
+    @test convert_arguments(Voronoiplot, ps)[1] == ps
+
+    f, a, p = voronoiplot(xs, ys)
+    tess = p.plots[1][1][]
+    @test Point2f[tess.generators[i] for i in 1:10] ≈ ps
+
+    # Heatmap style signatures
+    xs = rand(Float32, 10)
+    ys = rand(Float32, 10)
+    zs = rand(Float32, 10, 10)
+
+    @test convert_arguments(Voronoiplot, zs)[1] == Point3f.(1:10, (1:10)', zs)[:]
+    @test convert_arguments(Voronoiplot, xs, ys, zs)[1] == Point3f.(xs, ys', zs)[:]
+
+    # color sorting
+    zs = [exp(-(x-y)^2) for x in LinRange(-1, 1, 10), y in LinRange(-1, 1, 10)]
+    fig, ax, sc = voronoiplot(1:10, 1:10, zs, markersize = 10, strokewidth = 3)
+    ps = [Point2f(x, y) for x in 1:10 for y in 1:10]
+    vorn = Makie.DelTri.voronoi(Makie.DelTri.triangulate(ps))
+    sc2 = voronoiplot!(vorn, color = zs, markersize = 10, strokewidth = 3)
+
+    for plot in (sc.plots[1], sc2)
+        polycols = plot.plots[1].color[]
+        polys = plot.plots[1][1][]
+        cs = zeros(10, 10)
+        for (p, c) in zip(polys, polycols)
+            # calculate center of poly, round to indices
+            i, j = clamp.(round.(Int, sum(first.(p.exterior)) / length(p.exterior)), 1, 10)
+            cs[i, j] = c
+        end
+
+        @test isapprox(cs, zs, rtol = 1e-6)
+    end
+end
+
+@testset "align conversions" begin
+    for (val, halign) in zip((0f0, 0.5f0, 1f0), (:left, :center, :right))
+        @test Makie.halign2num(halign) == val
+    end
+    @test_throws ErrorException Makie.halign2num(:bottom)
+    @test_throws ErrorException Makie.halign2num("center")
+    @test Makie.halign2num(0.73) == 0.73f0
+
+    for (val, valign) in zip((0f0, 0.5f0, 1f0), (:bottom, :center, :top))
+        @test Makie.valign2num(valign) == val
+    end
+    @test_throws ErrorException Makie.valign2num(:right)
+    @test_throws ErrorException Makie.valign2num("center")
+    @test Makie.valign2num(0.23) == 0.23f0
+
+    @test Makie.to_align((:center, :bottom)) == Vec2f(0.5, 0.0)
+    @test Makie.to_align((:right, 0.3)) == Vec2f(1.0, 0.3)
+
+    for angle in 4pi .* rand(10)
+        s, c = sincos(angle)
+        @test Makie.angle2align(angle) ≈ Vec2f(0.5c, 0.5s) ./ max(abs(s), abs(c)) .+ Vec2f(0.5)
+    end
+    # sanity checks
+    @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
+    @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
 end

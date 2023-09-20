@@ -2,6 +2,21 @@ using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
 
+function lift_convert(key, value, ::Attributes)
+    convert(value) = wgl_convert(value, Key{key}())
+    if value isa Observable
+        val = lift(convert, value)
+    else
+        val = convert(value)
+    end
+    if key === :colormap && val[] isa AbstractArray
+        return ShaderAbstractions.Sampler(val)
+    else
+        return val
+    end
+end
+
+
 function lift_convert(key, value, plot)
     convert(value) = wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
     if value isa Observable
@@ -152,8 +167,10 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
     return convert(Quaternion, t)
 end
 
-function wgl_convert(value, key1, key2)
-    val = Makie.convert_attribute(value, key1, key2)
+
+
+function wgl_convert(value, key1, key2...)
+    val = Makie.convert_attribute(value, key1, key2...)
     return if val isa AbstractArray{<:Float64}
         return Makie.el32convert(val)
     else
@@ -161,7 +178,7 @@ function wgl_convert(value, key1, key2)
     end
 end
 
-function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
+function wgl_convert(value::AbstractMatrix, ::key"colormap", key2...)
     return ShaderAbstractions.Sampler(value)
 end
 
@@ -180,7 +197,7 @@ function register_geometry_updates(update_buffer::Observable, named_buffers)
         if buffer isa Buffer
             on(ShaderAbstractions.updater(buffer).update) do (f, args)
                 # update to replace the whole buffer!
-                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+                if f === ShaderAbstractions.update!
                     new_array = args[1]
                     flat = flatten_buffer(new_array)
                     update_buffer[] = [name, serialize_three(flat), length(new_array)]
@@ -205,7 +222,7 @@ function uniform_updater(uniforms::Dict)
     for (name, value) in uniforms
         if value isa Sampler
             on(ShaderAbstractions.updater(value).update) do (f, args)
-                if f == setindex! && args[2] isa Colon
+                if f === ShaderAbstractions.update!
                     updater[] = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
                 end
                 return
@@ -233,7 +250,7 @@ reinterpret_faces(faces::AbstractVector) = collect(reinterpret(UInt32, decompose
 function reinterpret_faces(faces::Buffer)
     result = Observable(reinterpret_faces(ShaderAbstractions.data(faces)))
     on(ShaderAbstractions.updater(faces).update) do (f, args)
-        if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+        if f === ShaderAbstractions.update!
             result[] = reinterpret_faces(args[1])
         end
     end
@@ -264,7 +281,9 @@ function serialize_scene(scene::Scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
+        dict = Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
+        dict[:resolution] = lift(res -> Int32[res...], scene.camera.resolution)
+        dict
     else
         nothing
     end

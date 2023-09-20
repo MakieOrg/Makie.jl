@@ -27,3 +27,6 @@ Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 RPRMakie = "22d9f318-5e34-4b44-b769-6e3734a732a6"
 RadeonProRender = "27029320-176d-4a42-b57d-56729d2ad457"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
+
+[compat]
+Documenter = "<1"

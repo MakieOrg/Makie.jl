@@ -180,7 +180,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         try
             r.callback(r.rectnode[])
         catch e
-            @warn "error in rectangle zoom" exception=e
+            @warn "error in rectangle zoom" exception=(e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)
@@ -211,7 +211,7 @@ function positivize(r::Rect2)
     return Rect2(newori, newwidths)
 end
 
-function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -302,7 +302,6 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     ypanlock = ax.ypanlock
     xpankey = ax.xpankey
     ypankey = ax.ypankey
-    panbutton = ax.panbutton
 
     scene = ax.scene
     cam = camera(scene)

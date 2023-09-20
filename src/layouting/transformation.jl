@@ -21,7 +21,8 @@ end
 function Transformation(transformable::Transformable;
                         scale=Vec3f(1),
                         translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        transform_func = copy(transformation(transformable).transform_func))
 
     scale_o = convert(Observable{Vec3f}, scale)
     translation_o = convert(Observable{Vec3f}, translation)
@@ -38,7 +39,7 @@ function Transformation(transformable::Transformable;
         scale_o,
         rotation_o,
         model,
-        copy(parent_transform.transform_func)
+        convert(Observable{Any}, transform_func)
     )
 
     trans.parent[] = parent_transform
@@ -210,13 +211,13 @@ transform_func_obs(x) = transformation(x).transform_func
     apply_transform_and_model(model, transfrom_func, pos, output_type = Point3f)
 
 
-Applies the transform function and model matrix (i.e. transformations from 
+Applies the transform function and model matrix (i.e. transformations from
 `translate!`, `rotate!` and `scale!`) to the given input
 """
 function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
     return apply_transform_and_model(
-        plot.model[], transform_func(plot), pos, 
-        to_value(get(plot, :space, :data)), 
+        plot.model[], transform_func(plot), pos,
+        to_value(get(plot, :space, :data)),
         output_type
     )
 end
@@ -338,7 +339,6 @@ function apply_transform(f, itr::ClosedInterval)
     return apply_transform(f, mini) .. apply_transform(f, maxi)
 end
 
-
 function apply_transform(f, r::Rect)
     mi = minimum(r)
     ma = maximum(r)
@@ -359,58 +359,97 @@ apply_transform(f::typeof(identity), r::Rect) = r
 apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
 apply_transform(f::NTuple{3, typeof(identity)}, r::Rect) = r
 
+const pseudolog10 = ReversibleScale(
+    x -> sign(x) * log10(abs(x) + 1),
+    x -> sign(x) * (exp10(abs(x)) - 1);
+    limits=(0f0, 3f0),
+    name=:pseudolog10
+)
 
-pseudolog10(x) = sign(x) * log10(abs(x) + 1)
-inv_pseudolog10(x) = sign(x) * (exp10(abs(x)) - 1)
-
-struct Symlog10
-    low::Float64
-    high::Float64
-    function Symlog10(low, high)
-        if !(low < 0 && high > 0)
-            error("Low bound needs to be smaller than 0 and high bound larger than 0. You gave $low, $high.")
-        end
-        new(Float64(low), Float64(high))
-    end
-end
-
-Symlog10(x) = Symlog10(-x, x)
-
-function (s::Symlog10)(x)
-    if x > 0
-        x <= s.high ? x / s.high * log10(s.high) : log10(x)
+Symlog10(hi) = Symlog10(-hi, hi)
+function Symlog10(lo, hi)
+    forward(x) = if x > 0
+        x <= hi ? x / hi * log10(hi) : log10(x)
     elseif x < 0
-        x >= s.low ? x / abs(s.low) * log10(abs(s.low)) : sign(x) * log10(abs(x))
+        x >= lo ? x / abs(lo) * log10(abs(lo)) : -log10(abs(x))
     else
         x
     end
-end
-
-function inv_symlog10(x, low, high)
-    if x > 0
-        l = log10(high)
-        x <= l ? x / l * high : exp10(x)
+    inverse(x) = if x > 0
+        l = log10(hi)
+        x <= l ? x / l * hi : exp10(x)
     elseif x < 0
-        l = sign(x) * log10(abs(low))
-        x >= l ? x / l * abs(low) : sign(x) * exp10(abs(x))
+        l = -log10(abs(lo))
+        x >= l ? x / l * abs(lo) : -exp10(abs(x))
     else
         x
     end
+    return ReversibleScale(forward, inverse; limits=(0.0f0, 3.0f0), name=:Symlog10)
 end
 
 inverse_transform(::typeof(identity)) = identity
 inverse_transform(::typeof(log10)) = exp10
-inverse_transform(::typeof(log)) = exp
 inverse_transform(::typeof(log2)) = exp2
+inverse_transform(::typeof(log)) = exp
 inverse_transform(::typeof(sqrt)) = x -> x ^ 2
-inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
-inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
-inverse_transform(s) = nothing
+inverse_transform(s::ReversibleScale) = s.inverse
+inverse_transform(::Any) = nothing
 
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)
+end
+
+
+################################################################################
+### Polar Transformation
+################################################################################
+
+"""
+    Polar(theta_0::Float64 = 0.0, direction::Int = +1)
+
+This struct defines a general polar-to-cartesian transformation, i.e.,
+```math
+(r, theta) -> (r \\cos(direction * (theta + theta_0)), r \\sin(direction * (theta + theta_0)))
+```
+
+where theta is assumed to be in radians.
+
+`direction` should be either -1 or +1, and `theta_0` may be any value.
+"""
+struct Polar
+    theta_0::Float64
+    direction::Int
+    Polar(theta_0 = 0.0, direction = +1) = new(theta_0, direction)
+end
+
+Base.broadcastable(x::Polar) = (x,)
+
+function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
+    y, x = point[1] .* sincos((point[2] + trans.theta_0) * trans.direction)
+    return Point2{T}(x, y)
+end
+
+# Point2 may get expanded to Point3. In that case we leave z untransformed
+function apply_transform(f::Polar, point::VecTypes{N2, T}) where {N2, T}
+    p_dim = to_ndim(Point2f, point, 0.0)
+    p_trans = apply_transform(f, p_dim)
+    if 2 < N2
+        p_large = ntuple(i-> i <= 2 ? p_trans[i] : point[i], N2)
+        return Point{N2, Float32}(p_large)
+    else
+        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
+    end
+end
+
+function inverse_transform(trans::Polar)
+    return Makie.PointTrans{2}() do point
+        typeof(point)(
+            hypot(point[1], point[2]),
+            mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
+        )
+    end
 end
 
 

@@ -137,6 +137,9 @@ Colors from Colors.jl should mostly work as well
 Texture(image::Array{T, NDim}; kw_args...) where {T <: GLArrayEltypes, NDim} =
     Texture(pointer(image), size(image); kw_args...)::Texture{T, NDim}
 
+Texture(image::AbstractArray{T, NDim}; kw_args...) where {T <: GLArrayEltypes, NDim} =
+    Texture(collect(image); kw_args...)
+
 function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
     tex = Texture(
         pointer(s.data), size(s.data),
@@ -145,7 +148,8 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         anisotropic = s.anisotropic; kwargs...
     )
     obsfunc = ShaderAbstractions.connect!(s, tex)
-    push!(tex.observers, obsfunc)
+    obsfunc2 = on(x -> tex.requires_update[] = true, s.updates.update)
+    push!(tex.observers, obsfunc, obsfunc2)
     return tex
 end
 
@@ -348,14 +352,19 @@ function similar(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
     buff = similar(t.buffer, newdims...)
     return TextureBuffer(buff)
 end
+
 function similar(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
-    Texture(
-        Ptr{T}(C_NULL),
-        newdims, t.texturetype,
+    id = glGenTextures()
+    glBindTexture(t.texturetype, id)
+    glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
+    return Texture{T, NDim}(
+        id,
+        t.texturetype,
         t.pixeltype,
         t.internalformat,
         t.format,
-        t.parameters
+        t.parameters,
+        newdims
     )
 end
 # Resize Texture
@@ -394,7 +403,6 @@ texsubimage(t::Texture{T, 3}, newvalue::Array{T, 3}, xrange::UnitRange, yrange::
     first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
     t.format, t.pixeltype, newvalue
 )
-
 
 Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
 function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T

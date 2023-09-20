@@ -15,7 +15,7 @@ using Base64
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG # get FFMPEG on any system!
+using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
 using PlotUtils
@@ -23,6 +23,7 @@ using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
+using CRC32c
 using Packing
 using SignedDistanceFields
 using Markdown
@@ -37,6 +38,7 @@ using Statistics
 using MakieCore
 using OffsetArrays
 using Downloads
+using ShaderAbstractions
 
 import RelocatableFolders
 import StatsBase
@@ -49,7 +51,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 import TriplotBase
-import DelaunayTriangulation as DelTri 
+import DelaunayTriangulation as DelTri
 import Setfield
 import REPL
 import MacroTools
@@ -85,6 +87,7 @@ import MakieCore: convert_arguments, convert_attribute, default_theme, conversio
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
+export Linestyle
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 const RGBAf = RGBA{Float32}
@@ -117,6 +120,7 @@ include("themes/theme_black.jl")
 include("themes/theme_minimal.jl")
 include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
+include("themes/theme_latexfonts.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
@@ -138,6 +142,7 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/bracket.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
+include("basic_recipes/datashader.jl")
 include("basic_recipes/error_and_rangebars.jl")
 include("basic_recipes/hvlines.jl")
 include("basic_recipes/hvspan.jl")
@@ -150,7 +155,9 @@ include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
+include("basic_recipes/voronoiplot.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
@@ -207,6 +214,7 @@ export theme_black
 export theme_minimal
 export theme_light
 export theme_dark
+export theme_latexfonts
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange
@@ -276,12 +284,13 @@ export abline! # until deprecation removal
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record, Record
-export save
+export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients
 
 export Pattern
+export ReversibleScale
 
 export assetpath
 # default icon for Makie

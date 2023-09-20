@@ -165,7 +165,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.elements = elements
 
     if palette === nothing
-        palette = fast_deepcopy(haskey(blockscene.theme, :palette) ? blockscene.theme[:palette] : Makie.DEFAULT_PALETTES)
+        palette = fast_deepcopy(get(blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
     end
     ax.palette = palette isa Attributes ? palette : Attributes(palette)
 
@@ -177,12 +177,6 @@ function initialize_block!(ax::Axis; palette = nothing)
     setfield!(ax, :finallimits, finallimits)
 
     ax.cycler = Cycler()
-
-    # the first thing to do when setting a new scale is
-    # resetting the limits because simply through expanding they might be invalid for log
-    onany(blockscene, ax.xscale, ax.yscale) do _, _
-        reset_limits!(ax)
-    end
 
     on(blockscene, targetlimits) do lims
         # this should validate the targetlimits before anything else happens with them
@@ -247,14 +241,23 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(yminorgridlines, 0, 0, -10)
     elements[:yminorgridlines] = yminorgridlines
 
+    # When the transform function (xscale, yscale) of a plot changes we
+    # 1. communicate this change to plots (barplot needs this to make bars
+    #    compatible with the new transform function/scale)
     onany(blockscene, ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
         return
     end
 
+    # 2. Update the limits of the plot
+    onany(blockscene, scene.transformation.transform_func, priority = -1) do _
+        reset_limits!(ax)
+    end
+
     notify(ax.xscale)
 
-    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed)
+    # 3. Update the view onto the plot (camera matrices)
+    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.px_area;
                            ignore_equal_values=true) do xaxisposition, area
@@ -436,15 +439,8 @@ function initialize_block!(ax::Axis; palette = nothing)
                        ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
 
-        x = if align === :center
-            a.origin[1] + a.widths[1] / 2
-        elseif align === :left
-            a.origin[1]
-        elseif align === :right
-            a.origin[1] + a.widths[1]
-        else
-            error("Title align $align not supported.")
-        end
+        align_factor = halign2num(align, "Horizontal title align $align not supported.")
+        x = a.origin[1] + align_factor * a.widths[1]
 
         yoffset = top(a) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0)
 
@@ -499,7 +495,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     register_events!(ax, scene)
 
     # these are the user defined limits
-    on(blockscene, ax.limits) do mlims
+    on(blockscene, ax.limits) do _
         reset_limits!(ax)
     end
 
@@ -815,6 +811,13 @@ function needs_tight_limits(c::Contourf)
     # we know that all values are included and the contourf is rectangular
     # otherwise here it could be in an arbitrary shape
     return c.levels[] isa Int
+end
+function needs_tight_limits(p::Triplot)
+    return p.show_ghost_edges[]
+end
+function needs_tight_limits(p::Voronoiplot)
+    p = p.plots[1] isa Voronoiplot ? p.plots[1] : p
+    return !isempty(DelTri.get_unbounded_polygons(p[1][]))
 end
 
 function expandbboxwithfractionalmargins(bb, margins)
@@ -1349,22 +1352,19 @@ defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(s
 defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
 
-
-defaultlimits(::typeof(log10)) = (1.0, 1000.0)
-defaultlimits(::typeof(log2)) = (1.0, 8.0)
-defaultlimits(::typeof(log)) = (1.0, exp(3.0))
+defaultlimits(scale::ReversibleScale) = inverse_transform(scale).(scale.limits)
+defaultlimits(scale::LogFunctions) = let inv_scale = inverse_transform(scale)
+    (inv_scale(0.0), inv_scale(3.0))
+end
 defaultlimits(::typeof(identity)) = (0.0, 10.0)
 defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
-defaultlimits(::typeof(Makie.pseudolog10)) = (0.0, 100.0)
-defaultlimits(::Makie.Symlog10) = (0.0, 100.0)
 
+defined_interval(scale::ReversibleScale) = scale.interval
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
-defined_interval(::Union{typeof(log2), typeof(log10), typeof(log)}) = OpenInterval(0.0, Inf)
+defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
-defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
-defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
 
 function update_state_before_display!(ax::Axis)
     reset_limits!(ax)
@@ -1784,4 +1784,31 @@ function attribute_examples(::Type{Axis})
             )
         ],
     )
+end
+
+function axis_bounds_with_decoration(axis::Axis)
+    # Filter out the zoomrect + background plot
+    lims = Makie.data_limits(axis.blockscene.plots, p -> p isa Mesh || p isa Poly)
+    return Makie.parent_transform(axis.blockscene) * lims
+end
+
+"""
+    colorbuffer(ax::Axis; include_decorations=true, colorbuffer_kws...)
+
+Gets the colorbuffer of the `Axis` in `JuliaNative` image format.
+If `include_decorations=false`, only the inside of the axis is fetched.
+"""
+function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffer_kws...)
+    if update
+        update_state_before_display!(ax)
+    end
+    bb = if include_decorations
+        bb = axis_bounds_with_decoration(ax)
+        Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
+    else
+        pixelarea(ax.scene)[]
+    end
+
+    img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)
+    return get_sub_picture(img, JuliaNative, bb)
 end

@@ -169,20 +169,20 @@ end
 
 attr_broadcast_length(x::NativeFont) = 1
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
-attr_broadcast_length(x::AbstractArray) = length(x)
+attr_broadcast_length(x::AbstractVector) = length(x)
 attr_broadcast_length(x::AbstractPattern) = 1
 attr_broadcast_length(x) = 1
 attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
 attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
-attr_broadcast_getindex(x::AbstractArray, i) = x[i]
+attr_broadcast_getindex(x::AbstractVector, i) = x[i]
 attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
 attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broadcasting, for protecting iterables
 attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
-is_vector_attribute(x::AbstractArray) = true
+is_vector_attribute(x::AbstractVector) = true
 is_vector_attribute(x::NativeFont) = false
 is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
@@ -277,23 +277,6 @@ function to_vector(x::ClosedInterval, len, T)
     a, b = T.(extrema(x))
     range(a, stop=b, length=len)
 end
-
-"""
-A colorsampler maps numnber values from a certain range to values of a colormap
-```
-x = ColorSampler(colormap, (0.0, 1.0))
-x[0.5] # returns color at half point of colormap
-```
-"""
-struct ColorSampler{Data <: AbstractArray}
-    colormap::Data
-    color_range::Tuple{Float64,Float64}
-end
-
-function Base.getindex(cs::ColorSampler, value::Number)
-    return interpolated_getindex(cs.colormap, value, cs.color_range)
-end
-
 
 # This function was copied from GR.jl,
 # written by Josef Heinen.

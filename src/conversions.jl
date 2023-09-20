@@ -109,9 +109,18 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f.(x, y', z)),)
 end
+
+function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix)
+    return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+end
+
+function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
+    (vec(Point3f.(x, y, z)),)
+end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 
@@ -543,10 +552,10 @@ end
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
-        n = normals(mesh)
+        n = normals(metafree(decompose(Point, mesh)), faces(mesh))
         # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
+        if !isnothing(n)
+            mesh = GeometryBasics.pointmeta(mesh; normals=decompose(Vec3f, n))
         end
     end
     # If already correct eltypes for GL, we can pass the mesh through as is
@@ -606,6 +615,25 @@ function convert_arguments(
     )
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
+end
+
+################################################################################
+#                                   <:Arrows                                   #
+################################################################################
+
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+    points = Point2f.(x, y')
+    f_out = Vec2f.(f.(points))
+    return (vec(points), vec(f_out))
+end
+
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    points = [Point3f(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3f.(f.(points))
+    return (vec(points), vec(f_out))
 end
 
 ################################################################################
@@ -842,38 +870,65 @@ convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
 
-convert_attribute(x::Nothing, ::key"linestyle") = x
+####
+## Line style conversions
+####
 
-#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-#
-# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-convert_attribute(A::AbstractVector, ::key"linestyle") = [float(x - A[1]) for x in A]
-
-# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
-
-function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
-    line_pattern(ls[1], ls[2])
+convert_attribute(style, ::key"linestyle") = to_linestyle(style)
+to_linestyle(::Nothing) = nothing
+# add deprecation for old conversion
+function convert_attribute(style::AbstractVector, ::key"linestyle")
+    @warn "Using a `Vector{<:Real}` as a linestyle attribute is deprecated. Wrap it in a `Linestyle`."
+    return to_linestyle(Linestyle(style))
 end
 
-function line_pattern(linestyle, gaps)
+"""
+    Linestyle(value::Vector{<:Real})
+
+A type that can be used as value for the `linestyle` keyword argument
+of plotting functions to arbitrarily customize the linestyle.
+
+The `value` is a vector of positions where the line flips from being drawn or not
+and vice versa. The values of `value` are in units of linewidth.
+
+For example, with `value = [0.0, 4.0, 6.0, 9.5]`
+you start drawing at 0, stop at 4 linewidths, start again at 6, stop at 9.5,
+then repeat with 0 and 9.5 being treated as the same position.
+"""
+struct Linestyle
+    value::Vector{Float32}
+end
+
+to_linestyle(style::Linestyle) = Float32[x - style.value[1] for x in style.value]
+
+# TODO only use NTuple{2, <: Real} and not any other container
+const GapType = Union{Real, Symbol, Tuple, AbstractVector}
+
+# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
+to_linestyle(ls::Union{Symbol, AbstractString}) = line_pattern(ls, :normal)
+
+function to_linestyle(ls::Tuple{<:Union{Symbol, AbstractString}, <: GapType})
+    return line_pattern(ls[1], ls[2])
+end
+
+function line_pattern(linestyle::Symbol, gaps::GapType)
     pattern = line_diff_pattern(linestyle, gaps)
-    isnothing(pattern) ? pattern : float.([0.0; cumsum(pattern)])
+    return isnothing(pattern) ? pattern : Float32[0.0; cumsum(pattern)]
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
-function line_diff_pattern(ls::Symbol, gaps = :normal)
+function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     if ls === :solid
-        nothing
+        return nothing
     elseif ls === :dash
-        line_diff_pattern("-", gaps)
+        return line_diff_pattern("-", gaps)
     elseif ls === :dot
-        line_diff_pattern(".", gaps)
+        return line_diff_pattern(".", gaps)
     elseif ls === :dashdot
-        line_diff_pattern("-.", gaps)
+        return line_diff_pattern("-.", gaps)
     elseif ls === :dashdotdot
-        line_diff_pattern("-..", gaps)
+        return line_diff_pattern("-..", gaps)
     else
         error(
             """
@@ -886,7 +941,7 @@ function line_diff_pattern(ls::Symbol, gaps = :normal)
     end
 end
 
-function line_diff_pattern(ls_str::AbstractString, gaps = :normal)
+function line_diff_pattern(ls_str::AbstractString, gaps::GapType = :normal)
     dot = 1
     dash = 3
     check_line_pattern(ls_str)
@@ -921,24 +976,24 @@ function check_line_pattern(ls_str)
     nothing
 end
 
-function convert_gaps(gaps)
-  error_msg = "You provided the gaps modifier $gaps when specifying the linestyle. The modifier must be `∈ ([:normal, :dense, :loose])`, a real number or a collection of two real numbers."
-  if gaps isa Symbol
-      gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
-      dot_gaps  = (normal = 2, dense = 1, loose = 4)
-      dash_gaps = (normal = 3, dense = 2, loose = 6)
+function convert_gaps(gaps::GapType)
+    error_msg = "You provided the gaps modifier $gaps when specifying the linestyle. The modifier must be one of the symbols `:normal`, `:dense` or `:loose`, a real number or a tuple of two real numbers."
+    if gaps isa Symbol
+        gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
+        dot_gaps  = (normal = 2, dense = 1, loose = 4)
+        dash_gaps = (normal = 3, dense = 2, loose = 6)
 
-      dot_gap  = getproperty(dot_gaps, gaps)
-      dash_gap = getproperty(dash_gaps, gaps)
-  elseif gaps isa Real
-      dot_gap = gaps
-      dash_gap = gaps
-  elseif length(gaps) == 2 && eltype(gaps) <: Real
-      dot_gap, dash_gap = gaps
-  else
-      throw(ArgumentError(error_msg))
-  end
-  (dot_gap = dot_gap, dash_gap = dash_gap)
+        dot_gap  = getproperty(dot_gaps, gaps)
+        dash_gap = getproperty(dash_gaps, gaps)
+    elseif gaps isa Real
+        dot_gap = gaps
+        dash_gap = gaps
+    elseif length(gaps) == 2 && eltype(gaps) <: Real
+        dot_gap, dash_gap = gaps
+    else
+        throw(ArgumentError(error_msg))
+    end
+    return (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])
@@ -946,10 +1001,81 @@ convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = 
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
 """
-    Text align, e.g.:
+    to_align(align[, error_prefix])
+
+Converts the given align to a `Vec2f`. Can convert `VecTypes{2}` and two
+component `Tuple`s with `Real` and `Symbol` elements.
+
+To specify a custom error message you can add an `error_prefix` or use
+`halign2num(value, error_msg)` and `valign2num(value, error_msg)` respectively.
 """
-to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
-to_align(x::Vec2f) = x
+to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(x[2]))
+to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
+
+function to_align(v, error_prefix::String)
+    try
+        return to_align(v)
+    catch
+        error(error_prefix)
+    end
+end
+
+"""
+    halign2num(align[, error_msg])
+
+Attempts to convert a horizontal align to a Float32 and errors with `error_msg`
+if it fails to do so.
+"""
+halign2num(v::Real, error_msg = "") = Float32(v)
+function halign2num(v::Symbol, error_msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
+    if v === :left
+        return 0.0f0
+    elseif v === :center
+        return 0.5f0
+    elseif v === :right
+        return 1.0f0
+    else
+        error(error_msg)
+    end
+end
+function halign2num(v, error_msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
+    error(error_msg)
+end
+
+"""
+    valign2num(align[, error_msg])
+
+Attempts to convert a vertical align to a Float32 and errors with `error_msg`
+if it fails to do so.
+"""
+valign2num(v::Real, error_msg = "") = Float32(v)
+function valign2num(v::Symbol, error_msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
+    if v === :top
+        return 1f0
+    elseif v === :bottom
+        return 0f0
+    elseif v === :center
+        return 0.5f0
+    else
+        error(error_msg)
+    end
+end
+function valign2num(v, error_msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
+    error(error_msg)
+end
+
+"""
+    angle2align(angle::Real)
+
+Converts a given angle to an alignment by projecting the resulting direction on
+a unit square and scaling the result to a 0..1 range appropriate for alignments.
+"""
+function angle2align(angle::Real)
+    s, c = sincos(angle)
+    scale = 1 / max(abs(s), abs(c))
+    return Vec2f(0.5scale * c + 0.5, 0.5scale * s + 0.5)
+end
+
 
 const FONT_CACHE = Dict{String, NativeFont}()
 const FONT_CACHE_LOCK = Base.ReentrantLock()
@@ -1342,3 +1468,33 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+
+
+# SAMPLER overloads
+
+convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
+function convert_attribute(s::ShaderAbstractions.Sampler{T,N}, k::key"color") where {T,N}
+    return ShaderAbstractions.Sampler(el32convert(s.data); minfilter=s.minfilter, magfilter=s.magfilter,
+                                      x_repeat=s.repeat[1], y_repeat=s.repeat[min(2, N)],
+                                      z_repeat=s.repeat[min(3, N)],
+                                      anisotropic=s.anisotropic, color_swizzel=s.color_swizzel)
+end
+
+function el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
+    T32 = float32type(T)
+    T32 === T && return x
+    data = el32convert(x.data)
+    return ShaderAbstractions.Sampler{T32,N,typeof(data)}(data, x.minfilter, x.magfilter,
+                                       x.repeat,
+                                       x.anisotropic,
+                                       x.color_swizzel,
+                                       ShaderAbstractions.ArrayUpdater(data, x.updates.update))
+end
+
+to_color(sampler::ShaderAbstractions.Sampler) = el32convert(sampler)
+
+assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32convert(color[]))
+
+# BUFFER OVERLOAD
+
+GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec

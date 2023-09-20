@@ -31,6 +31,7 @@ Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pai
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
 attributes(x::Attributes) = getfield(x, :attributes)
+attributes(x::AbstractPlot) = getfield(x, :attributes)
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
@@ -69,18 +70,16 @@ end
 
 Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
 
-@generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
-
-@inline function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
-    if hasfield(x, Val(key))
+function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
+    if hasfield(typeof(x), key)
         getfield(x, key)
     else
         getindex(x, key)
     end
 end
 
-@inline function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
-    if hasfield(x, Val(key))
+function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
+    if hasfield(typeof(x), key)
         setfield!(x, key, value)
     else
         setindex!(x, value, key)
@@ -186,7 +185,7 @@ function Base.getindex(x::AbstractPlot, key::Symbol)
     if idx === nothing
         return x.attributes[key]
     else
-        x.converted[idx]
+        return x.converted[idx]
     end
 end
 
@@ -237,7 +236,12 @@ function get_attribute(dict, key, default=nothing)
     if haskey(dict, key)
         value = to_value(dict[key])
         value isa Automatic && return default
-        return convert_attribute(to_value(dict[key]), Key{key}())
+        plot_k = plotkey(dict)
+        if isnothing(plot_k)
+            return convert_attribute(value, Key{key}())
+        else
+            return convert_attribute(value, Key{key}(), Key{plot_k}())
+        end
     else
         return default
     end

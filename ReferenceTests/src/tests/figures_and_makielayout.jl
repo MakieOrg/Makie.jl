@@ -136,3 +136,109 @@ end
     surface!(ax, xs, ys, zs)
     fig
 end
+
+@reference_test "PolarAxis surface" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1])
+    zs = [r*cos(phi) for r in range(1, 2, length=100), phi in range(0, 4pi, length=100)]
+    p = surface!(ax, 0..10, 0..2pi, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    Colorbar(f[1, 2], p)
+    f
+end
+
+# may fail in WGLMakie due to missing dashes
+@reference_test "PolarAxis scatterlines spine" begin
+    f = Figure(resolution = (800, 400))
+    ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
+    scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
+
+    ax2 = PolarAxis(f[1, 2], title = "Modified spine")
+    ax2.spinecolor[] = :red
+    ax2.spinestyle[] = :dash
+    ax2.spinewidth[] = 5
+    scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
+
+    f
+end
+
+# may fail in CairoMakie due to different text stroke handling
+# and in WGLMakie due to missing stroke
+@reference_test "PolarAxis decorations" begin
+    f = Figure(resolution = (400, 400), backgroundcolor = :black)
+    ax = PolarAxis(
+        f[1, 1],
+        backgroundcolor = :black,
+        rminorgridvisible = true, rminorgridcolor = :red,
+        rminorgridwidth = 1.0, rminorgridstyle = :dash,
+        thetaminorgridvisible = true, thetaminorgridcolor = :blue,
+        thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
+        rgridwidth = 2, rgridcolor = :red,
+        thetagridwidth = 2, thetagridcolor = :blue,
+        rticklabelsize = 18, rticklabelcolor = :red,
+        rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
+        thetaticklabelsize = 18, thetaticklabelcolor = :blue,
+        thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
+    )
+    f
+end
+
+@reference_test "Axis3 axis reversal" begin
+    f = Figure(resolution = (1000, 1000))
+    revstr(dir, rev) = rev ? "$dir rev" : ""
+    for (i, (x, y, z)) in enumerate(Iterators.product(fill((false, true), 3)...))
+        Axis3(f[fldmod1(i, 3)...], title = "$(revstr("x", x)) $(revstr("y", y)) $(revstr("z", z))", xreversed = x, yreversed = y, zreversed = z)
+        surface!(0:0.5:10, 0:0.5:10, (x, y) -> (sin(x) + 0.5x) * (cos(y) + 0.5y))
+    end
+    f
+end
+
+@reference_test "Colorbar for recipes" begin
+    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;resolution=(800, 800)))
+    Colorbar(fig[1, 2], pl; size=100)
+    x = LinRange(-1, 1, 20)
+    y = LinRange(-1, 1, 20)
+    z = LinRange(-1, 1, 20)
+    values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
+
+    # TO not make this fail in CairoMakie, we dont actually plot the volume
+    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    Colorbar(fig[2, :], cp; size=300)
+
+    # horizontal colorbars
+    Colorbar(fig[1, 3][2, 1]; limits=(0, 10), colormap=:viridis,
+             vertical=false)
+    Colorbar(fig[1, 3][3, 1]; limits=(0, 5), size=25,
+             colormap=cgrad(:Spectral, 5; categorical=true), vertical=false)
+    Colorbar(fig[1, 3][4, 1]; limits=(-1, 1), colormap=:heat, vertical=false, flipaxis=false,
+             highclip=:cyan, lowclip=:red)
+    xs = LinRange(0, 20, 50)
+    ys = LinRange(0, 15, 50)
+    zs = [cos(x) * sin(y) for x in xs, y in ys]
+    ax, hm = contourf(fig[2, 3][1, 1], xs, ys, zs;
+                      colormap=:Spectral, levels=[-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
+    Colorbar(fig[2, 3][1, 2], hm; ticks=-1:0.25:1)
+
+    ax, hm = contourf(fig[3, :][1, 1], xs, ys, zs;
+                      colormap=:Spectral, colorscale=sqrt, levels=[ 0, 0.25, 0.5, 1])
+    Colorbar(fig[3, :][1, 2], hm; width=200)
+
+    fig
+end
+
+@reference_test "datashader" begin
+    airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
+    # Dont use the full dataset, since WGLMakie seems to time out if it's too big
+    fewer = airports[RNG.rand(1:length(airports), 1000)]
+    fig, ax, ds = datashader(fewer; async=false)
+    Colorbar(fig[1, 2], ds; width=100)
+    hidedecorations!(ax)
+    hidespines!(ax)
+
+    normaldist = RNG.randn(Point2f, 100000)
+    ds1 = normaldist .+ (Point2f(-1, 0),)
+    ds2 = normaldist .+ (Point2f(1, 0),)
+    ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2); async=false)
+    hidedecorations!(ax)
+    axislegend(ax)
+    fig
+end

@@ -241,6 +241,30 @@ end
     fig
 end
 
+@reference_test "colorscale (surface)" begin
+    x = y = range(-1, 1; length = 20)
+    f(x, y) = exp(-(x^2 + y^2)^2)
+    fig = Figure()
+    surface(fig[1, 1], x, y, f; colorscale = identity)
+    surface(fig[1, 2], x, y, f; colorscale = log10)
+    fig
+end
+
+@reference_test "colorscale (poly)" begin
+    X = [0.0 1 1 2; 1 1 2 2; 0 0 1 1]
+    Y = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    Z = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    C = [0.5 1.0 1.0 0.5; 1.0 0.5 0.5 0.1667; 0.333 0.333 0.5 0.5] .^ 3
+
+    vertices = connect(reshape([X[:] Y[:] Z[:]]', :), Point3f)
+    indices = connect(1:length(X), TriangleFace)
+
+    fig = Figure()
+    poly!(Axis3(fig[1, 1]), vertices, indices; color=C[:], colorscale=identity)
+    poly!(Axis3(fig[1, 2]), vertices, indices; color=C[:], colorscale=log10)
+    fig
+end
+
 @reference_test "FEM mesh 3D" begin
     cat = loadasset("cat.obj")
     vertices = decompose(Point3f, cat)
@@ -499,7 +523,8 @@ end
     fig, ax, pl = volume(
         r, r, r,          # coordinates to plot on
         ρ,                # charge density (functions as colorant)
-        algorithm=:mip  # maximum-intensity-projection
+        algorithm=:mip,  # maximum-intensity-projection
+        colorrange=(0, 1),
     )
     ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
     fig.scene.backgroundcolor[] = to_color(:black)
@@ -582,4 +607,9 @@ end
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig
+end
+
+# TODO: get 3D images working in CairoMakie and test them here too
+@reference_test "Heatmap 3D" begin
+    heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
 end
