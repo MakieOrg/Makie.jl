@@ -419,7 +419,7 @@ function RenderObject(
     observables = Observable[]
 
     # Overwriting data with break direct iteration over it
-    _keys = copy(keys(data))
+    _keys = collect(keys(data))
     for k in _keys
         v = data[k]
         v isa Observable && push!(observables, v)
