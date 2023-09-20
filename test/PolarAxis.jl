@@ -37,17 +37,23 @@
         @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         @test rticklabelplot.rotation[] ≈ v
 
-        # false
-        po.rticklabelrotation[] = false
+        # horizontal
+        po.rticklabelrotation[] = :horizontal
         @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
         @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         @test rticklabelplot.rotation[] ≈ 0f0
 
-        # true
-        po.rticklabelrotation[] = true
+        # radial
+        po.rticklabelrotation[] = :radial
         @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
         @test rticklabelplot.align[] ≈ Vec2f(0, 0.5)
         @test rticklabelplot.rotation[] ≈ po.theta_0[] - pi/2
+
+        # aligned
+        po.rticklabelrotation[] = :aligned
+        @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
+        @test rticklabelplot.align[] ≈ Vec2f(1, 0.5)
+        @test rticklabelplot.rotation[] ≈ po.theta_0[] - 3pi/2
     end
 
 
