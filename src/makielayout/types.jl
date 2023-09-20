@@ -1729,7 +1729,16 @@ end
         rticklabelsvisible::Bool = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."
         rtickangle = automatic
-        "Sets the rotation of `r` tick labels. If set to `true` rtick are always rotated, `false` keeps them horizontal, `automatic` rotates them up to 45° angles and any other number rotates them accordingly."
+        """
+        Sets the rotation of `r` tick labels.
+
+        Options:
+        - `:radial` rotates labels based on the angle they appear at
+        - `:horizontal` keeps labels at a horizontal orientation
+        - `:aligned` rotates labels based on the angle they appear at but keeps them up-right and close to horizontal
+        - `automatic` uses `:horizontal` when theta limits span >1.9pi and `:aligned` otherwise
+        - `::Real` sets the label rotation to a specific value
+        """
         rticklabelrotation = automatic
 
         # Theta ticks
