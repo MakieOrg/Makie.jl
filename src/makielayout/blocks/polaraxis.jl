@@ -859,8 +859,8 @@ end
 ### Plotting
 ################################################################################
 
-
-needs_tight_limits(::Surface) = true
+# TODO: consider enabling this
+# needs_tight_limits(::Surface) = true
 
 function plot!(
     po::PolarAxis, P::PlotFunc,
