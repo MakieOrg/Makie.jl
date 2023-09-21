@@ -141,12 +141,12 @@ function draw_surface(screen, main, data::Dict)
         transparency = false
         shader = GLVisualizeShader(
             screen,
-            "fragment_output.frag", "util.vert", "surface.vert",
-            "mesh.frag",
+            "util.vert", "lighting.vert", "surface.vert",
+            "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
-                "light_calc" => light_calc(shading),
+                # "light_calc" => light_calc(shading),
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

@@ -154,6 +154,8 @@ flat out uvec2 o_id;
 out vec4 o_color;
 out vec2 o_uv;
 
+void prepare_lights(vec4 view_pos);
+
 void main()
 {
     int index = gl_InstanceID;

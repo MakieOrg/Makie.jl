@@ -96,6 +96,8 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
 vec2 get_uv(Nothing x){return vec2(0.0);}
 vec2 get_uv(vec2 x){return vec2(1.0 - x.y, x.x);}
 
+void prepare_lights(vec4 view_pos);
+
 void main(){
     int index = gl_InstanceID;
     o_id = uvec2(objectid, index+1);
@@ -108,5 +110,10 @@ void main(){
     o_color = o_color * to_color(vertex_color);
     o_uv = get_uv(texturecoordinates);
     rotate(rotation, index, V, N);
-    render(model * vec4(pos + V, 1), N, view, projection, lightposition);
+    // render(model * vec4(pos + V, 1), N, view, projection, lightposition);
+
+    vec4 world_pos = model * vec4(pos + V, 1);
+    render(world_pos, N, view, projection, lightposition);
+    vec4 view_pos = view * world_pos;
+    prepare_lights(view_pos / view_pos.w);
 }

@@ -37,33 +37,6 @@ function SSAO(; radius=nothing, bias=nothing, blur=nothing)
     return SSAO(_radius, _bias, _blur)
 end
 
-abstract type AbstractLight end
-
-"""
-A positional point light, shining at a certain color.
-Color values can be bigger than 1 for brighter lights.
-"""
-struct PointLight <: AbstractLight
-    position::Observable{Vec3f}
-    radiance::Observable{RGBf}
-end
-
-"""
-An environment Light, that uses a spherical environment map to provide lighting.
-See: https://en.wikipedia.org/wiki/Reflection_mapping
-"""
-struct EnvironmentLight <: AbstractLight
-    intensity::Observable{Float32}
-    image::Observable{Matrix{RGBf}}
-end
-
-"""
-A simple, one color ambient light.
-"""
-struct AmbientLight <: AbstractLight
-    color::Observable{RGBf}
-end
-
 """
     Scene TODO document this
 
@@ -290,18 +263,8 @@ function Scene(;
     return scene
 end
 
-function get_one_light(scene::Scene, Typ)
-    indices = findall(x-> x isa Typ, scene.lights)
-    isempty(indices) && return nothing
-    if length(indices) > 1
-        @warn("Only one light supported by backend right now. Using only first light")
-    end
-    return scene.lights[indices[1]]
-end
-
-get_point_light(scene::Scene) = get_one_light(scene, PointLight)
-get_ambient_light(scene::Scene) = get_one_light(scene, AmbientLight)
-
+get_point_light(scene::Scene) = get_one_light(scene.lights, PointLight)
+get_ambient_light(scene::Scene) = get_one_light(scene.lights, AmbientLight)
 
 function Scene(
         parent::Scene;

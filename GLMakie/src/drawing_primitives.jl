@@ -2,6 +2,25 @@ using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
+# TODO: Maybe move this somewhere else?
+# TODO: observable
+function handle_lights(attr::Dict, lights::Vector{Makie.AbstractLight})
+    maxlength = 8
+    N = min(maxlength, length(lights))
+
+
+    lights = Makie.GenericGLLight.(lights)
+    attr[:light_types] = [light.type for light in lights]
+    attr[:light_colors] = [light.color for light in lights]
+    attr[:light_positions] = [light.position for light in lights]
+    attr[:light_directions] = [light.direction for light in lights]
+    attr[:light_attentuation_parameters] = [light.attentuation_parameters for light in lights]
+
+    attr[:lights_length] = N
+    # @info "Inserted $N lights."
+    return attr
+end
+
 Makie.el32convert(x::GLAbstraction.Texture) = x
 
 gpuvec(x) = GPUVector(GLBuffer(x))
@@ -137,6 +156,10 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         if !isnothing(ambientlight)
             gl_attributes[:ambient] = ambientlight.color
         end
+
+        # TODO:
+        handle_lights(gl_attributes, scene.lights)
+
         gl_attributes[:track_updates] = screen.config.render_on_demand
         gl_attributes[:px_per_unit] = screen.px_per_unit
 

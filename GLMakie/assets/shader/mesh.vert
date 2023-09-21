@@ -56,6 +56,8 @@ vec4 to_color(Nothing c, Nothing cm, Nothing cn) {
     return vec4(0.0);
 }
 
+void prepare_lights(vec4 view_pos);
+
 void main()
 {
     o_id = uvec2(objectid, gl_VertexID+1);
@@ -63,5 +65,13 @@ void main()
     o_uv = vec2(1.0 - tex_uv.y, tex_uv.x) * uv_scale;
     o_color = to_color(vertex_color, color_map, color_norm);
     vec3 v = to_3d(vertices);
-    render(model * vec4(v, 1), normals, view, projection, lightposition);
+
+    // vec4 view_pos = model * vec4(v, 1);
+    // prepare_lights(view_pos);
+    // render(view_pos, normals, view, projection, lightposition);
+
+    vec4 world_pos = model * vec4(v, 1);
+    render(world_pos, normals, view, projection, lightposition);
+    vec4 view_pos = view * world_pos;
+    prepare_lights(view_pos / view_pos.w);
 }

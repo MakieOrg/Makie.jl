@@ -119,6 +119,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 
 void write2framebuffer(vec4 color, uvec2 id);
 
+vec3 illuminate(vec3 normal, vec3 base_color);
 
 void main(){
     vec4 color;
@@ -128,6 +129,9 @@ void main(){
     }else{
         color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
+    color.rgb = illuminate(normalize(o_normal), color.rgb);
+    /*
     {{light_calc}}
+    */
     write2framebuffer(color, o_id);
 }

@@ -53,9 +53,11 @@ function draw_mesh(screen, data::Dict)
         interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
             screen,
-            "util.vert", "mesh.vert", "mesh.frag", "fragment_output.frag",
+            "util.vert", "mesh.vert",
+            "fragment_output.frag", "mesh.frag",
+            "lighting.vert", "lighting.frag",
             view = Dict(
-                "light_calc" => light_calc(shading),
+                # "light_calc" => light_calc(shading),
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

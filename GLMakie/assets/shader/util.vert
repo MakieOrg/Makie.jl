@@ -252,7 +252,7 @@ uniform vec3 lightposition;
 uniform vec3 eyeposition;
 uniform float depth_shift;
 
-
+// TODO: maybe move some of this to lighting.vert or vice versa?
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
 {
     // normal in world space
@@ -263,11 +263,11 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     gl_Position = projection * view_pos;
     gl_Position.z += gl_Position.w * depth_shift;
     // direction to light
-    o_lightdir = normalize(view*vec4(lightposition, 1.0) - view_pos).xyz;
+    // o_lightdir = normalize(view*vec4(lightposition, 1.0) - view_pos).xyz;
     // direction to camera
     // This is equivalent to
     // normalize(view*vec4(eyeposition, 1.0) - view_pos).xyz
     // (by definition `view * eyeposition = 0`)
-    o_camdir = normalize(-view_pos).xyz;
+    o_camdir = normalize(-view_pos.xyz);
     o_view_pos = view_pos.xyz / view_pos.w;
 }
