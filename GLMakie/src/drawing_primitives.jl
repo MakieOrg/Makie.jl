@@ -5,7 +5,7 @@ using Makie: convert_arguments
 # TODO: Maybe move this somewhere else?
 # TODO: observable
 function handle_lights(attr::Dict, lights::Vector{Makie.AbstractLight})
-    maxlength = 8
+    maxlength = 64
 
     if length(lights) > maxlength
         @warn "GLMakie only allows up to $maxlength lights."
@@ -14,12 +14,20 @@ function handle_lights(attr::Dict, lights::Vector{Makie.AbstractLight})
 
     attr[:light_types]      = Int32.(Makie.light_type.(lights))
     attr[:light_colors]     = RGBf.(Makie.light_color.(lights))
-    attr[:light_positions]  = Vec3f.(Makie.light_position.(lights))
-    attr[:light_directions] = Vec3f.(Makie.light_direction.(lights))
+    attr[:light_positions]  = map(attr[:view]) do view
+        map(Makie.light_position.(lights)) do p
+            p4d = view * to_ndim(Point4f, p, 1)
+            return Vec3f(p4d[1] / p4d[4], p4d[2] / p4d[4], p4d[3] / p4d[4])
+        end
+    end
+    normalview = map(view -> transpose(inv(view[Vec(1,2,3), Vec(1,2,3)])), attr[:view])
+    attr[:light_directions] = map(normalview) do nv
+        map(p -> nv * p, Makie.light_direction.(lights))
+    end
     attr[:light_parameters] = Vec3f.(Makie.light_parameters.(lights))
 
     attr[:lights_length] = length(lights)
-    # @info "Inserted $N lights."
+    @info "Inserted $(length(lights)) lights."
     return attr
 end
 
@@ -149,26 +157,14 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_key => gl_value
         end)
 
-        # pointlight = Makie.get_point_light(scene)
-        # if !isnothing(pointlight)
-        #     @info "Set light position"
-        #     gl_attributes[:lightposition] = pointlight.position
-        # end
-
-        # ambientlight = Makie.get_ambient_light(scene)
-        # if !isnothing(ambientlight)
-        #     @info "Set ambient light"
-        #     gl_attributes[:ambient] = ambientlight.color
-        # end
-
-        # TODO:
-        handle_lights(gl_attributes, scene.lights)
-
         gl_attributes[:track_updates] = screen.config.render_on_demand
         gl_attributes[:px_per_unit] = screen.px_per_unit
 
         handle_intensities!(gl_attributes, x)
         connect_camera!(x, gl_attributes, scene.camera, get_space(x))
+
+        # TODO:
+        handle_lights(gl_attributes, scene.lights)
 
         robj = robj_func(gl_attributes)
 

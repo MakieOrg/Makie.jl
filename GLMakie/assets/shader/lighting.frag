@@ -31,20 +31,26 @@ uniform mat4 view;
 in vec3 o_camdir;
 in vec3 o_view_pos;
 
-vec3 illuminate_pointlight(int idx, vec3 normal, vec3 camera_direction, vec3 color) {
-    // calculate light direction and distance
-    vec3 light_vec = (view * vec4(light_positions[idx], 1)).xyz - o_view_pos;
-    float dist = length(light_vec);
-    vec3 light_dir = normalize(light_vec);
-
-    // diffuse coefficient (how directly does light hit the surface)
+vec3 blinn_phong(vec3 light_color, vec3 normal, vec3 light_dir, vec3 color) {
+    // diffuse coefficient (how directly does light hits the surface)
     float diff_coeff = max(dot(light_dir, normal), 0.0);
 
-    // specular coefficient (does reflected light bounce into camera)
-    vec3 H = normalize(light_dir + camera_direction);
+    // specular coefficient (does reflected light bounce into camera?)
+    vec3 H = normalize(light_dir + o_camdir);
     float spec_coeff = pow(max(dot(H, normal), 0.0), shininess);
     if (diff_coeff <= 0.0 || isnan(spec_coeff))
         spec_coeff = 0.0;
+
+    return light_color * vec3(diffuse * diff_coeff * color + specular * spec_coeff);
+}
+
+vec3 calc_point_light(int idx, vec3 normal, vec3 color) {
+    // calculate light direction and distance
+    // vec3 light_vec = (view * vec4(light_positions[idx], 1)).xyz - o_view_pos;
+    vec3 light_vec = light_positions[idx] - o_view_pos;
+
+    float dist = length(light_vec);
+    vec3 light_dir = normalize(light_vec);
 
     // How weak has the light gotten due to distance
     float attentuation = 1.0;
@@ -54,19 +60,16 @@ vec3 illuminate_pointlight(int idx, vec3 normal, vec3 camera_direction, vec3 col
     //     light_parameters[idx].z * dist * dist
     // );
 
-    // final lighting model
-
-    return attentuation * light_colors[idx] * vec3(
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
-    );
+    return attentuation * blinn_phong(light_colors[idx], normal, light_dir, color);
 }
 
-// vec3 illuminate_directionallight(Light light, vec3 normal, vec3 light_direction, vec3 camera_direction, vec3 color) {
-//     // light coming down (0, -1, 0) should reflect off of normals (0, 1, 0) the strongest
-//     float diff_coeff = max(dot(-light.direction, normal), 0.0);
-//     return diffuse * diff_coeff * light.color * color;
-// }
+vec3 calc_directional_light(int idx, vec3 normal, vec3 color) {
+    // TODO: don't calculate view * light_direction for each pixel
+    // vec3 light_dir = normalize((view * vec4(light_directions[idx], 1)).xyz);
+    vec3 light_dir = light_directions[idx];
+    return blinn_phong(light_colors[idx], normal, light_dir, color);
+}
+
 
 vec3 illuminate(vec3 normal, vec3 base_color) {
     vec3 final_color = vec3(0);
@@ -76,14 +79,14 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
             final_color += light_colors[i] * base_color;
             break;
         case PointLight:
-            final_color += illuminate_pointlight(i, normal, o_camdir, base_color);
+            final_color += calc_point_light(i, normal, base_color);
             break;
-        // case DirectionalLight:
-        //     return illuminate_directionallight(light, normal, light_direction, camera_direction, base_color);
+        case DirectionalLight:
+            final_color += calc_directional_light(i, normal, base_color);
+            break;
         default:
-            final_color += vec3(1,0,1); // debug magenta
+            return vec3(1,0,1); // debug magenta
         }
     }
     return final_color;
 }
-
