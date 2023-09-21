@@ -676,6 +676,7 @@ a.boxlink:hover {
         z-index: 0;
         border-right: 1px solid #f2f3f3;
         padding-right: var(--grid-gap);
+        padding-top: 0.5rem;
     }
     #navbar {
         position: sticky;
