@@ -61,11 +61,26 @@ A point-like light source placed at the given `position` with the given light
 struct PointLight <: AbstractLight
     color::Observable{RGBf}
     position::Observable{Vec3f}
+    attenuation::Observable{Vec2f}
 end
+
+# no attenuation
+PointLight(color, position) = PointLight(color, position, Vec2f(0))
+# automatic attenuation
+PointLight(color, position, range::Real) = PointLight(color, position, default_attenuation(range))
 
 light_type(::PointLight) = LightType.PointLight
 light_color(l::PointLight) = l.color[]
 light_position(l::PointLight) = l.position[]
+light_parameters(l::PointLight) = to_ndim(Vec3f, l.attenuation[], 0)
+
+# fit of values used on learnopengl/ogre3d
+function default_attenuation(range::Real)
+    return Vec2f(
+        4.690507869767646 * range ^ -1.009712247799057,
+        82.4447791934059 * range ^ -2.0192061630628966
+    )
+end
 
 
 """

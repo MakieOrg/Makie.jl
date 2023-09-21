@@ -53,12 +53,10 @@ vec3 calc_point_light(int idx, vec3 normal, vec3 color) {
     vec3 light_dir = normalize(light_vec);
 
     // How weak has the light gotten due to distance
-    float attentuation = 1.0;
-    // float attentuation = 1.0 / (
-    //     light_parameters[idx].x +
-    //     light_parameters[idx].y * dist +
-    //     light_parameters[idx].z * dist * dist
-    // );
+    // float attentuation = 1.0 / (1.0 + dist * dist * dist);
+    float attentuation = 1.0 / (
+        1.0 + light_parameters[idx].x * dist + light_parameters[idx].y * dist * dist
+    );
 
     return attentuation * blinn_phong(light_colors[idx], normal, light_dir, color);
 }
