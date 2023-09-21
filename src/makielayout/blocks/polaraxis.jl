@@ -610,8 +610,8 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
             rtick_rotation[] = angle - pi/2
             rtick_align[] = Point2f(0, 0.5)
         elseif rot === :aligned
-            N = div(angle + pi/4, pi/2) % 4
-            rtick_rotation[] = angle - (N) * pi/2 # mod(angle, -pi/4 .. pi/4)
+            N = trunc(Int, div(angle + pi/4, pi/2)) % 4
+            rtick_rotation[] = angle - N * pi/2 # mod(angle, -pi/4 .. pi/4)
             rtick_align[] = Point2f((0.5, 0.0, 0.5, 1.0)[N+1], (1.0, 0.5, 0.0, 0.5)[N+1])
         elseif rot isa Real
             rtick_rotation[] = rot
