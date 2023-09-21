@@ -451,6 +451,10 @@ a.boxlink:hover {
     margin-top: 0;
 }
 
+#makiesearch {
+    margin-bottom: 0.5rem;
+}
+
 #content-table {
     max-height: 33vh;
     overflow-y: auto;

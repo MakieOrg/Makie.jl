@@ -1850,10 +1850,11 @@ th {
 }
 
 .masthead__menu-item {
-    display: block;
+    display: flex;
     list-style-type: none;
     white-space: nowrap;
     margin-left: 2rem;
+    align-items: center;
 }
 
 .masthead__menu-item--lg {
