@@ -2,6 +2,9 @@
 
 ## master
 
+- [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+
 ## v0.19.9
 
 - Allow arbitrary reversible scale functions through `ReversibleScale`.
