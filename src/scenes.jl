@@ -252,7 +252,7 @@ function Scene(;
             else
                 error("Wrong lightposition type, use `:eyeposition` or `Vec3f(...)`")
             end
-            push!(scene.lights, PointLight(position, RGBf(1, 1, 1)))
+            push!(scene.lights, PointLight(RGBf(1, 1, 1), position))
         end
         ambient = to_value(get(m_theme, :ambient, nothing))
         if !isnothing(ambient)

@@ -110,10 +110,5 @@ void main(){
     o_color = o_color * to_color(vertex_color);
     o_uv = get_uv(texturecoordinates);
     rotate(rotation, index, V, N);
-    // render(model * vec4(pos + V, 1), N, view, projection, lightposition);
-
-    vec4 world_pos = model * vec4(pos + V, 1);
-    render(world_pos, N, view, projection, lightposition);
-    vec4 view_pos = view * world_pos;
-    prepare_lights(view_pos / view_pos.w);
+    render(model * vec4(pos + V, 1), N, view, projection, lightposition);
 }

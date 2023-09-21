@@ -6,17 +6,19 @@ using Makie: convert_arguments
 # TODO: observable
 function handle_lights(attr::Dict, lights::Vector{Makie.AbstractLight})
     maxlength = 8
-    N = min(maxlength, length(lights))
 
+    if length(lights) > maxlength
+        @warn "GLMakie only allows up to $maxlength lights."
+        lights = view(lights, 1:maxlength)
+    end
 
-    lights = Makie.GenericGLLight.(lights)
-    attr[:light_types] = [light.type for light in lights]
-    attr[:light_colors] = [light.color for light in lights]
-    attr[:light_positions] = [light.position for light in lights]
-    attr[:light_directions] = [light.direction for light in lights]
-    attr[:light_attentuation_parameters] = [light.attentuation_parameters for light in lights]
+    attr[:light_types]      = Int32.(Makie.light_type.(lights))
+    attr[:light_colors]     = RGBf.(Makie.light_color.(lights))
+    attr[:light_positions]  = Vec3f.(Makie.light_position.(lights))
+    attr[:light_directions] = Vec3f.(Makie.light_direction.(lights))
+    attr[:light_parameters] = Vec3f.(Makie.light_parameters.(lights))
 
-    attr[:lights_length] = N
+    attr[:lights_length] = length(lights)
     # @info "Inserted $N lights."
     return attr
 end
@@ -147,15 +149,17 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_key => gl_value
         end)
 
-        pointlight = Makie.get_point_light(scene)
-        if !isnothing(pointlight)
-            gl_attributes[:lightposition] = pointlight.position
-        end
+        # pointlight = Makie.get_point_light(scene)
+        # if !isnothing(pointlight)
+        #     @info "Set light position"
+        #     gl_attributes[:lightposition] = pointlight.position
+        # end
 
-        ambientlight = Makie.get_ambient_light(scene)
-        if !isnothing(ambientlight)
-            gl_attributes[:ambient] = ambientlight.color
-        end
+        # ambientlight = Makie.get_ambient_light(scene)
+        # if !isnothing(ambientlight)
+        #     @info "Set ambient light"
+        #     gl_attributes[:ambient] = ambientlight.color
+        # end
 
         # TODO:
         handle_lights(gl_attributes, scene.lights)

@@ -77,7 +77,7 @@ function draw_mesh_particle(screen, p, data)
         transparency = false
         shader = GLVisualizeShader(
             screen,
-            "util.vert", "lighting.vert", "particles.vert",
+            "util.vert", "particles.vert",
             "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),

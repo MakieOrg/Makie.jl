@@ -55,7 +55,7 @@ function draw_mesh(screen, data::Dict)
             screen,
             "util.vert", "mesh.vert",
             "fragment_output.frag", "mesh.frag",
-            "lighting.vert", "lighting.frag",
+            "lighting.frag",
             view = Dict(
                 # "light_calc" => light_calc(shading),
                 "buffers" => output_buffers(screen, to_value(transparency)),
