@@ -548,6 +548,35 @@ a.boxlink:hover {
     overflow-y: auto;
 }
 
+#makiesearch-overlay-container {
+    height: 100vh;
+    width: 100vw;
+    background: rgba(0, 0, 0, 0.3);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 25;
+    transition: 0.3s;
+    padding: 5rem;
+}
+
+#makiesearch-overlay-container.hidden {
+    display: none;
+    opacity: 0;
+}
+
+#makiesearch-overlay-container-inner {
+    opacity: 1;
+    background-color: white;
+    border-radius: 1rem;
+    padding: 3rem;
+    max-width: 80ch;
+    margin: 0 auto;
+    overflow-y: scroll;
+    max-height: calc(100vh - 10rem);
+}
+
+
 #overlay {
     height: 100vh;
     width: 100vw;
@@ -573,6 +602,10 @@ a.boxlink:hover {
 }
 
 .masthead ul.visible-links {
+    display: none;
+}
+
+#masthead-search-button {
     display: none;
 }
 
@@ -620,6 +653,17 @@ a.boxlink:hover {
         width: 100%;
         padding-left: 1rem;
         padding-right: 1rem;
+    }
+    #masthead-search-button {
+        display: inline;
+    }
+    #masthead-search-button button {
+        border-radius: 0.5rem;
+        border: 0;
+        padding: 0.3rem 0.5rem;
+    }
+    #makiesearch {
+        display: none;
     }
     #navbar-container {
         /* float: left; */
@@ -746,23 +790,6 @@ input.collapse-toggle {
 
 .result-query {
     font-weight: bold;
-}
-
-#lunrSearchForm {
-    margin: 1em 0;
-    padding: 0;
-    background-color: transparent;
-}
-
-#lunrSearchForm input {
-    box-shadow: inset 0px 0px 3px 0px rgba(0, 0, 0, 0.04);
-    padding: 0.25em 0.5em;
-    border-radius: 1em;
-    border: 1px solid #ddd;
-}
-
-#lunrSearchForm input:focus {
-    border: 1px solid #7192e1;
 }
 
 .banner-container {

@@ -491,13 +491,6 @@ screen and (max-height: 300px) {
     padding-top: 0;
 }
 
-a:focus,
-button:focus {
-    outline: thin dotted #6f777d;
-    outline: 5px auto #6f777d;
-    outline-offset: -2px;
-}
-
 * {
     box-sizing: border-box;
 }

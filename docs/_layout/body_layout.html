@@ -6,6 +6,16 @@
     {{end}}
       <div id="main" role="main">
         <div id="overlay"></div>
+        {{if searchpage}}
+        {{else}}
+        <div id="makiesearch-overlay-container" class="hidden">
+          <div id="makiesearch-overlay-container-inner">
+            <div id="makiesearch-overlay">
+            </div>
+          </div>
+        </div>
+        {{end}}
+        {{ navigation }}
         <div id="content-table-container" class="content-table-hidden">
           <button id="on-this-page" onclick="toggle_content_table_visibility()">On this page</button>
           <script>
@@ -19,9 +29,6 @@
         </div>
         <div id="navbar-container">
           <div id="navbar">
-            <!-- <form id="lunrSearchForm" name="lunrSearchForm" action="/search/index.html">
-              <input class="search-input" name="q" placeholder="Search docs" type="text">
-            </form> -->
             {{if searchpage}}
             {{else}}
             <div id="makiesearch">
