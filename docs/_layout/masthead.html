@@ -22,6 +22,7 @@
                             function toggleSearchOverlay(){
                                 const overlay = document.querySelector("#makiesearch-overlay-container");
                                 overlay.classList.toggle("hidden");
+                                overlay.querySelector("input").focus();
                                 overlay.onclick = function(e){
                                     if (e.target !== this){
                                         return
