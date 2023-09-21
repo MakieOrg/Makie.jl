@@ -438,8 +438,6 @@ function RenderObject(
                 merge!(data, gl_convert_struct(v, k))
                 delete!(data, k)
 
-            # TODO: gl vector handling
-
             # try direct conversion
             elseif applicable(gl_convert, v)
                 try
