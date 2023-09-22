@@ -65,10 +65,22 @@ vec3 calc_point_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
 vec3 calc_directional_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
     // TODO: don't calculate view * light_direction for each pixel
     // vec3 light_dir = normalize((view * vec4(light_directions[idx], 1)).xyz);
-    vec3 light_dir = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
-    return blinn_phong(light_color, normal, light_dir, color);
+    vec3 direction = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
+    return blinn_phong(light_color, normal, direction, color);
 }
 
+vec3 calc_spot_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
+    // extract args
+    vec3 position = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
+    vec3 light_dir = -normalize(vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]));
+    float limit = light_parameters[idx+6]; // cos(opening_angle)
+
+    vec3 vertex_dir = normalize(position - o_view_pos);
+    float epsilon = 0.5 * (1 - limit); // differece between limit and 0.5 * (1 + limit)
+    float discriminator = smoothstep(limit - epsilon, limit + epsilon, dot(vertex_dir, light_dir));
+
+    return discriminator * blinn_phong(light_color, normal, vertex_dir, color);
+}
 
 vec3 illuminate(vec3 normal, vec3 base_color) {
     vec3 final_color = vec3(0);
@@ -85,6 +97,10 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
         case DirectionalLight:
             final_color += calc_directional_light(light_colors[i], idx, normal, base_color);
             idx += 3; // 3 direction
+            break;
+        case SpotLight:
+            final_color += calc_spot_light(light_colors[i], idx, normal, base_color);
+            idx += 7; // 3 position, 3 direction, 1 parameter
             break;
         default:
             return vec3(1,0,1); // debug magenta

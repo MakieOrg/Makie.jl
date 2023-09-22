@@ -14,6 +14,7 @@ end
 # always implement
 light_type(::AbstractLight) = LightType.UNDEFINED
 
+# TODO: rethink these
 # implement as needed (keep types)
 light_color(::AbstractLight) = RGBf(0, 0, 0)
 light_position(::AbstractLight) = Vec3f(0)
@@ -97,6 +98,25 @@ end
 light_type(::DirectionalLight) = LightType.DirectionalLight
 light_color(l::DirectionalLight) = l.color[]
 light_direction(l::DirectionalLight) = l.direction[]
+
+
+"""
+    SpotLight(color, position, direction, opening_angle)
+
+Creates a spot light which illuminates a cone
+"""
+struct SpotLight <: AbstractLight
+    color::Observable{RGBf}
+    position::Observable{Vec3f}
+    direction::Observable{Vec3f}
+    opening_angle::Observable{Float32}
+end
+
+light_type(::SpotLight) = LightType.SpotLight
+light_color(l::SpotLight) = l.color[]
+light_position(l::SpotLight) = l.position[]
+light_direction(l::SpotLight) = l.direction[]
+light_parameters(l::SpotLight) = l.opening_angle[]
 
 
 """

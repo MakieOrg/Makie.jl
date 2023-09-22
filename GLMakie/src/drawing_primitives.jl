@@ -11,7 +11,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
     updater = screen.render_tick
     MAX_PRIORITY = typemax(Int)
 
-    attr[:lights_length] = map(updater, priority = MAX_PRIORITY) do _
+    attr[:lights_length] = map(updater, priority = -1000) do _
         # @info "$(length(lights)) lights."
         n_lights = 0
         n_params = 0
@@ -20,6 +20,8 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
                 n_params += 5
             elseif light isa DirectionalLight
                 n_params += 3
+            elseif light isa SpotLight
+                n_params += 7
             end
             if n_params > max_params || n_lights == max_lights
                 if n_params > max_params
@@ -49,13 +51,18 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
         v = attr[:view][]
         for i in 1:N
             light = lights[i]
-            if light isa Makie.PointLight
-                p = light.position[]; a = light.attenuation[]
-                p4d = v * Point4f(p[1], p[2], p[3], 1)
-                push!(parameters, p4d[1] / p4d[4], p4d[2] / p4d[4], p4d[3] / p4d[4], a[1], a[2])
-            elseif light isa Makie.DirectionalLight
+            if light isa PointLight
+                p = v * to_ndim(Point4f, light.position[], 1)
+                a = light.attenuation[]
+                push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], a[1], a[2])
+            elseif light isa DirectionalLight
                 d = nv * light.direction[]
                 push!(parameters, d[1], d[2], d[3])
+            elseif light isa SpotLight
+                p = v * to_ndim(Point4f, light.position[], 1)
+                d = nv * light.direction[]
+                l = cos(light.opening_angle[])
+                push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], d[1], d[2], d[3], l)
             end
         end
         return parameters
