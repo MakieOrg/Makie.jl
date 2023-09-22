@@ -43,7 +43,6 @@ using Dates
 
 include("buildutils/deploydocs.jl")
 include("buildutils/relative_links.jl")
-include("buildutils/stork.jl")
 include("buildutils/redirect_generation.jl")
 
 docs_url = "docs.makie.org"
