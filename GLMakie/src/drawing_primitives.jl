@@ -5,13 +5,10 @@ using Makie: convert_arguments
 # TODO: Maybe move this somewhere else?
 function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.AbstractLight})
     # TODO: make this adjustable?
-    max_lights = 64
-    max_params = 5 * 64
+    MAX_LIGHTS = 64
+    MAX_PARAMS = 5 * 64
 
-    updater = screen.render_tick
-    MAX_PRIORITY = typemax(Int)
-
-    attr[:lights_length] = map(updater, priority = -1000) do _
+    attr[:lights_length] = map(screen.render_tick, priority = -1000) do _
         # @info "$(length(lights)) lights."
         n_lights = 0
         n_params = 0
@@ -23,30 +20,42 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
             elseif light isa SpotLight
                 n_params += 7
             end
-            if n_params > max_params || n_lights == max_lights
-                if n_params > max_params
-                    @warn "Exceeded the maximum number of light parameters ($n_params > $max_params). Skipping lights beyond number $n_lights."
+            if n_params > MAX_PARAMS || n_lights == MAX_LIGHTS
+                if n_params > MAX_PARAMS
+                    @warn "Exceeded the maximum number of light parameters ($n_params > $MAX_PARAMS). Skipping lights beyond number $n_lights."
                 else
-                    @warn "Exceeded the maximum number of lights ($n_lights > $max_lights). Skipping lights beyond number $n_lights."
+                    @warn "Exceeded the maximum number of lights ($n_lights > $MAX_LIGHTS). Skipping lights beyond number $n_lights."
                 end
                 break
             end
             n_lights += 1
         end
-        return min(max_lights, length(lights))
+        return min(MAX_LIGHTS, length(lights))
     end
 
-    attr[:light_types] = map(attr[:lights_length], ignore_equal_values = true) do N
-        return Int32[Makie.light_type(lights[i]) for i in 1:N]
+    attr[:light_types] = light_types_obs = Observable(sizehint!(Int32[], MAX_LIGHTS))
+    on(attr[:lights_length]) do N
+        trg = light_types_obs[]
+        resize!(trg, N)
+        map!(i -> Makie.light_type(lights[i]), trg, 1:N)
+        notify(light_types_obs)
+        return
     end
 
-    attr[:light_colors] = map(attr[:lights_length], ignore_equal_values = true) do N
-        return RGBf[Makie.light_color(lights[i]) for i in 1:N]
+    attr[:light_colors] = light_colors_obs = Observable(sizehint!(RGBf[], MAX_LIGHTS))
+    on(attr[:lights_length]) do N
+        trg = light_colors_obs[]
+        resize!(trg, N)
+        map!(i -> Makie.light_color(lights[i]), trg, 1:N)
+        notify(light_colors_obs)
+        return
     end
 
     normalview = map(view -> transpose(inv(view[Vec(1,2,3), Vec(1,2,3)])), attr[:view])
-    attr[:light_parameters] = map(attr[:lights_length], ignore_equal_values = true) do N
-        parameters = Float32[]
+    attr[:light_parameters] = light_params_obs = Observable(sizehint!(Float32[], MAX_PARAMS))
+    on(attr[:lights_length]) do N
+        parameters = light_params_obs[]
+        empty!(parameters)
         nv = normalview[]
         v = attr[:view][]
         for i in 1:N
@@ -65,7 +74,8 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
                 push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], d[1], d[2], d[3], l)
             end
         end
-        return parameters
+        notify(light_params_obs)
+        return
     end
 
     return attr
