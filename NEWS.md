@@ -2,6 +2,13 @@
 
 ## master
 
+## v0.19.10
+
+- Fix bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).
+- Add experimental Datashader implementation [#2883](https://github.com/MakieOrg/Makie.jl/pull/2883).
+- [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+
 ## v0.19.9
 
 - Allow arbitrary reversible scale functions through `ReversibleScale`.

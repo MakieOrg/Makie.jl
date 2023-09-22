@@ -57,7 +57,6 @@ end
 
 function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
-    color = plot.calculated_colors
     handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
     get!(uniforms, :pattern, false)
