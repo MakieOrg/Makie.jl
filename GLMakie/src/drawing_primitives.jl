@@ -3,45 +3,62 @@ using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
 # TODO: Maybe move this somewhere else?
-# TODO: observable
 function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.AbstractLight})
     # TODO: make this adjustable?
-    maxlength = 64
+    max_lights = 64
+    max_params = 5 * 64
 
     updater = screen.render_tick
     MAX_PRIORITY = typemax(Int)
 
-    attr[:lights_length] = map(updater, ignore_equal_values = true, priority = MAX_PRIORITY) do _
+    attr[:lights_length] = map(updater, priority = MAX_PRIORITY) do _
         # @info "$(length(lights)) lights."
-        if length(lights) > maxlength
-            @warn "GLMakie only allows up to $maxlength lights."
+        n_lights = 0
+        n_params = 0
+        for light in lights
+            if light isa PointLight
+                n_params += 5
+            elseif light isa DirectionalLight
+                n_params += 3
+            end
+            if n_params > max_params || n_lights == max_lights
+                if n_params > max_params
+                    @warn "Exceeded the maximum number of light parameters ($n_params > $max_params). Skipping lights beyond number $n_lights."
+                else
+                    @warn "Exceeded the maximum number of lights ($n_lights > $max_lights). Skipping lights beyond number $n_lights."
+                end
+                break
+            end
+            n_lights += 1
         end
-        return min(maxlength, length(lights))
+        return min(max_lights, length(lights))
     end
 
-    attr[:light_types] = map(updater, ignore_equal_values = true, priority = MAX_PRIORITY) do _
-        return Int32[Makie.light_type(lights[i]) for i in 1:min(maxlength, length(lights))]
+    attr[:light_types] = map(attr[:lights_length], ignore_equal_values = true) do N
+        return Int32[Makie.light_type(lights[i]) for i in 1:N]
     end
 
-    attr[:light_colors] = map(updater, ignore_equal_values = true, priority = MAX_PRIORITY) do _
-        return RGBf[Makie.light_color(lights[i]) for i in 1:min(maxlength, length(lights))]
-    end
-
-    attr[:light_positions] = map(updater, ignore_equal_values = true, priority = MAX_PRIORITY) do _
-        map(1:min(maxlength, length(lights))) do i
-            p = Makie.light_position(lights[i])
-            p4d = attr[:view][] * to_ndim(Point4f, p, 1)
-            return Vec3f(p4d[1] / p4d[4], p4d[2] / p4d[4], p4d[3] / p4d[4])
-        end
+    attr[:light_colors] = map(attr[:lights_length], ignore_equal_values = true) do N
+        return RGBf[Makie.light_color(lights[i]) for i in 1:N]
     end
 
     normalview = map(view -> transpose(inv(view[Vec(1,2,3), Vec(1,2,3)])), attr[:view])
-    attr[:light_directions] = map(updater, ignore_equal_values = true, priority = MAX_PRIORITY) do _
-        return Vec3f[normalview[] * Makie.light_direction(lights[i]) for i in 1:min(maxlength, length(lights))]
-    end
-
-    attr[:light_parameters] = map(updater, ignore_equal_values = true, priority = MAX_PRIORITY) do _
-        return Vec3f[Makie.light_parameters(lights[i]) for i in 1:min(maxlength, length(lights))]
+    attr[:light_parameters] = map(attr[:lights_length], ignore_equal_values = true) do N
+        parameters = Float32[]
+        nv = normalview[]
+        v = attr[:view][]
+        for i in 1:N
+            light = lights[i]
+            if light isa Makie.PointLight
+                p = light.position[]; a = light.attenuation[]
+                p4d = v * Point4f(p[1], p[2], p[3], 1)
+                push!(parameters, p4d[1] / p4d[4], p4d[2] / p4d[4], p4d[3] / p4d[4], a[1], a[2])
+            elseif light isa Makie.DirectionalLight
+                d = nv * light.direction[]
+                push!(parameters, d[1], d[2], d[3])
+            end
+        end
+        return parameters
     end
 
     return attr
