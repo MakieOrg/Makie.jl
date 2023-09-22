@@ -19,7 +19,11 @@
           <button id="on-this-page" onclick="toggle_content_table_visibility()">On this page</button>
           <script>
             function toggle_content_table_visibility(){
-              document.querySelector("#content-table-container").classList.toggle("content-table-hidden");
+              const c = document.querySelector("#content-table-container");
+              const ct = c.querySelector("#content-table");
+              const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
+              ct.style.height = `${Math.min(ct.scrollHeight, 0.66*vh)}px`;
+              c.classList.toggle("content-table-hidden");
             }
           </script>
           <div id="content-table">

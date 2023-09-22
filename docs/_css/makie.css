@@ -506,7 +506,7 @@ a.boxlink:hover {
 #content-table {
     background-color: rgb(244, 244, 244);
     max-height: 66vh;
-    transition: 0.6s;
+    transition: 0.4s;
 }
 
 #content-table .page-content {
@@ -514,7 +514,7 @@ a.boxlink:hover {
 }
 
 #content-table-container.content-table-hidden #content-table {
-    max-height: 0px;
+    height: 0px !important;
 }
 
 
