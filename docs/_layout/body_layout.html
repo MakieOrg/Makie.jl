@@ -21,7 +21,7 @@
             function toggle_content_table_visibility(){
               const c = document.querySelector("#content-table-container");
               const ct = c.querySelector("#content-table");
-              const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
+              const vh = window.visualViewport.height;
               ct.style.height = `${Math.min(ct.scrollHeight, 0.66*vh)}px`;
               c.classList.toggle("content-table-hidden");
             }
