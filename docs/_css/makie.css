@@ -708,7 +708,7 @@ a.boxlink:hover {
     #content-table {
         position: sticky;
         top: calc(var(--masthead-height-desktop) + var(--content-table-top-margin) + 1px);
-        height: auto;
+        background-color: transparent;
         max-height: calc(100vh - var(--masthead-height-desktop));
         padding: 0;
         font-size: .85rem;
@@ -719,7 +719,7 @@ a.boxlink:hover {
         display: none;
     }
     #content-table-container.content-table-hidden #content-table {
-        max-height: 100vh;
+        height: fit-content !important;
         background-color: transparent;
     }
 }
