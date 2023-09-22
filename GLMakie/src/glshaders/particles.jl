@@ -57,9 +57,9 @@ function draw_mesh_particle(screen, p, data)
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
-        shading = true
     end
 
+    shading = to_value(pop!(data, :shading, true))
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing
@@ -73,7 +73,6 @@ function draw_mesh_particle(screen, p, data)
         uv_scale = Vec2f(1)
 
         instances = const_lift(length, position)
-        shading = true
         transparency = false
         shader = GLVisualizeShader(
             screen,
@@ -81,7 +80,7 @@ function draw_mesh_particle(screen, p, data)
             "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
-                # "light_calc" => light_calc(shading),
+                "shading" => shading ? "#define shading true" : "",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

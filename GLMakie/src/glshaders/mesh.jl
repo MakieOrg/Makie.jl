@@ -35,11 +35,11 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
 end
 
 function draw_mesh(screen, data::Dict)
+    shading = to_value(pop!(data, :shading, true))
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer
         normals = nothing => GLBuffer
-        shading = true
         backlight = 0f0
         vertex_color = nothing => GLBuffer
         image = nothing => Texture
@@ -57,7 +57,7 @@ function draw_mesh(screen, data::Dict)
             "fragment_output.frag", "mesh.frag",
             "lighting.frag",
             view = Dict(
-                # "light_calc" => light_calc(shading),
+                "shading" => shading ? "#define shading true" : "",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

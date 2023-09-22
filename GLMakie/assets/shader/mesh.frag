@@ -4,11 +4,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
-uniform vec3 ambient;
-uniform vec3 diffuse;
-uniform vec3 specular;
-uniform float shininess;
-uniform float backlight;
+{{shading}}
 
 in vec3 o_normal;
 in vec3 o_lightdir;
@@ -100,26 +96,11 @@ vec4 get_pattern_color(sampler2D color){
 // Needs to exist for opengl to be happy
 vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
 
-vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
-
-    // specular coefficient
-    vec3 H = normalize(L + V);
-
-    float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
-    if (diff_coeff <= 0.0 || isnan(spec_coeff))
-        spec_coeff = 0.0;
-
-    // final lighting model
-    return vec3(
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
-    );
-}
-
 void write2framebuffer(vec4 color, uvec2 id);
 
+#ifdef shading
 vec3 illuminate(vec3 normal, vec3 base_color);
+#endif
 
 void main(){
     vec4 color;
@@ -129,9 +110,8 @@ void main(){
     }else{
         color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
+    #ifdef shading
     color.rgb = illuminate(normalize(o_normal), color.rgb);
-    /*
-    {{light_calc}}
-    */
+    #endif
     write2framebuffer(color, o_id);
 }

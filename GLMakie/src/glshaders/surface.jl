@@ -125,6 +125,7 @@ function draw_surface(screen, main, data::Dict)
         invert_normals = false
         backlight = 0f0
     end
+    shading = to_value(pop!(data, :shading, true))
     @gen_defaults! data begin
         color = nothing => Texture
         color_map = nothing => Texture
@@ -146,7 +147,7 @@ function draw_surface(screen, main, data::Dict)
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
-                # "light_calc" => light_calc(shading),
+                "light_calc" => shading ? "#define shading true" : "",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
