@@ -77,7 +77,10 @@ vec3 calc_spot_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
     float outer_angle = light_parameters[idx+7]; // cos applied
 
     vec3 vertex_dir = normalize(position - o_view_pos);
-    float intensity = (dot(vertex_dir, light_dir) - outer_angle) / (inner_angle - outer_angle);
+    // float theta = dot(vertex_dir, light_dir);
+    // float epsilon = inner_angle - outer_angle;
+    // float intensity = clamp((theta - outer_angle) / epsilon, 0.0, 1.0);
+    float intensity = smoothstep(outer_angle, inner_angle, dot(vertex_dir, light_dir));
 
     return intensity * blinn_phong(light_color, normal, vertex_dir, color);
 }
