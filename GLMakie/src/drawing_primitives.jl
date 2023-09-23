@@ -18,7 +18,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
             elseif light isa DirectionalLight
                 n_params += 3
             elseif light isa SpotLight
-                n_params += 7
+                n_params += 8
             end
             if n_params > MAX_PARAMS || n_lights == MAX_LIGHTS
                 if n_params > MAX_PARAMS
@@ -70,8 +70,8 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
             elseif light isa SpotLight
                 p = v * to_ndim(Point4f, light.position[], 1)
                 d = nv * light.direction[]
-                l = cos(light.opening_angle[])
-                push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], d[1], d[2], d[3], l)
+                l = cos.(light.angles[])
+                push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], d[1], d[2], d[3], l[1], l[2])
             end
         end
         notify(light_params_obs)

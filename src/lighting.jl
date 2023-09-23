@@ -66,9 +66,15 @@ struct PointLight <: AbstractLight
 end
 
 # no attenuation
-PointLight(color, position) = PointLight(color, position, Vec2f(0))
+function PointLight(color::Union{Colorant, Observable{<: Colorant}}, position::Union{VecTypes{3}, Observable{<: VecTypes{3}}})
+    return PointLight(color, position, Vec2f(0))
+end
 # automatic attenuation
-PointLight(color, position, range::Real) = PointLight(color, position, default_attenuation(range))
+function PointLight(color::Union{Colorant, Observable{<: Colorant}}, position::Union{VecTypes{3}, Observable{<: VecTypes{3}}}, range::Real)
+    return PointLight(color, position, default_attenuation(range))
+end
+
+@deprecate PointLight(position::Union{VecTypes{3}, Observable{<: VecTypes{3}}}, color::Union{Colorant, Observable{<: Colorant}}) PointLight(color, position)
 
 light_type(::PointLight) = LightType.PointLight
 light_color(l::PointLight) = l.color[]
@@ -101,22 +107,24 @@ light_direction(l::DirectionalLight) = l.direction[]
 
 
 """
-    SpotLight(color, position, direction, opening_angle)
+    SpotLight(color, position, direction, angles)
 
-Creates a spot light which illuminates a cone
+Creates a spot light which illuminates objects in a light cone starting at
+`position` pointing in `direction`. The opening angle is defined by an inner
+and outer angle in `angles` between which the light intensity drops off.
 """
 struct SpotLight <: AbstractLight
     color::Observable{RGBf}
     position::Observable{Vec3f}
     direction::Observable{Vec3f}
-    opening_angle::Observable{Float32}
+    angles::Observable{Vec2f}
 end
 
 light_type(::SpotLight) = LightType.SpotLight
 light_color(l::SpotLight) = l.color[]
 light_position(l::SpotLight) = l.position[]
 light_direction(l::SpotLight) = l.direction[]
-light_parameters(l::SpotLight) = l.opening_angle[]
+light_parameters(l::SpotLight) = l.angles[]
 
 
 """

@@ -43,15 +43,51 @@ function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecializ
     end
 end
 
+# TODO attenuation
 function to_rpr_light(context::RPR.Context, light::Makie.PointLight)
     pointlight = RPR.PointLight(context)
     map(light.position) do pos
         transform!(pointlight, Makie.translationmatrix(pos))
     end
-    map(light.radiance) do r
-        setradiantpower!(pointlight, red(r), green(r), blue(r))
+    map(light.color) do c
+        setradiantpower!(pointlight, red(c), green(c), blue(c))
     end
     return pointlight
+end
+
+# TODO: Move to RadeonProRender.jl
+function RPR.RPR.rprContextCreateSpotLight(context)
+    out_light = Ref{RPR.rpr_light}()
+    RPR.RPR.rprContextCreateSpotLight(context, out_light)
+    return out_light[]
+end
+
+function to_rpr_light(context::RPR.Context, light::Makie.DirectionalLight)
+    directionallight = RPR.DirectionalLight(context)
+    # TODO
+    map(light.direction) do dir
+        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
+        transform!(directionallight, Makie.rotationmatrix4(quart))
+    end
+    map(light.color) do c
+        setradiantpower!(directionallight, red(c), green(c), blue(c))
+    end
+    return directionallight
+end
+
+function to_rpr_light(context::RPR.Context, light::Makie.SpotLight)
+    spotlight = RPR.SpotLight(context)
+    map(light.position, light.direction) do pos, dir
+        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
+        transform!(spotlight, Makie.translationmatrix(pos) * Makie.rotationmatrix4(quart))
+    end
+    map(light.color) do c
+        setradiantpower!(spotlight, red(c), green(c), blue(c))
+    end
+    map(light.angles) do (inner, outer)
+        RadeonProRender.RPR.rprSpotLightSetConeShape(spotlight, inner, outer)
+    end
+    return spotlight
 end
 
 function to_rpr_light(context::RPR.Context, light::Makie.AmbientLight)

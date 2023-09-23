@@ -73,13 +73,13 @@ vec3 calc_spot_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
     // extract args
     vec3 position = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
     vec3 light_dir = -normalize(vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]));
-    float limit = light_parameters[idx+6]; // cos(opening_angle)
+    float inner_angle = light_parameters[idx+6]; // cos applied
+    float outer_angle = light_parameters[idx+7]; // cos applied
 
     vec3 vertex_dir = normalize(position - o_view_pos);
-    float epsilon = 0.5 * (1 - limit); // differece between limit and 0.5 * (1 + limit)
-    float discriminator = smoothstep(limit - epsilon, limit + epsilon, dot(vertex_dir, light_dir));
+    float intensity = (dot(vertex_dir, light_dir) - outer_angle) / (inner_angle - outer_angle);
 
-    return discriminator * blinn_phong(light_color, normal, vertex_dir, color);
+    return intensity * blinn_phong(light_color, normal, vertex_dir, color);
 }
 
 vec3 illuminate(vec3 normal, vec3 base_color) {
@@ -100,7 +100,7 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
             break;
         case SpotLight:
             final_color += calc_spot_light(light_colors[i], idx, normal, base_color);
-            idx += 7; // 3 position, 3 direction, 1 parameter
+            idx += 8; // 3 position, 3 direction, 1 parameter
             break;
         default:
             return vec3(1,0,1); // debug magenta
