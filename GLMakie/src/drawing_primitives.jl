@@ -8,7 +8,10 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
     MAX_LIGHTS = 64
     MAX_PARAMS = 5 * 64
 
-    attr[:lights_length] = map(screen.render_tick, priority = -1000) do _
+    # TODO merge Observables#110
+    # attr[:lights_length] = map(screen.render_tick, priority = -1000) do _
+    attr[:lights_length] = Observable(0)
+    on(screen.render_tick, priority = -1000) do _
         # @info "$(length(lights)) lights."
         n_lights = 0
         n_params = 0
@@ -30,7 +33,9 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
             end
             n_lights += 1
         end
-        return min(MAX_LIGHTS, length(lights))
+        # return min(MAX_LIGHTS, length(lights))
+        attr[:lights_length][] = min(MAX_LIGHTS, length(lights))
+        return Consume(false)
     end
 
     attr[:light_types] = light_types_obs = Observable(sizehint!(Int32[], MAX_LIGHTS))
