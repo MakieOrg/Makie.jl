@@ -213,8 +213,34 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         handle_intensities!(gl_attributes, x)
         connect_camera!(x, gl_attributes, scene.camera, get_space(x))
 
+        # convert deprecated shading::Bool
+        if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
+            @warn "Setting `shading` to true or false is deprecated. Use `shading = :none` instead of false, `shading = :fast` instead of true or `shading = :verbose` to enable multiple lights."
+            gl_attributes[:shading] = ifelse(gl_attributes[:shading][], :fast, :none)
+        elseif haskey(gl_attributes, :shading) && gl_attributes[:shading] isa Observable
+            gl_attributes[:shading] = gl_attributes[:shading][]
+        end
+
         # TODO:
-        handle_lights(gl_attributes, screen, scene.lights)
+        shading = to_value(get(gl_attributes, :shading, :none))
+        # @info shading
+        if shading == :fast
+            # @info "cached robj simple shading"
+            pointlight = Makie.get_point_light(scene)
+            if !isnothing(pointlight)
+                gl_attributes[:lightposition] = pointlight.position
+                gl_attributes[:light_color] = pointlight.color
+                # @info pointlight.color[]
+            end
+
+            ambientlight = Makie.get_ambient_light(scene)
+            if !isnothing(ambientlight)
+                gl_attributes[:ambient] = ambientlight.color
+            end
+        elseif shading == :verbose
+            # @info "cached robj verbose shading"
+            handle_lights(gl_attributes, screen, scene.lights)
+        end
 
         robj = robj_func(gl_attributes)
 
@@ -298,7 +324,7 @@ pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
     return cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
-        gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
+        # gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true)) # TODO this must be set beforehand
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
 
         space = x.space
@@ -576,9 +602,10 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
 end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
+    # TODO must be set beforehand
     # signals not supported for shading yet
-    shading = to_value(pop!(gl_attributes, :shading))
-    gl_attributes[:shading] = shading
+    shading = to_value(get!(gl_attributes, :shading, :fast))
+    # gl_attributes[:shading] = shading
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
@@ -620,7 +647,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
     end
-    if hasproperty(to_value(mesh), :normals) && shading
+    if hasproperty(to_value(mesh), :normals) && (shading !== :none)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
     end
     return draw_mesh(screen, gl_attributes)
@@ -638,7 +665,6 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         color = pop!(gl_attributes, :color)
         img = nothing
-        # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if haskey(gl_attributes, :intensity)
             img = pop!(gl_attributes, :intensity)
@@ -659,7 +685,9 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         space = x.space
 
         gl_attributes[:image] = img
-        gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
+        # TODO
+        # signals not supported for shading yet
+        # gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
 
         @assert to_value(x[3]) isa AbstractMatrix
         types = map(v -> typeof(to_value(v)), x[1:2])

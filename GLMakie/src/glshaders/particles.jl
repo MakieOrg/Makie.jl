@@ -59,7 +59,7 @@ function draw_mesh_particle(screen, p, data)
         texturecoordinates = nothing
     end
 
-    shading = to_value(pop!(data, :shading, true))
+    shading = to_value(pop!(data, :shading, :fast))
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing
@@ -80,7 +80,7 @@ function draw_mesh_particle(screen, p, data)
             "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
-                "shading" => shading ? "#define shading true" : "",
+                "shading" => light_calc(shading),
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

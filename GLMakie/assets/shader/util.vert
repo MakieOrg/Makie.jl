@@ -245,6 +245,7 @@ out vec3 o_view_pos;
 out vec3 o_normal;
 out vec3 o_lightdir;
 out vec3 o_camdir;
+
 // transpose(inv(view * model))
 // Transformation for vectors (rather than points)
 uniform mat3 normalmatrix;
@@ -259,11 +260,13 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     o_normal = normalmatrix * normal;
     // position in view space (as seen from camera)
     vec4 view_pos = view * position_world;
+    view_pos /= view_pos.w;
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
     gl_Position.z += gl_Position.w * depth_shift;
-    // direction to light
-    // o_lightdir = normalize(view*vec4(lightposition, 1.0) - view_pos).xyz;
+    // direction to light (normalizing this will result in incorrect lighting)
+    vec4 view_light_pos = view*vec4(lightposition, 1.0);
+    o_lightdir = view_light_pos.xyz / view_light_pos.w - view_pos.xyz;
     // direction to camera
     // This is equivalent to
     // normalize(view*vec4(eyeposition, 1.0) - view_pos).xyz

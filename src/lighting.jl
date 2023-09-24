@@ -22,24 +22,6 @@ light_direction(::AbstractLight) = Vec3f(0)
 light_parameters(::AbstractLight) = Vec3f(0) # extra data passthrough
 
 
-
-# TODO: Should we allow Palette for Light color initialization?
-
-# TODO: probably need some kind of resize tracking?
-# struct LightVector
-#     lights::Vector{AbstractLight}
-#     array_changed::Observable{Nothing}
-# end
-
-# for f in (push!, append!, setindex!, ...)
-#     @eval function Base.($f)(lv::LightVector, args...; kwargs...)
-#         output = ($f)(lv.lights, args...; kwargs...)
-#         notify(lv.array_changed)
-#         return output
-#     end
-# end
-
-
 """
     AmbientLight(color) <: AbstractLight
 

@@ -4,11 +4,10 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+// Sets which shading procedures to use
 {{shading}}
 
 in vec3 o_normal;
-in vec3 o_lightdir;
-in vec3 o_camdir;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
@@ -98,7 +97,7 @@ vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
 
 void write2framebuffer(vec4 color, uvec2 id);
 
-#ifdef shading
+#ifndef NO_SHADING
 vec3 illuminate(vec3 normal, vec3 base_color);
 #endif
 
@@ -110,7 +109,7 @@ void main(){
     }else{
         color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
-    #ifdef shading
+    #ifndef NO_SHADING
     color.rgb = illuminate(normalize(o_normal), color.rgb);
     #endif
     write2framebuffer(color, o_id);

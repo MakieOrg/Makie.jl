@@ -1,6 +1,78 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
+// Sets which shading procedures to use
+// Options:
+// NO_SHADING           - skip shading calculation, handled outside
+// FAST_SHADING         - single point light (forward rendering)
+// MULTI_LIGHT_SHADING  - simple shading with multiple lights (forward rendering)
+{{shading}}
+
+
+// Generic uniforms
+
+// Material parameters
+// alternatively keep them as uniforms and allow samplers for
+// diffuse_map, normal_map, depth_map etc
+// struct Material {
+//     // learnopengl mirrors these 3 to light
+//     // vec3 ambient; // material property or light property?
+//     vec3 diffuse;
+//     vec3 specular;
+//     float shininess;
+// };
+
+uniform vec3 diffuse;
+uniform vec3 specular;
+uniform float shininess;
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                FAST_SHADING                                //
+////////////////////////////////////////////////////////////////////////////////
+
+
+#ifdef FAST_SHADING
+
+// in vec3 o_light_directions[MAX_LIGHTS];
+in vec3 o_camdir;
+in vec3 o_lightdir;
+
+uniform vec3 ambient;
+uniform vec3 light_color;
+uniform float backlight;
+
+vec3 blinn_phong(vec3 normal, vec3 light_dir, vec3 color) {
+    // diffuse coefficient (how directly does light hits the surface)
+    float diff_coeff = max(dot(light_dir, normal), 0.0);
+
+    // specular coefficient (does reflected light bounce into camera?)
+    vec3 H = normalize(light_dir + o_camdir);
+    float spec_coeff = pow(max(dot(H, normal), 0.0), shininess);
+    if (diff_coeff <= 0.0 || isnan(spec_coeff))
+        spec_coeff = 0.0;
+
+    return vec3(diffuse * diff_coeff * color + specular * spec_coeff);
+}
+
+vec3 illuminate(vec3 normal, vec3 base_color) {
+    vec3 lightdir = normalize(o_lightdir);
+    vec3 light1 = blinn_phong(normal,  lightdir, base_color.rgb);
+    vec3 light2 = blinn_phong(normal, -lightdir, base_color.rgb);
+    // TODO light color
+    return ambient * base_color.rgb + light_color * (light1 + backlight * light2);
+}
+
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                            MULTI_LIGHT_SHADING                             //
+////////////////////////////////////////////////////////////////////////////////
+
+
+#ifdef MULTI_LIGHT_SHADING
+
 #define MAX_LIGHTS 64
 #define MAX_LIGHT_PARAMETERS 5 * MAX_LIGHTS
 
@@ -16,11 +88,6 @@ uniform int light_types[MAX_LIGHTS];
 uniform vec3 light_colors[MAX_LIGHTS];
 uniform float light_parameters[MAX_LIGHT_PARAMETERS];
 uniform int lights_length;
-
-// Material parameters
-uniform vec3 diffuse;
-uniform vec3 specular;
-uniform float shininess;
 
 // TODO: we don't want to do this here...
 // maybe pre-calc on cpu?
@@ -111,3 +178,5 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
     }
     return final_color;
 }
+
+#endif

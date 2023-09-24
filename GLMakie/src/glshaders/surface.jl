@@ -12,17 +12,17 @@ function normal_calc(x::Bool, invert_normals::Bool = false)
     end
 end
 
-function light_calc(x::Bool)
-    if x
-        """
-        vec3 L      = normalize(o_lightdir);
-        vec3 N      = normalize(o_normal);
-        vec3 light1 = blinnphong(N, o_camdir, L, color.rgb);
-        vec3 light2 = blinnphong(N, o_camdir, -L, color.rgb);
-        color       = vec4(ambient * color.rgb + light1 + backlight * light2, color.a);
-        """
+function light_calc(x::Symbol)
+    if x === :none
+        return "#define NO_SHADING"
+    elseif x === :fast
+        return "#define FAST_SHADING"
+    elseif x === :verbose
+        return "#define MULTI_LIGHT_SHADING"
+    # elseif x === :PBR # TODO?
     else
-        ""
+        @warn "Did not recognize shading value :$x. Defaulting to :fast."
+        return "#define FAST_SHADING"
     end
 end
 
@@ -120,12 +120,12 @@ function draw_surface(screen, main, data::Dict)
         position_y = nothing => Texture
         position_z = nothing => Texture
         image = nothing => Texture
-        shading = true
-        normal = shading
+        shading = :fast
+        normal = shading != :none
         invert_normals = false
         backlight = 0f0
     end
-    shading = to_value(pop!(data, :shading, true))
+    shading = to_value(pop!(data, :shading, :fast))
     @gen_defaults! data begin
         color = nothing => Texture
         color_map = nothing => Texture
@@ -147,7 +147,7 @@ function draw_surface(screen, main, data::Dict)
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
-                "light_calc" => shading ? "#define shading true" : "",
+                "shading" => light_calc(shading),
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
