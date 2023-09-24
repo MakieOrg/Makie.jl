@@ -13,7 +13,7 @@ $(ATTRIBUTES)
         default_theme(scene, Mesh)...,
         colorrange = automatic,
     )
-    attr[:shading][] = false
+    attr[:shading][] = :none
     attr
 end
 

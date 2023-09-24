@@ -86,7 +86,7 @@ end
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 function shading_attributes!(attr)
-    attr[:shading] = true
+    attr[:shading] = :fast
     attr[:diffuse] = 0.4
     attr[:specular] = 0.2
     attr[:shininess] = 32.0f0
@@ -537,7 +537,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         strokewidth = theme(scene, :patchstrokewidth),
         linestyle = nothing,
 
-        shading = false,
+        shading = :none,
         fxaa = true,
 
         cycle = [:color => :patchcolor],

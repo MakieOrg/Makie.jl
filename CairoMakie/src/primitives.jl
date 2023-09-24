@@ -878,7 +878,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     func = Makie.transform_func(attributes)
     draw_mesh3D(
         scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
-        model, shading::Bool, diffuse::Vec3f,
+        model, shading::Symbol, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int
     )
 end
@@ -977,7 +977,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         facecolors = per_face_col[k]
         # light calculation
-        if shading
+        if shading != :none
             c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
                 # these face index expressions currently allocate for SizedVectors
                 # if done like `ns[f]`
