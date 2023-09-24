@@ -79,7 +79,7 @@ end
 """
 ### 3D shading attributes
 
-- `shading = true` enables lighting.
+- `shading = :fast` enables lighting.
 - `diffuse::Vec3f = Vec3f(0.4)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
 - `specular::Vec3f = Vec3f(0.2)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.

@@ -1,7 +1,7 @@
 
 @reference_test "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, axis = (;show_axis=false))
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=:none, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     fig
 end
@@ -9,7 +9,7 @@ end
 @reference_test "Image on Geometry (Earth)" begin
     earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
-    mesh(m, color=earth, shading=false)
+    mesh(m, color=earth, shading=:none)
 end
 
 @reference_test "Orthographic Camera" begin
@@ -593,7 +593,7 @@ end
     fig = Figure()
     for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
         mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
-        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
+        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = :none)
         linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
         text!(ax, 0, 0.52, text = "Clip Space", align = (:center, :bottom), space = :clip)
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)

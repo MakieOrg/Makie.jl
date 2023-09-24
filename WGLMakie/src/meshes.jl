@@ -66,8 +66,7 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
-    shading = map(x -> !(shading == :none), get(plot, :shading, :none))
-    get!(uniforms, :shading, shading)
+    get!(uniforms, :shading, to_value(get(plot, :shading, :none)) != :none)
 
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
         i = Vec(1, 2, 3)

@@ -194,7 +194,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(blockscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
+    background = poly!(blockscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=:none, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
