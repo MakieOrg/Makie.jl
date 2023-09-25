@@ -90,8 +90,8 @@ function preferred_axis_type(@nospecialize(p::PlotFunc), @nospecialize(args...))
     pre_conversion_result = args_preferred_axis(RealP, non_obs...)
     isnothing(pre_conversion_result) || return pre_conversion_result
     conv = convert_arguments(RealP, non_obs...)
-    Typ, args_conv = apply_convert!(RealP, Attributes(), conv)
-    result = args_preferred_axis(Typ, args_conv...)
+    args_conv = apply_convert!(Attributes(), conv)
+    result = args_preferred_axis(RealP, args_conv...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
 end

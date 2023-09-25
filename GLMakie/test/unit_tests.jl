@@ -323,7 +323,7 @@ end
         # save with a different resolution
         save(file, fig, px_per_unit = 2)
         img = load(file)
-        @test_broken size(img) == (2W, 2H)
+        @test size(img) == (2W, 2H)
         # writing to file should not effect the visible figure
         @test_broken screen.px_per_unit[] == 1
     end

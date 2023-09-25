@@ -103,14 +103,23 @@ const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
 function convert_arguments!(plot::Combined{F}) where {F}
     P = Combined{F,Any}
-    function on_update(args...)
-        nt = convert_arguments(P, args...)
-        P, converted = apply_convert!(P, plot.attributes, nt)
+    function on_update(kw, args...)
+        nt = convert_arguments(P, args...; kw...)
+        converted = apply_convert!(plot.attributes, nt)
         for (obs, new_val) in zip(plot.converted, converted)
             obs[] = new_val
         end
     end
-    onany(on_update, plot, plot.args...)
+    used_attrs = used_attributes(P, to_value.(plot.args)...)
+    convert_keys = intersect(used_attrs, keys(plot.attributes))
+    kw_signal = if isempty(convert_keys)
+        # lift(f) isn't supported so we need to catch the empty case
+        Observable(())
+    else
+        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
+        lift((args...) -> Pair.(convert_keys, args), plot, pop!.(plot.attributes, convert_keys)...)
+    end
+    onany(on_update, plot, kw_signal, plot.args...)
     return
 end
 
@@ -122,7 +131,7 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     end
     P = Combined{Func}
     args_converted = convert_arguments(P, map(to_value, args)...)
-    P2, converted = apply_convert!(P, Attributes(), args_converted)
+    converted = apply_convert!(Attributes(), args_converted)
     trans = get!(plot_attributes, :transformation, automatic)
     transval = to_value(trans)
     transformation = if transval isa Automatic
@@ -137,8 +146,8 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
 
     obs_args = Any[convert(Observable, x) for x in args]
 
-    f_argtypes = MakieCore.argtypes(plotfunc(P2), converted)
-    plot = Combined{f_argtypes...}(transformation, plot_attributes, obs_args)
+    ArgTyp = MakieCore.argtypes(converted)
+    plot = Combined{Func, ArgTyp}(transformation, plot_attributes, obs_args)
     plot.converted = map(Observable, converted)
     plot.model = transformationmatrix(transformation)
     return plot
@@ -172,21 +181,19 @@ used_attributes(PlotType, args...) = ()
 apply for return type
     (args...,)
 """
-function apply_convert!(P, attributes::Attributes, x::Tuple)
-    return (plottype(P, x...), x)
-end
+apply_convert!(attributes::Attributes, x::Tuple) = x
 
 """
 apply for return type PlotSpec
 """
-function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
+function apply_convert!(attributes::Attributes, x::PlotSpec{S}) where S
     args, kwargs = x.args, x.kwargs
     # Note that kw_args in the plot spec that are not part of the target plot type
     # will end in the "global plot" kw_args (rest)
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return (plottype(S, P), args)
+    return args
 end
 
 function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
@@ -304,7 +311,7 @@ function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     return plot
 end
 
-function MakieCore.argtypes(F, plot::PlotSpec{P}) where {P}
+function MakieCore.argtypes(plot::PlotSpec{P}) where {P}
     args_converted = convert_arguments(P, plot.args...)
-    return MakieCore.argtypes(plotfunc(P), args_converted)
+    return MakieCore.argtypes(args_converted)
 end

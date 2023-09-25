@@ -24,7 +24,7 @@ plotkey(::Nothing) = :scatter
 plotkey(any) = nothing
 
 
-argtypes(F, tuple::T) where {T <: Tuple} = (F, T)
+argtypes(::T) where {T <: Tuple} = T
 
 function create_figurelike end
 function create_figurelike! end
