@@ -923,5 +923,3 @@ function thetalims!(po::PolarAxis, thetamin::Union{Nothing, Real}, thetamax::Uni
     po.thetalimits[] = (thetamin, thetamax)
     return
 end
-
-tightlimits!(ax::PolarAxis) = nothing # TODO, not implemented yet
