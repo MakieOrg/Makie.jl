@@ -210,6 +210,7 @@ end
 
 @testset "stresstest multi displays" begin
     GLMakie.closeall()
+    set_theme!()
     screens = map(1:10) do i
         fig = Figure(resolution=(500, 500))
         rng  = Random.MersenneTwister(0)
@@ -223,13 +224,13 @@ end
         heatmap(fig[2, 1], rand(rng, 100, 100))
         surface(fig[2, 2], 0..1, 0..1, rand(rng, 1000, 1000) ./ 2)
 
-        display(GLMakie.Screen(visible=false), fig)
+        display(GLMakie.Screen(visible=false, scalefactor=1), fig)
     end
 
     images = map(Makie.colorbuffer, screens)
     @test all(x-> x ≈ first(images), images)
 
-    @test Base.summarysize(screens) / 10^6 > 280
+    @test Base.summarysize(screens) / 10^6 > 60
     foreach(close, screens)
 
     for screen in screens
@@ -260,6 +261,7 @@ end
 
 @testset "HiDPI displays" begin
     import FileIO: @format_str, File, load
+    set_theme!()
     GLMakie.closeall()
 
     W, H = 400, 400

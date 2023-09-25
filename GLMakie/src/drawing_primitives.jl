@@ -42,31 +42,41 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
     get!(gl_attributes, :view) do
-        return lift(plot, cam.view, space) do view, space
-            return is_data_space(space) ? view : Mat4f(I)
+        get!(cam.calculated_values, :view) do 
+            return lift(plot, cam.view, space) do view, space
+                return is_data_space(space) ? view : Mat4f(I)
+            end
         end
     end
     get!(gl_attributes, :normalmatrix) do
-        return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
-            i = Vec(1, 2, 3)
-            return transpose(inv(v[i, i] * m[i, i]))
+        get!(cam.calculated_values, :normalmatrix) do 
+            return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
+                i = Vec(1, 2, 3)
+                return transpose(inv(v[i, i] * m[i, i]))
+            end
         end
     end
     get!(gl_attributes, :projection) do
-        return lift(cam.projection, cam.pixel_space, space) do _, _, space
-            return Makie.space_to_clip(cam, space, false)
+        get!(cam.calculated_values, :projection) do 
+            return lift(cam.projection, cam.pixel_space, space) do _, _, space
+                return Makie.space_to_clip(cam, space, false)
+            end
         end
     end
     get!(gl_attributes, :projectionview) do
-        return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_clip(cam, space, true)
+        get!(cam.calculated_values, :projectionview) do
+            return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
+                Makie.space_to_clip(cam, space, true)
+            end
         end
     end
     # resolution in real hardware pixels, not scaled pixels/units
     get!(gl_attributes, :resolution) do
-        return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
+        get!(cam.calculated_values, :resolution) do
+            return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
+        end
     end
-
+    
     delete!(gl_attributes, :space)
     delete!(gl_attributes, :markerspace)
     return nothing

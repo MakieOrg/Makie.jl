@@ -248,6 +248,8 @@ struct Camera
     We need to keep track of them, so, that we can connect and disconnect them.
     """
     steering_nodes::Vector{ObserverFunction}
+
+    calculated_values::Dict{Symbol, Observable}
 end
 
 """

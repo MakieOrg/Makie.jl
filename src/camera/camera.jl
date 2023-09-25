@@ -1,5 +1,5 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(7) do i
+    Camera(ntuple(8) do i
         getfield(x, i)
     end...)
 end
@@ -84,7 +84,8 @@ function Camera(px_area)
         proj_view,
         lift(a-> Vec2f(widths(a)), px_area),
         Observable(Vec3f(1)),
-        ObserverFunction[]
+        ObserverFunction[],
+        Dict{Symbol, Observable}()
     )
 end
 
