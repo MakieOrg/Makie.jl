@@ -52,11 +52,17 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     ta = JSServe.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
     $(WGL).then(WGL => {
-        WGL.create_scene(
-            $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
-            $(ta), $(config.framerate), $(config.resize_to_body), $(config.px_per_unit), $(config.scalefactor)
-        )
-        $(done_init).notify(true)
+        try {
+            WGL.create_scene(
+                $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+                $(ta), $(config.framerate), $(config.resize_to_body), $(config.px_per_unit), $(config.scalefactor)
+            )
+            $(done_init).notify(true)
+        } catch (e) {
+            JSServe.Connection.send_error("error initializing scene", e)
+            $(done_init).notify(false)
+            return
+        }
     })
     """)
     on(session, done_init) do val

@@ -113,6 +113,10 @@ function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z:
     (vec(Point3f.(x, y', z)),)
 end
 
+function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix)
+    return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+end
+
 function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
     (vec(Point3f.(x, y, z)),)
 end

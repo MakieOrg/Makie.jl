@@ -43,7 +43,6 @@ using Dates
 
 include("buildutils/deploydocs.jl")
 include("buildutils/relative_links.jl")
-include("buildutils/stork.jl")
 include("buildutils/redirect_generation.jl")
 
 docs_url = "docs.makie.org"
@@ -71,9 +70,6 @@ serve(; single=true, cleanup=false, clear=true, fail_on_warning=true)
 cd("__site") do
     run(`$pagefind --source . --root-selector .franklin-content`)
 end
-
-# lunr()
-# optimize(; minify=false, prerender=false)
 
 # by making all links relative, we can forgo the `prepath` setting of Franklin
 # which means that files in some `vX.Y.Z` subfolder which happens to be `stable`

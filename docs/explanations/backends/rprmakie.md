@@ -314,7 +314,7 @@ end
 ~~~
 
 ~~~
-<video autoplay controls src="/assets/opengl_interop.mp4">
+<video mute autoplay controls src="/assets/opengl_interop.mp4">
 </video>
 ~~~
 
@@ -429,7 +429,7 @@ end
 ~~~
 
 ~~~
-<video autoplay controls src="/assets/lego_walk.mp4">
+<video mute autoplay controls src="/assets/lego_walk.mp4">
 </video>
 ~~~
 
