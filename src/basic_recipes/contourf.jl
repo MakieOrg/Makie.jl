@@ -48,26 +48,23 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-function _get_isoband_levels(levels::Int, mi, ma)
-    edges = Float32.(LinRange(mi, ma, levels+1))
-end
+_get_isoband_levels(levels::Int, mi, ma) = Float32.(LinRange(mi, ma, levels+1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
     @assert issorted(edges)
     edges
 end
-
-conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
-
 function _get_isoband_levels(::Val{:normal}, levels, values)
-    _get_isoband_levels(levels, extrema_nan(values)...)
+    return _get_isoband_levels(levels, extrema_nan(values)...)
 end
 
 function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     mi, ma = extrema_nan(values)
-    Float32.(levels .* (ma - mi) .+ mi)
+    return Float32.(levels .* (ma - mi) .+ mi)
 end
+
+conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
 
 
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
@@ -93,7 +90,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, highcolor)
-
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
     polys = Observable(PolyType[])
@@ -161,9 +157,7 @@ inner polygons which are holes in the outer polygon. It is possible that one
 group has multiple outer polygons with multiple holes each.
 """
 function _group_polys(points, ids)
-
     polys = [points[ids .== i] for i in unique(ids)]
-    npolys = length(polys)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 

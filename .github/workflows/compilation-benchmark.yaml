@@ -6,7 +6,7 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-release
+      - sd/beta-20
 jobs:
   benchmark:
     name: ${{ matrix.package }}

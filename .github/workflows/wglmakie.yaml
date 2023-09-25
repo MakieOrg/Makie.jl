@@ -6,16 +6,12 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-release
+      - sd/beta-20
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
+    tags:
+      - '*'
     branches:
       - master
-      - breaking-release
-    tags: '*'
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
