@@ -12,6 +12,12 @@ function normal_calc(x::Bool, invert_normals::Bool = false)
     end
 end
 
+# TODO this shouldn't be necessary
+function light_calc(x::Bool)
+    @warn "shading::Bool is deprecated. Use `:none` instead of `false` and `:fast` or `:verbose` instead of true."
+    return light_calc(ifelse(x, :fast, :none))
+end
+
 function light_calc(x::Symbol)
     if x === :none
         return "#define NO_SHADING"
@@ -113,6 +119,7 @@ end
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
+    shading = to_value(pop!(data, :shading, :fast))
     @gen_defaults! data begin
         scale = nothing
         position = nothing
@@ -120,12 +127,10 @@ function draw_surface(screen, main, data::Dict)
         position_y = nothing => Texture
         position_z = nothing => Texture
         image = nothing => Texture
-        shading = :fast
         normal = shading != :none
         invert_normals = false
         backlight = 0f0
     end
-    shading = to_value(pop!(data, :shading, :fast))
     @gen_defaults! data begin
         color = nothing => Texture
         color_map = nothing => Texture

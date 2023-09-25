@@ -594,7 +594,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
         gl_attributes[:texturecoordinates] = map(decompose_uv(rect)) do uv
             return 1.0f0 .- Vec2f(uv[2], uv[1])
         end
-        gl_attributes[:shading] = false
+        gl_attributes[:shading] = :none
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
         if haskey(gl_attributes, :intensity)
