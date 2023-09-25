@@ -859,6 +859,8 @@ function update_state_before_display!(ax::PolarAxis)
     return
 end
 
+delete!(ax::PolarAxis, p::AbstractPlot) = delete!(ax.scene, p)
+
 ################################################################################
 ### Utilities
 ################################################################################
