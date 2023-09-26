@@ -8,9 +8,13 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
     MAX_LIGHTS = 64
     MAX_PARAMS = 5 * 64
 
-    # TODO merge Observables#110
-    # attr[:lights_length] = map(screen.render_tick, priority = -1000) do _
-    attr[:lights_length] = Observable(0)
+    normalview = map(view -> transpose(inv(view[Vec(1,2,3), Vec(1,2,3)])), attr[:view])
+
+    attr[:lights_length]    = Observable(0)
+    attr[:light_types]      = Observable(sizehint!(Int32[], MAX_LIGHTS))
+    attr[:light_colors]     = Observable(sizehint!(RGBf[], MAX_LIGHTS))
+    attr[:light_parameters] = Observable(sizehint!(Float32[], MAX_PARAMS))
+
     on(screen.render_tick, priority = -1000) do _
         # @info "$(length(lights)) lights."
         n_lights = 0
@@ -33,33 +37,25 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
             end
             n_lights += 1
         end
-        # return min(MAX_LIGHTS, length(lights))
-        attr[:lights_length][] = min(MAX_LIGHTS, length(lights))
-        return Consume(false)
-    end
+        N = min(MAX_LIGHTS, length(lights))
 
-    attr[:light_types] = light_types_obs = Observable(sizehint!(Int32[], MAX_LIGHTS))
-    on(attr[:lights_length]) do N
-        trg = light_types_obs[]
+        # Update light length
+        attr[:lights_length][] = N
+
+        # Update light types
+        trg = attr[:light_types][]
         resize!(trg, N)
         map!(i -> Makie.light_type(lights[i]), trg, 1:N)
-        notify(light_types_obs)
-        return
-    end
+        notify(attr[:light_types])
 
-    attr[:light_colors] = light_colors_obs = Observable(sizehint!(RGBf[], MAX_LIGHTS))
-    on(attr[:lights_length]) do N
-        trg = light_colors_obs[]
+        # Update light colors
+        trg = attr[:light_colors][]
         resize!(trg, N)
         map!(i -> Makie.light_color(lights[i]), trg, 1:N)
-        notify(light_colors_obs)
-        return
-    end
+        notify(attr[:light_colors])
 
-    normalview = map(view -> transpose(inv(view[Vec(1,2,3), Vec(1,2,3)])), attr[:view])
-    attr[:light_parameters] = light_params_obs = Observable(sizehint!(Float32[], MAX_PARAMS))
-    on(attr[:lights_length]) do N
-        parameters = light_params_obs[]
+        # Update other light parameters
+        parameters = attr[:light_parameters][]
         empty!(parameters)
         nv = normalview[]
         v = attr[:view][]
@@ -70,17 +66,18 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
                 a = light.attenuation[]
                 push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], a[1], a[2])
             elseif light isa DirectionalLight
-                d = nv * light.direction[]
+                d = normalize(nv * light.direction[])
                 push!(parameters, d[1], d[2], d[3])
             elseif light isa SpotLight
                 p = v * to_ndim(Point4f, light.position[], 1)
-                d = nv * light.direction[]
+                d = normalize(nv * light.direction[])
                 l = cos.(light.angles[])
                 push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], d[1], d[2], d[3], l[1], l[2])
             end
         end
-        notify(light_params_obs)
-        return
+        notify(attr[:light_parameters])
+
+        return Consume(false)
     end
 
     return attr
