@@ -26,6 +26,9 @@ light_parameters(::AbstractLight) = Vec3f(0) # extra data passthrough
     AmbientLight(color) <: AbstractLight
 
 A simple ambient light that uniformly lights every object based on its light color.
+
+Availability:
+- All backends with `shading != :none`
 """
 struct AmbientLight <: AbstractLight
     color::Observable{RGBf}
@@ -36,10 +39,21 @@ light_color(l::AmbientLight) = l.color[]
 
 
 """
-    PointLight(color, position)
+    PointLight(color, position[, attenuation = Vec2f(0)])
+    PointLight(color, position, range::Real)
 
 A point-like light source placed at the given `position` with the given light
 `color`.
+
+Optionally an attenuation parameter can be used to reduce the brightness of the
+light source with distance. The reduction is given by
+`1 / (1 + attenuation[1] * distance + attenuation[2] * distance^2)`.
+Alternatively you can pass a light `range` to generate matching default
+attenuation parameters.
+
+Availability:
+- Without attenuation: All backends with `shading != :none`
+- With attenuation: GLMakie with `shading = :verbose`
 """
 struct PointLight <: AbstractLight
     color::Observable{RGBf}
@@ -77,6 +91,10 @@ end
 
 A light type which simulates a distant light source with parallel light rays
 going in the given `direction`.
+
+Availability:
+- GLMakie with `shading = :verbose`
+- RPRMakie
 """
 struct DirectionalLight <: AbstractLight
     color::Observable{RGBf}
@@ -93,7 +111,11 @@ light_direction(l::DirectionalLight) = l.direction[]
 
 Creates a spot light which illuminates objects in a light cone starting at
 `position` pointing in `direction`. The opening angle is defined by an inner
-and outer angle in `angles` between which the light intensity drops off.
+and outer angle given in `angles`, between which the light intensity drops off.
+
+Availability:
+- GLMakie with `shading = :verbose`
+- RPRMakie
 """
 struct SpotLight <: AbstractLight
     color::Observable{RGBf}
@@ -112,8 +134,11 @@ light_parameters(l::SpotLight) = l.angles[]
 """
     EnvironmentLight(intensity, image)
 
-An environment Light, that uses a spherical environment map to provide lighting.
+An environment light that uses a spherical environment map to provide lighting.
 See: https://en.wikipedia.org/wiki/Reflection_mapping
+
+Availability:
+- RPRMakie
 """
 struct EnvironmentLight <: AbstractLight
     intensity::Observable{Float32}
