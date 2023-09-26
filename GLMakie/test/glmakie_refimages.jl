@@ -103,3 +103,41 @@ end
     mesh!(right, Sphere(Point3f(5), 6f0))
     fig
 end
+
+@reference_test "Complex Lighting - Ambient + SpotLights + PointLights" begin
+    angle2pos(phi) = Point3f(cosd(phi), sind(phi), 0)
+    lights = [
+        AmbientLight(RGBf(0.1, 0.1, 0.1)),
+        SpotLight(RGBf(2,0,0), angle2pos(0),   Vec3f(0, 0, -1), Vec2f(pi/5, pi/4)),
+        SpotLight(RGBf(0,2,0), angle2pos(120), Vec3f(0, 0, -1), Vec2f(pi/5, pi/4)),
+        SpotLight(RGBf(0,0,2), angle2pos(240), Vec3f(0, 0, -1), Vec2f(pi/5, pi/4)),
+        PointLight(RGBf(1,1,1), Point3f(-4, -4, -2.5), 10.0),
+        PointLight(RGBf(1,1,0), Point3f(-4,  4, -2.5), 10.0),
+        PointLight(RGBf(1,0,1), Point3f( 4,  4, -2.5), 10.0),
+        PointLight(RGBf(0,1,1), Point3f( 4, -4, -2.5), 10.0),
+    ]
+
+    scene = Scene(resolution = (400, 400), camera = cam3d!, center = false, lights = lights)
+    mesh!(
+        scene,
+        Rect3f(Point3f(-10, -10, -2.99), Vec3f(20, 20, 0.02)),
+        color = :white, shading = :verbose
+    )
+    update_cam!(scene, Vec3f(0, 0, 10), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
+    scene
+end
+
+@reference_test "Complex Lighting - DirectionalLight" begin
+    angle2dir(phi) = Vec3f(cosd(phi), sind(phi), -2)
+    lights = [
+        AmbientLight(RGBf(0.1, 0.1, 0.1)),
+        DirectionalLight(RGBf(2,0,0), angle2dir(0)),
+        DirectionalLight(RGBf(0,2,0), angle2dir(120)),
+        DirectionalLight(RGBf(0,0,2), angle2dir(240)),
+    ]
+
+    scene = Scene(resolution = (400, 400), camera = cam3d!, center = false, lights = lights, backgroundcolor = :black)
+    mesh!(scene, Sphere(Point3f(0), 1f0), color = :white, shading = :verbose)
+    update_cam!(scene, Vec3f(0, 0, 3), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
+    scene
+end
