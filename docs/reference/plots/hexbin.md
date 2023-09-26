@@ -147,7 +147,7 @@ f
 
 ### Changing the scale of the number of observations in a bin
 
-You can pass a scale function to via the `scale` keyword, which will be applied to the bin counts before plotting.
+You can pass a scale function to via the `colorscale` keyword, which will be applied to the bin counts before plotting.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -162,9 +162,9 @@ y = randn(100000)
 
 f = Figure()
 hexbin(f[1, 1], x, y, bins = 40,
-    axis = (aspect = DataAspect(), title = "scale = identity"))
-hexbin(f[1, 2], x, y, bins = 40, scale=log10,
-    axis = (aspect = DataAspect(), title = "scale = log10"))
+    axis = (aspect = DataAspect(), title = "colorscale = identity"))
+hexbin(f[1, 2], x, y, bins = 40, colorscale=log10,
+    axis = (aspect = DataAspect(), title = "colorscale = log10"))
 f
 ```
 \end{examplefigure}
@@ -192,7 +192,7 @@ f, ax, hb = hexbin(a,
     colormap = [Makie.to_color(:transparent); Makie.to_colormap(:viridis)],
     strokewidth = 0.5,
     strokecolor = :gray50,
-    scale = Makie.pseudolog10)
+    colorscale = Makie.pseudolog10)
 
 tightlimits!(ax)
 
