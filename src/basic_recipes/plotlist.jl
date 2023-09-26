@@ -153,3 +153,14 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotDescription}}}
         splice!(cached_plots, sort!(collect(unused_plots)))
     end
 end
+
+function Base.showable(::Union{MIME"juliavscode/html",MIME"text/html"}, ::Observable{<: AbstractVector{<:PlotDescription}})
+    return true
+end
+
+function Base.show(io::IO, m::Union{MIME"juliavscode/html",MIME"text/html"},
+                   plotspec::Observable{<:AbstractVector{<:PlotDescription}})
+    f = plot(plotspec)
+    show(io, m, f)
+    return
+end
