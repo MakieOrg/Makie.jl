@@ -194,7 +194,7 @@ function (p::MousePositionUpdater)(::Nothing)
         @print_error p.mouseposition[] = pos
         # notify!(e.mouseposition)
     end
-    return
+    return Consume(false)
 end
 
 """
@@ -208,7 +208,7 @@ function Makie.mouse_position(scene::Scene, screen::Screen)
     updater = MousePositionUpdater(
         screen, scene.events.mouseposition, scene.events.hasfocus
     )
-    on(updater, screen.render_tick)
+    on(updater, screen.render_tick, priority = typemax(Int))
     return
 end
 function Makie.disconnect!(screen::Screen, ::typeof(mouse_position))

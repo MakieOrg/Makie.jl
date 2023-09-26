@@ -164,7 +164,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
-    render_tick::Observable{Nothing}
+    render_tick::Observable{Nothing} # listeners must not Consume(true)
     window_open::Observable{Bool}
     scalefactor::Observable{Float32}
 
@@ -433,8 +433,9 @@ end
 
 function pollevents(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    notify(screen.render_tick)
     GLFW.PollEvents()
+    notify(screen.render_tick)
+    return
 end
 
 Base.wait(x::Screen) = !isnothing(x.rendertask) && wait(x.rendertask)
@@ -713,7 +714,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
-    # GLFW.PollEvents()
+    pollevents(screen)
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render
     if screen.config.visible

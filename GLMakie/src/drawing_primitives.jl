@@ -15,7 +15,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
     attr[:light_colors]     = Observable(sizehint!(RGBf[], MAX_LIGHTS))
     attr[:light_parameters] = Observable(sizehint!(Float32[], MAX_PARAMS))
 
-    on(screen.render_tick, priority = -1000) do _
+    on(screen.render_tick, priority = typemin(Int)) do _
         # @info "$(length(lights)) lights."
         n_lights = 0
         n_params = 0
