@@ -1,33 +1,70 @@
 # Ideally we re-use Makie.PlotSpec, but right now we need a bit of special behaviour to make this work nicely.
 # If the implementation stabilizes, we should think about refactoring PlotSpec to work for both use cases, and then just have one PlotSpec type.
-struct PlotDescription{P<:AbstractPlot}
+@nospecialize
+
+"""
+    PlotSpec{P<:AbstractPlot}(args...; kwargs...)
+
+Object encoding positional arguments (`args`), a `NamedTuple` of attributes (`kwargs`)
+as well as plot type `P` of a basic plot.
+"""
+struct PlotSpec{P<:AbstractPlot}
     args::Vector{Any}
     kwargs::Dict{Symbol, Any}
-end
-
-@nospecialize
-function PlotDescription{P}(args...; kwargs...) where {P<:AbstractPlot}
-    kw = Dict{Symbol, Any}()
-    for (k, v) in kwargs
-        # convert eagerly, so that we have stable types for matching later
-        # E.g. so that PlotDescription(; color = :red) has the same type as PlotDescription(; color = RGBA(1, 0, 0, 1))
-        kw[k] = convert_attribute(v, Key{k}(), Key{plotkey(P)}())
+    function PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot}
+        kw = Dict{Symbol,Any}()
+        for (k, v) in kwargs
+            # convert eagerly, so that we have stable types for matching later
+            # E.g. so that PlotSpec(; color = :red) has the same type as PlotSpec(; color = RGBA(1, 0, 0, 1))
+            kw[k] = convert_attribute(v, Key{k}(), Key{plotkey(P)}())
+        end
+        return new{P}(Any[args...], kw)
     end
-    return PlotDescription{P}(Any[args...], kw)
+    PlotSpec(args...; kwargs...) = new{Combined{plot}}(args...; kwargs...)
 end
 @specialize
+
+Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
+Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
+
+to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec{P}(args...; kwargs...)
+
+function to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P,S}
+    return PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
+end
+
+plottype(::PlotSpec{P}) where {P} = P
+
+"""
+apply for return type PlotSpec
+"""
+function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where {S}
+    args, kwargs = x.args, x.kwargs
+    # Note that kw_args in the plot spec that are not part of the target plot type
+    # will end in the "global plot" kw_args (rest)
+    for (k, v) in pairs(kwargs)
+        attributes[k] = v
+    end
+    return (plottype(S, P), (args...,))
+end
+
+function MakieCore.argtypes(plot::PlotSpec{P}) where {P}
+    args_converted = convert_arguments(P, plot.args...)
+    return MakieCore.argtypes(args_converted)
+end
 
 struct SpecApi end
 function Base.getproperty(::SpecApi, field::Symbol)
     P = Combined{getfield(Makie, field)}
-    return PlotDescription{P}
+    return PlotSpec{P}
 end
 
 const PlotspecApi = SpecApi()
 
 # comparison based entirely of types inside args + kwargs
-compare_specs(a::PlotDescription{A}, b::PlotDescription{B}) where {A, B} = false
-function compare_specs(a::PlotDescription{T}, b::PlotDescription{T}) where {T}
+compare_specs(a::PlotSpec{A}, b::PlotSpec{B}) where {A, B} = false
+
+function compare_specs(a::PlotSpec{T}, b::PlotSpec{T}) where {T}
     length(a.args) == length(b.args) || return false
     all(i-> typeof(a.args[i]) == typeof(b.args[i]), 1:length(a.args)) || return false
 
@@ -39,7 +76,7 @@ function compare_specs(a::PlotDescription{T}, b::PlotDescription{T}) where {T}
     return true
 end
 
-function update_plot!(plot::AbstractPlot, spec::PlotDescription)
+function update_plot!(plot::AbstractPlot, spec::PlotSpec)
     # Update args in plot `input_args` list
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
@@ -62,12 +99,12 @@ end
 """
     plotlist!(
         [
-            PlotDescription{SomePlotType}(args...; kwargs...),
-            PlotDescription{SomeOtherPlotType}(args...; kwargs...),
+            PlotSpec{SomePlotType}(args...; kwargs...),
+            PlotSpec{SomeOtherPlotType}(args...; kwargs...),
         ]
     )
 
-Plots a list of PlotDescription's, which can be an observable, making it possible to create efficiently animated plots with the following API:
+Plots a list of PlotSpec's, which can be an observable, making it possible to create efficiently animated plots with the following API:
 
 ## Example
 ```julia
@@ -97,28 +134,26 @@ plots[] = [
     Attributes()
 end
 
-Makie.convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotDescription}) = (args,)
-Makie.plottype(::AbstractArray{<:PlotDescription}) = PlotList
-Makie.plottype(::Type{Any}, ::AbstractArray{<:PlotDescription}) = PlotList
-Makie.plottype(::Type{<: PlotList}, ::AbstractArray{<:PlotDescription}) = PlotList
+convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
+plottype(::AbstractArray{<:PlotSpec}) = PlotList
 
 # Since we directly plot into the parent scene (hacky), we need to overload these
-Makie.Base.insert!(screen::MakieScreen, scene::Scene, x::PlotList) = nothing
+Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
 
 # TODO, make this work with Cycling and also with convert_arguments returning
-# Vector{PlotDescription} so that one can write recipes like this:
+# Vector{PlotSpec} so that one can write recipes like this:
 quote
     Makie.convert_arguments(obj::MyType) = [
         obj.lineplot ? P.lines(obj.args...; obj.kwargs...) : P.scatter(obj.args...; obj.kw...)
     ]
 end
 
-function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotDescription}}})
+function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    cached_plots = Pair{PlotDescription, Combined}[]
+    cached_plots = Pair{PlotSpec, Combined}[]
     scene = Makie.parent_scene(p)
     on(p.plotspecs; update=true) do plotspecs
         used_plots = Set{Int}()
@@ -136,7 +171,7 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotDescription}}}
                 push!(cached_plots, plotspec => plot)
                 push!(used_plots, length(cached_plots))
             else
-                println("updating old plot with spec")
+                @debug("updating old plot with spec")
                 push!(used_plots, idx)
                 plot = cached_plots[idx][2]
                 update_plot!(plot, plotspec)
@@ -154,12 +189,12 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotDescription}}}
     end
 end
 
-function Base.showable(::Union{MIME"juliavscode/html",MIME"text/html"}, ::Observable{<: AbstractVector{<:PlotDescription}})
+function Base.showable(::Union{MIME"juliavscode/html",MIME"text/html"}, ::Observable{<: AbstractVector{<:PlotSpec}})
     return true
 end
 
 function Base.show(io::IO, m::Union{MIME"juliavscode/html",MIME"text/html"},
-                   plotspec::Observable{<:AbstractVector{<:PlotDescription}})
+                   plotspec::Observable{<:AbstractVector{<:PlotSpec}})
     f = plot(plotspec)
     show(io, m, f)
     return

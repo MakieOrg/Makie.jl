@@ -131,6 +131,7 @@ include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
 
 # basic recipes
+include("basic_recipes/plotspec.jl")
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")
@@ -162,7 +163,6 @@ include("basic_recipes/voronoiplot.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
-include("basic_recipes/plotlist.jl")
 
 # layouting of plots
 include("layouting/transformation.jl")

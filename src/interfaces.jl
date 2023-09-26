@@ -93,19 +93,18 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
     return
 end
 
-const atomic_function_symbols = (
-    :text, :meshscatter, :scatter, :mesh, :linesegments,
-    :lines, :surface, :volume, :heatmap, :image
+const atomic_functions = (
+    text, meshscatter, scatter, mesh, linesegments,
+    lines, surface, volume, heatmap, image
 )
-
-const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
 function convert_arguments!(plot::Combined{F}) where {F}
     P = Combined{F,Any}
     function on_update(kw, args...)
         nt = convert_arguments(P, args...; kw...)
-        converted = apply_convert!(plot.attributes, nt)
+        pnew, converted = apply_convert!(P, plot.attributes, nt)
+        @assert plotfunc(pnew) === F "Changed the plot type in convert_arguments. This isn't allowed!"
         for (obs, new_val) in zip(plot.converted, converted)
             obs[] = new_val
         end
@@ -131,7 +130,7 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     end
     P = Combined{Func}
     args_converted = convert_arguments(P, map(to_value, args)...)
-    converted = apply_convert!(Attributes(), args_converted)
+    PNew, converted = apply_convert!(P, Attributes(), args_converted)
     trans = get!(plot_attributes, :transformation, automatic)
     transval = to_value(trans)
     transformation = if transval isa Automatic
@@ -147,7 +146,7 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     obs_args = Any[convert(Observable, x) for x in args]
 
     ArgTyp = MakieCore.argtypes(converted)
-    plot = Combined{Func, ArgTyp}(transformation, plot_attributes, obs_args)
+    plot = Combined{plotfunc(PNew), ArgTyp}(transformation, plot_attributes, obs_args)
     plot.converted = map(Observable, converted)
     plot.model = transformationmatrix(transformation)
     return plot
@@ -181,20 +180,7 @@ used_attributes(PlotType, args...) = ()
 apply for return type
     (args...,)
 """
-apply_convert!(attributes::Attributes, x::Tuple) = x
-
-"""
-apply for return type PlotSpec
-"""
-function apply_convert!(attributes::Attributes, x::PlotSpec{S}) where S
-    args, kwargs = x.args, x.kwargs
-    # Note that kw_args in the plot spec that are not part of the target plot type
-    # will end in the "global plot" kw_args (rest)
-    for (k, v) in pairs(kwargs)
-        attributes[k] = v
-    end
-    return args
-end
+apply_convert!(P, ::Attributes, x::Tuple) = (P, x)
 
 function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
     ntuple(N) do i
@@ -263,7 +249,7 @@ plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
 const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
 
 
-function plot!(plot::Combined{F}) where {F}
+function plot!(::Combined{F}) where {F}
     if !(F in atomic_functions)
         error("No recipe for $(F)")
     end
@@ -309,9 +295,4 @@ function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     calculated_attributes!(Combined{F}, plot)
     plot!(plot)
     return plot
-end
-
-function MakieCore.argtypes(plot::PlotSpec{P}) where {P}
-    args_converted = convert_arguments(P, plot.args...)
-    return MakieCore.argtypes(args_converted)
 end
