@@ -146,5 +146,6 @@ function limits_to_uvmesh(plot)
         uv = Buffer(lift(fast_uv, resolution))
     end
     vertices = GeometryBasics.meta(positions; uv=uv)
+
     return Dict(:positions => positions, :faces => faces, :uv => uv)
 end

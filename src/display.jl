@@ -141,10 +141,15 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
     end
 
     # We show inline if explicitely requested or if automatic and we can actually show something inline!
+    scene = get_scene(figlike)
     if (inline === true || inline === automatic) && can_show_inline(backend)
+        # We can't forward the screenconfig to show, but show uses the current screen if there is any
+        # We use that, to create a screen before show and rely on show picking up that screen
+        screen = getscreen(backend, scene; screen_config...)
+        push_screen!(scene, screen)
         Core.invoke(display, Tuple{Any}, figlike)
         # In WGLMakie, we need to wait for the display being done
-        screen = getscreen(get_scene(figlike))
+        screen = getscreen(scene)
         wait_for_display(screen)
         return screen
     else
@@ -156,7 +161,6 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
                 If this wasn't set on purpose, call `Makie.inline!()` to restore the default.
             """
         end
-        scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene; screen_config...)
         display(screen, scene)
@@ -204,8 +208,15 @@ end
 
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 
-# need to define this to resolve ambiguoity issue
+# need to define this to resolve ambiguity issue
 Base.showable(mime::MIME"application/json", fig::FigureLike) = _backend_showable(mime)
+
+const WEB_MIMES = (
+    MIME"text/html",
+    MIME"application/vnd.webio.application+html",
+    MIME"application/prs.juno.plotpane+html",
+    MIME"juliavscode/html")
+
 
 backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
@@ -445,14 +456,23 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
 end
 
 # Fallback for any backend that will just use colorbuffer to write out an image
-function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene)
     img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
-    img = colorbuffer(scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene)
+    img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
+    return
+end
+
+function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene)
+    w, h = size(scene)
+    png_io = IOBuffer()
+    backend_show(screen, png_io, MIME"image/png"(), scene)
+    b64 = Base64.base64encode(String(take!(png_io)))
+    print(io, "<img width=$w height=$h style='object-fit: contain;' src=\"data:image/png;base64, $(b64)\"/>")
     return
 end

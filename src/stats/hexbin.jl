@@ -60,9 +60,9 @@ function spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma,
            ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
 end
 
-Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
+conversion_trait(::Type{<:Hexbin}) = PointBased()
 
-function point_iterator(hb::Hexbin)
+function data_limits(hb::Hexbin)
     bb = Rect3f(hb.plots[1][1][])
     fn(num::Real) = Float32(num)
     fn(tup::Union{Tuple,Vec2}) = Vec2f(tup...)
@@ -71,14 +71,14 @@ function point_iterator(hb::Hexbin)
     nw = widths(bb) .+ (ms..., 0.0f0)
     no = bb.origin .- ((ms ./ 2.0f0)..., 0.0f0)
 
-    return decompose(Point2f, Rect3f(no, nw))
+    return Rect3f(no, nw)
 end
 
 get_weight(weights, i) = Float64(weights[i])
 get_weight(::StatsBase.UnitWeights, i) = 1e0
 get_weight(::Nothing, i) = 1e0
 
-function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
+function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
 
     points = Observable(Point2f[])

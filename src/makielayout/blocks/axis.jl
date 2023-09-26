@@ -158,7 +158,6 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-
     blockscene = ax.blockscene
 
     elements = Dict{Symbol, Any}()
@@ -651,7 +650,6 @@ end
 function convert_limit_attribute(lims::Tuple{Any, Any})
     lims
 end
-can_be_current_axis(ax::Axis) = true
 
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
     mi = minimum(lims)
@@ -675,55 +673,55 @@ attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
 
 function get_cycler_index!(c::Cycler, P::Type)
     if !haskey(c.counters, P)
-        c.counters[P] = 1
+        return c.counters[P] = 1
     else
-        c.counters[P] += 1
+        return c.counters[P] += 1
     end
 end
 
-function get_cycle_for_plottype(allattrs, P)::Cycle
-    psym = MakieCore.plotsym(P)
-
-    plottheme = Makie.default_theme(nothing, P)
-
-    cycle_raw = if haskey(allattrs, :cycle)
-        allattrs.cycle[]
-    else
-        global_theme_cycle = theme(psym)
-        if !isnothing(global_theme_cycle) && haskey(global_theme_cycle, :cycle)
-            global_theme_cycle.cycle[]
-        else
-            haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
-        end
-    end
-
+function get_cycle_for_plottype(cycle_raw)::Cycle
     if isnothing(cycle_raw)
-        Cycle([])
+        return Cycle([])
     elseif cycle_raw isa Cycle
-        cycle_raw
+        return cycle_raw
     else
-        Cycle(cycle_raw)
+        return Cycle(cycle_raw)
     end
 end
 
-function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Attributes)
+
+function to_color(cycle, attribute_name, cycler, palette)
+    if cycle.covary
+        palettes[current_symbol][mod1(index, length(palettes[isym]))]
+    else
+        cis = CartesianIndices(Tuple(length(p) for p in palettes))
+        n = length(cis)
+        k = mod1(index, n)
+        idx = Tuple(cis[k])
+        palettes[isym][idx[isym]]
+    end
+end
+
+function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler, palette::Attributes)
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler
     # if any of the cycled attributes were specified manually
-    no_cycle_attribute_passed = !any(keys(allattrs)) do key
+    user_attributes = plot.kw
+    no_cycle_attribute_passed = !any(keys(user_attributes)) do key
         any(syms -> key in syms, attrsyms(cycle))
     end
 
     # check if any attributes were passed as `Cycled` entries
     # because if there were any, these are looked up directly
     # in the cycler without advancing the counter etc.
-    manually_cycled_attributes = filter(keys(allattrs)) do key
-        to_value(allattrs[key]) isa Cycled
+    manually_cycled_attributes = filter(keys(user_attributes)) do key
+        return to_value(user_attributes[key]) isa Cycled
     end
 
     # if there are any manually cycled attributes, we don't do the normal
     # cycling but only look up exactly the passed attributes
     cycle_attrsyms = attrsyms(cycle)
+
     if !isempty(manually_cycled_attributes)
         # an attribute given as Cycled needs to be present in the cycler,
         # otherwise there's no cycle in which to look up a value
@@ -737,10 +735,10 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 
         for sym in manually_cycled_attributes
             isym = findfirst(syms -> sym in syms, attrsyms(cycle))
-            index = allattrs[sym][].i
+            index = plot[sym][].i
             # replace the Cycled values with values from the correct palettes
             # at the index inside the Cycled object
-            allattrs[sym] = if cycle.covary
+            plot[sym] = if cycle.covary
                 palettes[isym][mod1(index, length(palettes[isym]))]
             else
                 cis = CartesianIndices(Tuple(length(p) for p in palettes))
@@ -752,13 +750,13 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
         end
 
     elseif no_cycle_attribute_passed
-        index = get_cycler_index!(cycler, P)
+        index = get_cycler_index!(cycler, typeof(plot))
 
         palettes = [palette[sym][] for sym in palettesyms(cycle)]
 
         for (isym, syms) in enumerate(attrsyms(cycle))
             for sym in syms
-                allattrs[sym] = if cycle.covary
+                plot[sym] = if cycle.covary
                     palettes[isym][mod1(index, length(palettes[isym]))]
                 else
                     cis = CartesianIndices(Tuple(length(p) for p in palettes))
@@ -772,38 +770,10 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function Makie.plot!(
-        la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
-
-    allattrs = merge(attributes, Attributes(kw_attributes))
-
-    _disallow_keyword(:axis, allattrs)
-    _disallow_keyword(:figure, allattrs)
-
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
-
-    # some area-like plots basically always look better if they cover the whole plot area.
-    # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(la)
-
-    if is_open_or_any_parent(la.scene)
-        reset_limits!(la)
-    end
-    plot
-end
-
 is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)
 is_open_or_any_parent(::Nothing) = false
 
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
-end
+
 
 needs_tight_limits(@nospecialize any) = false
 needs_tight_limits(::Union{Heatmap, Image}) = true
@@ -1366,10 +1336,6 @@ defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 
-function update_state_before_display!(ax::Axis)
-    reset_limits!(ax)
-    return
-end
 
 function attribute_examples(::Type{Axis})
     Dict(

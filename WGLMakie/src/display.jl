@@ -17,16 +17,24 @@ function Base.size(screen::ThreeDisplay)
     return (width, height)
 end
 
-function JSServe.jsrender(session::Session, scene::Scene)
-    three, canvas, on_init = three_display(session, scene)
-    c = Channel{ThreeDisplay}(1)
-    put!(c, three)
-    screen = Screen(c, true, scene)
+function render_with_init(screen, session, scene)
     screen.session = session
+    three, canvas, on_init = three_display(screen, session, scene)
+    screen.display = true
     Makie.push_screen!(scene, screen)
     on(session, on_init) do i
+        if !isready(screen.three)
+            put!(screen.three, three)
+        end
         mark_as_displayed!(screen, scene)
+        return
     end
+    return three, canvas, on_init
+end
+
+function JSServe.jsrender(session::Session, scene::Scene)
+    screen = Screen(scene)
+    three, canvas, on_init = render_with_init(screen, session, scene)
     return canvas
 end
 
@@ -35,18 +43,25 @@ function JSServe.jsrender(session::Session, fig::Makie.FigureLike)
     return JSServe.jsrender(session, Makie.get_scene(fig))
 end
 
-const WEB_MIMES = (
-    MIME"text/html",
-    MIME"application/vnd.webio.application+html",
-    MIME"application/prs.juno.plotpane+html",
-    MIME"juliavscode/html")
-
 """
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
     resize_to_body::Bool # false
+    # We use nothing, since that serializes correctly to nothing in JS, which is important since that's where we calculate the defaults!
+    # For the theming, we need to use Automatic though, since that's the Makie meaning for gets calculated somewhere else
+    px_per_unit::Union{Nothing,Float64} # nothing, a.k.a the browser px_per_unit (devicePixelRatio)
+    scalefactor::Union{Nothing,Float64}
+    function ScreenConfig(framerate::Number, resize_to_body::Bool, px_per_unit::Union{Number, Automatic, Nothing}, scalefactor::Union{Number, Automatic, Nothing})
+        if px_per_unit isa Automatic
+            px_per_unit = nothing
+        end
+        if scalefactor isa Automatic
+            scalefactor = nothing
+        end
+        return new(framerate, resize_to_body, px_per_unit, scalefactor)
+    end
 end
 
 """
@@ -66,12 +81,25 @@ mutable struct Screen <: Makie.MakieScreen
     display::Any
     scene::Union{Nothing, Scene}
     displayed_scenes::Set{String}
+    config::ScreenConfig
     function Screen(
             three::Channel{ThreeDisplay},
             display::Any,
-            scene::Union{Nothing, Scene})
-        return new(three, nothing, display, scene, Set{String}())
+            scene::Union{Nothing, Scene}, config::ScreenConfig)
+        return new(three, nothing, display, scene, Set{String}(), config)
     end
+end
+
+function Base.show(io::IO, screen::Screen)
+    c = screen.config
+    ppu = c.px_per_unit
+    sf = c.scalefactor
+    print(io, """WGLMakie.Screen(
+        framerate = $(c.framerate),
+        resize_to_body = $(c.resize_to_body),
+        px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
+        scalefactor = $(isnothing(sf) ? :automatic : sf)
+    )""")
 end
 
 # Resizing the scene is enough for WGLMakie
@@ -90,18 +118,13 @@ function mark_as_displayed!(screen::Screen, scene::Scene)
     return
 end
 
-for M in WEB_MIMES
+
+
+for M in Makie.WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
             inline_display = App() do session::Session
-                screen.session = session
-                three, canvas, init_obs = three_display(session, scene)
-                Makie.push_screen!(scene, screen)
-                on(session, init_obs) do _
-                    put!(screen.three, three)
-                    mark_as_displayed!(screen, scene)
-                    return
-                end
+                three, canvas, init_obs = render_with_init(screen, session, scene)
                 return canvas
             end
             Base.show(io, m, inline_display)
@@ -112,7 +135,7 @@ for M in WEB_MIMES
 end
 
 function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
-    return T in WEB_MIMES
+    return T in Makie.WEB_MIMES
 end
 
 # TODO implement
@@ -168,10 +191,12 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args..
 end
 
 # TODO, create optimized screens, forward more options to JS/WebGL
-Screen(scene::Scene; kw...) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
-Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
-Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene)
-Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene)
+function Screen(scene::Scene; kw...)
+    return Screen(Channel{ThreeDisplay}(1), nothing, scene, Makie.merge_screen_config(ScreenConfig, kw))
+end
+Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene, config)
+Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
+Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
 function Base.empty!(screen::Screen)
     screen.scene = nothing
@@ -181,12 +206,12 @@ end
 
 Makie.wait_for_display(screen::Screen) = get_three(screen)
 
-function Base.display(screen::Screen, scene::Scene; kw...)
+function Base.display(screen::Screen, scene::Scene; unused...)
     Makie.push_screen!(scene, screen)
     # Reference to three object which gets set once we serve this to a browser
     app = App() do session, request
         screen.session = session
-        three, canvas, done_init = three_display(session, scene)
+        three, canvas, done_init = three_display(screen, session, scene)
         on(session, done_init) do _
             put!(screen.three, three)
             mark_as_displayed!(screen, scene)

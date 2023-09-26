@@ -23,23 +23,37 @@ plotkey(::T) where T <: AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
 plotkey(any) = nothing
 
-"""
-     default_plot_signatures(funcname, funcname!, PlotType)
-Creates all the different overloads for `funcname` that need to be supported for the plotting frontend!
-Since we add all these signatures to different functions, we make it reusable with this function.
-The `Core.@__doc__` macro transfers the docstring given to the Recipe into the functions.
-"""
-function default_plot_signatures(funcname, funcname!, PlotType)
-    quote
-        Core.@__doc__ function ($funcname)(args...; attributes...)
-            plot($PlotType, args...; attributes...)
-        end
 
-        Core.@__doc__ function ($funcname!)(args...; attributes...)
-            plot!($PlotType, args...; attributes...)
-        end
-    end
+argtypes(::T) where {T <: Tuple} = T
+
+function create_figurelike end
+function create_figurelike! end
+function figurelike_return end
+function figurelike_return! end
+
+function _create_plot(F, attributes, args...)
+    figlike, plot_kw, plot_args = create_figurelike(Combined{F}, attributes, args...)
+    plot = Combined{F}(plot_args, plot_kw)
+    plot!(figlike, plot)
+    return figurelike_return(figlike, plot)
 end
+
+function _create_plot!(F, attributes, args...)
+    figlike, plot_kw, plot_args = create_figurelike!(Combined{F}, attributes, args...)
+    plot = Combined{F}(plot_args, plot_kw)
+    plot!(figlike, plot)
+    return figurelike_return!(figlike, plot)
+end
+
+function _create_plot!(F, kw, scene::SceneLike, args...)
+    plot = Combined{F}(args, kw)
+    plot!(scene, plot)
+    return plot
+end
+
+plot(args...; kw...) = _create_plot(plot, Dict(kw), args...)
+plot!(args...; kw...) = _create_plot!(plot, Dict(kw), args...)
+
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
@@ -174,7 +188,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname,$(esc(:ArgType))}
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        $(default_plot_signatures(funcname, funcname!, PlotType))
+        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
+        ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
         $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end
@@ -189,12 +204,6 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     end
     expr
 end
-
-# Register plot / plot! using the Any type as PlotType.
-# This is done so that plot(args...) / plot!(args...) can by default go
-# through a pipeline where the appropriate PlotType is determined
-# from the input arguments themselves.
-eval(default_plot_signatures(:plot, :plot!, :Any))
 
 """
 Returns the Combined type that represents the signature of `args`.

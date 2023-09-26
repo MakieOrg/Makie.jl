@@ -37,34 +37,46 @@ function to_glvisualize_key(k)
 end
 
 function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space])
-    for key in (:pixel_space, :resolution, :eyeposition)
+    for key in (:pixel_space, :eyeposition)
         # Overwrite these, user defined attributes shouldn't use those!
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
     get!(gl_attributes, :view) do
-        return lift(plot, cam.view, space) do view, space
-            return is_data_space(space) ? view : Mat4f(I)
+        get!(cam.calculated_values, :view) do 
+            return lift(plot, cam.view, space) do view, space
+                return is_data_space(space) ? view : Mat4f(I)
+            end
         end
     end
     get!(gl_attributes, :normalmatrix) do
-        return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
-            i = Vec(1, 2, 3)
-            return transpose(inv(v[i, i] * m[i, i]))
+        get!(cam.calculated_values, :normalmatrix) do 
+            return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
+                i = Vec(1, 2, 3)
+                return transpose(inv(v[i, i] * m[i, i]))
+            end
         end
     end
-
     get!(gl_attributes, :projection) do
-        return lift(cam.projection, cam.pixel_space, space) do _, _, space
-            return Makie.space_to_clip(cam, space, false)
+        get!(cam.calculated_values, :projection) do 
+            return lift(cam.projection, cam.pixel_space, space) do _, _, space
+                return Makie.space_to_clip(cam, space, false)
+            end
         end
     end
-
     get!(gl_attributes, :projectionview) do
-        return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_clip(cam, space, true)
+        get!(cam.calculated_values, :projectionview) do
+            return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
+                Makie.space_to_clip(cam, space, true)
+            end
         end
     end
-
+    # resolution in real hardware pixels, not scaled pixels/units
+    get!(gl_attributes, :resolution) do
+        get!(cam.calculated_values, :resolution) do
+            return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
+        end
+    end
+    
     delete!(gl_attributes, :space)
     delete!(gl_attributes, :markerspace)
     return nothing
@@ -104,7 +116,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         filtered = filter(x.attributes) do (k, v)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
-                :lightposition, :material,
+                        :lightposition, :material, :axis_cycler,
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
                         :calculated_colors
@@ -128,6 +140,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:ambient] = ambientlight.color
         end
         gl_attributes[:track_updates] = screen.config.render_on_demand
+        gl_attributes[:px_per_unit] = screen.px_per_unit
 
         handle_intensities!(gl_attributes, x)
         connect_camera!(x, gl_attributes, scene.camera, get_space(x))
@@ -280,10 +293,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-
         positions = handle_view(x[1], data)
-        transform_func = transform_func_obs(x)
 
+        transform_func = transform_func_obs(x)
         ls = to_value(linestyle)
         space = x.space
         if isnothing(ls)
@@ -293,7 +305,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = map((ls, lw) -> ls .* _mean(lw), linestyle, linewidth)
+            px_per_unit = data[:px_per_unit]
+            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
+                ppu * _mean(lw) .* ls
+            end
             data[:fast] = false
 
             pvm = map(*, data[:projectionview], data[:model])
@@ -316,20 +331,25 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
+        px_per_unit = data[:px_per_unit]
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = nothing
             data[:fast] = true
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* _mean(to_value(linewidth))
+            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
+                ppu * _mean(lw) .* ls
+            end
             data[:fast] = false
         end
         positions = handle_view(x.converted[1], data)
+
         positions = apply_transform(transform_func_obs(x), positions, x.space)
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
         end
+
         return draw_linesegments(screen, positions, data)
     end
 end
@@ -461,10 +481,9 @@ end
 function draw_atomic(screen::Screen, scene::Scene, x::Image)
     return cached_robj!(screen, scene, x) do gl_attributes
         position = lift(x, x[1], x[2]) do x, y
-            r = to_range(x, y)
-            x, y = minimum(r[1]), minimum(r[2])
-            xmax, ymax = maximum(r[1]), maximum(r[2])
-            rect =  Rect2f(x, y, xmax - x, ymax - y)
+            xmin, xmax = extrema(x)
+            ymin, ymax = extrema(y)
+            rect =  Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2f, rect)
         end
         gl_attributes[:vertices] = apply_transform(transform_func_obs(x), position, x.space)

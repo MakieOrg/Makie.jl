@@ -1,4 +1,11 @@
+function check_textsize_deprecation(@nospecialize(dictlike))
+    if haskey(dictlike, :textsize)
+        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+    end
+end
+
 function plot!(plot::Text)
+    check_textsize_deprecation(plot)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[])

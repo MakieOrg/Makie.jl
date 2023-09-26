@@ -1,13 +1,14 @@
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
+import * as THREE from "./THREE.js";
 
-const pixelRatio = window.devicePixelRatio || 1.0;
-
-export function event2scene_pixel(scene, event) {
-    const { canvas } = scene.screen;
+// Unitless is the scene pixel unit space
+// so scene.px_area, or size(scene)
+// Which isn't the same as the framebuffer pixel size due to scalefactor/px_per_unit/devicePixelRatio
+export function events2unitless(screen, event) {
+    const { canvas, winscale, renderer } = screen;
     const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * pixelRatio;
-    const y = (rect.height - (event.clientY - rect.top)) * pixelRatio;
-    return [x, y];
+    const x = (event.clientX - rect.left) / winscale;
+    const y = (event.clientY - rect.top) / winscale;
+    return [x, renderer._height - y];
 }
 
 export function to_world(scene, x, y) {
@@ -32,7 +33,7 @@ function Identity4x4() {
 }
 
 function in_scene(scene, mouse_event) {
-    const [x, y] = event2scene_pixel(scene, mouse_event);
+    const [x, y] = events2unitless(scene.screen, mouse_event);
     const [sx, sy, sw, sh] = scene.pixelarea.value;
     return x >= sx && x < sx + sw && y >= sy && y < sy + sh;
 }
@@ -69,7 +70,7 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             projection.elements,
             [width, height],
             [x, y, z]
-            );
+        );
     }
     cam3d.resolution.on(update);
 

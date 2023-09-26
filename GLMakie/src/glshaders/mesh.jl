@@ -61,5 +61,6 @@ function draw_mesh(screen, data::Dict)
             )
         )
     end
+
     return assemble_shader(data)
 end
