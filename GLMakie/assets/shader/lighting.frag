@@ -89,17 +89,13 @@ uniform vec3 light_colors[MAX_LIGHTS];
 uniform float light_parameters[MAX_LIGHT_PARAMETERS];
 uniform int lights_length;
 
-// TODO: we don't want to do this here...
-// maybe pre-calc on cpu?
-uniform mat4 view;
-
 // in vec3 o_light_directions[MAX_LIGHTS];
 in vec3 o_camdir;
 in vec3 o_view_pos;
 
 vec3 blinn_phong(vec3 light_color, vec3 normal, vec3 light_dir, vec3 color) {
     // diffuse coefficient (how directly does light hits the surface)
-    float diff_coeff = max(dot(light_dir, normal), 0.0);
+    float diff_coeff = max(dot(-light_dir, normal), 0.0);
 
     // specular coefficient (does reflected light bounce into camera?)
     vec3 H = normalize(light_dir + o_camdir);
@@ -117,7 +113,7 @@ vec3 calc_point_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
 
     // calculate light direction and distance
     // vec3 light_vec = (view * vec4(light_positions[idx], 1)).xyz - o_view_pos;
-    vec3 light_vec = position - o_view_pos;
+    vec3 light_vec = o_view_pos - position;
 
     float dist = length(light_vec);
     vec3 light_dir = normalize(light_vec);
@@ -139,11 +135,11 @@ vec3 calc_directional_light(vec3 light_color, uint idx, vec3 normal, vec3 color)
 vec3 calc_spot_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
     // extract args
     vec3 position = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
-    vec3 light_dir = -normalize(vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]));
+    vec3 light_dir = normalize(vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]));
     float inner_angle = light_parameters[idx+6]; // cos applied
     float outer_angle = light_parameters[idx+7]; // cos applied
 
-    vec3 vertex_dir = normalize(position - o_view_pos);
+    vec3 vertex_dir = normalize(o_view_pos - position);
     // float theta = dot(vertex_dir, light_dir);
     // float epsilon = inner_angle - outer_angle;
     // float intensity = clamp((theta - outer_angle) / epsilon, 0.0, 1.0);
