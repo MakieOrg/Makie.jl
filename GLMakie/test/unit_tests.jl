@@ -319,7 +319,7 @@ end
 
         # save at current size
         @test screen.px_per_unit[] == 1
-        save(file, fig)
+        save(file, fig; px_per_unit=1)
         img = load(file)
         @test size(img) == (W, H)
         # save with a different resolution
@@ -328,6 +328,10 @@ end
         @test size(img) == (2W, 2H)
         # writing to file should not effect the visible figure
         @test_broken screen.px_per_unit[] == 1
+        # Make sure switching back resizes the screen correctly!
+        save(file, fig; px_per_unit=1)
+        img = load(file)
+        @test size(img) == (W, H)
     end
 
     # make sure there isn't a race between changing the scale factor and window_area updater

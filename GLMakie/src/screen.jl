@@ -361,7 +361,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     else
         stop_renderloop!(screen)
     end
-
+    if !isnothing(screen.root_scene)
+        resize!(screen, size(screen.root_scene)...)
+    end
     set_screen_visibility!(screen, config.visible)
     return screen
 end
