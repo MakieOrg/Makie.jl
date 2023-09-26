@@ -258,19 +258,27 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
 {
     // normal in world space
     o_normal = normalmatrix * normal;
+
     // position in view space (as seen from camera)
     vec4 view_pos = view * position_world;
     view_pos /= view_pos.w;
+
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
     gl_Position.z += gl_Position.w * depth_shift;
-    // direction to light (normalizing this will result in incorrect lighting)
+
+    // direction to light for :fast shading
+    // (normalizing this will result in incorrect lighting)
     vec4 view_light_pos = view*vec4(lightposition, 1.0);
     o_lightdir = view_light_pos.xyz / view_light_pos.w - view_pos.xyz;
+
     // direction to camera
     // This is equivalent to
-    // normalize(view*vec4(eyeposition, 1.0) - view_pos).xyz
+    // normalize(view_pos - view*vec4(eyeposition, 1.0)).xyz
     // (by definition `view * eyeposition = 0`)
-    o_camdir = normalize(-view_pos.xyz);
+    // Note: this is constant for every vertex so we can normalize immediately
+    o_camdir = normalize(view_pos.xyz);
+
+    // for SSAO & position based lights with :verbose shading
     o_view_pos = view_pos.xyz / view_pos.w;
 }

@@ -127,17 +127,20 @@ end
     scene
 end
 
-@reference_test "Complex Lighting - DirectionalLight" begin
+@reference_test "Complex Lighting - DirectionalLight + specular reflection" begin
     angle2dir(phi) = Vec3f(cosd(phi), sind(phi), -2)
     lights = [
         AmbientLight(RGBf(0.1, 0.1, 0.1)),
-        DirectionalLight(RGBf(2,0,0), angle2dir(0)),
-        DirectionalLight(RGBf(0,2,0), angle2dir(120)),
-        DirectionalLight(RGBf(0,0,2), angle2dir(240)),
+        DirectionalLight(RGBf(1,0,0), angle2dir(0)),
+        DirectionalLight(RGBf(0,1,0), angle2dir(120)),
+        DirectionalLight(RGBf(0,0,1), angle2dir(240)),
     ]
 
     scene = Scene(resolution = (400, 400), camera = cam3d!, center = false, lights = lights, backgroundcolor = :black)
-    mesh!(scene, Sphere(Point3f(0), 1f0), color = :white, shading = :verbose)
+    mesh!(
+        scene, Sphere(Point3f(0), 1f0), color = :white, shading = :verbose,
+        specular = Vec3f(1), shininess = 16f0
+    )
     update_cam!(scene, Vec3f(0, 0, 3), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
     scene
 end

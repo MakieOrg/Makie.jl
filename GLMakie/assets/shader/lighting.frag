@@ -48,7 +48,7 @@ vec3 blinn_phong(vec3 normal, vec3 light_dir, vec3 color) {
 
     // specular coefficient (does reflected light bounce into camera?)
     vec3 H = normalize(light_dir + o_camdir);
-    float spec_coeff = pow(max(dot(H, normal), 0.0), shininess);
+    float spec_coeff = pow(max(dot(-H, normal), 0.0), shininess);
     if (diff_coeff <= 0.0 || isnan(spec_coeff))
         spec_coeff = 0.0;
 
@@ -99,7 +99,7 @@ vec3 blinn_phong(vec3 light_color, vec3 normal, vec3 light_dir, vec3 color) {
 
     // specular coefficient (does reflected light bounce into camera?)
     vec3 H = normalize(light_dir + o_camdir);
-    float spec_coeff = pow(max(dot(H, normal), 0.0), shininess);
+    float spec_coeff = pow(max(dot(-H, normal), 0.0), shininess);
     if (diff_coeff <= 0.0 || isnan(spec_coeff))
         spec_coeff = 0.0;
 
@@ -112,7 +112,6 @@ vec3 calc_point_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
     vec2 param = vec2(light_parameters[idx+3], light_parameters[idx+4]);
 
     // calculate light direction and distance
-    // vec3 light_vec = (view * vec4(light_positions[idx], 1)).xyz - o_view_pos;
     vec3 light_vec = o_view_pos - position;
 
     float dist = length(light_vec);
