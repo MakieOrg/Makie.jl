@@ -121,7 +121,7 @@ end
     mesh!(
         scene,
         Rect3f(Point3f(-10, -10, -2.99), Vec3f(20, 20, 0.02)),
-        color = :white, shading = :verbose
+        color = :white, shading = :verbose, specular = Vec3f(0)
     )
     update_cam!(scene, Vec3f(0, 0, 10), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
     scene
