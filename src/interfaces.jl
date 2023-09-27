@@ -129,7 +129,9 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
         return Combined{Func}(Base.tail(args), plot_attributes)
     end
     P = Combined{Func}
-    args_converted = convert_arguments(P, map(to_value, args)...)
+    used_attrs = used_attributes(P, to_value.(args)...)
+    kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+    args_converted = convert_arguments(P, map(to_value, args)...; kw...)
     PNew, converted = apply_convert!(P, Attributes(), args_converted)
     trans = get!(plot_attributes, :transformation, automatic)
     transval = to_value(trans)
@@ -194,19 +196,6 @@ function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
     end
 end
 
-function plot(scene::Scene, plot::AbstractPlot)
-    # plot object contains local theme (default values), and user given values (from constructor)
-    # fill_theme now goes through all values that are missing from the user, and looks if the scene
-    # contains any theming values for them (via e.gg. css rules). If nothing founds, the values will
-    # be taken from local theme! This will connect any values in the scene's theme
-    # with the plot values and track those connection, so that we can separate them
-    # when doing delete!(scene, plot)!
-    complete_theme!(scene, plot)
-    # we just return the plot... whoever calls plot (our pipeline usually)
-    # will need to push!(scene, plot) etc!
-    return plot
-end
-
 ## generic definitions
 # If the Combined has no plot func, calculate them
 plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
@@ -248,15 +237,32 @@ plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
 
-
 function plot!(::Combined{F}) where {F}
     if !(F in atomic_functions)
         error("No recipe for $(F)")
     end
 end
 
+function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
+    plot.parent = scene
+    # TODO, move transformation into attributes?
+    # This hacks around transformation being already constructed in the constructor
+    # So here we don't want to connect to the scene if an explicit Transformation was passed to the plot
+    kw = getfield(plot, :kw)
+    attr = getfield(plot, :attributes)
+    t = to_value(get(() -> get(kw, :transformation, nothing), attr, :transformation))
+    if t isa Automatic
+        connect!(transformation(scene), transformation(plot))
+    end
+    apply_theme!(parent_scene(scene), plot)
+    convert_arguments!(plot)
+    calculated_attributes!(Combined{F}, plot)
+    plot!(plot)
+    return plot
+end
+
 function plot!(scene::SceneLike, plot::Combined)
-    prepare_plot!(scene, plot)
+    connect_plot!(scene, plot)
     push!(scene, plot)
     return plot
 end
@@ -277,22 +283,4 @@ function apply_theme!(scene::Scene, plot::P) where {P<: Combined}
         end
     end
     return merge!(plot.attributes, plot_theme)
-end
-
-function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
-    plot.parent = scene
-    # TODO, move transformation into attributes?
-    # This hacks around transformation being already constructed in the constructor
-    # So here we don't want to connect to the scene if an explicit Transformation was passed to the plot
-    kw = getfield(plot, :kw)
-    attr = getfield(plot, :attributes)
-    t = to_value(get(() -> get(kw, :transformation, nothing), attr, :transformation))
-    if t isa Automatic
-        connect!(transformation(scene), transformation(plot))
-    end
-    apply_theme!(parent_scene(scene), plot)
-    convert_arguments!(plot)
-    calculated_attributes!(Combined{F}, plot)
-    plot!(plot)
-    return plot
 end

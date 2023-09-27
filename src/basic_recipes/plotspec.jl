@@ -48,6 +48,10 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where {S}
     return (plottype(S, P), (args...,))
 end
 
+function apply_convert!(P, ::Attributes, x::AbstractVector{<:PlotSpec})
+    return (PlotList, (x,))
+end
+
 function MakieCore.argtypes(plot::PlotSpec{P}) where {P}
     args_converted = convert_arguments(P, plot.args...)
     return MakieCore.argtypes(args_converted)
@@ -81,7 +85,7 @@ function update_plot!(plot::AbstractPlot, spec::PlotSpec)
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
-        arg_obs = plot.input_args[i]
+        arg_obs = plot.args[i]
         if to_value(arg_obs) != spec.args[i] # only update if different
             @debug("updating arg $i")
             arg_obs[] = spec.args[i]
@@ -135,7 +139,7 @@ plots[] = [
 end
 
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
-plottype(::AbstractArray{<:PlotSpec}) = PlotList
+plottype(::AbstractVector{<:PlotSpec}) = PlotList
 
 # Since we directly plot into the parent scene (hacky), we need to overload these
 Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
@@ -146,6 +150,22 @@ quote
     Makie.convert_arguments(obj::MyType) = [
         obj.lineplot ? P.lines(obj.args...; obj.kwargs...) : P.scatter(obj.args...; obj.kw...)
     ]
+end
+
+function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec{P}) where {P}
+    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
+    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
+    println(io, "P.", plotfunc(P), "($args; $kws)")
+end
+
+function Base.show(io::IO, spec::PlotSpec{P}) where {P}
+    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
+    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
+    return println(io, "P.", plotfunc(P), "($args; $kws)")
+end
+
+function to_combined(ps::PlotSpec{P}) where {P}
+    return P((ps.args...,), copy(ps.kwargs))
 end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
@@ -163,11 +183,8 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
             if isnothing(idx)
                 @debug("Creating new plot for spec")
                 # Create new plot, store it into our `cached_plots` dictionary
-                plot = plot!(scene,
-                    typeof(plotspec).parameters[1],
-                    Attributes(plotspec.kwargs),
-                    plotspec.args...,
-                )
+                plot = plot!(scene, to_combined(plotspec))
+                push!(p.plots, plot)
                 push!(cached_plots, plotspec => plot)
                 push!(used_plots, length(cached_plots))
             else
@@ -182,13 +199,15 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
         for idx in unused_plots
-            spec, plot = cached_plots[idx]
+            _, plot = cached_plots[idx]
             delete!(scene, plot)
+            filter!(x -> x !== plot, p.plots)
         end
         splice!(cached_plots, sort!(collect(unused_plots)))
     end
 end
 
+# Prototype for Pluto + Ijulia integration with Observable(ListOfPlots)
 function Base.showable(::Union{MIME"juliavscode/html",MIME"text/html"}, ::Observable{<: AbstractVector{<:PlotSpec}})
     return true
 end

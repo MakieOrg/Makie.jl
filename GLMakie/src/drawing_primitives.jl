@@ -42,33 +42,31 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
     get!(gl_attributes, :view) do
-        get!(cam.calculated_values, :view) do 
+        # get!(cam.calculated_values, Symbol("view_$(space[])")) do
             return lift(plot, cam.view, space) do view, space
                 return is_data_space(space) ? view : Mat4f(I)
             end
-        end
+        # end
     end
     get!(gl_attributes, :normalmatrix) do
-        get!(cam.calculated_values, :normalmatrix) do 
-            return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
-                i = Vec(1, 2, 3)
-                return transpose(inv(v[i, i] * m[i, i]))
-            end
+        return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
+            i = Vec(1, 2, 3)
+            return transpose(inv(v[i, i] * m[i, i]))
         end
     end
     get!(gl_attributes, :projection) do
-        get!(cam.calculated_values, :projection) do 
+        # return get!(cam.calculated_values, Symbol("projection_$(space[])")) do
             return lift(cam.projection, cam.pixel_space, space) do _, _, space
                 return Makie.space_to_clip(cam, space, false)
             end
-        end
+        # end
     end
     get!(gl_attributes, :projectionview) do
-        get!(cam.calculated_values, :projectionview) do
+        # get!(cam.calculated_values, Symbol("projectionview_$(space[])")) do
             return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
                 Makie.space_to_clip(cam, space, true)
             end
-        end
+        # end
     end
     # resolution in real hardware pixels, not scaled pixels/units
     get!(gl_attributes, :resolution) do
@@ -76,7 +74,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
             return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
         end
     end
-    
+
     delete!(gl_attributes, :space)
     delete!(gl_attributes, :markerspace)
     return nothing
@@ -156,7 +154,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     return robj
 end
 
-Makie.Base.insert!(screen::GLMakie.Screen, scene::Scene, x::Makie.PlotList) = nothing
+Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     ShaderAbstractions.switch_context!(screen.glscreen)

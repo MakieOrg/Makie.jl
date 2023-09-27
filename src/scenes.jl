@@ -473,7 +473,6 @@ end
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
-    plot isa Combined || (plot.parent = scene)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
@@ -509,21 +508,6 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
         delete!(screen, scene, plot)
     end
     free(plot)
-end
-
-function Base.push!(scene::Scene, child::Scene)
-    push!(scene.children, child)
-    disconnect!(child.camera)
-    observables = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
-        return lift(getfield(scene.camera, field)) do val
-            getfield(child.camera, field)[] = val
-            getfield(child.camera, field)[] = val
-            return
-        end
-    end
-    cameracontrols!(child, observables)
-    child.parent = scene
-    return scene
 end
 
 events(x) = events(get_scene(x))
