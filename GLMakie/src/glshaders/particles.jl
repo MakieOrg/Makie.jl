@@ -81,6 +81,8 @@ function draw_mesh_particle(screen, p, data)
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
                 "shading" => light_calc(shading),
+                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

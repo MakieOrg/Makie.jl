@@ -100,14 +100,17 @@ const MAKIE_DEFAULT_THEME = Attributes(
         monitor = nothing,
         visible = true,
 
-        # Postproccessor
+        # Shader constants & Postproccessor
         oit = true,
         fxaa = true,
         ssao = false,
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
-        transparency_weight_scale = 1000f0
+        transparency_weight_scale = 1000f0,
+        # maximum number of lights with shading = :verbose
+        max_lights = 64,
+        max_light_parameters = 5 * 64
     ),
 
     WGLMakie = Attributes(

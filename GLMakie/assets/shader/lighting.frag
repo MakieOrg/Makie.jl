@@ -73,8 +73,8 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
 
 #ifdef MULTI_LIGHT_SHADING
 
-#define MAX_LIGHTS 64
-#define MAX_LIGHT_PARAMETERS 5 * MAX_LIGHTS
+{{MAX_LIGHTS}}
+{{MAX_LIGHT_PARAMETERS}}
 
 // differentiating different light sources
 const int UNDEFINED        = 0;

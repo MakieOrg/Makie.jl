@@ -30,12 +30,14 @@ function renderloop end
 * `visible = true`: Whether or not the window should be visible when first created.
 * `scalefactor = automatic`: Sets the window scaling factor, such as `2.0` on HiDPI/Retina displays. It is set automatically based on the display, but may be any positive real number.
 
-## Postprocessor
+## Rendering constants & Postprocessor
 * `oit = false`: Whether to enable order independent transparency for the window.
 * `fxaa = true`: Whether to enable fxaa (anti-aliasing) for the window.
 * `ssao = true`: Whether to enable screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
 * `transparency_weight_scale = 1000f0`: Adjusts a factor in the rendering shaders for order independent transparency.
     This should be the same for all of them (within one rendering pipeline) otherwise depth "order" will be broken.
+* `max_lights = 64`: The maximum number of lights with `shading = :verbose`
+* `max_light_parameters = 5 * N_lights`: The maximum number of light parameters that can be uploaded. These include everything other than the light color (i.e. position, direction, attenuation, angles) in terms of scalar floats.
 """
 mutable struct ScreenConfig
     # Renderloop
@@ -57,11 +59,13 @@ mutable struct ScreenConfig
     visible::Bool
     scalefactor::Union{Nothing, Float32}
 
-    # Postprocessor
+    # Render Constants & Postprocessor
     oit::Bool
     fxaa::Bool
     ssao::Bool
     transparency_weight_scale::Float32
+    max_lights::Int
+    max_light_parameters::Int
 
     function ScreenConfig(
             # Renderloop
@@ -86,7 +90,9 @@ mutable struct ScreenConfig
             oit::Bool,
             fxaa::Bool,
             ssao::Bool,
-            transparency_weight_scale::Number)
+            transparency_weight_scale::Number,
+            max_lights::Int,
+            max_light_parameters::Int)
         return new(
             # Renderloop
             renderloop isa Makie.Automatic ? GLMakie.renderloop : renderloop,
@@ -110,7 +116,9 @@ mutable struct ScreenConfig
             oit,
             fxaa,
             ssao,
-            transparency_weight_scale)
+            transparency_weight_scale,
+            max_lights,
+            max_light_parameters)
     end
 end
 
@@ -354,6 +362,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     replace_processor!(config.ssao ? ssao_postprocessor : empty_postprocessor, 1)
     replace_processor!(config.oit ? OIT_postprocessor : empty_postprocessor, 2)
     replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
+
+    # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
+
     # Set the config
     screen.config = config
     if start_renderloop
