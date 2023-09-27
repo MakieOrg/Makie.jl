@@ -25,6 +25,16 @@ function colorbar_check(keys, kwargs_keys)
     end
 end
 
+function extract_colorrange(@nospecialize(plot::AbstractPlot))::Vec2{Float64}
+    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
+        return plot.calculated_colors[].colorrange[]
+    elseif haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
+        return plot.colorrange[]
+    else
+        error("colorrange not found and calculated_colors for the plot is missing or is not a proper color map. Heatmaps and images should always contain calculated_colors[].colorrange")
+    end
+end
+
 function extract_colormap(@nospecialize(plot::AbstractPlot))
     has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
