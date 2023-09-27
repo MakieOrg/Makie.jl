@@ -44,7 +44,7 @@ uniform float backlight;
 
 vec3 blinn_phong(vec3 normal, vec3 light_dir, vec3 color) {
     // diffuse coefficient (how directly does light hits the surface)
-    float diff_coeff = max(dot(light_dir, normal), 0.0);
+    float diff_coeff = max(dot(-light_dir, normal), 0.0);
 
     // specular coefficient (does reflected light bounce into camera?)
     vec3 H = normalize(light_dir + o_camdir);

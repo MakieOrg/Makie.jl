@@ -282,7 +282,7 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     // direction to light for :fast shading
     // (normalizing this will result in incorrect lighting)
     vec4 view_light_pos = view*vec4(lightposition, 1.0);
-    o_lightdir = view_light_pos.xyz / view_light_pos.w - view_pos.xyz;
+    o_lightdir = view_pos.xyz - view_light_pos.xyz / view_light_pos.w;
 #endif
 
 #if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
