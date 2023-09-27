@@ -93,19 +93,18 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
     return
 end
 
-const atomic_function_symbols = (
-    :text, :meshscatter, :scatter, :mesh, :linesegments,
-    :lines, :surface, :volume, :heatmap, :image
+const atomic_functions = (
+    text, meshscatter, scatter, mesh, linesegments,
+    lines, surface, volume, heatmap, image
 )
-
-const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
 function convert_arguments!(plot::Combined{F}) where {F}
     P = Combined{F,Any}
     function on_update(kw, args...)
         nt = convert_arguments(P, args...; kw...)
-        converted = apply_convert!(plot.attributes, nt)
+        pnew, converted = apply_convert!(P, plot.attributes, nt)
+        @assert plotfunc(pnew) === F "Changed the plot type in convert_arguments. This isn't allowed!"
         for (obs, new_val) in zip(plot.converted, converted)
             obs[] = new_val
         end
@@ -130,8 +129,10 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
         return Combined{Func}(Base.tail(args), plot_attributes)
     end
     P = Combined{Func}
-    args_converted = convert_arguments(P, map(to_value, args)...)
-    converted = apply_convert!(Attributes(), args_converted)
+    used_attrs = used_attributes(P, to_value.(args)...)
+    kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+    args_converted = convert_arguments(P, map(to_value, args)...; kw...)
+    PNew, converted = apply_convert!(P, Attributes(), args_converted)
     trans = get!(plot_attributes, :transformation, automatic)
     transval = to_value(trans)
     transformation = if transval isa Automatic
@@ -147,7 +148,7 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     obs_args = Any[convert(Observable, x) for x in args]
 
     ArgTyp = MakieCore.argtypes(converted)
-    plot = Combined{Func, ArgTyp}(transformation, plot_attributes, obs_args)
+    plot = Combined{plotfunc(PNew), ArgTyp}(transformation, plot_attributes, obs_args)
     plot.converted = map(Observable, converted)
     plot.model = transformationmatrix(transformation)
     return plot
@@ -181,20 +182,7 @@ used_attributes(PlotType, args...) = ()
 apply for return type
     (args...,)
 """
-apply_convert!(attributes::Attributes, x::Tuple) = x
-
-"""
-apply for return type PlotSpec
-"""
-function apply_convert!(attributes::Attributes, x::PlotSpec{S}) where S
-    args, kwargs = x.args, x.kwargs
-    # Note that kw_args in the plot spec that are not part of the target plot type
-    # will end in the "global plot" kw_args (rest)
-    for (k, v) in pairs(kwargs)
-        attributes[k] = v
-    end
-    return args
-end
+apply_convert!(P, ::Attributes, x::Tuple) = (P, x)
 
 function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
     ntuple(N) do i
@@ -206,19 +194,6 @@ function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
             end
         end
     end
-end
-
-function plot(scene::Scene, plot::AbstractPlot)
-    # plot object contains local theme (default values), and user given values (from constructor)
-    # fill_theme now goes through all values that are missing from the user, and looks if the scene
-    # contains any theming values for them (via e.gg. css rules). If nothing founds, the values will
-    # be taken from local theme! This will connect any values in the scene's theme
-    # with the plot values and track those connection, so that we can separate them
-    # when doing delete!(scene, plot)!
-    complete_theme!(scene, plot)
-    # we just return the plot... whoever calls plot (our pipeline usually)
-    # will need to push!(scene, plot) etc!
-    return plot
 end
 
 ## generic definitions
@@ -262,15 +237,32 @@ plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
 
-
-function plot!(plot::Combined{F}) where {F}
+function plot!(::Combined{F}) where {F}
     if !(F in atomic_functions)
         error("No recipe for $(F)")
     end
 end
 
+function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
+    plot.parent = scene
+    # TODO, move transformation into attributes?
+    # This hacks around transformation being already constructed in the constructor
+    # So here we don't want to connect to the scene if an explicit Transformation was passed to the plot
+    kw = getfield(plot, :kw)
+    attr = getfield(plot, :attributes)
+    t = to_value(get(() -> get(kw, :transformation, nothing), attr, :transformation))
+    if t isa Automatic
+        connect!(transformation(scene), transformation(plot))
+    end
+    apply_theme!(parent_scene(scene), plot)
+    convert_arguments!(plot)
+    calculated_attributes!(Combined{F}, plot)
+    plot!(plot)
+    return plot
+end
+
 function plot!(scene::SceneLike, plot::Combined)
-    prepare_plot!(scene, plot)
+    connect_plot!(scene, plot)
     push!(scene, plot)
     return plot
 end
@@ -291,27 +283,4 @@ function apply_theme!(scene::Scene, plot::P) where {P<: Combined}
         end
     end
     return merge!(plot.attributes, plot_theme)
-end
-
-function prepare_plot!(scene::SceneLike, plot::Combined{F}) where {F}
-    plot.parent = scene
-    # TODO, move transformation into attributes?
-    # This hacks around transformation being already constructed in the constructor
-    # So here we don't want to connect to the scene if an explicit Transformation was passed to the plot
-    kw = getfield(plot, :kw)
-    attr = getfield(plot, :attributes)
-    t = to_value(get(() -> get(kw, :transformation, nothing), attr, :transformation))
-    if t isa Automatic
-        connect!(transformation(scene), transformation(plot))
-    end
-    apply_theme!(parent_scene(scene), plot)
-    convert_arguments!(plot)
-    calculated_attributes!(Combined{F}, plot)
-    plot!(plot)
-    return plot
-end
-
-function MakieCore.argtypes(plot::PlotSpec{P}) where {P}
-    args_converted = convert_arguments(P, plot.args...)
-    return MakieCore.argtypes(args_converted)
 end

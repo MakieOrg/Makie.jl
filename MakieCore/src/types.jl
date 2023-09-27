@@ -65,7 +65,7 @@ mutable struct Combined{Typ, T} <: ScenePlot{Typ}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Combined}
 
-    function Combined{Typ,T}(transformation, kw, args) where {Typ,T}
+    function Combined{Typ,T}(transformation, kw::Dict{Symbol, Any}, args::Vector{Any}) where {Typ,T}
         return new{Typ,T}(transformation, kw, args, (), Attributes(), Combined[],
                    Observables.ObserverFunction[])
     end
