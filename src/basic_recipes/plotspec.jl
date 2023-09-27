@@ -52,6 +52,12 @@ function apply_convert!(P, ::Attributes, x::AbstractVector{<:PlotSpec})
     return (PlotList, (x,))
 end
 
+"""
+apply for return type
+    (args...,)
+"""
+apply_convert!(P, ::Attributes, x::Tuple) = (P, x)
+
 function MakieCore.argtypes(plot::PlotSpec{P}) where {P}
     args_converted = convert_arguments(P, plot.args...)
     return MakieCore.argtypes(args_converted)

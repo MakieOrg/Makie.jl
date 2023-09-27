@@ -122,7 +122,6 @@ function convert_arguments!(plot::Combined{F}) where {F}
     return
 end
 
-
 function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     if first(args) isa Attributes
         merge!(plot_attributes, attributes(first(args)))
@@ -133,24 +132,12 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
     args_converted = convert_arguments(P, map(to_value, args)...; kw...)
     PNew, converted = apply_convert!(P, Attributes(), args_converted)
-    trans = get!(plot_attributes, :transformation, automatic)
-    transval = to_value(trans)
-    transformation = if transval isa Automatic
-        Transformation()
-    elseif transval isa Transformation
-        transval
-    else
-        t = Transformation()
-        transform!(t, transval)
-        t
-    end
 
     obs_args = Any[convert(Observable, x) for x in args]
 
     ArgTyp = MakieCore.argtypes(converted)
-    plot = Combined{plotfunc(PNew), ArgTyp}(transformation, plot_attributes, obs_args)
-    plot.converted = map(Observable, converted)
-    plot.model = transformationmatrix(transformation)
+    converted_obs = map(Observable, converted)
+    plot = Combined{plotfunc(PNew),ArgTyp}(plot_attributes, obs_args, converted_obs)
     return plot
 end
 
@@ -178,23 +165,6 @@ Usage:
 """
 used_attributes(PlotType, args...) = ()
 
-"""
-apply for return type
-    (args...,)
-"""
-apply_convert!(P, ::Attributes, x::Tuple) = (P, x)
-
-function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
-    ntuple(N) do i
-        lift(args) do x
-            if i <= length(x)
-                x[i]
-            else
-                error("You changed the number of arguments. This isn't allowed!")
-            end
-        end
-    end
-end
 
 ## generic definitions
 # If the Combined has no plot func, calculate them
@@ -231,8 +201,8 @@ function convert_arguments(P::PlotFunc, args...)
 end
 ```
 """
-plottype(P1::Type{<: Combined{Any}}, P2::Type{<: Combined{T}}) where T = P2
-plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
+plottype(::Type{<: Combined{Any}}, P::Type{<: Combined{T}}) where T = P
+plottype(P::Type{<: Combined{T}}, ::Type{<: Combined}) where T = P
 
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
@@ -245,16 +215,22 @@ end
 
 function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
     plot.parent = scene
-    # TODO, move transformation into attributes?
-    # This hacks around transformation being already constructed in the constructor
-    # So here we don't want to connect to the scene if an explicit Transformation was passed to the plot
-    kw = getfield(plot, :kw)
-    attr = getfield(plot, :attributes)
-    t = to_value(get(() -> get(kw, :transformation, nothing), attr, :transformation))
-    if t isa Automatic
+
+    apply_theme!(parent_scene(scene), plot)
+    t_user = to_value(get(attributes(plot), :transformation, automatic))
+    if t_user isa Transformation
+        plot.transformation = t_user
+    else
+        if t_user isa Automatic
+            plot.transformation = Transformation()
+        else
+            t = Transformation()
+            transform!(t, t_user)
+            plot.transformation = t
+        end
         connect!(transformation(scene), transformation(plot))
     end
-    apply_theme!(parent_scene(scene), plot)
+    plot.model = transformationmatrix(plot)
     convert_arguments!(plot)
     calculated_attributes!(Combined{F}, plot)
     plot!(plot)

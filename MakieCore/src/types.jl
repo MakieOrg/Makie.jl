@@ -51,7 +51,7 @@ struct Attributes
 end
 
 mutable struct Combined{Typ, T} <: ScenePlot{Typ}
-    transformation::Transformable
+    transformation::Union{Nothing, Transformable}
 
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
     kw::Dict{Symbol,Any}
@@ -65,8 +65,8 @@ mutable struct Combined{Typ, T} <: ScenePlot{Typ}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Combined}
 
-    function Combined{Typ,T}(transformation, kw::Dict{Symbol, Any}, args::Vector{Any}) where {Typ,T}
-        return new{Typ,T}(transformation, kw, args, (), Attributes(), Combined[],
+    function Combined{Typ,T}(kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable}) where {Typ,T,N}
+        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Combined[],
                    Observables.ObserverFunction[])
     end
 end
