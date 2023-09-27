@@ -1,5 +1,12 @@
 {{GLSL_VERSION}}
 
+// Sets which shading procedures to use
+// Options:
+// NO_SHADING           - skip shading calculation, handled outside
+// FAST_SHADING         - single point light (forward rendering)
+// MULTI_LIGHT_SHADING  - simple shading with multiple lights (forward rendering)
+{{shading}}
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -243,17 +250,21 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
 
 out vec3 o_view_pos;
 out vec3 o_normal;
-out vec3 o_lightdir;
-out vec3 o_camdir;
 
 // transpose(inv(view * model))
 // Transformation for vectors (rather than points)
 uniform mat3 normalmatrix;
-uniform vec3 lightposition;
-uniform vec3 eyeposition;
 uniform float depth_shift;
 
-// TODO: maybe move some of this to lighting.vert or vice versa?
+#ifdef FAST_SHADING
+out vec3 o_lightdir;
+uniform vec3 lightposition;
+#endif
+
+#if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
+out vec3 o_camdir;
+#endif
+
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
 {
     // normal in world space
@@ -267,17 +278,21 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     gl_Position = projection * view_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 
+#ifdef FAST_SHADING
     // direction to light for :fast shading
     // (normalizing this will result in incorrect lighting)
     vec4 view_light_pos = view*vec4(lightposition, 1.0);
     o_lightdir = view_light_pos.xyz / view_light_pos.w - view_pos.xyz;
+#endif
 
+#if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
     // direction to camera
     // This is equivalent to
     // normalize(view_pos - view*vec4(eyeposition, 1.0)).xyz
     // (by definition `view * eyeposition = 0`)
     // Note: this is constant for every vertex so we can normalize immediately
     o_camdir = normalize(view_pos.xyz);
+#endif
 
     // for SSAO & position based lights with :verbose shading
     o_view_pos = view_pos.xyz / view_pos.w;

@@ -11,15 +11,10 @@ module LightType
     const SpotLight        = 4
 end
 
-# always implement
+# Each light should implement
 light_type(::AbstractLight) = LightType.UNDEFINED
-
-# TODO: rethink these
-# implement as needed (keep types)
 light_color(::AbstractLight) = RGBf(0, 0, 0)
-light_position(::AbstractLight) = Vec3f(0)
-light_direction(::AbstractLight) = Vec3f(0)
-light_parameters(::AbstractLight) = Vec3f(0) # extra data passthrough
+# Other attributes need to be handled explicitly in backends
 
 
 """
@@ -74,8 +69,6 @@ end
 
 light_type(::PointLight) = LightType.PointLight
 light_color(l::PointLight) = l.color[]
-light_position(l::PointLight) = l.position[]
-light_parameters(l::PointLight) = to_ndim(Vec3f, l.attenuation[], 0)
 
 # fit of values used on learnopengl/ogre3d
 function default_attenuation(range::Real)
@@ -103,7 +96,6 @@ end
 
 light_type(::DirectionalLight) = LightType.DirectionalLight
 light_color(l::DirectionalLight) = l.color[]
-light_direction(l::DirectionalLight) = l.direction[]
 
 
 """
@@ -126,9 +118,6 @@ end
 
 light_type(::SpotLight) = LightType.SpotLight
 light_color(l::SpotLight) = l.color[]
-light_position(l::SpotLight) = l.position[]
-light_direction(l::SpotLight) = l.direction[]
-light_parameters(l::SpotLight) = l.angles[]
 
 
 """

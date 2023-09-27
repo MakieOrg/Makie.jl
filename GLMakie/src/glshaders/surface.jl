@@ -119,7 +119,7 @@ end
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
-    shading = to_value(pop!(data, :shading, :fast))
+    shading = pop!(data, :shading, :fast)::Symbol
     @gen_defaults! data begin
         scale = nothing
         position = nothing

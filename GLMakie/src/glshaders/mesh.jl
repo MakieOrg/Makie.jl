@@ -27,7 +27,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     to_buffer(:uv, :texturecoordinates)
     to_buffer(:uvw, :texturecoordinates)
     # Only emit normals, when we shadin'
-    shading = to_value(get(result, :shading, :none))
+    shading = get(result, :shading, :none)::Symbol
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != :none
         to_buffer(:normals, :normals)
@@ -37,7 +37,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
 end
 
 function draw_mesh(screen, data::Dict)
-    shading = to_value(pop!(data, :shading, :fast))
+    shading = pop!(data, :shading, :none)::Symbol
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer

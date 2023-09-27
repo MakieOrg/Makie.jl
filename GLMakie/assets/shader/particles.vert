@@ -96,8 +96,6 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
 vec2 get_uv(Nothing x){return vec2(0.0);}
 vec2 get_uv(vec2 x){return vec2(1.0 - x.y, x.x);}
 
-void prepare_lights(vec4 view_pos);
-
 void main(){
     int index = gl_InstanceID;
     o_id = uvec2(objectid, index+1);

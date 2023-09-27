@@ -2,30 +2,35 @@ using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
-# TODO: Maybe move this somewhere else?
 function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.AbstractLight})
-    # TODO: make this adjustable?
-    MAX_LIGHTS = 64
-    MAX_PARAMS = 5 * 64
+    MAX_LIGHTS = screen.config.max_lights
+    MAX_PARAMS = screen.config.max_light_parameters
 
+    # needed to transform directions from world space -> camera/view space
     normalview = map(view -> transpose(inv(view[Vec(1,2,3), Vec(1,2,3)])), attr[:view])
 
-    attr[:lights_length]    = Observable(0)
+    # Every light has a type and a color. Therefore we have these as independent
+    # uniforms with a max length of MAX_LIGHTS.
+    # Other parameters like position, direction, etc differe between light types.
+    # To avoid wasting a bunch of memory we squash all of them into one vector of
+    # size MAX_PARAMS.
+    attr[:N_lights]         = Observable(0)
     attr[:light_types]      = Observable(sizehint!(Int32[], MAX_LIGHTS))
     attr[:light_colors]     = Observable(sizehint!(RGBf[], MAX_LIGHTS))
     attr[:light_parameters] = Observable(sizehint!(Float32[], MAX_PARAMS))
 
     on(screen.render_tick, priority = typemin(Int)) do _
-        # @info "$(length(lights)) lights."
+        # derive number of lights from available lights. Both MAX_LIGHTS and
+        # MAX_PARAMS are considered for this.
         n_lights = 0
         n_params = 0
         for light in lights
             if light isa PointLight
-                n_params += 5
+                n_params += 5 # 3 position + 2 attenuation
             elseif light isa DirectionalLight
-                n_params += 3
+                n_params += 3 # 3 direction
             elseif light isa SpotLight
-                n_params += 8
+                n_params += 8 # 3 position + 3 direction + 2 angles
             end
             if n_params > MAX_PARAMS || n_lights == MAX_LIGHTS
                 if n_params > MAX_PARAMS
@@ -39,8 +44,8 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
         end
         N = min(MAX_LIGHTS, length(lights))
 
-        # Update light length
-        attr[:lights_length][] = N
+        # Update number of lights
+        attr[:N_lights][] = N
 
         # Update light types
         trg = attr[:light_types][]
@@ -55,6 +60,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
         notify(attr[:light_colors])
 
         # Update other light parameters
+        # This precalculates world space pos/dir -> view/cam space pos/dir
         parameters = attr[:light_parameters][]
         empty!(parameters)
         nv = normalview[]
@@ -215,24 +221,21 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         handle_intensities!(gl_attributes, x)
         connect_camera!(x, gl_attributes, scene.camera, get_space(x))
 
-        # convert deprecated shading::Bool
+        # TODO: remove depwarn & conversion after some time
         if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
-            @warn "Setting `shading` to true or false is deprecated. Use `shading = :none` instead of false, `shading = :fast` instead of true or `shading = :verbose` to enable multiple lights."
+            @warn "`shading::Bool` is deprecated. Use `shading = :none` instead of false and `shading = :fast` or `shading = :verbose` instead of true."
             gl_attributes[:shading] = ifelse(gl_attributes[:shading][], :fast, :none)
         elseif haskey(gl_attributes, :shading) && gl_attributes[:shading] isa Observable
             gl_attributes[:shading] = gl_attributes[:shading][]
         end
 
-        # TODO:
         shading = to_value(get(gl_attributes, :shading, :none))
-        # @info shading
+
         if shading == :fast
-            # @info "cached robj simple shading"
             pointlight = Makie.get_point_light(scene)
             if !isnothing(pointlight)
                 gl_attributes[:lightposition] = pointlight.position
                 gl_attributes[:light_color] = pointlight.color
-                # @info pointlight.color[]
             end
 
             ambientlight = Makie.get_ambient_light(scene)
@@ -240,7 +243,6 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 gl_attributes[:ambient] = ambientlight.color
             end
         elseif shading == :verbose
-            # @info "cached robj verbose shading"
             handle_lights(gl_attributes, screen, scene.lights)
         end
 
@@ -325,8 +327,6 @@ pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
     return cached_robj!(screen, scene, x) do gl_attributes
-        # signals not supported for shading yet
-        # gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true)) # TODO this must be set beforehand
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
 
         space = x.space
@@ -604,10 +604,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
 end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
-    # TODO must be set beforehand
-    # signals not supported for shading yet
-    shading = to_value(get!(gl_attributes, :shading, :fast))
-    # gl_attributes[:shading] = shading
+    shading = gl_attributes[:shading]::Symbol
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
@@ -687,9 +684,6 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         space = x.space
 
         gl_attributes[:image] = img
-        # TODO
-        # signals not supported for shading yet
-        # gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
 
         @assert to_value(x[3]) isa AbstractMatrix
         types = map(v -> typeof(to_value(v)), x[1:2])

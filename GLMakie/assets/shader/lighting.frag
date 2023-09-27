@@ -59,7 +59,6 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
     vec3 lightdir = normalize(o_lightdir);
     vec3 light1 = blinn_phong(normal,  lightdir, base_color.rgb);
     vec3 light2 = blinn_phong(normal, -lightdir, base_color.rgb);
-    // TODO light color
     return ambient * base_color.rgb + light_color * (light1 + backlight * light2);
 }
 
@@ -84,10 +83,10 @@ const int DirectionalLight = 3;
 const int SpotLight        = 4;
 
 // light parameters (maybe invalid depending on light type)
+uniform int N_lights;
 uniform int light_types[MAX_LIGHTS];
 uniform vec3 light_colors[MAX_LIGHTS];
 uniform float light_parameters[MAX_LIGHT_PARAMETERS];
-uniform int lights_length;
 
 // in vec3 o_light_directions[MAX_LIGHTS];
 in vec3 o_camdir;
@@ -125,8 +124,6 @@ vec3 calc_point_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
 }
 
 vec3 calc_directional_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
-    // TODO: don't calculate view * light_direction for each pixel
-    // vec3 light_dir = normalize((view * vec4(light_directions[idx], 1)).xyz);
     vec3 direction = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
     return blinn_phong(light_color, normal, direction, color);
 }
@@ -139,9 +136,6 @@ vec3 calc_spot_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
     float outer_angle = light_parameters[idx+7]; // cos applied
 
     vec3 vertex_dir = normalize(o_view_pos - position);
-    // float theta = dot(vertex_dir, light_dir);
-    // float epsilon = inner_angle - outer_angle;
-    // float intensity = clamp((theta - outer_angle) / epsilon, 0.0, 1.0);
     float intensity = smoothstep(outer_angle, inner_angle, dot(vertex_dir, light_dir));
 
     return intensity * blinn_phong(light_color, normal, vertex_dir, color);
@@ -150,7 +144,7 @@ vec3 calc_spot_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
 vec3 illuminate(vec3 normal, vec3 base_color) {
     vec3 final_color = vec3(0);
     uint idx = 0;
-    for (int i = 0; i < min(lights_length, MAX_LIGHTS); i++) {
+    for (int i = 0; i < min(N_lights, MAX_LIGHTS); i++) {
         switch (light_types[i]) {
         case Ambient:
             final_color += light_colors[i] * base_color;

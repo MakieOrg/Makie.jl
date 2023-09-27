@@ -59,7 +59,7 @@ function draw_mesh_particle(screen, p, data)
         texturecoordinates = nothing
     end
 
-    shading = to_value(pop!(data, :shading, :fast))
+    shading = pop!(data, :shading)::Symbol
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing

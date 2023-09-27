@@ -877,8 +877,9 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     space = to_value(get(attributes, :space, :data))::Symbol
     func = Makie.transform_func(attributes)
 
-    # TODO:
+    # TODO: assume Symbol here after this has been deprecated for a while
     if shading isa Bool
+        @warn "`shading::Bool` is deprecated. Use `shading = :none` instead of false and `shading = :fast` or `shading = :verbose` instead of true."
         shading_bool = shading
     else
         shading_bool = shading != :none
