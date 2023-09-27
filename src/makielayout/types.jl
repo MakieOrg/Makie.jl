@@ -1188,7 +1188,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "The additional space between the legend and its suggested boundingbox."
         margin = (0f0, 0f0, 0f0, 0f0)
         "The background color of the legend."
-        bgcolor = :white
+        backgroundcolor = :white
         "The color of the legend border."
         framecolor = :black
         "The line width of the legend border."

@@ -21,7 +21,7 @@ function initialize_block!(leg::Legend,
 
     bg = poly!(scene,
         legendrect,
-        color = leg.bgcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
+        color = leg.backgroundcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
         strokecolor = leg.framecolor, inspectable = false)
     translate!(bg, 0, 0, -7) # bg behind patches but before content at 0 (legend is at +10)
 
