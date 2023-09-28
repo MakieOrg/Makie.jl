@@ -47,12 +47,12 @@ void emit_vertex(vec3 position, vec2 uv, int index)
 }
 
 out vec3 o_view_pos;
-out vec3 o_normal;
+out vec3 o_view_normal;
 
 void main(void)
 {
     o_view_pos = vec3(0);
-    o_normal = vec3(0);
+    o_view_normal = vec3(0);
 
     // get the four vertices passed to the shader:
     vec3 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
@@ -72,8 +72,8 @@ void main(void)
     vec3 AA_offset = AA_THICKNESS * v0;
     float AA = AA_THICKNESS * px2u;
 
-    /*                  0              v0              l 
-                        |             -->              | 
+    /*                  0              v0              l
+                        |             -->              |
      -thickness_aa0 - .----------------------------------. - -thickness_aa1
     -g_thickness[0] - | .------------------------------. | - -g_thickness[1]
                       | |                              | |
@@ -95,8 +95,8 @@ void main(void)
         emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(2*u + AA, -thickness_aa1), 1);
         emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(2*u + AA,  thickness_aa1), 1);
     #else
-        // For patterned lines AA is mostly done by the pattern sampling. We 
-        // still set f_uv_minmax here to ensure that cut off patterns als have 
+        // For patterned lines AA is mostly done by the pattern sampling. We
+        // still set f_uv_minmax here to ensure that cut off patterns als have
         // anti-aliasing at the start/end of this segment
         f_uv_minmax = vec2(0, u);
         emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  - AA, -thickness_aa0), 0);

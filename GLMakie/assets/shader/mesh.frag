@@ -7,7 +7,8 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 // Sets which shading procedures to use
 {{shading}}
 
-in vec3 o_normal;
+in vec3 o_world_normal;
+in vec3 o_view_normal;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
@@ -63,7 +64,8 @@ vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_ma
     return get_color_from_cmap(i, color_map, color_norm);
 }
 vec4 matcap_color(sampler2D matcap){
-    vec2 muv = o_normal.xy * 0.5 + vec2(0.5, 0.5);
+    // TODO should matcaps use view space normals?
+    vec2 muv = o_view_normal.xy * 0.5 + vec2(0.5, 0.5);
     return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
 vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, sampler2D matcap){
@@ -110,7 +112,7 @@ void main(){
         color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
     #ifndef NO_SHADING
-    color.rgb = illuminate(normalize(o_normal), color.rgb);
+    color.rgb = illuminate(normalize(o_world_normal), color.rgb);
     #endif
     write2framebuffer(color, o_id);
 }

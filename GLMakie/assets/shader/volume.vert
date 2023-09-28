@@ -11,13 +11,13 @@ uniform mat4 modelinv;
 uniform float depth_shift;
 
 out vec3 o_view_pos;
-out vec3 o_normal;
+out vec3 o_view_normal;
 
 void main()
 {
     // TODO set these in volume.frag
     o_view_pos = vec3(0);
-    o_normal = vec3(0);
+    o_view_normal = vec3(0);
     vec4 world_vert = model * vec4(vertices, 1);
     frag_vert = world_vert.xyz;
     o_light_dir = vec3(modelinv * vec4(lightposition, 1));

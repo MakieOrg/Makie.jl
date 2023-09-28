@@ -6,9 +6,6 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
     MAX_LIGHTS = screen.config.max_lights
     MAX_PARAMS = screen.config.max_light_parameters
 
-    # needed to transform directions from world space -> camera/view space
-    normalview = map(view -> transpose(inv(view[Vec(1,2,3), Vec(1,2,3)])), attr[:view])
-
     # Every light has a type and a color. Therefore we have these as independent
     # uniforms with a max length of MAX_LIGHTS.
     # Other parameters like position, direction, etc differe between light types.
@@ -63,22 +60,17 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
         # This precalculates world space pos/dir -> view/cam space pos/dir
         parameters = attr[:light_parameters][]
         empty!(parameters)
-        nv = normalview[]
-        v = attr[:view][]
         for i in 1:N
             light = lights[i]
             if light isa PointLight
-                p = v * to_ndim(Point4f, light.position[], 1)
-                a = light.attenuation[]
-                push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], a[1], a[2])
+                p = light.position[]; a = light.attenuation[]
+                push!(parameters, p[1], p[2], p[3], a[1], a[2])
             elseif light isa DirectionalLight
-                d = normalize(nv * light.direction[])
+                d = normalize(light.direction[])
                 push!(parameters, d[1], d[2], d[3])
             elseif light isa SpotLight
-                p = v * to_ndim(Point4f, light.position[], 1)
-                d = normalize(nv * light.direction[])
-                l = cos.(light.angles[])
-                push!(parameters, p[1] / p[4], p[2] / p[4], p[3] / p[4], d[1], d[2], d[3], l[1], l[2])
+                p = light.position[]; d = normalize(light.direction[]); l = cos.(light.angles[])
+                push!(parameters, p[1], p[2], p[3], d[1], d[2], d[3], l[1], l[2])
             end
         end
         notify(attr[:light_parameters])
@@ -135,7 +127,17 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
             end
         # end
     end
-    get!(gl_attributes, :normalmatrix) do
+
+    # for lighting
+    get!(gl_attributes, :world_normalmatrix) do
+        return lift(plot, gl_attributes[:model]) do m
+            i = Vec(1, 2, 3)
+            return transpose(inv(m[i, i]))
+        end
+    end
+
+    # for SSAO
+    get!(gl_attributes, :view_normalmatrix) do
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
             return transpose(inv(v[i, i] * m[i, i]))

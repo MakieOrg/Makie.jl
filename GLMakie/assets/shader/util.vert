@@ -248,28 +248,29 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
     return get_color_from_cmap(intensity, color_map, color_norm);
 }
 
-out vec3 o_view_pos;
-out vec3 o_normal;
 
-// transpose(inv(view * model))
-// Transformation for vectors (rather than points)
-uniform mat3 normalmatrix;
 uniform float depth_shift;
 
-#ifdef FAST_SHADING
-out vec3 o_lightdir;
-uniform vec3 lightposition;
-#endif
+// TODO maybe ifdef SSAO this stuff?
+// transpose(inv(view * model))
+// Transformation for vectors (rather than points)
+uniform mat3 view_normalmatrix;
+out vec3 o_view_pos;
+out vec3 o_view_normal;
+
 
 #if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
+// transpose(inv(model))
+uniform mat3 world_normalmatrix;
+uniform vec3 eyeposition;
+
+out vec3 o_world_pos;
+out vec3 o_world_normal;
 out vec3 o_camdir;
 #endif
 
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
 {
-    // normal in world space
-    o_normal = normalmatrix * normal;
-
     // position in view space (as seen from camera)
     vec4 view_pos = view * position_world;
     view_pos /= view_pos.w;
@@ -278,22 +279,16 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     gl_Position = projection * view_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 
-#ifdef FAST_SHADING
-    // direction to light for :fast shading
-    // (normalizing this will result in incorrect lighting)
-    vec4 view_light_pos = view*vec4(lightposition, 1.0);
-    o_lightdir = view_pos.xyz - view_light_pos.xyz / view_light_pos.w;
-#endif
-
+    // for lighting
 #if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
-    // direction to camera
-    // This is equivalent to
-    // normalize(view_pos - view*vec4(eyeposition, 1.0)).xyz
-    // (by definition `view * eyeposition = 0`)
-    // Note: this is constant for every vertex so we can normalize immediately
-    o_camdir = normalize(view_pos.xyz);
+    o_world_pos = position_world.xyz / position_world.w;
+    o_world_normal = world_normalmatrix * normal;
+    // direction from camera to vertex
+    o_camdir = position_world.xyz / position_world.w - eyeposition;
 #endif
 
-    // for SSAO & position based lights with :verbose shading
+    // for SSAO
     o_view_pos = view_pos.xyz / view_pos.w;
+    // SSAO + matcap
+    o_view_normal = view_normalmatrix * normal;
 }
