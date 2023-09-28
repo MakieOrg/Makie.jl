@@ -4,12 +4,14 @@ in vec3 frag_position;
 in vec3 frag_lightdir;
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
+    backlight = get_backlight();
+    float diff_coeff = max(dot(L, N), 0.0) + backlight * max(dot(L, -N), 0.0);
 
     // specular coefficient
     vec3 H = normalize(L+V);
 
-    float spec_coeff = pow(max(dot(H, N), 0.0), 8.0);
+    float spec_coeff = pow(max(dot(H, N), 0.0), 8.0) +
+        backlight * pow(max(dot(H, -N), 0.0), 8.0);
     if (diff_coeff <= 0.0)
         spec_coeff = 0.0;
 
@@ -36,9 +38,8 @@ void main() {
     if (get_shading()) {
         L = normalize(frag_lightdir);
         N = normalize(frag_normal);
-        light1 = blinnphong(N, frag_position, L, frag_color.rgb);
-        light2 = blinnphong(N, frag_position, -L, frag_color.rgb);
-        color = get_ambient() * frag_color.rgb + light1 + get_backlight() * light2;
+        light = blinnphong(N, frag_position, L, frag_color.rgb);
+        color = get_ambient() * frag_color.rgb + light;
     } else {
         color = frag_color.rgb;
     }
