@@ -29,8 +29,8 @@ vec3 blinn_phong(vec3 light_color, vec3 light_dir, vec3 camdir, vec3 normal, vec
 
     // specular coefficient (does reflected light bounce into camera?)
     vec3 H = normalize(light_dir + camdir);
-    float spec_coeff = max(dot(H, -normal), 0.0) + backlight * max(dot(H, normal), 0.0);
-    spec_coeff = pow(spec_coeff, shininess);
+    float spec_coeff = pow(max(dot(H, -normal), 0.0), shininess) +
+        backlight * pow(max(dot(H, normal), 0.0), shininess);
     if (diff_coeff <= 0.0 || isnan(spec_coeff))
         spec_coeff = 0.0;
 
@@ -128,7 +128,6 @@ vec3 calc_spot_light(vec3 light_color, uint idx, vec3 world_pos, vec3 camdir, ve
 }
 
 vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
-    // TODO lightdir
     vec3 final_color = vec3(0);
     uint idx = 0;
     for (int i = 0; i < min(N_lights, MAX_LIGHTS); i++) {

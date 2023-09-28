@@ -53,9 +53,8 @@ Currently the following options exist:
 - `shading = :none` disables light calculations, resulting in the plain color of an object being shown.
 - `shading = :fast` is the default for 3D plots that implement lighting.
 It enables a simplified lighting model which only allows for one `AmbientLight` and one `PointLight`.
-It also enables the `backlight::Float32` attribute, which repeats effectively repeats the light calculation with inverted normals.
-In other words it illuminates the backside of objects.
 - `shading = :verbose` is a GLMakie exclusive option which enables up to 64 light sources as well as `DirectionalLight` and `SpotLight`.
+Beyond that there is also the `backlight = 0f0` attribute, which mixes a second weighted light calculation using inverted normals with the primary one.
 
 !!! note
     The `shading` attribute cannot be adjusted dynamically, as it affects which shader is used for a given plot.
@@ -67,9 +66,9 @@ function blinn_phong(
         diffuse, specular, shininess, normal, object_color,
         light_color, light_direction, camera_direction
     )
-    diffuse_coefficient = max(dot(-light_direction, normal), 0.0)
+    diffuse_coefficient = max(dot(light_direction, -normal), 0.0)
     H = normalize(light_direction + camera_direction)
-    specular_coefficient = max(dot(-H, normal), 0.0)^shininess
+    specular_coefficient = max(dot(H, -normal), 0.0)^shininess
     return light_color * (
         diffuse * diffuse_coefficient * object_color +
         specular * specular_coefficient
@@ -115,7 +114,7 @@ If `shading` is specified the option requires the respective value.
 | SpotLight, DirectionalLight | `shading = :verbose` | No | No | Yes |
 | PointLight with attentuation | `shading = :verbose` | No | No | No |
 | EnvironmentLight | No | No | No | Yes |
-| backlight attribute | `shading = :fast` | Yes | Limited | No |
+| backlight attribute | Yes | Yes | Limited | No |
 | SSAO | Yes | No | No | inbuilt |
 | Matcap | Yes | Yes | Limited | via RPR Materials |
 
