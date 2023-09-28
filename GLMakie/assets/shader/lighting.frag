@@ -22,13 +22,13 @@ uniform float backlight;
 in vec3 o_camdir;
 in vec3 o_world_pos;
 
-vec3 blinn_phong(vec3 light_color, vec3 normal, vec3 light_dir, vec3 color) {
+vec3 blinn_phong(vec3 light_color, vec3 light_dir, vec3 camdir, vec3 normal, vec3 color) {
     // diffuse coefficient (how directly does light hits the surface)
     float diff_coeff = max(dot(light_dir, -normal), 0.0) +
         backlight * max(dot(light_dir, normal), 0.0);
 
     // specular coefficient (does reflected light bounce into camera?)
-    vec3 H = normalize(light_dir + normalize(o_camdir));
+    vec3 H = normalize(light_dir + camdir);
     float spec_coeff = max(dot(H, -normal), 0.0) + backlight * max(dot(H, normal), 0.0);
     spec_coeff = pow(spec_coeff, shininess);
     if (diff_coeff <= 0.0 || isnan(spec_coeff))
@@ -55,10 +55,14 @@ uniform vec3 ambient;
 uniform vec3 light_color;
 uniform vec3 lightposition;
 
+vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
+    vec3 light_dir = normalize(world_pos - lightposition);
+    vec3 shaded_color = blinn_phong(light_color, light_dir, camdir, normal, base_color);
+    return ambient * base_color + shaded_color;
+}
+
 vec3 illuminate(vec3 normal, vec3 base_color) {
-    vec3 lightdir = normalize(o_world_pos - lightposition);
-    vec3 shaded_color = blinn_phong(light_color, normal, lightdir, base_color.rgb);
-    return ambient * base_color.rgb + shaded_color;
+    return illuminate(o_world_pos, o_camdir, normal, base_color);
 }
 
 #endif
@@ -87,13 +91,13 @@ uniform int light_types[MAX_LIGHTS];
 uniform vec3 light_colors[MAX_LIGHTS];
 uniform float light_parameters[MAX_LIGHT_PARAMETERS];
 
-vec3 calc_point_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
+vec3 calc_point_light(vec3 light_color, uint idx, vec3 world_pos, vec3 camdir, vec3 normal, vec3 color) {
     // extract args
     vec3 position = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
     vec2 param = vec2(light_parameters[idx+3], light_parameters[idx+4]);
 
     // calculate light direction and distance
-    vec3 light_vec = o_world_pos - position;
+    vec3 light_vec = world_pos - position;
 
     float dist = length(light_vec);
     vec3 light_dir = normalize(light_vec);
@@ -102,28 +106,29 @@ vec3 calc_point_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
     // float attentuation = 1.0 / (1.0 + dist * dist * dist);
     float attentuation = 1.0 / (1.0 + param.x * dist + param.y * dist * dist);
 
-    return attentuation * blinn_phong(light_color, normal, light_dir, color);
+    return attentuation * blinn_phong(light_color, light_dir, camdir, normal, color);
 }
 
-vec3 calc_directional_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
-    vec3 direction = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
-    return blinn_phong(light_color, normal, direction, color);
+vec3 calc_directional_light(vec3 light_color, uint idx, vec3 camdir, vec3 normal, vec3 color) {
+    vec3 light_dir = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
+    return blinn_phong(light_color, light_dir, camdir, normal, color);
 }
 
-vec3 calc_spot_light(vec3 light_color, uint idx, vec3 normal, vec3 color) {
+vec3 calc_spot_light(vec3 light_color, uint idx, vec3 world_pos, vec3 camdir, vec3 normal, vec3 color) {
     // extract args
     vec3 position = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
-    vec3 light_dir = normalize(vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]));
+    vec3 spot_light_dir = normalize(vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]));
     float inner_angle = light_parameters[idx+6]; // cos applied
     float outer_angle = light_parameters[idx+7]; // cos applied
 
-    vec3 vertex_dir = normalize(o_world_pos - position);
-    float intensity = smoothstep(outer_angle, inner_angle, dot(vertex_dir, light_dir));
+    vec3 light_dir = normalize(world_pos - position);
+    float intensity = smoothstep(outer_angle, inner_angle, dot(light_dir, spot_light_dir));
 
-    return intensity * blinn_phong(light_color, normal, vertex_dir, color);
+    return intensity * blinn_phong(light_color, light_dir, camdir, normal, color);
 }
 
-vec3 illuminate(vec3 normal, vec3 base_color) {
+vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
+    // TODO lightdir
     vec3 final_color = vec3(0);
     uint idx = 0;
     for (int i = 0; i < min(N_lights, MAX_LIGHTS); i++) {
@@ -132,15 +137,15 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
             final_color += light_colors[i] * base_color;
             break;
         case PointLight:
-            final_color += calc_point_light(light_colors[i], idx, normal, base_color);
+            final_color += calc_point_light(light_colors[i], idx, world_pos, camdir, normal, base_color);
             idx += 5; // 3 position, 2 attenuation params
             break;
         case DirectionalLight:
-            final_color += calc_directional_light(light_colors[i], idx, normal, base_color);
+            final_color += calc_directional_light(light_colors[i], idx, camdir, normal, base_color);
             idx += 3; // 3 direction
             break;
         case SpotLight:
-            final_color += calc_spot_light(light_colors[i], idx, normal, base_color);
+            final_color += calc_spot_light(light_colors[i], idx, world_pos, camdir, normal, base_color);
             idx += 8; // 3 position, 3 direction, 1 parameter
             break;
         default:
@@ -148,6 +153,10 @@ vec3 illuminate(vec3 normal, vec3 base_color) {
         }
     }
     return final_color;
+}
+
+vec3 illuminate(vec3 normal, vec3 base_color) {
+    return illuminate(o_world_pos, normalize(o_camdir), normal, base_color);
 }
 
 #endif

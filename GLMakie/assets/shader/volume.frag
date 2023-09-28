@@ -1,10 +1,16 @@
 {{GLSL_VERSION}}
 
+// Sets which shading procedures to use
+// Options:
+// NO_SHADING           - skip shading calculation, handled outside
+// FAST_SHADING         - single point light (forward rendering)
+// MULTI_LIGHT_SHADING  - simple shading with multiple lights (forward rendering)
+{{shading}}
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
 in vec3 frag_vert;
-in vec3 o_light_dir;
 
 {{volumedata_type}} volumedata;
 
@@ -14,11 +20,6 @@ in vec3 o_light_dir;
 
 uniform float absorption = 1.0;
 uniform vec3 eyeposition;
-
-uniform vec3 ambient;
-uniform vec3 diffuse;
-uniform vec3 specular;
-uniform float shininess;
 
 uniform mat4 modelinv;
 uniform int algorithm;
@@ -107,21 +108,9 @@ vec3 gennormal(vec3 uvw, float d)
     return normalize(a-b);
 }
 
-// Includes front and back-facing normals (N, -N)
-vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0) + max(dot(L, -N), 0.0);
-    // specular coefficient
-    vec3 H = normalize(L + V);
-    float spec_coeff = pow(max(dot(H, N), 0.0) + max(dot(H, -N), 0.0), shininess);
-    if (diff_coeff <= 0.0 || isnan(spec_coeff))
-        spec_coeff = 0.0;
-    // final lighting model
-    return vec3(
-        ambient * color +
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
-    );
-}
+#ifndef NO_SHADING
+vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color);
+#endif
 
 // Simple random generator found: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 float rand(){
@@ -208,7 +197,7 @@ vec4 contours(vec3 front, vec3 dir)
     float T = 1.0;
     vec3 Lo = vec3(0.0);
     int i = 0;
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
     {{depth_init}}
     // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i) {
@@ -221,8 +210,8 @@ vec4 contours(vec3 front, vec3 dir)
             // vec4 frag_coord = projectionview * model * vec4(pos, 1);
             // depth = min(depth, frag_coord.z / frag_coord.w);
             vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
-            vec3 opaque = blinnphong(N, camdir, L, density.rgb);
+            vec4 world_pos = model * vec4(pos, 1);
+            vec3 opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;
             if (T <= 0.01)
@@ -242,7 +231,7 @@ vec4 isosurface(vec3 front, vec3 dir)
     vec4 c = vec4(0.0);
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
     {{depth_init}}
     // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i){
@@ -253,9 +242,9 @@ vec4 isosurface(vec3 front, vec3 dir)
             // vec4 frag_coord = projectionview * model * vec4(pos, 1);
             // depth = min(depth, frag_coord.z / frag_coord.w);
             vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
+            vec4 world_pos = model * vec4(pos, 1);
             c = vec4(
-                blinnphong(N, camdir, L, diffuse_color.rgb),
+                illuminate(world_pos.xyz / world_pos.w, camdir, N, diffuse_color.rgb),
                 diffuse_color.a
             );
             break;
