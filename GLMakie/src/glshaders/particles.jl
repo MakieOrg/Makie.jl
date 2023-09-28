@@ -71,6 +71,7 @@ function draw_mesh_particle(screen, p, data)
         fetch_pixel = false
         interpolate_in_fragment_shader = false
         uv_scale = Vec2f(1)
+        backlight = 0f0
 
         instances = const_lift(length, position)
         transparency = false
