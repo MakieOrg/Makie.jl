@@ -17,6 +17,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         backlight * pow(max(dot(H, -N), 0.0), get_shininess());
     if (diff_coeff <= 0.0)
         spec_coeff = 0.0;
+
     // final lighting model
     return vec3(
         get_diffuse() * diff_coeff * color +

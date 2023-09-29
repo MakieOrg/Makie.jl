@@ -77,13 +77,18 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
     uniform_dict[:backlight] = plot.backlight
-    get!(uniform_dict, :ambient, Vec3f(1))
+
+    # Make sure these exist
+    get!(uniform_dict, :ambient, Vec3f(0.1))
+    get!(uniform_dict, :diffuse, Vec3f(0.9))
+    get!(uniform_dict, :specular, Vec3f(0.3))
+    get!(uniform_dict, :shininess, 8f0)
 
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
-    uniform_dict[:shading] = map(x -> !(x == NoShading), plot.shading)
+    uniform_dict[:shading] = map(x -> x != NoShading, plot.shading)
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
