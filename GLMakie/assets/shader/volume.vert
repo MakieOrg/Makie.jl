@@ -3,7 +3,6 @@
 in vec3 vertices;
 
 out vec3 frag_vert;
-// out vec3 o_light_pos;
 
 uniform mat4 projectionview, model;
 uniform vec3 lightposition;
@@ -14,7 +13,7 @@ uniform float depth_shift;
 out vec3 o_view_pos;
 out vec3 o_view_normal;
 
-// Lighting (unused, don't need to be available?)
+// Lighting (unused and don't need to be available?)
 // out vec3 o_world_pos;
 // out vec3 o_world_normal;
 
