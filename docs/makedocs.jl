@@ -4,12 +4,9 @@ Pkg.activate(".")
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 Pkg.precompile()
 
-using NodeJS
-run(`$(npm_cmd()) install highlight.js`)
-run(`$(npm_cmd()) install cheerio`)
-
 using Downloads
 using Tar
+import JuliaSyntax
 
 pagefind = let
     url = if Sys.isapple()
@@ -44,6 +41,7 @@ using Dates
 include("buildutils/deploydocs.jl")
 include("buildutils/relative_links.jl")
 include("buildutils/redirect_generation.jl")
+include("buildutils/julia_syntax_highlighting.jl")
 
 docs_url = "docs.makie.org"
 repo = "github.com/MakieOrg/Makie.jl.git"
@@ -63,9 +61,16 @@ function GLMakie.renderloop(screen)
     return
 end
 
-serve(; single=true, cleanup=false, clear=true, fail_on_warning=true)
+# serve(; single=true, cleanup=false, clear=true, fail_on_warning=true)
 # for interactive development of the docs, use:
-# cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
+cd(@__DIR__) do
+    serve(single=true, cleanup=true, clear=true, fail_on_warning = false)
+    add_julia_syntax_highlighting()
+    Franklin.LiveServer.serve(dir = joinpath(@__DIR__, "__site/"))
+end
+
+
+# you can also disable all code blocks by (in regex mode) search-replacing ```julia(:.*) with ```julia
 
 cd("__site") do
     run(`$pagefind --source . --root-selector .franklin-content`)

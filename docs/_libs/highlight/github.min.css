@@ -1,5 +1,6 @@
 .hljs { display: block; font-size: 14px; line-height: 1.45em; overflow-x: auto; padding: 0.5em; color: var(--text-color); background: var(--block-background); }
 
+/* 
 .hljs-comment,
 .hljs-quote { color: #998; font-style: italic; }
 
@@ -9,9 +10,10 @@
 
 .hljs-literal,
 .hljs-number,
-.hljs-tag .hljs-attr,
+.hljs-tag .hljs-attr { color: teal; }
+
 .hljs-template-variable,
-.hljs-variable { color: teal; }
+.hljs-variable { color: #1568b0; }
 
 .hljs-doctag,
 .hljs-string { color: #d14; }
@@ -40,4 +42,43 @@
 .hljs-deletion { background: #fdd; }
 .hljs-addition { background: #dfd; }
 .hljs-emphasis { font-style: italic; }
-.hljs-strong { font-weight: 700; }
+.hljs-strong { font-weight: 700; } */
+
+.julia_identifier {
+    color: #5872a4;
+}
+.julia_type {
+    color: #81a0b3;
+}
+.julia_assignment {
+    color: #e87070;
+}
+.julia_funcall {
+    color: #386db0;
+    font-weight: bold;
+}
+.julia_symbol {
+    color: #b051e6;
+}
+.julia_number,
+.julia_bool {
+    color: #1eaebd;
+}
+.julia_comment {
+    color: #a6a6a6;
+}
+.julia_keyword {
+    color: #575757;
+    font-weight: bold;
+}
+.julia_rainbow_paren_1 {
+    color: #5b4718;
+}
+.julia_macro {
+    color: #d751a9;
+    font-weight: bold;
+}
+.julia_string,
+.julia_string_delim {
+    color: #e12890;
+}
