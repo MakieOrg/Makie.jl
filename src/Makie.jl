@@ -79,7 +79,7 @@ using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
 using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
-                  get_attribute, plotsym, plotkey, attributes, used_attributes
+                  get_attribute, plotsym, plotkey, attributes, used_attributes, get_shading_default
 import MakieCore: create_figurelike, create_figurelike!, figurelike_return, figurelike_return!
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!

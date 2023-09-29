@@ -76,6 +76,8 @@ function colormap_attributes(attr)
     )
 end
 
+function get_shading_default end
+
 """
 ### 3D shading attributes
 
@@ -86,7 +88,17 @@ end
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 - `backlight::Float32 = 0f0` sets a weight for secondary light calculation with inverted normals.
 """
+function shading_attributes!(scene, attr)
+    attr[:shading] = get_shading_default(scene)
+    attr[:diffuse] = 0.4
+    attr[:specular] = 0.2
+    attr[:shininess] = 32.0f0
+    attr[:backlight] = 0f0
+    attr[:ssao] = false
+end
+
 function shading_attributes!(attr)
+    @warn "`shading_attributes!(attr)` is deprecated, use `shading_attributes!(scene, attr)` instead."
     attr[:shading] = :fast
     attr[:diffuse] = 0.4
     attr[:specular] = 0.2
@@ -209,7 +221,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         fxaa = true,
     )
     generic_plot_attributes!(attr)
-    shading_attributes!(attr)
+    shading_attributes!(scene, attr)
     return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
@@ -240,7 +252,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 
         fxaa = true,
     )
-    shading_attributes!(attr)
+    shading_attributes!(scene, attr)
     generic_plot_attributes!(attr)
     return colormap_attributes!(attr, theme(scene, :colormap))
 end
@@ -340,7 +352,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         fxaa = true,
         cycle = [:color => :patchcolor],
     )
-    shading_attributes!(attr)
+    shading_attributes!(scene, attr)
     generic_plot_attributes!(attr)
     return colormap_attributes!(attr, theme(scene, :colormap))
 end
@@ -437,7 +449,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         fxaa = true,
         cycle = [:color],
     )
-    shading_attributes!(attr)
+    shading_attributes!(scene, attr)
     generic_plot_attributes!(attr)
     return colormap_attributes!(attr, theme(scene, :colormap))
 end

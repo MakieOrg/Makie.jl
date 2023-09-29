@@ -140,3 +140,33 @@ function get_one_light(lights, Typ)
     isempty(indices) && return nothing
     return lights[indices[1]]
 end
+
+function get_shading_default(lights::Vector{<: AbstractLight})
+    ambient_count = 0
+    point_light_count = 0
+
+    for light in lights
+        if light isa AmbientLight
+            ambient_count += 1
+        elseif light isa PointLight
+            if light.attenuation[] == Vec2f(0, 0)
+                point_light_count += 1
+            else
+                return :verbose
+            end
+        elseif light isa EnvironmentLight
+            continue
+        else
+            return :verbose
+        end
+        if ambient_count > 1 || point_light_count > 1
+            return :verbose
+        end
+    end
+
+    if point_light_count + ambient_count == 0
+        return :none
+    else
+        return :fast
+    end
+end
