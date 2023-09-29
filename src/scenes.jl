@@ -103,7 +103,7 @@ mutable struct Scene <: AbstractScene
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
             ssao::SSAO,
-            lights::Vector{AbstractLight}
+            lights::Vector{<: AbstractLight}
         )
         scene = new(
             parent,
@@ -120,7 +120,7 @@ mutable struct Scene <: AbstractScene
             backgroundcolor,
             visible,
             ssao,
-            lights,
+            convert(Vector{AbstractLight}, lights),
             Observables.ObserverFunction[]
         )
         finalizer(free, scene)
