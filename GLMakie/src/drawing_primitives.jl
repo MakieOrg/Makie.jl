@@ -234,15 +234,15 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
 
         # TODO: remove depwarn & conversion after some time
         if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
-            @warn "`shading::Bool` is deprecated. Use `shading = :none` instead of false and `shading = :fast` or `shading = :verbose` instead of true."
-            gl_attributes[:shading] = ifelse(gl_attributes[:shading][], :fast, :none)
+            @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
+            gl_attributes[:shading] = ifelse(gl_attributes[:shading][], FastShading, NoShading)
         elseif haskey(gl_attributes, :shading) && gl_attributes[:shading] isa Observable
             gl_attributes[:shading] = gl_attributes[:shading][]
         end
 
-        shading = to_value(get(gl_attributes, :shading, :none))
+        shading = to_value(get(gl_attributes, :shading, NoShading))
 
-        if shading == :fast
+        if shading == FastShading
             pointlight = Makie.get_point_light(scene)
             if !isnothing(pointlight)
                 gl_attributes[:lightposition] = pointlight.position
@@ -253,7 +253,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             if !isnothing(ambientlight)
                 gl_attributes[:ambient] = ambientlight.color
             end
-        elseif shading == :verbose
+        elseif shading == MultiLightShading
             handle_lights(gl_attributes, screen, scene.lights)
         end
 
@@ -602,7 +602,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
         gl_attributes[:texturecoordinates] = map(decompose_uv(rect)) do uv
             return 1.0f0 .- Vec2f(uv[2], uv[1])
         end
-        gl_attributes[:shading] = :none
+        get!(gl_attributes, :shading, NoShading)
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
         if haskey(gl_attributes, :intensity)
@@ -615,7 +615,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
 end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
-    shading = gl_attributes[:shading]::Symbol
+    shading = gl_attributes[:shading]::Makie.MakieCore.ShadingAlgorithm
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
@@ -657,7 +657,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
     end
-    if hasproperty(to_value(mesh), :normals) && (shading !== :none)
+    if hasproperty(to_value(mesh), :normals) && (shading !== NoShading)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
     end
     return draw_mesh(screen, gl_attributes)

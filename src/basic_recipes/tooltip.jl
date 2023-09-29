@@ -155,7 +155,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     # Text background mesh
 
     mesh!(
-        p, bbox, shading = :none, space = :pixel,
+        p, bbox, shading = NoShading, space = :pixel,
         color = p.backgroundcolor, fxaa = false,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
@@ -170,7 +170,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     )
 
     mp = mesh!(
-        p, triangle, shading = :none, space = :pixel,
+        p, triangle, shading = NoShading, space = :pixel,
         color = p.backgroundcolor,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,

@@ -59,7 +59,7 @@ function draw_mesh_particle(screen, p, data)
         texturecoordinates = nothing
     end
 
-    shading = pop!(data, :shading)::Symbol
+    shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing

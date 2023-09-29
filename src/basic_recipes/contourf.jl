@@ -141,7 +141,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = :none,
+        shading = NoShading,
         inspectable = c.inspectable,
         transparency = c.transparency
     )

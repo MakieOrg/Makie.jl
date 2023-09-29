@@ -766,7 +766,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         visible = po.clip,
         fxaa = false,
         transformation = Transformation(), # no polar transform for this
-        shading = :none
+        shading = NoShading
     )
 
     # inner clip is a (filled) circle sector which also needs to regenerate with
@@ -788,7 +788,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         visible = po.clip,
         fxaa = false,
         transformation = Transformation(),
-        shading = :none
+        shading = NoShading
     )
 
     # handle placement with transform

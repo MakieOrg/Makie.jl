@@ -81,7 +81,7 @@ function get_shading_default end
 """
 ### 3D shading attributes
 
-- `shading = :fast` sets the lighting algorithm used. Options are `:none` (no lighting), `:fast` (AmbientLight + PointLight) or `:verbose` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie.
+- `shading = get_shading_default(scene)` sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie.
 - `diffuse::Vec3f = Vec3f(0.4)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
 - `specular::Vec3f = Vec3f(0.2)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.
@@ -99,7 +99,7 @@ end
 
 function shading_attributes!(attr)
     @warn "`shading_attributes!(attr)` is deprecated, use `shading_attributes!(scene, attr)` instead."
-    attr[:shading] = :fast
+    attr[:shading] = FastShading
     attr[:diffuse] = 0.4
     attr[:specular] = 0.2
     attr[:shininess] = 32.0f0
@@ -550,7 +550,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         strokewidth = theme(scene, :patchstrokewidth),
         linestyle = nothing,
 
-        shading = :none,
+        shading = NoShading,
         fxaa = true,
 
         cycle = [:color => :patchcolor],

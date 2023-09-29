@@ -132,7 +132,7 @@ end
         highclip = :red,
         lowclip = :black,
         nan_color = (:green, 0.5),
-        shading = :none,
+        shading = NoShading,
     )
     surface!(
         Axis(fig[2, 2]),
@@ -141,7 +141,7 @@ end
         highclip = :red,
         lowclip = :black,
         nan_color = (:green, 0.5),
-        shading = :none,
+        shading = NoShading,
     )
     fig
 end

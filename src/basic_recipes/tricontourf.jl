@@ -198,7 +198,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = :none,
+        shading = NoShading,
         inspectable = c.inspectable,
         transparency = c.transparency
     )

@@ -23,7 +23,7 @@ light_color(::AbstractLight) = RGBf(0, 0, 0)
 A simple ambient light that uniformly lights every object based on its light color.
 
 Availability:
-- All backends with `shading != :none`
+- All backends with `shading = FastShading` or `MultiLightShading`
 """
 struct AmbientLight <: AbstractLight
     color::Observable{RGBf}
@@ -47,8 +47,8 @@ Alternatively you can pass a light `range` to generate matching default
 attenuation parameters.
 
 Availability:
-- Without attenuation: All backends with `shading != :none`
-- With attenuation: GLMakie with `shading = :verbose`
+- Without attenuation: All backends with `shading = FastShading` or `MultiLightShading`
+- With attenuation: GLMakie with `shading = MultiLightShading`
 """
 struct PointLight <: AbstractLight
     color::Observable{RGBf}
@@ -86,7 +86,7 @@ A light type which simulates a distant light source with parallel light rays
 going in the given `direction`.
 
 Availability:
-- GLMakie with `shading = :verbose`
+- GLMakie with `shading = MultiLightShading`
 - RPRMakie
 """
 struct DirectionalLight <: AbstractLight
@@ -106,7 +106,7 @@ Creates a spot light which illuminates objects in a light cone starting at
 and outer angle given in `angles`, between which the light intensity drops off.
 
 Availability:
-- GLMakie with `shading = :verbose`
+- GLMakie with `shading = MultiLightShading`
 - RPRMakie
 """
 struct SpotLight <: AbstractLight
@@ -152,21 +152,21 @@ function get_shading_default(lights::Vector{<: AbstractLight})
             if light.attenuation[] == Vec2f(0, 0)
                 point_light_count += 1
             else
-                return :verbose
+                return MultiLightShading
             end
         elseif light isa EnvironmentLight
             continue
         else
-            return :verbose
+            return MultiLightShading
         end
         if ambient_count > 1 || point_light_count > 1
-            return :verbose
+            return MultiLightShading
         end
     end
 
     if point_light_count + ambient_count == 0
-        return :none
+        return NoShading
     else
-        return :fast
+        return FastShading
     end
 end

@@ -24,7 +24,7 @@ faces = [
 
 colors = [:red, :green, :blue, :orange]
 
-scene = mesh(vertices, faces, color = colors, shading = :none)
+scene = mesh(vertices, faces, color = colors, shading = NoShading)
 ```
 \end{examplefigure}
 

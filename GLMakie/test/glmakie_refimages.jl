@@ -121,7 +121,7 @@ end
     mesh!(
         scene,
         Rect3f(Point3f(-10, -10, -2.99), Vec3f(20, 20, 0.02)),
-        color = :white, shading = :verbose, specular = Vec3f(0)
+        color = :white, shading = MultiLightShading, specular = Vec3f(0)
     )
     update_cam!(scene, Vec3f(0, 0, 10), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
     scene
@@ -138,7 +138,7 @@ end
 
     scene = Scene(resolution = (400, 400), camera = cam3d!, center = false, lights = lights, backgroundcolor = :black)
     mesh!(
-        scene, Sphere(Point3f(0), 1f0), color = :white, shading = :verbose,
+        scene, Sphere(Point3f(0), 1f0), color = :white, shading = MultiLightShading,
         specular = Vec3f(1), shininess = 16f0
     )
     update_cam!(scene, Vec3f(0, 0, 3), Vec3f(0, 0, 0), Vec3f(0, 1, 0))

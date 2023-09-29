@@ -36,7 +36,7 @@ function renderloop end
 * `ssao = true`: Whether to enable screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
 * `transparency_weight_scale = 1000f0`: Adjusts a factor in the rendering shaders for order independent transparency.
     This should be the same for all of them (within one rendering pipeline) otherwise depth "order" will be broken.
-* `max_lights = 64`: The maximum number of lights with `shading = :verbose`
+* `max_lights = 64`: The maximum number of lights with `shading = MultiLightShading`
 * `max_light_parameters = 5 * N_lights`: The maximum number of light parameters that can be uploaded. These include everything other than the light color (i.e. position, direction, attenuation, angles) in terms of scalar floats.
 """
 mutable struct ScreenConfig

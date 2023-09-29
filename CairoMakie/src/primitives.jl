@@ -879,10 +879,10 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
 
     # TODO: assume Symbol here after this has been deprecated for a while
     if shading isa Bool
-        @warn "`shading::Bool` is deprecated. Use `shading = :none` instead of false and `shading = :fast` or `shading = :verbose` instead of true."
+        @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
         shading_bool = shading
     else
-        shading_bool = shading != :none
+        shading_bool = shading != NoShading
     end
 
     draw_mesh3D(
@@ -978,7 +978,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         t1 = ts[f[1]]
         t2 = ts[f[2]]
         t3 = ts[f[3]]
-        
+
         # skip any mesh segments with NaN points.
         if isnan(t1) || isnan(t2) || isnan(t3)
             continue
@@ -1004,7 +1004,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         # c1 = RGB(n1...)
         # c2 = RGB(n2...)
         # c3 = RGB(n3...)
-        
+
         pattern = Cairo.CairoPatternMesh()
 
         Cairo.mesh_pattern_begin_patch(pattern)

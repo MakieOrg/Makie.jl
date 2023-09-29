@@ -686,7 +686,7 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
 
     faces = [1 2 3; 3 4 1]
 
-    panel = mesh!(scene, vertices, faces, shading = :none, inspectable = false,
+    panel = mesh!(scene, vertices, faces, shading = NoShading, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible))
     return panel

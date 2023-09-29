@@ -51,7 +51,7 @@ end
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(resolution = (1000, 660))
-    m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=:none)
+    m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=NoShading)
     lbl1 = Label(fig[1, 1:2], "HEADER "^10, fontsize = 40, word_wrap = true)
     m!(fig, lbl1)
 
@@ -141,7 +141,7 @@ end
     f = Figure()
     ax = PolarAxis(f[1, 1])
     zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
-    p = surface!(ax, 0..2pi, 0..10, zs, shading = :none, colormap = :coolwarm, colorrange=(-2, 2))
+    p = surface!(ax, 0..2pi, 0..10, zs, shading = NoShading, colormap = :coolwarm, colorrange=(-2, 2))
     rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
     translate!(p, 0, 0, -200)
     Colorbar(f[1, 2], p)

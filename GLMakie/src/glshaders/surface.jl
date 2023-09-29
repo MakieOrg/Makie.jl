@@ -14,20 +14,20 @@ end
 
 # TODO this shouldn't be necessary
 function light_calc(x::Bool)
-    @warn "shading::Bool is deprecated. Use `:none` instead of `false` and `:fast` or `:verbose` instead of true."
-    return light_calc(ifelse(x, :fast, :none))
+    @error "shading::Bool is deprecated. Use `NoShading` instead of `false` and `FastShading` or `MultiLightShading` instead of true."
+    return light_calc(ifelse(x, FastShading, NoShading))
 end
 
-function light_calc(x::Symbol)
-    if x === :none
+function light_calc(x::Makie.MakieCore.ShadingAlgorithm)
+    if x === NoShading
         return "#define NO_SHADING"
-    elseif x === :fast
+    elseif x === FastShading
         return "#define FAST_SHADING"
-    elseif x === :verbose
+    elseif x === MultiLightShading
         return "#define MULTI_LIGHT_SHADING"
     # elseif x === :PBR # TODO?
     else
-        @warn "Did not recognize shading value :$x. Defaulting to :fast."
+        @warn "Did not recognize shading value :$x. Defaulting to FastShading."
         return "#define FAST_SHADING"
     end
 end
@@ -119,7 +119,7 @@ end
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
-    shading = pop!(data, :shading, :fast)::Symbol
+    shading = pop!(data, :shading, FastShading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         scale = nothing
         position = nothing
@@ -127,7 +127,7 @@ function draw_surface(screen, main, data::Dict)
         position_y = nothing => Texture
         position_z = nothing => Texture
         image = nothing => Texture
-        normal = shading != :none
+        normal = shading != NoShading
         invert_normals = false
         backlight = 0f0
     end
