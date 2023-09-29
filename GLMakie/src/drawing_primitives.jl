@@ -77,9 +77,9 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
             elseif light isa DirectionalLight
                 idx = push_back!(parameters, idx, normalize(light.direction[]))
             elseif light isa SpotLight
-                idx = push_back(parameters, idx, light.position[])
-                idx = push_back(parameters, idx, normalize(light.direction[]))
-                idx = push_back(parameters, idx, cos.(light.angles[]))
+                idx = push_back!(parameters, idx, light.position[])
+                idx = push_back!(parameters, idx, normalize(light.direction[]))
+                idx = push_back!(parameters, idx, cos.(light.angles[]))
             end
         end
         notify(attr[:light_parameters])
