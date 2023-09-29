@@ -6,7 +6,7 @@ You should use it if you want to achieve the highest-quality plots for publicati
 ## Activation and screen config
 
 Activate the backend by calling `CairoMakie.activate!()` with the following options:
-```julia:docs
+```julia
 # hideall
 using CairoMakie, Markdown
 println("~~~")

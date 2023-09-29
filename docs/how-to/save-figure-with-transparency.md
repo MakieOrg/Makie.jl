@@ -36,7 +36,7 @@ f
 With the following trick you can still save an image with transparent background.
 It works by setting two different background colors and calculating the foreground color with alpha from the difference.
 
-```julia:transparent-glmakie
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 Makie.inline!(true) # hide

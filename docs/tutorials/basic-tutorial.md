@@ -27,7 +27,7 @@ Ok, now that this is out of the way, let's get started!
 
 First, we import CairoMakie. This makes all the exported symbols from `Makie.jl` available as well.
 
-```julia:setup
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 

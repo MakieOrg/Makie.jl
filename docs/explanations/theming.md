@@ -51,7 +51,7 @@ example_plot()
 
 This theme will be active until we call `set_theme!()`.
 
-```julia:set_theme
+```julia
 set_theme!()
 ```
 

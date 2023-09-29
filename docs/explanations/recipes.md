@@ -167,7 +167,7 @@ In this example, we will create a special type to hold this information, and a r
 
 First, we make a struct to hold the stock's values for a given day:
 
-```julia:eval-env
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 
@@ -182,7 +182,7 @@ end
 Now we create a new plot type called `StockChart`.
 The `do scene` closure is just a function that returns our default attributes, in this case they color stocks going down red, and stocks going up green.
 
-```julia:eval-env
+```julia
 @recipe(StockChart) do scene
     Attributes(
         downcolor = :red,
@@ -201,7 +201,7 @@ Note that the input arguments we receive inside the `plot!` method, which we can
 This means that we must construct our plotting function in a dynamic way so that it will update itself whenever the input observables change.
 This can be a bit trickier than recipes you might know from other plotting packages which produce mostly static plots.
 
-```julia:eval-env
+```julia
 function Makie.plot!(
         sc::StockChart{<:Tuple{AbstractVector{<:Real}, AbstractVector{<:StockValue}}})
 
@@ -304,7 +304,7 @@ f
 As a last example, lets pretend our stock data is coming in dynamically, and we want to create an animation out of it.
 This is easy if we use observables as input arguments which we then update frame by frame:
 
-```julia:stockchart_animation
+```julia
 timestamps = Observable(collect(1:100))
 stocknode = Observable(stockvalues)
 

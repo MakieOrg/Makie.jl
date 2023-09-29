@@ -16,7 +16,7 @@ over the course of the animation.
 
 As a start, here is how you can change the color of a line plot:
 
-```julia:color_animation
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 using Makie.Colors
@@ -69,7 +69,7 @@ Here is an example that plots two different functions.
 The y-values of each depend on time and therefore we only have to change the time for both plots to change.
 We use the convenient `@lift` macro which denotes that the `lift`ed expression depends on each Observable marked with a `$` sign.
 
-```julia:time_animation
+```julia
 time = Observable(0.0)
 
 xs = range(0, 7, length=40)
@@ -98,7 +98,7 @@ a single variable (like time) during your animation loop.
 
 For example, to make a line with color dependent on time, you could write:
 
-```julia:color_animation_2
+```julia
 time = Observable(0.0)
 color_observable = @lift(RGBf($time, 0, 0))
 
@@ -119,7 +119,7 @@ Instead of passing `x` and `y` (or `z`) values separately,
 it is better to make a `Observable` with a vector of `Point`s,
 so that the number of `x` and `y` values can not go out of sync.
 
-```julia:append_animation
+```julia
 points = Observable(Point2f[(0, 0)])
 
 fig, ax = scatter(points)
@@ -161,7 +161,7 @@ nothing # hide
 
 Another example that updates the contents of a heatmap:
 
-```julia:heatmap
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 

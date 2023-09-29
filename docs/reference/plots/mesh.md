@@ -50,7 +50,7 @@ mesh(
 
 We can also create a mesh, to specify normals, uv coordinates:
 
-```julia:mesh
+```julia
 using GeometryBasics, LinearAlgebra, GLMakie, FileIO
 GLMakie.activate!() # hide
 
@@ -98,7 +98,7 @@ end
 The uv coordinates that go out of bounds will get repeated per default.
 One can use a `Sampler` object to change that behaviour:
 
-```julia:mesh
+```julia
 #=
 Possible values:
 :clamp_to_edge (default)

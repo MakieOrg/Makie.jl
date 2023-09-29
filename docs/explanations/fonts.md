@@ -15,7 +15,7 @@ font_by_name = "TeX Gyre Heros Makie"
 
 If you want to find out what exact font your string was resolved as, you can execute `Makie.to_font(the_string)`:
 
-```julia:fonts1
+```julia
 using Makie
 Makie.to_font("Blackchancery")
 ```
@@ -26,7 +26,7 @@ Makie.to_font("Blackchancery")
 A `Symbol` will be resolved by looking it up in the `text`'s `fonts` attribute.
 The default theme has the following fonts set:
 
-```julia:fonts2
+```julia
 using Makie
 Makie.theme(:fonts)
 ```

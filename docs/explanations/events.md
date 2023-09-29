@@ -11,7 +11,7 @@ With Observables, one can add callbacks also with a priority. Furthermore it all
 
 To understand how a `PriorityObserable` works you may try this example:
 
-```julia:po_code
+```julia
 using Makie
 
 po = Observable(0)

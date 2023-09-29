@@ -55,7 +55,7 @@ If you end up stuck on WebGL 1.0, the main missing feature will be `volume` & `c
 ## Activation and screen config
 
 Activate the backend by calling `WGLMakie.activate!()` with the following options:
-```julia:docs
+```julia
 # hideall
 using WGLMakie, Markdown
 println("~~~")

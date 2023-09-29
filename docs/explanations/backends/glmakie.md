@@ -6,7 +6,7 @@ It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 ## Activation and screen config
 
 Activate the backend by calling `GLMakie.activate!()`:
-```julia:docs
+```julia
 # hideall
 using GLMakie, Markdown
 println("~~~")

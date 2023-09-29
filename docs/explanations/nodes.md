@@ -27,7 +27,7 @@ On this page you will learn how the `Observable`s pipeline and the event-based i
 A `Observable` is an object that allows its value to be updated interactively.
 Let's start by creating one:
 
-```julia:code1
+```julia
 using GLMakie, Makie
 
 x = Observable(0.0)
@@ -51,7 +51,7 @@ For example, a color could be `:red` or `RGB(1,0,0)`.
 
 You change the value of a Observable with empty index notation:
 
-```julia:code2
+```julia
 x[] = 3.34
 nothing # hide
 ```
@@ -62,7 +62,7 @@ But Observables allow you to register functions that are executed whenever the O
 
 One such function is `on`. Let's register something on our Observable `x` and change `x`'s value:
 
-```julia:code3
+```julia
 on(x) do x
     println("New value of x is $x")
 end
@@ -95,7 +95,7 @@ The advantage of using `to_value` is that you can use it in situations where you
 You can create a Observable depending on another Observable using \apilink{lift}.
 The first argument of `lift` must be a function that computes the value of the output Observable given the values of the input Observables.
 
-```julia:code4
+```julia
 f(x) = x^2
 y = lift(f, x)
 ```
@@ -105,7 +105,7 @@ Now, whenever `x` changes, the derived `Observable` `y` will immediately hold th
 In turn, `y`'s change could trigger the update of other observables, if any have been connected.
 Let's connect one more observable and update x:
 
-```julia:code5
+```julia
 z = lift(y) do y
     -y
 end
@@ -125,7 +125,7 @@ Note, though, that changing `y` does not change `x`.
 There is no guarantee that chained Observables are always synchronized, because they
 can be mutated in different places, even sidestepping the change trigger mechanism.
 
-```julia:code6
+```julia
 y[] = 20.0
 
 @show x[]

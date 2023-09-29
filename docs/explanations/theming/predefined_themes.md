@@ -7,7 +7,7 @@ Here you can see the same example figure with these different themes applied.
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
 
-```julia:demofigure
+```julia
 using CairoMakie
 using Random
 

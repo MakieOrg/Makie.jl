@@ -181,7 +181,7 @@ Now, let's make the four nested GridLayouts that are going to hold the objects o
 !!! note
     It's not strictly necessary to first create separate `GridLayout`s, then use them to place objects in the figure. You can also implicitly create nested grids using multiple indexing, for example like `Axis(f[1, 2:3][4:5, 6])`. This is further explained in \myreflink{GridPositions and GridSubpositions}. But if you want to manipulate your nested grids afterwards, for example to change column sizes or row gaps, it's easier if you have them stored in variables already.
 
-```julia:grids
+```julia
 ga = f[1, 1] = GridLayout()
 gb = f[2, 1] = GridLayout()
 gcd = f[1:2, 2] = GridLayout()

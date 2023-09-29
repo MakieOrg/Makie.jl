@@ -118,7 +118,7 @@ f
 ## Window Events
 
 Every scene also holds a reference to all global window events:
-```julia:ex-scene
+```julia
 scene.events
 ```
 \show{ex-scene}
@@ -149,7 +149,7 @@ scene
 
 this is, because the projection matrix and view matrix are the identity matrix by default, and Makie's unit space is what's called `Clip space` in the OpenGL world
 
-```julia:ex-scene
+```julia
 cam = Makie.camera(scene) # this is how to access the scenes camera
 ```
 \show{ex-scene}

@@ -56,7 +56,7 @@ fig
 ```
 \end{examplefigure}
 
-```julia:disable-ssao
+```julia
 GLMakie.activate!(ssao=false) # hide
 GLMakie.closeall() # hide
 ```

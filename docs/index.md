@@ -13,7 +13,7 @@ It is available for Windows, Mac and Linux.
 ~~~
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
-```julia:lorenz
+```julia
 using GLMakie # All functionality is defined in Makie and every backend re-exports Makie
 GLMakie.activate!() # hide
 
