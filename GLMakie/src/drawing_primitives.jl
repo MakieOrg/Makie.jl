@@ -3,6 +3,13 @@ using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
 function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.AbstractLight})
+    @inline function push_back!(trg, idx, src)
+        for i in eachindex(src)
+            trg[idx + i] = src[i]
+        end
+        return idx + length(src)
+    end
+
     MAX_LIGHTS = screen.config.max_lights
     MAX_PARAMS = screen.config.max_light_parameters
 
@@ -22,14 +29,15 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
         n_lights = 0
         n_params = 0
         for light in lights
+            delta = 0
             if light isa PointLight
-                n_params += 5 # 3 position + 2 attenuation
+                delta = 5 # 3 position + 2 attenuation
             elseif light isa DirectionalLight
-                n_params += 3 # 3 direction
+                delta = 3 # 3 direction
             elseif light isa SpotLight
-                n_params += 8 # 3 position + 3 direction + 2 angles
+                delta = 8 # 3 position + 3 direction + 2 angles
             end
-            if n_params > MAX_PARAMS || n_lights == MAX_LIGHTS
+            if n_params + delta > MAX_PARAMS || n_lights == MAX_LIGHTS
                 if n_params > MAX_PARAMS
                     @warn "Exceeded the maximum number of light parameters ($n_params > $MAX_PARAMS). Skipping lights beyond number $n_lights."
                 else
@@ -37,40 +45,41 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
                 end
                 break
             end
+            n_params += delta
             n_lights += 1
         end
-        N = min(MAX_LIGHTS, length(lights))
 
         # Update number of lights
-        attr[:N_lights][] = N
+        attr[:N_lights][] = n_lights
 
         # Update light types
         trg = attr[:light_types][]
-        resize!(trg, N)
-        map!(i -> Makie.light_type(lights[i]), trg, 1:N)
+        resize!(trg, n_lights)
+        map!(i -> Makie.light_type(lights[i]), trg, 1:n_lights)
         notify(attr[:light_types])
 
         # Update light colors
         trg = attr[:light_colors][]
-        resize!(trg, N)
-        map!(i -> Makie.light_color(lights[i]), trg, 1:N)
+        resize!(trg, n_lights)
+        map!(i -> Makie.light_color(lights[i]), trg, 1:n_lights)
         notify(attr[:light_colors])
 
         # Update other light parameters
         # This precalculates world space pos/dir -> view/cam space pos/dir
         parameters = attr[:light_parameters][]
-        empty!(parameters)
-        for i in 1:N
+        resize!(parameters, n_params)
+        idx = 0
+        for i in 1:n_lights
             light = lights[i]
             if light isa PointLight
-                p = light.position[]; a = light.attenuation[]
-                push!(parameters, p[1], p[2], p[3], a[1], a[2])
+                idx = push_back!(parameters, idx, light.position[])
+                idx = push_back!(parameters, idx, light.attenuation[])
             elseif light isa DirectionalLight
-                d = normalize(light.direction[])
-                push!(parameters, d[1], d[2], d[3])
+                idx = push_back!(parameters, idx, normalize(light.direction[]))
             elseif light isa SpotLight
-                p = light.position[]; d = normalize(light.direction[]); l = cos.(light.angles[])
-                push!(parameters, p[1], p[2], p[3], d[1], d[2], d[3], l[1], l[2])
+                idx = push_back(parameters, idx, light.position[])
+                idx = push_back(parameters, idx, normalize(light.direction[]))
+                idx = push_back(parameters, idx, cos.(light.angles[]))
             end
         end
         notify(attr[:light_parameters])
