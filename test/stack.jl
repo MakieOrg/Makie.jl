@@ -36,3 +36,43 @@ using Makie: stack_grouped_from_to
     @test from == from_test
     @test to == to_test
 end
+
+@testset "grouped bar: zero-height" begin
+    grp_stack = [1, 2, 1, 2]
+    x = [1, 1, 2, 2]
+
+    y = [1.0, 0.0, -1.0, -1.0]
+    from = [0.0, 1.0, 0.0, -1.0]
+    to = [1.0, 1.0, -1.0, -2.0]
+    from_, to_ = stack_grouped_from_to(grp_stack, y, (; x))
+    @test from == from_
+    @test to == to_
+
+    y = [-1.0, 0.0, -1.0, -1.0]
+    from = [0.0, -1.0, 0.0, -1.0]
+    to = [-1.0, -1.0, -1.0, -2.0]
+    from_, to_ = stack_grouped_from_to(grp_stack, y, (; x))
+    @test from == from_
+    @test to == to_
+
+    y = [0.0, 1.0, -1.0, -1.0]
+    from = [0.0, 0.0, 0.0, -1.0]
+    to = [0.0, 1.0, -1.0, -2.0]
+    from_, to_ = stack_grouped_from_to(grp_stack, y, (; x))
+    @test from == from_
+    @test to == to_
+
+    y = [0.0, -1.0, -1.0, -1.0]
+    from = [0.0, 0.0, 0.0, -1.0]
+    to = [0.0, -1.0, -1.0, -2.0]
+    from_, to_ = stack_grouped_from_to(grp_stack, y, (; x))
+    @test from == from_
+    @test to == to_
+
+    y = [0.0, 1.0, -1.0, -1.0]
+    from = [0.0, 0.0, 0.0, -1.0]
+    to = [0.0, 1.0, -1.0, -2.0]
+    from_, to_ = stack_grouped_from_to(1:4, y, (; x=ones(4)))
+    @test from == from_
+    @test to == to_
+end
