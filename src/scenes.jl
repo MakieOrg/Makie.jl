@@ -265,8 +265,7 @@ end
 
 get_point_light(scene::Scene) = get_one_light(scene.lights, PointLight)
 get_ambient_light(scene::Scene) = get_one_light(scene.lights, AmbientLight)
-get_shading_default(scene::Scene) = get_shading_default(scene.lights)
-
+default_shading!(plot, scene::Scene) = default_shading!(plot, scene.lights)
 
 function Scene(
         parent::Scene;

@@ -213,10 +213,10 @@ function plot!(::Combined{F}) where {F}
     end
 end
 
-function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
-    plot.parent = scene
+function connect_plot!(parent::SceneLike, plot::Combined{F}) where {F}
+    plot.parent = parent
 
-    apply_theme!(parent_scene(scene), plot)
+    apply_theme!(parent_scene(parent), plot)
     t_user = to_value(get(attributes(plot), :transformation, automatic))
     if t_user isa Transformation
         plot.transformation = t_user
@@ -228,11 +228,12 @@ function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
             transform!(t, t_user)
             plot.transformation = t
         end
-        connect!(transformation(scene), transformation(plot))
+        connect!(transformation(parent), transformation(plot))
     end
     plot.model = transformationmatrix(plot)
     convert_arguments!(plot)
     calculated_attributes!(Combined{F}, plot)
+    default_shading!(plot, parent_scene(parent))
     plot!(plot)
     return plot
 end

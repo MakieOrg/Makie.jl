@@ -141,32 +141,50 @@ function get_one_light(lights, Typ)
     return lights[indices[1]]
 end
 
-function get_shading_default(lights::Vector{<: AbstractLight})
-    ambient_count = 0
-    point_light_count = 0
+function default_shading!(plot, lights::Vector{<: AbstractLight})
+    # if the plot does not have :shading we assume the plto doesn't support it
+    haskey(plot.attributes, :shading) || return
 
-    for light in lights
-        if light isa AmbientLight
-            ambient_count += 1
-        elseif light isa PointLight
-            if light.attenuation[] == Vec2f(0, 0)
-                point_light_count += 1
+    # Bad type
+    shading = to_value(plot.attributes[:shading])
+    if !(shading isa MakieCore.ShadingAlgorithm || shading === automatic)
+        @warn "`shading = $shading` is not valid. Use `automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `automatic`."
+        shading = automatic
+    end
+
+    # automatic conversion
+    if shading === automatic
+        ambient_count = 0
+        point_light_count = 0
+
+        for light in lights
+            if light isa AmbientLight
+                ambient_count += 1
+            elseif light isa PointLight
+                if light.attenuation[] == Vec2f(0, 0)
+                    point_light_count += 1
+                else
+                    plot.attributes[:shading] = MultiLightShading
+                    return
+                end
+            elseif light isa EnvironmentLight
+                continue
             else
-                return MultiLightShading
+                plot.attributes[:shading] = MultiLightShading
+                return
             end
-        elseif light isa EnvironmentLight
-            continue
-        else
-            return MultiLightShading
+            if ambient_count > 1 || point_light_count > 1
+                plot.attributes[:shading] = MultiLightShading
+                return
+            end
         end
-        if ambient_count > 1 || point_light_count > 1
-            return MultiLightShading
+
+        if point_light_count + ambient_count == 0
+            plot.attributes[:shading] = NoShading
+        else
+            plot.attributes[:shading] = FastShading
         end
     end
 
-    if point_light_count + ambient_count == 0
-        return NoShading
-    else
-        return FastShading
-    end
+    return
 end
