@@ -79,7 +79,7 @@ data = 0.1randn(d,d) + reshape(
         d, d
 )
 
-surface(data; shading = :none, colormap = :deep)
-surface(data; shading = :none, colormap = :deep)
+surface(data; shading = NoShading, colormap = :deep)
+surface(data; shading = NoShading, colormap = :deep)
 ```
 \end{examplefigure}
