@@ -65,8 +65,9 @@ For example, you can combine the dark theme with the LaTeX fonts theme to have b
 ```julia
 using CairoMakie # hide
 dark_latexfonts = merge(theme_dark(), theme_latexfonts())
-set_theme!(dark_latexfonts)
-example_plot()
+with_theme(dark_latexfonts) do
+    example_plot()
+end
 ```
 \end{examplefigure}
 

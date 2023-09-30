@@ -6,15 +6,12 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-release
+      - sd/beta-20
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
+    tags:
+      - '*'
     branches:
       - master
-      - breaking-release
-    tags: '*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -36,16 +33,16 @@ jobs:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - name: Install Julia dependencies
+      - name: Develop and test Makie
         shell: julia --project=monorepo {0}
         run: |
-          using Pkg;
+          using Pkg
           # dev mono repo versions
           pkg"dev . ./MakieCore"
           Pkg.test("Makie"; coverage=true)

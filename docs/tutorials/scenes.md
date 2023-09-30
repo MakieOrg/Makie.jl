@@ -279,16 +279,11 @@ parent
 
 With this basic principle, we can even bring robots to life :)
 [Kevin Moerman](https://github.com/Kevin-Mattheus-Moerman) was so nice to supply a Lego mesh, which we're going to animate!
-When the scene graph is really just about a transformation Graph, one can use the Transformation struct directly, which is what we're going to do here.
+When the scene graph is really just about a transformation graph, one can use the `Transformation` struct directly, which is what we're going to do here.
 This is more efficient and easier than creating a scene for each model.
-Let's use WGLMakie with it's offline export feature, to create a plot with sliders to move the parts, that keeps working in the browser:
 
-\begin{showhtml}{}
 ```julia
-using WGLMakie, JSServe
-WGLMakie.activate!()
 using MeshIO, FileIO, GeometryBasics
-Page(offline=true, exportable=true)
 
 colors = Dict(
     "eyes" => "#000",
@@ -358,38 +353,11 @@ function plot_lego_figure(s, floor=true)
     floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
     return figure
 end
-App() do session
-    s = Scene(resolution=(500, 500))
-    cam3d!(s)
-    figure = plot_lego_figure(s, false)
-    bodies = [
-        "arm_left", "arm_right",
-        "leg_left", "leg_right"]
-    sliders = map(bodies) do name
-        slider = if occursin("arm", name)
-            JSServe.Slider(-60:4:60)
-        else
-            JSServe.Slider(-30:4:30)
-        end
-        rotvec = rotation_axes[name]
-        bodymesh = figure[name]
-        on(slider) do val
-            rotate!(bodymesh, rotvec, deg2rad(val))
-        end
-        DOM.div(name, slider)
-    end
-    center!(s)
-    # JSServe.record_states(session, DOM.div(sliders..., s))
-    return DOM.div(sliders..., s)
-end
-```
-\end{showhtml}
 
-Finally, lets let him walk and record it as a video with the new, experimental ray tracing backend.
+# Finally, lets let him walk and record it as a video with the new, experimental ray tracing backend.
 
-Note: RPRMakie is still not very stable and rendering out the video is quite slow on CI, so the shown video is prerendered!
+# Note: RPRMakie is still not very stable and rendering out the video is quite slow on CI, so the shown video is prerendered!
 
-```julia
 using RPRMakie
 # iterate rendering 200 times, to get less noise and more light
 RPRMakie.activate!(iterations=200)
@@ -427,6 +395,6 @@ Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, ang
 end
 ```
 ~~~
-<video autoplay controls src="/assets/lego_walk.mp4">
+<video mute autoplay controls src="/assets/lego_walk.mp4">
 </video>
 ~~~

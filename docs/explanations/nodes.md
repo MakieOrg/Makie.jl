@@ -72,6 +72,9 @@ nothing # hide
 ```
 \show{code3}
 
+!!! note
+    If you updated the `Observable` using in-place syntax (e.g. `img[] .= colorant"red"`), you need to manually
+    `notify(img)` to trigger the function.
 
 !!! note
     All registered functions in a `Observable` are executed synchronously in the order of registration.

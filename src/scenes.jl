@@ -169,21 +169,21 @@ function Observables.onany(f, scene::Union{Combined,Scene}, observables...; prio
 end
 
 @inline function Base.map!(@nospecialize(f), scene::Union{Combined,Scene}, result::AbstractObservable, os...;
-                           update::Bool=true)
+                           update::Bool=true, priority = 0)
     # note: the @inline prevents de-specialization due to the splatting
     callback = Observables.MapCallback(f, result, os)
     for o in os
-        o isa AbstractObservable && on(callback, scene, o)
+        o isa AbstractObservable && on(callback, scene, o, priority = priority)
     end
     update && callback(nothing)
     return result
 end
 
 @inline function Base.map(f::F, scene::Union{Combined,Scene}, arg1::AbstractObservable, args...;
-                          ignore_equal_values=false) where {F}
+                          ignore_equal_values=false, priority = 0) where {F}
     # note: the @inline prevents de-specialization due to the splatting
     obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
-    map!(f, scene, obs, arg1, args...; update=false)
+    map!(f, scene, obs, arg1, args...; update=false, priority = priority)
     return obs
 end
 
@@ -561,19 +561,6 @@ function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     list
 end
 
-"""
-Flattens all the combined plots and returns a Vector of Atomic plots
-"""
-function flatten_combined(plots::Vector, flat=AbstractPlot[])
-    for elem in plots
-        if (elem isa Combined)
-            flatten_combined(elem.plots, flat)
-        else
-            push!(flat, elem)
-        end
-    end
-    flat
-end
 
 function insertplots!(screen::AbstractDisplay, scene::Scene)
     for elem in scene.plots

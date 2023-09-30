@@ -1,4 +1,4 @@
-@def title = "Interactive visualizations and powerful plotting in Julia"
+@def title = "Home"
 @def order = 0
 @def frontpage = true
 @def description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live."
@@ -112,14 +112,14 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
   @@
 
   @@box
-    ~~~<a class="boxlink" href="examples/plotting_functions/">~~~
-    @@title Plot Examples @@
+    ~~~<a class="boxlink" href="reference/plots/">~~~
+    @@title Plot Reference @@
     @@box-content
       @@description
-      Have a look at this list of examples for the available plotting functions.
+      A visual reference of all available plotting functions and their attributes.
       @@
       ~~~
-      <img src="/assets/examples/plotting_functions/heatmap/code/output/mandelbrot_heatmap.png">
+      <img src="/assets/reference/plots/heatmap/code/output/mandelbrot_heatmap.png">
       ~~~
     @@
     ~~~</a>~~~

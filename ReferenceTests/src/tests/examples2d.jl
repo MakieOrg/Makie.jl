@@ -1219,7 +1219,7 @@ end
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = triplot!(ax, points)
     f
 end
@@ -1303,13 +1303,13 @@ end
 
 @reference_test "Voronoiplot with a nonlinear transform" begin
     f = Figure()
-    ax = PolarAxis(f[1, 1])
+    ax = PolarAxis(f[1, 1], theta_as_x = false)
     points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
     Makie.rlims!(ax, 12) # to make rect clip visible if circular clip doesn't happen
-    ax = PolarAxis(f[1, 2])
+    ax = PolarAxis(f[1, 2], theta_as_x = false)
     tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
     Makie.rlims!(ax, 12)
     f
