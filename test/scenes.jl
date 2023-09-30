@@ -10,26 +10,61 @@ end
 
 @testset "Lighting" begin
     @testset "Shading default" begin
+        plot = (attributes = Attributes(), ) # simplified "plot"
+
         # Based on number of lights
         lights = Makie.AbstractLight[]
-        @test Makie.get_shading_default(lights) === NoShading
+        Makie.default_shading!(plot, lights)
+        @test !haskey(plot.attributes, :shading)
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === NoShading
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
         push!(lights, AmbientLight(RGBf(0.1, 0.1, 0.1)))
-        @test Makie.get_shading_default(lights) === FastShading
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === FastShading
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
         push!(lights, PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0)))
-        @test Makie.get_shading_default(lights) === FastShading
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === FastShading
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
         push!(lights, PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0)))
-        @test Makie.get_shading_default(lights) === MultiLightShading
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === MultiLightShading
 
         # Based on light types
+        plot.attributes[:shading] = Observable(Makie.automatic)
         lights = [SpotLight(RGBf(0.1, 0.1, 0.1), Point3f(0), Vec3f(1), Vec2f(0.2, 0.3))]
-        @test Makie.get_shading_default(lights) === MultiLightShading
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === MultiLightShading
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
         lights = [DirectionalLight(RGBf(0.1, 0.1, 0.1), Vec3f(1))]
-        @test Makie.get_shading_default(lights) === MultiLightShading
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === MultiLightShading
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
         lights = [EnvironmentLight(1.0, rand(2,2))]
-        @test Makie.get_shading_default(lights) === NoShading # only affects RPRMakie so skipped here
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === NoShading # only affects RPRMakie so skipped here
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
         lights = [PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0))]
-        @test Makie.get_shading_default(lights) === FastShading
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === FastShading
+
+        plot.attributes[:shading] = Observable(Makie.automatic)
         lights = [PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0), Vec2f(0.1, 0.2))]
-        @test Makie.get_shading_default(lights) === MultiLightShading
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === MultiLightShading
+
+        # keep existing
+        lights = Makie.AbstractLight[]
+        Makie.default_shading!(plot, lights)
+        @test to_value(plot.attributes[:shading]) === MultiLightShading
     end
 end
