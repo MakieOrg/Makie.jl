@@ -14,6 +14,7 @@ in vec3 o_normal;
 in vec3 o_lightdir;
 in vec3 o_camdir;
 in vec4 o_color;
+in vec2 o_uv_scale;
 in vec2 o_uv;
 flat in uvec2 o_id;
 
@@ -82,18 +83,17 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_norm, sampler1D color_map, s
 }
 
 uniform bool fetch_pixel;
-uniform vec2 uv_scale;
 
 vec4 get_pattern_color(sampler1D color) {
     int size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = gl_FragCoord.xy * o_uv_scale;
     int idx = int(mod(pos.x, size));
     return texelFetch(color, idx, 0);
 }
 
 vec4 get_pattern_color(sampler2D color){
     ivec2 size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = gl_FragCoord.xy * o_uv_scale;
     return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
 }
 
