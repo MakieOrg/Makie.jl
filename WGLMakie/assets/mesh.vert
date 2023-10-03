@@ -1,7 +1,6 @@
 out vec2 frag_uv;
 out vec3 o_normal;
 out vec3 o_camdir;
-out vec3 o_lightdir;
 
 out vec4 frag_color;
 
@@ -61,22 +60,15 @@ vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
     }
 }
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 {
     // normal in world space
     o_normal = get_normalmatrix() * normal;
-    // position in view space (as seen from camera)
-    vec4 view_pos = view * position_world;
     // position in clip space (w/ depth)
-    gl_Position = projection * view_pos;
+    gl_Position = projection * view * position_world; // TODO consider using projectionview directly
     gl_Position.z += gl_Position.w * get_depth_shift();
-    // direction to light
-    o_lightdir = normalize(view*vec4(lightposition, 1.0) - view_pos).xyz;
     // direction to camera
-    // This is equivalent to
-    // normalize(view*vec4(eyeposition, 1.0) - view_pos).xyz
-    // (by definition `view * eyeposition = 0`)
-    o_camdir = normalize(-view_pos).xyz;
+    o_camdir = position_world.xyz / position_world.w - get_eyeposition(); // TODO upload
 }
 
 flat out uint frag_instance_id;
@@ -90,7 +82,7 @@ void main(){
     }
     vec4 position_world = model * vec4(vertex_position, 1);
 
-    render(position_world, get_normals(), view, projection, get_lightposition());
+    render(position_world, get_normals(), view, projection);
     frag_uv = get_uv();
     frag_uv = vec2(1.0 - frag_uv.y, frag_uv.x);
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);

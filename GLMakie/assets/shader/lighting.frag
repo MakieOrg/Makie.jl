@@ -53,11 +53,10 @@ vec3 illuminate(vec3 normal, vec3 base_color);
 
 uniform vec3 ambient;
 uniform vec3 light_color;
-uniform vec3 lightposition;
+uniform vec3 light_direction;
 
 vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
-    vec3 light_dir = normalize(world_pos - lightposition);
-    vec3 shaded_color = blinn_phong(light_color, light_dir, camdir, normal, base_color);
+    vec3 shaded_color = blinn_phong(light_color, light_direction, camdir, normal, base_color);
     return ambient * base_color + shaded_color;
 }
 

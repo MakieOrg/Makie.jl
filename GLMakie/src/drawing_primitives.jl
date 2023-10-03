@@ -243,10 +243,10 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         shading = to_value(get(gl_attributes, :shading, NoShading))
 
         if shading == FastShading
-            pointlight = Makie.get_point_light(scene)
-            if !isnothing(pointlight)
-                gl_attributes[:lightposition] = pointlight.position
-                gl_attributes[:light_color] = pointlight.color
+            dirlight = Makie.get_directional_light(scene)
+            if !isnothing(dirlight)
+                gl_attributes[:light_direction] = map(normalize, dirlight.direction)
+                gl_attributes[:light_color] = dirlight.color
             end
 
             ambientlight = Makie.get_ambient_light(scene)

@@ -898,10 +898,10 @@ function draw_mesh3D(
         specular, shininess, faceculling
     )
     ctx = screen.context
-    view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
-    projection = Makie.space_to_clip(scene.camera, space, false)
+    projectionview = Makie.space_to_clip(scene.camera, space, true)
+    eyeposition = scene.camera.eyeposition[]
     i = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(view[i, i] * model[i, i]))
+    normalmatrix = transpose(inv(model[i, i]))
 
     # Mesh data
     # transform to view/camera space
@@ -912,17 +912,17 @@ function draw_mesh3D(
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
-        view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
+        model * p4d .+ to_ndim(Vec4f, pos, 0f0)
     end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
 
     # Light math happens in view/camera space
-    pointlight = Makie.get_point_light(scene)
-    lightposition = if !isnothing(pointlight)
-        pointlight.position[]
+    dirlight = Makie.get_directional_light(scene)
+    lightdirection = if !isnothing(dirlight)
+        normalize(dirlight.direction[])
     else
-        Vec3f(0)
+        Vec3f(-2/3, -2/3, 1/3)
     end
 
     ambientlight = Makie.get_ambient_light(scene)
@@ -933,11 +933,9 @@ function draw_mesh3D(
         Vec3f(0)
     end
 
-    lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[Vec(1, 2, 3)]
-
     # Camera to screen space
     ts = map(vs) do v
-        clip = projection * v
+        clip = projectionview * v
         @inbounds begin
             p = (clip ./ clip[4])[Vec(1, 2)]
             p_yflip = Vec2f(p[1], -p[2])
@@ -947,6 +945,9 @@ function draw_mesh3D(
         return Vec3f(p[1], p[2], clip[3])
     end
 
+    # vs are used as camdir (camera to vertex) for light calculation (in world space)
+    vs = map(v -> normalize(v[i] - eyeposition), vs)
+
     # Approximate zorder
     average_zs = map(f -> average_z(ts, f), meshfaces)
     zorder = sortperm(average_zs)
@@ -954,15 +955,15 @@ function draw_mesh3D(
     # Face culling
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
 
-    draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
+    draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdirection, shininess, diffuse, ambient, specular)
     return
 end
 
-function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
-    L = normalize(lightpos .- v[Vec(1,2,3)])
-    diff_coeff = max(dot(L, N), 0f0)
-    H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
-    spec_coeff = max(dot(H, N), 0f0)^shininess
+function _calculate_shaded_vertexcolors(N, v, c, lightdir, ambient, diffuse, specular, shininess)
+    L = lightdir
+    diff_coeff = max(dot(L, -N), 0f0)
+    H = normalize(L + v)
+    spec_coeff = max(dot(H, -N), 0f0)^shininess
     c = RGBAf(c)
     # if this is one expression it introduces allocations??
     new_c_part1 = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
@@ -970,7 +971,7 @@ function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, spe
     RGBAf(new_c..., c.alpha)
 end
 
-function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
+function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, shininess, diffuse, ambient, specular)
     for k in reverse(zorder)
 
         f = meshfaces[k]
@@ -993,7 +994,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
                 N = ns[f[i]]
                 v = vs[f[i]]
                 c = facecolors[i]
-                _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
+                _calculate_shaded_vertexcolors(N, v, c, lightdir, ambient, diffuse, specular, shininess)
             end
         else
             c1, c2, c3 = facecolors

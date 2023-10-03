@@ -269,7 +269,7 @@ out vec3 o_world_normal;
 out vec3 o_camdir;
 #endif
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 {
     // position in view space (as seen from camera)
     vec4 view_pos = view * position_world;

@@ -1,5 +1,5 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(8) do i
+    Camera(ntuple(9) do i
         getfield(x, i)
     end...)
 end
@@ -18,6 +18,7 @@ function Base.show(io::IO, camera::Camera)
     println(io, "  projection: ", camera.projection[])
     println(io, "  projectionview: ", camera.projectionview[])
     println(io, "  resolution: ", camera.resolution[])
+    println(io, "  lookat: ", camera.lookat[])
     println(io, "  eyeposition: ", camera.eyeposition[])
 end
 
@@ -83,6 +84,7 @@ function Camera(px_area)
         proj,
         proj_view,
         lift(a-> Vec2f(widths(a)), px_area),
+        Observable(Vec3f(0)),
         Observable(Vec3f(1)),
         ObserverFunction[],
         Dict{Symbol, Observable}()

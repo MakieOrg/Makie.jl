@@ -68,9 +68,9 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
 
     get!(uniforms, :shading, to_value(get(plot, :shading, NoShading)) != NoShading)
 
-    uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
+    uniforms[:normalmatrix] = map(plot.model) do m
         i = Vec(1, 2, 3)
-        return transpose(inv(v[i, i] * m[i, i]))
+        return transpose(inv(m[i, i]))
     end
 
 

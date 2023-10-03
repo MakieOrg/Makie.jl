@@ -243,26 +243,34 @@ function Scene(;
     end
 
     if lights isa Automatic
-        lightposition = to_value(get(m_theme, :lightposition, nothing))
-        if !isnothing(lightposition)
-            position = if lightposition === :eyeposition
-                scene.camera.eyeposition
-            elseif lightposition isa Vec3
-                m_theme.lightposition
-            else
-                error("Wrong lightposition type, use `:eyeposition` or `Vec3f(...)`")
+        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `lightdirection` instead.")
+
+        if haskey(m_theme, :lights)
+            copyto!(scene.lights, m_theme.lights[])
+        else
+            @assert haskey(m_theme, :lightdirection) "Theme must contain `lightdirection`!"
+            @assert haskey(m_theme, :lightcolor) "Theme must contain `lightcolor`!"
+
+            if haskey(m_theme, :ambient)
+                push!(scene.lights, AmbientLight(m_theme[:ambient][]))
             end
-            push!(scene.lights, PointLight(RGBf(1, 1, 1), position))
-        end
-        ambient = to_value(get(m_theme, :ambient, nothing))
-        if !isnothing(ambient)
-            push!(scene.lights, AmbientLight(ambient))
+
+            if m_theme[:lightdirection][] in (:viewdir, :view_direction, :camdir, :camera_direction)
+                lightdirection = map(-, scene.camera.lookat, scene.camera.eyeposition)
+            elseif m_theme[:lightdirection][] isa VecTypes{3}
+                lightdirection = m_theme[:lightdirection][]
+            else
+                error("Wrong lightdirection type, use `:viewdir` or `Vec3f(...)`")
+            end
+
+            push!(scene.lights, DirectionalLight(m_theme[:lightcolor][], lightdirection))
         end
     end
 
     return scene
 end
 
+get_directional_light(scene::Scene) = get_one_light(scene.lights, DirectionalLight)
 get_point_light(scene::Scene) = get_one_light(scene.lights, PointLight)
 get_ambient_light(scene::Scene) = get_one_light(scene.lights, AmbientLight)
 default_shading!(plot, scene::Scene) = default_shading!(plot, scene.lights)

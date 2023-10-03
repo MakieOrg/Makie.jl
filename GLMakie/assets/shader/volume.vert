@@ -5,7 +5,6 @@ in vec3 vertices;
 out vec3 frag_vert;
 
 uniform mat4 projectionview, model;
-uniform vec3 lightposition;
 uniform mat4 modelinv;
 uniform float depth_shift;
 

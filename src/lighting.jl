@@ -155,31 +155,26 @@ function default_shading!(plot, lights::Vector{<: AbstractLight})
     # automatic conversion
     if shading === automatic
         ambient_count = 0
-        point_light_count = 0
+        dir_light_count = 0
 
         for light in lights
             if light isa AmbientLight
                 ambient_count += 1
-            elseif light isa PointLight
-                if light.attenuation[] == Vec2f(0, 0)
-                    point_light_count += 1
-                else
-                    plot.attributes[:shading] = MultiLightShading
-                    return
-                end
+            elseif light isa DirectionalLight
+                dir_light_count += 1
             elseif light isa EnvironmentLight
                 continue
             else
                 plot.attributes[:shading] = MultiLightShading
                 return
             end
-            if ambient_count > 1 || point_light_count > 1
+            if ambient_count > 1 || dir_light_count > 1
                 plot.attributes[:shading] = MultiLightShading
                 return
             end
         end
 
-        if point_light_count + ambient_count == 0
+        if dir_light_count + ambient_count == 0
             plot.attributes[:shading] = NoShading
         else
             plot.attributes[:shading] = FastShading

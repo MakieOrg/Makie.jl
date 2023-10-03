@@ -13,7 +13,7 @@ struct Camera3D <: AbstractCamera3D
     eyeposition::Observable{Vec3f}
     lookat::Observable{Vec3f}
     upvector::Observable{Vec3f}
-	
+
     # perspective projection matrix
     fov::Observable{Float32}
     near::Observable{Float32}
@@ -95,7 +95,7 @@ Some keyword arguments are used to initialize fields. These include
 - `far = 10.0` sets the position of the far clip plane relative to `eyeposition - lookat`. Anything further away than the far clip plane is hidden.
 
 Note that updating these observables in an active camera requires a call to `update_cam(scene)`
-for them to be applied. For updating `eyeposition`, `lookat` and/or upvector 
+for them to be applied. For updating `eyeposition`, `lookat` and/or upvector
 `update_cam!(scene, eyeposition, lookat, upvector = Vec3f(0,0,1))` is preferred.
 
 The camera position and orientation can also be adjusted via the functions
@@ -150,7 +150,7 @@ function Camera3D(scene::Scene; kwargs...)
         mouse_rotationspeed = 1f0,
         mouse_translationspeed = 1f0,
         mouse_zoomspeed = 1f0,
-        
+
         projectiontype = Makie.Perspective,
         circular_rotation = (true, true, true),
         rotation_center = :lookat,
@@ -163,7 +163,7 @@ function Camera3D(scene::Scene; kwargs...)
     replace!(settings, :Camera3D, scene, overwrites)
 
     cam = Camera3D(
-        settings, controls, 
+        settings, controls,
 
         # Internals - controls
         Observable(-1.0),
@@ -201,7 +201,7 @@ function Camera3D(scene::Scene; kwargs...)
         :pan_left_key, :pan_right_key, :tilt_up_key, :tilt_down_key,
         :roll_clockwise_key, :roll_counterclockwise_key
     )
-    
+
     # Start ticking if relevant keys are pressed
     on(camera(scene), events(scene).keyboardbutton) do event
         if event.action in (Keyboard.press, Keyboard.repeat) && cam.pulser[] == -1.0 &&
@@ -257,7 +257,7 @@ end
 """
     cam3d!(scene[; kwargs...])
 
-Creates a `Camera3D` with `zoom_shift_lookat = true` and `fixed_axis = true`. 
+Creates a `Camera3D` with `zoom_shift_lookat = true` and `fixed_axis = true`.
 For more information, see [`Camera3D``](@ref)
 """
 cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...) =
@@ -266,7 +266,7 @@ cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...) =
 """
     cam3d_cad!(scene[; kwargs...])
 
-Creates a `Camera3D` with `cad = true`, `zoom_shift_lookat = false` and 
+Creates a `Camera3D` with `cad = true`, `zoom_shift_lookat = false` and
 `fixed_axis = false`. For more information, see [`Camera3D``](@ref)
 """
 cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...) =
@@ -313,8 +313,8 @@ function on_pulse(scene, cam::Camera3D, timestep)
             viewnorm = norm(cam.lookat[] - cam.eyeposition[])
             xynorm = 2 * viewnorm * tand(0.5 * cam.fov[])
             translation = keyboard_translationspeed * timestep * Vec3f(
-                xynorm * (right - left), 
-                xynorm * (up - down), 
+                xynorm * (right - left),
+                xynorm * (up - down),
                 viewnorm * (backward - forward)
             )
         else
@@ -377,7 +377,7 @@ end
 function add_mouse_controls!(scene, cam::Camera3D)
     @extract cam.controls (translation_button, rotation_button, reposition_button, scroll_mod)
     @extract cam.settings (
-        mouse_translationspeed, mouse_rotationspeed, mouse_zoomspeed, 
+        mouse_translationspeed, mouse_rotationspeed, mouse_zoomspeed,
         cad, projectiontype, zoom_shift_lookat
     )
 
@@ -422,7 +422,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
                 dragging[] = (false, false)
                 translate_cam!(scene, cam, mouse_translationspeed[] .* Vec3f(diff[1], diff[2], 0f0))
                 consume = true
-            elseif dragging[][2] 
+            elseif dragging[][2]
                 mousepos = mouseposition_px(scene)
                 dragging[] = (false, false)
                 rot_scaling = mouse_rotationspeed[] * (e.window_dpi[] * 0.005)
@@ -436,9 +436,9 @@ function add_mouse_controls!(scene, cam::Camera3D)
             if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
                 plt, _, p = ray_assisted_pick(scene)
                 if p !== Point3f(NaN) && to_value(get(plt, :space, :data)) == :data && parent_scene(plt) == scene
-                    # if translation/rotation happens with on-click reposition, 
+                    # if translation/rotation happens with on-click reposition,
                     # try uncommenting this
-                    # dragging[] = (false, false) 
+                    # dragging[] = (false, false)
                     shift = p - cam.lookat[]
                     update_cam!(scene, cam, cam.eyeposition[] + shift, p)
                 end
@@ -493,10 +493,10 @@ end
 """
     translate_cam!(scene, cam::Camera3D, v::Vec3)
 
-Translates the camera by the given vector in camera space, i.e. by `v[1]` to 
+Translates the camera by the given vector in camera space, i.e. by `v[1]` to
 the right, `v[2]` to the top and `v[3]` forward.
 
-Note that this method reacts to `fix_x_key` etc. If any of those keys are 
+Note that this method reacts to `fix_x_key` etc. If any of those keys are
 pressed the translation will be restricted to act in these directions.
 """
 function translate_cam!(scene, cam::Camera3D, t::VecTypes)
@@ -508,12 +508,12 @@ end
 """
     rotate_cam!(scene, cam::Camera3D, angles::Vec3)
 
-Rotates the camera by the given `angles` around the camera x- (left, right), 
-y- (up, down) and z-axis (in out). The rotation around the y axis is applied 
+Rotates the camera by the given `angles` around the camera x- (left, right),
+y- (up, down) and z-axis (in out). The rotation around the y axis is applied
 first, then x, then y.
 
-Note that this method reacts to `fix_x_key` etc and `fixed_axis`. The former 
-restrict the rotation around a specific axis when a given key is pressed. The 
+Note that this method reacts to `fix_x_key` etc and `fixed_axis`. The former
+restrict the rotation around a specific axis when a given key is pressed. The
 latter keeps the camera y axis fixed as the data space z axis.
 """
 function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
@@ -530,10 +530,10 @@ zoom!(scene, zoom_step) = zoom!(scene, cameracontrols(scene), zoom_step, false, 
 Zooms the camera in or out based on the multiplier `zoom_step`. A `zoom_step`
 of 1.0 is neutral, larger zooms out and lower zooms in.
 
-If `cad = true` zooming will also apply a rotation based on how far the cursor 
-is from the center of the scene. If `zoom_shift_lookat = true` and 
+If `cad = true` zooming will also apply a rotation based on how far the cursor
+is from the center of the scene. If `zoom_shift_lookat = true` and
 `projectiontype = Orthographic` zooming will keep the data under the cursor at
-the same screen space position. 
+the same screen space position.
 """
 function zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false)
     _zoom!(scene, cam, zoom_step, cad, zoom_shift_lookat)
@@ -594,7 +594,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     rotation = Quaternionf(0, 0, 0, 1)
     if !xor(fix_x, fix_y, fix_z)
         # if there are more or less than one restriction apply all rotations
-        # Note that the y rotation needs to happen first here so that 
+        # Note that the y rotation needs to happen first here so that
         # fixed_axis = true actually keeps the the axis fixed.
         rotation *= qrotation(y_axis, angles[2])
         rotation *= qrotation(x_axis, angles[1])
@@ -643,7 +643,7 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos   # -z
-    
+
     if cad
         # Rotate view based on offset from center
         u_z = normalize(viewdir)
@@ -664,12 +664,12 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
         ws = widths(scene.px_area[])
         rel_pos = (2.0 .* mouseposition_px(scene) .- ws) ./ ws[2]
         shift = (1 - zoom_step) * (rel_pos[1] * u_x + rel_pos[2] * u_y)
-        
+
         if cam.settings.projectiontype[] == Makie.Orthographic
             scale = norm(viewdir)
         else
             # With perspective projection depth scales shift, but there is no way
-            # to tell which depth the user may want to keep in view. So we just 
+            # to tell which depth the user may want to keep in view. So we just
             # assume it's the same depth as "lookat".
             scale = norm(viewdir) * tand(0.5 * cam.fov[])
         end
@@ -708,6 +708,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_proj_view!(camera(scene), proj, view)
 
     scene.camera.eyeposition[] = cam.eyeposition[]
+    scene.camera.lookat[] = cam.lookat[]
 end
 
 
@@ -748,10 +749,10 @@ update_cam!(scene::Scene, args::Real...) = update_cam!(scene, cameracontrols(sce
     update_cam!(scene, cam::Camera3D, ϕ, θ[, radius])
 
 Set the camera position based on two angles `0 ≤ ϕ ≤ 2π` and `-pi/2 ≤ θ ≤ pi/2`
-and an optional radius around the current `cam.lookat[]`. 
+and an optional radius around the current `cam.lookat[]`.
 """
 function update_cam!(
-        scene::Scene, camera::Camera3D, phi::Real, theta::Real, 
+        scene::Scene, camera::Camera3D, phi::Real, theta::Real,
         radius::Real = norm(camera.eyeposition[] - camera.lookat[]),
         center = camera.lookat[]
     )

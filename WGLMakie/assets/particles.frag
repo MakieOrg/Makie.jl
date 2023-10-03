@@ -1,17 +1,17 @@
 in vec4 frag_color;
 in vec3 frag_normal;
 in vec3 frag_position;
-in vec3 frag_lightdir;
+in vec3 o_camdir;
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float backlight = get_backlight();
-    float diff_coeff = max(dot(L, N), 0.0) + backlight * max(dot(L, -N), 0.0);
+    float diff_coeff = max(dot(L, -N), 0.0) + backlight * max(dot(L, N), 0.0);
 
     // specular coefficient
     vec3 H = normalize(L + V);
 
-    float spec_coeff = pow(max(dot(H, N), 0.0), get_shininess()) +
-        backlight * pow(max(dot(H, -N), 0.0), get_shininess());
+    float spec_coeff = pow(max(dot(H, -N), 0.0), get_shininess()) +
+        backlight * pow(max(dot(H, N), 0.0), get_shininess());
     if (diff_coeff <= 0.0)
         spec_coeff = 0.0;
 
@@ -35,9 +35,9 @@ vec4 pack_int(uint id, uint index) {
 void main() {
     vec3 L, N, light, color;
     if (get_shading()) {
-        L = normalize(frag_lightdir);
+        L = get_light_direction(); // TODO normalize outside
         N = normalize(frag_normal);
-        light = blinnphong(N, frag_position, L, frag_color.rgb);
+        light = blinnphong(N, normalize(o_camdir), L, frag_color.rgb);
         color = get_ambient() * frag_color.rgb + light;
     } else {
         color = frag_color.rgb;

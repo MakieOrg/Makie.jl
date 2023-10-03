@@ -19,8 +19,6 @@ in vec2 vertices;
 {{position_y_type}} position_y;
 uniform sampler2D position_z;
 
-uniform vec3 lightposition;
-
 {{image_type}} image;
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
@@ -36,7 +34,7 @@ uniform vec3 scale;
 uniform mat4 view, model, projection;
 
 // See util.vert for implementations
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 ivec2 ind2sub(ivec2 dim, int linearindex);
 vec2 grid_pos(Grid2D pos, vec2 uv);
 vec2 linear_index(ivec2 dims, int index);
@@ -172,5 +170,5 @@ void main()
     if (isnan(pos.z)) {
         pos.z = 0.0;
     }
-    render(model * vec4(pos, 1), normalvec, view, projection, lightposition);
+    render(model * vec4(pos, 1), normalvec, view, projection);
 }

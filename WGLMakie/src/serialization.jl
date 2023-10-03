@@ -331,11 +331,11 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
 
-    pointlight = Makie.get_point_light(scene)
-    if !isnothing(pointlight)
-        uniforms[:lightposition] = serialize_three(pointlight.position[])
-        on(pointlight.position) do value
-            updater[] = [:lightposition, serialize_three(value)]
+    dirlight = Makie.get_directional_light(scene)
+    if !isnothing(dirlight)
+        uniforms[:light_direction] = serialize_three(dirlight.direction[])
+        on(dirlight.direction) do value
+            updater[] = [:light_direction, serialize_three(value)]
             return
         end
     end
