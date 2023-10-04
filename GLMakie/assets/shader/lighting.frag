@@ -61,7 +61,7 @@ vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
 }
 
 vec3 illuminate(vec3 normal, vec3 base_color) {
-    return illuminate(o_world_pos, o_camdir, normal, base_color);
+    return illuminate(o_world_pos, normalize(o_camdir), normal, base_color);
 }
 
 #endif
