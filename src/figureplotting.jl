@@ -42,10 +42,8 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         ax = axtype(fig; axis...)
     else
         proxyscene = Scene()
-        attrs = Attributes(kw_attributes)
-        delete!(attrs, :show_axis)
-        delete!(attrs, :limits)
-        plot!(proxyscene, P, attrs, args...)
+        # We dont forward the attributes to the plot, since we only need the arguments to determine the axis type
+        plot!(proxyscene, P, Attributes(), args...)
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
