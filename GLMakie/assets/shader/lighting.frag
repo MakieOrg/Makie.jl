@@ -33,10 +33,8 @@ float smooth_zero_max(float x) {
     // const float c = 0.0000152587890625, xswap = 0.7411011265922482, yswap = 0.10881882041201549;
     // a = 8 constants: (softer edge)
     const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
-    if (x < yswap)
-        return c * pow(x + 1.0 + xswap - yswap, 8);
-    else
-        return x;
+    const float shift = 1.0 + xswap - yswap;
+    return x < yswap ? c * pow(x + shift, 8) : x;
 }
 
 vec3 blinn_phong(vec3 light_color, vec3 light_dir, vec3 camdir, vec3 normal, vec3 color) {
