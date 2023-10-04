@@ -79,7 +79,6 @@ end
 function plot(P::PlotFunc, gp::GridPosition, args...; axis=NamedTuple(), kw_attributes...)
     _validate_nt_like_keyword(axis, "axis")
 
-
     c = contents(gp; exact=true)
     if !isempty(c)
         error("""
