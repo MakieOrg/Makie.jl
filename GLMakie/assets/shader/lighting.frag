@@ -34,7 +34,7 @@ float smooth_zero_max(float x) {
     // a = 8 constants: (softer edge)
     const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
     if (x < yswap)
-        return c * pow(x + 1.0 + xswap - yswap, 16);
+        return c * pow(x + 1.0 + xswap - yswap, 8);
     else
         return x;
 }
