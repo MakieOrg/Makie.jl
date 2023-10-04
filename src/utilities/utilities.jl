@@ -36,23 +36,6 @@ function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
 end
 
 """
-    resampled_colors(attributes::Attributes, levels::Integer)
-
-Resample the color attribute from `attributes`. Resamples `:colormap` if present,
-or repeats `:color`.
-"""
-function resampled_colors(attributes, levels::Integer)
-    cols = if haskey(attributes, :color)
-        c = get_attribute(attributes, :color)
-        c isa AbstractVector ? resample(c, levels) : repeated(c, levels)
-    else
-        c = get_attribute(attributes, :colormap)
-        resample(c, levels)
-    end
-end
-
-
-"""
 Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding
 value is nothing
 """
@@ -288,7 +271,7 @@ function _replace!(target::Attributes, overwrite::Attributes)
     for k in keys(target)
         haskey(overwrite, k) && (target[k] = overwrite[k])
     end
-    return 
+    return
 end
 
 
