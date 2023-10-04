@@ -22,10 +22,27 @@ uniform float backlight;
 in vec3 o_camdir;
 in vec3 o_world_pos;
 
+float smooth_zero_max(float x) {
+    // This is a smoothed version of max(value, 0.0) where -1 <= value <= 1
+    // This comes from:
+    // c = 2 ^ -a                                # normalizes power w/o swaps
+    // xswap = (1 / c / a)^(1 / (a - 1)) - 1     # xval with derivative 1
+    // yswap = c * (xswap+1) ^ a                 # yval with derivative 1
+    // ifelse.(xs .< yswap, c .* (xs .+ 1 .+ xswap .- yswap) .^ a, xs)
+    // a = 16 constants: (harder edge)
+    // const float c = 0.0000152587890625, xswap = 0.7411011265922482, yswap = 0.10881882041201549;
+    // a = 8 constants: (softer edge)
+    const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
+    if (x < yswap)
+        return c * pow(x + 1.0 + xswap - yswap, 16);
+    else
+        return x;
+}
+
 vec3 blinn_phong(vec3 light_color, vec3 light_dir, vec3 camdir, vec3 normal, vec3 color) {
     // diffuse coefficient (how directly does light hits the surface)
-    float diff_coeff = max(dot(light_dir, -normal), 0.0) +
-        backlight * max(dot(light_dir, normal), 0.0);
+    float diff_coeff = smooth_zero_max(dot(light_dir, -normal)) +
+        backlight * smooth_zero_max(dot(light_dir, normal));
 
     // specular coefficient (does reflected light bounce into camera?)
     vec3 H = normalize(light_dir + camdir);
