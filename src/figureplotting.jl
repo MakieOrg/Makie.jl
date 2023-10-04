@@ -1,5 +1,5 @@
 struct AxisPlot
-    axis
+    axis::Any
     plot::AbstractPlot
 end
 
@@ -17,8 +17,7 @@ function _validate_nt_like_keyword(@nospecialize(kw), name)
             The $name keyword argument received an unexpected value $(repr(kw)).
             The $name keyword expects a collection of Symbol => value pairs, such as NamedTuple, Attributes, or AbstractDict{Symbol}.
             The most common cause of this error is trying to create a one-element NamedTuple like (key = value) which instead creates a variable `key` with value `value`.
-            Write (key = value,) or (; key = value) instead."""
-        ))
+            Write (key = value,) or (; key = value) instead."""))
     end
 end
 
@@ -28,35 +27,43 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
-function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
+@nospecialize
+function get_axis(fig, P, axis_kw::Dict, plot_attr, plot_args)
+    if haskey(axis_kw, :type)
+        axtype = axis_kw[:type]
+        pop!(axis_kw, :type)
+        ax = axtype(fig; axis_kw...)
+    else
+        proxyscene = Scene()
+        # We dont forward the attributes to the plot, since we only need the arguments to determine the axis type
+        # Remove arguments may not work with plotting into the scene
+        delete!(plot_attr, :show_axis)
+        delete!(plot_attr, :limits)
+        delete!(plot_attr, :color) # Color may contain Cycled(1), which needs the axis to get resolved to a color
+        plot!(proxyscene, P, Attributes(plot_attr), plot_args...)
+        if is2d(proxyscene)
+            ax = Axis(fig; axis_kw...)
+        else
+            ax = LScene(fig; axis_kw...)
+        end
+        empty!(proxyscene)
+    end
+    return ax
+end
+@specialize
 
+function plot(P::PlotFunc, args...; axis=NamedTuple(), figure=NamedTuple(), kw_attributes...)
     _validate_nt_like_keyword(axis, "axis")
     _validate_nt_like_keyword(figure, "figure")
 
     fig = Figure(; figure...)
 
     axis = Dict(pairs(axis))
-    if haskey(axis, :type)
-        axtype = axis[:type]
-        pop!(axis, :type)
-        ax = axtype(fig; axis...)
-    else
-        proxyscene = Scene()
-        attrs = Attributes(kw_attributes)
-        delete!(attrs, :show_axis)
-        delete!(attrs, :limits)
-        plot!(proxyscene, P, attrs, args...)
-        if is2d(proxyscene)
-            ax = Axis(fig; axis...)
-        else
-            ax = LScene(fig; axis...)
-        end
-        empty!(proxyscene)
-    end
+    ax = get_axis(fig, P, axis, Dict{Symbol, Any}(kw_attributes), args)
 
     fig[1, 1] = ax
     p = plot!(ax, P, Attributes(kw_attributes), args...)
-    FigureAxisPlot(fig, ax, p)
+    return FigureAxisPlot(fig, ax, p)
 end
 
 # without scenelike, use current axis of current figure
@@ -66,16 +73,13 @@ function plot!(P::PlotFunc, args...; kw_attributes...)
     isnothing(figure) && error("There is no current figure to plot into.")
     ax = current_axis(figure)
     isnothing(ax) && error("There is no current axis to plot into.")
-    plot!(P, ax, args...; kw_attributes...)
+    return plot!(P, ax, args...; kw_attributes...)
 end
 
-function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
-
+function plot(P::PlotFunc, gp::GridPosition, args...; axis=NamedTuple(), kw_attributes...)
     _validate_nt_like_keyword(axis, "axis")
 
-    f = get_top_parent(gp)
-
-    c = contents(gp, exact = true)
+    c = contents(gp; exact=true)
     if !isempty(c)
         error("""
         You have used the non-mutating plotting syntax with a GridPosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
@@ -88,42 +92,28 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
     end
 
     axis = Dict(pairs(axis))
-
-    if haskey(axis, :type)
-        axtype = axis[:type]
-        pop!(axis, :type)
-        ax = axtype(f; axis...)
-    else
-        proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
-        if is2d(proxyscene)
-            ax = Axis(f; axis...)
-        else
-            ax = LScene(f; axis...)
-        end
-    end
+    fig = get_top_parent(gp)
+    ax = get_axis(fig, P, axis, Dict{Symbol,Any}(kw_attributes), args)
 
     gp[] = ax
-    p = plot!(P, ax, args...; kwargs...)
-    AxisPlot(ax, p)
+    p = plot!(P, ax, args...; kw_attributes...)
+    return AxisPlot(ax, p)
 end
 
 function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
-
-    c = contents(gp, exact = true)
+    c = contents(gp; exact=true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
-    plot!(P, ax, args...; kwargs...)
+    return plot!(P, ax, args...; kwargs...)
 end
 
-function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
-
+function plot(P::PlotFunc, gsp::GridSubposition, args...; axis=NamedTuple(), kw_attributes...)
     _validate_nt_like_keyword(axis, "axis")
 
-    layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
-    c = contents(gsp, exact = true)
+    GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
+    c = contents(gsp; exact=true)
     if !isempty(c)
         error("""
         You have used the non-mutating plotting syntax with a GridSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
@@ -136,41 +126,25 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
     end
 
     fig = get_top_parent(gsp)
-
     axis = Dict(pairs(axis))
-
-    if haskey(axis, :type)
-        axtype = axis[:type]
-        pop!(axis, :type)
-        ax = axtype(fig; axis...)
-    else
-        proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
-
-        if is2d(proxyscene)
-            ax = Axis(fig; axis...)
-        else
-            ax = LScene(fig; axis..., scenekw = (camera = automatic,))
-        end
-    end
+    ax = get_axis(fig, P, axis, Dict{Symbol,Any}(kw_attributes), args)
 
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
-    p = plot!(P, ax, args...; kwargs...)
-    AxisPlot(ax, p)
+    p = plot!(P, ax, args...; kw_attributes...)
+    return AxisPlot(ax, p)
 end
 
 function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
-
-    layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = false)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
 
     gp = layout[gsp.rows, gsp.cols, gsp.side]
 
-    c = contents(gp, exact = true)
+    c = contents(gp; exact=true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There is not just one axis at $(gp).")
     end
     ax = first(c)
-    plot!(P, ax, args...; kwargs...)
+    return plot!(P, ax, args...; kwargs...)
 end
 
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
