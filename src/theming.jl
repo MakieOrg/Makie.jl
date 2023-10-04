@@ -68,11 +68,14 @@ const MAKIE_DEFAULT_THEME = Attributes(
         blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
-    lightdirection = Vec3f(-2/3, -2/3, 1/3), # :viewdir,
-    ambient = RGBf(0.55, 0.55, 0.55),
-    lightcolor = RGBf(0.8, 0.8, 0.8),
     inspectable = true,
 
+
+    lightdirection = automatic,
+    ambient = RGBf(0.35, 0.35, 0.35),
+    lightcolor = RGBf(0.5, 0.5, 0.5),
+
+    # Note: this can be set too
     # lights = AbstractLight[
     #     AmbientLight(RGBf(0.55, 0.55, 0.55)),
     #     DirectionalLight(RGBf(0.8, 0.8, 0.8), Vec3f(2/3, 2/3, 1/3))

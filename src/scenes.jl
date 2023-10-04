@@ -255,10 +255,16 @@ function Scene(;
                 push!(scene.lights, AmbientLight(m_theme[:ambient][]))
             end
 
-            if m_theme[:lightdirection][] in (:viewdir, :view_direction, :camdir, :camera_direction)
+            if m_theme[:lightdirection][] === automatic
+                lightdirection = map(scene.camera.view) do view
+                    T = inv(view[Vec(1,2,3), Vec(1,2,3)])
+                    # Vec is equvalent to 36° right/east, 39° up/north from camera position
+                    return T * Vec3f(-0.6287243, -0.45679495, -0.6293204)
+                end
+            elseif m_theme[:lightdirection][] in (:viewdir, :view_direction, :camdir, :camera_direction)
                 lightdirection = map(-, scene.camera.lookat, scene.camera.eyeposition)
             elseif m_theme[:lightdirection][] isa VecTypes{3}
-                lightdirection = m_theme[:lightdirection][]
+                lightdirection = m_theme[:lightdirection]
             else
                 error("Wrong lightdirection type, use `:viewdir` or `Vec3f(...)`")
             end
