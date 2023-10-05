@@ -43,7 +43,11 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
     end
 end
 
-function extract_colormap(plot::StreamPlot)
+function extract_colormap(plot::Union{Arrows, StreamPlot})
+    return extract_colormap(plot.plots[1])
+end
+
+function extract_colormap(plot::Combined{volumeslices})
     return extract_colormap(plot.plots[1])
 end
 
