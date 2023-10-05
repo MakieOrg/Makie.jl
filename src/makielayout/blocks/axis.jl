@@ -42,8 +42,8 @@ function register_events!(ax, scene)
 
     on(scene, evs.scroll) do s
         if is_mouseinside(scene)
-            scrollevents[] = ScrollEvent(s[1], s[2])
-            return Consume(true)
+            result = setindex!(scrollevents, ScrollEvent(s[1], s[2]))
+            return Consume(result)
         end
         return Consume(false)
     end
