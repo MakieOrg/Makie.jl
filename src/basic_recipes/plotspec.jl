@@ -1,7 +1,6 @@
 # Ideally we re-use Makie.PlotSpec, but right now we need a bit of special behaviour to make this work nicely.
 # If the implementation stabilizes, we should think about refactoring PlotSpec to work for both use cases, and then just have one PlotSpec type.
 @nospecialize
-
 """
     PlotSpec{P<:AbstractPlot}(args...; kwargs...)
 
@@ -24,6 +23,8 @@ struct PlotSpec{P<:AbstractPlot}
 end
 @specialize
 
+
+
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
@@ -34,6 +35,46 @@ function to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P,S}
 end
 
 plottype(::PlotSpec{P}) where {P} = P
+
+struct BlockSpec
+    type::Symbol
+    position::Tuple{Any,Any}
+    kwargs::Dict{Symbol,Any}
+    plots::Vector{PlotSpec}
+end
+
+function BlockSpec(typ::Symbol, pos::Tuple{Any,Any}, plots::PlotSpec...; kw...)
+    return BlockSpec(typ, pos, Dict{Symbol,Any}(kw), [plots...])
+end
+
+struct FigureSpec
+    blocks::Vector{BlockSpec}
+    kw::Dict{Symbol, Any}
+end
+
+FigureSpec(blocks::BlockSpec...; kw...) = FigureSpec([blocks...], Dict{Symbol,Any}(kw))
+
+struct FigurePosition
+    f::FigureSpec
+    position::Tuple{Any,Any}
+end
+
+function Base.getindex(f::FigureSpec, arg1, arg2)
+    return FigurePosition(f, (arg1, arg2))
+end
+
+function BlockSpec(typ::Symbol, pos::FigurePosition, plots::PlotSpec...; kw...)
+    block = BlockSpec(typ, pos.position, Dict{Symbol,Any}(kw), [plots...])
+    push!(pos.f.blocks, block)
+    return block
+end
+
+function PlotSpec{T}(ax::BlockSpec, args...; kwargs...) where {T <: AbstractPlot}
+    plot = PlotSpec{T}(args...; kwargs...)
+    push!(ax.plots, plot)
+    return plot
+end
+
 
 """
 apply for return type PlotSpec
@@ -65,8 +106,17 @@ end
 
 struct SpecApi end
 function Base.getproperty(::SpecApi, field::Symbol)
-    P = Combined{getfield(Makie, field)}
-    return PlotSpec{P}
+    f = getfield(Makie, field)
+    if f isa Function
+        P = Combined{getfield(Makie, field)}
+        return PlotSpec{P}
+    elseif f <: Block
+        return (args...; kw...) -> BlockSpec(field, args...; kw...)
+    elseif f <: Figure
+        return FigureSpec
+    else
+        error("$(field) is not a Makie plot function, nor a block or figure type")
+    end
 end
 
 const PlotspecApi = SpecApi()
@@ -150,14 +200,6 @@ plottype(::AbstractVector{<:PlotSpec}) = PlotList
 # Since we directly plot into the parent scene (hacky), we need to overload these
 Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
 
-# TODO, make this work with Cycling and also with convert_arguments returning
-# Vector{PlotSpec} so that one can write recipes like this:
-quote
-    Makie.convert_arguments(obj::MyType) = [
-        obj.lineplot ? P.lines(obj.args...; obj.kwargs...) : P.scatter(obj.args...; obj.kw...)
-    ]
-end
-
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec{P}) where {P}
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
@@ -174,23 +216,23 @@ function to_combined(ps::PlotSpec{P}) where {P}
     return P((ps.args...,), copy(ps.kwargs))
 end
 
-function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
+function update_plotspecs!(
+        scene::Scene,
+        list_of_plotspecs::Observable,
+        cached_plots::Vector{Pair{PlotSpec,Combined}}=Pair{PlotSpec,Combined}[])
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    cached_plots = Pair{PlotSpec, Combined}[]
-    scene = Makie.parent_scene(p)
-    on(p.plotspecs; update=true) do plotspecs
+    on(list_of_plotspecs; update=true) do plotspecs
         used_plots = Set{Int}()
         for plotspec in plotspecs
             # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-            idx = findfirst(x-> compare_specs(x[1], plotspec), cached_plots)
+            idx = findfirst(x -> compare_specs(x[1], plotspec), cached_plots)
             if isnothing(idx)
                 @debug("Creating new plot for spec")
                 # Create new plot, store it into our `cached_plots` dictionary
                 plot = plot!(scene, to_combined(plotspec))
-                push!(p.plots, plot)
                 push!(cached_plots, plotspec => plot)
                 push!(used_plots, length(cached_plots))
             else
@@ -207,10 +249,15 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
         for idx in unused_plots
             _, plot = cached_plots[idx]
             delete!(scene, plot)
-            filter!(x -> x !== plot, p.plots)
         end
-        splice!(cached_plots, sort!(collect(unused_plots)))
+        return splice!(cached_plots, sort!(collect(unused_plots)))
     end
+end
+
+function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
+    scene = Makie.parent_scene(p)
+    update_plotspecs!(scene, p[1])
+    return
 end
 
 # Prototype for Pluto + Ijulia integration with Observable(ListOfPlots)
@@ -223,4 +270,66 @@ function Base.show(io::IO, m::Union{MIME"juliavscode/html",MIME"text/html"},
     f = plot(plotspec)
     show(io, m, f)
     return
+end
+
+
+## BlockSpec
+
+function compare_block(a::BlockSpec, b::BlockSpec)
+    a.type === b.type || return false
+    a.position === b.position || return false
+    return true
+end
+
+function to_block(fig::Figure, spec::BlockSpec)
+    BType = getfield(Makie, spec.type)
+    return BType(fig[spec.position...]; spec.kwargs...)
+end
+
+function update_block!(block::Block, plot_obs, spec::BlockSpec)
+    for (key, value) in spec.kwargs
+        setproperty!(block, key, value)
+    end
+    return plot_obs[] = spec.plots
+end
+
+function update_fig(fig, figure_obs)
+    cached_blocks = Pair{BlockSpec,Tuple{Block,Observable}}[]
+    on(figure_obs; update=true) do figure
+        used_specs = Set{Int}()
+        for spec in figure.blocks
+            # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
+            idx = findfirst(x -> compare_block(x[1], spec), cached_blocks)
+            if isnothing(idx)
+                @debug("Creating new block for spec")
+                # Create new plot, store it into our `cached_blocks` dictionary
+                block = to_block(fig, spec)
+                if block isa AbstractAxis
+                    obs = Observable(spec.plots)
+                    scene = get_scene(block)
+                    update_plotspecs!(scene, obs)
+                else
+                    obs = Observable([])
+                end
+                push!(cached_blocks, spec => (block, obs))
+                push!(used_specs, length(cached_blocks))
+                Makie.update_state_before_display!(block)
+            else
+                @debug("updating old block with spec")
+                push!(used_specs, idx)
+                block, plot_obs = cached_blocks[idx][2]
+                update_block!(block, plot_obs, spec)
+            end
+        end
+        unused_plots = setdiff(1:length(cached_blocks), used_specs)
+        # Next, delete all plots that we haven't used
+        # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+        for idx in unused_plots
+            _, (block, obs) = cached_blocks[idx]
+            delete!(block)
+            Makie.Observables.clear(obs)
+        end
+        return splice!(cached_blocks, sort!(collect(unused_plots)))
+    end
+    return fig
 end

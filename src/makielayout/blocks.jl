@@ -1,5 +1,4 @@
-abstract type Block end
-abstract type AbstractAxis <: Block end
+
 
 function is_attribute end
 function default_attribute_values end
