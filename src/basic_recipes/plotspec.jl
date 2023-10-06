@@ -23,8 +23,6 @@ struct PlotSpec{P<:AbstractPlot}
 end
 @specialize
 
-
-
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
@@ -219,38 +217,43 @@ end
 function update_plotspecs!(
         scene::Scene,
         list_of_plotspecs::Observable,
-        cached_plots::Vector{Pair{PlotSpec,Combined}}=Pair{PlotSpec,Combined}[])
+        cached_plots=IdDict{PlotSpec, Combined}())
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
     on(list_of_plotspecs; update=true) do plotspecs
-        used_plots = Set{Int}()
+        old_plots = copy(cached_plots) # needed for set diff
+        previoues_plots = copy(cached_plots) # needed to be mutated
+        empty!(cached_plots)
         for plotspec in plotspecs
             # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-            idx = findfirst(x -> compare_specs(x[1], plotspec), cached_plots)
-            if isnothing(idx)
+            reused_plot = nothing
+            for (spec, plot) in previoues_plots
+                if compare_specs(spec, plotspec)
+                    reused_plot = plot
+                    delete!(previoues_plots, spec)
+                    break
+                end
+            end
+            if isnothing(reused_plot)
                 @debug("Creating new plot for spec")
                 # Create new plot, store it into our `cached_plots` dictionary
                 plot = plot!(scene, to_combined(plotspec))
-                push!(cached_plots, plotspec => plot)
-                push!(used_plots, length(cached_plots))
+                cached_plots[plotspec] = plot
             else
                 @debug("updating old plot with spec")
-                push!(used_plots, idx)
-                plot = cached_plots[idx][2]
-                update_plot!(plot, plotspec)
-                cached_plots[idx] = plotspec => plot
+                update_plot!(reused_plot, plotspec)
+                cached_plots[plotspec] = reused_plot
             end
         end
-        unused_plots = setdiff(1:length(cached_plots), used_plots)
+        unused_plots = setdiff(values(old_plots), values(cached_plots))
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        for idx in unused_plots
-            _, plot = cached_plots[idx]
+        for plot in unused_plots
             delete!(scene, plot)
         end
-        return splice!(cached_plots, sort!(collect(unused_plots)))
+        return
     end
 end
 
