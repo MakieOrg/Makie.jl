@@ -72,10 +72,10 @@ end
 function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNode{2}, DNode{3}}}}})
     args = @extract plot (color, groups)
 
-    points_vec = Observable{Any}()
-    colors_vec = Observable{Any}()
-    
-    lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
+    points_vec = Observable{Vector{GeometryBasics.Point{2, Float32}}}([[0,0]])
+    colors_vec = Observable{Any}([NaN])
+
+    length(plot[1][])>1 && lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
         # this pattern is basically first updating the values of the observables,
         points_vec.val, colors_vec.val = recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes; color, branch_shape, groups=groups.val)
         # then propagating the signal, so that there is no error with differing lengths.
