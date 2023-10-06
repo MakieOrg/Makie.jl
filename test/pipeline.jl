@@ -108,3 +108,12 @@ end
 
     end
 end
+
+@testset "Cycled" begin
+    # Test for https://github.com/MakieOrg/Makie.jl/issues/3266
+    f, ax, pl = lines(1:4; color=Cycled(2))
+    cpalette = ax.palette[:color][]
+    @test pl.calculated_colors[] == cpalette[2]
+    pl2 = lines!(ax, 1:4; color=Cycled(1))
+    @test pl2.calculated_colors[] == cpalette[1]
+end

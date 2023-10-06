@@ -10,6 +10,12 @@
 - Refactored the `SurfaceLike` family of traits into `VertexBasedGrid`, `CellBasedGrid` and `ImageLike`. [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106)
 - Added `shading = :verbose` in GLMakie to allow for multiple light sources. Also added more light types, fixed light directions for the previous lighting model (now `shading = :fast`) and adjusted `backlight` to affect normals. [#3246](https://github.com/MakieOrg/Makie.jl/pull/3246)
 
+## v0.19.11
+
+- Setup automatic colorbars for volumeslices [#3253](https://github.com/MakieOrg/Makie.jl/pull/3253).
+- Colorbar for arrows [#3275](https://github.com/MakieOrg/Makie.jl/pull/3275).
+- Small bugfixes [#3275](https://github.com/MakieOrg/Makie.jl/pull/3275).
+
 ## v0.19.10
 
 - Fixed bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).

@@ -236,31 +236,13 @@ value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
-    res = map(x->Vec2f(widths(x)), pixelarea(scene))
-    projview = scene.camera.projectionview
     transfunc = Makie.transform_func_obs(plot)
     pos = plot.position
     space = plot.space
-    markerspace = plot.markerspace
     offset = plot.offset
 
-    # TODO: This is a hack before we get better updating of plot objects and attributes going.
-    # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
-    # The if statement will be compiled away depending on the parameter of Text.
-    # This means that updates of a text vector and a separate position vector will still not work if only the text
-    # vector is triggered, but basically all internal objects use the vector of tuples version, and that triggers
-    # both glyphcollection and position, so it still works
-    if glyphcollection[] isa Makie.GlyphCollection
-        # here we use the glyph collection observable directly
-        gcollection = glyphcollection
-    else
-        # and here we wrap it into another observable
-        # so it doesn't trigger dimension mismatches
-        # the actual, new value gets then taken in the below lift with to_value
-        gcollection = Observable(glyphcollection)
-    end
     atlas = wgl_texture_atlas()
-    glyph_data = map(pos, gcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
+    glyph_data = map(pos, glyphcollection, offset, transfunc, space; ignore_equal_values=true) do pos, gc, offset, transfunc, space
         Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
     end
 
@@ -287,10 +269,8 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         end
     end
 
-    cam = scene.camera
     plot_attributes = copy(plot.attributes)
     plot_attributes.attributes[:calculated_colors] = uniform_color
-
     uniforms = Dict(
         :model => plot.model,
         :shape_type => Observable(Cint(3)),
