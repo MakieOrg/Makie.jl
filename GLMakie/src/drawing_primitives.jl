@@ -616,6 +616,8 @@ end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     shading = gl_attributes[:shading]::Makie.MakieCore.ShadingAlgorithm
+    matcap_active = !isnothing(to_value(get(gl_attributes, :matcap, nothing)))
+
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
@@ -657,7 +659,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
     end
-    if hasproperty(to_value(mesh), :normals) && (shading !== NoShading)
+    if hasproperty(to_value(mesh), :normals) && (shading !== NoShading || matcap_active)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
     end
     return draw_mesh(screen, gl_attributes)
