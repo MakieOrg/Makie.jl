@@ -44,11 +44,12 @@ Optionally an attenuation parameter can be used to reduce the brightness of the
 light source with distance. The reduction is given by
 `1 / (1 + attenuation[1] * distance + attenuation[2] * distance^2)`.
 Alternatively you can pass a light `range` to generate matching default
-attenuation parameters.
+attenuation parameters. Note that you may need to set the light intensity, i.e.
+the light color to values greater than 1 to get satisfying results.
 
 Availability:
-- Without attenuation: All backends with `shading = FastShading` or `MultiLightShading`
-- With attenuation: GLMakie with `shading = MultiLightShading`
+- GLMakie with `shading = MultiLightShading`
+- RPRMakie
 """
 struct PointLight <: AbstractLight
     color::Observable{RGBf}
@@ -86,8 +87,7 @@ A light type which simulates a distant light source with parallel light rays
 going in the given `direction`.
 
 Availability:
-- GLMakie with `shading = MultiLightShading`
-- RPRMakie
+- All backends with `shading = FastShading` or `MultiLightShading`
 """
 struct DirectionalLight <: AbstractLight
     color::Observable{RGBf}
@@ -142,7 +142,7 @@ function get_one_light(lights, Typ)
 end
 
 function default_shading!(plot, lights::Vector{<: AbstractLight})
-    # if the plot does not have :shading we assume the plto doesn't support it
+    # if the plot does not have :shading we assume the plot doesn't support it
     haskey(plot.attributes, :shading) || return
 
     # Bad type

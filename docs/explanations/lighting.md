@@ -15,8 +15,8 @@ In 3D rendering a material describes how an object reacts to light.
 This can include the color of an object, how bright and sharp specular reflections are, how metallic it looks, how rough it is and more.
 In Makie however the model is still fairly simple and limited.
 Currently the following material attributes are available:
-- `diffuse::Vec3f = Vec3f(0.4)`: controls how strong the diffuse reflections of an object are in the red, green and blue color channel. A diffuse reflection is one where incoming light is scattered in every direction. The strength of this reflection is based on the amount of light hitting the surface, which is proportional to `dot(-light_direction, normal)`. It generally makes up the main color of an object in light.
-- `specular::Vec3f = Vec3f(0,2)`: controls the strength of specular reflection in the red, green and blue color channels. A specular reflection is a direct reflection of light, i.e. one where the incoming angle `dot(-light_direction, normal)` matches the outgoing angle `dot(-camera_direction, normal)`. It responsible for bright spots on objects. Note that this does not take the color of the object into account, as specular reflections typically match the light color.
+- `diffuse::Vec3f = Vec3f(1.0)`: controls how strong the diffuse reflections of an object are in the red, green and blue color channel. A diffuse reflection is one where incoming light is scattered in every direction. The strength of this reflection is based on the amount of light hitting the surface, which is proportional to `dot(light_direction, -normal)`. It generally makes up the main color of an object in light.
+- `specular::Vec3f = Vec3f(0.4)`: controls the strength of specular reflection in the red, green and blue color channels. A specular reflection is a direct reflection of light, i.e. one where the incoming angle `dot(light_direction, -normal)` matches the outgoing angle `dot(camera_direction, -normal)`. It responsible for bright spots on objects. Note that this does not take the color of the object into account, as specular reflections typically match the light color.
 - `shininess::Float32 = 32f0`: controls how sharp specular reflections are. Low shininess will allow a larger difference between incoming outgoing angle to take effect, creating a larger and smoother bright spot. High shininess will respectively reduce the size of the bright spot and increase its sharpness. This value must be positive.
 
 !!! note
@@ -44,7 +44,7 @@ The latter controls the lighting model that is being used per plot.
 It's default value depends on the number and types of lights used.
 Currently the following options exist:
 - `shading = NoShading` disables light calculations, resulting in the plain color of an object being shown.
-- `shading = FastShading` enables a simplified lighting model which only allows for one `AmbientLight` and one `PointLight`.
+- `shading = FastShading` enables a simplified lighting model which only allows for one `AmbientLight` and one `DirectionalLight`.
 - `shading = MultiLightShading` is a GLMakie exclusive option which enables up to 64 light sources as well as `DirectionalLight` and `SpotLight`.
 
 Beyond that there is also the `backlight = 0f0` attribute, which mixes a second weighted light calculation using inverted normals with the primary one.
@@ -104,10 +104,10 @@ If `shading` is specified the option requires the respective value.
 | Feature | GLMakie | WGLMakie | CairoMakie | RPRMakie |
 | ------- | ------- | -------- | ---------- | -------- |
 | material attributes | Yes | Yes | Limited | via RPR Materials |
-| Multiple Lights | `shading = MultiLightShading` | No | No | Yes |
-| AmbientLight, PointLight | Yes | Yes | Limited | Yes |
-| SpotLight, DirectionalLight | `shading = MultiLightShading` | No | No | Yes |
-| PointLight with attentuation | `shading = MultiLightShading` | No | No | No |
+| Multiple Lights | `MultiLightShading` | No | No | Yes |
+| AmbientLight, DirectionalLight | Yes | Yes | Limited | Yes |
+| SpotLight | `MultiLightShading` | No | No | Yes |
+| PointLight | `MultiLightShading` | No | No | Limited (no attenuation) |
 | EnvironmentLight | No | No | No | Yes |
 | backlight attribute | Yes | Yes | Limited | No |
 | SSAO | Yes | No | No | inbuilt |
