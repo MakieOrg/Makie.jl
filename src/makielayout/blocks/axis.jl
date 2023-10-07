@@ -42,8 +42,8 @@ function register_events!(ax, scene)
 
     on(scene, evs.scroll) do s
         if is_mouseinside(scene)
-            scrollevents[] = ScrollEvent(s[1], s[2])
-            return Consume(true)
+            result = setindex!(scrollevents, ScrollEvent(s[1], s[2]))
+            return Consume(result)
         end
         return Consume(false)
     end
@@ -781,7 +781,6 @@ function Makie.plot!(
 
     _disallow_keyword(:axis, allattrs)
     _disallow_keyword(:figure, allattrs)
-
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 

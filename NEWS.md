@@ -3,6 +3,14 @@
 ## master
 - Fix grouping of a zero-height bar in `barplot`. Now a zero-height bar shares the same properties of the previous bar, and if the bar is the first one, its height is treated as positive if and only if there exists a bar of positive height or all bars are zero-height. [#3058](https://github.com/MakieOrg/Makie.jl/pull/3058)
 
+- Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272)
+
+## v0.19.11
+
+- Setup automatic colorbars for volumeslices [#3253](https://github.com/MakieOrg/Makie.jl/pull/3253).
+- Colorbar for arrows [#3275](https://github.com/MakieOrg/Makie.jl/pull/3275).
+- Small bugfixes [#3275](https://github.com/MakieOrg/Makie.jl/pull/3275).
+
 ## v0.19.10
 
 - Fix bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).
