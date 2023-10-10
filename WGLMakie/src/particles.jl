@@ -38,7 +38,8 @@ end
 const IGNORE_KEYS = Set([
     :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
-    :lightposition, :cycle, :label, :inspector_clear, :inspector_hover,
+    :light_direction, :light_color,
+    :cycle, :label, :inspector_clear, :inspector_hover,
     :inspector_label, :axis_cycler
 ])
 
@@ -83,7 +84,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     get!(uniform_dict, :diffuse, Vec3f(0.9))
     get!(uniform_dict, :specular, Vec3f(0.3))
     get!(uniform_dict, :shininess, 8f0)
-
+    get!(uniform_dict, :light_direction, Vec3f(1))
+    get!(uniform_dict, :light_color, Vec3f(1))
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false

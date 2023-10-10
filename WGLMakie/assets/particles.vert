@@ -37,7 +37,7 @@ void main(){
     frag_normal = N;
     frag_color = to_vec4(get_color());
     // direction to camera
-    o_camdir = position_world.xyz / position.w - eyeposition;
+    o_camdir = position_world.xyz / position_world.w - eyeposition;
     // screen space coordinates of the position
     gl_Position = projection * view * position_world;
     gl_Position.z += gl_Position.w * get_depth_shift();
