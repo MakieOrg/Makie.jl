@@ -362,8 +362,6 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
 
-    @info uniforms[:light_color]
-
     return mesh
 end
 
