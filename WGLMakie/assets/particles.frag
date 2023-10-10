@@ -16,7 +16,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         spec_coeff = 0.0;
 
     // final lighting model
-    return vec3(
+    return get_light_color() * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -35,7 +35,7 @@ vec4 pack_int(uint id, uint index) {
 void main() {
     vec3 L, N, light, color;
     if (get_shading()) {
-        L = get_light_direction(); // TODO normalize outside
+        L = get_light_direction();
         N = normalize(frag_normal);
         light = blinnphong(N, normalize(o_camdir), L, frag_color.rgb);
         color = get_ambient() * frag_color.rgb + light;

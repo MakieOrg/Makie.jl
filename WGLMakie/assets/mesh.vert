@@ -6,6 +6,7 @@ out vec4 frag_color;
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform vec3 eyeposition;
 
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
@@ -68,7 +69,7 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
     gl_Position = projection * view * position_world; // TODO consider using projectionview directly
     gl_Position.z += gl_Position.w * get_depth_shift();
     // direction to camera
-    o_camdir = position_world.xyz / position_world.w - get_eyeposition(); // TODO upload
+    o_camdir = position_world.xyz / position_world.w - eyeposition;
 }
 
 flat out uint frag_instance_id;

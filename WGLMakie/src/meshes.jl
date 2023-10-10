@@ -61,8 +61,9 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
 
     get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
-    get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
+    get!(uniforms, :light_direction, Vec3f(1))
+    get!(uniforms, :light_color, Vec3f(1))
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 

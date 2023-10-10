@@ -2,6 +2,7 @@ precision mediump float;
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform vec3 eyeposition;
 
 out vec3 frag_normal;
 out vec3 frag_position;
@@ -36,7 +37,7 @@ void main(){
     frag_normal = N;
     frag_color = to_vec4(get_color());
     // direction to camera
-    o_camdir = position_world.xyz / position.w - get_eyeposition(); // TODO get_eyeposition
+    o_camdir = position_world.xyz / position.w - eyeposition;
     // screen space coordinates of the position
     gl_Position = projection * view * position_world;
     gl_Position.z += gl_Position.w * get_depth_shift();

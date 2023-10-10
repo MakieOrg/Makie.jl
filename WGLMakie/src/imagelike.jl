@@ -75,7 +75,8 @@ function create_shader(mscene::Scene, plot::Volume)
         :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
         # these get filled in later by serialization, but we need them
         # as dummy values here, so that the correct uniforms are emitted
-        :lightposition => Vec3f(1),
+        :light_direction => Vec3f(1),
+        :light_color => Vec3f(1),
         :eyeposition => Vec3f(1),
         :ambient => Vec3f(1),
         :picking => false,

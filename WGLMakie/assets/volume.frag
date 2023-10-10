@@ -60,10 +60,9 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     vec3 H = normalize(L + V);
     float spec_coeff = pow(max(dot(H, -N), 0.0) + max(dot(H, N), 0.0), shininess);
     // final lighting model
-    return vec3(
-        ambient * color +
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
+    return ambient * color + get_light_color() * vec3(
+        get_diffuse() * diff_coeff * color +
+        get_specular() * spec_coeff
     );
 }
 
@@ -129,7 +128,7 @@ vec4 contours(vec3 front, vec3 dir)
         float opacity = density.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = get_light_direction(); // TODO normalize outside
+            vec3 L = get_light_direction();
             vec3 opaque = blinnphong(N, camdir, L, density.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;

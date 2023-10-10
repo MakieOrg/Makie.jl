@@ -333,9 +333,14 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
 
     dirlight = Makie.get_directional_light(scene)
     if !isnothing(dirlight)
-        uniforms[:light_direction] = serialize_three(dirlight.direction[])
+        uniforms[:light_direction] = serialize_three(normalize(dirlight.direction[]))
         on(dirlight.direction) do value
-            updater[] = [:light_direction, serialize_three(value)]
+            updater[] = [:light_direction, serialize_three(normalize(value))]
+            return
+        end
+        uniforms[:light_color] = serialize_three(dirlight.color[])
+        on(dirlight.color) do value
+            updater[] = [:light_color, serialize_three(value)]
             return
         end
     end
@@ -356,6 +361,8 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
 
     key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
+
+    @info uniforms[:light_color]
 
     return mesh
 end
