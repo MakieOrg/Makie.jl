@@ -40,7 +40,7 @@ function get_axis(fig, P, axis_kw::Dict, plot_attr, plot_args)
         delete!(plot_attr, :show_axis)
         delete!(plot_attr, :limits)
         delete!(plot_attr, :color) # Color may contain Cycled(1), which needs the axis to get resolved to a color
-        plot!(proxyscene, P, Attributes(plot_attr), plot_args...)
+        plot!(proxyscene, P, Attributes(;plot_attr...), plot_args...)
         if is2d(proxyscene)
             ax = Axis(fig; axis_kw...)
         else
