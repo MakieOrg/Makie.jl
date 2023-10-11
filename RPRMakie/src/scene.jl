@@ -43,6 +43,8 @@ function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecializ
     end
 end
 
+@inline to_rpr_light(ctx, light, scene) = to_rpr_light(ctx, light)
+
 # TODO attenuation
 function to_rpr_light(context::RPR.Context, light::Makie.PointLight)
     pointlight = RPR.PointLight(context)
@@ -62,7 +64,7 @@ function RPR.RPR.rprContextCreateSpotLight(context)
     return out_light[]
 end
 
-function to_rpr_light(context::RPR.Context, light::Makie.DirectionalLight)
+function to_rpr_light(context::RPR.Context, light::Makie.DirectionalLight, scene)
     directionallight = RPR.DirectionalLight(context)
     map(light.direction) do dir
         if light.camera_relative
@@ -131,7 +133,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
         RPR.rprSceneSetBackgroundImage(scene, img)
     end
     for light in mscene.lights
-        rpr_light = to_rpr_light(context, light)
+        rpr_light = to_rpr_light(context, light, mscene)
         push!(scene, rpr_light)
     end
 
