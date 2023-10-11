@@ -3,9 +3,19 @@ in vec3 frag_normal;
 in vec3 frag_position;
 in vec3 o_camdir;
 
+// Smoothes out edge around 0 light intensity, see GLMakie
+float smooth_zero_max(float x) {
+    const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
+    const float shift = 1.0 + xswap - yswap;
+    float pow8 = x + shift;
+    pow8 = pow8 * pow8; pow8 = pow8 * pow8; pow8 = pow8 * pow8;
+    return x < yswap ? c * pow8 : x;
+}
+
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float backlight = get_backlight();
-    float diff_coeff = max(dot(L, -N), 0.0) + backlight * max(dot(L, N), 0.0);
+    float diff_coeff = smooth_zero_max(dot(L, -N)) +
+        backlight * smooth_zero_max(dot(L, N));
 
     // specular coefficient
     vec3 H = normalize(L + V);
