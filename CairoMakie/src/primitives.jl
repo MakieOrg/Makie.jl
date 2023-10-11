@@ -919,10 +919,18 @@ function draw_mesh3D(
 
     # Light math happens in view/camera space
     dirlight = Makie.get_directional_light(scene)
-    lightdirection = if !isnothing(dirlight)
-        normalize(dirlight.direction[])
+    if !isnothing(dirlight)
+        lightdirection = if dirlight.camera_relative
+            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+            normalize(T * dirlight.direction[])
+        else
+            normalize(dirlight.direction[])
+        end
+        c = dirlight.color[]
+        light_color = Vec3f(red(c), green(c), blue(c))
     else
-        Vec3f(-2/3, -2/3, 1/3)
+        lightdirection = Vec3f(0,0,-1)
+        light_color = Vec3f(0)
     end
 
     ambientlight = Makie.get_ambient_light(scene)
@@ -955,23 +963,23 @@ function draw_mesh3D(
     # Face culling
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
 
-    draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdirection, shininess, diffuse, ambient, specular)
+    draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdirection, light_color, shininess, diffuse, ambient, specular)
     return
 end
 
-function _calculate_shaded_vertexcolors(N, v, c, lightdir, ambient, diffuse, specular, shininess)
+function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
     L = lightdir
     diff_coeff = max(dot(L, -N), 0f0)
     H = normalize(L + v)
     spec_coeff = max(dot(H, -N), 0f0)^shininess
     c = RGBAf(c)
     # if this is one expression it introduces allocations??
-    new_c_part1 = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
-    new_c = new_c_part1 .+ specular * spec_coeff
+    new_c_part1 = (ambient .+ light_color .* diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
+    new_c = new_c_part1 .+ light_color .* specular * spec_coeff
     RGBAf(new_c..., c.alpha)
 end
 
-function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, shininess, diffuse, ambient, specular)
+function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
     for k in reverse(zorder)
 
         f = meshfaces[k]
@@ -994,7 +1002,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
                 N = ns[f[i]]
                 v = vs[f[i]]
                 c = facecolors[i]
-                _calculate_shaded_vertexcolors(N, v, c, lightdir, ambient, diffuse, specular, shininess)
+                _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
             end
         else
             c1, c2, c3 = facecolors

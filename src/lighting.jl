@@ -92,8 +92,17 @@ Availability:
 struct DirectionalLight <: AbstractLight
     color::Observable{RGBf}
     direction::Observable{Vec3f}
-end
 
+    # Usually a light source is placed in world space, i.e. unrelated to the
+    # camera. As a default however, we want to make sure that an object is
+    # always reasonably lit, which requires the light source to move with the
+    # camera. To keep this in sync in WGLMakie, the calculation needs to happen
+    # in javascript. This flag notives WGLMakie and other backends that this
+    # calculation needs to happen.
+    camera_relative::Bool
+
+    DirectionalLight(col, dir, rel = false) = new(col, dir, rel)
+end
 light_type(::DirectionalLight) = LightType.DirectionalLight
 light_color(l::DirectionalLight) = l.color[]
 

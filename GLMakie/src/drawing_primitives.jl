@@ -3,7 +3,7 @@ using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
 function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.AbstractLight})
-    @inline function push_back!(trg, idx, src)
+    @inline function push_inplace!(trg, idx, src)
         for i in eachindex(src)
             trg[idx + i] = src[i]
         end
@@ -72,14 +72,20 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
         for i in 1:n_lights
             light = lights[i]
             if light isa PointLight
-                idx = push_back!(parameters, idx, light.position[])
-                idx = push_back!(parameters, idx, light.attenuation[])
+                idx = push_inplace!(parameters, idx, light.position[])
+                idx = push_inplace!(parameters, idx, light.attenuation[])
             elseif light isa DirectionalLight
-                idx = push_back!(parameters, idx, normalize(light.direction[]))
+                if light.camera_relative
+                    T = inv(attr[:view][][Vec(1,2,3), Vec(1,2,3)])
+                    dir = normalize(T * light.direction[])
+                else
+                    dir = normalize(light.direction[])
+                end
+                idx = push_inplace!(parameters, idx, dir)
             elseif light isa SpotLight
-                idx = push_back!(parameters, idx, light.position[])
-                idx = push_back!(parameters, idx, normalize(light.direction[]))
-                idx = push_back!(parameters, idx, cos.(light.angles[]))
+                idx = push_inplace!(parameters, idx, light.position[])
+                idx = push_inplace!(parameters, idx, normalize(light.direction[]))
+                idx = push_inplace!(parameters, idx, cos.(light.angles[]))
             end
         end
         notify(attr[:light_parameters])
@@ -245,7 +251,14 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         if shading == FastShading
             dirlight = Makie.get_directional_light(scene)
             if !isnothing(dirlight)
-                gl_attributes[:light_direction] = map(normalize, dirlight.direction)
+                gl_attributes[:light_direction] = if dirlight.camera_relative
+                    map(gl_attributes[:view], dirlight.direction) do view, dir
+                        return  normalize(inv(view[Vec(1,2,3), Vec(1,2,3)]) * dir)
+                    end
+                else
+                    map(normalize, dirlight.direction)
+                end
+
                 gl_attributes[:light_color] = dirlight.color
             end
 

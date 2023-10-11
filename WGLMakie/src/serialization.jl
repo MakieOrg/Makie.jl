@@ -292,10 +292,15 @@ function serialize_scene(scene::Scene)
 
     children = map(child-> serialize_scene(child), scene.children)
 
+    dirlight = Makie.get_directional_light(scene)
+    light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
+
     serialized = Dict(:pixelarea => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
                       :clearscene => scene.clear,
                       :camera => serialize_camera(scene),
+                      :light_direction => light_dir,
+                      :camera_relative_light => dirlight.camera_relative,
                       :plots => serialize_plots(scene, scene.plots),
                       :cam3d_state => cam3d_state,
                       :visible => scene.visible,
@@ -333,11 +338,6 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
 
     dirlight = Makie.get_directional_light(scene)
     if !isnothing(dirlight)
-        uniforms[:light_direction] = serialize_three(normalize(dirlight.direction[]))
-        on(dirlight.direction) do value
-            updater[] = [:light_direction, serialize_three(normalize(value))]
-            return
-        end
         uniforms[:light_color] = serialize_three(dirlight.color[])
         on(dirlight.color) do value
             updater[] = [:light_color, serialize_three(value)]

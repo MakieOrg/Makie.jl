@@ -243,33 +243,23 @@ function Scene(;
     end
 
     if lights isa Automatic
-        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `lightdirection` instead.")
+        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
 
         if haskey(m_theme, :lights)
             copyto!(scene.lights, m_theme.lights[])
         else
-            @assert haskey(m_theme, :lightdirection) "Theme must contain `lightdirection`!"
-            @assert haskey(m_theme, :lightcolor) "Theme must contain `lightcolor`!"
+            haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
+            haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
+            haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
 
             if haskey(m_theme, :ambient)
                 push!(scene.lights, AmbientLight(m_theme[:ambient][]))
             end
 
-            if m_theme[:lightdirection][] === automatic
-                lightdirection = map(scene.camera.view) do view
-                    T = inv(view[Vec(1,2,3), Vec(1,2,3)])
-                    # Vec is equvalent to 36° right/east, 39° up/north from camera position
-                    return T * Vec3f(-0.6287243, -0.45679495, -0.6293204)
-                end
-            elseif m_theme[:lightdirection][] in (:viewdir, :view_direction, :camdir, :camera_direction)
-                lightdirection = map(-, scene.camera.lookat, scene.camera.eyeposition)
-            elseif m_theme[:lightdirection][] isa VecTypes{3}
-                lightdirection = m_theme[:lightdirection]
-            else
-                error("Wrong lightdirection type, use `:viewdir` or `Vec3f(...)`")
-            end
-
-            push!(scene.lights, DirectionalLight(m_theme[:lightcolor][], lightdirection))
+            push!(scene.lights, DirectionalLight(
+                m_theme[:light_color][], m_theme[:light_direction],
+                to_value(get(m_theme, :camera_relative_light, false))
+            ))
         end
     end
 

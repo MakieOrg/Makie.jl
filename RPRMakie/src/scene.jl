@@ -65,6 +65,12 @@ end
 function to_rpr_light(context::RPR.Context, light::Makie.DirectionalLight)
     directionallight = RPR.DirectionalLight(context)
     map(light.direction) do dir
+        if light.camera_relative
+            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+            dir = normalize(T * dir)
+        else
+            dir = normalize(dir)
+        end
         quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
         transform!(directionallight, Makie.rotationmatrix4(quart))
     end
