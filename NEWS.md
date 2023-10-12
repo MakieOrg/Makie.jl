@@ -1,7 +1,6 @@
 # News
 
 ## master
-- Fix grouping of a zero-height bar in `barplot`. Now a zero-height bar shares the same properties of the previous bar, and if the bar is the first one, its height is treated as positive if and only if there exists a bar of positive height or all bars are zero-height. [#3058](https://github.com/MakieOrg/Makie.jl/pull/3058)
 
 - Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272)
 

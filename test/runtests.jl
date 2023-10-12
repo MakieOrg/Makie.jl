@@ -29,10 +29,11 @@ using Makie: volume
     include("makielayout.jl")
     include("figures.jl")
     include("transformations.jl")
+    include("stack.jl")
     include("events.jl")
     include("text.jl")
     include("boundingboxes.jl")
     include("ray_casting.jl")
     include("PolarAxis.jl")
-    include("barplot.jl")
+    include("barplot_labels.jl")
 end

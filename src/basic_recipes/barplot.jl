@@ -141,24 +141,21 @@ function stack_from_to(i_stack, y)
 end
 
 function stack_grouped_from_to(i_stack, y, grp)
+
     from = Array{Float64}(undef, length(y))
     to   = Array{Float64}(undef, length(y))
 
-    groupby = StructArray((; grp...))
-    grps = StructArrays.finduniquesorted(groupby)
-    last_pos = map(grps) do (g, inds)
-        g => any(y[inds] .> 0) || all(y[inds] .== 0)
-    end |> Dict
-    is_pos = map(y, groupby) do v, g
-        last_pos[g] = iszero(v) ? last_pos[g] : v > 0
-    end
+    groupby = StructArray((; grp..., is_pos = y .> 0))
 
-    groupby = StructArray((; grp..., is_pos))
     grps = StructArrays.finduniquesorted(groupby)
+
     for (grp, inds) in grps
+
         fromto = stack_from_to(i_stack[inds], y[inds])
+
         from[inds] .= fromto.from
         to[inds] .= fromto.to
+
     end
 
     (from = from, to = to)
