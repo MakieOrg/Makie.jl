@@ -2,8 +2,6 @@
 
 ## master
 
-- Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272)
-
 ## v0.19.11
 
 - Setup automatic colorbars for volumeslices [#3253](https://github.com/MakieOrg/Makie.jl/pull/3253).
