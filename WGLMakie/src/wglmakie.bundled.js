@@ -20997,6 +20997,38 @@ function wglerror(gl, error) {
             return "Unknown error";
     }
 }
+function handleSource(string, errorLine) {
+    const lines = string.split("\n");
+    const lines2 = [];
+    const from = Math.max(errorLine - 6, 0);
+    const to = Math.min(errorLine + 6, lines.length);
+    for(let i = from; i < to; i++){
+        const line = i + 1;
+        lines2.push(`${line === errorLine ? ">" : " "} ${line}: ${lines[i]}`);
+    }
+    return lines2.join("\n");
+}
+function getShaderErrors(gl, shader, type) {
+    const status = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    const errors = gl.getShaderInfoLog(shader).trim();
+    if (status && errors === "") return "";
+    const errorMatches = /ERROR: 0:(\d+)/.exec(errors);
+    if (errorMatches) {
+        const errorLine = parseInt(errorMatches[1]);
+        return type.toUpperCase() + "\n\n" + errors + "\n\n" + handleSource(gl.getShaderSource(shader), errorLine);
+    } else {
+        return errors;
+    }
+}
+function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
+    const programLog = gl.getProgramInfoLog(program).trim();
+    const vertexErrors = getShaderErrors(gl, glVertexShader, "vertex");
+    const fragmentErrors = getShaderErrors(gl, glFragmentShader, "fragment");
+    const vertexLog = gl.getShaderInfoLog(glVertexShader).trim();
+    const fragmentLog = gl.getShaderInfoLog(glFragmentShader).trim();
+    const err = "THREE.WebGLProgram: Shader Error " + wglerror(gl, gl.getError()) + " - " + "VALIDATE_STATUS " + gl.getProgramParameter(program, gl.VALIDATE_STATUS) + "\n\n" + "Program Info Log:\n" + programLog + "\n" + vertexErrors + "\n" + fragmentErrors + "\n" + "Fragment log:\n" + fragmentLog + "Vertex log:\n" + vertexLog;
+    JSServe.Connection.send_warning(err);
+}
 function threejs_module(canvas, comm, width, height, resize_to_body) {
     let context = canvas.getContext("webgl2", {
         preserveDrawingBuffer: true
@@ -21016,13 +21048,7 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
         context: context,
         powerPreference: "high-performance"
     });
-    renderer.debug.onShaderError = (gl, program, vs, fs)=>{
-        const infolog = gl.getProgramInfoLog(program);
-        const vss = "Vertex Shader:\n" + gl.getShaderSource(vs);
-        const fss = "Fragment Shader:\n" + gl.getShaderSource(fs);
-        const err = infolog + "\n" + vss + "\n" + fss;
-        JSServe.Connection.send_error("Error in shader: " + err, null);
-    };
+    renderer.debug.onShaderError = on_shader_error;
     renderer.setClearColor("#ffffff");
     renderer.setPixelRatio(pixelRatio1);
     renderer.setSize(width / pixelRatio1, height / pixelRatio1);

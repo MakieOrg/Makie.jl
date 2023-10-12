@@ -260,8 +260,7 @@ export class MakieCamera {
         // update all existing preprojection matrices
         Object.keys(this.preprojections).forEach((key) => {
             const [space, markerspace] = key.split(","); // jeez js, really just converting array keys to "elem,elem"?
-            this.preprojections[key].value =
-                new THREE.Uniform(this.calculate_preprojection_matrix(space, markerspace));
+            this.preprojections[key].value = this.calculate_preprojection_matrix(space, markerspace);
         });
     }
 

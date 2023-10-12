@@ -345,7 +345,7 @@ function recreate_instanced_geometry(mesh) {
     const buffer_geometry = new THREE.InstancedBufferGeometry();
     const vertexarrays = {};
     const instance_attributes = {};
-    const faces = [...mesh.geometry.index];
+    const faces = [...mesh.geometry.index.array];
     Object.keys(mesh.geometry.attributes).forEach((name) => {
         const buffer = mesh.geometry.attributes[name];
         // really dont know why copying an array is considered rocket science in JS
