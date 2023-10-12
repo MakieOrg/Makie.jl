@@ -344,11 +344,21 @@ function clip_to_space(cam::Camera, space::Symbol)
     end
 end
 
-get_space(scene::Scene) = get_space(cameracontrols(scene))
-# TODO: Should we default to something invalid?
+function get_space(scene::Scene)
+    space = get_space(cameracontrols(scene))::Symbol
+    space === :data ? (:data,) : (:data, space)
+end
 get_space(::AbstractCamera) = :data
 # TODO: Should this be less specialized? ScenePlot? AbstractPlot?
-get_space(plot::Combined) = to_value(get(plot, :space, :data))
+get_space(plot::Combined) = to_value(get(plot, :space, :data))::Symbol
+
+is_space_compatible(a, b) = is_space_compatible(get_space(a), get_space(b))
+is_space_compatible(a::Symbol, b::Symbol) = a === b
+is_space_compatible(a::Symbol, b::Union{Tuple, Vector}) = a in b
+function is_space_compatible(a::Union{Tuple, Vector}, b::Union{Tuple, Vector})
+    any(x -> is_space_compatible(x, b), a)
+end
+is_space_compatible(a::Union{Tuple, Vector}, b::Symbol) = is_space_compatible(b, a)
 
 function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
     input_space === output_space && return to_ndim(Point3f, pos, 0)

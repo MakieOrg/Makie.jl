@@ -228,7 +228,7 @@ function connect_plot!(parent::SceneLike, plot::Combined{F}) where {F}
             transform!(t, t_user)
             plot.transformation = t
         end
-        if get_space(parent) === get_space(plot)
+        if is_space_compatible(plot, parent)
             connect!(transformation(parent), transformation(plot))
         end
     end
