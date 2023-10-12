@@ -46,6 +46,7 @@ function three_display(session::Session, scene::Scene; screen_config...)
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
     canvas = DOM.m("canvas"; tabindex="0", style="display: block")
+
     wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
