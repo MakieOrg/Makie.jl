@@ -198,7 +198,7 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
     end |> Makie.scalematrix
 
     t2 = Makie.translationmatrix(-0.5 .* ws .* scales)
-    scale_matrix = t2 * s * t
+    model = t2 * s * t
 
     ang_max = 90
     ang_min = 0.5
@@ -219,20 +219,16 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 
     eyepos = Vec3{Float64}(x, y, z)
 
-    lookat_matrix = Makie.lookat(
-        eyepos,
-        Vec3{Float64}(0, 0, 0),
-        Vec3{Float64}(0, 0, 1))
+    lookat_matrix = lookat(eyepos, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
 
     w = width(px_area)
     h = height(px_area)
 
-    # TODO: skip matmult
     projection_matrix = projectionmatrix(
-        lookat_matrix * scale_matrix, limits, eyepos, radius, azim, elev, angle,
+        lookat_matrix * model, limits, eyepos, radius, azim, elev, angle,
         w, h, scales, viewmode)
 
-    return scale_matrix, lookat_matrix, projection_matrix, eyepos
+    return model, lookat_matrix, projection_matrix, eyepos
 end
 
 function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
