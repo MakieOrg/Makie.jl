@@ -220,10 +220,7 @@ end
 
     # TO not make this fail in CairoMakie, we dont actually plot the volume
     _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
-    Colorbar(fig[2, 1], cp; size=300)
-
-    _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)
-    Colorbar(fig[2, 2], vs)
+    Colorbar(fig[2, :], cp; size=300)
 
     # horizontal colorbars
     Colorbar(fig[1, 3][2, 1]; limits=(0, 10), colormap=:viridis,

@@ -180,13 +180,6 @@ end
         f, ax, pl = barplot(1:3; color=1:3)
         cbar = Colorbar(f[1, 2], pl)
         @test cbar.limits[] == Vec(1.0, 3.0)
-
-        let data = fill(1.0, 2,2,2)
-            data[1] = 3.0
-            f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
-            cbar = Colorbar(f[1,2], pl)
-            @test cbar.limits[] == Vec(1.0, 3.0)
-        end
     end
 end
 

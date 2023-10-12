@@ -47,10 +47,6 @@ function extract_colormap(plot::StreamPlot)
     return extract_colormap(plot.plots[1])
 end
 
-function extract_colormap(plot::Combined{volumeslices})
-    return extract_colormap(plot.plots[1])
-end
-
 function extract_colormap(plot::Union{Contourf,Tricontourf})
     levels = plot._computed_levels
     limits = lift(l -> (l[1], l[end]), levels)
