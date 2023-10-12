@@ -398,6 +398,10 @@ end
 
             print(io, "</div>")
 
+            if active
+                print(io, contenttable())
+            end
+
             printlist(io, naventry.children, this_level)
             print(io, "</li>\n")
         end
@@ -408,24 +412,16 @@ end
 end
 
 
-function hfun_contenttable()
-
-    headers = collect(Franklin.PAGE_HEADERS)
-
-    # remove first heading 1
-    if !isempty(headers) && headers[1][2][3] == 1
-        headers = headers[2:end]
-    end
-
-    isempty(headers) && return ""
+function contenttable()
+    isempty(Franklin.PAGE_HEADERS) && return ""
 
     return sprint() do io
 
         println(io, """<ul class="page-content">""")
 
-        order_stack = [first(headers)[2][3]]
+        order_stack = [first(Franklin.PAGE_HEADERS)[2][3]]
 
-        for (key, val) in headers
+        for (key, val) in Franklin.PAGE_HEADERS
             order = val[3]
 
             n_steps_up = count(>=(order), order_stack)
