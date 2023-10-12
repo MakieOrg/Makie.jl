@@ -239,6 +239,20 @@ function connect_uniforms(mesh, updater) {
     });
 }
 
+function convert_RGB_to_RGBA(rgbArray) {
+    const length = rgbArray.length;
+    const rgbaArray = new Float32Array((length / 3) * 4);
+
+    for (let i = 0, j = 0; i < length; i += 3, j += 4) {
+        rgbaArray[j] = rgbArray[i]; // R
+        rgbaArray[j + 1] = rgbArray[i + 1]; // G
+        rgbaArray[j + 2] = rgbArray[i + 2]; // B
+        rgbaArray[j + 3] = 1.0; // A
+    }
+
+    return rgbaArray;
+}
+
 function create_texture(data) {
     const buffer = data.data;
     if (data.size.length == 3) {
@@ -253,13 +267,16 @@ function create_texture(data) {
         return tex;
     } else {
         // a little optimization to not send the texture atlas over & over again
-        const tex_data =
+        let tex_data =
             buffer == "texture_atlas" ? TEXTURE_ATLAS[0].value : buffer;
+        if (data.three_format == "RGBFormat") {
+            tex_data = convert_RGB_to_RGBA(tex_data);
+        }
         return new THREE.DataTexture(
             tex_data,
             data.size[0],
             data.size[1],
-            THREE[data.three_format],
+            THREE.RGBAFormat,
             THREE[data.three_type]
         );
     }
