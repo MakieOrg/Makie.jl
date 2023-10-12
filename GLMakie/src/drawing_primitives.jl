@@ -260,11 +260,16 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 end
 
                 gl_attributes[:light_color] = dirlight.color
+            else
+                gl_attributes[:light_direction] = Observable(Vec3f(0))
+                gl_attributes[:light_color] = Observable(RGBf(0,0,0))
             end
 
             ambientlight = Makie.get_ambient_light(scene)
             if !isnothing(ambientlight)
                 gl_attributes[:ambient] = ambientlight.color
+            else
+                gl_attributes[:ambient] = Observable(RGBf(0,0,0))
             end
         elseif shading == MultiLightShading
             handle_lights(gl_attributes, screen, scene.lights)
