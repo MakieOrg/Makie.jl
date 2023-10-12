@@ -45,7 +45,7 @@ jobs:
           using Pkg;
           # dev mono repo versions
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
-          pkg"pin JSServe@2.2.10"
+          pkg"add JSServe@2.2.10"
       - name: Run the tests
         continue-on-error: true
         run: >
