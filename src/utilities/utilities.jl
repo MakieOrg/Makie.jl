@@ -177,7 +177,6 @@ attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractVector, i) = x[i]
-attr_broadcast_getindex(x::AbstractArray{T, 0}, i) where T = x[1]
 attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
 attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broadcasting, for protecting iterables

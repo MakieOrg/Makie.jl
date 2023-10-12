@@ -781,6 +781,7 @@ function Makie.plot!(
 
     _disallow_keyword(:axis, allattrs)
     _disallow_keyword(:figure, allattrs)
+
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
