@@ -599,8 +599,6 @@ function Base.close(screen::Screen; reuse=true)
     end
     GLFW.SetWindowShouldClose(screen.glscreen, true)
     GLFW.PollEvents()
-    # Somehow, on osx, we need to hide the screen a second time!
-    set_screen_visibility!(screen, false)
     return
 end
 
