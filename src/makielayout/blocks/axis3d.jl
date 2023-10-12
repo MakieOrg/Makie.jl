@@ -41,9 +41,10 @@ function initialize_block!(ax::Axis3)
     matrices = lift(calculate_matrices, scene, finallimits, scene.px_area, ax.elevation, ax.azimuth,
                     ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
 
-    on(scene, matrices) do (view, proj, eyepos)
+    on(scene, matrices) do (model, view, proj, eyepos)
         cam = camera(scene)
         Makie.set_proj_view!(cam, proj, view)
+        scene.transformation.model[] = model
         cam.eyeposition[] = eyepos
     end
 
@@ -226,15 +227,12 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
     w = width(px_area)
     h = height(px_area)
 
-    view_matrix = lookat_matrix * scale_matrix
+    # TODO: skip matmult
+    projection_matrix = projectionmatrix(
+        lookat_matrix * scale_matrix, limits, eyepos, radius, azim, elev, angle,
+        w, h, scales, viewmode)
 
-    projection_matrix = projectionmatrix(view_matrix, limits, eyepos, radius, azim, elev, angle, w, h, scales, viewmode)
-
-    # for eyeposition dependent algorithms, we need to present the position as if
-    # there was no scaling applied
-    eyeposition = Vec3f(inv(scale_matrix) * Vec4f(eyepos..., 1))
-
-    view_matrix, projection_matrix, eyeposition
+    return scale_matrix, lookat_matrix, projection_matrix, eyepos
 end
 
 function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)

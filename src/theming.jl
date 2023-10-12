@@ -71,7 +71,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
     inspectable = true,
 
     # Vec is equvalent to 36° right/east, 39° up/north from camera position
-    light_direction = Vec3f(-0.6287243, -0.45679495, -0.6293204),
+    # The order here is Vec3f(right of, up from, towards) viewer/camera
+    light_direction = Vec3f(-0.45679495, -0.6293204, -0.6287243),
     camera_relative_light = true, # Only applies to default DirectionalLight
     light_color = RGBf(0.5, 0.5, 0.5),
     ambient = RGBf(0.35, 0.35, 0.35),
