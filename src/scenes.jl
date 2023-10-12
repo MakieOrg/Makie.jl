@@ -103,7 +103,7 @@ mutable struct Scene <: AbstractScene
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
             ssao::SSAO,
-            lights::Vector{<: AbstractLight}
+            lights::Vector
         )
         scene = new(
             parent,
