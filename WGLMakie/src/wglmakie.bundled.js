@@ -20407,7 +20407,7 @@ class MakieCamera {
         this.projectionview_inverse.value = proj_view.clone().invert();
         Object.keys(this.preprojections).forEach((key)=>{
             const [space, markerspace] = key.split(",");
-            this.preprojections[key].value = new Pu(this.calculate_preprojection_matrix(space, markerspace));
+            this.preprojections[key].value = this.calculate_preprojection_matrix(space, markerspace);
         });
     }
     update_matrices(view, projection, resolution, eyepos) {
@@ -20739,7 +20739,7 @@ function recreate_instanced_geometry(mesh) {
     const vertexarrays = {};
     const instance_attributes = {};
     const faces = [
-        ...mesh.geometry.index
+        ...mesh.geometry.index.array
     ];
     Object.keys(mesh.geometry.attributes).forEach((name)=>{
         const buffer = mesh.geometry.attributes[name];
