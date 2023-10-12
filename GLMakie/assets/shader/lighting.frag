@@ -42,6 +42,12 @@ vec3 blinn_phong(vec3 light_color, vec3 light_dir, vec3 camdir, vec3 normal, vec
     float diff_coeff = smooth_zero_max(dot(light_dir, -normal)) +
         backlight * smooth_zero_max(dot(light_dir, normal));
 
+    // DEBUG - visualize diff_coeff, i.e. the angle between light and normals
+    // if (diff_coeff > 0.999)
+    //     return vec3(0, 0, 1);
+    // else
+    //     return vec3(1 - diff_coeff,diff_coeff, 0.05);
+
     // specular coefficient (does reflected light bounce into camera?)
     vec3 H = normalize(light_dir + camdir);
     float spec_coeff = pow(max(dot(H, -normal), 0.0), shininess) +
