@@ -53,6 +53,8 @@ function old_cam3d_cad!(scene::Scene; kw_args...)
     cam
 end
 
+get_space(::OldCamera3D) = :data
+
 """
     old_cam3d_turntable!(scene; kw_args...)
 

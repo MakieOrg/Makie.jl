@@ -228,7 +228,9 @@ function connect_plot!(parent::SceneLike, plot::Combined{F}) where {F}
             transform!(t, t_user)
             plot.transformation = t
         end
-        connect!(transformation(parent), transformation(plot))
+        if get_space(parent) === get_space(plot)
+            connect!(transformation(parent), transformation(plot))
+        end
     end
     plot.model = transformationmatrix(plot)
     convert_arguments!(plot)

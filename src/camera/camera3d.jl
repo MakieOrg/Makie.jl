@@ -1,5 +1,7 @@
 abstract type AbstractCamera3D <: AbstractCamera end
 
+get_space(::AbstractCamera3D) = :data
+
 struct Camera3D <: AbstractCamera3D
     # User settings
     settings::Attributes

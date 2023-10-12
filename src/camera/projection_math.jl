@@ -344,6 +344,12 @@ function clip_to_space(cam::Camera, space::Symbol)
     end
 end
 
+get_space(scene::Scene) = get_space(cameracontrols(scene))
+# TODO: Should we default to something invalid?
+get_space(::AbstractCamera) = :data
+# TODO: Should this be less specialized? ScenePlot? AbstractPlot?
+get_space(plot::Combined) = to_value(get(plot, :space, :data))
+
 function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
     input_space === output_space && return to_ndim(Point3f, pos, 0)
     clip_from_input = space_to_clip(cam, input_space)
