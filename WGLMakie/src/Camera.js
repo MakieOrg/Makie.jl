@@ -1,4 +1,4 @@
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.157/es2021/three.js";
 
 const pixelRatio = window.devicePixelRatio || 1.0;
 
@@ -261,7 +261,7 @@ export class MakieCamera {
         Object.keys(this.preprojections).forEach((key) => {
             const [space, markerspace] = key.split(","); // jeez js, really just converting array keys to "elem,elem"?
             this.preprojections[key].value =
-                this.calculate_preprojection_matrix(space, markerspace);
+                new THREE.Uniform(this.calculate_preprojection_matrix(space, markerspace));
         });
     }
 

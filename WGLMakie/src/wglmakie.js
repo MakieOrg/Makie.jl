@@ -1,4 +1,4 @@
-import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.157/es2021/three.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
 import {
     delete_scenes,
@@ -112,6 +112,25 @@ function throttle_function(func, delay) {
     return inner_throttle;
 }
 
+export function wglerror(gl, error) {
+    switch (error) {
+        case gl.NO_ERROR:
+            return ("No error");
+        case gl.INVALID_ENUM:
+            return ("Invalid enum");
+        case gl.INVALID_VALUE:
+            return ("Invalid value");
+        case gl.INVALID_OPERATION:
+            return ("Invalid operation");
+        case gl.OUT_OF_MEMORY:
+            return ("Out of memory");
+        case gl.CONTEXT_LOST_WEBGL:
+            return ("Context lost");
+        default:
+            return ("Unknown error");
+    }
+}
+
 function threejs_module(canvas, comm, width, height, resize_to_body) {
     let context = canvas.getContext("webgl2", {
         preserveDrawingBuffer: true,
@@ -135,6 +154,16 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
         context: context,
         powerPreference: "high-performance",
     });
+
+    renderer.debug.onShaderError = (gl, program, vs, fs) => {
+        // Get the error info from the WebGL context
+        const infolog = gl.getProgramInfoLog(program);
+        // If you want to see the full shader source code:
+        const vss = "Vertex Shader:\n" + gl.getShaderSource(vs);
+        const fss = "Fragment Shader:\n" + gl.getShaderSource(fs);
+        const err = infolog + "\n" + vss + "\n" + fss;
+        JSServe.Connection.send_error("Error in shader: " + err, null);
+    };
 
     renderer.setClearColor("#ffffff");
 
@@ -236,8 +265,13 @@ function threejs_module(canvas, comm, width, height, resize_to_body) {
         comm.notify({ resize: [width, height] });
     }
     if (resize_to_body) {
-        const resize_callback_throttled = throttle_function(resize_callback, 100);
-        window.addEventListener("resize", (event) => resize_callback_throttled());
+        const resize_callback_throttled = throttle_function(
+            resize_callback,
+            100
+        );
+        window.addEventListener("resize", (event) =>
+            resize_callback_throttled()
+        );
         // Fire the resize event once at the start to auto-size our window
         resize_callback_throttled();
     }
@@ -298,6 +332,7 @@ function create_scene(
         // wrapper.removeChild(canvas)
         wrapper.appendChild(warning);
     }
+    return renderer;
 }
 
 function set_picking_uniforms(
