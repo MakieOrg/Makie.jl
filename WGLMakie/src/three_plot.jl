@@ -54,7 +54,14 @@ function three_display(session::Session, scene::Scene; screen_config...)
     evaljs(session, js"""
     $(WGL).then(WGL => {
         try {
-            WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(ta), $(config.framerate), $(config.resize_to_body))
+            const renderer = WGL.create_scene(
+                $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+                $(ta), $(config.framerate), $(config.resize_to_body))
+            const gl = renderer.getContext()
+            const err = gl.getError()
+            if (err != gl.NO_ERROR) {
+                throw new Error("WebGL error: " + WGL.wglerror(gl, err))
+            }
             $(done_init).notify(true)
         } catch (e) {
             JSServe.Connection.send_error("error initializing scene", e)
