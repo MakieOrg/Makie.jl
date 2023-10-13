@@ -170,11 +170,12 @@ fig
 \begin{examplefigure}{}
 ```julia
 using GLMakie
+GLMakie.closeall() # hide
 
 lights = [
     SpotLight(RGBf(1, 0, 0), Point3f(-3, 0, 3), Vec3f(0,  0, -1), Vec2f(0.0, 0.3pi)),
     SpotLight(RGBf(0, 1, 0), Point3f( 0, 3, 3), Vec3f(0, -0.5, -1), Vec2f(0.2pi, 0.25pi)),
-    SpotLight(RGBf(0, 0, 1), Point3f( 3, 0, 3), Vec3f(0,  0, -1), Vec2f(0.3pi, 0.3pi)),
+    SpotLight(RGBf(0, 0, 1), Point3f( 3, 0, 3), Vec3f(0,  0, -1), Vec2f(0.25pi, 0.25pi)),
 ]
 
 fig = Figure(resolution = (600, 600))
