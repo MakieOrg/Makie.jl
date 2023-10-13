@@ -20680,11 +20680,18 @@ function create_texture(data) {
         tex.type = mod[data.three_type];
         return tex;
     } else {
-        let tex_data = buffer == "texture_atlas" ? TEXTURE_ATLAS[0].value : buffer;
+        let tex_data;
+        if (buffer == "texture_atlas") {
+            tex_data = TEXTURE_ATLAS[0].value;
+        } else {
+            tex_data = buffer;
+        }
+        let format = mod[data.three_format];
         if (data.three_format == "RGBFormat") {
             tex_data = convert_RGB_to_RGBA(tex_data);
+            format = mod.RGBAFormat;
         }
-        return new mod.DataTexture(tex_data, data.size[0], data.size[1], mod.RGBAFormat, mod[data.three_type]);
+        return new mod.DataTexture(tex_data, data.size[0], data.size[1], format, mod[data.three_type]);
     }
 }
 function re_create_texture(old_texture, buffer, size) {

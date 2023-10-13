@@ -253,6 +253,7 @@ function convert_RGB_to_RGBA(rgbArray) {
     return rgbaArray;
 }
 
+
 function create_texture(data) {
     const buffer = data.data;
     if (data.size.length == 3) {
@@ -267,16 +268,22 @@ function create_texture(data) {
         return tex;
     } else {
         // a little optimization to not send the texture atlas over & over again
-        let tex_data =
-            buffer == "texture_atlas" ? TEXTURE_ATLAS[0].value : buffer;
+        let tex_data;
+        if (buffer == "texture_atlas") {
+            tex_data = TEXTURE_ATLAS[0].value;
+        } else {
+            tex_data = buffer;
+        }
+        let format = THREE[data.three_format];
         if (data.three_format == "RGBFormat") {
             tex_data = convert_RGB_to_RGBA(tex_data);
+            format = THREE.RGBAFormat;
         }
         return new THREE.DataTexture(
             tex_data,
             data.size[0],
             data.size[1],
-            THREE.RGBAFormat,
+            format,
             THREE[data.three_type]
         );
     }
