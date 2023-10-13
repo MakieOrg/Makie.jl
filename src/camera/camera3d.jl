@@ -38,7 +38,7 @@ Settings include anything that isn't a mouse or keyboard button.
 - `fixed_axis = true`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
 - `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
-- `clipping_mode = :bbox_relative`: Controls how `near` and `far` get processed. With `:static` with get passed as is, with `:view_relative` they get scaled by `norm(eyeposition - lookat)` and with `:bbox_relative` they get scaled such that `far = 1` is at or behind the furthest point of the scene bounding box.
+- `clipping_mode = :bbox_relative`: Controls how `near` and `far` get processed. With `:static` they get passed as is, with `:view_relative` they get scaled by `norm(eyeposition - lookat)` and with `:bbox_relative` they get scaled to be just outside the scene bounding box. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
 - `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
@@ -93,7 +93,7 @@ Some keyword arguments are used to initialize fields. These include
 - `upvector = Vec3f(0, 0, 1)`: The world direction corresponding to the up direction of the screen.
 
 - `fov = 45.0` is the field of view. This is irrelevant if the camera uses an orthographic projection.
-- `near = 0.01` sets the position of the near clip plane. Anything between the camera and the near clip plane is hidden. Must be greater 0. Usage depends on `clipping_mode`.
+- `near = automatic` sets the position of the near clip plane. Anything between the camera and the near clip plane is hidden. Must be greater 0. Usage depends on `clipping_mode`.
 - `far = automatic` sets the position of the far clip plane. Anything further away than the far clip plane is hidden. Usage depends on `clipping_mode`. Defaults to `1` for `clipping_mode = :bbox_relative`, `2` for `:view_relative` or a value derived from limits for `:static`.
 
 Note that updating these observables in an active camera requires a call to `update_cam(scene)`
@@ -187,7 +187,7 @@ function Camera3D(scene::Scene; kwargs...)
 
         # Semi-Internal - projection matrix
         get(overwrites, :fov, Observable(45.0)),
-        get(overwrites, :near, Observable(0.01)),
+        get(overwrites, :near, Observable(0.1)),
         get(overwrites, :far, Observable(far_default)),
         Sphere(Point3f(0), 1f0)
     )
@@ -709,22 +709,24 @@ function update_cam!(scene::Scene, cam::Camera3D)
     view = Makie.lookat(eyeposition, lookat, upvector)
 
     if cam.settings.clipping_mode[] === :view_relative
-        scale = norm(eyeposition - lookat)
+        view_dist = norm(eyeposition - lookat)
+        near = view_dist * near; far = view_dist * far
     elseif cam.settings.clipping_mode[] === :bbox_relative
-        scale = radius(bounding_sphere) + norm(eyeposition - origin(bounding_sphere))
-    elseif cam.settings.clipping_mode[] === :static
-        scale = 1f0
-    else
+        view_dist = norm(eyeposition - lookat)
+        center_dist = norm(eyeposition - origin(bounding_sphere))
+        far_dist = center_dist + radius(bounding_sphere)
+        near = max(view_dist * near, center_dist - radius(bounding_sphere))
+        far = far_dist * far
+    elseif cam.settings.clipping_mode[] !== :static
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
-        scale = 1f0
     end
 
     aspect = Float32((/)(widths(scene.px_area[])...))
     if cam.settings.projectiontype[] == Makie.Perspective
-        proj = perspectiveprojection(fov, aspect, scale * near,  scale * far)
+        proj = perspectiveprojection(fov, aspect, near, far)
     else
         h = norm(eyeposition - lookat); w = h * aspect
-        proj = orthographicprojection(-w, w, -h, h, scale * near, scale * far)
+        proj = orthographicprojection(-w, w, -h, h, near, far)
     end
 
     set_proj_view!(camera(scene), proj, view)
@@ -753,7 +755,7 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
     cam.upvector[] = Vec3f(0, 0, 1) # Should we reset this?
 
     if cam.settings.clipping_mode[] === :static
-        cam.near[] = 0.01f0 * dist
+        cam.near[] = 0.1f0 * dist
         cam.far[] = 2f0 * dist
     end
 
