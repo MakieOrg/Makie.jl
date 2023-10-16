@@ -68,6 +68,7 @@ The different light sources control the `light_direction` and may further adjust
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
+CairoMakie.activate!() # hide
 
 fig = Figure(resolution = (600, 600))
 ax11 = LScene(fig[1, 1], scenekw = (lights = [],))
@@ -89,6 +90,7 @@ fig
 \begin{examplefigure}{}
 ```julia
 using GLMakie
+GLMakie.activate!() # hide
 
 fig = Figure(resolution = (600, 600))
 ax11 = LScene(fig[1, 1], scenekw = (lights = [DirectionalLight(RGBf(0, 0, 0), Vec3f(-1, 0, 0))],))
@@ -114,6 +116,7 @@ fig
 \begin{examplefigure}{}
 ```julia
 using GLMakie
+GLMakie.activate!() # hide
 
 fig = Figure(resolution = (600, 600))
 ax = LScene(fig[1, 1], scenekw = (lights = [PointLight(RGBf(1, 1, 1), Point3f(0, 0, 0))],))
@@ -126,6 +129,7 @@ fig
 \begin{examplefigure}{}
 ```julia
 using GLMakie
+GLMakie.activate!() # hide
 
 lights = [
     PointLight(RGBf(1, 1, 1), Point3f(0, 0, 5), 50),
@@ -149,6 +153,7 @@ With a strong PointLight and Attenuation you can create different colors at diff
 \begin{examplefigure}{}
 ```julia
 using GLMakie
+GLMakie.activate!() # hide
 
 lights = [
     PointLight(RGBf(10, 4, 2), Point3f(0, 0, 1), 5),
@@ -170,6 +175,7 @@ fig
 \begin{examplefigure}{}
 ```julia
 using GLMakie
+GLMakie.activate!() # hide
 GLMakie.closeall() # hide
 
 lights = [
