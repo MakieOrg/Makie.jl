@@ -152,7 +152,7 @@ With a strong PointLight and Attenuation you can create different colors at diff
 
 \begin{examplefigure}{}
 ```julia
-using GLMakie
+using GLMakie, GeometryBasics
 GLMakie.activate!() # hide
 
 ps = [
