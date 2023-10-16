@@ -62,7 +62,7 @@ ez = Point3f(0,0,1)
 
 fig = Figure()
 scene = LScene(fig[1, 1])
-cc = Makie.Camera3D(scene.scene, projectiontype = Makie.Perspective, far = 3.0)
+cc = Makie.Camera3D(scene.scene, projectiontype = Makie.Perspective)
 
 linesegments!(scene, Rect3f(Point3f(-1), Vec3f(2)), color = :black)
 linesegments!(scene,
@@ -70,7 +70,7 @@ linesegments!(scene,
     color = [:red, :red, :green, :green, :blue, :blue]
 )
 center!(scene.scene)
-    
+
 cam = scene.scene.camera
 eyeposition = cc.eyeposition
 lookat = cc.lookat
