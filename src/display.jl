@@ -140,13 +140,13 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
         """)
     end
 
+
     # We show inline if explicitely requested or if automatic and we can actually show something inline!
     if (inline === true || inline === automatic) && can_show_inline(backend)
         Core.invoke(display, Tuple{Any}, figlike)
         # In WGLMakie, we need to wait for the display being done
         screen = getscreen(get_scene(figlike))
         wait_for_display(screen)
-        return screen
     else
         if inline === true
             @warn """
@@ -160,8 +160,13 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene; screen_config...)
         display(screen, scene)
-        return screen
     end
+
+    if figlike isa Figure
+        notify(figlike.displayed)
+    end
+
+    return screen
 end
 
 is_displayed(screen::MakieScreen, scene::Scene) = screen in scene.current_screens

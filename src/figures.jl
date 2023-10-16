@@ -95,7 +95,6 @@ to_rectsides(n::Number) = to_rectsides((n, n, n, n))
 to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
 
 function Figure(; kwargs...)
-
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, clear = true, kwargs_dict...)
@@ -110,13 +109,31 @@ function Figure(; kwargs...)
     end
     notify(alignmode)
 
+    # Setup the global time
+    figure_time = Observable(0.0)
+    displayed = Base.Event(true)
+    increment_time = @task begin
+        while true
+            while !isempty(scene.current_screens)
+                figure_time[] += 1/24
+                sleep(1/24)
+            end
+
+            wait(displayed)
+        end
+    end
+    schedule(increment_time)
+
     f = Figure(
         scene,
         layout,
         [],
         Attributes(),
-        Ref{Any}(nothing)
+        Ref{Any}(nothing),
+        figure_time,
+        displayed
     )
+
     # set figure as layout parent so GridPositions can refer to the figure
     # if connected correctly
     layout.parent = f
