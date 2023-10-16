@@ -31,7 +31,7 @@ using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_s
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
 const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
-# Main.download("https://esm.sh/v130/three@0.155.0/es2022/three.mjs", joinpath(@__DIR__, "THREE.js"))
+# Main.download("https://cdn.esm.sh/v66/three@0.157/es2021/three.js", joinpath(@__DIR__, "THREE.js"))
 
 include("display.jl")
 include("three_plot.jl")

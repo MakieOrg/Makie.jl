@@ -29,6 +29,7 @@ macro reference_test(name, code)
     funcs = used_functions(code)
     skip = (title in SKIP_TITLES) || any(x-> x in funcs, SKIP_FUNCTIONS)
     return quote
+        t1 = time()
         @testset $(title) begin
             if $skip
                 @test_broken false
@@ -49,6 +50,11 @@ macro reference_test(name, code)
                 push!($REGISTERED_TESTS, $title)
             end
         end
+        elapsed = round(time() - t1; digits=3)
+        total = Sys.total_memory()
+        mem = round((total - Sys.free_memory()) / 10^9; digits=3)
+        # TODO, write to file and create an overview in the end, similar to the benchmark results!
+        println("Used $(mem)gb of $(round(total / 10^9; digits=3))gb RAM, time: $(elapsed)s")
     end
 end
 
