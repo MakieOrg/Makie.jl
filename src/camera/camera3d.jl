@@ -741,6 +741,7 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
     width = widths(bb)
     center = maximum(bb) - 0.5f0 * width
     radius = 0.5f0 * norm(width)
+    (isnan(radius) || (radius == 0)) && return
     cam.bounding_sphere[] = Sphere(Point3f(center), radius)
 
     old_dir = normalize(cam.eyeposition[] .- cam.lookat[])
