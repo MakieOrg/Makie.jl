@@ -155,14 +155,21 @@ With a strong PointLight and Attenuation you can create different colors at diff
 using GLMakie
 GLMakie.activate!() # hide
 
-lights = [
-    PointLight(RGBf(10, 4, 2), Point3f(0, 0, 1), 5),
+ps = [
+    Point3f(cosd(phi) * cosd(theta), sind(phi) * cosd(theta), sind(theta))
+    for theta in range(-20, 20, length = 21) for phi in range(60, 340, length=30)
 ]
+faces = [QuadFace(30j + i, 30j + mod1(i+1, 30), 30*(j+1) + mod1(i+1, 30), 30*(j+1) + i) for j in 0:19 for i in 1:29]
+m = GeometryBasics.Mesh(meta(ps, normals = ps), decompose(GLTriangleFace, faces))
 
-fig = Figure(resolution = (600, 600))
-ax = LScene(fig[1, 1], scenekw = (lights = lights,))
-mesh!(ax, Sphere(Point3f(0, 0, 1), 0.1f0), color = :white, backlight = 1f0)
-mesh!(ax, Rect3f(Point3f(-2, -2, 0.1), Vec3f(4, 4, 0.2)), color = :white, specular = 0.0)
+lights = [PointLight(RGBf(10, 4, 2), Point3f(0, 0, 0), 5)]
+
+fig = Figure(resolution = (600, 600), backgroundcolor = :black)
+ax = LScene(fig[1, 1], scenekw = (lights = lights,), show_axis = false)
+update_cam!(ax.scene, ax.scene.camera_controls, Rect3f(Point3f(-2), Vec3f(4)))
+meshscatter!(
+    ax, [Point3f(0) for _ in 1:14], marker = m, markersize = 0.1:0.2:3.0,
+    color = :white, backlight = 1f0, transparency = false)
 fig
 ```
 \end{examplefigure}
