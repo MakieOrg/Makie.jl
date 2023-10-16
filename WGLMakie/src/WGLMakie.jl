@@ -56,11 +56,13 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 $(Base.doc(ScreenConfig))
 """
 function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config...)
-    JSServe.browser_display()
     Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
+    if !JSServe.has_html_display()
+        JSServe.browser_display()
+    end
     return
 end
 

@@ -20590,7 +20590,7 @@ function delete_plots(scene_id, plot_uuids) {
     const plots = find_plots(plot_uuids);
     plots.forEach((p)=>{
         scene.remove(p);
-        delete plot_cache[p];
+        delete plot_cache[p.plot_uuid];
     });
 }
 function convert_texture(data) {
@@ -20847,7 +20847,7 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
             }
             const ls_factor = is_segments ? 2 : 1;
             const offset = is_segments ? 0 : 1;
-            mesh.geometry.instanceCount = new_count / ls_factor - offset;
+            mesh.geometry.instanceCount = Math.max(0, new_count / ls_factor - offset);
             buff.needsUpdate = true;
             mesh.needsUpdate = true;
         });
@@ -20861,7 +20861,7 @@ function _create_line(line_data, is_segments) {
     const mesh = new THREE.Mesh(geometry, material);
     const offset = is_segments ? 0 : 1;
     const new_count = geometry.attributes.linepoint_start.count;
-    mesh.geometry.instanceCount = new_count - offset;
+    mesh.geometry.instanceCount = Math.max(0, new_count - offset);
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
