@@ -39,7 +39,7 @@ function get_axis(fig, P, axis_kw::Dict, plot_attr, plot_args)
         # Remove arguments may not work with plotting into the scene
         delete!(plot_attr, :show_axis)
         delete!(plot_attr, :limits)
-        if plot_attr.color[] isa Cycled
+        if get(plot_attr, :color, nothing) isa Cycled
             # Color may contain Cycled(1), which needs the axis to get resolved to a color
             delete!(plot_attr, :color)
         end
