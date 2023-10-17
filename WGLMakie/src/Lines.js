@@ -156,7 +156,6 @@ function lines_fragment_shader(uniforms, attributes) {
     `;
 }
 
-
 function create_line_material(uniforms, attributes) {
     const uniforms_des = deserialize_uniforms(uniforms);
     return new THREE.RawShaderMaterial({
@@ -248,7 +247,7 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
             }
             const ls_factor = is_segments ? 2 : 1;
             const offset = is_segments ? 0 : 1;
-            mesh.geometry.instanceCount = (new_count / ls_factor) - offset;
+            mesh.geometry.instanceCount = Math.max(0, (new_count / ls_factor) - offset);
             buff.needsUpdate = true;
             mesh.needsUpdate = true;
         });
@@ -272,7 +271,7 @@ export function _create_line(line_data, is_segments) {
     const mesh = new THREE.Mesh(geometry, material);
     const offset = is_segments ? 0 : 1;
     const new_count = geometry.attributes.linepoint_start.count;
-    mesh.geometry.instanceCount = new_count - offset;
+    mesh.geometry.instanceCount = Math.max(0, new_count - offset);
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
@@ -283,66 +282,4 @@ export function create_line(line_data) {
 
 export function create_linesegments(line_data) {
     return _create_line(line_data, true)
-}
-
-function interpolate(p1, p2, t) {
-    return [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
-}
-
-function distance(p1, p2) {
-    const dx = p2[0] - p1[0];
-    const dy = p2[1] - p1[1];
-    return Math.sqrt(dx * dx + dy * dy);
-}
-
-function compute_distances(points) {
-    if (points.length < 2 || points.length % 2 !== 0) {
-        throw new Error(
-            "The points array should have an even length and at least 2 points (x and y)."
-        );
-    }
-    const distances = [0.0];
-    let dist = 0.0;
-    for (let i = 0; i < points.length - 2; i += 2) {
-        const p1 = [points[i], points[i + 1]];
-        const p2 = [points[i + 2], points[i + 3]];
-        dist += distance(p1, p2);
-        distances.push(dist);
-    }
-    return distances;
-}
-
-function resample_point(points, distances, target_distance, last_index) {
-    for (let i = last_index; i < distances.length; i++) {
-        if (distances[i] > target_distance) {
-            const p1 = [points[i * 2 - 2], points[i * 2 - 1]];
-            const p2 = [points[i * 2], points[i * 2 + 1]];
-            const width = distance[i] - distance[i - 1];
-            const t = (target_distance - distances[i - 1]) / width;
-            return [interpolate(p1, p2, t)];
-        }
-    }
-    return [null, last_index];
-}
-
-function resample_points(points, pattern) {
-    const distances = compute_distances(points);
-    let resampled_points = [];
-    let step_index = 0;
-    let current_length = pattern[step_index];
-    let last_index = 0;
-
-    while (current_length < distances[distances.length - 1]) {
-        const [_last_index, point] = resample_point(
-            points,
-            distances,
-            current_length,
-            last_index
-        );
-        last_index = _last_index;
-        resampled_points.push(...point);
-        step_index = (step_index + 1) % pattern.length;
-        current_length += pattern[step_index];
-    }
-    return new Float32Array(resampled_points);
 }

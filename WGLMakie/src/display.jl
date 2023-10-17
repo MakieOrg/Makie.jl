@@ -226,10 +226,6 @@ function Base.display(screen::Screen, scene::Scene; unused...)
     return screen
 end
 
-function Base.delete!(td::Screen, scene::Scene, plot::AbstractPlot)
-    delete!(get_three(td), scene, plot)
-end
-
 function session2image(session::Session, scene::Scene)
     to_data = js"""function (){
         return $(scene).then(scene => {
@@ -253,7 +249,6 @@ function Makie.colorbuffer(screen::Screen)
     three = get_three(screen; error="Not able to show scene in a browser")
     return session2image(three.session, screen.scene)
 end
-
 
 function insert_scene!(disp, screen::Screen, scene::Scene)
     if js_uuid(scene) in screen.displayed_scenes
@@ -304,45 +299,71 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     return
 end
 
-struct LockfreeQueue{T, F}
+function delete_js_objects!(screen::Screen, scene::String, uuids::Vector{String})
+    three = get_three(screen)
+    isnothing(three) && return # if no session we haven't displayed and dont need to delete
+    isready(three.session) || return
+    JSServe.evaljs(three.session, js"""
+    $(WGL).then(WGL=> {
+        WGL.delete_plots($(scene), $(uuids));
+    })""")
+    return
+end
+
+function delete_js_objects!(screen::Screen, scene::Scene)
+    three = get_three(screen)
+    isnothing(three) && return # if no session we haven't displayed and dont need to delete
+    isready(three.session) || return
+    scene_uuids, plot_uuids = all_plots_scenes(scene)
+    JSServe.evaljs(three.session, js"""
+    $(WGL).then(WGL=> {
+        WGL.delete_scenes($scene_uuids, $plot_uuids);
+    })""")
+    return
+end
+
+
+struct LockfreeQueue{T,F}
     # Double buffering to be lock free
     queue1::Vector{T}
     queue2::Vector{T}
     current_queue::Threads.Atomic{Int}
-    task::Base.RefValue{Union{Nothing, Task}}
+    task::Base.RefValue{Union{Nothing,Task}}
     execute_job::F
 end
 
-function LockfreeQueue{T}(execute_job::F) where {T, F}
-    return LockfreeQueue{T, F}(
-        T[],
-        T[],
-        Threads.Atomic{Int}(1),
-        Base.RefValue{Union{Nothing, Task}}(nothing),
-        execute_job
-    )
+function LockfreeQueue{T}(execute_job::F) where {T,F}
+    return LockfreeQueue{T,F}(T[],
+                              T[],
+                              Threads.Atomic{Int}(1),
+                              Base.RefValue{Union{Nothing,Task}}(nothing),
+                              execute_job)
 end
 
 function run_jobs!(queue::LockfreeQueue)
     # already running:
     !isnothing(queue.task[]) && !istaskdone(queue.task[]) && return
 
-    queue.task[] = @async while true
-        q = nothing
-        if !isempty(queue.queue1)
-            queue.current_queue[] = 1
-            q = queue.queue1
-        elseif !isempty(queue.queue2)
-            queue.current_queue[] = 2
-            q = queue.queue2
-        end
-        if !isnothing(q)
-            while !isempty(q)
-                item = pop!(q)
-                queue.execute_job(item...)
+    return queue.task[] = @async while true
+        try
+            q = nothing
+            if !isempty(queue.queue1)
+                queue.current_queue[] = 1
+                q = queue.queue1
+            elseif !isempty(queue.queue2)
+                queue.current_queue[] = 2
+                q = queue.queue2
             end
+            if !isnothing(q)
+                while !isempty(q)
+                    item = pop!(q)
+                    queue.execute_job(item...)
+                end
+            end
+            sleep(0.1)
+        catch e
+            @warn "error while cleaning up JS objects" exception = (e, Base.catch_backtrace())
         end
-        sleep(0.1)
     end
 end
 
@@ -356,19 +377,9 @@ function Base.push!(queue::LockfreeQueue, item)
     end
 end
 
-function delete_plot!(td::Screen, scene::String, uuids::Vector{String})
-    three = get_three(td)
-    isnothing(three) && return # if no session we haven't displayed and dont need to delete
-    isready(three.session) || return
-    JSServe.evaljs(three.session, js"""
-    $(WGL).then(WGL=> {
-        WGL.delete_plots($(scene), $(uuids));
-    })""")
-    return
-end
-
 const DISABLE_JS_FINALZING = Base.RefValue(false)
-const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_plot!)
+const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_js_objects!)
+const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
     atomics = Makie.collect_atomic_plots(plot) # delete all atomics
@@ -377,4 +388,10 @@ function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
         push!(DELETE_QUEUE, (screen, js_uuid(scene), js_uuid.(atomics)))
     end
     return
+end
+
+function Base.delete!(screen::Screen, scene::Scene)
+    if !DISABLE_JS_FINALZING[]
+        push!(SCENE_DELETE_QUEUE, (screen, scene))
+    end
 end
