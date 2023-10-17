@@ -611,7 +611,6 @@ struct Figure
     attributes::Attributes
     current_axis::Ref{Any}
     time::Observable
-    displayed::Base.Event
 
     function Figure(args...)
         f = new(args...)
