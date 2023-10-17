@@ -55,7 +55,7 @@ excludes = Set([
 ])
 Makie.inline!(Makie.automatic)
 
-edisplay = JSServe.use_electron_display()
+edisplay = JSServe.use_electron_display(devtools=true)
 @testset "refimages" begin
     WGLMakie.activate!()
     ReferenceTests.mark_broken_tests(excludes)
@@ -68,21 +68,21 @@ end
     Makie._current_figure[] = nothing
     app = App(nothing)
     display(edisplay, app)
+    GC.gc(true);
+    # Somehow this may take a while to get emptied completely
+    JSServe.wait_for(() -> isempty(run(edisplay.window, "Object.keys(WGL.scene_cache)"));timeout=10)
+    wgl_plots = run(edisplay.window, "Object.keys(WGL.plot_cache)")
+    @test isempty(wgl_plots)
+
     session = edisplay.browserdisplay.handler.session
-    GC.gc(true); GC.gc(true)
     session_size = Base.summarysize(session) / 10^6
     texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
     @show session_size texture_atlas_size
-    @test session_size / 10^6 < 10
-    @test texture_atlas_size < 10
-
+    @test session_size / 10^6 < 6
+    @test texture_atlas_size < 6
     js_sessions = run(edisplay.window, "JSServe.Sessions.SESSIONS")
     js_objects = run(edisplay.window, "JSServe.Sessions.GLOBAL_OBJECT_CACHE")
-    wgl_scenes = run(edisplay.window, "Object.keys(WGL.scene_cache)")
-    wgl_plots = run(edisplay.window, "Object.keys(WGL.plot_cache)")
-    @test isempty(wgl_scenes)
-    @test isempty(wgl_plots)
     @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
     # we used Retain for global_obs, so it should stay as long as root session is open
-    # @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.value.id])
+    @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
 end
