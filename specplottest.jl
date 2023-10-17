@@ -30,7 +30,7 @@ function plot_data(data, categorical_vars, continuous_vars)
     cat_values = [unique(data[!, cat]) for cat in categorical_vars]
     scatter_styles = Dict([cat => (style[1] => Dict(zip(vals, style[2]))) for (style, vals, cat) in zip(cat_styles, cat_values, categorical_vars)])
 
-    continous_styles = [:viridis, :heat, :rainbow]
+    continous_styles = [:viridis, :heat, :rainbow, :turku50]
     continuous_values = [extrema(data[!, con]) for con in continuous_vars]
     line_styles = Dict([cat => (; colormap=style, colorrange=limits) for (style, limits, cat) in zip(continous_styles, continuous_values, continuous_vars)])
     ax = P.Axis(fig[1, 1])
@@ -52,15 +52,23 @@ begin
     data = gen_data(1000)
     continous_vars = Observable(["continuous2", "continuous3"])
     categorical_vars = Observable(["condition2", "condition4"])
+    fig = nothing
     obs = lift(continous_vars, categorical_vars) do con_vars, cat_vars
         plot_data(data, cat_vars, con_vars)
     end
     fig = Makie.update_fig(Figure(), obs)
 end
 
+start_size = Base.summarysize(fig) / 10^6
+for i in 1:50
+    all_vars = ["continuous$i" for i in 2:5]
+    all_cond_vars = ["condition$i" for i in 2:5]
 
-continous_vars[] = ["continuous2", "continuous3", "continuous4"]
-continous_vars[] = ["continuous2", "continuous3", "continuous4"]
+    continous_vars[] =  shuffle!(all_vars[unique(rand(1:4, rand(1:4)))])
+    categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
+    yield()
+end
+
 
 categorical_vars[] = []
 
