@@ -452,10 +452,10 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
         push!(screen.screens, (id, scene))
         screen.requires_update = true
         onany(
-            (_, _, _, _, _, _) -> screen.requires_update = true,
+            (args...) -> screen.requires_update = true,
             scene,
             scene.visible, scene.backgroundcolor, scene.clear,
-            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius
+            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview, scene.camera.resolution
         )
         return id
     end

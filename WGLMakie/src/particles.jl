@@ -124,19 +124,19 @@ function scatter_shader(scene::Scene, attributes, plot)
     atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
-        marker = lift(attributes[:marker]) do marker
+        marker = lift(plot, attributes[:marker]) do marker
             marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
             return Makie.to_spritemarker(marker)
         end
 
-        markersize = lift(Makie.to_2d_scale, attributes[:markersize])
+        markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
 
         msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset], plot)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
         attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
         if to_value(marker) isa AbstractMatrix
-            uniform_dict[:image] = Sampler(lift(el32convert, marker))
+            uniform_dict[:image] = Sampler(lift(el32convert, plot, marker))
         end
     end
 
@@ -163,7 +163,9 @@ function scatter_shader(scene::Scene, attributes, plot)
 
     if !isnothing(marker)
         get!(uniform_dict, :shape_type) do
-            return Makie.marker_to_sdf_shape(marker)
+            return lift(plot, marker; ignore_equal_values=true) do marker
+                return Cint(Makie.marker_to_sdf_shape(to_spritemarker(marker)))
+            end
         end
     end
 
@@ -198,21 +200,15 @@ end
 
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
-                         :quad_offset)
-    per_instance = filter(plot.attributes.attributes) do (k, v)
-        return k in per_instance_keys && !(isscalar(v[]))
-    end
     attributes = copy(plot.attributes.attributes)
     space = get(attributes, :space, :data)
-    cam = scene.camera
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1], space)
+    attributes[:pos] = lift(apply_transform, plot, transform_func_obs(plot),  plot[1], space)
 
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
-    attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
+    attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotations)
     attributes[:model] = plot.model
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
@@ -234,16 +230,16 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
-    glyph_data = map(pos, glyphcollection, offset, transfunc, space; ignore_equal_values=true) do pos, gc, offset, transfunc, space
+    glyph_data = lift(plot, pos, glyphcollection, offset, transfunc, space; ignore_equal_values=true) do pos, gc, offset, transfunc, space
         Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
     end
 
     # unpack values from the one signal:
     positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
-        lift(getindex, glyph_data, i)
+        return lift(getindex, plot, glyph_data, i)
     end
 
-    uniform_color = lift(glyphcollection) do gc
+    uniform_color = lift(plot, glyphcollection) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
                 init = RGBAf[])
@@ -252,7 +248,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         end
     end
 
-    uniform_rotation = lift(glyphcollection) do gc
+    uniform_rotation = lift(plot, glyphcollection) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
                 init = Quaternionf[])

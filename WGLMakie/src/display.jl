@@ -13,7 +13,7 @@ end
 function Base.size(screen::ThreeDisplay)
     # look at d.qs().clientWidth for displayed width
     js = js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"
-    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; time_out=100))
+    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; timeout=100))
     return (width, height)
 end
 
@@ -209,7 +209,7 @@ Makie.wait_for_display(screen::Screen) = get_three(screen)
 function Base.display(screen::Screen, scene::Scene; unused...)
     Makie.push_screen!(scene, screen)
     # Reference to three object which gets set once we serve this to a browser
-    app = App() do session, request
+    app = App() do session
         screen.session = session
         three, canvas, done_init = three_display(screen, session, scene)
         on(session, done_init) do _
@@ -267,7 +267,7 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
             }
             const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
             parent.scene_children.push(new_scene);
-        })
+        }; timeout=100)
         """)
         mark_as_displayed!(screen, scene)
         return false
@@ -278,10 +278,13 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
         plot_data = serialize_plots(scene, [plot])
-        JSServe.evaljs_value(disp.session, js"""
+        plot_sub = Session(disp.session)
+        JSServe.init_session(plot_sub)
+        plot.__wgl_session = plot_sub
+        JSServe.evaljs_value(plot_sub, js"""
         $(WGL).then(WGL=> {
             WGL.insert_plot($(js_uuid(scene)), $plot_data);
-        })""")
+        })"""; timeout=100)
     else
         # Newly created scene gets inserted!
         # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
@@ -299,25 +302,42 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     return
 end
 
-function delete_js_objects!(screen::Screen, scene::String, uuids::Vector{String})
+function delete_js_objects!(screen::Screen, scene::String, plot::Combined, session::Union{Nothing, Session})
+    plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
     three = get_three(screen)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
     JSServe.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
-        WGL.delete_plots($(scene), $(uuids));
+        WGL.delete_plots($(scene), $(plot_uuids));
     })""")
+    !isnothing(session) && close(session)
     return
+end
+
+function all_plots_scenes(scene::Scene; scene_uuids=String[], plots=Combined[])
+    push!(scene_uuids, js_uuid(scene))
+    append!(plots, scene.plots)
+    for child in scene.children
+        all_plots_scenes(child; plots=plots, scene_uuids=scene_uuids)
+    end
+    return scene_uuids, plots
 end
 
 function delete_js_objects!(screen::Screen, scene::Scene)
     three = get_three(screen)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
-    scene_uuids, plot_uuids = all_plots_scenes(scene)
+    scene_uuids, plots = all_plots_scenes(scene)
+    for plot in plots
+        if haskey(plot, :__wgl_session)
+            session = plot.__wgl_session[]
+            close(session)
+        end
+    end
     JSServe.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
-        WGL.delete_scenes($scene_uuids, $plot_uuids);
+        WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
     })""")
     return
 end
@@ -378,14 +398,13 @@ function Base.push!(queue::LockfreeQueue, item)
 end
 
 const DISABLE_JS_FINALZING = Base.RefValue(false)
-const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_js_objects!)
+const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String, Combined, Union{Session, Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
-    atomics = Makie.collect_atomic_plots(plot) # delete all atomics
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
-        push!(DELETE_QUEUE, (screen, js_uuid(scene), js_uuid.(atomics)))
+        push!(DELETE_QUEUE, (screen, js_uuid(scene), plot, to_value(get(plot, :__wgl_session, nothing))))
     end
     return
 end

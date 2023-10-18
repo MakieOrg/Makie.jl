@@ -1,6 +1,5 @@
-using DataFrames, GLMakie
+using DataFrames
 import Makie.PlotspecApi as P
-GLMakie.activate!(float=true)
 using Random
 
 function gen_data(N=1000)
@@ -48,7 +47,7 @@ function plot_data(data, categorical_vars, continuous_vars)
     end
     fig
 end
-
+using WGLMakie
 begin
     data = gen_data(1000)
     continous_vars = Observable(["continuous2", "continuous3"])

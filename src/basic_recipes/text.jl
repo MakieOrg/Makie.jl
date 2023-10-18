@@ -8,13 +8,13 @@ function plot!(plot::Text)
     check_textsize_deprecation(plot)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphcollections = Observable(GlyphCollection[])
-    linesegs = Observable(Point2f[])
-    linewidths = Observable(Float32[])
-    linecolors = Observable(RGBAf[])
+    glyphcollections = Observable(GlyphCollection[]; ignore_equal_values=true)
+    linesegs = Observable(Point2f[]; ignore_equal_values=true)
+    linewidths = Observable(Float32[]; ignore_equal_values=true)
+    linecolors = Observable(RGBAf[]; ignore_equal_values=true)
     lineindices = Ref(Int[])
 
-    onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
+    onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
                 ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
@@ -58,11 +58,11 @@ function plot!(plot::Text)
         linesegs[] = lsegs
     end
 
-    linesegs_shifted = Observable(Point2f[])
+    linesegs_shifted = Observable(Point2f[]; ignore_equal_values=true)
 
     sc = parent_scene(plot)
 
-    onany(linesegs, positions, sc.camera.projectionview, sc.px_area,
+    onany(plot, linesegs, positions, sc.camera.projectionview, sc.px_area,
             transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
         pos_transf = plot_to_screen(plot, pos)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
@@ -164,7 +164,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
     text!(plot, positions; text = strings, attrs...)
 
     # update both text and positions together
-    on(strings_and_positions) do str_pos
+    on(plot, strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
 

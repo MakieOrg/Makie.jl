@@ -171,6 +171,7 @@ export function deserialize_plot(data) {
 
 const ON_NEXT_INSERT = new Set();
 
+
 export function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
