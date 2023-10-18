@@ -32,7 +32,6 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
-
 plot_preferred_axis(@nospecialize(x)) = nothing # nothing == I dont know
 plot_preferred_axis(p::PlotFunc) = plot_preferred_axis(Makie.conversion_trait(p))
 plot_preferred_axis(::Type{<:Volume}) = LScene
