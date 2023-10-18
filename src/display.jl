@@ -161,7 +161,7 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
         screen = getscreen(backend, scene; screen_config...)
 
         if figlike isa Figure
-            sync_global_time(figlike, screen.render_tick)
+            sync_global_time(figlike, render_tick(screen))
         end
 
         display(screen, scene)
