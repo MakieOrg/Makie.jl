@@ -35,12 +35,86 @@ EllipticalArc(cx, cy, r1, r2, angle, a1, a2) = EllipticalArc(Point(cx, cy),
     r1, r2, angle, a1, a2)
 
 struct ClosePath end
-
 const PathCommand = Union{MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath}
+
+function bbox(commands::Vector{PathCommand})
+    prev = commands[1]
+    bb = nothing
+    for comm in @view(commands[2:end])
+        if comm isa MoveTo || comm isa ClosePath
+            continue
+        else
+            endp = endpoint(prev)
+            _bb = cleanup_bbox(bbox(endp, comm))
+            bb = bb === nothing ? _bb : union(bb, _bb)
+        end
+        prev = comm
+    end
+    return bb
+end
+
+function elliptical_arc_to_beziers(arc::EllipticalArc)
+    delta_a = abs(arc.a2 - arc.a1)
+    n_beziers = ceil(Int, delta_a / 0.5pi)
+    angles = range(arc.a1, arc.a2; length=n_beziers + 1)
+
+    startpoint = Point2f(cos(arc.a1), sin(arc.a1))
+    curves = map(angles[1:(end - 1)], angles[2:end]) do start, stop
+        theta = stop - start
+        kappa = 4 / 3 * tan(theta / 4)
+        c1 = Point2f(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
+        c2 = Point2f(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
+        b = Point2f(cos(stop), sin(stop))
+        return CurveTo(c1, c2, b)
+    end
+
+    path = BezierPath([LineTo(startpoint), curves...])
+    path = scale(path, Vec(arc.r1, arc.r2))
+    path = rotate(path, arc.angle)
+    return path = translate(path, arc.c)
+end
+
+bbox(p, x::Union{LineTo,CurveTo}) = bbox(segment(p, x))
+function bbox(p, e::EllipticalArc)
+    return bbox(elliptical_arc_to_beziers(e))
+end
+
+endpoint(m::MoveTo) = m.p
+endpoint(l::LineTo) = l.p
+endpoint(c::CurveTo) = c.p
+function endpoint(e::EllipticalArc)
+    return point_at_angle(e, e.a2)
+end
+
+function point_at_angle(e::EllipticalArc, theta)
+    M = abs(e.r1) * cos(theta)
+    N = abs(e.r2) * sin(theta)
+    return Point2f(e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
+                   e.c[2] + sin(e.angle) * M + cos(e.angle) * N)
+end
+
+function cleanup_bbox(bb::Rect2f)
+    if any(x -> x < 0, bb.widths)
+        p = bb.origin .+ (bb.widths .< 0) .* bb.widths
+        return Rect2f(p, abs.(bb.widths))
+    end
+    return bb
+end
+
+crc(x, seed=UInt32(0)) = crc32c(collect(x), seed)
 
 struct BezierPath
     commands::Vector{PathCommand}
+    boundingbox::Rect2f
+    hash::UInt32
+    function BezierPath(commands::Vector)
+        c = convert(Vector{PathCommand}, commands)
+        return new(c, bbox(c), StableHashTraits.stable_hash(c; alg=crc))
+    end
 end
+bbox(x::BezierPath) = x.boundingbox
+fast_stable_hash(x::BezierPath) = x.hash
+
 
 # so that the same bezierpath with a different instance of a vector hashes the same
 # and we don't create the same texture atlas entry twice
@@ -127,74 +201,13 @@ Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 
 # markers that fit into a square with sidelength 1 centered on (0, 0)
 
-const BezierCircle = let
-    r = 0.47 # sqrt(1/pi)
-    BezierPath([
-        MoveTo(Point(r, 0.0)),
-        EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
-        ClosePath(),
-    ])
-end
-
-const BezierUTriangle = let
-    aspect = 1
-    h = 0.97 # sqrt(aspect) * sqrt(2)
-    w = 0.97 # 1/sqrt(aspect) * sqrt(2)
-    # r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
-    p1 = Point(0, h/2)
-    p2 = Point2(-w/2, -h/2)
-    p3 = Point2(w/2, -h/2)
-    centroid = (p1 + p2 + p3) / 3
-    bp = BezierPath([
-        MoveTo(p1 - centroid),
-        LineTo(p2 - centroid),
-        LineTo(p3 - centroid),
-        ClosePath()
-    ])
-end
-
-const BezierLTriangle = rotate(BezierUTriangle, pi/2)
-const BezierDTriangle = rotate(BezierUTriangle, pi)
-const BezierRTriangle = rotate(BezierUTriangle, 3pi/2)
-
-
-const BezierSquare = let
-    r = 0.95 * sqrt(pi)/2/2 # this gives a little less area as the r=0.5 circle
-    BezierPath([
-        MoveTo(Point2(r, -r)),
-        LineTo(Point2(r, r)),
-        LineTo(Point2(-r, r)),
-        LineTo(Point2(-r, -r)),
-        ClosePath()
-    ])
-end
-
-const BezierCross = let
-    cutfraction = 2/3
-    r = 0.5 # 1/(2 * sqrt(1 - cutfraction^2))
-    ri = 0.166 #r * (1 - cutfraction)
-
-    first_three = Point2[(r, ri), (ri, ri), (ri, r)]
-    all = map(0:pi/2:3pi/2) do a
-        m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
-        Ref(m) .* first_three
-    end |> x -> reduce(vcat, x)
-
-    BezierPath([
-        MoveTo(all[1]),
-        LineTo.(all[2:end])...,
-        ClosePath()
-    ])
-end
-
-const BezierX = rotate(BezierCross, pi/4)
 
 function bezier_ngon(n, radius, angle)
     points = [radius * Point2f(cos(a + angle), sin(a + angle))
         for a in range(0, 2pi, length = n+1)[1:end-1]]
     BezierPath([
         MoveTo(points[1]);
-        LineTo.(points[2:end]);
+        LineTo.(@view points[2:end]);
         ClosePath()
     ])
 end
@@ -489,13 +502,13 @@ function render_path(path, bitmap_size_px = 256)
     scale_factor = bitmap_size_px * 64
 
     # We transform the path into a rectangle of size (aspect, 1) or (1, aspect)
-    # such that aspect ≤ 1. We then scale that rectangle up to a size of 4096 by 
+    # such that aspect ≤ 1. We then scale that rectangle up to a size of 4096 by
     # 4096 * aspect, which results in at most a 64px by 64px bitmap
 
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    # Minimal size that becomes integer when mutliplying by 64 (target size for 
+    # Minimal size that becomes integer when mutliplying by 64 (target size for
     # atlas). This adds padding to avoid blurring/scaling factors from rounding
     # during sdf generation
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))
@@ -512,7 +525,7 @@ function render_path(path, bitmap_size_px = 256)
     # Adjust bitmap size to match path size
     w = ceil(Int, bitmap_size_px * path_size[1])
     h = ceil(Int, bitmap_size_px * path_size[2])
-    
+
     pitch = w * 1 # 8 bit gray
     pixelbuffer = zeros(UInt8, h * pitch)
     bitmap_ref = Ref{FT_Bitmap}()
@@ -579,60 +592,12 @@ struct LineSegment
     to::Point2f
 end
 
-function bbox(b::BezierPath)
-    prev = b.commands[1]
-    bb = nothing
-    for comm in b.commands[2:end]
-        if comm isa MoveTo || comm isa ClosePath
-            continue
-        else
-            endp = endpoint(prev)
-            _bb = cleanup_bbox(bbox(endp, comm))
-            bb = bb === nothing ? _bb : union(bb, _bb)
-        end
-        prev = comm
-    end
-    bb
-end
-
-segment(p, l::LineTo) = LineSegment(p, l.p)
-segment(p, c::CurveTo) = BezierSegment(p, c.c1, c.c2, c.p)
-
-endpoint(m::MoveTo) = m.p
-endpoint(l::LineTo) = l.p
-endpoint(c::CurveTo) = c.p
-function endpoint(e::EllipticalArc)
-    point_at_angle(e, e.a2)
-end
-
-function point_at_angle(e::EllipticalArc, theta)
-    M = abs(e.r1) * cos(theta)
-    N = abs(e.r2) * sin(theta)
-    Point2f(
-        e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
-        e.c[2] + sin(e.angle) * M + cos(e.angle) * N
-    )
-end
-
-function cleanup_bbox(bb::Rect2f)
-    if any(x -> x < 0, bb.widths)
-        p = bb.origin .+ (bb.widths .< 0) .* bb.widths
-        return Rect2f(p, abs.(bb.widths))
-    end
-    return bb
-end
-
-bbox(p, x::Union{LineTo, CurveTo}) = bbox(segment(p, x))
-function bbox(p, e::EllipticalArc)
-    bbox(elliptical_arc_to_beziers(e))
-end
 
 function bbox(ls::LineSegment)
-    Rect2f(ls.from, ls.to - ls.from)
+    return Rect2f(ls.from, ls.to - ls.from)
 end
 
 function bbox(b::BezierSegment)
-
     p0 = b.from
     p1 = b.c1
     p2 = b.c2
@@ -642,68 +607,103 @@ function bbox(b::BezierSegment)
     ma = [max.(p0, p3)...]
 
     c = -p0 + p1
-    b =  p0 - 2p1 + p2
+    b = p0 - 2p1 + p2
     a = -p0 + 3p1 - 3p2 + 1p3
 
-    h = [(b.*b - a.*c)...]
+    h = [(b .* b - a .* c)...]
 
     if h[1] > 0
         h[1] = sqrt(h[1])
         t = (-b[1] - h[1]) / a[1]
         if t > 0 && t < 1
-            s = 1.0-t
-            q = s*s*s*p0[1] + 3.0*s*s*t*p1[1] + 3.0*s*t*t*p2[1] + t*t*t*p3[1]
-            mi[1] = min(mi[1],q)
-            ma[1] = max(ma[1],q)
+            s = 1.0 - t
+            q = s * s * s * p0[1] + 3.0 * s * s * t * p1[1] + 3.0 * s * t * t * p2[1] + t * t * t * p3[1]
+            mi[1] = min(mi[1], q)
+            ma[1] = max(ma[1], q)
         end
-        t = (-b[1] + h[1])/a[1]
-        if t>0 && t<1
-            s = 1.0-t
-            q = s*s*s*p0[1] + 3.0*s*s*t*p1[1] + 3.0*s*t*t*p2[1] + t*t*t*p3[1]
-            mi[1] = min(mi[1],q)
-            ma[1] = max(ma[1],q)
+        t = (-b[1] + h[1]) / a[1]
+        if t > 0 && t < 1
+            s = 1.0 - t
+            q = s * s * s * p0[1] + 3.0 * s * s * t * p1[1] + 3.0 * s * t * t * p2[1] + t * t * t * p3[1]
+            mi[1] = min(mi[1], q)
+            ma[1] = max(ma[1], q)
         end
     end
 
-    if h[2]>0.0
+    if h[2] > 0.0
         h[2] = sqrt(h[2])
-        t = (-b[2] - h[2])/a[2]
-        if t>0.0 && t<1.0
-            s = 1.0-t
-            q = s*s*s*p0[2] + 3.0*s*s*t*p1[2] + 3.0*s*t*t*p2[2] + t*t*t*p3[2]
-            mi[2] = min(mi[2],q)
-            ma[2] = max(ma[2],q)
+        t = (-b[2] - h[2]) / a[2]
+        if t > 0.0 && t < 1.0
+            s = 1.0 - t
+            q = s * s * s * p0[2] + 3.0 * s * s * t * p1[2] + 3.0 * s * t * t * p2[2] + t * t * t * p3[2]
+            mi[2] = min(mi[2], q)
+            ma[2] = max(ma[2], q)
         end
-        t = (-b[2] + h[2])/a[2]
-        if t>0.0 && t<1.0
-            s = 1.0-t
-            q = s*s*s*p0[2] + 3.0*s*s*t*p1[2] + 3.0*s*t*t*p2[2] + t*t*t*p3[2]
-            mi[2] = min(mi[2],q)
-            ma[2] = max(ma[2],q)
+        t = (-b[2] + h[2]) / a[2]
+        if t > 0.0 && t < 1.0
+            s = 1.0 - t
+            q = s * s * s * p0[2] + 3.0 * s * s * t * p1[2] + 3.0 * s * t * t * p2[2] + t * t * t * p3[2]
+            mi[2] = min(mi[2], q)
+            ma[2] = max(ma[2], q)
         end
     end
 
-    Rect2f(Point(mi...), Point(ma...) - Point(mi...))
+    return Rect2f(Point(mi...), Point(ma...) - Point(mi...))
 end
 
+segment(p, l::LineTo) = LineSegment(p, l.p)
+segment(p, c::CurveTo) = BezierSegment(p, c.c1, c.c2, c.p)
 
-function elliptical_arc_to_beziers(arc::EllipticalArc)
-    delta_a = abs(arc.a2 - arc.a1)
-    n_beziers = ceil(Int, delta_a / 0.5pi)
-    angles = range(arc.a1, arc.a2, length = n_beziers + 1)
 
-    startpoint = Point2f(cos(arc.a1), sin(arc.a1))
-    curves = map(angles[1:end-1], angles[2:end]) do start, stop
-        theta = stop - start
-        kappa = 4/3 * tan(theta/4)
-        c1 = Point2f(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
-        c2 = Point2f(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
-        b = Point2f(cos(stop), sin(stop))
-        CurveTo(c1, c2, b)
-    end
-
-    path = BezierPath([LineTo(startpoint), curves...])
-    path = scale(path, Vec(arc.r1, arc.r2))
-    path = rotate(path, arc.angle)
-    path = translate(path, arc.c)
+const BezierCircle = let
+    r = 0.47 # sqrt(1/pi)
+    BezierPath([MoveTo(Point(r, 0.0)),
+                EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
+                ClosePath()])
 end
+
+const BezierUTriangle = let
+    aspect = 1
+    h = 0.97 # sqrt(aspect) * sqrt(2)
+    w = 0.97 # 1/sqrt(aspect) * sqrt(2)
+    # r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
+    p1 = Point(0, h / 2)
+    p2 = Point2(-w / 2, -h / 2)
+    p3 = Point2(w / 2, -h / 2)
+    centroid = (p1 + p2 + p3) / 3
+    bp = BezierPath([MoveTo(p1 - centroid),
+                     LineTo(p2 - centroid),
+                     LineTo(p3 - centroid),
+                     ClosePath()])
+end
+
+const BezierLTriangle = rotate(BezierUTriangle, pi / 2)
+const BezierDTriangle = rotate(BezierUTriangle, pi)
+const BezierRTriangle = rotate(BezierUTriangle, 3pi / 2)
+
+const BezierSquare = let
+    r = 0.95 * sqrt(pi) / 2 / 2 # this gives a little less area as the r=0.5 circle
+    BezierPath([MoveTo(Point2(r, -r)),
+                LineTo(Point2(r, r)),
+                LineTo(Point2(-r, r)),
+                LineTo(Point2(-r, -r)),
+                ClosePath()])
+end
+
+const BezierCross = let
+    cutfraction = 2 / 3
+    r = 0.5 # 1/(2 * sqrt(1 - cutfraction^2))
+    ri = 0.166 #r * (1 - cutfraction)
+
+    first_three = Point2[(r, ri), (ri, ri), (ri, r)]
+    all = (x -> reduce(vcat, x))(map(0:(pi / 2):(3pi / 2)) do a
+                                   m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
+                                   return Ref(m) .* first_three
+                               end)
+
+    BezierPath([MoveTo(all[1]),
+                LineTo.(all[2:end])...,
+                ClosePath()])
+end
+
+const BezierX = rotate(BezierCross, pi / 4)

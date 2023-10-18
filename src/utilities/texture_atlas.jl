@@ -1,4 +1,4 @@
-const SERIALIZATION_FORMAT_VERSION = "v4"
+const SERIALIZATION_FORMAT_VERSION = "v5"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -291,7 +291,7 @@ function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
     return atlas.uv_rectangles[glyph_index!(atlas, b)]
 end
 
-crc(x, seed=UInt32(0)) = crc32c(collect(x), seed)
+
 
 # Seems like StableHashTraits is so slow, that it's worthwhile to memoize the hashes
 const MEMOIZED_HASHES = Dict{Any, UInt32}()
@@ -443,6 +443,7 @@ function marker_to_sdf_shape(arr::AbstractVector)
     shape1 = marker_to_sdf_shape(first(arr))
     for elem in arr
         shape2 = marker_to_sdf_shape(elem)
+        shape2 isa Shape && shape1 isa Shape && continue
         shape1 !== shape2 && error("Can't use an array of markers that require different primitive_shapes $(typeof.(arr)).")
     end
     return shape1

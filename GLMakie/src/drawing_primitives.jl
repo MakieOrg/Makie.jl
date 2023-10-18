@@ -113,6 +113,7 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
                         :calculated_colors, :space, :markerspace, :model])
 
+
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)

@@ -1,6 +1,7 @@
 using DataFrames, GLMakie
 import Makie.PlotspecApi as P
 GLMakie.activate!(float=true)
+using Random
 
 function gen_data(N=1000)
     return DataFrame(
@@ -57,8 +58,8 @@ begin
         plot_data(data, cat_vars, con_vars)
     end
     fig = Makie.update_fig(Figure(), obs)
+    display(fig)
 end
-using Random
 start_size = Base.summarysize(fig) / 10^6
 for i in 1:1000
     all_vars = ["continuous$i" for i in 2:5]
