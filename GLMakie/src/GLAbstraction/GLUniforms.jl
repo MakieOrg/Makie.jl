@@ -261,16 +261,4 @@ function gl_convert(::Type{T}, a::Observable{<: AbstractArray{X, N}}; kw_args...
     T(s; kw_args...)
 end
 
-lift_convert(a::AbstractArray, T, N) = lift(x -> convert(Array{T, N}, x), a)
-function lift_convert(a::ShaderAbstractions.Sampler, T, N)
-    ShaderAbstractions.Sampler(
-        lift(x -> convert(Array{T, N}, x.data), a),
-        minfilter = a[].minfilter, magfilter = a[].magfilter,
-        x_repeat = a[].repeat[1],
-        y_repeat = a[].repeat[min(2, N)],
-        z_repeat = a[].repeat[min(3, N)],
-        anisotropic = a[].anisotropic, swizzle_mask = a[].swizzle_mask
-    )
-end
-
 gl_convert(f::Function, a) = f(a)

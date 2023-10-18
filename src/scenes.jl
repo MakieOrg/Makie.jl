@@ -465,7 +465,6 @@ function Base.empty!(scene::Scene; free=false)
     return nothing
 end
 
-
 function Base.push!(plot::Combined, subplot)
     subplot.parent = plot
     push!(plot.plots, subplot)
@@ -490,6 +489,9 @@ end
 function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
+    end
+    for arg in plot.args
+        Observables.clear(arg)
     end
     foreach(free, plot.plots)
     empty!(plot.plots)

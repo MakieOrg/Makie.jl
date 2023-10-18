@@ -174,21 +174,8 @@ mutable struct GLVertexArray{T}
     buffers::Dict{String,GLBuffer}
     indices::T
     context::GLContext
-    requires_update::Observable{Bool}
-
     function GLVertexArray{T}(program, id, bufferlength, buffers, indices) where T
-        va = new(program, id, bufferlength, buffers, indices, current_context(), true)
-        if indices isa GLBuffer
-            on(indices.requires_update) do _ # only triggers true anyway
-                va.requires_update[] = true
-            end
-        end
-        for (name, buffer) in buffers
-            on(buffer.requires_update) do _ # only triggers true anyway
-                va.requires_update[] = true
-            end
-        end
-
+        va = new(program, id, bufferlength, buffers, indices, current_context())
         return va
     end
 end
@@ -318,7 +305,6 @@ mutable struct RenderObject{Pre}
     prerenderfunction::Pre
     postrenderfunction
     id::UInt32
-    requires_update::Bool
     visible::Bool
 
     function RenderObject{Pre}(
@@ -326,7 +312,7 @@ mutable struct RenderObject{Pre}
             uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
             vertexarray::GLVertexArray,
             prerenderfunctions, postrenderfunctions,
-            visible, track_updates = true
+            visible
         ) where Pre
         fxaa = Bool(to_value(get!(uniforms, :fxaa, true)))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
@@ -340,57 +326,13 @@ mutable struct RenderObject{Pre}
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, true, visible[]
+            id, visible[]
         )
-
-        if track_updates
-            # visible changes should always trigger updates so that plots
-            # actually become invisible when visible is changed.
-            # Other uniforms and buffers don't need to trigger updates when
-            # visible = false
-            on(visible) do visible
-                robj.visible = visible
-                robj.requires_update = true
-            end
-
-            function request_update(_::Any)
-                if robj.visible
-                    robj.requires_update = true
-                end
-                return
-            end
-
-            # gather update requests for polling in renderloop
-            for uniform in values(uniforms)
-                if uniform isa Observable
-                    on(request_update, uniform)
-                elseif uniform isa GPUArray
-                    on(request_update, uniform.requires_update)
-                end
-            end
-            on(request_update, vertexarray.requires_update)
-        else
-            on(visible) do visible
-                robj.visible = visible
-            end
-
-            # remove tracking from GPUArrays
-            for uniform in values(uniforms)
-                if uniform isa GPUArray
-                    foreach(off, uniform.requires_update.inputs)
-                    empty!(uniform.requires_update.inputs)
-                end
-            end
-            for buffer in vertexarray.buffers
-                if buffer isa GPUArray
-                    foreach(off, buffer.requires_update.inputs)
-                    empty!(buffer.requires_update.inputs)
-                end
-            end
-            foreach(off, vertexarray.requires_update.inputs)
-            empty!(vertexarray.requires_update.inputs)
+        push!(observables, visible)
+        on(visible) do visible
+            robj.visible = visible
+            return
         end
-
         return robj
     end
 end
@@ -474,8 +416,7 @@ function RenderObject(
         vertexarray,
         pre,
         post,
-        visible,
-        track_updates
+        visible
     )
 
     # automatically integrate object ID, will be discarded if shader doesn't use it
@@ -502,7 +443,6 @@ function clean_up_observables(x::T) where T
         foreach(off, x.observers)
         empty!(x.observers)
     end
-    Observables.clear(x.requires_update)
 end
 
 # OpenGL has the annoying habit of reusing id's when creating a new context

@@ -58,9 +58,9 @@ begin
     end
     fig = Makie.update_fig(Figure(), obs)
 end
-
+using Random
 start_size = Base.summarysize(fig) / 10^6
-for i in 1:50
+for i in 1:1000
     all_vars = ["continuous$i" for i in 2:5]
     all_cond_vars = ["condition$i" for i in 2:5]
 
@@ -69,9 +69,7 @@ for i in 1:50
     yield()
 end
 
-
-categorical_vars[] = []
-
+end_size = Base.summarysize(fig) / 10^6
 
 
 using Makie

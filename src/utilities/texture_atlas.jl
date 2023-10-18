@@ -561,10 +561,11 @@ end
 
 offset_marker(atlas, marker, font, markersize, markeroffset) = markeroffset
 
-function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset)
+function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset, plot_object)
     atlas_obs = Observable(atlas) # for map to work
-    scale = map(rescale_marker, atlas_obs, marker, font, markersize; ignore_equal_values=true)
-    quad_offset = map(offset_marker, atlas_obs, marker, font, markersize, marker_offset; ignore_equal_values=true)
+    scale = map(rescale_marker, plot_object, atlas_obs, marker, font, markersize; ignore_equal_values=true)
+    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize, marker_offset;
+                      ignore_equal_values=true)
 
     return scale, quad_offset
 end

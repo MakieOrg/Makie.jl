@@ -228,7 +228,8 @@ function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
             transform!(t, t_user)
             plot.transformation = t
         end
-        connect!(transformation(scene), transformation(plot))
+        obsfunc = connect!(transformation(scene), transformation(plot))
+        append!(plot.deregister_callbacks, obsfunc)
     end
     plot.model = transformationmatrix(plot)
     convert_arguments!(plot)

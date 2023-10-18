@@ -912,9 +912,7 @@ function requires_update(screen::Screen)
         screen.requires_update = false
         return true
     end
-    for (_, _, robj) in screen.renderlist
-        robj.requires_update && return true
-    end
+
     return false
 end
 

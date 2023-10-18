@@ -140,14 +140,14 @@ function update_plot!(plot::AbstractPlot, spec::PlotSpec)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
         arg_obs = plot.args[i]
-        if to_value(arg_obs) != spec.args[i] # only update if different
+        if to_value(arg_obs) !== spec.args[i] # only update if different
             @debug("updating arg $i")
             arg_obs[] = spec.args[i]
         end
     end
     # Update attributes
     for (attribute, new_value) in spec.kwargs
-        if plot[attribute][] != new_value # only update if different
+        if plot[attribute][] !== new_value # only update if different
             @debug("updating kw $attribute")
             plot[attribute] = new_value
         end

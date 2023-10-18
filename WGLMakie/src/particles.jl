@@ -114,9 +114,6 @@ function serialize_three(fta::NoDataTextureAtlas)
     return tex
 end
 
-
-
-
 function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
     per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
@@ -134,7 +131,7 @@ function scatter_shader(scene::Scene, attributes, plot)
 
         markersize = lift(Makie.to_2d_scale, attributes[:markersize])
 
-        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset])
+        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset], plot)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
         attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
