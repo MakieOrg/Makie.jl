@@ -149,6 +149,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     rendertask::Union{Task, Nothing}
 
     screen2scene::Dict{WeakRef, ScreenID}
+    stencil_index::Vector{UInt8}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     postprocessors::Vector{PostProcessor}
@@ -185,7 +186,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
         screen = new{GLWindow}(
             glscreen, shader_cache, framebuffer,
             config, stop_renderloop, rendertask,
-            screen2scene,
+            screen2scene, zeros(UInt8, length(screens)),
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
             Observable(true), nothing, reuse, true, false
@@ -429,11 +430,14 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
+count2root(scene) = Makie.isroot(scene) ? 0x00 : count2root(scene.parent) + 0x01
+
 function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
+        push!(screen.stencil_index, count2root(scene))
         screen.requires_update = true
         onany(
             (_, _, _, _, _, _) -> screen.requires_update = true,
@@ -463,7 +467,10 @@ function Base.delete!(screen::Screen, scene::Scene)
         deleted_id = pop!(screen.screen2scene, WeakRef(scene))
         # TODO: this should always find something but sometimes doesn't...
         i = findfirst(id_scene -> id_scene[1] == deleted_id, screen.screens)
-        i !== nothing && deleteat!(screen.screens, i)
+        if i !== nothing
+            deleteat!(screen.screens, i)
+            pop!(screen.stencil_index)
+        end
 
         # Remap scene IDs to a continuous range by replacing the largest ID
         # with the one that got removed
@@ -477,6 +484,7 @@ function Base.delete!(screen::Screen, scene::Scene)
 
             i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
             screen.screens[i] = (deleted_id, screen.screens[i][2])
+            screen.stencil_index[i] = count2root(screen.screens[i][2])
 
             screen.screen2scene[key] = deleted_id
 
@@ -556,6 +564,7 @@ function Base.empty!(screen::Screen)
 
     empty!(screen.screen2scene)
     empty!(screen.screens)
+    empty!(screen.stencil_index)
     Observables.clear(screen.render_tick)
     Observables.clear(screen.window_open)
     GLFW.PollEvents()
@@ -716,6 +725,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
+        push!(screen.stencil_index, count2root(scene))
         return id
     end
     push!(screen.renderlist, (0, screenid, robj))
