@@ -21,6 +21,7 @@ export function delete_scene(scene_id) {
     if (!scene) {
         return;
     }
+    delete_three_scene(scene);
     while (scene.children.length > 0) {
         scene.remove(scene.children[0]);
     }
@@ -40,7 +41,10 @@ export function find_plots(plot_uuids) {
 
 export function delete_scenes(scene_uuids, plot_uuids) {
     plot_uuids.forEach((plot_id) => {
-        delete plot_cache[plot_id];
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
+        }
     });
     scene_uuids.forEach((scene_id) => {
         delete_scene(scene_id);
@@ -54,14 +58,9 @@ export function insert_plot(scene_id, plot_data) {
     });
 }
 
-export function delete_plots(scene_id, plot_uuids) {
-    console.log(`deleting plots!: ${plot_uuids}`);
-    const scene = find_scene(scene_id);
+export function delete_plots(plot_uuids) {
     const plots = find_plots(plot_uuids);
-    plots.forEach((p) => {
-        scene.remove(p);
-        delete plot_cache[p.plot_uuid];
-    });
+    plots.forEach(delete_plot);
 }
 
 function convert_texture(data) {
@@ -211,7 +210,7 @@ export function add_plot(scene, plot_data) {
         );
     }
     const p = deserialize_plot(plot_data);
-    plot_cache[plot_data.uuid] = p;
+    plot_cache[p.plot_uuid] = p;
     scene.add(p);
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy
@@ -548,16 +547,18 @@ export function deserialize_scene(data, screen) {
     update_cam(data.camera.value);
 
     if (data.cam3d_state) {
+        // add JS camera... This will only  update the camera matrices via js if:
+        // JSServe.can_send_to_julia && can_send_to_julia()
         Camera.attach_3d_camera(canvas, camera, data.cam3d_state, scene);
-    } else {
-        data.camera.on(update_cam);
     }
+    data.camera.on(update_cam);
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
-    scene.scene_children = data.children.map((child) =>
-        deserialize_scene(child, screen)
-    );
+    scene.scene_children = data.children.map((child) => {
+        const childscene = deserialize_scene(child, screen);
+        return childscene;
+    });
     return scene;
 }
 

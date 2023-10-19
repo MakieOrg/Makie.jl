@@ -283,7 +283,7 @@ function serialize_scene(scene::Scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        dict = Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
+        dict = Dict((f => lift(serialize_three, scene, getfield(cam_controls, f)) for f in fields))
         dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution)
         dict
     else

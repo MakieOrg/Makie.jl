@@ -60,6 +60,7 @@ begin
     display(fig)
 end
 start_size = Base.summarysize(fig) / 10^6
+
 for i in 1:1000
     all_vars = ["continuous$i" for i in 2:5]
     all_cond_vars = ["condition$i" for i in 2:5]
@@ -68,8 +69,12 @@ for i in 1:1000
     categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
     yield()
 end
-
 end_size = Base.summarysize(fig) / 10^6
+
+obs[] = P.Figure()
+obs[] = P.Figure(P.Axis((1, 1), P.scatter(1:4), P.lines(1:4; color=:red)),
+                 P.Axis3((1, 2), P.scatter(rand(Point3f, 10); color=:red)))
+
 
 
 using Makie
@@ -132,5 +137,8 @@ for i in 1:20
 end
 [GC.gc(true) for i in 1:5]
 
-stop_s = Base.summarysize(fig) / 10^6
-stop_ram = Sys.free_memory() / 10^9
+using JSServe, WGLMakie
+rm(JSServe.bundle_path(WGLMakie.WGL))
+rm(JSServe.bundle_path(JSServe.JSServeLib))
+fig = Figure()
+ax = LScene(fig[1, 1]);

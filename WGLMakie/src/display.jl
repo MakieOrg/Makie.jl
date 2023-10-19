@@ -118,8 +118,6 @@ function mark_as_displayed!(screen::Screen, scene::Scene)
     return
 end
 
-
-
 for M in Makie.WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
@@ -254,10 +252,14 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     if js_uuid(scene) in screen.displayed_scenes
         return true
     else
+        if !(js_uuid(scene.parent) in screen.displayed_scenes)
+            # Parents serialize their child scenes, so we only need to
+            # serialize & update the parent scene
+            return insert_scene!(disp, screen, scene.parent)
+        end
         scene_ser = serialize_scene(scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
-        insert_scene!(disp, screen, parent) # make sure parent is also already displayed
         err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
         evaljs_value(disp.session, js"""
         $(WGL).then(WGL=> {
@@ -267,7 +269,7 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
             }
             const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
             parent.scene_children.push(new_scene);
-        }; timeout=100)
+        })
         """)
         mark_as_displayed!(screen, scene)
         return false
@@ -302,14 +304,14 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     return
 end
 
-function delete_js_objects!(screen::Screen, scene::String, plot::Combined, session::Union{Nothing, Session})
-    plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
+function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
+                            session::Union{Nothing,Session})
     three = get_three(screen)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
-    JSServe.evaljs(three.session, js"""
+    JSServe.evaljs_value(three.session, js"""
     $(WGL).then(WGL=> {
-        WGL.delete_plots($(scene), $(plot_uuids));
+        WGL.delete_plots($(plot_uuids));
     })""")
     !isnothing(session) && close(session)
     return
@@ -377,7 +379,7 @@ function run_jobs!(queue::LockfreeQueue)
             if !isnothing(q)
                 while !isempty(q)
                     item = pop!(q)
-                    queue.execute_job(item...)
+                    Base.invokelatest(queue.execute_job, item...)
                 end
             end
             sleep(0.1)
@@ -398,13 +400,15 @@ function Base.push!(queue::LockfreeQueue, item)
 end
 
 const DISABLE_JS_FINALZING = Base.RefValue(false)
-const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String, Combined, Union{Session, Nothing}}}(delete_js_objects!)
+const DELETE_QUEUE = LockfreeQueue{Tuple{Screen, Vector{String}, Union{Session, Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
-        push!(DELETE_QUEUE, (screen, js_uuid(scene), plot, to_value(get(plot, :__wgl_session, nothing))))
+        plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
+        session = to_value(get(plot, :__wgl_session, nothing))
+        push!(DELETE_QUEUE, (screen, plot_uuids, session))
     end
     return
 end
@@ -413,4 +417,6 @@ function Base.delete!(screen::Screen, scene::Scene)
     if !DISABLE_JS_FINALZING[]
         push!(SCENE_DELETE_QUEUE, (screen, scene))
     end
+    delete!(screen.displayed_scenes, js_uuid(scene))
+    return
 end
