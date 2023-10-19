@@ -60,7 +60,7 @@ export function delete_plots(scene_id, plot_uuids) {
     const plots = find_plots(plot_uuids);
     plots.forEach((p) => {
         scene.remove(p);
-        delete plot_cache[p];
+        delete plot_cache[p.plot_uuid];
     });
 }
 

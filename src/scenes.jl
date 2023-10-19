@@ -449,6 +449,7 @@ end
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @warn "Deleting plots not implemented for backend: $(typeof(screen))"
 end
+
 function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
@@ -515,7 +516,6 @@ function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     end
     list
 end
-
 
 function insertplots!(screen::AbstractDisplay, scene::Scene)
     for elem in scene.plots

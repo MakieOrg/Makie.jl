@@ -50,7 +50,8 @@ macro reference_test(name, code)
                 push!($REGISTERED_TESTS, $title)
             end
         end
-        elapsed = round(time() - t1; digits=3)
+        GC.gc(true)
+        elapsed = round(time() - t1; digits=5)
         total = Sys.total_memory()
         mem = round((total - Sys.free_memory()) / 10^9; digits=3)
         # TODO, write to file and create an overview in the end, similar to the benchmark results!

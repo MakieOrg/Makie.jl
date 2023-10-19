@@ -1359,21 +1359,17 @@ end
 
 @reference_test "px_per_unit and scalefactor" begin
     resolution = (800, 800)
-    fig = Figure(; resolution=resolution, padding=0)
-    @testset begin
-        matr = [(px, scale) for px in [0.5, 1, 2], scale in [0.5, 1, 2]]
-        imgs = map(matr) do (px_per_unit, scalefactor)
-            img = colorbuffer(ppu_test_plot(resolution, px_per_unit, scalefactor); px_per_unit=px_per_unit, scalefactor=scalefactor)
-            @test size(img) == (800, 800) .* px_per_unit
-            return img
+    let st = nothing
+        @testset begin
+            matr = [(px, scale) for px in [0.5, 1, 2], scale in [0.5, 1, 2]]
+            imgs = map(matr) do (px_per_unit, scalefactor)
+                img = colorbuffer(ppu_test_plot(resolution, px_per_unit, scalefactor); px_per_unit=px_per_unit, scalefactor=scalefactor)
+                @test size(img) == (800, 800) .* px_per_unit
+                return img
+            end
+            fig = Figure()
+            st = Makie.RamStepper(fig, Makie.current_backend().Screen(fig.scene), vec(imgs), :png)
         end
-        foreach(CartesianIndices(imgs)) do i
-            img = imgs[i]
-            ax, pl = image(fig[Tuple(i)...], rotr90(img); axis=(; aspect=1), interpolate=false)
-            hidedecorations!(ax); hidespines!(ax)
-        end
-        colgap!(fig.layout, 0)
-        rowgap!(fig.layout, 0)
+        st
     end
-    fig
 end
