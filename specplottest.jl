@@ -21,7 +21,6 @@ function gen_data(N=1000)
     )
 end
 
-
 function plot_data(data, categorical_vars, continuous_vars)
     fig = P.Figure()
     mpalette = [:circle, :star4, :xcross, :diamond]
@@ -47,7 +46,8 @@ function plot_data(data, categorical_vars, continuous_vars)
     end
     fig
 end
-using WGLMakie
+using WGLMakie, JSServe
+rm(JSServe.bundle_path(JSServe.JSServeLib))
 begin
     data = gen_data(1000)
     continous_vars = Observable(["continuous2", "continuous3"])
@@ -56,6 +56,7 @@ begin
     obs = lift(continous_vars, categorical_vars) do con_vars, cat_vars
         plot_data(data, cat_vars, con_vars)
     end
+
     fig = Makie.update_fig(Figure(), obs)
     display(fig)
 end
@@ -101,6 +102,7 @@ function test(f_obs)
     end
     return yield()
 end
+test(obs)
 
 begin
     f = P.Figure()
@@ -140,5 +142,40 @@ end
 using JSServe, WGLMakie
 rm(JSServe.bundle_path(WGLMakie.WGL))
 rm(JSServe.bundle_path(JSServe.JSServeLib))
-fig = Figure()
-ax = LScene(fig[1, 1]);
+
+App() do
+    s = JSServe.Slider(1:20)
+    data = gen_data(1000)
+    continous_vars = Observable(["continuous2", "continuous3"])
+    categorical_vars = Observable(["condition2", "condition4"])
+    fig = nothing
+    obs = lift(continous_vars, categorical_vars) do con_vars, cat_vars
+        return plot_data(data, cat_vars, con_vars)
+    end
+    on(s.value) do val
+        all_vars = ["continuous$i" for i in 2:5]
+        all_cond_vars = ["condition$i" for i in 2:5]
+        continous_vars[] = shuffle!(all_vars[unique(rand(1:4, rand(1:4)))])
+        categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
+        return
+    end
+    fig = Makie.update_fig(Figure(), obs)
+    return DOM.div(s, fig)
+end
+
+using WGLMakie, Test
+
+begin
+    f = Figure()
+    l = Legend(f[1, 1], [LineElement(; color=:red)], ["Line"])
+    s = display(f)
+    @test f.scene.current_screens[1] === s
+    @test f.scene.children[1].current_screens[1] === s
+    @test f.scene.children[1].children[1].current_screens[1] === s
+    delete!(l)
+    @test f.scene.current_screens[1] === s
+    ## legend should be gone
+    ax = Axis(f[1, 1])
+    scatter!(ax, 1:4; markersize=200, color=1:4)
+    f
+end

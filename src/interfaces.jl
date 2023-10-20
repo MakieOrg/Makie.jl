@@ -129,8 +129,12 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     end
     P = Combined{Func}
     used_attrs = used_attributes(P, to_value.(args)...)
-    kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
-    args_converted = convert_arguments(P, map(to_value, args)...; kw...)
+    if used_attrs === ()
+        args_converted = convert_arguments(P, map(to_value, args)...)
+    else
+        kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+        args_converted = convert_arguments(P, map(to_value, args)...; kw...)
+    end
     PNew, converted = apply_convert!(P, Attributes(), args_converted)
 
     obs_args = Any[convert(Observable, x) for x in args]

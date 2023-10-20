@@ -70,8 +70,8 @@ end
     display(edisplay, app)
     GC.gc(true);
     # Somehow this may take a while to get emptied completely
-    JSServe.wait_for(() -> isempty(run(edisplay.window, "Object.keys(WGL.scene_cache)"));timeout=10)
-    wgl_plots = run(edisplay.window, "Object.keys(WGL.plot_cache)")
+    JSServe.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)"))_;timeout=20)
+    wgl_plots = run(edisplay.window, "Object.keys(WGL.scene_cache)")
     @test isempty(wgl_plots)
 
     session = edisplay.browserdisplay.handler.session

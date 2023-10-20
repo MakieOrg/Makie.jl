@@ -30,7 +30,8 @@ function plot!(plot::Text)
         lwidths = Float32[]
         lcolors = RGBAf[]
         lindices = Int[]
-        function push_args((gc, ls, lw, lc, lindex))
+        function push_args(args...)
+            gc, ls, lw, lc, lindex = _get_glyphcollection_and_linesegments(args...)
             push!(gcs, gc)
             append!(lsegs, ls)
             append!(lwidths, lw)
@@ -38,18 +39,15 @@ function plot!(plot::Text)
             append!(lindices, lindex)
             return
         end
-        func = push_args ∘ _get_glyphcollection_and_linesegments
         if str isa Vector
             # If we have a Vector of strings, Vector arguments are interpreted
             # as per string.
-            broadcast_foreach(
-                func,
-                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
+            broadcast_foreach(push_args, str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
             )
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
-            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
+            push_args(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         end
         glyphcollections[] = gcs
         linewidths[] = lwidths
