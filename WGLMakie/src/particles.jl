@@ -49,7 +49,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
 
-    per_instance[:offset] = apply_transform(transform_func_obs(plot), plot[1], plot.space)
+    per_instance[:offset] = lift(apply_transform, plot, transform_func_obs(plot), plot[1], plot.space)
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))

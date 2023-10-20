@@ -21255,9 +21255,9 @@ function render_scene(scene, picking = false) {
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("EXITING WGL");
+        delete_three_scene(scene);
         renderer.state.reset();
         renderer.dispose();
-        delete_three_scene(scene);
         return false;
     }
     if (!scene.visible.value) {
