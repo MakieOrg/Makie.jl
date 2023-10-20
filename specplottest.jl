@@ -158,7 +158,7 @@ App() do
         continous_vars[] = shuffle!(all_vars[unique(rand(1:4, rand(1:4)))])
         categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
         return
-    end
+    endf
     fig = Makie.update_fig(Figure(), obs)
     return DOM.div(s, fig)
 end
@@ -180,8 +180,6 @@ begin
     f
 end
 
-
-using SnoopCompileCore, CairoMakie
-fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true);
-result = @snoopi_deep display(fig)
-using SnoopCompile, ProfileView; ProfileView.view(flamegraph(result));
+using SnoopCompileCore, WGLMakie
+result = @snoopi_deep scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true);
+using SnoopCompile, ProfileView; ProfileView.view(flamegraph(result))

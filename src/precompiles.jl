@@ -44,3 +44,4 @@ for T in (DragPan, RectangleZoom, LimitReset)
 end
 precompile(process_axis_event, (Axis, MouseEvent))
 precompile(process_interaction, (ScrollZoom, ScrollEvent, Axis))
+precompile(Makie.create_axis_from_kw, (Type{Scatter}, Figure, Dict{Symbol,Any}, UnitRange{Int64}))

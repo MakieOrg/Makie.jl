@@ -190,7 +190,8 @@ end
 
 # TODO, create optimized screens, forward more options to JS/WebGL
 function Screen(scene::Scene; kw...)
-    return Screen(Channel{ThreeDisplay}(1), nothing, scene, Makie.merge_screen_config(ScreenConfig, kw))
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(kw))
+    return Screen(Channel{ThreeDisplay}(1), nothing, scene, config)
 end
 Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)

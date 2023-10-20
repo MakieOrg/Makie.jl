@@ -266,19 +266,6 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
     return
 end
 
-# Prototype for Pluto + Ijulia integration with Observable(ListOfPlots)
-function Base.showable(::Union{MIME"juliavscode/html",MIME"text/html"}, ::Observable{<: AbstractVector{<:PlotSpec}})
-    return true
-end
-
-function Base.show(io::IO, m::Union{MIME"juliavscode/html",MIME"text/html"},
-                   plotspec::Observable{<:AbstractVector{<:PlotSpec}})
-    f = plot(plotspec)
-    show(io, m, f)
-    return
-end
-
-
 ## BlockSpec
 
 function compare_block(a::BlockSpec, b::BlockSpec)

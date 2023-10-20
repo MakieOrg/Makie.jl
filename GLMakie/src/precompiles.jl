@@ -10,8 +10,8 @@ macro compile(block)
     end
 end
 
-precompile(Screen, (Scene, ScreenConfig))
-precompile(GLFramebuffer, (NTuple{2,Int},))
+
+
 let
     @setup_workload begin
         x = rand(5)
@@ -37,6 +37,15 @@ let
             close(screen)
             destroy!(screen)
 
+            config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
+            screen = Screen(Scene(), config, nothing, MIME"image/png"(); visible=false, start_renderloop=false)
+            close(screen)
+
+
+            config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}())
+            screen = Screen(Scene(), config; visible=false, start_renderloop=false)
+            close(screen)
+
             empty!(atlas_texture_cache)
             closeall()
             @assert isempty(SCREEN_REUSE_POOL)
@@ -46,3 +55,15 @@ let
     end
     nothing
 end
+
+precompile(Screen, (Scene, ScreenConfig))
+precompile(GLFramebuffer, (NTuple{2,Int},))
+precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{Float32}))
+precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBAf}))
+precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBf}))
+precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBA{N0f8}}))
+precompile(glTexImage,
+           (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{GLAbstraction.DepthStencil_24_8}))
+precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{Vec{2,GLuint}}))
+precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBA{Float16}}))
+precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{N0f8}))

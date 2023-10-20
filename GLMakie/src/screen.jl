@@ -374,7 +374,7 @@ function Screen(;
         screen_config...
     )
     # Screen config is managed by the current active theme, so managed by Makie
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     screen = screen_from_pool(config.debugging)
     apply_config!(screen, config; start_renderloop=start_renderloop)
     if !isnothing(resolution)
@@ -400,7 +400,7 @@ function display_scene!(screen::Screen, scene::Scene)
 end
 
 function Screen(scene::Scene; start_renderloop=true, screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(scene, config; start_renderloop=start_renderloop)
 end
 

@@ -33,3 +33,4 @@ let
         nothing
     end
 end
+precompile(Makie.create_axis_from_kw, (Type{Scatter}, Figure, Dict{Symbol,Any}, UnitRange{Int64}))
