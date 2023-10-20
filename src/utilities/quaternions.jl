@@ -81,6 +81,16 @@ function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}
         (num8 - num11) * vec[1] + (num9 + num10) * vec[2] + (1f0 - (num4 + num5)) * vec[3]
     )
 end
+
+function Base.:(*)(quat::Quaternion, bb::Rect3f)
+    points = corners(bb)
+    first, rest = Iterators.peel(points)
+    bb = foldl(rest, init = Rect3f(quat * first, zero(first))) do bb, p
+        _update_rect(bb, Point3f(quat * p))
+    end
+    return bb
+end
+
 Base.conj(q::Quaternion) = Quaternion(-q[1], -q[2], -q[3], q[4])
 
 function Base.:(*)(q::Quaternion, w::Quaternion)

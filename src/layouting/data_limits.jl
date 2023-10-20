@@ -166,6 +166,7 @@ function update_boundingbox!(bb_ref, bb::Rect)
     return
 end
 
+# Default data_limits
 function data_limits(plot::AbstractPlot)
     # Assume primitive plot
     if isempty(plot.plots)
@@ -181,7 +182,7 @@ function data_limits(plot::AbstractPlot)
     return bb_ref[]
 end
 
-function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
+function _update_rect(rect::Rect{N, T}, point::VecTypes{N, T}) where {N, T}
     mi = minimum(rect)
     ma = maximum(rect)
     mis_mas = map(mi, ma, point) do _mi, _ma, _p
@@ -199,6 +200,20 @@ function limits_from_transformed_points(points_iterator)
     first, rest = Iterators.peel(points_iterator)
     bb = foldl(_update_rect, rest, init = Rect3f(first, zero(first)))
     return bb
+end
+
+# include bbox from scaled markers
+function limits_from_transformed_points(positions, scales, rotations, element_bbox)
+    isempty(positions) && return Rect3f()
+
+    center = minimum(element_bbox) + 0.5f0 * widths(element_bbox)
+    full_bbox = Rect3f(first(positions) + center, Vec3f(0))
+    broadcast_foreach(positions, scales, rotations) do pos, scale, rot
+        transformed_bbox = (rot * element_bbox) * scale + pos
+        full_bbox = union(full_bbox, transformed_bbox)
+    end
+
+    return full_bbox
 end
 
 function data_limits(scenelike, exclude=(p)-> false)
@@ -231,4 +246,24 @@ function data_limits(plot::Image)
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)
     return Rect3f(mini, maxi .- mini)
+end
+
+function data_limits(plot::MeshScatter)
+    # TODO: avoid mesh generation here if possible
+    marker_bb = Rect3f(convert_attribute(plot.marker[], key"marker"(), key"meshscatter"()))
+
+    positions = iterate_transformed(plot)
+    scales    = convert_attribute(plot.markersize[], key"markersize"(), key"meshscatter"())
+    rotations = to_rotation(to_value(get(plot, :rotation, plot.rotations)))
+    # "rotation" is a backend attribute that may overwrite "rotations"...
+
+    # fast path for constant markersize
+    if scales isa VecTypes{3} && rotations isa Quaternion
+        bb = limits_from_transformed_points(positions)
+        marker_bb = (rotations * marker_bb) * scales
+        return Rect3f(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+    else
+        # TODO: optimize const scale, var rot and var scale, const rot
+        return limits_from_transformed_points(positions, scales, rotations, marker_bb)
+    end
 end

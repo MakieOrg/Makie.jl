@@ -165,6 +165,7 @@ end
 attr_broadcast_length(x::NativeFont) = 1
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::AbstractVector) = length(x)
+attr_broadcast_length(x::Base.Generator) = attr_broadcast_length(x.iter)
 attr_broadcast_length(x::AbstractPattern) = 1
 attr_broadcast_length(x) = 1
 attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
@@ -172,6 +173,7 @@ attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractVector, i) = x[i]
+attr_broadcast_getindex(x::Base.Generator, i) = x.f(attr_broadcast_getindex(x.iter, i))
 attr_broadcast_getindex(x::AbstractArray{T, 0}, i) where T = x[1]
 attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
@@ -179,6 +181,7 @@ attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broad
 attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractVector) = true
+is_vector_attribute(x::Base.Generator) = is_vector_attribute(x.iter)
 is_vector_attribute(x::NativeFont) = false
 is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
@@ -438,3 +441,18 @@ end
 sv_getindex(v::AbstractVector, i::Integer) = v[i]
 sv_getindex(x, ::Integer) = x
 sv_getindex(x::VecTypes, ::Integer) = x
+
+# TODO: move to GeometryBasics
+function corners(rect::Rect2{T}) where T
+    o = minimum(rect)
+    w = widths(rect)
+    T0 = zero(T)
+    (o + Vec2(x, y) for x in (T0, w[1]) for y in (T0, w[2]))
+end
+
+function corners(rect::Rect3{T}) where T
+    o = minimum(rect)
+    w = widths(rect)
+    T0 = zero(T)
+    (o + Vec3(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3]))
+end
