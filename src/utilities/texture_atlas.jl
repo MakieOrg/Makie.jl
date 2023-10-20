@@ -1,4 +1,4 @@
-const SERIALIZATION_FORMAT_VERSION = "v4"
+const SERIALIZATION_FORMAT_VERSION = "v5"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
