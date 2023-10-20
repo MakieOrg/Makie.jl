@@ -179,3 +179,9 @@ begin
     scatter!(ax, 1:4; markersize=200, color=1:4)
     f
 end
+
+
+using SnoopCompileCore, CairoMakie
+fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true);
+result = @snoopi_deep display(fig)
+using SnoopCompile, ProfileView; ProfileView.view(flamegraph(result));

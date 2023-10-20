@@ -64,7 +64,8 @@ function Base.empty!(x::Attributes)
     for (key, obs) in attr
         Observables.clear(obs)
     end
-    return empty!(attr)
+    empty!(attr)
+    return x
 end
 
 Base.length(x::Attributes) = length(attributes(x))

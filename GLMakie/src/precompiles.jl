@@ -10,14 +10,18 @@ macro compile(block)
     end
 end
 
+precompile(Screen, (Scene, ScreenConfig))
+precompile(GLFramebuffer, (NTuple{2,Int},))
 let
     @setup_workload begin
         x = rand(5)
         @compile_workload begin
+
             GLMakie.activate!()
             screen = GLMakie.singleton_screen(false)
             close(screen)
             destroy!(screen)
+
             base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
             shared_precompile = joinpath(base_path, "shared-precompile.jl")
             include(shared_precompile)
@@ -26,6 +30,13 @@ let
             catch
             end
             Makie.CURRENT_FIGURE[] = nothing
+
+            screen = Screen(Scene())
+            close(screen)
+            screen = empty_screen(false)
+            close(screen)
+            destroy!(screen)
+
             empty!(atlas_texture_cache)
             closeall()
             @assert isempty(SCREEN_REUSE_POOL)
