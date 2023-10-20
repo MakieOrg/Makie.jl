@@ -286,7 +286,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
         JSServe.evaljs_value(plot_sub, js"""
         $(WGL).then(WGL=> {
             WGL.insert_plot($(js_uuid(scene)), $plot_data);
-        })"""; timeout=100)
+        })"""; timeout=50)
     else
         # Newly created scene gets inserted!
         # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
@@ -309,7 +309,7 @@ function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
     three = get_three(screen)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
-    JSServe.evaljs_value(three.session, js"""
+    JSServe.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
         WGL.delete_plots($(plot_uuids));
     })""")

@@ -222,38 +222,41 @@ function update_plotspecs!(
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    on(list_of_plotspecs; update=true) do plotspecs
-        old_plots = copy(cached_plots) # needed for set diff
-        previoues_plots = copy(cached_plots) # needed to be mutated
-        empty!(cached_plots)
-        for plotspec in plotspecs
-            # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-            reused_plot = nothing
-            for (spec, plot) in previoues_plots
-                if compare_specs(spec, plotspec)
-                    reused_plot = plot
-                    delete!(previoues_plots, spec)
-                    break
+    l = Base.ReentrantLock()
+    on(scene, list_of_plotspecs; update=true) do plotspecs
+        lock(l) do
+            old_plots = copy(cached_plots) # needed for set diff
+            previoues_plots = copy(cached_plots) # needed to be mutated
+            empty!(cached_plots)
+            for plotspec in plotspecs
+                # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
+                reused_plot = nothing
+                for (spec, plot) in previoues_plots
+                    if compare_specs(spec, plotspec)
+                        reused_plot = plot
+                        delete!(previoues_plots, spec)
+                        break
+                    end
+                end
+                if isnothing(reused_plot)
+                    @debug("Creating new plot for spec")
+                    # Create new plot, store it into our `cached_plots` dictionary
+                    plot = plot!(scene, to_combined(plotspec))
+                    cached_plots[plotspec] = plot
+                else
+                    @debug("updating old plot with spec")
+                    update_plot!(reused_plot, plotspec)
+                    cached_plots[plotspec] = reused_plot
                 end
             end
-            if isnothing(reused_plot)
-                @debug("Creating new plot for spec")
-                # Create new plot, store it into our `cached_plots` dictionary
-                plot = plot!(scene, to_combined(plotspec))
-                cached_plots[plotspec] = plot
-            else
-                @debug("updating old plot with spec")
-                update_plot!(reused_plot, plotspec)
-                cached_plots[plotspec] = reused_plot
+            unused_plots = setdiff(values(old_plots), values(cached_plots))
+            # Next, delete all plots that we haven't used
+            # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+            for plot in unused_plots
+                delete!(scene, plot)
             end
+            return
         end
-        unused_plots = setdiff(values(old_plots), values(cached_plots))
-        # Next, delete all plots that we haven't used
-        # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        for plot in unused_plots
-            delete!(scene, plot)
-        end
-        return
     end
 end
 
@@ -298,41 +301,44 @@ end
 
 function update_fig(fig, figure_obs)
     cached_blocks = Pair{BlockSpec,Tuple{Block,Observable}}[]
-    on(figure_obs; update=true) do figure
-        used_specs = Set{Int}()
-        for spec in figure.blocks
-            # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-            idx = findfirst(x -> compare_block(x[1], spec), cached_blocks)
-            if isnothing(idx)
-                @debug("Creating new block for spec")
-                # Create new plot, store it into our `cached_blocks` dictionary
-                block = to_block(fig, spec)
-                if block isa AbstractAxis
-                    obs = Observable(spec.plots)
-                    scene = get_scene(block)
-                    update_plotspecs!(scene, obs)
+    l = Base.ReentrantLock()
+    on(fig.scene, figure_obs; update=true) do figure
+        lock(l) do
+            used_specs = Set{Int}()
+            for spec in figure.blocks
+                # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
+                idx = findfirst(x -> compare_block(x[1], spec), cached_blocks)
+                if isnothing(idx)
+                    @debug("Creating new block for spec")
+                    # Create new plot, store it into our `cached_blocks` dictionary
+                    block = to_block(fig, spec)
+                    if block isa AbstractAxis
+                        obs = Observable(spec.plots)
+                        scene = get_scene(block)
+                        update_plotspecs!(scene, obs)
+                    else
+                        obs = Observable([])
+                    end
+                    push!(cached_blocks, spec => (block, obs))
+                    push!(used_specs, length(cached_blocks))
+                    Makie.update_state_before_display!(block)
                 else
-                    obs = Observable([])
+                    @debug("updating old block with spec")
+                    push!(used_specs, idx)
+                    block, plot_obs = cached_blocks[idx][2]
+                    update_block!(block, plot_obs, spec)
                 end
-                push!(cached_blocks, spec => (block, obs))
-                push!(used_specs, length(cached_blocks))
-                Makie.update_state_before_display!(block)
-            else
-                @debug("updating old block with spec")
-                push!(used_specs, idx)
-                block, plot_obs = cached_blocks[idx][2]
-                update_block!(block, plot_obs, spec)
             end
+            unused_plots = setdiff(1:length(cached_blocks), used_specs)
+            # Next, delete all plots that we haven't used
+            # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+            for idx in unused_plots
+                _, (block, obs) = cached_blocks[idx]
+                delete!(block)
+                Makie.Observables.clear(obs)
+            end
+            return splice!(cached_blocks, sort!(collect(unused_plots)))
         end
-        unused_plots = setdiff(1:length(cached_blocks), used_specs)
-        # Next, delete all plots that we haven't used
-        # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        for idx in unused_plots
-            _, (block, obs) = cached_blocks[idx]
-            delete!(block)
-            Makie.Observables.clear(obs)
-        end
-        return splice!(cached_blocks, sort!(collect(unused_plots)))
     end
     return fig
 end
