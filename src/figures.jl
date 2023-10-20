@@ -184,7 +184,6 @@ end
 
 function Base.empty!(fig::Figure)
     empty!(fig.scene)
-    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)
