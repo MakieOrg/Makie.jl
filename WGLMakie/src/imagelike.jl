@@ -48,7 +48,7 @@ function create_shader(mscene::Scene, plot::Volume)
         return convert(Mat4f, m) * m2
     end
 
-    modelinv = lift(inv, plot, odel2)
+    modelinv = lift(inv, plot, model2)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot, plot.algorithm)
 
     diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot, plot.diffuse)
