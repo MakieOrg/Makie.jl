@@ -277,17 +277,23 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     end
 end
 
-function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
+function insert_plot!(disp::ThreeDisplay, scene::Scene, @nospecialize(plot::Combined))
+    plot_data = serialize_plots(scene, [plot])
+    plot_sub = Session(disp.session)
+    JSServe.init_session(plot_sub)
+    plot.__wgl_session = plot_sub
+    js = js"""
+    $(WGL).then(WGL=> {
+        WGL.insert_plot($(js_uuid(scene)), $plot_data);
+    })"""
+    JSServe.evaljs_value(plot_sub, js; timeout=50)
+    return
+end
+
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Combined))
     disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
-        plot_data = serialize_plots(scene, [plot])
-        plot_sub = Session(disp.session)
-        JSServe.init_session(plot_sub)
-        plot.__wgl_session = plot_sub
-        JSServe.evaljs_value(plot_sub, js"""
-        $(WGL).then(WGL=> {
-            WGL.insert_plot($(js_uuid(scene)), $plot_data);
-        })"""; timeout=50)
+        insert_plot!(disp, scene, plot)
     else
         # Newly created scene gets inserted!
         # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`

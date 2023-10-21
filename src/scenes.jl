@@ -470,7 +470,7 @@ function Base.push!(plot::Combined, subplot)
     push!(plot.plots, subplot)
 end
 
-function Base.push!(scene::Scene, plot::AbstractPlot)
+function Base.push!(scene::Scene, @nospecialize(plot::AbstractPlot))
     push!(scene.plots, plot)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
@@ -551,7 +551,8 @@ function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     list
 end
 
-function insertplots!(screen::AbstractDisplay, scene::Scene)
+
+function insertplots!(@nospecialize(screen::AbstractDisplay), scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
