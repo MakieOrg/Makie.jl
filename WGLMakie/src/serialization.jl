@@ -192,7 +192,7 @@ function serialize_named_buffer(buffer)
                 end)
 end
 
-function register_geometry_updates(plot, update_buffer::Observable, named_buffers)
+function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, named_buffers)
     for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
@@ -209,15 +209,15 @@ function register_geometry_updates(plot, update_buffer::Observable, named_buffer
     return update_buffer
 end
 
-function register_geometry_updates(plot, update_buffer::Observable, program::Program)
+function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, program::Program)
     return register_geometry_updates(plot, update_buffer, program.vertexarray)
 end
 
-function register_geometry_updates(plot, update_buffer::Observable, program::InstancedProgram)
+function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, program::InstancedProgram)
     return register_geometry_updates(plot, update_buffer, program.per_instance)
 end
 
-function uniform_updater(plot, uniforms::Dict)
+function uniform_updater(@nospecialize(plot), uniforms::Dict)
     updater = Observable(Any[:none, []])
     for (name, value) in uniforms
         if value isa Sampler
@@ -238,7 +238,7 @@ function uniform_updater(plot, uniforms::Dict)
     return updater
 end
 
-function serialize_three(plot, ip::InstancedProgram)
+function serialize_three(@nospecialize(plot), ip::InstancedProgram)
     program = serialize_three(plot, ip.program)
     program[:instance_attributes] = serialize_named_buffer(ip.per_instance)
     register_geometry_updates(plot, program[:attribute_updater], ip)
@@ -247,7 +247,7 @@ end
 
 reinterpret_faces(p, faces::AbstractVector) = collect(reinterpret(UInt32, decompose(GLTriangleFace, faces)))
 
-function reinterpret_faces(plot, faces::Buffer)
+function reinterpret_faces(@nospecialize(plot), faces::Buffer)
     result = Observable(reinterpret_faces(plot, ShaderAbstractions.data(faces)))
     on(plot, ShaderAbstractions.updater(faces).update) do (f, args)
         if f === ShaderAbstractions.update!
@@ -258,7 +258,7 @@ function reinterpret_faces(plot, faces::Buffer)
 end
 
 
-function serialize_three(plot, program::Program)
+function serialize_three(@nospecialize(plot), program::Program)
     facies = reinterpret_faces(plot, _faces(program.vertexarray))
     indices = convert(Observable, facies)
     uniforms = serialize_uniforms(program.uniforms)
@@ -304,7 +304,7 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
     for plot in plots
         plot isa Makie.PlotList && continue
         # if no plots inserted, this truely is an atomic
@@ -319,7 +319,7 @@ function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:Ab
     return result
 end
 
-function serialize_three(scene::Scene, plot::AbstractPlot)
+function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
