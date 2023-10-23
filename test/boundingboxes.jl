@@ -41,12 +41,12 @@ end
     fig, ax, p = meshscatter(
         [Point3f(0) for _ in 1:3],
         marker = Rect3f(Point3f(-0.1, -0.1, -0.1), Vec3f(0.2, 0.2, 1.2)),
-        markersize = 1.0,
+        markersize = Vec3f(1, 1, 2),
         rotations = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)])
     )
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(-0.1)
-    @test bb.widths ≈ Vec3f(1.2)
+    @test bb.origin ≈ Point3f(-0.2)
+    @test bb.widths ≈ Vec3f(2.4)
 
     fig, ax, p = volume(rand(5, 5, 5))
     bb = boundingbox(p)

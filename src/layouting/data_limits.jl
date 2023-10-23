@@ -206,10 +206,11 @@ end
 function limits_from_transformed_points(positions, scales, rotations, element_bbox)
     isempty(positions) && return Rect3f()
 
-    center = minimum(element_bbox) + 0.5f0 * widths(element_bbox)
-    full_bbox = Rect3f(first(positions) + center, Vec3f(0))
+    first_scale = attr_broadcast_getindex(scales, 1)
+    first_rot = attr_broadcast_getindex(rotations, 1)
+    full_bbox = first_rot * (element_bbox * first_scale) + first(positions)
     broadcast_foreach(positions, scales, rotations) do pos, scale, rot
-        transformed_bbox = (rot * element_bbox) * scale + pos
+        transformed_bbox = rot * (element_bbox * scale) + pos
         full_bbox = union(full_bbox, transformed_bbox)
     end
 
@@ -260,7 +261,7 @@ function data_limits(plot::MeshScatter)
     # fast path for constant markersize
     if scales isa VecTypes{3} && rotations isa Quaternion
         bb = limits_from_transformed_points(positions)
-        marker_bb = (rotations * marker_bb) * scales
+        marker_bb = rotations * (marker_bb * scales)
         return Rect3f(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
     else
         # TODO: optimize const scale, var rot and var scale, const rot
