@@ -12,6 +12,12 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
+# Import FilePaths for invalidations
+# When loading Electron for WGLMakie, which depends on FilePaths
+# It invalidates half of Makie. Simplest fix is to load it early on in Makie
+# So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
+#
+import FilePaths
 using LaTeXStrings
 using MathTeXEngine
 using Random

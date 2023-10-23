@@ -3,7 +3,7 @@ function vertexbuffer(x, trans, space)
     return apply_transform(trans,  pos, space)
 end
 
-function vertexbuffer(x::Observable, p)
+function vertexbuffer(x::Observable, @nospecialize(p))
     return Buffer(lift(vertexbuffer, p, x, transform_func_obs(p), get(p, :space, :data)))
 end
 
@@ -56,7 +56,7 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
 end
 
 lift_or(f, p, x) = f(x)
-lift_or(f, p, x::Observable) = lift(f, p, x)
+lift_or(f, @nospecialize(p), x::Observable) = lift(f, p, x)
 
 function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
