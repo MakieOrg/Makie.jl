@@ -60,7 +60,7 @@ export function delete_plots(scene_id, plot_uuids) {
     const plots = find_plots(plot_uuids);
     plots.forEach((p) => {
         scene.remove(p);
-        delete plot_cache[p];
+        delete plot_cache[p.plot_uuid];
     });
 }
 
@@ -246,6 +246,21 @@ function connect_uniforms(mesh, updater) {
     });
 }
 
+function convert_RGB_to_RGBA(rgbArray) {
+    const length = rgbArray.length;
+    const rgbaArray = new Float32Array((length / 3) * 4);
+
+    for (let i = 0, j = 0; i < length; i += 3, j += 4) {
+        rgbaArray[j] = rgbArray[i]; // R
+        rgbaArray[j + 1] = rgbArray[i + 1]; // G
+        rgbaArray[j + 2] = rgbArray[i + 2]; // B
+        rgbaArray[j + 3] = 1.0; // A
+    }
+
+    return rgbaArray;
+}
+
+
 function create_texture(data) {
     const buffer = data.data;
     if (data.size.length == 3) {
@@ -260,26 +275,35 @@ function create_texture(data) {
         return tex;
     } else {
         // a little optimization to not send the texture atlas over & over again
-        const tex_data =
-            buffer == "texture_atlas" ? TEXTURE_ATLAS[0].value : buffer;
+        let tex_data;
+        if (buffer == "texture_atlas") {
+            tex_data = TEXTURE_ATLAS[0].value;
+        } else {
+            tex_data = buffer;
+        }
+        let format = THREE[data.three_format];
+        if (data.three_format == "RGBFormat") {
+            tex_data = convert_RGB_to_RGBA(tex_data);
+            format = THREE.RGBAFormat;
+        }
         return new THREE.DataTexture(
             tex_data,
             data.size[0],
             data.size[1],
-            THREE[data.three_format],
+            format,
             THREE[data.three_type]
         );
     }
 }
 
 function re_create_texture(old_texture, buffer, size) {
+    let tex;
     if (size.length == 3) {
-        const tex = new THREE.Data3DTexture(buffer, size[0], size[1], size[2]);
+        tex = new THREE.Data3DTexture(buffer, size[0], size[1], size[2]);
         tex.format = old_texture.format;
         tex.type = old_texture.type;
-        return tex;
     } else {
-        return new THREE.DataTexture(
+        tex = new THREE.DataTexture(
             buffer,
             size[0],
             size[1] ? size[1] : 1,
@@ -287,6 +311,17 @@ function re_create_texture(old_texture, buffer, size) {
             old_texture.type
         );
     }
+    tex.minFilter = old_texture.minFilter
+    tex.magFilter = old_texture.magFilter
+    tex.anisotropy = old_texture.anisotropy
+    tex.wrapS = old_texture.wrapS
+    if (size.length > 1) {
+        tex.wrapT = old_texture.wrapT
+    }
+    if (size.length > 2) {
+        tex.wrapR = old_texture.wrapR
+    }
+    return tex
 }
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);

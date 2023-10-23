@@ -157,15 +157,27 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     attr[:clip] = map(p, pop!(attr, :clip), p.unbounded_edge_extension_factor,
                               transform_func_obs(p), ps) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
-            rscaled = maximum(first, ps) * (1 + ext)
+            rscaled = maximum(p -> p[1 + tf.theta_as_x], ps) * (1 + ext)
             return Circle(Point2f(0), rscaled)
         else
             return bb
         end
     end
+    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
+    return voronoiplot!(p, attr, vorn)
+end
 
-    transform = Transformation(p.transformation; transform_func=identity)
-    return voronoiplot!(p, attr, vorn; transformation=transform)
+function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
+    if transform_func(p) isa Polar
+        # Because the Polar transform is handled explicitly we cannot rely
+        # on the default data_limits. (data limits are pre transform)
+        iter = (to_ndim(Point3f, p, 0f0) for p in p.converted[1][])
+        limits_from_transformed_points(iter)
+    else
+        # First component is either another Voronoiplot or a poly plot. Both
+        # cases span the full limits of the plot
+        data_limits(p.plots[1])
+    end
 end
 
 function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})

@@ -104,9 +104,12 @@ function throttle_function(func, delay) {
             // to occur at some later later time, so that it
             // does not get lost; we'll schedule it so that it
             // fires just a bit after our choke ends.
-            future_id = setTimeout(() => inner_throttle(...args), now - prev + 1);
+            future_id = setTimeout(
+                () => inner_throttle(...args),
+                now - prev + 1
+            );
         }
-    };
+    }
     return inner_throttle;
 }
 
@@ -129,12 +132,100 @@ function get_body_size() {
 }
 
 
+export function wglerror(gl, error) {
+    switch (error) {
+        case gl.NO_ERROR:
+            return "No error";
+        case gl.INVALID_ENUM:
+            return "Invalid enum";
+        case gl.INVALID_VALUE:
+            return "Invalid value";
+        case gl.INVALID_OPERATION:
+            return "Invalid operation";
+        case gl.OUT_OF_MEMORY:
+            return "Out of memory";
+        case gl.CONTEXT_LOST_WEBGL:
+            return "Context lost";
+        default:
+            return "Unknown error";
+    }
+}
+// taken from THREEJS:
+//https://github.com/mrdoob/three.js/blob/5303ef2d46b02e7c503ca63cedca0b93cd9c853e/src/renderers/webgl/WebGLProgram.js#L67C1-L89C2
+function handleSource(string, errorLine) {
+    const lines = string.split("\n");
+    const lines2 = [];
+
+    const from = Math.max(errorLine - 6, 0);
+    const to = Math.min(errorLine + 6, lines.length);
+
+    for (let i = from; i < to; i++) {
+        const line = i + 1;
+        lines2.push(`${line === errorLine ? ">" : " "} ${line}: ${lines[i]}`);
+    }
+
+    return lines2.join("\n");
+}
+
+function getShaderErrors(gl, shader, type) {
+    const status = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    const errors = gl.getShaderInfoLog(shader).trim();
+
+    if (status && errors === "") return "";
+
+    const errorMatches = /ERROR: 0:(\d+)/.exec(errors);
+    if (errorMatches) {
+        // --enable-privileged-webgl-extension
+        // console.log( '**' + type + '**', gl.getExtension( 'WEBGL_debug_shaders' ).getTranslatedShaderSource( shader ) );
+
+        const errorLine = parseInt(errorMatches[1]);
+        return (
+            type.toUpperCase() +
+            "\n\n" +
+            errors +
+            "\n\n" +
+            handleSource(gl.getShaderSource(shader), errorLine)
+        );
+    } else {
+        return errors;
+    }
+}
+function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
+    const programLog = gl.getProgramInfoLog(program).trim();
+    const vertexErrors = getShaderErrors(gl, glVertexShader, "vertex");
+    const fragmentErrors = getShaderErrors(gl, glFragmentShader, "fragment");
+    const vertexLog = gl.getShaderInfoLog(glVertexShader).trim();
+    const fragmentLog = gl.getShaderInfoLog(glFragmentShader).trim();
+
+    const err =
+        "THREE.WebGLProgram: Shader Error " +
+        wglerror(gl, gl.getError()) +
+        " - " +
+        "VALIDATE_STATUS " +
+        gl.getProgramParameter(program, gl.VALIDATE_STATUS) +
+        "\n\n" +
+        "Program Info Log:\n" +
+        programLog +
+        "\n" +
+        vertexErrors +
+        "\n" +
+        fragmentErrors +
+        "\n" +
+        "Fragment log:\n" +
+        fragmentLog +
+        "Vertex log:\n" +
+        vertexLog;
+
+    JSServe.Connection.send_warning(err);
+}
+
 function add_canvas_events(screen, comm, resize_to_body) {
     const { canvas,  winscale } = screen;
     function mouse_callback(event) {
         const [x, y] = events2unitless(screen, event);
         comm.notify({ mouseposition: [x, y] });
     }
+
     const notify_mouse_throttled = throttle_function(mouse_callback, 40);
 
     function mousemove(event) {
@@ -247,6 +338,7 @@ function threejs_module(canvas) {
         powerPreference: "high-performance",
     });
 
+    renderer.debug.onShaderError = on_shader_error;
     renderer.setClearColor("#ffffff");
 
     return renderer;
@@ -353,6 +445,7 @@ function create_scene(
         // `renderer.setSize` correctly updates `canvas` dimensions
         set_render_size(screen, ...w_h);
     });
+    return renderer;
 }
 
 function set_picking_uniforms(

@@ -62,7 +62,7 @@ end
 
 conversion_trait(::Type{<:Hexbin}) = PointBased()
 
-function point_iterator(hb::Hexbin)
+function data_limits(hb::Hexbin)
     bb = Rect3f(hb.plots[1][1][])
     fn(num::Real) = Float32(num)
     fn(tup::Union{Tuple,Vec2}) = Vec2f(tup...)
@@ -71,7 +71,7 @@ function point_iterator(hb::Hexbin)
     nw = widths(bb) .+ (ms..., 0.0f0)
     no = bb.origin .- ((ms ./ 2.0f0)..., 0.0f0)
 
-    return decompose(Point2f, Rect3f(no, nw))
+    return Rect3f(no, nw)
 end
 
 get_weight(weights, i) = Float64(weights[i])

@@ -140,8 +140,10 @@ end
 @reference_test "PolarAxis surface" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    zs = [r*cos(phi) for r in range(1, 2, length=100), phi in range(0, 4pi, length=100)]
-    p = surface!(ax, 0..10, 0..2pi, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
+    p = surface!(ax, 0..2pi, 0..10, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
+    translate!(p, 0, 0, -200)
     Colorbar(f[1, 2], p)
     f
 end
@@ -149,15 +151,14 @@ end
 # may fail in WGLMakie due to missing dashes
 @reference_test "PolarAxis scatterlines spine" begin
     f = Figure(resolution = (800, 400))
-    ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
+    ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false, theta_as_x = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
     ax2 = PolarAxis(f[1, 2], title = "Modified spine")
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
-    scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
-
+    scatterlines!(ax2, range(0, 10pi, length=100), range(0, 1, length=100), color = 1:100)
     f
 end
 
@@ -174,12 +175,28 @@ end
         thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
         rgridwidth = 2, rgridcolor = :red,
         thetagridwidth = 2, thetagridcolor = :blue,
-        rticklabelsize = 18, rticklabelcolor = :red,
+        rticklabelsize = 18, rticklabelcolor = :red, rtickangle = pi/6,
         rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
     )
+    f
+end
 
+@reference_test "PolarAxis limits" begin
+    f = Figure(resolution = (800, 600))
+    for (i, theta_0) in enumerate((0, -pi/6, pi/2))
+        for (j, thetalims) in enumerate(((0, 2pi), (-pi/2, pi/2), (0, pi/12)))
+            po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (1 + 2(j-1), 7))
+            po.scene.backgroundcolor[] = RGBAf(1,0.5,0.5,1)
+            lines!(po, range(0, 20pi, length=201), range(0, 10, length=201), color = :white, linewidth = 5)
+
+            b = Box(f[i, j], color = (:blue, 0.2))
+            translate!(b.blockscene, 0, 0, 9001)
+        end
+    end
+    colgap!(f.layout, 5)
+    rowgap!(f.layout, 5)
     f
 end
 
@@ -191,4 +208,58 @@ end
         surface!(0:0.5:10, 0:0.5:10, (x, y) -> (sin(x) + 0.5x) * (cos(y) + 0.5y))
     end
     f
+end
+
+@reference_test "Colorbar for recipes" begin
+    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;resolution=(800, 800)))
+    Colorbar(fig[1, 2], pl; size=100)
+    x = LinRange(-1, 1, 20)
+    y = LinRange(-1, 1, 20)
+    z = LinRange(-1, 1, 20)
+    values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
+
+    # TO not make this fail in CairoMakie, we dont actually plot the volume
+    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    Colorbar(fig[2, 1], cp; size=300)
+
+    _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)
+    Colorbar(fig[2, 2], vs)
+
+    # horizontal colorbars
+    Colorbar(fig[1, 3][2, 1]; limits=(0, 10), colormap=:viridis,
+             vertical=false)
+    Colorbar(fig[1, 3][3, 1]; limits=(0, 5), size=25,
+             colormap=cgrad(:Spectral, 5; categorical=true), vertical=false)
+    Colorbar(fig[1, 3][4, 1]; limits=(-1, 1), colormap=:heat, vertical=false, flipaxis=false,
+             highclip=:cyan, lowclip=:red)
+    xs = LinRange(0, 20, 50)
+    ys = LinRange(0, 15, 50)
+    zs = [cos(x) * sin(y) for x in xs, y in ys]
+    ax, hm = contourf(fig[2, 3][1, 1], xs, ys, zs;
+                      colormap=:Spectral, levels=[-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
+    Colorbar(fig[2, 3][1, 2], hm; ticks=-1:0.25:1)
+
+    ax, hm = contourf(fig[3, :][1, 1], xs, ys, zs;
+                      colormap=:Spectral, colorscale=sqrt, levels=[ 0, 0.25, 0.5, 1])
+    Colorbar(fig[3, :][1, 2], hm; width=200)
+
+    fig
+end
+
+@reference_test "datashader" begin
+    airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
+    # Dont use the full dataset, since WGLMakie seems to time out if it's too big
+    fewer = airports[RNG.rand(1:length(airports), 1000)]
+    fig, ax, ds = datashader(fewer; async=false)
+    Colorbar(fig[1, 2], ds; width=100)
+    hidedecorations!(ax)
+    hidespines!(ax)
+
+    normaldist = RNG.randn(Point2f, 100000)
+    ds1 = normaldist .+ (Point2f(-1, 0),)
+    ds2 = normaldist .+ (Point2f(1, 0),)
+    ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2); async=false)
+    hidedecorations!(ax)
+    axislegend(ax)
+    fig
 end

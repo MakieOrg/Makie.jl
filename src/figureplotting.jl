@@ -22,8 +22,7 @@ function _validate_nt_like_keyword(@nospecialize(kw), name)
             The $name keyword argument received an unexpected value $(repr(kw)).
             The $name keyword expects a collection of Symbol => value pairs, such as NamedTuple, Attributes, or AbstractDict{Symbol}.
             The most common cause of this error is trying to create a one-element NamedTuple like (key = value) which instead creates a variable `key` with value `value`.
-            Write (key = value,) or (; key = value) instead."""
-        ))
+            Write (key = value,) or (; key = value) instead."""))
     end
 end
 
@@ -32,7 +31,6 @@ function _disallow_keyword(kw, attributes)
         throw(ArgumentError("You cannot pass `$kw` as a keyword argument to this plotting function. Note that `axis` can only be passed to non-mutating plotting functions (not ending with a `!`) that implicitly create an axis, and `figure` only to those that implicitly create a `Figure`."))
     end
 end
-
 
 plot_preferred_axis(@nospecialize(x)) = nothing # nothing == I dont know
 plot_preferred_axis(p::PlotFunc) = plot_preferred_axis(Makie.conversion_trait(p))
@@ -90,8 +88,8 @@ function preferred_axis_type(@nospecialize(p::PlotFunc), @nospecialize(args...))
     pre_conversion_result = args_preferred_axis(RealP, non_obs...)
     isnothing(pre_conversion_result) || return pre_conversion_result
     conv = convert_arguments(RealP, non_obs...)
-    Typ, args_conv = apply_convert!(RealP, Attributes(), conv)
-    result = args_preferred_axis(Typ, args_conv...)
+    FinalP, args_conv = apply_convert!(RealP, Attributes(), conv)
+    result = args_preferred_axis(FinalP, args_conv...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
 end

@@ -473,7 +473,6 @@ end
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
-    plot isa Combined || (plot.parent = scene)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
@@ -482,6 +481,7 @@ end
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @warn "Deleting plots not implemented for backend: $(typeof(screen))"
 end
+
 function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
@@ -509,21 +509,6 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
         delete!(screen, scene, plot)
     end
     free(plot)
-end
-
-function Base.push!(scene::Scene, child::Scene)
-    push!(scene.children, child)
-    disconnect!(child.camera)
-    observables = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
-        return lift(getfield(scene.camera, field)) do val
-            getfield(child.camera, field)[] = val
-            getfield(child.camera, field)[] = val
-            return
-        end
-    end
-    cameracontrols!(child, observables)
-    child.parent = scene
-    return scene
 end
 
 events(x) = events(get_scene(x))
@@ -562,20 +547,6 @@ function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
         child.camera == camera && plots_from_camera(child, camera, list)
     end
     list
-end
-
-"""
-Flattens all the combined plots and returns a Vector of Atomic plots
-"""
-function flatten_combined(plots::Vector, flat=AbstractPlot[])
-    for elem in plots
-        if (elem isa Combined)
-            flatten_combined(elem.plots, flat)
-        else
-            push!(flat, elem)
-        end
-    end
-    flat
 end
 
 function insertplots!(screen::AbstractDisplay, scene::Scene)

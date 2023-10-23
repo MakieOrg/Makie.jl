@@ -40,20 +40,21 @@ function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
 end
 
 # TODO?
-function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
+function data_limits(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
     if is_data_space(text.markerspace[])
-        return decompose(Point, boundingbox(text))
+        return boundingbox(text)
     else
         if text.position[] isa VecTypes
-            return [to_ndim(Point3f, text.position[], 0.0)]
+            return Rect3f(text.position[])
         else
-            return convert_arguments(PointBased(), text.position[])[1]
+            # TODO: is this branch necessary?
+            return Rect3f(convert_arguments(PointBased(), text.position[])[1])
         end
     end
 end
 
-function point_iterator(text::Text)
-    return point_iterator(text.plots[1])
+function data_limits(text::Text)
+    return data_limits(text.plots[1])
 end
 
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
@@ -72,8 +73,6 @@ function point_iterator(list::AbstractVector)
         return points
     end
 end
-
-point_iterator(plot::Combined) = point_iterator(plot.plots)
 
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
@@ -168,7 +167,18 @@ function update_boundingbox!(bb_ref, bb::Rect)
 end
 
 function data_limits(plot::AbstractPlot)
-    limits_from_transformed_points(iterate_transformed(plot))
+    # Assume primitive plot
+    if isempty(plot.plots)
+        return limits_from_transformed_points(iterate_transformed(plot))
+    end
+
+    # Assume Combined Plot
+    bb_ref = Base.RefValue(data_limits(plot.plots[1]))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
+    end
+
+    return bb_ref[]
 end
 
 function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}

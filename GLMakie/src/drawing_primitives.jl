@@ -42,9 +42,11 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
     get!(gl_attributes, :view) do
-        return lift(plot, cam.view, space) do view, space
-            return is_data_space(space) ? view : Mat4f(I)
-        end
+        # get!(cam.calculated_values, Symbol("view_$(space[])")) do
+            return lift(plot, cam.view, space) do view, space
+                return is_data_space(space) ? view : Mat4f(I)
+            end
+        # end
     end
     get!(gl_attributes, :normalmatrix) do
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
@@ -53,18 +55,24 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         end
     end
     get!(gl_attributes, :projection) do
-        return lift(cam.projection, cam.pixel_space, space) do _, _, space
-            return Makie.space_to_clip(cam, space, false)
-        end
+        # return get!(cam.calculated_values, Symbol("projection_$(space[])")) do
+            return lift(cam.projection, cam.pixel_space, space) do _, _, space
+                return Makie.space_to_clip(cam, space, false)
+            end
+        # end
     end
     get!(gl_attributes, :projectionview) do
-        return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_clip(cam, space, true)
-        end
+        # get!(cam.calculated_values, Symbol("projectionview_$(space[])")) do
+            return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
+                Makie.space_to_clip(cam, space, true)
+            end
+        # end
     end
     # resolution in real hardware pixels, not scaled pixels/units
     get!(gl_attributes, :resolution) do
-        return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
+        get!(cam.calculated_values, :resolution) do
+            return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
+        end
     end
 
     delete!(gl_attributes, :space)
@@ -74,9 +82,9 @@ end
 
 function handle_intensities!(attributes, plot)
     color = plot.calculated_colors
-    if color[] isa Makie.ColorMap
+    if color[] isa Makie.ColorMapping
         attributes[:intensity] = color[].color_scaled
-        interp = color[].categorical[] ? :nearest : :linear
+        interp = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
         attributes[:color_map] = Texture(color[].colormap; minfilter=interp)
         attributes[:color_norm] = color[].colorrange_scaled
         attributes[:nan_color] = color[].nan_color
@@ -145,6 +153,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     push!(screen, scene, robj)
     return robj
 end
+
+Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     ShaderAbstractions.switch_context!(screen.glscreen)
@@ -427,7 +437,7 @@ function draw_atomic(screen::Screen, scene::Scene, heatmap::Heatmap)
         t = Makie.transform_func_obs(heatmap)
         mat = heatmap[3]
         space = heatmap.space # needs to happen before connect_camera! call
-        xypos = map(t, heatmap[1], heatmap[2], space) do t, x, y, space
+        xypos = lift(t, heatmap[1], heatmap[2], space) do t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D

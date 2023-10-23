@@ -456,20 +456,20 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
 end
 
 # Fallback for any backend that will just use colorbuffer to write out an image
-function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene)
     img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
-    img = colorbuffer(scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene)
+    img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return
 end
 
 function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene)
-    w, h = widths(scene.px_area[])
+    w, h = size(scene)
     png_io = IOBuffer()
     backend_show(screen, png_io, MIME"image/png"(), scene)
     b64 = Base64.base64encode(String(take!(png_io)))

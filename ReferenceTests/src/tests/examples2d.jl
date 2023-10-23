@@ -1219,7 +1219,7 @@ end
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = triplot!(ax, points)
     f
 end
@@ -1303,13 +1303,13 @@ end
 
 @reference_test "Voronoiplot with a nonlinear transform" begin
     f = Figure()
-    ax = PolarAxis(f[1, 1])
+    ax = PolarAxis(f[1, 1], theta_as_x = false)
     points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
     Makie.rlims!(ax, 12) # to make rect clip visible if circular clip doesn't happen
-    ax = PolarAxis(f[1, 2])
+    ax = PolarAxis(f[1, 2], theta_as_x = false)
     tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
     Makie.rlims!(ax, 12)
     f
@@ -1359,21 +1359,17 @@ end
 
 @reference_test "px_per_unit and scalefactor" begin
     resolution = (800, 800)
-    fig = Figure(; resolution=resolution, padding=0)
-    @testset begin
-        matr = [(px, scale) for px in [0.5, 1, 2], scale in [0.5, 1, 2]]
-        imgs = map(matr) do (px_per_unit, scalefactor)
-            img = colorbuffer(ppu_test_plot(resolution, px_per_unit, scalefactor); px_per_unit=px_per_unit, scalefactor=scalefactor)
-            @test size(img) == (800, 800) .* px_per_unit
-            return img
+    let st = nothing
+        @testset begin
+            matr = [(px, scale) for px in [0.5, 1, 2], scale in [0.5, 1, 2]]
+            imgs = map(matr) do (px_per_unit, scalefactor)
+                img = colorbuffer(ppu_test_plot(resolution, px_per_unit, scalefactor); px_per_unit=px_per_unit, scalefactor=scalefactor)
+                @test size(img) == (800, 800) .* px_per_unit
+                return img
+            end
+            fig = Figure()
+            st = Makie.RamStepper(fig, Makie.current_backend().Screen(fig.scene), vec(imgs), :png)
         end
-        foreach(CartesianIndices(imgs)) do i
-            img = imgs[i]
-            ax, pl = image(fig[Tuple(i)...], rotr90(img); axis=(; aspect=1), interpolate=false)
-            hidedecorations!(ax); hidespines!(ax)
-        end
-        colgap!(fig.layout, 0)
-        rowgap!(fig.layout, 0)
+        st
     end
-    fig
 end

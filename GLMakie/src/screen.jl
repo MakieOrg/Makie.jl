@@ -361,7 +361,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     else
         stop_renderloop!(screen)
     end
-
+    if !isnothing(screen.root_scene)
+        resize!(screen, size(screen.root_scene)...)
+    end
     set_screen_visibility!(screen, config.visible)
     return screen
 end
@@ -570,6 +572,8 @@ function Base.empty!(screen::Screen)
 
     empty!(screen.screen2scene)
     empty!(screen.screens)
+    Observables.clear(screen.px_per_unit)
+    Observables.clear(screen.scalefactor)
     Observables.clear(screen.render_tick)
     Observables.clear(screen.window_open)
     GLFW.PollEvents()
@@ -610,14 +614,14 @@ function Base.close(screen::Screen; reuse=true)
         screen.window_open[] = false
     end
     empty!(screen)
-    Observables.clear(screen.px_per_unit)
-    Observables.clear(screen.scalefactor)
     if reuse && screen.reuse
         @debug("reusing screen!")
         push!(SCREEN_REUSE_POOL, screen)
     end
     GLFW.SetWindowShouldClose(screen.glscreen, true)
     GLFW.PollEvents()
+    # Somehow, on osx, we need to hide the screen a second time!
+    set_screen_visibility!(screen, false)
     return
 end
 
