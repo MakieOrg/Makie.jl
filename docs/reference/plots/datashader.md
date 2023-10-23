@@ -217,7 +217,7 @@ We can also re-use the previous NYC example for a categorical plot:
     hidedecorations!(ax)
     hidespines!(ax)
     # Create a styled legend
-    axislegend("Vendor ID"; titlecolor=:white, framecolor=:grey, polystrokewidth=2, polystrokecolor=(:white, 0.5), rowgap=10, bgcolor=:black, labelcolor=:white)
+    axislegend("Vendor ID"; titlecolor=:white, framecolor=:grey, polystrokewidth=2, polystrokecolor=(:white, 0.5), rowgap=10, backgroundcolor=:black, labelcolor=:white)
     display(f)
 end
 ```

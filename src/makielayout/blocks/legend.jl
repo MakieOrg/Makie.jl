@@ -19,9 +19,16 @@ function initialize_block!(leg::Legend,
         enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
+    backgroundcolor = if !isnothing(leg.bgcolor[])
+        @warn("Keyword argument `bgcolor` is deprecated, use `backgroundcolor` instead.")
+        leg.bgcolor
+    else
+        leg.backgroundcolor
+    end
+
     bg = poly!(scene,
         legendrect,
-        color = leg.bgcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
+        color = backgroundcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
         strokecolor = leg.framecolor, inspectable = false)
     translate!(bg, 0, 0, -7) # bg behind patches but before content at 0 (legend is at +10)
 
