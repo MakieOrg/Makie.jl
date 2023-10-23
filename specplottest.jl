@@ -21,6 +21,7 @@ function gen_data(N=1000)
     )
 end
 
+
 function plot_data(data, categorical_vars, continuous_vars)
     fig = P.Figure()
     mpalette = [:circle, :star4, :xcross, :diamond]
@@ -46,8 +47,7 @@ function plot_data(data, categorical_vars, continuous_vars)
     end
     fig
 end
-using WGLMakie, JSServe
-rm(JSServe.bundle_path(JSServe.JSServeLib))
+using WGLMakie
 begin
     data = gen_data(1000)
     continous_vars = Observable(["continuous2", "continuous3"])
@@ -56,7 +56,6 @@ begin
     obs = lift(continous_vars, categorical_vars) do con_vars, cat_vars
         plot_data(data, cat_vars, con_vars)
     end
-
     fig = Makie.update_fig(Figure(), obs)
     display(fig)
 end
@@ -102,7 +101,6 @@ function test(f_obs)
     end
     return yield()
 end
-test(obs)
 
 begin
     f = P.Figure()
@@ -142,44 +140,25 @@ end
 using JSServe, WGLMakie
 rm(JSServe.bundle_path(WGLMakie.WGL))
 rm(JSServe.bundle_path(JSServe.JSServeLib))
+WGLMakie.activate!()
+fig = Figure()
+ax = LScene(fig[1, 1]);
+ax = Axis3(fig[1, 2]);
+scatter(1:4)
 
-App() do
-    s = JSServe.Slider(1:20)
-    data = gen_data(1000)
-    continous_vars = Observable(["continuous2", "continuous3"])
-    categorical_vars = Observable(["condition2", "condition4"])
-    fig = nothing
-    obs = lift(continous_vars, categorical_vars) do con_vars, cat_vars
-        return plot_data(data, cat_vars, con_vars)
+using SnoopCompileCore, Makie
+
+tinv = @snoopr using GLMakie
+
+macro ctime(x)
+    return quote
+        tstart = time_ns()
+        $(esc(x))
+        ts = Float64(time_ns() - tstart) / 10^9
+        println("time: $(round(ts, digits=5))s")
     end
-    on(s.value) do val
-        all_vars = ["continuous$i" for i in 2:5]
-        all_cond_vars = ["condition$i" for i in 2:5]
-        continous_vars[] = shuffle!(all_vars[unique(rand(1:4, rand(1:4)))])
-        categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
-        return
-    endf
-    fig = Makie.update_fig(Figure(), obs)
-    return DOM.div(s, fig)
 end
 
-using WGLMakie, Test
-
-begin
-    f = Figure()
-    l = Legend(f[1, 1], [LineElement(; color=:red)], ["Line"])
-    s = display(f)
-    @test f.scene.current_screens[1] === s
-    @test f.scene.children[1].current_screens[1] === s
-    @test f.scene.children[1].children[1].current_screens[1] === s
-    delete!(l)
-    @test f.scene.current_screens[1] === s
-    ## legend should be gone
-    ax = Axis(f[1, 1])
-    scatter!(ax, 1:4; markersize=200, color=1:4)
-    f
-end
-
-using SnoopCompileCore, WGLMakie
-result = @snoopi_deep scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true);
-using SnoopCompile, ProfileView; ProfileView.view(flamegraph(result))
+fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true);
+tinf = @snoopi_deep(@ctime(colorbuffer(fig)));
+using SnoopCompile, ProfileView; ProfileView.view(flamegraph(tinf))

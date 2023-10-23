@@ -2,37 +2,39 @@
 # If the implementation stabilizes, we should think about refactoring PlotSpec to work for both use cases, and then just have one PlotSpec type.
 @nospecialize
 """
-    PlotSpec{P<:AbstractPlot}(args...; kwargs...)
+    PlotSpec(plottype, args...; kwargs...)
 
 Object encoding positional arguments (`args`), a `NamedTuple` of attributes (`kwargs`)
 as well as plot type `P` of a basic plot.
 """
-struct PlotSpec{P<:AbstractPlot}
+struct PlotSpec
+    type::Symbol
     args::Vector{Any}
     kwargs::Dict{Symbol, Any}
-    function PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot}
+    function PlotSpec(type::Symbol, args...; kwargs...)
         kw = Dict{Symbol,Any}()
         for (k, v) in kwargs
             # convert eagerly, so that we have stable types for matching later
             # E.g. so that PlotSpec(; color = :red) has the same type as PlotSpec(; color = RGBA(1, 0, 0, 1))
-            kw[k] = convert_attribute(v, Key{k}(), Key{plotkey(P)}())
+            kw[k] = convert_attribute(v, Key{k}(), Key{type}())
         end
-        return new{P}(Any[args...], kw)
+        return new(type, Any[args...], kw)
     end
-    PlotSpec(args...; kwargs...) = new{Combined{plot}}(args...; kwargs...)
+    PlotSpec(args...; kwargs...) = new(:plot, args...; kwargs...)
 end
 @specialize
 
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
-to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec{P}(args...; kwargs...)
+to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotkey(P), args...; kwargs...)
 
-function to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P,S}
-    return PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
+function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
+    S = plottype(p)
+    return PlotSpec(plotkey(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
 end
 
-plottype(::PlotSpec{P}) where {P} = P
+plottype(p::PlotSpec) = Combined{getfield(Makie, p.type)}
 
 struct BlockSpec
     type::Symbol
@@ -67,8 +69,8 @@ function BlockSpec(typ::Symbol, pos::FigurePosition, plots::PlotSpec...; kw...)
     return block
 end
 
-function PlotSpec{T}(ax::BlockSpec, args...; kwargs...) where {T <: AbstractPlot}
-    plot = PlotSpec{T}(args...; kwargs...)
+function PlotSpec(type::Symbol, ax::BlockSpec, args...; kwargs...)
+    plot = PlotSpec(type, args...; kwargs...)
     push!(ax.plots, plot)
     return plot
 end
@@ -77,17 +79,17 @@ end
 """
 apply for return type PlotSpec
 """
-function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where {S}
+function apply_convert!(P, attributes::Attributes, x::PlotSpec)
     args, kwargs = x.args, x.kwargs
     # Note that kw_args in the plot spec that are not part of the target plot type
     # will end in the "global plot" kw_args (rest)
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return (plottype(S, P), (args...,))
+    return (plottype(plottype(x), P), (args...,))
 end
 
-function apply_convert!(P, ::Attributes, x::AbstractVector{<:PlotSpec})
+function apply_convert!(P, ::Attributes, x::AbstractVector{PlotSpec})
     return (PlotList, (x,))
 end
 
@@ -97,17 +99,17 @@ apply for return type
 """
 apply_convert!(P, ::Attributes, x::Tuple) = (P, x)
 
-function MakieCore.argtypes(plot::PlotSpec{P}) where {P}
-    args_converted = convert_arguments(P, plot.args...)
+function MakieCore.argtypes(plot::PlotSpec)
+    args_converted = convert_arguments(plottype(plot), plot.args...)
     return MakieCore.argtypes(args_converted)
 end
 
 struct SpecApi end
+
 function Base.getproperty(::SpecApi, field::Symbol)
     f = getfield(Makie, field)
     if f isa Function
-        P = Combined{getfield(Makie, field)}
-        return PlotSpec{P}
+        return (args...; kw...) -> PlotSpec(field, args...; kw...)
     elseif f <: Block
         return (args...; kw...) -> BlockSpec(field, args...; kw...)
     elseif f <: Figure
@@ -120,9 +122,8 @@ end
 const PlotspecApi = SpecApi()
 
 # comparison based entirely of types inside args + kwargs
-compare_specs(a::PlotSpec{A}, b::PlotSpec{B}) where {A, B} = false
-
-function compare_specs(a::PlotSpec{T}, b::PlotSpec{T}) where {T}
+function compare_specs(a::PlotSpec, b::PlotSpec)
+    a.type === b.type || return false
     length(a.args) == length(b.args) || return false
     all(i-> typeof(a.args[i]) == typeof(b.args[i]), 1:length(a.args)) || return false
 
@@ -136,29 +137,46 @@ end
 
 function update_plot!(plot::AbstractPlot, spec::PlotSpec)
     # Update args in plot `input_args` list
+    any_different = false
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
         arg_obs = plot.args[i]
         if to_value(arg_obs) !== spec.args[i] # only update if different
-            @debug("updating arg $i")
-            arg_obs[] = spec.args[i]
+            any_different = true
+            arg_obs.val = spec.args[i]
         end
     end
+
     # Update attributes
+    to_notify = Symbol[]
     for (attribute, new_value) in spec.kwargs
-        if plot[attribute][] !== new_value # only update if different
+        old_attr = plot[attribute]
+        # only update if different
+        if old_attr[] !== new_value || old_attr[] != new_value
             @debug("updating kw $attribute")
-            plot[attribute] = new_value
+            old_attr.val = new_value
+            push!(to_notify, attribute)
         end
+    end
+    # We first update obs.val only to prevent dimension missmatch problems
+    # We shouldn't have many since we only update if the types match, but I already run into a few regardless
+    # TODO, have update!(plot, new_attributes), which doesn't run into this problem and
+    # is also more efficient e.g. for WGLMakie, where every update sends a separate message via the websocket
+    if any_different
+        # It should be enough to notify first arg, since `convert_arguments` depends on all args
+        notify(plot.args[1])
+    end
+    for attribute in to_notify
+        notify(plot[attribute])
     end
 end
 
 """
     plotlist!(
         [
-            PlotSpec{SomePlotType}(args...; kwargs...),
-            PlotSpec{SomeOtherPlotType}(args...; kwargs...),
+            PlotSpec(:scatter, args...; kwargs...),
+            PlotSpec(:lines, args...; kwargs...),
         ]
     )
 
@@ -198,19 +216,22 @@ plottype(::AbstractVector{<:PlotSpec}) = PlotList
 # Since we directly plot into the parent scene (hacky), we need to overload these
 Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
 
-function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec{P}) where {P}
+function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "P.", plotfunc(P), "($args; $kws)")
+    println(io, "P.", spec.type, "($args; $kws)")
+    return
 end
 
-function Base.show(io::IO, spec::PlotSpec{P}) where {P}
+function Base.show(io::IO, spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    return println(io, "P.", plotfunc(P), "($args; $kws)")
+    println(io, "P.", spec.type, "($args; $kws)")
+    return
 end
 
-function to_combined(ps::PlotSpec{P}) where {P}
+function to_combined(ps::PlotSpec)
+    P = plottype(ps)
     return P((ps.args...,), copy(ps.kwargs))
 end
 
@@ -260,10 +281,15 @@ function update_plotspecs!(
     end
 end
 
-function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{<: PlotSpec}}})
+function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
     scene = Makie.parent_scene(p)
     update_plotspecs!(scene, p[1])
     return
+end
+
+function data_limits(p::PlotList)
+    scene = Makie.parent_scene(p)
+    return data_limits(filter(x -> !(x isa PlotList), scene.plots))
 end
 
 ## BlockSpec
@@ -283,10 +309,11 @@ function update_block!(block::Block, plot_obs, spec::BlockSpec)
     for (key, value) in spec.kwargs
         setproperty!(block, key, value)
     end
-    return plot_obs[] = spec.plots
+    plot_obs[] = spec.plots
+    return
 end
 
-function update_fig(fig, figure_obs)
+function update_fig!(fig, figure_obs)
     cached_blocks = Pair{BlockSpec,Tuple{Block,Observable}}[]
     l = Base.ReentrantLock()
     on(fig.scene, figure_obs; update=true) do figure
