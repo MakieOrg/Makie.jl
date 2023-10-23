@@ -473,7 +473,7 @@ end
 function Base.push!(scene::Scene, @nospecialize(plot::AbstractPlot))
     push!(scene.plots, plot)
     for screen in scene.current_screens
-        insert!(screen, scene, plot)
+        Base.invokelatest(insert!, screen, scene, plot)
     end
 end
 
