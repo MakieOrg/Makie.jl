@@ -51,9 +51,8 @@ function _create_plot!(F, kw::Dict, scene::SceneLike, args...)
     return plot
 end
 
-plot(args...; kw...) = _create_plot(plot, Dict{Symbol, Any}(kw), args...)
-plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
-
+plot(args...; kw...) = _create_plot(plotfunc(plottype(map(to_value, args)...)), Dict{Symbol, Any}(kw), args...)
+plot!(args...; kw...) = _create_plot!(plotfunc(plottype(map(to_value, args)...)), Dict{Symbol, Any}(kw), args...)
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
