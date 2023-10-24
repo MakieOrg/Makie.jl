@@ -19,14 +19,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         transformation = Transformation(po.scene, transform_func = identity)
     )
 
-
-    # Setup Cycler
-    po.cycler = Cycler()
-    if palette === nothing
-        palette = fast_deepcopy(get(po.blockscene.theme, :palette, DEFAULT_PALETTES))
+    if !isnothing(palette)
+        # Backwards compatibility for when palette was part of axis!
+        palette_attr = palette isa Attributes ? palette : Attributes(palette)
+        po.scene.theme.palette = palette_attr
     end
-    po.palette = palette isa Attributes ? palette : Attributes(palette)
-
 
     # Setup camera/limits and Polar transform
     usable_fraction, radius_at_origin = setup_camera_matrices!(po)

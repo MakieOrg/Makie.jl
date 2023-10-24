@@ -1,6 +1,8 @@
 function color_and_colormap!(plot, colors = plot.color)
-    if haskey(plot, :cycle) && haskey(plot, :axis_cycler)
-        (cycler, palette) = plot.axis_cycler[]
+    scene = parent_scene(plot)
+    if !isnothing(scene) && haskey(plot, :cycle)
+        cycler = scene.cycler
+        palette = scene.theme.palette
         cycle = get_cycle_for_plottype(to_value(plot.cycle))
         add_cycle_attributes!(plot, cycle, cycler, palette)
     end
@@ -9,8 +11,10 @@ function color_and_colormap!(plot, colors = plot.color)
 end
 
 function calculated_attributes!(T::Type{<: AbstractPlot}, plot)
-    if haskey(plot, :cycle) && haskey(plot, :axis_cycler)
-        (cycler, palette) = plot.axis_cycler[]
+    scene = parent_scene(plot)
+    if !isnothing(scene) && haskey(plot, :cycle)
+        cycler = scene.cycler
+        palette = scene.theme.palette
         cycle = get_cycle_for_plottype(to_value(plot.cycle))
         add_cycle_attributes!(plot, cycle, cycler, palette)
     end

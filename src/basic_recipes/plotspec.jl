@@ -211,7 +211,7 @@ plots[] = [
 end
 
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
-plottype(::AbstractVector{<:PlotSpec}) = PlotList
+plottype(::AbstractVector{PlotSpec}) = PlotList
 
 # Since we directly plot into the parent scene (hacky), we need to overload these
 Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
@@ -283,6 +283,7 @@ end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
     scene = Makie.parent_scene(p)
+
     update_plotspecs!(scene, p[1])
     return
 end
@@ -354,5 +355,11 @@ function update_fig!(fig, figure_obs)
             return splice!(cached_blocks, sort!(collect(unused_plots)))
         end
     end
+    return fig
+end
+
+function plot(figure_obs::Observable{FigureSpec}; figure=(;))
+    fig = Figure(; figure...)
+    update_fig!(fig, figure_obs)
     return fig
 end

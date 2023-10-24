@@ -114,6 +114,7 @@ mutable struct Scene <: AbstractScene
     ssao::SSAO
     lights::Vector{AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
+    cycler::Cycler
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -148,7 +149,8 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             lights,
-            Observables.ObserverFunction[]
+            Observables.ObserverFunction[],
+            Cycler()
         )
         finalizer(free, scene)
         return scene

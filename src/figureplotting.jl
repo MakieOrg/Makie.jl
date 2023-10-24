@@ -211,12 +211,7 @@ figurelike_return!(ax::AbstractAxis, plot) = plot
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
 function plot!(ax::AbstractAxis, plot::P) where {P <: AbstractPlot}
-    if hasproperty(ax, :cycler) && hasproperty(ax, :palette)
-        plot.axis_cycler = (ax.cycler, ax.palette)
-    end
-
     plot!(ax.scene, plot)
-
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(ax)

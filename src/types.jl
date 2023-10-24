@@ -449,3 +449,10 @@ end
 (s::ReversibleScale)(args...) = s.forward(args...) # functor
 Base.show(io::IO, s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
 Base.show(io::IO, ::MIME"text/plain", s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
+
+
+struct Cycler
+    counters::IdDict{Type,Int}
+end
+
+Cycler() = Cycler(IdDict{Type,Int}())
