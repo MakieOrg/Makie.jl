@@ -27,6 +27,9 @@ end
         fig
     end)
     @test svg_isnt_rasterized(poly(Circle(Point2f(0, 0), 10)))
+    @test svg_isnt_rasterized(poly(BezierPath([
+        MoveTo(0.0, 0.0), LineTo(1.0, 0.0), LineTo(1.0, 1.0), CurveTo(1.0, 1.0, 0.5, 1.0, 0.5, 0.5), ClosePath()
+    ])))
 end
 
 @testset "reproducable svg ids" begin

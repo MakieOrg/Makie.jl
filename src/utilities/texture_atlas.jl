@@ -292,13 +292,12 @@ function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
 end
 
 
-
 # Seems like StableHashTraits is so slow, that it's worthwhile to memoize the hashes
 const MEMOIZED_HASHES = Dict{Any, UInt32}()
 
 function fast_stable_hash(x)
     return get!(MEMOIZED_HASHES, x) do
-        return StableHashTraits.stable_hash(x; alg=crc)
+        return StableHashTraits.stable_hash(x; alg=crc32c, version=2)
     end
 end
 
@@ -311,7 +310,6 @@ end
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
     return insert_glyph!(atlas, fast_stable_hash(path), path)
 end
-
 
 function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{BezierPath, Tuple{UInt64, NativeFont}})
     return get!(atlas.mapping, hash) do

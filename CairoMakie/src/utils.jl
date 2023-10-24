@@ -47,7 +47,7 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     end
 end
 
-function project_rect(scenelike, space, rect::Rect, model)
+function project_shape(scenelike, space, rect::Rect, model)
     mini = project_position(scenelike, space, minimum(rect), model)
     maxi = project_position(scenelike, space, maximum(rect), model)
     return Rect(mini, maxi .- mini)
