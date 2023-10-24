@@ -116,8 +116,8 @@ end
             lines!(ax,( 1:10) .* i, label = "$i")
         end
         # To verify that RGB values differ across entries
-        axislegend(ax, position = :lt, patchcolor = :red, patchsize = (100, 100), bgcolor = :gray50);
-        Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), bgcolor = :gray50);
+        axislegend(ax, position = :lt, patchcolor = :red, patchsize = (100, 100), backgroundcolor = :gray50);
+        Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), backgroundcolor = :gray50);
         f
     end
 end
