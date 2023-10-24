@@ -157,7 +157,7 @@ function get_texture_atlas(resolution::Int = 2048, pix_per_glyph::Int = 64)
     end
 end
 
-const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.19.0/"
+const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.20.0/"
 
 function cached_load(resolution::Int, pix_per_glyph::Int)
     path = get_cache_path(resolution, pix_per_glyph)
