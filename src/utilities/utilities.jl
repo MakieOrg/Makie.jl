@@ -179,6 +179,7 @@ attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broad
 attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractVector) = true
+is_vector_attribute(x::Base.Generator) = is_vector_attribute(x.iter)
 is_vector_attribute(x::NativeFont) = false
 is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
@@ -438,3 +439,18 @@ end
 sv_getindex(v::AbstractVector, i::Integer) = v[i]
 sv_getindex(x, ::Integer) = x
 sv_getindex(x::VecTypes, ::Integer) = x
+
+# TODO: move to GeometryBasics
+function corners(rect::Rect2{T}) where T
+    o = minimum(rect)
+    w = widths(rect)
+    T0 = zero(T)
+    return Point{3,T}[o .+ Vec2{T}(x, y) for x in (T0, w[1]) for y in (T0, w[2])]
+end
+
+function corners(rect::Rect3{T}) where T
+    o = minimum(rect)
+    w = widths(rect)
+    T0 = zero(T)
+    return Point{3,T}[o .+ Vec3{T}(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3])]
+end

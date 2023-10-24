@@ -81,6 +81,17 @@ function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}
         (num8 - num11) * vec[1] + (num9 + num10) * vec[2] + (1f0 - (num4 + num5)) * vec[3]
     )
 end
+
+function Base.:(*)(quat::Quaternion, bb::Rect3{T}) where {T}
+    points = corners(bb)
+    first = points[1]
+    bb = Ref(Rect3{T}(quat * first, zero(first)))
+    for i in 2:length(points)
+        bb[] = _update_rect(bb[], Point3{T}(quat * points[i]))
+    end
+    return bb[]
+end
+
 Base.conj(q::Quaternion) = Quaternion(-q[1], -q[2], -q[3], q[4])
 
 function Base.:(*)(q::Quaternion, w::Quaternion)
