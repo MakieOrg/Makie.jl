@@ -209,7 +209,8 @@ function limits_from_transformed_points(positions, scales, rotations, element_bb
     first_scale = attr_broadcast_getindex(scales, 1)
     first_rot = attr_broadcast_getindex(rotations, 1)
     full_bbox = first_rot * (element_bbox * first_scale) + first(positions)
-    broadcast_foreach(positions, scales, rotations) do pos, scale, rot
+    for (i, pos) in enumerate(positions)
+        scale, rot = attr_broadcast_getindex(scales, i), attr_broadcast_getindex(rotations, i)
         transformed_bbox = rot * (element_bbox * scale) + pos
         full_bbox = union(full_bbox, transformed_bbox)
     end
