@@ -251,13 +251,12 @@ end
 
 function data_limits(plot::MeshScatter)
     # TODO: avoid mesh generation here if possible
-    marker_bb = Rect3f(convert_attribute(plot.marker[], key"marker"(), key"meshscatter"()))
+    @get_attribute plot (marker, markersize, rotations)
+    marker_bb = Rect3f(marker)
 
     positions = iterate_transformed(plot)
-    scales    = convert_attribute(plot.markersize[], key"markersize"(), key"meshscatter"())
-    rotations = to_rotation(to_value(get(plot, :rotation, plot.rotations)))
+    scales = markersize
     # "rotation" is a backend attribute that may overwrite "rotations"...
-
     # fast path for constant markersize
     if scales isa VecTypes{3} && rotations isa Quaternion
         bb = limits_from_transformed_points(positions)

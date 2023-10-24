@@ -165,7 +165,6 @@ end
 attr_broadcast_length(x::NativeFont) = 1
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::AbstractVector) = length(x)
-attr_broadcast_length(x::Base.Generator) = attr_broadcast_length(x.iter)
 attr_broadcast_length(x::AbstractPattern) = 1
 attr_broadcast_length(x) = 1
 attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
@@ -173,7 +172,6 @@ attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractVector, i) = x[i]
-attr_broadcast_getindex(x::Base.Generator, i) = x.f(attr_broadcast_getindex(x.iter, i))
 attr_broadcast_getindex(x::AbstractArray{T, 0}, i) where T = x[1]
 attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
@@ -447,12 +445,12 @@ function corners(rect::Rect2{T}) where T
     o = minimum(rect)
     w = widths(rect)
     T0 = zero(T)
-    (o + Vec2(x, y) for x in (T0, w[1]) for y in (T0, w[2]))
+    return Point{3,T}[o .+ Vec2{T}(x, y) for x in (T0, w[1]) for y in (T0, w[2])]
 end
 
 function corners(rect::Rect3{T}) where T
     o = minimum(rect)
     w = widths(rect)
     T0 = zero(T)
-    (o + Vec3(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3]))
+    return Point{3,T}[o .+ Vec3{T}(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3])]
 end
