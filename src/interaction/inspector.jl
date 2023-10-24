@@ -661,7 +661,7 @@ function show_imagelike(inspector, plot, name, edge_based)
     a._color[] = if z isa AbstractFloat
         interpolated_getindex(
             to_colormap(plot.colormap[]), z,
-            to_value(get(plot.attributes, :colorrange, (0, 1)))
+            extract_colorrange(plot)
         )
     else
         z
