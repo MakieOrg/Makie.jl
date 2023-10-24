@@ -103,15 +103,13 @@ function cleanup_bbox(bb::Rect2f)
     return bb
 end
 
-crc(x, seed=UInt32(0)) = crc32c(collect(x), seed)
-
 struct BezierPath
     commands::Vector{PathCommand}
     boundingbox::Rect2f
     hash::UInt32
     function BezierPath(commands::Vector)
         c = convert(Vector{PathCommand}, commands)
-        return new(c, bbox(c), StableHashTraits.stable_hash(c; alg=crc))
+        return new(c, bbox(c), StableHashTraits.stable_hash(c; alg=crc32c, version=2))
     end
 end
 bbox(x::BezierPath) = x.boundingbox
