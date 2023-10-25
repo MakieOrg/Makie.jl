@@ -234,9 +234,6 @@ function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_
     px_o = extents[1]
     px_width = extents[2] - extents[1]
 
-    lim_o = limits[1]
-    lim_w = limits[2] - limits[1]
-
     tickvalues_scaled = scale.(minortickvalues)
 
     tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
@@ -494,6 +491,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # before other stuff is triggered by them, which accesses the
     # ticklabel boundingbox (which needs to be updated already)
     # so we move the new listener from text! to the front
+
     pushfirst!(ticklabel_annotation_obs.listeners, pop!(ticklabel_annotation_obs.listeners))
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore
@@ -689,6 +687,38 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     multiples = Makie.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
     multiples .* m.multiple, Showoff.showoff(multiples) .* m.suffix
+end
+
+function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
+    dvmin = vmin
+    dvmax = vmax
+    delta = dvmax - dvmin
+
+    # get proposed step from
+    step = delta / max(2, mapreduce(v -> v[1] * delta + v[2], min, m.n_ideal))
+    if delta ≥ 0.05 # ≈ 3°
+        # rad values for (1, 2, 3, 5, 10, 15, 30, 45, 60, 90, 120) degrees
+        ideal_step = 0.017453292519943295
+        for option in (0.03490658503988659, 0.05235987755982989, 0.08726646259971647, 0.17453292519943295, 0.2617993877991494, 0.5235987755982988, 0.7853981633974483, 1.0471975511965976, 1.5707963267948966, 2.0943951023931953)
+            if (step - option)^2 < (step - ideal_step)^2
+                ideal_step = option
+            end
+        end
+
+        ϵ = 1e-6
+        vmin = ceil(Int,  dvmin / ideal_step - ϵ) * ideal_step
+        vmax = floor(Int, dvmax / ideal_step + ϵ) * ideal_step
+        multiples = collect(vmin:ideal_step:vmax+ϵ)
+    else
+        s = 360/2pi
+        multiples = Makie.get_tickvalues(LinearTicks(3), s * dvmin, s * dvmax) ./ s
+    end
+
+    # We need to round this to avoid showoff giving us 179 for 179.99999999999997
+    # We also need to be careful that we don't remove significant digits
+    sigdigits = ceil(Int, log10(1000 * max(abs(vmin), abs(vmax)) / delta))
+
+    return multiples, Showoff.showoff(round.(multiples .* m.label_factor, sigdigits = sigdigits)) .* m.suffix
 end
 
 # identity or unsupported scales

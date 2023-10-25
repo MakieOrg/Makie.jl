@@ -1,11 +1,7 @@
 using FileIO
 using WGLMakie, Makie, Test
-using Pkg
 using WGLMakie.JSServe
 import Electron
-
-path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
-Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
 
 @testset "mimes" begin
@@ -66,4 +62,10 @@ Makie.inline!(Makie.automatic)
     recorded_files, recording_dir = @include_reference_tests "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)
     ReferenceTests.test_comparison(scores; threshold = 0.032)
+
+end
+
+@testset "memory leaks" begin
+    GC.gc(true)
+    @test Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6 < 9
 end

@@ -1,3 +1,22 @@
+function Base.isapprox(r1::Rect{D}, r2::Rect{D}; kwargs...) where D
+    return isapprox(minimum(r1), minimum(r2); kwargs...) &&
+            isapprox(widths(r1), widths(r2); kwargs...)
+end
+
+@testset "data_limits(plot)" begin
+    ps = Point2f[(0, 0), (1, 1)]
+
+    fig, ax, p = hexbin(ps)
+    ms = to_ndim(Vec3f, Vec2f(p.plots[1].markersize[]), 0)
+    @test data_limits(p) ≈ Rect3f(-ms, Vec3f(1, 1, 0) .+ 2ms)
+
+    fig, ax, p = errorbars(ps, [0.5, 0.5])
+    @test data_limits(p) ≈ Rect3f(-Point3f(0, 0.5, 0), Vec3f(1, 2, 0))
+
+    fig, ax, p = bracket(ps...)
+    @test data_limits(p) ≈ Rect3f(Point3f(0), Vec3f(1, 1, 0))
+end
+
 @testset "boundingbox(plot)" begin
     cat = FileIO.load(Makie.assetpath("cat.obj"))
 
@@ -42,7 +61,7 @@
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(0.5, 0.5, 0)
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
-    
+
     fig, ax, p = image(rand(10, 10))
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(0)

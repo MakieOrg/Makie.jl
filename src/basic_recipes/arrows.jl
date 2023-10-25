@@ -19,7 +19,7 @@ grid.
 
 `arrows` can also work in three dimensions.
 
-If a `Function` is provided in place of `u, v, [w]`, then it must accept 
+If a `Function` is provided in place of `u, v, [w]`, then it must accept
 a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
 or other array-like output.
 
@@ -165,7 +165,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
 
         linesegments!(
             arrowplot, headstart,
-            color = line_c, colormap = colormap, colorscale = colorscale, linestyle = linestyle,
+                      color=line_c, colormap=colormap, colorscale=colorscale, linestyle=linestyle,
+                      colorrange=arrowplot.colorrange,
             linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible,
@@ -176,7 +177,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             marker=marker_head,
             markersize = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize),
             color = arrow_c, rotations = rotations, strokewidth = 0.0,
-            colormap = colormap, markerspace = arrowplot.markerspace,
+                 colormap=colormap, markerspace=arrowplot.markerspace, colorrange=arrowplot.colorrange,
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
@@ -212,7 +213,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker=marker_tail,
             markersize = msize,
-            color = line_c, colormap = colormap, colorscale = colorscale,
+                     color=line_c, colormap=colormap, colorscale=colorscale, colorrange=arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
@@ -223,7 +224,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker=marker_head,
             markersize = markersize,
-            color = arrow_c, colormap = colormap, colorscale = colorscale,
+                     color=arrow_c, colormap=colormap, colorscale=colorscale, colorrange=arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,

@@ -408,42 +408,56 @@ function RenderObject(
     # through @gen_defaults! and adjust constructors instead.
     track_updates = to_value(pop!(data, :track_updates, true))
 
+    # Explicit conversion targets for gl_convert
     targets = get(data, :gl_convert_targets, Dict())
     delete!(data, :gl_convert_targets)
-    passthrough = Dict{Symbol,Any}() # we also save a few non opengl related values in data
+
+    # Not handled as uniform
+    visible = pop!(data, :visible, Observable(true))
+
+    # for clean up on deletion
     observables = Observable[]
 
-    for (k, v) in data # convert everything to OpenGL compatible types
-        v isa Observable && push!(observables, v) # save for clean up
+    # Overwriting data with break direct iteration over it
+    _keys = collect(keys(data))
+    for k in _keys
+        v = data[k]
+        v isa Observable && push!(observables, v)
+
         if haskey(targets, k)
-            # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
-            # e.g. Texture{T,1} and GLBuffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
-            # but in some cases we want a Texture, sometimes a GLBuffer or TextureBuffer
+            # glconvert is designed to convert everything to a fitting opengl datatype, but sometimes
+            # the conversion is not unique. (E.g. Array -> Texture, TextureBuffer, GLBuffer, ...)
+            # In these cases an explicit conversion target is required
             data[k] = gl_convert(targets[k], v)
         else
             k in (:indices, :visible, :ssao, :label, :cycle) && continue
-            # structs are treated differently, since they have to be composed into their fields
+
+            # structs are decomposed into fields
+            #     $k.$fieldname -> v.$fieldname
             if isa_gl_struct(v)
                 merge!(data, gl_convert_struct(v, k))
-            elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
+                delete!(data, k)
+
+            # try direct conversion
+            elseif applicable(gl_convert, v)
                 try
                     data[k] = gl_convert(v)
                 catch e
-                    @warn("Can't convert $(typeof(v)) to opengl, for attribute $(k)")
                     rethrow(e)
                 end
-            else # put it in passthrough
-                delete!(data, k)
-                passthrough[k] = v
+
+            # Otherwise just let the value pass through
+            # TODO: Is this ok/ever not filtered?
+            else
+                # @debug "Passed on $k -> $(typeof(v)) without conversion."
             end
         end
     end
+
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
-    uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key !== :indices, data)
-    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
     program = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
-    visible = pop!(uniforms, :visible, Observable(true))
+
     # remove all uniforms not occuring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
     special = Set([:ssao, :transparency, :instances, :fxaa])
@@ -463,8 +477,10 @@ function RenderObject(
         visible,
         track_updates
     )
+
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id
+
     return robj
 end
 

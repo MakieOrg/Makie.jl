@@ -44,6 +44,7 @@ function write_redirection_html(redirect_file, existing_file; dry_run)
                     <head>
                         <meta charset="UTF-8">
                         <meta http-equiv="refresh" content="0; url=$rel">
+                        <link rel="canonical" href="$rel" />
                         <script type="text/javascript">
                             window.location.href = "$rel"
                         </script>

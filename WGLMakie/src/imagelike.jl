@@ -21,8 +21,6 @@ function create_shader(mscene::Scene, plot::Surface)
     normals = Buffer(lift(surface_normals, px, py, pz))
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
 
-    plot_attributes = copy(plot.attributes)
-
     uniforms = Dict(:uniform_color => color, :color => false)
     return draw_mesh(mscene, per_vertex, plot, uniforms)
 end

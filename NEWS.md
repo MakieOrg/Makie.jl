@@ -1,8 +1,27 @@
 # News
 
 ## master
-- Allow arbitrary reversible scale functions through `ReversibleScale`.
+- Fix grouping of a zero-height bar in `barplot`. Now a zero-height bar shares the same properties of the previous bar, and if the bar is the first one, its height is treated as positive if and only if there exists a bar of positive height or all bars are zero-height. [#3058](https://github.com/MakieOrg/Makie.jl/pull/3058)
+- Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272)
+- Added `cornerradius` attribute to `Box` for rounded corners [#3308](https://github.com/MakieOrg/Makie.jl/pull/3308).
+- Upgraded `StableHashTraits` from 1.0 to 1.1 [#3309](https://github.com/MakieOrg/Makie.jl/pull/3309).
 
+## v0.19.11
+
+- Setup automatic colorbars for volumeslices [#3253](https://github.com/MakieOrg/Makie.jl/pull/3253).
+- Colorbar for arrows [#3275](https://github.com/MakieOrg/Makie.jl/pull/3275).
+- Small bugfixes [#3275](https://github.com/MakieOrg/Makie.jl/pull/3275).
+
+## v0.19.10
+
+- Fix bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).
+- Add experimental Datashader implementation [#2883](https://github.com/MakieOrg/Makie.jl/pull/2883).
+- [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+
+## v0.19.9
+
+- Allow arbitrary reversible scale functions through `ReversibleScale`.
 - Deprecated `linestyle=vector_of_gaps` in favor of `linestyle=Linestyle(vector_of_gaps)` [3135](https://github.com/MakieOrg/Makie.jl/pull/3135), [3193](https://github.com/MakieOrg/Makie.jl/pull/3193).
 - Fixed some errors around dynamic changes of `ax.xscale` or `ax.yscale` [#3084](https://github.com/MakieOrg/Makie.jl/pull/3084)
 - Improved Barplot Label Alignment [#3160](https://github.com/MakieOrg/Makie.jl/issues/3160).

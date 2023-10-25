@@ -116,9 +116,7 @@ function Makie.plot!(pl::Bracket)
     pl
 end
 
-function point_iterator(pl::Bracket)
-    return Point2f[tupl[i] for tupl in pl[1][] for i in 1:2]
-end
+data_limits(pl::Bracket) = mapreduce(ps -> Rect3f([ps...]), union, pl[1][])
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 
