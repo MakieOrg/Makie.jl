@@ -168,7 +168,7 @@ The docstring given to the recipe will be transferred to the functions it genera
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname_sym = to_func_name(Tsym)
     if funcname_sym in ALL_RECIPE_NAMES
-        error("Recipe for $Tsym already exists!")
+        @warn("Recipe for $Tsym already exists, overwriting it!")
     end
     push!(ALL_RECIPE_NAMES, funcname_sym)
     funcname! = esc(Symbol("$(funcname_sym)!"))
