@@ -163,12 +163,6 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
-    if !isnothing(palette)
-        # Backwards compatibility for when palette was part of axis!
-        palette_attr = palette isa Attributes ? palette : Attributes(palette)
-        ax.scene.theme.palette = palette_attr
-    end
-
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
     targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
@@ -190,6 +184,12 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scene = Scene(blockscene, px_area=scenearea)
     ax.scene = scene
+
+    if !isnothing(palette)
+        # Backwards compatibility for when palette was part of axis!
+        palette_attr = palette isa Attributes ? palette : Attributes(palette)
+        ax.scene.theme.palette = palette_attr
+    end
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene

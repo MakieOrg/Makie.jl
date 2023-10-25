@@ -127,7 +127,7 @@ function convert_arguments!(plot::Combined{F}) where {F}
 end
 
 function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
-    if first(args) isa Attributes
+    if !isempty(args) && first(args) isa Attributes
         merge!(plot_attributes, attributes(first(args)))
         return Combined{Func}(Base.tail(args), plot_attributes)
     end

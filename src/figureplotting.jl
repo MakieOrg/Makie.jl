@@ -69,8 +69,11 @@ preferred_axis_type(::Union{Image,Heatmap}) = Axis
 
 function preferred_axis_type(p::Combined{F}) where F
     # Otherwise, we check the arguments
-    non_obs = map(to_value, p.args)
-    result = args_preferred_axis(Combined{F}, non_obs...)
+    input_args = map(to_value, p.args)
+    result = args_preferred_axis(Combined{F}, input_args...)
+    isnothing(result) || return result
+    conv_args = map(to_value, p.converted)
+    result = args_preferred_axis(Combined{F}, conv_args...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
 end
