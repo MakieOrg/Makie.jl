@@ -410,7 +410,7 @@ function initialize_block!(cb::Colorbar)
     # trigger protrusions with one of the attributes
     notify(cb.vertical)
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
-    if !(cb.colormap[] isa ColorMapping)
+    if (cb.colormap[] isa ColorMapping)
         setfield!(cb, :limits, convert(Observable{Any}, limits))
         setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
         setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
