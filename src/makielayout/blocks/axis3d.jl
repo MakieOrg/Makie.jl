@@ -739,6 +739,12 @@ function hideydecorations!(ax::Axis3;
     ax
 end
 
+"""
+    hidezdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true)
+
+Hide decorations of the z-axis: label, ticklabels, ticks and grid.
+"""
 function hidezdecorations!(ax::Axis3;
     label = true, ticklabels = true, ticks = true, grid = true)
 
@@ -841,7 +847,7 @@ end
 function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
-    elseif xlims[1] == xlims[2]
+    elseif xlims[1] == xlims[2] && xlims[1] !== nothing
         error("Can't set x limits to the same value $(xlims[1]).")
     elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
         xlims = reverse(xlims)
@@ -849,8 +855,9 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     else
         ax.xreversed[] = false
     end
+    mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, ax.limits[][2], ax.limits[][3])
+    ax.limits.val = (xlims, mlims[2], mlims[3])
     reset_limits!(ax, yauto = false, zauto = false)
     nothing
 end
@@ -858,7 +865,7 @@ end
 function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
-    elseif ylims[1] == ylims[2]
+    elseif ylims[1] == ylims[2] && ylims[1] !== nothing
         error("Can't set y limits to the same value $(ylims[1]).")
     elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
         ylims = reverse(ylims)
@@ -866,8 +873,9 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     else
         ax.yreversed[] = false
     end
+    mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (ax.limits[][1], ylims, ax.limits[][3])
+    ax.limits.val = (mlims[1], ylims, mlims[3])
     reset_limits!(ax, xauto = false, zauto = false)
     nothing
 end
@@ -875,25 +883,26 @@ end
 function Makie.zlims!(ax::Axis3, zlims)
     if length(zlims) != 2
         error("Invalid zlims length of $(length(zlims)), must be 2.")
-    elseif zlims[1] == zlims[2]
-        error("Can't set y limits to the same value $(zlims[1]).")
+    elseif zlims[1] == zlims[2] && zlims[1] !== nothing
+        error("Can't set z limits to the same value $(zlims[1]).")
     elseif all(x -> x isa Real, zlims) && zlims[1] > zlims[2]
         zlims = reverse(zlims)
         ax.zreversed[] = true
     else
         ax.zreversed[] = false
     end
+    mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (ax.limits[][1], ax.limits[][2], zlims)
+    ax.limits.val = (mlims[1], mlims[2], zlims)
     reset_limits!(ax, xauto = false, yauto = false)
     nothing
 end
 
 
 """
-    limits!(ax::Axis3, xlims, ylims)
+    limits!(ax::Axis3, xlims, ylims, zlims)
 
-Set the axis limits to `xlims` and `ylims`.
+Set the axis limits to `xlims`, `ylims`, and `zlims`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis3, xlims, ylims, zlims)
@@ -905,7 +914,8 @@ end
 """
     limits!(ax::Axis3, x1, x2, y1, y2, z1, z2)
 
-Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
+Set the axis x-limits to `x1` and `x2`, the y-limits to `y1` and `y2`, and the
+z-limits to `z1` and `z2`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis3, x1, x2, y1, y2, z1, z2)
