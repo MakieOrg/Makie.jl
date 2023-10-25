@@ -80,9 +80,12 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     return nothing
 end
 
-function handle_intensities!(attributes, plot)
+function handle_intensities!(screen, attributes, plot)
     color = plot.calculated_colors
     if color[] isa Makie.ColorMapping
+        onany(plot, color[].color_scaled, color[].colorrange_scaled, color[].colormap, color[].nan_color) do args...
+            screen.requires_update = true
+        end
         attributes[:intensity] = color[].color_scaled
         interp = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
         attributes[:color_map] = Texture(color[].colormap; minfilter=interp)
@@ -153,7 +156,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         end
         gl_attributes[:px_per_unit] = screen.px_per_unit
 
-        handle_intensities!(gl_attributes, plot)
+        handle_intensities!(screen, gl_attributes, plot)
         connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
 
         robj = robj_func(gl_attributes)

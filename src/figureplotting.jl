@@ -32,6 +32,10 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
+# For plots that dont require an axis,
+# E.g. BlockSpec
+struct FigureOnly end
+
 
 function args_preferred_axis(::Type{<:Union{Wireframe,Surface,Contour3d}}, x::AbstractArray, y::AbstractArray,
                              z::AbstractArray)
@@ -95,6 +99,9 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
     else
         preferred_axis_type(plot)
     end
+    if AxType == FigureOnly # For FigureSpec, which creates Axes dynamically
+        return nothing
+    end
     bbox = pop!(axis_kw, :bbox, nothing)
     return _block(AxType, figure, [], axis_kw, bbox)
 end
@@ -103,8 +110,12 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     figure_kw = extract_attributes(attributes, :figure)
     figure = Figure(; figure_kw...)
     ax = create_axis_for_plot(figure, plot, attributes)
-    figure[1, 1] = ax
-    return FigureAxis(figure, ax)
+    if isnothing(ax) # For FigureSpec
+        return figure
+    else
+        figure[1, 1] = ax
+        return FigureAxis(figure, ax)
+    end
 end
 
 MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Combined, Scene}) = s
@@ -144,8 +155,12 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition
         """)
     end
     ax = create_axis_for_plot(figure, plot, attributes)
-    gp[] = ax
-    return ax
+    if isnothing(ax) # For FigureSpec
+        return gp
+    else
+        gp[] = ax
+        return ax
+    end
 end
 
 function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gsp::GridSubposition)
@@ -265,3 +280,9 @@ end
     plot!(scene, plot)
     return plot
 end
+
+# This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
+# Which skips axis creation
+# TODO, what to return for the dynamically created axes?
+figurelike_return(f::GridPosition, p::Combined) = (f, p)
+figurelike_return(f::Figure, p::Combined) = FigureAxisPlot(f, nothing, p)

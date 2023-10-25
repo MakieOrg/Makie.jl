@@ -1,5 +1,5 @@
 using DataFrames
-import Makie.PlotspecApi as P
+import Makie.SpecApi as S
 using Random
 
 function gen_data(N=1000)
@@ -23,7 +23,7 @@ end
 
 
 function plot_data(data, categorical_vars, continuous_vars)
-    fig = P.Figure()
+    fig = S.Figure()
     mpalette = [:circle, :star4, :xcross, :diamond]
     cpalette = Makie.wong_colors()
     cat_styles = [:color => cpalette, :marker => mpalette, :markersize => [5, 10, 20, 30], :marker => ['c', 'x', 'y', 'm']]
@@ -33,17 +33,17 @@ function plot_data(data, categorical_vars, continuous_vars)
     continous_styles = [:viridis, :heat, :rainbow, :turku50]
     continuous_values = [extrema(data[!, con]) for con in continuous_vars]
     line_styles = Dict([cat => (; colormap=style, colorrange=limits) for (style, limits, cat) in zip(continous_styles, continuous_values, continuous_vars)])
-    ax = P.Axis(fig[1, 1])
+    ax = S.Axis(fig[1, 1])
     for var in categorical_vars
         values = data[!, var]
         kw, vals = scatter_styles[var]
         args = [kw => map(x-> vals[x], values)]
         d = data[!, Symbol("data_$var")]
-        P.scatter(ax, d; args...)
+        S.scatter!(ax, d; args...)
     end
     for var in continuous_vars
         points = data[!, var]
-        P.lines(ax, points; line_styles[var]..., color=points)
+        S.lines!(ax, points; line_styles[var]..., color=points)
     end
     fig
 end
@@ -73,67 +73,66 @@ for i in 1:1000
 end
 end_size = Base.summarysize(fig) / 10^6
 
-obs[] = P.Figure()
-obs[] = P.Figure(P.Axis((1, 1), P.scatter(1:4), P.lines(1:4; color=:red)),
-                 P.Axis3((1, 2), P.scatter(rand(Point3f, 10); color=:red)))
-
+obs[] = S.Figure()
+obs[] = S.Figure(S.Axis((1, 1), plots=[S.scatter(1:4), S.lines(1:4; color=:red)]),
+                 S.Axis3((1, 2), plots=[S.scatter(rand(Point3f, 10); color=:red)]))
 
 
 using Makie
-import Makie.PlotspecApi as P
+import Makie.SpecApi as S
 using GLMakie
 GLMakie.activate!(; float=true)
 
 function test(f_obs)
     f_obs[] = begin
-        f = P.Figure()
-        ax = P.Axis(f[1, 1])
-        P.scatter(ax, 1:4)
-        ax2 = P.Axis3(f[1, 2])
-        P.scatter(ax2, rand(Point3f, 10); color=1:10, markersize=20)
-        P.Colorbar(f[1, 3]; limits=(0, 1), colormap=:heat)
+        f = S.Figure()
+        ax = S.Axis(f[1, 1])
+        S.scatter!(ax, 1:4)
+        ax2 = S.Axis3(f[1, 2])
+        S.scatter!(ax2, rand(Point3f, 10); color=1:10, markersize=20)
+        S.Colorbar(f[1, 3]; limits=(0, 1), colormap=:heat)
         f
     end
     yield()
     f_obs[] = begin
-        P.Figure(P.Axis((1, 1),
-                        P.scatter(1:4),
-                        P.lines(1:4; color=:red)),
-                 P.Axis3((1, 2), P.scatter(rand(Point3f, 10); color=:red)))
+        S.Figure(S.Axis((1, 1),
+                        S.scatter(1:4),
+                        S.lines(1:4; color=:red)),
+                 S.Axis3((1, 2), S.scatter(rand(Point3f, 10); color=:red)))
     end
     return yield()
 end
 
 begin
-    f = P.Figure()
+    f = S.Figure()
     f_obs = Observable(f)
     fig = Makie.update_fig(Figure(), f_obs)
 end
 f_obs[] = begin
-    f = P.Figure()
-    ax = P.Axis(f[1, 1])
-    P.scatter(ax, 0:0.01:1, 0:0.01:1)
-    P.scatter(ax, rand(Point2f, 10); color=:green, markersize=20)
-    P.scatter(ax, rand(Point2f, 10); color=:red, markersize=20)
+    f = S.Figure()
+    ax = S.Axis(f[1, 1])
+    S.scatter(ax, 0:0.01:1, 0:0.01:1)
+    S.scatter(ax, rand(Point2f, 10); color=:green, markersize=20)
+    S.scatter(ax, rand(Point2f, 10); color=:red, markersize=20)
     f
 end;
 
 for i in 1:20
     f_obs[] = begin
-        f = P.Figure()
-        ax = P.Axis(f[1, 1])
-        P.scatter(ax, 1:4)
-        ax2 = P.Axis3(f[1, 2])
-        P.scatter(ax2, rand(Point3f, 10); color=1:10, markersize=20)
-        P.scatter(ax2, rand(Point3f, 10); color=1:10, markersize=20)
+        f = S.Figure()
+        ax = S.Axis(f[1, 1])
+        S.scatter!(ax, 1:4)
+        ax2 = S.Axis3(f[1, 2])
+        S.scatter!(ax2, rand(Point3f, 10); color=1:10, markersize=20)
+        S.scatter!(ax2, rand(Point3f, 10); color=1:10, markersize=20)
         f
     end
     yield()
     f_obs[] = begin
-        P.Figure(P.Axis((1, 1),
-                        P.scatter(1:4),
-                        P.lines(1:4; color=:red)),
-                 P.Axis3((1, 2), P.scatter(rand(Point3f, 10); color=:red)))
+        S.Figure(S.Axis((1, 1),
+                    S.scatter(1:4),
+                    S.lines(1:4; color=:red)),
+                 S.Axis3((1, 2), S.scatter(rand(Point3f, 10); color=:red)))
     end
     yield()
 end
@@ -172,7 +171,6 @@ struct MySimulation
 end
 
 function Makie.convert_arguments(::Type{<:AbstractPlot}, sim::MySimulation)
-    colors = resample_cmap(:viridis, length(sim.arguments) + 1)
     return map(enumerate(sim.arguments)) do (i, data)
         return PlotSpec(sim.plottype, data)
     end
@@ -190,9 +188,9 @@ display(f)
 resample_cmap(:viridis, 2)
 
 using GLMakie
-import Makie.PlotspecApi as P
+import Makie.SpecApi as S
 plot(Observable(
-    [P.scatter(1:4), P.scatter(2:5)]
+    [S.scatter(1:4), S.scatter(2:5)]
 ))
 
 function Makie.convert_arguments(T::Type{<:AbstractPlot}, data::Matrix)
@@ -202,3 +200,128 @@ function Makie.convert_arguments(T::Type{<:AbstractPlot}, data::Matrix)
 end
 
 scatter(rand(10, 4); color=:red)
+
+using GLMakie
+struct MySpec3
+    type::Any
+    args::Any
+    kws::Any
+end
+MySpec3(type, args...; kws...) = MySpec3(type, args, kws)
+
+function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::MySpec3)
+    f = S.Figure()
+    Makie.BlockSpec(obj.type, f[1, 1], obj.args...; obj.kws...)
+    return f
+end
+GLMakie.activate!(; float=true)
+obs = Observable(MySpec3(:Axis; title="test"))
+f = plot(obs)
+elem_1 = [LineElement(; color=:red, linestyle=nothing),
+          MarkerElement(; color=:blue, marker='x', markersize=15,
+                        strokecolor=:black)]
+
+elem_2 = [PolyElement(; color=:red, strokecolor=:blue, strokewidth=1),
+          LineElement(; color=:black, linestyle=:dash)]
+
+elem_3 = LineElement(; color=:green, linestyle=nothing,
+                     points=Point2f[(0, 0), (0, 1), (1, 0), (1, 1)])
+
+elem_4 = MarkerElement(; color=:blue, marker='π', markersize=15,
+                       points=Point2f[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
+
+elem_5 = PolyElement(; color=:green, strokecolor=:black, strokewidth=2,
+                     points=Point2f[(0, 0), (1, 0), (0, 1)])
+obs[] = MySpec3(:Slider; range=1:10);
+
+using GLMakie
+
+import Makie.SpecApi as S
+
+struct PlotGrid
+    nplots::Tuple{Int,Int}
+end
+
+function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::PlotGrid)
+    f = S.Figure(; fontsize=30)
+    for i in 1:obj.nplots[1]
+        for j in 1:obj.nplots[2]
+            ax = S.Axis(f[i, j])
+            S.lines!(ax,cumsum(randn(1000)))
+        end
+    end
+    return f
+end
+
+
+f = Figure()
+s1 = Slider(f[1, 1]; range=1:4)
+s2 = Slider(f[1, 2]; range=1:4)
+obs = lift(s1.value, s2.value) do i, j
+    PlotGrid((i, j))
+end
+
+plot(f[2, :], obs)
+f
+
+
+f = S.Figure(; fontsize=30)
+for i in 1:2
+    for j in 1:2
+        ax = S.Axis(f[i, j])
+        S.lines!(ax, cumsum(randn(1000)))
+    end
+end
+
+f = Figure()
+fs = f[1, :]
+ax1, pl = scatter(fs[1, 1], 1:4)
+ax2, pl = scatter(fs[1, 2], 1:4)
+f
+
+
+struct PlotGrid
+    nplots::Tuple{Int,Int}
+end
+
+Makie.used_attributes(::Type{<:AbstractPlot}, ::PlotGrid) = (:color,)
+function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::PlotGrid; color=:black)
+    f = S.Figure(; fontsize=30)
+    for i in 1:obj.nplots[1]
+        for j in 1:obj.nplots[2]
+            ax = S.Axis(f[i, j])
+            S.lines!(ax, cumsum(randn(1000)); color=color)
+        end
+    end
+    return f
+end
+
+f = Figure()
+plot(f[1, 1], PlotGrid((1, 1)); color=:red)
+plot(f[1, 2], PlotGrid((2, 2)); color=:black)
+f
+
+
+struct LineScatter
+    show_lines::Bool
+    show_scatter::Bool
+end
+
+function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::LineScatter, data...)
+    plots = PlotSpec[]
+    if obj.show_lines
+        push!(plots, S.lines(data...))
+    end
+    if obj.show_scatter
+        push!(plots, S.scatter(data...))
+    end
+    return plots
+end
+
+f = Figure()
+ax = Axis(f[1, 1])
+# Can be plotted into Axis, since it doesn't create its own axes like FigureSpec
+plot!(ax, LineScatter(true, true), 1:4)
+plot!(ax, LineScatter(true, false), 2:4)
+f
+```

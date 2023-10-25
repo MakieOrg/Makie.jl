@@ -16,7 +16,13 @@ struct PlotSpec
         for (k, v) in kwargs
             # convert eagerly, so that we have stable types for matching later
             # E.g. so that PlotSpec(; color = :red) has the same type as PlotSpec(; color = RGBA(1, 0, 0, 1))
-            kw[k] = convert_attribute(v, Key{k}(), Key{type}())
+            if v isa Cycled # special case for conversions needing a scene
+                kw[k] = v
+            elseif v isa Observable
+                error("PlotSpec are supposed to be used without Observables")
+            else
+                kw[k] = convert_attribute(v, Key{k}(), Key{type}())
+            end
         end
         return new(type, Any[args...], kw)
     end
@@ -43,8 +49,20 @@ struct BlockSpec
     plots::Vector{PlotSpec}
 end
 
-function BlockSpec(typ::Symbol, pos::Tuple{Any,Any}, plots::PlotSpec...; kw...)
-    return BlockSpec(typ, pos, Dict{Symbol,Any}(kw), [plots...])
+function BlockSpec(typ::Symbol, pos::Tuple{Any,Any}, args...;
+        plots::Vector{PlotSpec}=PlotSpec[], kw...)
+    attr = Dict{Symbol,Any}(kw)
+    if typ == :Legend
+        # TODO, this is hacky and works around the fact,
+        # that legend gets its legend elements from the positional arguments
+        # But we can only update them via legend.entrygroups
+        defaults = block_defaults(:Legend, attr, nothing)
+        entrygroups = to_entry_group(Attributes(defaults), args...)
+        attr[:entrygroups] = entrygroups
+        return BlockSpec(typ, pos, attr, plots)
+    else
+        return BlockSpec(typ, pos, attr, plots)
+    end
 end
 
 struct FigureSpec
@@ -63,13 +81,18 @@ function Base.getindex(f::FigureSpec, arg1, arg2)
     return FigurePosition(f, (arg1, arg2))
 end
 
-function BlockSpec(typ::Symbol, pos::FigurePosition, plots::PlotSpec...; kw...)
-    block = BlockSpec(typ, pos.position, Dict{Symbol,Any}(kw), [plots...])
+function BlockSpec(typ::Symbol, pos::FigurePosition, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
+    block = BlockSpec(typ, pos.position, args...; plots=plots, kw...)
     push!(pos.f.blocks, block)
     return block
 end
 
 function PlotSpec(type::Symbol, ax::BlockSpec, args...; kwargs...)
+    tstring = string(type)
+    if !endswith(tstring, "!")
+        error("Need to call $(type)! to create a plot in an axis")
+    end
+    type = Symbol(tstring[1:end-1])
     plot = PlotSpec(type, args...; kwargs...)
     push!(ax.plots, plot)
     return plot
@@ -106,13 +129,14 @@ end
 
 struct SpecApi end
 
-function Base.getproperty(::SpecApi, field::Symbol)
+function Base.getproperty(::Type{SpecApi}, field::Symbol)
     field === :Figure && return FigureSpec
     recipes = MakieCore.ALL_RECIPE_NAMES
     blocks = ALL_BLOCK_NAMES
-    if field in recipes
+    fname = Symbol(replace(string(field), "!" => ""))
+    if fname in recipes
         return (args...; kw...) -> PlotSpec(field, args...; kw...)
-    elseif field in blocks
+    elseif fname in blocks
         return (args...; kw...) -> BlockSpec(field, args...; kw...)
     else
         all_names = join(recipes, ", ")
@@ -126,28 +150,6 @@ function Base.getproperty(::SpecApi, field::Symbol)
     end
 end
 
-"""
-The `PlotspecApi` is a convenient scope for creating PlotSpec objects.
-PlotSpecs are a simple way to create plots in a declarative way, which can then converted to Makie plots.
-They're lightweight and don't require all dependencies of Makie to be loaded.
-You can use `Observable{PlotSpec}`, or `Observable{PlotspecApi.Figure}` to create complete plots that can be updated dynamically.
-
-The API is supposed mirror the normal Makie API 1:1, just prefixed by `PlotspecApi`:
-```julia
-import Makie.PlotspecApi as P # For convenience import it as a shorter name
-P.scatter(1:4) # create a single PlotSpec object
-
-# Create a complete figure
-f = P.Figure() #
-ax = P.Axis(f[1, 1])
-P.scatter(ax, 1:4)
-fig_observable = Observable(f)
-plot(fig_observable) # Plot the whole figure
-fig_observable[] = ... # Efficiently update the complete figure with a new FigureSpec
-```
-
-"""
-const PlotspecApi = SpecApi()
 
 # comparison based entirely of types inside args + kwargs
 function compare_specs(a::PlotSpec, b::PlotSpec)
@@ -163,6 +165,15 @@ function compare_specs(a::PlotSpec, b::PlotSpec)
     return true
 end
 
+@inline function is_different(a, b)
+    # First check if they are the same object
+    # This disallows mutating PlotSpec arguments in place
+    a === b && return false
+    # If they're not the same objcets, we see if they contain the same values
+    a == b && return false
+    return true
+end
+
 function update_plot!(plot::AbstractPlot, spec::PlotSpec)
     # Update args in plot `input_args` list
     any_different = false
@@ -170,7 +181,7 @@ function update_plot!(plot::AbstractPlot, spec::PlotSpec)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
         arg_obs = plot.args[i]
-        if to_value(arg_obs) !== spec.args[i] # only update if different
+        if is_different(to_value(arg_obs), spec.args[i]) # only update if different
             any_different = true
             arg_obs.val = spec.args[i]
         end
@@ -181,7 +192,7 @@ function update_plot!(plot::AbstractPlot, spec::PlotSpec)
     for (attribute, new_value) in spec.kwargs
         old_attr = plot[attribute]
         # only update if different
-        if old_attr[] !== new_value || old_attr[] != new_value
+        if is_different(old_attr[], new_value)
             @debug("updating kw $attribute")
             old_attr.val = new_value
             push!(to_notify, attribute)
@@ -213,24 +224,24 @@ Plots a list of PlotSpec's, which can be an observable, making it possible to cr
 ## Example
 ```julia
 using GLMakie
-import Makie.PlotspecApi as P
+import Makie.SpecApi as S
 
 fig = Figure()
 ax = Axis(fig[1, 1])
-plots = Observable([P.heatmap(0 .. 1, 0 .. 1, Makie.peaks()), P.lines(0 .. 1, sin.(0:0.01:1); color=:blue)])
+plots = Observable([S.heatmap(0 .. 1, 0 .. 1, Makie.peaks()), S.lines(0 .. 1, sin.(0:0.01:1); color=:blue)])
 pl = plot!(ax, plots)
 display(fig)
 
 # Updating the plot dynamically
-plots[] = [P.heatmap(0 .. 1, 0 .. 1, Makie.peaks()), P.lines(0 .. 1, sin.(0:0.01:1); color=:red)]
+plots[] = [S.heatmap(0 .. 1, 0 .. 1, Makie.peaks()), S.lines(0 .. 1, sin.(0:0.01:1); color=:red)]
 plots[] = [
-    P.image(0 .. 1, 0 .. 1, Makie.peaks()),
-    P.poly(Rect2f(0.45, 0.45, 0.1, 0.1)),
-    P.lines(0 .. 1, sin.(0:0.01:1); linewidth=10, color=Makie.resample_cmap(:viridis, 101)),
+    S.image(0 .. 1, 0 .. 1, Makie.peaks()),
+    S.poly(Rect2f(0.45, 0.45, 0.1, 0.1)),
+    S.lines(0 .. 1, sin.(0:0.01:1); linewidth=10, color=Makie.resample_cmap(:viridis, 101)),
 ]
 
 plots[] = [
-    P.surface(0..1, 0..1, Makie.peaks(); colormap = :viridis, translation = Vec3f(0, 0, -1)),
+    S.surface(0..1, 0..1, Makie.peaks(); colormap = :viridis, translation = Vec3f(0, 0, -1)),
 ]
 ```
 """
@@ -247,14 +258,14 @@ Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "P.", spec.type, "($args; $kws)")
+    println(io, "S.", spec.type, "($args; $kws)")
     return
 end
 
 function Base.show(io::IO, spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "P.", spec.type, "($args; $kws)")
+    println(io, "S.", spec.type, "($args; $kws)")
     return
 end
 
@@ -310,9 +321,7 @@ function update_plotspecs!(
 end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
-    @show p.attributes
     scene = Makie.parent_scene(p)
-
     update_plotspecs!(scene, p[1])
     return
 end
@@ -330,14 +339,31 @@ function compare_block(a::BlockSpec, b::BlockSpec)
     return true
 end
 
-function to_block(fig::Figure, spec::BlockSpec)
+function to_block(fig, spec::BlockSpec)
     BType = getfield(Makie, spec.type)
     return BType(fig[spec.position...]; spec.kwargs...)
 end
 
-function update_block!(block::Block, plot_obs, spec::BlockSpec)
-    for (key, value) in spec.kwargs
-        setproperty!(block, key, value)
+function update_block!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
+    old_attr = keys(old_spec.kwargs)
+    new_attr = keys(spec.kwargs)
+    # attributes that have been set previously and need to get unset now
+    reset_to_defaults = setdiff(old_attr, new_attr)
+    if !isempty(reset_to_defaults)
+        default_attrs = default_attribute_values(T, block.blockscene)
+        for attr in reset_to_defaults
+            setproperty!(block, attr, default_attrs[attr])
+        end
+    end
+    # Attributes needing an update
+    to_update = setdiff(new_attr, reset_to_defaults)
+    for key in to_update
+        val = spec.kwargs[key]
+        prev_val = to_value(getproperty(block, key))
+        if val !== prev_val || val != prev_val
+            println("updating: $(key)")
+            setproperty!(block, key, val)
+        end
     end
     plot_obs[] = spec.plots
     return
@@ -346,7 +372,8 @@ end
 function update_fig!(fig, figure_obs)
     cached_blocks = Pair{BlockSpec,Tuple{Block,Observable}}[]
     l = Base.ReentrantLock()
-    on(fig.scene, figure_obs; update=true) do figure
+    pfig = fig isa Figure ? fig : get_top_parent(fig)
+    on(pfig.scene, figure_obs; update=true) do figure
         lock(l) do
             used_specs = Set{Int}()
             for spec in figure.blocks
@@ -365,23 +392,29 @@ function update_fig!(fig, figure_obs)
                     end
                     push!(cached_blocks, spec => (block, obs))
                     push!(used_specs, length(cached_blocks))
-                    Makie.update_state_before_display!(block)
                 else
                     @debug("updating old block with spec")
                     push!(used_specs, idx)
-                    block, plot_obs = cached_blocks[idx][2]
-                    update_block!(block, plot_obs, spec)
+                    old_spec, (block, plot_obs) = cached_blocks[idx]
+                    update_block!(block, plot_obs, old_spec, spec)
+                    cached_blocks[idx] = spec => (block, plot_obs)
                 end
+                update_state_before_display!(block)
             end
             unused_plots = setdiff(1:length(cached_blocks), used_specs)
             # Next, delete all plots that we haven't used
             # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+            layouts_to_trim = Set{GridLayout}()
             for idx in unused_plots
                 _, (block, obs) = cached_blocks[idx]
+                gc = GridLayoutBase.gridcontent(block)
+                push!(layouts_to_trim, gc.parent)
                 delete!(block)
                 Makie.Observables.clear(obs)
             end
-            return splice!(cached_blocks, sort!(collect(unused_plots)))
+            splice!(cached_blocks, sort!(collect(unused_plots)))
+            foreach(trim!, layouts_to_trim)
+            return
         end
     end
     return fig
@@ -392,3 +425,20 @@ function plot(figure_obs::Observable{FigureSpec}; figure=(;))
     update_fig!(fig, figure_obs)
     return fig
 end
+
+args_preferred_axis(::FigureSpec) = FigureOnly
+
+plot!(plot::Combined{MakieCore.plot,Tuple{Makie.FigureSpec}}) = plot
+
+function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Combined{MakieCore.plot,Tuple{Makie.FigureSpec}})
+    figure = fig isa Figure ? fig : get_top_parent(fig)
+    connect_plot!(figure.scene, plot)
+    update_fig!(fig, plot[1])
+    return fig
+end
+
+function apply_convert!(P, attributes::Attributes, x::FigureSpec)
+    return (Combined{plot}, (x,))
+end
+
+MakieCore.argtypes(::FigureSpec) = Tuple{Nothing}
