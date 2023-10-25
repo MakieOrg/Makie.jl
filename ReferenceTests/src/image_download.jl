@@ -23,7 +23,7 @@ function download_refimages(
     !isfile(images_tar) && download(url, images_tar)
     isdir(dir) && rm(dir, recursive=true, force=true)
     mktempdir() do path
-        Tar.extract(`gzcat $images_tar`, path)
+        Tar.extract(`gunzip -c  $images_tar`, path)
         dirs = filter(x -> x ∉ [".", ".."] && isdir(x), readdir(path, join = true))
         if length(dirs) != 1
             error("Expected exactly one directory in extracted reference image tarball from github, got $dirs")
