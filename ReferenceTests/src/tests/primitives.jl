@@ -401,7 +401,7 @@ end
 
 function draw_marker_test!(scene, marker, center; markersize=300)
     # scatter!(scene, center, distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=600)
-    scatter!(scene, center, marker=marker, markersize=markersize, markerspace=:pixel)
+    scatter!(scene, center, color=:black, marker=marker, markersize=markersize, markerspace=:pixel)
 
     font = Makie.defaultfont()
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
