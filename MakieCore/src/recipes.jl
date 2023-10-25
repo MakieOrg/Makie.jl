@@ -26,30 +26,14 @@ plotkey(any) = nothing
 
 argtypes(::T) where {T <: Tuple} = T
 
-function create_figurelike end
-function create_figurelike! end
+function create_axis_like end
+function create_axis_like! end
 function figurelike_return end
 function figurelike_return! end
 
-function _create_plot(F, attributes::Dict, args...)
-    figlike, plot_kw, plot_args = create_figurelike(Combined{F}, attributes, args...)
-    plot = Combined{F}(plot_args, plot_kw)
-    plot!(figlike, plot)
-    return figurelike_return(figlike, plot)
-end
+function _create_plot end
+function _create_plot! end
 
-function _create_plot!(F, attributes::Dict, args...)
-    figlike, plot_kw, plot_args = create_figurelike!(Combined{F}, attributes, args...)
-    plot = Combined{F}(plot_args, plot_kw)
-    plot!(figlike, plot)
-    return figurelike_return!(figlike, plot)
-end
-
-function _create_plot!(F, kw::Dict, scene::SceneLike, args...)
-    plot = Combined{F}(args, kw)
-    plot!(scene, plot)
-    return plot
-end
 
 plot(args...; kw...) = _create_plot(plotfunc(plottype(map(to_value, args)...)), Dict{Symbol, Any}(kw), args...)
 plot!(args...; kw...) = _create_plot!(plotfunc(plottype(map(to_value, args)...)), Dict{Symbol, Any}(kw), args...)
@@ -75,6 +59,9 @@ theme(x::AbstractPlot, key; default=nothing) = deepcopy(get(x.attributes, key, d
 Attributes(x::AbstractPlot) = x.attributes
 
 default_theme(scene, T) = Attributes()
+
+
+const ALL_RECIPE_NAMES = Set{Symbol}()
 
 """
 # Plot Recipes in `Makie`
@@ -180,6 +167,10 @@ The docstring given to the recipe will be transferred to the functions it genera
 """
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname_sym = to_func_name(Tsym)
+    if funcname_sym in ALL_RECIPE_NAMES
+        error("Recipe for $Tsym already exists!")
+    end
+    push!(ALL_RECIPE_NAMES, funcname_sym)
     funcname! = esc(Symbol("$(funcname_sym)!"))
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)

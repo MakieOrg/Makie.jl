@@ -6,6 +6,7 @@ function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
 
+const ALL_BLOCK_NAMES = Set{Symbol}()
 
 macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
@@ -13,7 +14,10 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     type_expr = _name isa Expr ? _name : :($_name <: Makie.Block)
     name = _name isa Symbol ? _name : _name.args[1]
-
+    if name in ALL_BLOCK_NAMES
+        error("Block $name already exists!")
+    end
+    push!(ALL_BLOCK_NAMES, name)
     structdef = quote
         mutable struct $(type_expr)
             parent::Union{Figure, Scene, Nothing}

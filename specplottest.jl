@@ -47,6 +47,8 @@ function plot_data(data, categorical_vars, continuous_vars)
     end
     fig
 end
+
+
 using WGLMakie
 begin
     data = gen_data(1000)
@@ -148,8 +150,6 @@ scatter(1:4)
 
 using SnoopCompileCore, Makie
 
-tinv = @snoopr using GLMakie
-
 macro ctime(x)
     return quote
         tstart = time_ns()
@@ -159,6 +159,46 @@ macro ctime(x)
     end
 end
 
-fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true);
-tinf = @snoopi_deep(@ctime(colorbuffer(fig)));
+tinf = @snoopi_deep @ctime scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true);
+# tinf = @snoopi_deep(@ctime(colorbuffer(fig)));
 using SnoopCompile, ProfileView; ProfileView.view(flamegraph(tinf))
+
+
+using GLMakie
+
+struct MySimulation
+    plottype::Symbol
+    arguments::AbstractVector
+end
+
+function Makie.convert_arguments(::Type{<:AbstractPlot}, sim::MySimulation)
+    colors = resample_cmap(:viridis, length(sim.arguments) + 1)
+    return map(enumerate(sim.arguments)) do (i, data)
+        return PlotSpec(sim.plottype, data)
+    end
+end
+f = Figure()
+s = Slider(f[1, 1], range = 1:10)
+m = Menu(f[1, 2], options = [:scatter, :lines, :barplot])
+sim = lift(s.value, m.selection) do n_plots, p
+    args = [rand(Point2f, 10) for i in 1:n_plots]
+    return MySimulation(p, args)
+end
+ax, pl = plot(f[2, :], sim)
+display(f)
+
+resample_cmap(:viridis, 2)
+
+using GLMakie
+import Makie.PlotspecApi as P
+plot(Observable(
+    [P.scatter(1:4), P.scatter(2:5)]
+))
+
+function Makie.convert_arguments(T::Type{<:AbstractPlot}, data::Matrix)
+    return map(1:size(data, 2)) do i
+        return PlotSpec(plotkey(T), data[:, i]; color=Parent())
+    end
+end
+
+scatter(rand(10, 4); color=:red)

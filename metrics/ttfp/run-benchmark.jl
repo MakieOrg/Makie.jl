@@ -153,6 +153,9 @@ function update_comment(old_comment, package_name, (pr_bench, master_bench, eval
     for (i, value) in enumerate(evaluation)
         rows[idx + 2][i + 1] = [value]
     end
+    open("benchmark.md", "w") do io
+        return show(io, md)
+    end
     return sprint(show, md)
 end
 

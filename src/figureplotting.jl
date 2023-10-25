@@ -32,23 +32,13 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
-plot_preferred_axis(@nospecialize(x)) = nothing # nothing == I dont know
-plot_preferred_axis(p::PlotFunc) = plot_preferred_axis(Makie.conversion_trait(p))
-plot_preferred_axis(::Type{<:Volume}) = LScene
-plot_preferred_axis(::VolumeLike) = LScene
-plot_preferred_axis(::Type{<:Image}) = Axis
-plot_preferred_axis(::Type{<:Heatmap}) = Axis
-
-function args_preferred_axis(P::Type, args...)
-    result = plot_preferred_axis(P)
-    isnothing(result) || return result
-    return args_preferred_axis(args...)
-end
 
 function args_preferred_axis(::Type{<:Union{Wireframe,Surface,Contour3d}}, x::AbstractArray, y::AbstractArray,
                              z::AbstractArray)
     return all(x -> z[1] ≈ x, z) ? Axis : LScene
 end
+
+args_preferred_axis(x) = nothing
 
 function args_preferred_axis(@nospecialize(args...))
     # Fallback: check each single arg if they have a favorite axis type
@@ -59,37 +49,28 @@ function args_preferred_axis(@nospecialize(args...))
     return nothing
 end
 
-args_preferred_axis(x) = nothing
+args_preferred_axis(::AbstractVector, ::AbstractVector, ::AbstractVector, ::Function) = LScene
+args_preferred_axis(::AbstractArray{T,3}) where {T} = LScene
 
-args_preferred_axis(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function) = LScene
-args_preferred_axis(m::AbstractArray{T,3}) where {T} = LScene
-
-function args_preferred_axis(m::AbstractVector{<:Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}}) where {DIM}
+function args_preferred_axis(::AbstractVector{<:Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
-function args_preferred_axis(m::Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}) where {DIM}
+
+function args_preferred_axis(::Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
 
 args_preferred_axis(::AbstractVector{<:Point3}) = LScene
 args_preferred_axis(::AbstractVector{<:Point2}) = Axis
 
-function preferred_axis_type(@nospecialize(p::PlotFunc), @nospecialize(args...))
-    # First check if the Plot type "knows" whether it's always 3D
-    result = plot_preferred_axis(p)
-    isnothing(result) || return result
 
+preferred_axis_type(::Volume) = LScene
+preferred_axis_type(::Union{Image,Heatmap}) = Axis
+
+function preferred_axis_type(p::Combined{F}) where F
     # Otherwise, we check the arguments
-    non_obs = map(to_value, args)
-    RealP = plottype(p, non_obs...)
-    result = plot_preferred_axis(RealP)
-    isnothing(result) || return result
-
-    pre_conversion_result = args_preferred_axis(RealP, non_obs...)
-    isnothing(pre_conversion_result) || return pre_conversion_result
-    conv = convert_arguments(RealP, non_obs...)
-    FinalP, args_conv = apply_convert!(RealP, Attributes(), conv)
-    result = args_preferred_axis(FinalP, args_conv...)
+    non_obs = map(to_value, p.args)
+    result = args_preferred_axis(Combined{F}, non_obs...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
 end
@@ -104,36 +85,39 @@ function extract_attributes(dict, key)
     return to_dict(attributes)
 end
 
-function create_axis_from_kw(PlotType, figlike, attributes::Dict, args...)
+function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Dict)
     axis_kw = extract_attributes(attributes, :axis)
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
     else
-        preferred_axis_type(PlotType, args...)
+        preferred_axis_type(plot)
     end
     bbox = pop!(axis_kw, :bbox, nothing)
-    return _block(AxType, figlike, [], axis_kw, bbox)
+    return _block(AxType, figure, [], axis_kw, bbox)
 end
 
-function create_figurelike(PlotType, attributes::Dict, args...)
+function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     figure_kw = extract_attributes(attributes, :figure)
     figure = Figure(; figure_kw...)
-    ax = create_axis_from_kw(PlotType, figure, attributes, args...)
+    ax = create_axis_for_plot(figure, plot, attributes)
     figure[1, 1] = ax
-    return FigureAxis(figure, ax), attributes, args
+    return FigureAxis(figure, ax)
 end
 
-function create_figurelike!(@nospecialize(PlotType), attributes::Dict, @nospecialize(args...))
+MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Combined, Scene}) = s
+
+function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ::Nothing)
     figure = current_figure()
     isnothing(figure) && error("There is no current figure to plot into.")
     _disallow_keyword(:figure, attributes)
     ax = current_axis(figure)
     isnothing(ax) && error("There is no current axis to plot into.")
     _disallow_keyword(:axis, attributes)
-    return ax, attributes, args
+    return ax
 end
 
-function create_figurelike!(PlotType, attributes::Dict, gp::GridPosition, args...)
+
+function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gp::GridPosition)
     _disallow_keyword(:figure, attributes)
     c = contents(gp; exact=true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
@@ -141,12 +125,12 @@ function create_figurelike!(PlotType, attributes::Dict, gp::GridPosition, args..
     end
     ax = first(c)
     _disallow_keyword(:axis, attributes)
-    return ax, attributes, args
+    return ax
 end
 
-function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...)
+function create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition)
     _disallow_keyword(:figure, attributes)
-    f = get_top_parent(gp)
+    figure = get_top_parent(gp)
     c = contents(gp; exact=true)
     if !isempty(c)
         error("""
@@ -156,12 +140,12 @@ function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...
         If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
         """)
     end
-    ax = create_axis_from_kw(PlotType, f, attributes, args...)
+    ax = create_axis_for_plot(figure, plot, attributes)
     gp[] = ax
-    return ax, attributes, args
+    return ax
 end
 
-function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, args...)
+function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gsp::GridSubposition)
     _disallow_keyword(:figure, attributes)
     layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
@@ -169,13 +153,13 @@ function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, ar
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There is not just one axis at $(gp).")
     end
-    ax = first(c)
-    return ax, attributes, args
+    _disallow_keyword(:axis, attributes)
+    return first(c)
 end
 
-function create_figurelike(PlotType, attributes::Dict, gsp::GridSubposition, args...)
+function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposition)
     _disallow_keyword(:figure, attributes)
-    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
+    GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
     c = contents(gsp; exact=true)
     if !isempty(c)
         error("""
@@ -188,25 +172,25 @@ function create_figurelike(PlotType, attributes::Dict, gsp::GridSubposition, arg
         """)
     end
 
-    fig = get_top_parent(gsp)
-
-    ax = create_axis_from_kw(PlotType, fig, attributes, args...)
+    figure = get_top_parent(gsp)
+    ax = create_axis_for_plot(figure, plot, attributes)
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
-    return ax, attributes, args
+    return ax
 end
 
-function create_figurelike!(PlotType, attributes::Dict, ax::AbstractAxis, args...)
+function create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ax::AbstractAxis)
     _disallow_keyword(:axis, attributes)
-    return ax, attributes, args
+    return ax
 end
 
-function create_figurelike(PlotType, attributes::Dict, ::Union{Scene,AbstractAxis}, args...)
+function create_axis_like(@nospecialize(::AbstractPlot), ::Dict, ::Union{Scene,AbstractAxis})
     return error("Plotting into an axis without !")
 end
 
 figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
 figurelike_return(ax::AbstractAxis, plot) = AxisPlot(ax, plot)
-figurelike_return!(ax::AbstractAxis, plot) = plot
+figurelike_return!(::AbstractAxis, plot) = plot
+figurelike_return!(::Union{Combined, Scene}, plot) = plot
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
@@ -236,4 +220,45 @@ Makie.can_be_current_axis(ax::AbstractAxis) = true
 function update_state_before_display!(ax::AbstractAxis)
     reset_limits!(ax)
     return
+end
+
+
+@inline plot_args(args...) = (nothing, args)
+@inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Combined,GridSubposition,GridPosition},
+                           args...)
+    return (a, args)
+end
+function fig_keywords!(kws)
+    figkws = Dict{Symbol,Any}()
+    if haskey(kws, :axis)
+        figkws[:axis] = pop!(kws, :axis)
+    end
+    if haskey(kws, :figure)
+        figkws[:figure] = pop!(kws, :figure)
+    end
+    return figkws
+end
+
+@noinline function MakieCore._create_plot(F, attributes::Dict, args...)
+    figarg, pargs = plot_args(args...)
+    figkws = fig_keywords!(attributes)
+    plot = Combined{F}(pargs, attributes)
+    ax = create_axis_like(plot, figkws, figarg)
+    plot!(ax, plot)
+    return figurelike_return(ax, plot)
+end
+
+@noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
+    figarg, pargs = plot_args(args...)
+    figkws = fig_keywords!(attributes)
+    plot = Combined{F}(pargs, attributes)
+    ax = create_axis_like!(plot, figkws, figarg)
+    plot!(ax, plot)
+    return figurelike_return!(ax, plot)
+end
+
+@noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
+    plot = Combined{F}(args, attributes)
+    plot!(scene, plot)
+    return plot
 end

@@ -10,7 +10,7 @@ function color_and_colormap!(plot, colors = plot.color)
     attributes(plot.attributes)[:calculated_colors] = colors
 end
 
-function calculated_attributes!(T::Type{<: AbstractPlot}, plot)
+function calculated_attributes!(::Type{<: AbstractPlot}, plot)
     scene = parent_scene(plot)
     if !isnothing(scene) && haskey(plot, :cycle)
         cycler = scene.cycler
@@ -20,7 +20,7 @@ function calculated_attributes!(T::Type{<: AbstractPlot}, plot)
     end
 end
 
-function calculated_attributes!(T::Type{<: Mesh}, plot)
+function calculated_attributes!(::Type{<: Mesh}, plot)
     mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
     color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
     color_and_colormap!(plot, color)

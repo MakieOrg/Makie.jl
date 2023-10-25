@@ -107,18 +107,46 @@ end
 struct SpecApi end
 
 function Base.getproperty(::SpecApi, field::Symbol)
-    f = getfield(Makie, field)
-    if f isa Function
+    field === :Figure && return FigureSpec
+    recipes = MakieCore.ALL_RECIPE_NAMES
+    blocks = ALL_BLOCK_NAMES
+    if field in recipes
         return (args...; kw...) -> PlotSpec(field, args...; kw...)
-    elseif f <: Block
+    elseif field in blocks
         return (args...; kw...) -> BlockSpec(field, args...; kw...)
-    elseif f <: Figure
-        return FigureSpec
     else
-        error("$(field) is not a Makie plot function, nor a block or figure type")
+        all_names = join(recipes, ", ")
+        all_blocks = join(blocks, ", ")
+        error("$(field) is not a Makie plot function, nor a block or figure type. Available names:
+        Figure
+        Recipes:
+        $all_names,
+        Block types:
+        $all_blocks")
     end
 end
 
+"""
+The `PlotspecApi` is a convenient scope for creating PlotSpec objects.
+PlotSpecs are a simple way to create plots in a declarative way, which can then converted to Makie plots.
+They're lightweight and don't require all dependencies of Makie to be loaded.
+You can use `Observable{PlotSpec}`, or `Observable{PlotspecApi.Figure}` to create complete plots that can be updated dynamically.
+
+The API is supposed mirror the normal Makie API 1:1, just prefixed by `PlotspecApi`:
+```julia
+import Makie.PlotspecApi as P # For convenience import it as a shorter name
+P.scatter(1:4) # create a single PlotSpec object
+
+# Create a complete figure
+f = P.Figure() #
+ax = P.Axis(f[1, 1])
+P.scatter(ax, 1:4)
+fig_observable = Observable(f)
+plot(fig_observable) # Plot the whole figure
+fig_observable[] = ... # Efficiently update the complete figure with a new FigureSpec
+```
+
+"""
 const PlotspecApi = SpecApi()
 
 # comparison based entirely of types inside args + kwargs
@@ -282,6 +310,7 @@ function update_plotspecs!(
 end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
+    @show p.attributes
     scene = Makie.parent_scene(p)
 
     update_plotspecs!(scene, p[1])
