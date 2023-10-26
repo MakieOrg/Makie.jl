@@ -115,6 +115,47 @@ end
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
 end
 
+# issue 3240
+@testset "Axis limits 4-tuple" begin
+    fig = Figure()
+    ax = Axis(fig[1,1],limits=(0,600,0,15))
+    xlims!(ax,100,400)
+    @test ax.limits[] == ((100,400),(0,15))
+    xlims!()
+    @test ax.limits[] == ((nothing,nothing),(0,15))
+
+    ax = Axis(fig[1,1],limits=(0,600,0,15))
+    ylims!(ax,1,13)
+    @test ax.limits[] == ((0,600),(1,13))
+    ylims!()
+    @test ax.limits[] == ((0,600),(nothing,nothing))
+
+    ax = Axis(fig[1,1],limits=(0,600,0,15))
+    limits!(ax,350,700,2,14)
+    @test ax.limits[] == ((350,700),(2,14))
+end
+
+@testset "Axis3 limits 6-tuple" begin
+    fig = Figure()
+    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
+    xlims!(ax,1,2)
+    @test ax.limits[] == ((1,2),(0,2),(0,3))
+    xlims!()
+    @test ax.limits[] == ((nothing,nothing),(0,2),(0,3))
+
+    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
+    ylims!(ax,1,3)
+    @test ax.limits[] == ((0,1),(1,3),(0,3))
+    ylims!()
+    @test ax.limits[] == ((0,1),(nothing,nothing),(0,3))
+
+    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
+    zlims!(ax,1,5)
+    @test ax.limits[] == ((0,1),(0,2),(1,5))
+    zlims!()
+    @test ax.limits[] == ((0,1),(0,2),(nothing,nothing))
+end
+
 @testset "Colorbar plot object kwarg clash" begin
     for attr in (:colormap, :limits)
         f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))

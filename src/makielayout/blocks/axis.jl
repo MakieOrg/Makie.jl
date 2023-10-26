@@ -1181,6 +1181,8 @@ function tight_xticklabel_spacing!(ax::Axis)
 end
 
 """
+    tight_ticklabel_spacing(ax::Axis)
+
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
 function tight_ticklabel_spacing!(ax::Axis)
@@ -1206,7 +1208,7 @@ end
 function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
-    elseif xlims[1] == xlims[2]
+    elseif xlims[1] == xlims[2] && xlims[1] !== nothing
         error("Can't set x limits to the same value $(xlims[1]).")
     elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
         xlims = reverse(xlims)
@@ -1214,8 +1216,9 @@ function Makie.xlims!(ax::Axis, xlims)
     else
         ax.xreversed[] = false
     end
+    mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, ax.limits[][2])
+    ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
     nothing
 end
@@ -1223,7 +1226,7 @@ end
 function Makie.ylims!(ax::Axis, ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
-    elseif ylims[1] == ylims[2]
+    elseif ylims[1] == ylims[2] && ylims[1] !== nothing
         error("Can't set y limits to the same value $(ylims[1]).")
     elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
         ylims = reverse(ylims)
@@ -1231,22 +1234,95 @@ function Makie.ylims!(ax::Axis, ylims)
     else
         ax.yreversed[] = false
     end
+    mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (ax.limits[][1], ylims)
+    ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
     nothing
 end
 
+"""
+    xlims!(ax, low, high)
+    xlims!(ax; low = nothing, high = nothing)
+    xlims!(ax, xlims)
+
+Set the x-axis limits of axis `ax` to `low` and `high` or a tuple
+`xlims = (low,high)`. If the limits are ordered high-low, the axis orientation
+will be reversed. If a limit is `nothing` it will be determined automatically
+from the plots in the axis.
+"""
 Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
+"""
+    ylims!(ax, low, high)
+    ylims!(ax; low = nothing, high = nothing)
+    ylims!(ax, ylims)
+
+Set the y-axis limits of axis `ax` to `low` and `high` or a tuple
+`ylims = (low,high)`. If the limits are ordered high-low, the axis orientation
+will be reversed. If a limit is `nothing` it will be determined automatically
+from the plots in the axis.
+"""
 Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
+"""
+    zlims!(ax, low, high)
+    zlims!(ax; low = nothing, high = nothing)
+    zlims!(ax, zlims)
+
+Set the z-axis limits of axis `ax` to `low` and `high` or a tuple
+`zlims = (low,high)`. If the limits are ordered high-low, the axis orientation
+will be reversed. If a limit is `nothing` it will be determined automatically
+from the plots in the axis.
+"""
 Makie.zlims!(ax, low, high) = Makie.zlims!(ax, (low, high))
 
+"""
+    xlims!(low, high)
+    xlims!(; low = nothing, high = nothing)
+
+Set the x-axis limits of the current axis to `low` and `high`. If the limits
+are ordered high-low, this reverses the axis orientation. A limit set to
+`nothing` will be determined automatically from the plots in the axis.
+"""
 Makie.xlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.xlims!(current_axis(), low, high)
+"""
+    ylims!(low, high)
+    ylims!(; low = nothing, high = nothing)
+
+Set the y-axis limits of the current axis to `low` and `high`. If the limits
+are ordered high-low, this reverses the axis orientation. A limit set to
+`nothing` will be determined automatically from the plots in the axis.
+"""
 Makie.ylims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
+"""
+    zlims!(low, high)
+    zlims!(; low = nothing, high = nothing)
+
+Set the z-axis limits of the current axis to `low` and `high`. If the limits
+are ordered high-low, this reverses the axis orientation. A limit set to
+`nothing` will be determined automatically from the plots in the axis.
+"""
 Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.zlims!(current_axis(), low, high)
 
+"""
+    xlims!(ax = current_axis())
+
+Reset the x-axis limits to be determined automatically from the plots in the
+axis.
+"""
 Makie.xlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.xlims!(ax, low, high)
+"""
+    ylims!(ax = current_axis())
+
+Reset the y-axis limits to be determined automatically from the plots in the
+axis.
+"""
 Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
+"""
+    zlims!(ax = current_axis())
+
+Reset the z-axis limits to be determined automatically from the plots in the
+axis.
+"""
 Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.zlims!(ax, low, high)
 
 """

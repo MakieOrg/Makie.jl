@@ -856,14 +856,14 @@ end
         valign = :center
         "The horizontal alignment of the rectangle in its suggested boundingbox"
         halign = :center
-        "The extra space added to the sides of the rectangle boundingbox."
-        padding = (0f0, 0f0, 0f0, 0f0)
         "The line width of the rectangle's border."
         strokewidth = 1f0
         "Controls if the border of the rectangle is visible."
         strokevisible = true
         "The color of the border."
         strokecolor = RGBf(0, 0, 0)
+        "The radius of the rounded corner. One number is for all four corners, four numbers for going clockwise from top-right."
+        cornerradius = 0.0
         "The width setting of the rectangle."
         width = nothing
         "The height setting of the rectangle."
@@ -1187,8 +1187,10 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         padding = (6f0, 6f0, 6f0, 6f0)
         "The additional space between the legend and its suggested boundingbox."
         margin = (0f0, 0f0, 0f0, 0f0)
+        "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
+        bgcolor = nothing
         "The background color of the legend."
-        bgcolor = :white
+        backgroundcolor = :white
         "The color of the legend border."
         framecolor = :black
         "The line width of the legend border."

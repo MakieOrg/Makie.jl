@@ -103,6 +103,7 @@ end
     screen = display(fig)
     empty!(fig)
     @test screen in fig.scene.current_screens
+    @test length(fig.scene.current_screens) == 1
     @testset "all got freed" begin
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
