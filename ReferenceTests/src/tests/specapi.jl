@@ -1,4 +1,3 @@
-using GLMakie
 import Makie.SpecApi as S
 
 @reference_test "FigureSpec" begin
