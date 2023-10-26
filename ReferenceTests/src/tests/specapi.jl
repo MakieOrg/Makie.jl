@@ -24,7 +24,7 @@ import Makie.SpecApi as S
         ax = S.Axis(f[1, 1]; title="Title 1")
         S.scatter!(ax, 1:4; markersize=50)
         ax2 = S.Axis3(f[1, 2])
-        S.scatter!(ax2, 2:4; color=1:4, markersize=30)
+        S.scatter!(ax2, 2:4; color=1:3, markersize=30)
         S.Colorbar(f[1, 3]; limits=(2, 10), colormap=:viridis, width=50)
         f
     end
