@@ -284,7 +284,7 @@ end
         position = Point2f(50, 50),
         rotation = 0.0,
         markerspace = :data)
-    wireframe!(s, boundingbox(t))
+    wireframe!(s, boundingbox(t), color=:black)
     s
 end
 

@@ -59,7 +59,7 @@ end
 end
 
 @reference_test "Load Mesh" begin
-    mesh(loadasset("cat.obj"))
+    mesh(loadasset("cat.obj"); color=:black)
 end
 
 @reference_test "Colored Mesh" begin
@@ -444,8 +444,8 @@ end
 
 @reference_test "Line GIF" begin
     us = range(0, stop=1, length=100)
-    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
-    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true)
+    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)); color=:black)
+    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true, color=:black)
     lineplots = [p]
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)

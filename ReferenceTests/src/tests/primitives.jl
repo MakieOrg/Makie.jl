@@ -13,6 +13,7 @@
                 scalar .* (points .+ Point2f(linewidth*2, i * 3.25)),
                 linewidth = linewidth,
                 linestyle = linestyle,
+                color=:black
             )
         end
     end
@@ -49,6 +50,7 @@ end
                 Point2f(i, j) .* 45,
                 marker = m,
                 markersize = ms,
+                color=:black
             )
         end
     end
@@ -71,6 +73,7 @@ end
                 marker = m,
                 markersize = 30,
                 rotations = rot,
+                color=:black
             )
             scatter!(s, p, color = :red, markersize = 6)
         end
