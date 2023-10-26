@@ -130,11 +130,10 @@ end
 """
 See documentation for specapi.
 """
-struct SpecApi end
-Base.show(io::IO, ::MIME"text/plain", ::Type{SpecApi}) = print(io, "import Makie.SpecApi as S")
-Base.show(io::IO, ::Type{SpecApi}) = print(io, "import Makie.SpecApi as S")
+struct _SpecApi end
+const SpecApi = _SpecApi()
 
-function Base.getproperty(::Type{SpecApi}, field::Symbol)
+function Base.getproperty(::_SpecApi, field::Symbol)
     field === :Figure && return FigureSpec
     recipes = MakieCore.ALL_RECIPE_NAMES
     blocks = ALL_BLOCK_NAMES

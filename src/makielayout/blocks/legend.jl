@@ -534,7 +534,7 @@ function Legend(fig_or_scene,
         contentgroups::AbstractVector{<:AbstractVector},
         labelgroups::AbstractVector{<:AbstractVector},
         titles::AbstractVector;
-        kwargs...)
+        bbox=nothing, kwargs...)
 
     scene = get_scene(fig_or_scene)
     legend_defaults = block_defaults(:Legend, Dict{Symbol,Any}(kwargs), scene)
