@@ -475,7 +475,9 @@ function to_entry_group(legend_defaults, contents::AbstractVector, labels::Abstr
     return [(title, entries)]
 end
 
-function to_entry_group(legend_defaults, contentgroups, labelgroups, titles)
+function to_entry_group(
+        legend_defaults, contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector}, titles::AbstractVector)
     if !(length(titles) == length(contentgroups) == length(labelgroups))
         error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
     end
