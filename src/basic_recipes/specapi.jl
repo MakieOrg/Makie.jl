@@ -365,9 +365,12 @@ function update_block!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec)
         val = spec.kwargs[key]
         prev_val = to_value(getproperty(block, key))
         if val !== prev_val || val != prev_val
-            println("updating: $(key)")
             setproperty!(block, key, val)
         end
+    end
+    # Reset the cycler
+    if hasproperty(block, :scene)
+        empty!(block.scene.cycler.counters)
     end
     plot_obs[] = spec.plots
     return

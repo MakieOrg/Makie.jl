@@ -220,4 +220,4 @@ e.g.:
     plottype(x::Array{<: AbstractFloat, 3}) = Volume
 ```
 """
-plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
+plottype(plot_args...) = Combined{plot, Tuple{map(typeof, plot_args)...}} # default to dispatch to type recipes!

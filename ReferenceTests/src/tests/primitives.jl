@@ -460,7 +460,7 @@ end
     f
 end
 
-  @reference_test "barplot with TeX-ed labels" begin
+@reference_test "barplot with TeX-ed labels" begin
     fig = Figure(resolution = (800, 800))
     lab1 = L"\int f(x) dx"
     lab2 = lab1

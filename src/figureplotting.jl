@@ -257,6 +257,7 @@ function fig_keywords!(kws)
     return figkws
 end
 
+# Don't inline these, since they will get called from `scatter!(args...; kw...)` which gets specialized to all kw args
 @noinline function MakieCore._create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
@@ -284,5 +285,6 @@ end
 # This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
 # Which skips axis creation
 # TODO, what to return for the dynamically created axes?
-figurelike_return(f::GridPosition, p::Combined) = (f, p)
+figurelike_return(f::GridPosition, p::Combined) = p
 figurelike_return(f::Figure, p::Combined) = FigureAxisPlot(f, nothing, p)
+MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = fig
