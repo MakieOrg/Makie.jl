@@ -20459,7 +20459,7 @@ class MakieCamera {
         this.resolution = new Pu(new Z());
         this.eyeposition = new Pu(new A());
         this.preprojections = {};
-        this.light_direction = new Eu(new A(-1, -1, -1).normalize());
+        this.light_direction = new Pu(new A(-1, -1, -1).normalize());
     }
     calculate_matrices() {
         const [w, h] = this.resolution.value;
@@ -20483,7 +20483,7 @@ class MakieCamera {
         return;
     }
     update_light_dir(light_dir) {
-        const T = new kt().setFromMatrix4(this.view.value).invert();
+        const T = new He().setFromMatrix4(this.view.value).invert();
         const new_dir = new A().fromArray(light_dir);
         new_dir.applyMatrix3(T).normalize();
         this.light_direction.value = new_dir;
