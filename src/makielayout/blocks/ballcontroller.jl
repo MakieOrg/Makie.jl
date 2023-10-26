@@ -483,8 +483,8 @@ end
 
 
 # Create Controller
-function BallController(x, axis::Union{LScene, Axis3}; float::Bool, kwargs...)
-    BallController(x; axis = axis, float, bbox = axis.scene.px_area, kwargs...)
+function BallController(axis::Union{LScene, Axis3}; kwargs...)
+    BallController(root(axis.scene); axis = axis, float = true, kwargs...)
 end
 function BallController(x::Union{GridPosition, GridSubposition}, axis::Union{LScene, Axis3}; kwargs...)
     BallController(x; axis = axis, float = false, kwargs...)
@@ -535,7 +535,7 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
             controller.texture_mid[]
         else
             selected_texture[] = :high
-            controller.texture_high[]
+            tex = controller.texture_high[]
         end
         Observable(tex)
     end
@@ -557,7 +557,10 @@ function initialize_block!(controller::BallController; axis::Union{LScene, Axis3
 
     # Generate sphere mesh
     m = uv_normal_mesh(Tesselation(Sphere(Point3f(0), 1f0), 50))
-    mp = mesh!(scene, m, color = texture, transparency = false, fxaa=!false)
+    mp = mesh!(
+        scene, m, color = map(x -> ShaderAbstractions.Sampler(x, anisotropic = 16f0), texture),
+        transparency = false, fxaa=!false
+    )
     rotate!(mp, Vec3f(0, 0, 1), pi)
 
     # Constants for selection ranges/steps
