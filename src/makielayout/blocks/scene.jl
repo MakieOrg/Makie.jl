@@ -3,6 +3,7 @@ function reset_limits!(lscene::LScene)
     center!(lscene.scene)
     return
 end
+tightlimits!(::LScene) = nothing # TODO implement!?
 
 function initialize_block!(ls::LScene; scenekw = NamedTuple())
     blockscene = ls.blockscene
