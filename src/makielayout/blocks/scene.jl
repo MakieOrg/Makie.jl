@@ -1,13 +1,7 @@
-function Makie.plot!(lscene::LScene, plot::AbstractPlot)
-    Makie.plot!(lscene.scene, plot)
+function reset_limits!(lscene::LScene)
     notify(lscene.scene.theme.limits)
     center!(lscene.scene)
-    return plot
-end
-
-function Makie.plot!(P::Makie.PlotFunc, ax::LScene, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    return Makie.plot!(ax, P, attributes, args...)
+    return
 end
 
 function initialize_block!(ls::LScene; scenekw = NamedTuple())
@@ -62,8 +56,3 @@ Makie.cam3d!(ax::LScene; kwargs...) = Makie.cam3d!(ax.scene; kwargs...)
 Makie.cam3d_cad!(ax::LScene; kwargs...) = Makie.cam3d_cad!(ax.scene; kwargs...)
 Makie.old_cam3d!(ax::LScene; kwargs...) = Makie.old_cam3d!(ax.scene; kwargs...)
 Makie.old_cam3d_cad!(ax::LScene; kwargs...) = Makie.old_cam3d_cad!(ax.scene; kwargs...)
-
-
-function reset_limits!(ax::LScene)
-   # TODO
-end

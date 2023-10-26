@@ -117,12 +117,13 @@ end
         PointLight(RGBf(0,1,1), Point3f( 4, -4, -2.5), 10.0),
     ]
 
-    scene = Scene(resolution = (400, 400), camera = cam3d!, center = false, lights = lights)
+    scene = Scene(resolution = (400, 400), camera = cam3d!, lights = lights)
     mesh!(
         scene,
         Rect3f(Point3f(-10, -10, -2.99), Vec3f(20, 20, 0.02)),
         color = :white, shading = MultiLightShading, specular = Vec3f(0)
     )
+    center!(scene)
     update_cam!(scene, Vec3f(0, 0, 10), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
     scene
 end

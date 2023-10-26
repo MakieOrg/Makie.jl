@@ -111,7 +111,7 @@ uniform int light_types[MAX_LIGHTS];
 uniform vec3 light_colors[MAX_LIGHTS];
 uniform float light_parameters[MAX_LIGHT_PARAMETERS];
 
-vec3 calc_point_light(vec3 light_color, uint idx, vec3 world_pos, vec3 camdir, vec3 normal, vec3 color) {
+vec3 calc_point_light(vec3 light_color, int idx, vec3 world_pos, vec3 camdir, vec3 normal, vec3 color) {
     // extract args
     vec3 position = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
     vec2 param = vec2(light_parameters[idx+3], light_parameters[idx+4]);
@@ -129,12 +129,12 @@ vec3 calc_point_light(vec3 light_color, uint idx, vec3 world_pos, vec3 camdir, v
     return attentuation * blinn_phong(light_color, light_dir, camdir, normal, color);
 }
 
-vec3 calc_directional_light(vec3 light_color, uint idx, vec3 camdir, vec3 normal, vec3 color) {
+vec3 calc_directional_light(vec3 light_color, int idx, vec3 camdir, vec3 normal, vec3 color) {
     vec3 light_dir = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
     return blinn_phong(light_color, light_dir, camdir, normal, color);
 }
 
-vec3 calc_spot_light(vec3 light_color, uint idx, vec3 world_pos, vec3 camdir, vec3 normal, vec3 color) {
+vec3 calc_spot_light(vec3 light_color, int idx, vec3 world_pos, vec3 camdir, vec3 normal, vec3 color) {
     // extract args
     vec3 position = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
     vec3 spot_light_dir = normalize(vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]));
@@ -149,7 +149,7 @@ vec3 calc_spot_light(vec3 light_color, uint idx, vec3 world_pos, vec3 camdir, ve
 
 vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
     vec3 final_color = vec3(0);
-    uint idx = 0;
+    int idx = 0;
     for (int i = 0; i < min(N_lights, MAX_LIGHTS); i++) {
         switch (light_types[i]) {
         case Ambient:
