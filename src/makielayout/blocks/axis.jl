@@ -42,8 +42,8 @@ function register_events!(ax, scene)
 
     on(scene, evs.scroll) do s
         if is_mouseinside(scene)
-            scrollevents[] = ScrollEvent(s[1], s[2])
-            return Consume(true)
+            result = setindex!(scrollevents, ScrollEvent(s[1], s[2]))
+            return Consume(result)
         end
         return Consume(false)
     end
@@ -495,7 +495,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     register_events!(ax, scene)
 
     # these are the user defined limits
-    on(blockscene, ax.limits) do mlims
+    on(blockscene, ax.limits) do _
         reset_limits!(ax)
     end
 
@@ -781,7 +781,6 @@ function Makie.plot!(
 
     _disallow_keyword(:axis, allattrs)
     _disallow_keyword(:figure, allattrs)
-
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
@@ -1352,22 +1351,19 @@ defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(s
 defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
 
-
-defaultlimits(::typeof(log10)) = (1.0, 1000.0)
-defaultlimits(::typeof(log2)) = (1.0, 8.0)
-defaultlimits(::typeof(log)) = (1.0, exp(3.0))
+defaultlimits(scale::ReversibleScale) = inverse_transform(scale).(scale.limits)
+defaultlimits(scale::LogFunctions) = let inv_scale = inverse_transform(scale)
+    (inv_scale(0.0), inv_scale(3.0))
+end
 defaultlimits(::typeof(identity)) = (0.0, 10.0)
 defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
-defaultlimits(::typeof(Makie.pseudolog10)) = (0.0, 100.0)
-defaultlimits(::Makie.Symlog10) = (0.0, 100.0)
 
+defined_interval(scale::ReversibleScale) = scale.interval
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
-defined_interval(::Union{typeof(log2), typeof(log10), typeof(log)}) = OpenInterval(0.0, Inf)
+defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
-defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
-defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
 
 function update_state_before_display!(ax::Axis)
     reset_limits!(ax)

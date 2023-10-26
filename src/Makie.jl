@@ -23,6 +23,7 @@ using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
+using CRC32c
 using Packing
 using SignedDistanceFields
 using Markdown
@@ -141,6 +142,7 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/bracket.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
+include("basic_recipes/datashader.jl")
 include("basic_recipes/error_and_rangebars.jl")
 include("basic_recipes/hvlines.jl")
 include("basic_recipes/hvspan.jl")
@@ -287,6 +289,7 @@ export save, colorbuffer
 export cgrad, available_gradients, showgradients
 
 export Pattern
+export ReversibleScale
 
 export assetpath
 # default icon for Makie

@@ -1,16 +1,14 @@
 name: Docs build and deploy
 on:
-  push:
-    branches:
-      - main
-      - master
-      - breaking-release
-    tags: '*'
   pull_request:
     branches:
-      - main
       - master
-      - breaking-release
+      - sd/beta-20
+  push:
+    tags:
+      - '*'
+    branches:
+      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -21,7 +19,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         persist-credentials: false
     # NOTE: Python is necessary for the pre-rendering (minification) step

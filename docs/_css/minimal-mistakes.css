@@ -491,13 +491,6 @@ screen and (max-height: 300px) {
     padding-top: 0;
 }
 
-a:focus,
-button:focus {
-    outline: thin dotted #6f777d;
-    outline: 5px auto #6f777d;
-    outline-offset: -2px;
-}
-
 * {
     box-sizing: border-box;
 }
@@ -1857,10 +1850,11 @@ th {
 }
 
 .masthead__menu-item {
-    display: block;
+    display: flex;
     list-style-type: none;
     white-space: nowrap;
     margin-left: 2rem;
+    align-items: center;
 }
 
 .masthead__menu-item--lg {

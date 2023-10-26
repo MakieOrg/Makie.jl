@@ -168,6 +168,26 @@ end
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
+    @testset "errors" begin
+        f, ax, pl1 = scatter(rand(10))
+        pl2 = scatter!(ax, rand(10); color=rand(RGBf, 10))
+        pl3 = barplot!(ax, 1:3; colorrange=(0, 1))
+        @test_throws ErrorException Colorbar(f[1, 2], pl1)
+        @test_throws ErrorException Colorbar(f[1, 2], pl2)
+        @test_throws ErrorException Colorbar(f[1, 2], pl3)
+    end
+    @testset "Recipes" begin
+        f, ax, pl = barplot(1:3; color=1:3)
+        cbar = Colorbar(f[1, 2], pl)
+        @test cbar.limits[] == Vec(1.0, 3.0)
+
+        let data = fill(1.0, 2,2,2)
+            data[1] = 3.0
+            f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
+            cbar = Colorbar(f[1,2], pl)
+            @test cbar.limits[] == Vec(1.0, 3.0)
+        end
+    end
 end
 
 @testset "cycling" begin
@@ -377,6 +397,31 @@ end
     f
 end
 
+@testset "ReversibleScale" begin
+    @test ReversibleScale(identity).inverse === identity
+    @test ReversibleScale(log).inverse === exp
+    @test_throws ArgumentError ReversibleScale(x -> log10(x))  # missing inverse scale
+    @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
+end
+
+# @testset "Invalid inverse transform" begin
+#     f = Figure()
+#     @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
+# end
+
+@testset "Colorscales" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    z = broadcast((x, y) -> x, x, y')
+
+    scale = Makie.Symlog10(2)
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+
+    scale = Makie.pseudolog10
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+end
 
 @testset "Axis scale" begin
     # This just shouldn't error

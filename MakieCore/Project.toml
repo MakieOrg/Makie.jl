@@ -1,10 +1,11 @@
-authors = ["Simon Danisch"]
 name = "MakieCore"
 uuid = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
-version = "0.6.5"
+authors = ["Simon Danisch"]
+version = "0.6.8"
 
 [deps]
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
+REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [compat]
 Observables = "0.5.1"

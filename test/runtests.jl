@@ -18,6 +18,7 @@ using Makie: volume
         @test all(hi .>= (8,8,10))
     end
 
+    include("primitives.jl")
     include("pipeline.jl")
     include("record.jl")
     include("scenes.jl")
@@ -33,5 +34,6 @@ using Makie: volume
     include("text.jl")
     include("boundingboxes.jl")
     include("ray_casting.jl")
+    include("PolarAxis.jl")
     include("barplot_labels.jl")
 end
