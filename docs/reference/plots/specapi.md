@@ -1,6 +1,6 @@
 # SpecApi
 
-    !!! warning
+!!! warning
     The SpecApi is still under active development and might introduce breaking changes quickly in the future.
     It's also slower for animations then using the normal Makie API, since it needs to re-create plots often and needs to go over the whole plot tree to find different values.
     While the performance will always be slower then directly using Observables to update attributes, it's still not much optimized so we expect to improve it in the future.
@@ -28,6 +28,7 @@ fig_observable[] = P.Figure(P.Axis(plots=P.lines(1:4; title="lines")))
 ```
 
 You can also drop to the lower level constructors:
+
 ```julia
 s = Makie.PlotSpec(:scatter, 1:4; color=:red)
 axis = Makie.BlockSpec(:Axis, (1, 1); title="Axis at layout position (1, 1)")
@@ -47,8 +48,8 @@ f = S.Figure(
 # Usage in convert_arguments
 
 
-    !!! warn
-    we haven't decided yet how to forward keyword arguments from `plots(...; kw...)` to `convert_arguments` for the SpecApi in a more convenient and performant way. Until then, one needs to use the regular mechanism via `Makie.used_attributes`, which completely redraws the entire Spec on change of any attribute.
+!!! warning
+    It's not decided yet how to forward keyword arguments from `plots(...; kw...)` to `convert_arguments` for the SpecApi in a more convenient and performant way. Until then, one needs to use the regular mechanism via `Makie.used_attributes`, which completely redraws the entire Spec on change of any attribute.
 
 You can overload `convert_arguments` and return an array of `PlotSpecs` or a `FigureSpec`.
 The main difference between those is, that returning an array of `PlotSpecs` can be plotted like any recipe into axes etc, while overloads returning a whole Figure spec can only be plotted to whole layout position (e.g. `figure[1, 1]`).
@@ -56,6 +57,7 @@ The main difference between those is, that returning an array of `PlotSpecs` can
 ## convert_arguments for FigureSpec
 
 Simple example to create a dynamic grid of axes:
+
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
@@ -128,7 +130,7 @@ Here is a simple example using Slider and Menu, to visualize a fake simulation:
 ~~~
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
-```julia
+```julia:simulation
 struct MySimulation
     plottype::Symbol
     arguments::AbstractVector
@@ -148,6 +150,7 @@ sim = lift(s.value, m.selection) do n_plots, p
 end
 ax, pl = plot(f[2, :], sim)
 tight_ticklabel_spacing!(ax)
+# lower priority to make sure the call back is always called last
 on(sim; priority=-1) do x
     autolimits!(ax)
 end
