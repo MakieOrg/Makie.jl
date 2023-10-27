@@ -14,11 +14,16 @@ function create_shader(mscene::Scene, plot::Surface)
     px, py, pz = plot[1], plot[2], plot[3]
     grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
 
-    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot), get(plot, :space, :data)))
+    # TODO: Use Makie.surface2mesh
+    ps = lift(grid, px, py, pz, transform_func_obs(plot), get(plot, :space, :data))
+    positions = Buffer(ps)
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
-    faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
+    fs = lift(r -> decompose(QuadFace{Int}, r), rect)
+    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), ps, fs)
+    faces = Buffer(fs)
+    # Why does this need to be different from surface2mesh?
     uv = Buffer(lift(decompose_uv, rect))
-    normals = Buffer(lift(surface_normals, px, py, pz))
+    normals = Buffer(lift(Makie.nan_aware_normals, ps, fs))
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
 
     uniforms = Dict(:uniform_color => color, :color => false)
