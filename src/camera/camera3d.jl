@@ -739,7 +739,7 @@ end
 
 
 # Update camera position via bbox
-function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
+function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool)
     bb = Rect3f(area3d)
     width = widths(bb)
     center = maximum(bb) - 0.5f0 * width
@@ -754,9 +754,12 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
         dist = radius
     end
 
-    cam.lookat[] = center
-    cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
-    cam.upvector[] = Vec3f(0, 0, 1) # Should we reset this?
+    if recenter
+        cam.lookat[] = center
+        cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
+        cam.upvector[] = normalize(cross(old_dir, cross(cam.upvector[], old_dir)))
+        # Vec3f(0, 0, 1) # Should we reset this?
+    end
 
     if cam.settings.clipping_mode[] === :static
         cam.near[] = 0.1f0 * dist

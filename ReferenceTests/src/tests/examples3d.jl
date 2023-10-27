@@ -565,7 +565,7 @@ end
     # top row (yellow, cyan, magenta) contains stacks with the same alpha value
     # bottom row (red, green, blue) contains stacks with varying alpha values
     fig = Figure()
-    ax = LScene(fig[1, 1])
+    ax = LScene(fig[1, 1], scenekw = (center = false, ))
     r = Rect2f(-1, -1, 2, 2)
     for x in (0, 1)
         for (i, a) in enumerate((0.25, 0.5, 0.75, 1.0))

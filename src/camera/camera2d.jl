@@ -55,7 +55,18 @@ wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
 Updates the camera for the given `scene` to cover the given `area` in 2d.
 """
-update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), area)
+update_cam!(scene::SceneLike, area::Rect) = update_cam!(scene, cameracontrols(scene), area)
+function update_cam!(scene::SceneLike, area::Rect, center::Bool)
+    return update_cam!(scene, cameracontrols(scene), area, center)
+end
+function update_cam!(scene::SceneLike, cam, area::Rect, center::Bool)
+    if center
+        update_cam!(scene, cameracontrols(scene), area)
+    end
+    return
+end
+
+
 """
     update_cam!(scene::SceneLike)
 
