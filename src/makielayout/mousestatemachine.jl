@@ -318,8 +318,32 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                         dt_last_click = t - t_last_click[]
                         t_last_click[] = t
 
+                        # up before click
+                        event = @match mouse_downed_button[] begin
+                            Mouse.left => MouseEventTypes.leftup
+                            Mouse.right => MouseEventTypes.rightup
+                            Mouse.middle => MouseEventTypes.middleup
+                            x => error("No recognized mouse button $x")
+                        end
+
+                        x = setindex!(mouseevent,
+                            MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                        )
+
                         # guard against mouse coming in from outside, then mouse upping
                         if mouse_downed_inside[]
+
+                            event = @match mouse_downed_button[] begin
+                                Mouse.left => MouseEventTypes.leftclick
+                                Mouse.right => MouseEventTypes.rightclick
+                                Mouse.middle => MouseEventTypes.middleclick
+                                x => error("No recognized mouse button $x")
+                            end
+                            x = setindex!(mouseevent,
+                                MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                            )
+                            consumed = consumed || x
+
                             if dt_last_click < dblclick_max_interval && !last_click_was_double[] &&
                                     mouse_downed_button[] == b_last_click[]
 
@@ -333,36 +357,16 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                                     MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                                 )
                                 consumed = consumed || x
-                                last_click_was_double[] = true
+                                last_click_was_double[] = true                                
                             else
-                                event = @match mouse_downed_button[] begin
-                                    Mouse.left => MouseEventTypes.leftclick
-                                    Mouse.right => MouseEventTypes.rightclick
-                                    Mouse.middle => MouseEventTypes.middleclick
-                                    x => error("No recognized mouse button $x")
-                                end
-                                x = setindex!(mouseevent,
-                                    MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
-                                )
-                                consumed = consumed || x
                                 last_click_was_double[] = false
                             end
+                            
                             # save what type the last downed button was
                             b_last_click[] = mouse_downed_button[]
                         end
                         mouse_downed_inside[] = false
 
-                        # up after click
-                        event = @match mouse_downed_button[] begin
-                            Mouse.left => MouseEventTypes.leftup
-                            Mouse.right => MouseEventTypes.rightup
-                            Mouse.middle => MouseEventTypes.middleup
-                            x => error("No recognized mouse button $x")
-                        end
-
-                        x = setindex!(mouseevent,
-                            MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
-                        )
                         consumed = consumed || x
                     end
                 end
