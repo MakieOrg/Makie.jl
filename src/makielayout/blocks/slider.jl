@@ -40,8 +40,6 @@ function initialize_block!(sl::Slider)
         (i - 1) / (length(r) - 1)
     end
 
-    dragging = Observable(false)
-
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)
     displayed_sliderfraction = Observable(0.0)
@@ -49,7 +47,7 @@ function initialize_block!(sl::Slider)
     on(topscene, sliderfraction) do frac
         # only update displayed fraction through sliderfraction if not dragging
         # dragging overrides the value so there is clear mouse interaction
-        if !dragging[]
+        if !sl.dragging[]
             displayed_sliderfraction[] = frac
         end
     end
@@ -91,15 +89,17 @@ function initialize_block!(sl::Slider)
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
 
-    onmouseleftdrag(mouseevents) do event
-        dragging[] = true
-        dif = event.px - event.prev_px
-        fraction = clamp(if sl.horizontal[]
+    function get_fraction(event)
+        raw = if sl.horizontal[]
             (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
         else
             (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
-        end, 0, 1)
+        end
+        return clamp(raw, 0, 1)
+    end
 
+    onmouseleftdrag(mouseevents) do event
+        fraction = get_fraction(event)
         newindex = closest_fractionindex(sliderrange[], fraction)
         if sl.snap[]
             fraction = (newindex - 1) / (length(sliderrange[]) - 1)
@@ -114,23 +114,45 @@ function initialize_block!(sl::Slider)
     end
 
     onmouseleftdragstop(mouseevents) do event
-        dragging[] = false
+        sl.dragging[] = false
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
+        fraction = get_fraction(event)
+        newindex = closest_fractionindex(sliderrange[], fraction)
+        selected_index[] = newindex
+
+        linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
+        return Consume(true)
+    end
+
+    onmouseleftclick(mouseevents) do event
+        sl.dragging[] = false
+        # adjust slider to closest legal value
+        sliderfraction[] = sliderfraction[]
+        fraction = get_fraction(event)
+        newindex = closest_fractionindex(sliderrange[], fraction)
+        selected_index[] = newindex
+
         linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
         return Consume(true)
     end
 
     onmouseleftdown(mouseevents) do event
-        pos = event.px
-        dim = sl.horizontal[] ? 1 : 2
-        frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
-        selected_index[] = closest_fractionindex(sliderrange[], frac)
-        # linecolors[] = [color_active[], color_inactive[]]
+        sl.dragging[] = true
+        fraction = get_fraction(event)
+        newindex = closest_fractionindex(sliderrange[], fraction)
+        if sl.snap[]
+            fraction = (newindex - 1) / (length(sliderrange[]) - 1)
+        end
+        displayed_sliderfraction[] = fraction
+        if selected_index[] != newindex
+            selected_index[] = newindex
+        end
         return Consume(true)
     end
 
     onmouseleftdoubleclick(mouseevents) do event
+        sl.dragging[] = false
         selected_index[] = closest_index(sliderrange[], sl.startvalue[])
         return Consume(true)
     end

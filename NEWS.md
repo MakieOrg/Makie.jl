@@ -19,6 +19,8 @@
 - [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 - General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 
+- Added the `dragging` attribute to `Slider` and `IntervalSlider` which can be used, for example, to react to value changes only when a drag ends [3231](https://github.com/MakieOrg/Makie.jl/pull/3231).
+
 ## v0.19.9
 
 - Allow arbitrary reversible scale functions through `ReversibleScale`.

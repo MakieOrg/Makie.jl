@@ -896,7 +896,10 @@ end
         tellheight::Bool = true
         "The start value of the slider or the value that is closest in the slider range."
         startvalue = 0
-        "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
+        """
+        The current value of the slider. Don't change this attribute manually, use the function `set_close_to!` instead.
+        To trigger other (possibly expensive) behavior only at the end of a drag interaction, update only when the `dragging` attribute is `false`.
+        """
         value = 0
         "The width of the slider line"
         linewidth::Float32 = 15
@@ -912,6 +915,24 @@ end
         alignmode = Inside()
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
+        """
+        Set to `true` when the user starts dragging the slider and to `false` when
+        they stop.
+        This attribute should not be changed by the user.
+        The dragging status changes before the `value` observable changes, therefore
+        the first `value` in a new drag action has `dragging === true` and the last one `false`.
+        To ignore `value` change events happening during a drag (for example because
+        your update logic is expensive), you can check that `dragging === false`:
+
+        ```
+        on(slider.value) do value
+            if !slider.dragging[]
+                # do expensive update with value
+            end
+        end
+        ```
+        """
+        dragging::Bool = false
     end
 end
 
@@ -960,7 +981,10 @@ end
         tellheight::Bool = true
         "The start values of the slider or the values that are closest in the slider range."
         startvalues = Makie.automatic
-        "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
+        """
+        The current interval of the slider. Don't change this attribute manually, use the function `set_close_to!` instead.
+        To trigger other (possibly expensive) behavior only at the end of a drag interaction, update only when the `dragging` attribute is `false`.
+        """
         interval = (0, 0)
         "The width of the slider line"
         linewidth::Float64 = 15.0
@@ -976,6 +1000,24 @@ end
         alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
+        """
+        Set to `true` when the user starts dragging the slider and to `false` when
+        they stop.
+        This attribute should not be changed by the user.
+        The dragging status changes before the `interval` observable changes, therefore
+        the first `interval` in a new drag action has `dragging === true` and the last one `false`.
+        To ignore `interval` change events happening during a drag (for example because
+        your update logic is expensive), you can check that `dragging === false`:
+
+        ```
+        on(slider.interval) do interval
+            if !slider.dragging[]
+                # do expensive update with interval
+            end
+        end
+        ```
+        """
+        dragging::Bool = false
     end
 end
 
