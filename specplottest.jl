@@ -1,7 +1,7 @@
 using DataFrames
 import Makie.SpecApi as S
 using Random
-
+using WGLMakie
 function gen_data(N=1000)
     return DataFrame(
         :continuous2 => cumsum(randn(N)),
@@ -50,15 +50,20 @@ end
 
 
 using WGLMakie
-begin
+App() do
     data = gen_data(1000)
     continous_vars = Observable(["continuous2", "continuous3"])
     categorical_vars = Observable(["condition2", "condition4"])
-    fig = nothing
+    s = JSServe.Slider(1:10)
+
     obs = lift(continous_vars, categorical_vars) do con_vars, cat_vars
         plot_data(data, cat_vars, con_vars)
     end
-    fig = Makie.update_fig(Figure(), obs)
+    on(s.value) do va
+        continous_vars[] =  shuffle!(all_vars[unique(rand(1:4, rand(1:4)))])
+        categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
+    end
+    fig, pl = plot(obs)
     display(fig)
 end
 start_size = Base.summarysize(fig) / 10^6

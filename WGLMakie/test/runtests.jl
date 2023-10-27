@@ -65,7 +65,7 @@ edisplay = JSServe.use_electron_display(devtools=true)
 end
 
 @testset "memory leaks" begin
-    Makie._current_figure[] = nothing
+    Makie.CURRENT_FIGURE[] = nothing
     app = App(nothing)
     display(edisplay, app)
     GC.gc(true);
@@ -80,6 +80,8 @@ end
     @show session_size texture_atlas_size
     @test session_size / 10^6 < 6
     @test texture_atlas_size < 6
+    s_keys = "Object.keys(JSServe.Sessions.SESSIONS)"
+    JSServe.wait_for(() -> (2 == length(run(edisplay.window, s_keys))); timeout=20)
     js_sessions = run(edisplay.window, "JSServe.Sessions.SESSIONS")
     js_objects = run(edisplay.window, "JSServe.Sessions.GLOBAL_OBJECT_CACHE")
     @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
