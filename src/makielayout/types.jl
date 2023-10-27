@@ -1854,7 +1854,7 @@ end
     end
 end
 
-@Block BallController begin
+@Block CameraWidget begin
     @attributes begin
         # Layouting
         "The height setting of the scene."
@@ -1910,7 +1910,6 @@ end
         mid_high_threshold = 250
 
         # Camera Controls
-        # TODO - which of these are actually work modifying?
         "Adjuts the field of view."
         fov = 45.0
         "Adjusts the projection type. Can be `Perspective` or `Orthographic`."
