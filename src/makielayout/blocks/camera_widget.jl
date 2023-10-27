@@ -264,11 +264,20 @@ function CameraWidgetCamera(scene::Scene, axis; kwargs...)
     )
 
     # This will be updated in connect_camera!
-    cam = CameraWidgetCamera(
-        Observable{Float32}(0f0),
-        Observable{Float32}(0f0),
-        attr
-    )
+    if axis isa Axis3
+        # Without this Axis3 ends up at a weird orientation...
+        cam = CameraWidgetCamera(
+            Observable{Float32}(axis.azimuth[]),
+            Observable{Float32}(axis.elevation[]),
+            attr
+        )
+    elseif axis isa LScene
+        cam = CameraWidgetCamera(
+            Observable{Float32}(0f0),
+            Observable{Float32}(0f0),
+            attr
+        )
+    end
 
     disconnect!(camera(scene))
 
