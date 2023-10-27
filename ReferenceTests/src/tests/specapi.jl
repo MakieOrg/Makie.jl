@@ -1,13 +1,26 @@
 import Makie.SpecApi as S
 
+function synchronize()
+    # This is very unfortunate, but deletion and updates
+    # are async in WGLMakie and there is no way for  use to synchronize on them YET
+    if nameof(Makie.CURRENT_BACKEND[]) == :WGLMakie
+        sleep(2)
+    end
+end
+
+function sync_step!(stepper)
+    synchronize()
+    Makie.step!(stepper)
+end
+
 @reference_test "FigureSpec" begin
     f, _, pl = plot(S.Figure())
     st = Makie.Stepper(f)
-    Makie.step!(st)
+    sync_step!(st)
     obs = pl[1]
     obs[] = S.Figure(S.Axis(; plots=[S.lines(1:4; color=:black, linewidth=5), S.scatter(1:4; markersize=20)]),
                      S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)]))
-    Makie.step!(st)
+    sync_step!(st)
     obs[] = begin
         f = S.Figure()
         ax = S.Axis(f[1, 1])
@@ -17,7 +30,7 @@ import Makie.SpecApi as S
         S.Colorbar(f[1, 3]; limits=(0, 1), colormap=:heat)
         f
     end
-    Makie.step!(st)
+    sync_step!(st)
 
     obs[] = begin
         f = S.Figure()
@@ -28,12 +41,12 @@ import Makie.SpecApi as S
         S.Colorbar(f[1, 3]; limits=(2, 10), colormap=:viridis, width=50)
         f
     end
-    Makie.step!(st)
+    sync_step!(st)
 
     obs[] = S.Figure(
         S.Axis(; plots=[S.scatter(1:4; markersize=20), S.lines(1:4; color=:darkred, linewidth=6)]),
         S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)]))
-    Makie.step!(st)
+    sync_step!(st)
 
 
     elem_1 = [LineElement(; color=:red, linestyle=nothing),
@@ -51,17 +64,17 @@ import Makie.SpecApi as S
         S.Legend(f[1, 1], [elem_1, elem_2, elem_3], ["elem 1", "elem 2", "elem 3"], "Legend Title")
         f
     end
-    Makie.step!(st)
+    sync_step!(st)
 
     obs[] = begin
         f = S.Figure()
         S.Legend(f[1, 1], [elem_1, elem_2], ["elem 1", "elem 2"], "New Title")
         f
     end
-    Makie.step!(st)
+    sync_step!(st)
 
     obs[] = S.Figure()
-    Makie.step!(st)
+    sync_step!(st)
 
     st
 end
@@ -101,17 +114,17 @@ end
     p1 = plot(f[1, 1], PlotGrid((1, 1)))
     ax, p2 = plot(f[1, 2], LineScatter(true, true), 1:4)
     st = Makie.Stepper(f)
-    Makie.step!(st)
+    sync_step!(st)
     p1[1] = PlotGrid((2, 2))
     p2[1] = LineScatter(false, true)
-    Makie.step!(st)
+    sync_step!(st)
 
     p1[1] = PlotGrid((3, 3))
     p2[1] = LineScatter(true, false)
-    Makie.step!(st)
+    sync_step!(st)
 
     p1[1] = PlotGrid((2, 1))
     p2[1] = LineScatter(true, true)
-    Makie.step!(st)
+    sync_step!(st)
     st
 end
