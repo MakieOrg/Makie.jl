@@ -12,6 +12,9 @@ struct PlotSpec
     args::Vector{Any}
     kwargs::Dict{Symbol, Any}
     function PlotSpec(type::Symbol, args...; kwargs...)
+        if string(type)[end] == '!'
+            error("PlotSpec objects are supposed to be used without !, unless when using `S.$(type)(axis::P.Axis, args...; kwargs...)`")
+        end
         kw = Dict{Symbol,Any}()
         for (k, v) in kwargs
             # convert eagerly, so that we have stable types for matching later
@@ -21,7 +24,17 @@ struct PlotSpec
             elseif v isa Observable
                 error("PlotSpec are supposed to be used without Observables")
             else
-                kw[k] = convert_attribute(v, Key{k}(), Key{type}())
+                try
+                    # Really unfortunate!
+                    # Recipes don't have convert_attribute
+                    # (e.g. band(...; color=:y))
+                    # So on error we don't convert for now via try catch
+                    # Since we also dont have an API to figure out if a convert is defined correctly
+                    # TODO, I think we can do this more elegantly but will need a bit of a convert_attribute refactor
+                    kw[k] = convert_attribute(v, Key{k}(), Key{type}())
+                catch e
+                    kw[k] = v
+                end
             end
         end
         return new(type, Any[args...], kw)
@@ -42,15 +55,14 @@ end
 
 plottype(p::PlotSpec) = Combined{getfield(Makie, p.type)}
 
-struct BlockSpec
+mutable struct BlockSpec
     type::Symbol
-    position::Tuple{Any,Any}
+    position::Union{Nothing, Tuple{Any,Any}}
     kwargs::Dict{Symbol,Any}
     plots::Vector{PlotSpec}
 end
 
-function BlockSpec(typ::Symbol, pos::Tuple{Any,Any}, args...;
-        plots::Vector{PlotSpec}=PlotSpec[], kw...)
+function BlockSpec(typ::Symbol, args...; position=nothing, plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
     if typ == :Legend
         # TODO, this is hacky and works around the fact,
@@ -59,18 +71,39 @@ function BlockSpec(typ::Symbol, pos::Tuple{Any,Any}, args...;
         defaults = block_defaults(:Legend, attr, nothing)
         entrygroups = to_entry_group(Attributes(defaults), args...)
         attr[:entrygroups] = entrygroups
-        return BlockSpec(typ, pos, attr, plots)
+        return BlockSpec(typ, position, attr, plots)
     else
-        return BlockSpec(typ, pos, attr, plots)
+        if !isempty(args)
+            error("BlockSpecs, with an exception for Legend, don't support positional arguments yet.")
+        end
+        return BlockSpec(typ, position, attr, plots)
     end
 end
 
 struct FigureSpec
     blocks::Vector{BlockSpec}
     kw::Dict{Symbol, Any}
+    function FigureSpec(blocks::Array{BlockSpec, N}, kw::Dict{Symbol, Any}) where N
+        if !(N in (1, 2))
+            error("Blocks need to be matrix or vector of BlockSpecs")
+        end
+        for ij in CartesianIndices(blocks)
+            block = blocks[ij]
+            if isnothing(block.position)
+                if N === 1
+                    block.position = (1, ij[1])
+                else
+                    block.position = Tuple(ij)
+                end
+            end
+        end
+        return new(vec(blocks), kw)
+    end
+
 end
 
-FigureSpec(blocks::BlockSpec...; kw...) = FigureSpec([blocks...], Dict{Symbol,Any}(kw))
+FigureSpec(blocks::BlockSpec...; kw...) = FigureSpec(BlockSpec[blocks...], Dict{Symbol,Any}(kw))
+FigureSpec(blocks::Array{BlockSpec, N}; kw...) where N = FigureSpec(blocks, Dict{Symbol,Any}(kw))
 
 struct FigurePosition
     f::FigureSpec
@@ -82,7 +115,7 @@ function Base.getindex(f::FigureSpec, arg1, arg2)
 end
 
 function BlockSpec(typ::Symbol, pos::FigurePosition, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
-    block = BlockSpec(typ, pos.position, args...; plots=plots, kw...)
+    block = BlockSpec(typ, args...; position=pos.position, plots=plots, kw...)
     push!(pos.f.blocks, block)
     return block
 end
@@ -97,7 +130,6 @@ function PlotSpec(type::Symbol, ax::BlockSpec, args...; kwargs...)
     push!(ax.plots, plot)
     return plot
 end
-
 
 """
 apply for return type PlotSpec
@@ -135,22 +167,21 @@ const SpecApi = _SpecApi()
 
 function Base.getproperty(::_SpecApi, field::Symbol)
     field === :Figure && return FigureSpec
-    recipes = MakieCore.ALL_RECIPE_NAMES
-    blocks = ALL_BLOCK_NAMES
+    # TODO, we wanted to track all recipe names in a set
+    # in MakieCore via the recipe macro, but due to precompilation & caching
+    # It seems impossible to merge the recipes from all modules
+    # Since precompilation will cache only MakieCore's state
+    # And once everything is compiled, and MakieCore is loaded into a package
+    # The names are loaded from cache and dont contain anything after MakieCore.
     fname = Symbol(replace(string(field), "!" => ""))
-    if fname in recipes
+    func = getfield(Makie, fname)
+    if func isa Function
         return (args...; kw...) -> PlotSpec(field, args...; kw...)
-    elseif fname in blocks
+    elseif func <: Block
         return (args...; kw...) -> BlockSpec(field, args...; kw...)
     else
-        all_names = join(recipes, ", ")
-        all_blocks = join(blocks, ", ")
-        error("$(field) is not a Makie plot function, nor a block or figure type. Available names:
-        Figure
-        Recipes:
-        $all_names,
-        Block types:
-        $all_blocks")
+        # TODO better error!
+        error("$(field) not a valid Block or Plot function")
     end
 end
 
@@ -278,15 +309,13 @@ function to_combined(ps::PlotSpec)
     return P((ps.args...,), copy(ps.kwargs))
 end
 
-function update_plotspecs!(
-        scene::Scene,
-        list_of_plotspecs::Observable,
-        cached_plots=IdDict{PlotSpec, Combined}())
+function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist::Union{Nothing, PlotList}=nothing)
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
     l = Base.ReentrantLock()
+    cached_plots = IdDict{PlotSpec,Combined}()
     on(scene, list_of_plotspecs; update=true) do plotspecs
         lock(l) do
             old_plots = copy(cached_plots) # needed for set diff
@@ -306,6 +335,9 @@ function update_plotspecs!(
                     @debug("Creating new plot for spec")
                     # Create new plot, store it into our `cached_plots` dictionary
                     plot = plot!(scene, to_combined(plotspec))
+                    if !isnothing(plotlist)
+                        push!(plotlist.plots, plot)
+                    end
                     cached_plots[plotspec] = plot
                 else
                     @debug("updating old plot with spec")
@@ -317,6 +349,9 @@ function update_plotspecs!(
             # Next, delete all plots that we haven't used
             # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
             for plot in unused_plots
+                if !isnothing(plotlist)
+                    filter!(x -> x !== plot, plotlist.plots)
+                end
                 delete!(scene, plot)
             end
             return
@@ -326,13 +361,8 @@ end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
     scene = Makie.parent_scene(p)
-    update_plotspecs!(scene, p[1])
+    update_plotspecs!(scene, p[1], p)
     return
-end
-
-function data_limits(p::PlotList)
-    scene = Makie.parent_scene(p)
-    return data_limits(filter(x -> !(x isa PlotList), scene.plots))
 end
 
 ## BlockSpec

@@ -24,29 +24,53 @@ S.scatter!(ax, 1:4)
 fig_observable = Observable(f)
 plot(fig_observable) # Plot the whole figure
 # Efficiently update the complete figure with a new FigureSpec
-fig_observable[] = P.Figure(P.Axis(plots=P.lines(1:4; title="lines")))
+fig_observable[] = S.Figure(S.Axis(; title="lines", plots=[S.lines(1:4)]))
 ```
 
 You can also drop to the lower level constructors:
 
 ```julia
 s = Makie.PlotSpec(:scatter, 1:4; color=:red)
-axis = Makie.BlockSpec(:Axis, (1, 1); title="Axis at layout position (1, 1)")
+axis = Makie.BlockSpec(:Axis; position=(1, 1), title="Axis at layout position (1, 1)")
 ```
 
 Or use the Declarative API:
 ```julia
-f = S.Figure(
+f = S.Figure([
     S.Axis(
         plots = [
             S.scatter(1:4)
         ]
     )
-)
+])
 ```
+For the declaritive API, `S.Figure` accepts a vector of blockspecs or matrix of blockspecs, which places the Blocks at the indices of those arrays:
+\begin{examplefigure}{}
+```julia
+using GLMakie, DelimitedFiles, FileIO
+import Makie.SpecApi as S
+GLMakie.activate!() # hide
+volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
+brain = load(assetpath("brain.stl"))
+r = LinRange(-1, 1, 100)
+cube = [(x .^ 2 + y .^ 2 + z .^ 2) for x = r, y = r, z = r]
+
+ax1 = S.Axis(; title="Axis 1", plots=map(x -> S.density(x * randn(200) .+ 3x, color=:y), 1:5))
+ax2 = S.Axis(; title="Axis 2", plots=[S.contourf(volcano; colormap=:inferno)])
+ax3 = S.Axis3(; title="Axis3", plots=[S.mesh(brain, colormap=:Spectral, color=[tri[1][2] for tri in brain for i in 1:3])])
+ax4 = S.Axis3(; plots=[S.contour(cube, alpha=0.5)])
+
+
+spec_array = S.Figure([ax1, ax2]);
+spec_matrix = S.Figure([ax1 ax2; ax3 ax4]);
+f = Figure(; resolution=(1000, 500))
+plot(f[1, 1], spec_array)
+plot(f[1, 2], spec_matrix)
+f
+```
+\end{examplefigure}
 
 # Usage in convert_arguments
-
 
 !!! warning
     It's not decided yet how to forward keyword arguments from `plots(...; kw...)` to `convert_arguments` for the SpecApi in a more convenient and performant way. Until then, one needs to use the regular mechanism via `Makie.used_attributes`, which completely redraws the entire Spec on change of any attribute.

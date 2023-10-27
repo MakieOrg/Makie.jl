@@ -60,9 +60,6 @@ Attributes(x::AbstractPlot) = x.attributes
 
 default_theme(scene, T) = Attributes()
 
-
-const ALL_RECIPE_NAMES = Set{Symbol}()
-
 """
 # Plot Recipes in `Makie`
 
@@ -167,10 +164,6 @@ The docstring given to the recipe will be transferred to the functions it genera
 """
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname_sym = to_func_name(Tsym)
-    if funcname_sym in ALL_RECIPE_NAMES
-        @warn("Recipe for $Tsym already exists, overwriting it!")
-    end
-    push!(ALL_RECIPE_NAMES, funcname_sym)
     funcname! = esc(Symbol("$(funcname_sym)!"))
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)

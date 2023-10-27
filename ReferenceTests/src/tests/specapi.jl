@@ -5,10 +5,8 @@ import Makie.SpecApi as S
     st = Makie.Stepper(f)
     Makie.step!(st)
     obs = pl[1]
-    obs[] = S.Figure(S.Axis((1, 1);
-                            plots=[S.lines(1:4; color=:black, linewidth=5), S.scatter(1:4; markersize=20)]),
-                     S.Axis3((1, 2);
-                            plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)]))
+    obs[] = S.Figure(S.Axis(; plots=[S.lines(1:4; color=:black, linewidth=5), S.scatter(1:4; markersize=20)]),
+                     S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)]))
     Makie.step!(st)
     obs[] = begin
         f = S.Figure()
@@ -32,10 +30,9 @@ import Makie.SpecApi as S
     end
     Makie.step!(st)
 
-    obs[] = S.Figure(S.Axis((1, 1);
-                            plots=[S.scatter(1:4; markersize=20), S.lines(1:4; color=:darkred, linewidth=6)]),
-                     S.Axis3((1, 2);
-                             plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)]))
+    obs[] = S.Figure(
+        S.Axis(; plots=[S.scatter(1:4; markersize=20), S.lines(1:4; color=:darkred, linewidth=6)]),
+        S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)]))
     Makie.step!(st)
 
 
