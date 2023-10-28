@@ -46,17 +46,23 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) 
     }
     const [w, h] = makie_camera.resolution.value;
     const camera = new THREE.PerspectiveCamera(
-        cam3d.fov,
+        cam3d.fov.value,
         w / h,
-        cam3d.near,
-        cam3d.far
+        cam3d.near.value,
+        cam3d.far.value
     );
 
-    const center = new THREE.Vector3(...cam3d.lookat);
-    camera.up = new THREE.Vector3(...cam3d.upvector);
-    camera.position.set(...cam3d.eyeposition);
+    const center = new THREE.Vector3(...cam3d.lookat.value);
+    camera.up = new THREE.Vector3(...cam3d.upvector.value);
+    camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
+    const use_julia_cam = () =>
+        JSServe.can_send_to_julia && JSServe.can_send_to_julia();
+
     function update() {
+        if (use_julia_cam()) {
+            return;
+        }
         const view = camera.matrixWorldInverse;
         const projection = camera.projectionMatrix;
         const [width, height] = cam3d.resolution.value;
@@ -74,13 +80,13 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) 
 
         makie_camera.update_light_dir(light_dir.value);
     }
-    cam3d.resolution.on(update);
-
     function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
         let startDragX = null;
         let startDragY = null;
         function mouseWheelHandler(e) {
-            e = window.event || e;
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }
@@ -90,10 +96,12 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) 
             } else if (delta == 1) {
                 zoomIn();
             }
-
             e.preventDefault();
         }
         function mouseDownHandler(e) {
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }
@@ -103,6 +111,9 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) 
             e.preventDefault();
         }
         function mouseMoveHandler(e) {
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }
@@ -115,6 +126,9 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) 
             e.preventDefault();
         }
         function mouseUpHandler(e) {
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }

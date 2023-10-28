@@ -106,9 +106,6 @@ function initialize_block!(ax::Axis3)
         markerspace = :data,
         inspectable = false)
 
-    ax.cycler = Cycler()
-    ax.palette = Makie.DEFAULT_PALETTES
-
     ax.mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))
     setfield!(ax, :scrollevents, scrollevents)

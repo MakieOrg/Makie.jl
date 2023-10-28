@@ -8,14 +8,6 @@ end
 
 struct DataAspect end
 
-
-struct Cycler
-    counters::IdDict{Type, Int}
-end
-
-Cycler() = Cycler(IdDict{Type, Int}())
-
-
 struct Cycle
     cycle::Vector{Pair{Vector{Symbol}, Symbol}}
     covary::Bool
@@ -211,8 +203,6 @@ end
     yaxislinks::Vector{Axis}
     targetlimits::Observable{Rect2f}
     finallimits::Observable{Rect2f}
-    cycler::Cycler
-    palette::Attributes
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -1358,8 +1348,6 @@ end
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
-    cycler::Cycler
-    palette::Attributes
     @attributes begin
         "The height setting of the scene."
         height = nothing
@@ -1646,8 +1634,6 @@ end
     target_rlims::Observable{Tuple{Float64, Float64}}
     target_thetalims::Observable{Tuple{Float64, Float64}}
     target_theta_0::Observable{Float32}
-    cycler::Cycler
-    palette::Attributes
     @attributes begin
         # Generic
 

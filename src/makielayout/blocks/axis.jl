@@ -163,19 +163,12 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
-    if palette === nothing
-        palette = fast_deepcopy(get(blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
-    end
-    ax.palette = palette isa Attributes ? palette : Attributes(palette)
-
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
     targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
     finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
-
-    ax.cycler = Cycler()
 
     on(blockscene, targetlimits) do lims
         # this should validate the targetlimits before anything else happens with them
@@ -191,6 +184,12 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scene = Scene(blockscene, px_area=scenearea)
     ax.scene = scene
+
+    if !isnothing(palette)
+        # Backwards compatibility for when palette was part of axis!
+        palette_attr = palette isa Attributes ? palette : Attributes(palette)
+        ax.scene.theme.palette = palette_attr
+    end
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene

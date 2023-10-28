@@ -208,7 +208,7 @@ function Makie.mouse_position(scene::Scene, screen::Screen)
     updater = MousePositionUpdater(
         screen, scene.events.mouseposition, scene.events.hasfocus
     )
-    on(updater, screen.render_tick, priority = typemax(Int))
+    on(updater, scene, screen.render_tick, priority = typemax(Int))
     return
 end
 function Makie.disconnect!(screen::Screen, ::typeof(mouse_position))

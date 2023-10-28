@@ -6,24 +6,21 @@ using Makie: el32convert, surface_normals, get_dim
 nothing_or_color(c) = to_color(c)
 nothing_or_color(c::Nothing) = RGBAf(0, 0, 0, 1)
 
-lift_or(f, x) = f(x)
-lift_or(f, x::Observable) = lift(f, x)
-
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
     grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
 
     # TODO: Use Makie.surface2mesh
-    ps = lift(grid, px, py, pz, transform_func_obs(plot), get(plot, :space, :data))
+    ps = lift(grid, plot, px, py, pz, transform_func_obs(plot), get(plot, :space, :data))
     positions = Buffer(ps)
-    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
-    fs = lift(r -> decompose(QuadFace{Int}, r), rect)
-    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), ps, fs)
+    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
+    fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
+    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
     # Why does this need to be different from surface2mesh?
-    uv = Buffer(lift(decompose_uv, rect))
-    normals = Buffer(lift(Makie.nan_aware_normals, ps, fs))
+    uv = Buffer(lift(decompose_uv, plot, rect))
+    normals = Buffer(lift(Makie.nan_aware_normals, plot, ps, fs))
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
 
     uniforms = Dict(:uniform_color => color, :color => false)
@@ -31,9 +28,7 @@ function create_shader(mscene::Scene, plot::Surface)
 end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
-    minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
     mesh = limits_to_uvmesh(plot)
-
     uniforms = Dict(
         :normals => Vec3f(0),
         :shading => false,
@@ -50,7 +45,7 @@ function create_shader(mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
     box = GeometryBasics.mesh(Rect3f(Vec3f(0), Vec3f(1)))
     cam = cameracontrols(mscene)
-    model2 = lift(plot.model, x, y, z) do m, xyz...
+    model2 = lift(plot, plot.model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
         w = maxi .- mi
@@ -58,20 +53,20 @@ function create_shader(mscene::Scene, plot::Volume)
         return convert(Mat4f, m) * m2
     end
 
-    modelinv = lift(inv, model2)
-    algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
+    modelinv = lift(inv, plot, model2)
+    algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot, plot.algorithm)
 
-    diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot.diffuse)
-    specular = lift(x -> convert_attribute(x, Key{:specular}()), plot.specular)
-    shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
+    diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot, plot.diffuse)
+    specular = lift(x -> convert_attribute(x, Key{:specular}()), plot, plot.specular)
+    shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess)
 
 
 
     uniforms = Dict{Symbol, Any}(
         :modelinv => modelinv,
-        :isovalue => lift(Float32, plot.isovalue),
-        :isorange => lift(Float32, plot.isorange),
-        :absorption => lift(Float32, get(plot, :absorption, Observable(1.0f0))),
+        :isovalue => lift(Float32, plot, plot.isovalue),
+        :isorange => lift(Float32, plot, plot.isorange),
+        :absorption => lift(Float32, plot, get(plot, :absorption, Observable(1.0f0))),
         :algorithm => algorithm,
         :diffuse => diffuse,
         :specular => specular,
@@ -134,24 +129,22 @@ function limits_to_uvmesh(plot)
     # TODO, this branch is only hit by Image, but not for Heatmap with stepranges
     # because convert_arguments converts x/y to Vector{Float32}
     if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
-        rect = lift(px, py) do x, y
+        rect = lift(plot, px, py) do x, y
             xmin, xmax = extrema(x)
             ymin, ymax = extrema(y)
             return Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
         end
-        positions = Buffer(lift(rect -> decompose(Point2f, rect), rect))
-        faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
-        uv = Buffer(lift(decompose_uv, rect))
+        positions = Buffer(lift(rect -> decompose(Point2f, rect), plot, rect))
+        faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
+        uv = Buffer(lift(decompose_uv, plot, rect))
     else
         function grid(x, y, trans, space)
             return Makie.matrix_grid(p -> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
         end
-        resolution = lift((x, y) -> (length(x), length(y)), px, py; ignore_equal_values=true)
-        positions = Buffer(lift(grid, px, py, t, get(plot, :space, :data)))
-        faces = Buffer(lift(fast_faces, resolution))
-        uv = Buffer(lift(fast_uv, resolution))
+        resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values=true)
+        positions = Buffer(lift(grid, plot, px, py, t, get(plot, :space, :data)))
+        faces = Buffer(lift(fast_faces, plot, resolution))
+        uv = Buffer(lift(fast_uv, plot, resolution))
     end
-    vertices = GeometryBasics.meta(positions; uv=uv)
-
     return Dict(:positions => positions, :faces => faces, :uv => uv)
 end

@@ -227,12 +227,12 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
 end
 
 function Screen(fb_size::NTuple{2,<:Integer}; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(fb_size, config)
 end
 
 function Screen(scene::Scene; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(scene, config)
 end
 

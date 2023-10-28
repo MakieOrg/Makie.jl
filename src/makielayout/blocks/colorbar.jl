@@ -253,7 +253,6 @@ function initialize_block!(cb::Colorbar)
             show_cats[] = true
         end
     end
-
     heatmap!(blockscene,
         xrange, yrange, continous_pixels;
         colormap=colormap,
@@ -411,11 +410,13 @@ function initialize_block!(cb::Colorbar)
     # trigger protrusions with one of the attributes
     notify(cb.vertical)
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
-    setfield!(cb, :limits, convert(Observable{Any}, limits))
-    setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
-    setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
-    setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
-    setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+    if (cb.colormap[] isa ColorMapping)
+        setfield!(cb, :limits, convert(Observable{Any}, limits))
+        setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
+        setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
+        setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
+        setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+    end
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)
     notify(barbox)

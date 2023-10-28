@@ -59,7 +59,15 @@ function Base.deepcopy(attributes::Attributes)
 end
 
 Base.filter(f, x::Attributes) = Attributes(filter(f, attributes(x)))
-Base.empty!(x::Attributes) = (empty!(attributes(x)); x)
+function Base.empty!(x::Attributes)
+    attr = attributes(x)
+    for (key, obs) in attr
+        Observables.clear(obs)
+    end
+    empty!(attr)
+    return x
+end
+
 Base.length(x::Attributes) = length(attributes(x))
 
 function Base.merge!(target::Attributes, args::Attributes...)

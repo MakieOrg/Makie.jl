@@ -178,3 +178,7 @@ end
 function draw_atomic(::Scene, ::Screen, x)
     @warn "$(typeof(x)) is not supported by cairo right now"
 end
+
+function draw_atomic(::Scene, ::Screen, x::Makie.PlotList)
+    # Doesn't need drawing
+end

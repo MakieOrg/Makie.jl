@@ -13,6 +13,7 @@
                 scalar .* (points .+ Point2f(linewidth*2, i * 3.25)),
                 linewidth = linewidth,
                 linestyle = linestyle,
+                color=:black
             )
         end
     end
@@ -49,6 +50,7 @@ end
                 Point2f(i, j) .* 45,
                 marker = m,
                 markersize = ms,
+                color=:black
             )
         end
     end
@@ -71,6 +73,7 @@ end
                 marker = m,
                 markersize = 30,
                 rotations = rot,
+                color=:black
             )
             scatter!(s, p, color = :red, markersize = 6)
         end
@@ -401,7 +404,7 @@ end
 
 function draw_marker_test!(scene, marker, center; markersize=300)
     # scatter!(scene, center, distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=600)
-    scatter!(scene, center, marker=marker, markersize=markersize, markerspace=:pixel)
+    scatter!(scene, center, color=:black, marker=marker, markersize=markersize, markerspace=:pixel)
 
     font = Makie.defaultfont()
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
@@ -460,7 +463,7 @@ end
     f
 end
 
-  @reference_test "barplot with TeX-ed labels" begin
+@reference_test "barplot with TeX-ed labels" begin
     fig = Figure(resolution = (800, 800))
     lab1 = L"\int f(x) dx"
     lab2 = lab1

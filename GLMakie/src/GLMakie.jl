@@ -43,7 +43,16 @@ export Sampler, Buffer
 
 const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
-loadshader(name) = joinpath(SHADER_DIR, name)
+const LOADED_SHADERS = Dict{String, String}()
+
+function loadshader(name)
+    # Turns out, joinpath is so slow, that it actually makes sense
+    # To memoize it :-O
+    # when creating 1000 plots with the PlotSpec API, timing drop from 1.5s to 1s just from this change:
+    return get!(LOADED_SHADERS, name) do
+        return joinpath(SHADER_DIR, name)
+    end
+end
 
 gl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
 
