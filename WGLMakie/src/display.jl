@@ -391,7 +391,9 @@ function run_jobs!(queue::LockfreeQueue)
             end
             sleep(0.1)
         catch e
-            @warn "error while cleaning up JS objects" exception = (e, Base.catch_backtrace())
+            if !(e isa EOFError)
+                @warn "error while running JS objects" exception = (e, Base.catch_backtrace())
+            end
         end
     end
 end

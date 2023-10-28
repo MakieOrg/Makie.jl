@@ -49,7 +49,7 @@ function plot_data(data, categorical_vars, continuous_vars)
 end
 
 
-using WGLMakie
+using WGLMakie, JSServe
 App() do
     data = gen_data(1000)
     continous_vars = Observable(["continuous2", "continuous3"])
@@ -59,14 +59,15 @@ App() do
     obs = lift(continous_vars, categorical_vars) do con_vars, cat_vars
         plot_data(data, cat_vars, con_vars)
     end
+    all_vars = ["continuous$i" for i in 2:5]
+    all_cond_vars = ["condition$i" for i in 2:5]
     on(s.value) do va
         continous_vars[] =  shuffle!(all_vars[unique(rand(1:4, rand(1:4)))])
         categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
     end
-    fig, pl = plot(obs)
-    display(fig)
+    fig = plot(obs)
+    DOM.div(s, fig)
 end
-start_size = Base.summarysize(fig) / 10^6
 
 for i in 1:1000
     all_vars = ["continuous$i" for i in 2:5]
