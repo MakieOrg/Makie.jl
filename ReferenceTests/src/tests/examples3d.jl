@@ -31,6 +31,7 @@ end
     scene = ax.scene
     cam = cameracontrols(scene)
     cam.settings[:projectiontype][] = Makie.Orthographic
+    cam.settings.center[] = false # This would be set by update_cam!()
     cam.upvector[] = (0.0, 0.0, 1.0)
     cam.lookat[] = Vec3f(0.595, 2.5, 0.5)
     cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 0.61, cam.lookat[][3])
@@ -565,7 +566,7 @@ end
     # top row (yellow, cyan, magenta) contains stacks with the same alpha value
     # bottom row (red, green, blue) contains stacks with varying alpha values
     fig = Figure()
-    ax = LScene(fig[1, 1], scenekw = (center = false, ))
+    ax = LScene(fig[1, 1])
     r = Rect2f(-1, -1, 2, 2)
     for x in (0, 1)
         for (i, a) in enumerate((0.25, 0.5, 0.75, 1.0))
