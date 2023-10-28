@@ -66,8 +66,7 @@ end
             for valign in (:top, :center, :bottom)
             for rotation in angles]
 
-    scatter!(scene, points, marker = :circle, markersize = 10px)
-
+    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
 
     text!(scene, points, text = strings, align = aligns, rotation = rotations,
         color = [(:black, alpha) for alpha in LinRange(0.3, 0.7, length(points))])
@@ -79,7 +78,7 @@ end
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px)
+    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
 
     symbols = (:left, :center, :right)
 
@@ -284,7 +283,7 @@ end
         position = Point2f(50, 50),
         rotation = 0.0,
         markerspace = :data)
-    wireframe!(s, boundingbox(t))
+    wireframe!(s, boundingbox(t), color=:black)
     s
 end
 

@@ -12,6 +12,12 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
+# Import FilePaths for invalidations
+# When loading Electron for WGLMakie, which depends on FilePaths
+# It invalidates half of Makie. Simplest fix is to load it early on in Makie
+# So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
+#
+import FilePaths
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -80,7 +86,7 @@ using MakieCore: Pixel, px, Unit, Billboard
 using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
                   get_attribute, plotsym, plotkey, attributes, used_attributes
-import MakieCore: create_figurelike, create_figurelike!, figurelike_return, figurelike_return!
+import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
@@ -131,7 +137,7 @@ include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
 
 # basic recipes
-include("basic_recipes/plotspec.jl")
+include("basic_recipes/specapi.jl")
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")

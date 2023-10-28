@@ -1419,6 +1419,7 @@ to_spritemarker(x::Rect) = x
 to_spritemarker(b::BezierPath) = b
 to_spritemarker(b::Polygon) = BezierPath(b)
 to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
+to_spritemarker(x::Shape) = x
 
 function to_spritemarker(str::String)
     error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")

@@ -81,7 +81,7 @@ end
             glFinish()
         end
     end
-    fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0)
+    fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0; color=:black)
     screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false), fig.scene)
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
@@ -97,9 +97,9 @@ end
     fig = Figure()
     left = LScene(fig[1, 1])
     contour!(left, [sin(i+j) * sin(j+k) * sin(i+k) for i in 1:10, j in 1:10, k in 1:10], enable_depth = true)
-    mesh!(left, Sphere(Point3f(5), 6f0))
+    mesh!(left, Sphere(Point3f(5), 6f0), color=:black)
     right = LScene(fig[1, 2])
     volume!(right, [sin(2i) * sin(2j) * sin(2k) for i in 1:10, j in 1:10, k in 1:10], algorithm = :iso, enable_depth = true)
-    mesh!(right, Sphere(Point3f(5), 6f0))
+    mesh!(right, Sphere(Point3f(5), 6.0f0); color=:black)
     fig
 end

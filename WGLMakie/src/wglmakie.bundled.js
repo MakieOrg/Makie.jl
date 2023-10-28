@@ -20281,12 +20281,16 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
         return;
     }
     const [w, h] = makie_camera.resolution.value;
-    const camera = new yt(cam3d.fov, w / h, cam3d.near, cam3d.far);
-    const center = new A(...cam3d.lookat);
-    camera.up = new A(...cam3d.upvector);
-    camera.position.set(...cam3d.eyeposition);
+    const camera = new yt(cam3d.fov.value, w / h, cam3d.near.value, cam3d.far.value);
+    const center = new A(...cam3d.lookat.value);
+    camera.up = new A(...cam3d.upvector.value);
+    camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
+    const use_julia_cam = ()=>JSServe.can_send_to_julia && JSServe.can_send_to_julia();
     function update() {
+        if (use_julia_cam()) {
+            return;
+        }
         const view = camera.matrixWorldInverse;
         const projection = camera.projectionMatrix;
         const [width, height] = cam3d.resolution.value;
@@ -20303,12 +20307,13 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             z
         ]);
     }
-    cam3d.resolution.on(update);
     function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
         let startDragX = null;
         let startDragY = null;
         function mouseWheelHandler(e) {
-            e = window.event || e;
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }
@@ -20321,6 +20326,9 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             e.preventDefault();
         }
         function mouseDownHandler(e) {
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }
@@ -20329,6 +20337,9 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             e.preventDefault();
         }
         function mouseMoveHandler(e) {
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }
@@ -20339,6 +20350,9 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             e.preventDefault();
         }
         function mouseUpHandler(e) {
+            if (use_julia_cam()) {
+                return;
+            }
             if (!in_scene(scene, e)) {
                 return;
             }
@@ -20555,6 +20569,7 @@ function delete_scene(scene_id) {
     if (!scene) {
         return;
     }
+    delete_three_scene(scene);
     while(scene.children.length > 0){
         scene.remove(scene.children[0]);
     }
@@ -20572,7 +20587,10 @@ function find_plots(plot_uuids) {
 }
 function delete_scenes(scene_uuids, plot_uuids) {
     plot_uuids.forEach((plot_id)=>{
-        delete plot_cache[plot_id];
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
+        }
     });
     scene_uuids.forEach((scene_id)=>{
         delete_scene(scene_id);
@@ -20584,14 +20602,9 @@ function insert_plot(scene_id, plot_data) {
         add_plot(scene, plot);
     });
 }
-function delete_plots(scene_id, plot_uuids) {
-    console.log(`deleting plots!: ${plot_uuids}`);
-    const scene = find_scene(scene_id);
+function delete_plots(plot_uuids) {
     const plots = find_plots(plot_uuids);
-    plots.forEach((p)=>{
-        scene.remove(p);
-        delete plot_cache[p.plot_uuid];
-    });
+    plots.forEach(delete_plot);
 }
 function convert_texture(data) {
     const tex = create_texture(data);
@@ -20931,7 +20944,7 @@ function add_plot(scene, plot_data) {
         plot_data.uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
     }
     const p = deserialize_plot(plot_data);
-    plot_cache[plot_data.uuid] = p;
+    plot_cache[p.plot_uuid] = p;
     scene.add(p);
     const next_insert = new Set(ON_NEXT_INSERT);
     next_insert.forEach((f)=>f());
@@ -21209,13 +21222,15 @@ function deserialize_scene(data, screen) {
     update_cam(data.camera.value);
     if (data.cam3d_state) {
         attach_3d_camera(canvas, camera, data.cam3d_state, scene);
-    } else {
-        data.camera.on(update_cam);
     }
+    data.camera.on(update_cam);
     data.plots.forEach((plot_data)=>{
         add_plot(scene, plot_data);
     });
-    scene.scene_children = data.children.map((child)=>deserialize_scene(child, screen));
+    scene.scene_children = data.children.map((child)=>{
+        const childscene = deserialize_scene(child, screen);
+        return childscene;
+    });
     return scene;
 }
 function delete_plot(plot) {
@@ -21240,9 +21255,9 @@ function render_scene(scene, picking = false) {
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("EXITING WGL");
+        delete_three_scene(scene);
         renderer.state.reset();
         renderer.dispose();
-        delete_three_scene(scene);
         return false;
     }
     if (!scene.visible.value) {

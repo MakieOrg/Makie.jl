@@ -114,6 +114,7 @@ mutable struct Scene <: AbstractScene
     ssao::SSAO
     lights::Vector{AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
+    cycler::Cycler
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -148,7 +149,8 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             lights,
-            Observables.ObserverFunction[]
+            Observables.ObserverFunction[],
+            Cycler()
         )
         finalizer(free, scene)
         return scene
@@ -156,19 +158,19 @@ mutable struct Scene <: AbstractScene
 end
 
 # on & map versions that deregister when scene closes!
-function Observables.on(f, scene::Union{Combined,Scene}, observable::Observable; update=false, priority=0)
-    to_deregister = on(f, observable; update=update, priority=priority)
-    push!(scene.deregister_callbacks, to_deregister)
+function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Combined,Scene}), @nospecialize(observable::Observable); update=false, priority=0)
+    to_deregister = on(f, observable; update=update, priority=priority)::Observables.ObserverFunction
+    push!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
     return to_deregister
 end
 
-function Observables.onany(f, scene::Union{Combined,Scene}, observables...; priority=0)
+function Observables.onany(@nospecialize(f), @nospecialize(scene::Union{Combined,Scene}), @nospecialize(observables...); priority=0)
     to_deregister = onany(f, observables...; priority=priority)
-    append!(scene.deregister_callbacks, to_deregister)
+    append!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
     return to_deregister
 end
 
-@inline function Base.map!(@nospecialize(f), scene::Union{Combined,Scene}, result::AbstractObservable, os...;
+@inline function Base.map!(f, @nospecialize(scene::Union{Combined,Scene}), result::AbstractObservable, os...;
                            update::Bool=true, priority = 0)
     # note: the @inline prevents de-specialization due to the splatting
     callback = Observables.MapCallback(f, result, os)
@@ -179,7 +181,7 @@ end
     return result
 end
 
-@inline function Base.map(f::F, scene::Union{Combined,Scene}, arg1::AbstractObservable, args...;
+@inline function Base.map(f::F, @nospecialize(scene::Union{Combined,Scene}), arg1::AbstractObservable, args...;
                           ignore_equal_values=false, priority = 0) where {F}
     # note: the @inline prevents de-specialization due to the splatting
     obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
@@ -465,16 +467,15 @@ function Base.empty!(scene::Scene; free=false)
     return nothing
 end
 
-
 function Base.push!(plot::Combined, subplot)
     subplot.parent = plot
     push!(plot.plots, subplot)
 end
 
-function Base.push!(scene::Scene, plot::AbstractPlot)
+function Base.push!(scene::Scene, @nospecialize(plot::AbstractPlot))
     push!(scene.plots, plot)
     for screen in scene.current_screens
-        insert!(screen, scene, plot)
+        Base.invokelatest(insert!, screen, scene, plot)
     end
 end
 
@@ -490,6 +491,9 @@ end
 function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
+    end
+    for arg in plot.args
+        Observables.clear(arg)
     end
     foreach(free, plot.plots)
     empty!(plot.plots)
@@ -549,7 +553,8 @@ function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     list
 end
 
-function insertplots!(screen::AbstractDisplay, scene::Scene)
+
+function insertplots!(@nospecialize(screen::AbstractDisplay), scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end

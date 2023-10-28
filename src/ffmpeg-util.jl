@@ -221,7 +221,10 @@ function VideoStream(fig::FigureLike;
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
     update_state_before_display!(fig)
-    screen = getscreen(backend, scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
+    config = Dict{Symbol,Any}(screen_config)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    screen = getscreen(backend, scene, config, GLNative)
     _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
