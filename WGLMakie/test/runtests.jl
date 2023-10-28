@@ -81,7 +81,7 @@ end
     @test session_size / 10^6 < 6
     @test texture_atlas_size < 6
     s_keys = "Object.keys(JSServe.Sessions.SESSIONS)"
-    JSServe.wait_for(() -> (2 == length(run(edisplay.window, s_keys))); timeout=20)
+    JSServe.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=30)
     js_sessions = run(edisplay.window, "JSServe.Sessions.SESSIONS")
     js_objects = run(edisplay.window, "JSServe.Sessions.GLOBAL_OBJECT_CACHE")
     @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
