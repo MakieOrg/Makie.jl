@@ -289,8 +289,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         elseif shading == MultiLightShading
             handle_lights(gl_attributes, screen, scene.lights)
         end
-
-        robj = robj_func(gl_attributes)
+        robj = robj_func(gl_attributes) # <-- here
 
         get!(gl_attributes, :ssao, Observable(false))
         screen.cache2plot[robj.id] = plot
@@ -647,7 +646,8 @@ end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=:data)
     # signals not supported for shading yet
-    gl_attributes[:shading] = shading
+    shading = to_value(gl_attributes[:shading])::Makie.MakieCore.ShadingAlgorithm
+    matcap_active = !isnothing(to_value(get(gl_attributes, :matcap, nothing)))
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
@@ -696,11 +696,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
 end
 
 function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
-    return cached_robj!(screen, scene, meshplot) do gl_attributes
+    x = cached_robj!(screen, scene, meshplot) do gl_attributes
         t = transform_func_obs(meshplot)
         space = meshplot.space # needs to happen before connect_camera! call
-        return mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
+        x = mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
+        return x
     end
+
+    return x
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
