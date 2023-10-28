@@ -61,7 +61,7 @@ App() do
     end
     all_vars = ["continuous$i" for i in 2:5]
     all_cond_vars = ["condition$i" for i in 2:5]
-    on(s.value) do va
+    Makie.on_latest(s.value) do va
         continous_vars[] =  shuffle!(all_vars[unique(rand(1:4, rand(1:4)))])
         categorical_vars[] = shuffle!(all_cond_vars[unique(rand(1:4, rand(1:4)))])
     end
