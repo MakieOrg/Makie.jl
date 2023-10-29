@@ -85,7 +85,6 @@ void emit_vertex(vec4 vertex, vec2 uv)
     f_uv_texture_bbox = g_uv_texture_bbox[0];
     f_primitive_index = g_primitive_index[0];
     f_color           = g_color[0];
-    f_bg_color        = vec4(g_color[0].rgb, 0);
     f_stroke_color    = g_stroke_color[0];
     f_glow_color      = g_glow_color[0];
     f_id              = g_id[0];
