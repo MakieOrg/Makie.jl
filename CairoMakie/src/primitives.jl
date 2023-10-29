@@ -862,7 +862,7 @@ end
 nan2zero(x) = !isnan(x) * x
 
 
-function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
+function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0, rotation = Mat4f(I))
     @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling))
 
     matcap = to_value(get(attributes, :matcap, nothing))
@@ -889,14 +889,16 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     end
 
     draw_mesh3D(
-        scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col,
+        pos, scale, rotation,
         model, shading_bool::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int
     )
 end
 
 function draw_mesh3D(
-        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col,
+        pos, scale, rotation,
         model, shading, diffuse,
         specular, shininess, faceculling
     )
@@ -906,16 +908,13 @@ function draw_mesh3D(
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(model[i, i]))
 
-    # Mesh data
-    # transform to view/camera space
-
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
     vs = broadcast(meshpoints, (transform_func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
-        model * p4d .+ to_ndim(Vec4f, pos, 0f0)
+        model * (rotation * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
@@ -1088,25 +1087,24 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     )
 
-    if !(rotations isa Vector)
-        R = Makie.rotationmatrix4(to_rotation(rotations))
-        submesh[:model] = model * R
-    end
+    submesh[:model] = model
     scales = primitive[:markersize][]
     for i in zorder
         p = pos[i]
         if color isa AbstractVector
             submesh[:calculated_colors] = color[i]
         end
-        if rotations isa Vector
-            R = Makie.rotationmatrix4(to_rotation(rotations[i]))
-            submesh[:model] = model * R
-        end
         scale = markersize isa Vector ? markersize[i] : markersize
+        rotation = if rotations isa Vector
+            Makie.rotationmatrix4(to_rotation(rotations[i]))
+        else
+            Makie.rotationmatrix4(to_rotation(rotations))
+        end
 
         draw_mesh3D(
             scene, screen, submesh, marker, pos = p,
-            scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0)
+            scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
+            rotation = rotation
         )
     end
 
