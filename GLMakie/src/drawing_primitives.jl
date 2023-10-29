@@ -508,7 +508,7 @@ function draw_atomic(screen::Screen, scene::Scene,
 
         # calculate quad metrics
         glyph_data = lift(plot, pos, glyphcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
-            Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
+            return Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
         end
 
         # unpack values from the one signal:

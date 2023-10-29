@@ -496,13 +496,14 @@ end
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, markerspace, offset))
+    transform_marker = to_value(get(primitive, :transform_marker, true))::Bool
     position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
 
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model, space, markerspace, offset, primitive.transformation
+        model, space, markerspace, offset, primitive.transformation, transform_marker
     )
 
     nothing
@@ -511,21 +512,23 @@ end
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset, transformation
+        model::Mat, space, markerspace, offset, transformation, transform_marker
     )
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
         markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
 
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation)
+        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation, transform_marker)
     end
 end
 
 _deref(x) = x
 _deref(x::Ref) = x[]
 
-function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets, transformation)
+function draw_glyph_collection(
+        scene, ctx, position, glyph_collection, rotation, _model, space,
+        markerspace, offsets, transformation, transform_marker)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -537,7 +540,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     strokecolors = glyph_collection.strokecolors
 
     model = _deref(_model)
-    model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
+    model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3f(I)
     id = Mat4f(I)
 
     glyph_pos = let
