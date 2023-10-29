@@ -908,13 +908,14 @@ function draw_mesh3D(
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(model[i, i]))
 
+    local_model = rotation * Makie.scalematrix(Vec3f(scale))
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
     vs = broadcast(meshpoints, (transform_func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
-        p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
-        model * (rotation * p4d .+ to_ndim(Vec4f, pos, 0f0))
+        p4d = to_ndim(Vec4f, to_ndim(Vec3f, v, 0f0), 1f0)
+        model * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
