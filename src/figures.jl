@@ -29,8 +29,6 @@ get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
 
 const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
-Base.@deprecate_binding _current_figure CURRENT_FIGURE
-
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 
 """

@@ -277,27 +277,29 @@ function parse_bezier_commands(svg)
     commands = PathCommand[]
     lastcomm = nothing
     function lastp()
-        c = commands[end]
         if isnothing(lastcomm)
-            return Point2d(0, 0)
-        elseif c isa ClosePath
-            r = reverse(commands)
-            backto = findlast(x -> !(x isa ClosePath), r)
-            if isnothing(backto)
-                error("No point to go back to")
-            end
-            return r[backto].p
-        elseif c isa EllipticalArc
-            let
-                ϕ = c.angle
-                a2 = c.a2
-                rx = c.r1
-                ry = c.r2
-                m = Mat2(cos(ϕ), sin(ϕ), -sin(ϕ), cos(ϕ))
-                return m * Point2d(rx * cos(a2), ry * sin(a2)) + c.c
-            end
+            Point2d(0, 0)
         else
-            return c.p
+            c = commands[end]
+            if c isa ClosePath
+                r = reverse(commands)
+                backto = findlast(x -> !(x isa ClosePath), r)
+                if isnothing(backto)
+                    error("No point to go back to")
+                end
+                r[backto].p
+            elseif c isa EllipticalArc
+                let
+                    ϕ = c.angle
+                    a2 = c.a2
+                    rx = c.r1
+                    ry = c.r2
+                    m = Mat2(cos(ϕ), sin(ϕ), -sin(ϕ), cos(ϕ))
+                    return m * Point2d(rx * cos(a2), ry * sin(a2)) + c.c
+                end
+            else
+                return c.p
+            end
         end
     end
 
@@ -411,8 +413,8 @@ end
 function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bool)
     # https://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
 
-    p1 = Point(x1, y1)
-    p2 = Point(x2, y2)
+    p1 = Point2d(x1, y1)
+    p2 = Point2d(x2, y2)
 
     m1 = Mat2(cos(ϕ), -sin(ϕ), sin(ϕ), cos(ϕ))
     x1′, y1′ = m1 * (0.5 * (p1 - p2))
@@ -428,9 +430,9 @@ function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bo
     vecangle(u, v) = sign(u[1] * v[2] - u[2] * v[1]) *
         acos(dot(u, v) / (norm(u) * norm(v)))
 
-    px(sign) = Point((sign * x1′ - c′[1]) / rx, (sign * y1′ - c′[2]) / rx)
+    px(sign) = Point2d((sign * x1′ - c′[1]) / rx, (sign * y1′ - c′[2]) / rx)
 
-    θ1 = vecangle(Point(1.0, 0.0), px(1))
+    θ1 = vecangle(Point2d(1.0, 0.0), px(1))
     Δθ_pre = mod(vecangle(px(1), px(-1)), 2pi)
     Δθ = if Δθ_pre > 0 && !sweepflag
         Δθ_pre - 2pi
