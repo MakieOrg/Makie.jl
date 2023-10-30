@@ -96,7 +96,7 @@ mutable struct Scene <: AbstractScene
     transformation::Transformation
 
     "The plots contained in the Scene."
-    plots::Vector{AbstractPlot}
+    plots::Vector{<:AbstractPlot}
 
     theme::Attributes
 
@@ -112,7 +112,7 @@ mutable struct Scene <: AbstractScene
     backgroundcolor::Observable{RGBAf}
     visible::Observable{Bool}
     ssao::SSAO
-    lights::Vector{AbstractLight}
+    lights::Vector{<:AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
 
     function Scene(
@@ -123,14 +123,14 @@ mutable struct Scene <: AbstractScene
             camera::Camera,
             camera_controls::AbstractCamera,
             transformation::Transformation,
-            plots::Vector{AbstractPlot},
+            plots::Vector{<:AbstractPlot},
             theme::Attributes,
             children::Vector{Scene},
             current_screens::Vector{MakieScreen},
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
             ssao::SSAO,
-            lights::Vector{AbstractLight}
+            lights::Vector{<:AbstractLight}
         )
         scene = new(
             parent,
