@@ -688,17 +688,11 @@ function get_cycle_for_plottype(cycle_raw)::Cycle
     end
 end
 
-
-function to_color(cycle, attribute_name, cycler, palette)
-    if cycle.covary
-        palettes[current_symbol][mod1(index, length(palettes[isym]))]
-    else
-        cis = CartesianIndices(Tuple(length(p) for p in palettes))
-        n = length(cis)
-        k = mod1(index, n)
-        idx = Tuple(cis[k])
-        palettes[isym][idx[isym]]
-    end
+function to_color(scene::Scene, attribute_name, cycled::Cycled)
+    palettes = to_value(scene.theme.palette)
+    attr_palette = to_value(palettes[attribute_name])
+    index = cycled.i
+    return attr_palette[mod1(index, length(attr_palette))]
 end
 
 function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler, palette::Attributes)

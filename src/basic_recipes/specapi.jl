@@ -228,8 +228,12 @@ function update_plot!(plot::AbstractPlot, spec::PlotSpec)
         old_attr = plot[attribute]
         # only update if different
         if is_different(old_attr[], new_value)
-            @debug("updating kw $attribute")
-            old_attr.val = new_value
+            if new_value isa Cycled
+                old_attr.val = to_color(parent_scene(plot), attribute, new_value)
+            else
+                @debug("updating kw $attribute")
+                old_attr.val = new_value
+            end
             push!(to_notify, attribute)
         end
     end
@@ -321,6 +325,7 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
             old_plots = copy(cached_plots) # needed for set diff
             previoues_plots = copy(cached_plots) # needed to be mutated
             empty!(cached_plots)
+            empty!(scene.cycler.counters)
             for plotspec in plotspecs
                 # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
                 reused_plot = nothing
@@ -394,7 +399,7 @@ function update_block!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec)
     for key in to_update
         val = spec.kwargs[key]
         prev_val = to_value(getproperty(block, key))
-        if val !== prev_val || val != prev_val
+        if is_different(val, prev_val)
             setproperty!(block, key, val)
         end
     end

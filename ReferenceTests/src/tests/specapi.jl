@@ -88,8 +88,8 @@ function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::PlotGrid)
     for i in 1:obj.nplots[1]
         for j in 1:obj.nplots[2]
             ax = S.Axis(f[i, j])
-            S.lines!(ax, 1:4; linewidth=5)
-            S.lines!(ax, 2:5; linewidth=7)
+            S.lines!(ax, 1:4; linewidth=5, color=Cycled(1))
+            S.lines!(ax, 2:5; linewidth=7, color=Cycled(2))
         end
     end
     return f
