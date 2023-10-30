@@ -658,5 +658,3 @@ function collect_atomic_plots(scene::Scene, plots=AbstractPlot[]; is_atomic_plot
     collect_atomic_plots(scene.children, plots; is_atomic_plot=is_atomic_plot)
     plots
 end
-
-Base.@deprecate flatten_plots(scenelike) collect_atomic_plots(scenelike)

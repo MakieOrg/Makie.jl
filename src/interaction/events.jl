@@ -264,7 +264,6 @@ ispressed(parent, result::Bool, waspressed = nothing) = result
 
 ispressed(parent, mb::Mouse.Button, waspressed = nothing) = ispressed(events(parent), mb, waspressed)
 ispressed(parent, key::Keyboard.Button, waspressed = nothing) = ispressed(events(parent), key, waspressed)
-@deprecate ispressed(scene, ::Nothing) ispressed(parent, true)
 
 # Boolean Operator evaluation
 ispressed(parent, op::And, waspressed = nothing) = ispressed(parent, op.left, waspressed) && ispressed(parent, op.right, waspressed)

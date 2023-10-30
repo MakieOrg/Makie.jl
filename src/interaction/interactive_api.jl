@@ -31,8 +31,6 @@ function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
     end
 end
 
-@deprecate mouse_selection pick
-
 """
     mouse_in_scene(fig/ax/scene[, priority = 0])
 

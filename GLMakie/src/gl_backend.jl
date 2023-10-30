@@ -75,5 +75,3 @@ include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")
 include("display.jl")
-
-Base.@deprecate_binding GLVisualize GLMakie true "The module `GLVisualize` has been removed and integrated into GLMakie, so simply replace all usage of `GLVisualize` with `GLMakie`."

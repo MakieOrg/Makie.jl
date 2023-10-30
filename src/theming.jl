@@ -23,8 +23,6 @@ const DEFAULT_PALETTES = Attributes(
     side = [:left, :right]
 )
 
-Base.@deprecate_binding default_palettes DEFAULT_PALETTES
-
 const MAKIE_DEFAULT_THEME = Attributes(
     palette = DEFAULT_PALETTES,
     font = :regular,
@@ -125,13 +123,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
     )
 )
 
-Base.@deprecate_binding minimal_default MAKIE_DEFAULT_THEME
-
-
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
 const THEME_LOCK = Base.ReentrantLock()
-
-
 
 # Basically like deepcopy but while merging it into another Attribute dict
 function merge_without_obs!(result::Attributes, theme::Attributes)
