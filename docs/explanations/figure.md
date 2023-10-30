@@ -167,55 +167,52 @@ contents(f[1, 1]) == [ax]
 content(f[1, 1]) == ax
 ```
 
-## Figure size
+## Figure size and units
 
-The size or resolution of a Figure is given without units, such as `resolution = (800, 600)`.
-You can think of these values as "device-independent pixels".
-Like the `px` unit in CSS, these values do not directly correspond to physical pixels of your screen or pixels in a png file.
-Instead, they can be mapped to these device pixels using a scaling factor.
+In Makie, figure size and attributes like line widths, font sizes, scatter marker extents, or layout column and row gaps are usually given as plain numbers, without an explicit unit attached.
+What does it mean to have a `Figure` with `resolution = (600, 450)`, a line with `linewidth = 10` or a column gap of `30`?
 
-Currently, these scaling factors are only directly supported by CairoMakie, but in the future they should be available for GLMakie and WGLMakie as well.
-Right now, the implicit scaling factor of GLMakie and WGLMakie is 1, which means that a window of a figure with resolution 800 x 600 will actually have 800 x 600 pixels in its frame buffer.
-In the future, this should be adjustable, for example for "retina" or high-dpi displays, where the frame buffer for a 800 x 600 window typically has 1600 x 1200 pixels.
+The first underlying idea is that, no matter what your final output format is, these numbers are _relative_.
+You can expect a `linewidth = 10` to cover 1/60th of the width `600` of the `Figure` and a column gap of `30` to span 1/20th of the Figure.
+This holds, no matter if you later export that `Figure` as an image made out of pixels, or as a vector graphic that doesn't have pixels at all.
 
-## Matching figure and font sizes to documents
+The second idea is that, given some `Figure`, we want to be able to export an image at arbitrary resolution, or a vector graphic at any size from it, as long as the relative sizes of all elements stay intact.
+So we need to _translate_ our abstract sizes to real sizes when we render.
+In Makie, this is done with two scaling factors: `px_per_unit` for images and `pt_per_unit` for vector graphics.
 
-Journal papers and other documents written in Word or LaTeX commonly use the `pt` unit to define font sizes.
-The unit `pt` is a physical dimension and is typically defined as `1 inch / 72`.
-To match font sizes of Makie plots with other text in these documents, you have to adjust both the figure size and font size together.
+A line with `linewidth = 10` will be 10 pixels wide if rendered to an image file with `px_per_unit = 1`. It will be 5 pixels wide if `px_per_unit = 0.5` and 20 pixels if `px_per_unit = 2`. A `Figure` with `resolution = (600, 450)` will have 600 x 450 pixels when exported with `px_per_unit = 1`, 300 x 225 with `px_per_unit = 0.5` and 1200 x 900 with `px_per_unit = 2`.
 
-First, you need to convert the physical target size of your figure in the document to device-independent pixels.
-For this, you have to decide a `px_per_unit` value if you're exporting a bitmap, or a `pt_per_unit` value if you export vector graphics.
-With those, you can convert the target font size into device-independent pixels as well.
+It works exactly the same for vector graphics, just with a different target unit. A `pt` or point is a typographic unit that is defined as 1/72 of an inch, which comes out to about 0.353 mm. A line with `linewidth = 10` will be 10 points wide if rendered to an svg file with `pt_per_unit = 1`, it will be 5 points wide for `pt_per_unit = 0.5` and 20 points wide if `pt_per_unit = 2`. A `Figure` with `resolution = (600, 450)` will be 600 x 450 points in size when exported with `pt_per_unit = 1`, 300 x 225 with `pt_per_unit = 0.5` and 1200 x 900 with `pt_per_unit = 2`.
 
-CairoMakie is the only backend that can export both bitmaps and vector graphics.
-By default, its `px_per_unit` is `2` and `pt_per_unit` is `0.75`, but those values are chosen with interactive plotting with web-technology tools in mind.
-The reason is that in normal web browsers, `1px` is equal to `0.75pt` and images with a density of 2 pixels for each device-independent `px` look sharper on modern high-dpi displays.
-The default fontsize of `16` will by default look like `12pt` in web and print contexts this way.
+### Defaults of `px_per_unit` and `pt_per_unit`
 
-### Example
+What are the default values of `px_per_unit` and `pt_per_unit` in each Makie backend, and why are they set that way?
 
-Let's say we want to create a vector graphic for a scientific paper set with 12pt font size, and the figure size should be 5 x 4 inches which is equivalent to 360 x 288 pt (multiply by 72).
+Let us start with `pt_per_unit` because this value is only relevant for one backend, which is CairoMakie.
+The default value in CairoMakie is `pt_per_unit = 0.75`. So if you `save(figure, "output.svg")` a `Figure` with `resolution = (600, 450)`, this comes out as a vector graphic that is 450 x 337.5 pt large.
 
-With the default `pt_per_unit = 0.75` we arrive at a necessary figure size of 480 x 384 device-independent pixels (divide by 0.75).
+Why 0.75 and not simply 1? This has to do with web standards and device-independent pixels. Websites mix vector graphics and images, so they need some way to relate the sizes of both types to each other. In principle, a pixel in an image doesn't have a real-world width. But you don't want the images on your site to shrink relative to the other content when device pixels are small, or grow when device pixels are large. So web browsers don't directly map image pixels to device pixels. Instead, they use a concept called device-independent pixels. If you place an image with 600 x 450 pixels in a website, this image is interpreted by default to be 600 x 450 device-independent pixels wide. One device-independent pixel is defined to be 0.75 pt wide, that's where the factor 0.75 comes in. So an image with 600 x 450 device-independent pixels is the same apparent size as a vector graphic with size 450 x 337.5 pt. On high-resolution screens, browsers then simply render one device-independent pixel with multiple device pixels (for example 2x2 on an Apple Retina display) so that content stays at readable sizes and doesn't look tiny.
 
-Equivalently, the font size we need to match 12pt is `12 / 0.75 = 16`.
+For Makie, we decided that we want our abstract units to match device-independent pixels when used in web contexts, because that's very convenient and easy to predict for the end user. If you have a Jupyter or Pluto notebook, it's nice if a `Figure` comes out at the same apparent size, no matter if you're currently in CairoMakie's svg mode, or in the bitmap mode of any backend. Therefore, we annotate images with the original `Figure` resolution in device-independent pixels, so they are of the same apparent size, no matter what the `px_per_unit` value and therefore the effective pixel size is. And we give svg files the default scaling factor of 0.75 so that svgs always match images in apparent size.
 
-Therefore, we can create our figure with `Figure(resolution = (480, 384), fontsize = 16)` and save with `save("figure.pdf", fig)`.
+Now let us look at the default values for `px_per_unit`. In CairoMakie, the default is `px_per_unit = 2`. This means, a `Figure` with `resolution = (600, 450)` will be rendered as a 1200 x 900 pixel image. The reason it isn't `px_per_unit = 1` is that CairoMakie plots are often embedded in notebooks or websites, or looked at in image viewers or IDEs like VSCode. On websites, you don't know in advance what the pixel density of a reader's display is going to be. And in image viewers and IDEs, people like to zoom in to look at details. To cover these use cases by default, we decided `px_per_unit = 2` is a good compromise between sharp resolution and appropriate file size. Again, the _apparent_ size of output images in notebooks and websites (wherever the `MIME"text/html"` type is used) depends only on the `resolution`, because the output images are embedded with `<img width=$(resolution[1]) height=$(resolution[2])` no matter what value `px_per_unit` has.
 
-Let's say we now decide that our figure is too large in vector format, because it has a million scatter points, so we want to switch to bitmap format.
+In GLMakie, the default behavior is different. Because GLMakie doesn't just produce images, but renders `Figure`s in interactive native windows, website or image viewer considerations don't apply. If a window covers 600 x 450 pixels of the screen it's displayed on, you want to render your `Figure` at exactly 600 x 450 pixels resolution. More, and you waste computation time, less, and your image becomes blurry. That doesn't mean however, that `px_per_unit` is always 1. Rather, `px_per_unit` automatically adjusts to the scale value of the screen that the window rendering the `Figure` is currently on. The scale value for a screen is set by the OS. On a high-dpi screen like a MacBook which has a scale factor of 2, a `Figure` of `resolution = (600, 450)` will be rendered with `px_per_unit = 2` to exactly cover the window's render buffer of size 1200 x 900 pixels. If you place this screen next to a regular monitor of the same physical size but with half the resolution, this monitor should have the scale factor 1 assigned to it by the OS, so that text has the same size on both of them (just sharper on the high-dpi screen). So the same `Figure` displayed on that monitor will automatically switch to `px_per_unit = 1` and therefore fill a window buffer of 600 x 450 pixels. You should never have to directly change `px_per_unit` for a window that is being displayed on a screen. However, you can still increase `px_per_unit` when saving images, so that your rendered outputs have a higher pixel count for embedding in websites or documents.
 
-We keep our figure with its resolution and font size as it is.
-The question is now only, how high should our dpi be.
-With CairoMakie's default of `px_per_unit = 2`, we would get a pixel size of 960 x 768 for our image, if we divide that by 5 x 4 inches we get a dpi of 192.
+### Matching figure and font sizes to documents
 
-Let's say this is not sharp enough for our purposes and we want to bump to 600 dpi.
-The necessary pixel size of the image is 3000 x 2400.
-With our figure size of 480 x 386 device-independent pixels, that gives a `px_per_unit` value of 6.25 to reach 600 dpi.
-Note that we do not have to change anything about the font or other content sizes in the figure, we just scale up the render size.
-We only need to run `save("figure.png", fig, px_per_unit = 6.25)` and take care to insert the image with the correct size of 5 x 4 inches, as image files usually don't store what physical size they are intended to be.
+Academic journals usually demand that figures you submit adhere to specific physical dimensions.
+How can you render Makie figures at exactly the right sizes?
+
+First, let's look at vector graphics, which are usually desired for documents because they have the best text and line rendering quality at any zoom level. The output unit of vector graphics is always `pt` in CairoMakie. You can convert to points from inches via `1 in == 72 pt` and from centimeters via `1 cm = 28,3465 pt`.
+
+Let's say your desired output size is 5 x 4 inches and you should use a font size of 12 pt. You multiply 5 x 4 by 72 to get 360 x 288 pt. The resolution you need to set on your `Figure` depends on the `pt_per_unit` value you want to use. When making plots for publications, you should usually just save with `pt_per_unit = 1`. So in our example, we would use `Figure(resolution = (360, 288))` and for text set `fontsize = 12` to match the 12 pt requirement.
+
+Pixel images, on the other hand, have no inherent physical size. You can stretch any pixel image over any area in a document that you want, it will just be more or less sharp. If you want to render pixel images, you therefore have to consider what pixel density the journal demands. Usually, this value is given as dots per inch or `dpi` which is often used interchangeably with pixels per inch or `ppi`. Let's say we already have the `Figure` from our previous example with `resolution = (360, 288)` and `fontsize = 12`, but we want to save it as a pixel image for a target dpi or ppi of 600. We can calculate `(5, 4) inch .* (600 px / inch) ./ (360, 288)`. We only have to do it for one side because our pixels are square, so `5 * 600 / 360 == 8.3333`. That means the final image saved with `px_per_unit = 8.3333` has a size of 3000 x 2400 px, which is exactly 600 dpi when placed at a size of 5 x 4 inches.
+
+We could of course have set up the `Figure` with `resolution = (3000, 2400)` and then saved with `px_per_unit = 1` to reach the same final size. Then, however, we would have had to calculate the fontsize that would have ended up to match 12 pt at this pixel density. Usually, when preparing figures for journals, it's easiest to use `pt` as the base unit and set everything up for saving with `pt_per_unit = 1` which makes font sizes and line widths trivial to understand for a reader of the code.
 
 !!! note
     If you keep the intended physical size of an image constant and increase the dpi by increasing `px_per_unit`, the size of text and other content relative to the figure will stay constant.
-    However, if you instead try to increase the dpi by increasing the Figure size itself, the relative size of text and other content will shrink when viewed at the same physical size.
+    However, if you instead try to increase the dpi by increasing the Figure size itself, the relative size of text and other content will shrink.
     The first option is usually much more convenient, as it keeps the look and layout of the overall figure exactly the same, just with higher resolution.
