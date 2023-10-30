@@ -209,6 +209,21 @@ export function add_plot(scene, plot_data) {
             markerspace.value
         );
     }
+
+    if (scene.camera_relative_light) {
+        plot_data.uniforms.light_direction = cam.light_direction;
+        scene.light_direction.on(value => {
+            cam.update_light_dir(value);
+        })
+    } else {
+        // TODO how update?
+        const light_dir = new THREE.Vector3().fromArray(scene.light_direction.value);
+        plot_data.uniforms.light_direction = new THREE.Uniform(light_dir);
+        scene.light_direction.on(value => {
+            plot_data.uniforms.light_direction.value.fromArray(value);
+        })
+    }
+
     const p = deserialize_plot(plot_data);
     plot_cache[p.plot_uuid] = p;
     scene.add(p);
@@ -534,6 +549,8 @@ export function deserialize_scene(data, screen) {
     scene.backgroundcolor = data.backgroundcolor;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
+    scene.camera_relative_light = data.camera_relative_light;
+    scene.light_direction = data.light_direction;
 
     const camera = new Camera.MakieCamera();
 
@@ -545,11 +562,12 @@ export function deserialize_scene(data, screen) {
     }
 
     update_cam(data.camera.value);
+    camera.update_light_dir(data.light_direction.value);
 
     if (data.cam3d_state) {
-        // add JS camera... This will only  update the camera matrices via js if:
+        // add JS camera... This will only update the camera matrices via js if:
         // JSServe.can_send_to_julia && can_send_to_julia()
-        Camera.attach_3d_camera(canvas, camera, data.cam3d_state, scene);
+        Camera.attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
     }
     data.camera.on(update_cam);
     data.plots.forEach((plot_data) => {

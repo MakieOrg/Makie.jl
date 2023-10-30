@@ -13,7 +13,7 @@ out vec2 o_uv;
 flat out uvec2 o_objectid;
 
 out vec3 o_view_pos;
-out vec3 o_normal;
+out vec3 o_view_normal;
 
 ivec2 ind2sub(ivec2 dim, int linearindex){
     return ivec2(linearindex % dim.x, linearindex / dim.x);
@@ -22,7 +22,7 @@ ivec2 ind2sub(ivec2 dim, int linearindex){
 void main(){
     //Outputs for ssao, which we don't use for 2d shaders like heatmap/image
     o_view_pos = vec3(0);
-    o_normal = vec3(0);
+    o_view_normal = vec3(0);
 
     int index = gl_InstanceID;
     vec2 offset = vertices;

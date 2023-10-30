@@ -110,7 +110,7 @@ end
         5 8 9;
     ]
     color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=false)
+    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=NoShading)
     wireframe!(ax, meshplot[1], color=(:black, 0.6), linewidth=3)
     fig
 end
@@ -118,7 +118,7 @@ end
 @reference_test "colored triangle" begin
     mesh(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color=[:red, :green, :blue],
-        shading=false
+        shading=NoShading
     )
 end
 
@@ -435,7 +435,7 @@ end
             s = 1.5scales[i]
             mesh!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space,
-                shading = false, color = :blue)
+                shading = NoShading, color = :blue)
             lines!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
@@ -477,7 +477,7 @@ end
             s = 1.5scales[i]
             mesh!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space,
-                shading = false, color = :blue)
+                shading = NoShading, color = :blue)
             lines!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
@@ -530,7 +530,7 @@ end
 end
 
 @reference_test "2D surface with explicit color" begin
-    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = NoShading)
 end
 
 @reference_test "heatmap and image colormap interpolation" begin

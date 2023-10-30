@@ -20276,7 +20276,7 @@ function in_scene(scene, mouse_event) {
     const [sx, sy, sw, sh] = scene.pixelarea.value;
     return x >= sx && x < sx + sw && y >= sy && y < sy + sh;
 }
-function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
+function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     if (cam3d === undefined) {
         return;
     }
@@ -20306,6 +20306,7 @@ function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             y,
             z
         ]);
+        makie_camera.update_light_dir(light_dir.value);
     }
     function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
         let startDragX = null;
@@ -20472,6 +20473,7 @@ class MakieCamera {
         this.resolution = new Pu(new Z());
         this.eyeposition = new Pu(new A());
         this.preprojections = {};
+        this.light_direction = new Pu(new A(-1, -1, -1).normalize());
     }
     calculate_matrices() {
         const [w, h] = this.resolution.value;
@@ -20493,6 +20495,12 @@ class MakieCamera {
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
         return;
+    }
+    update_light_dir(light_dir) {
+        const T = new He().setFromMatrix4(this.view.value).invert();
+        const new_dir = new A().fromArray(light_dir);
+        new_dir.applyMatrix3(T).normalize();
+        this.light_direction.value = new_dir;
     }
     clip_to_space(space) {
         if (space === "data") {
@@ -20943,6 +20951,18 @@ function add_plot(scene, plot_data) {
         const { space , markerspace  } = plot_data;
         plot_data.uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
     }
+    if (scene.camera_relative_light) {
+        plot_data.uniforms.light_direction = cam.light_direction;
+        scene.light_direction.on((value)=>{
+            cam.update_light_dir(value);
+        });
+    } else {
+        const light_dir = new mod.Vector3().fromArray(scene.light_direction.value);
+        plot_data.uniforms.light_direction = new mod.Uniform(light_dir);
+        scene.light_direction.on((value)=>{
+            plot_data.uniforms.light_direction.value.fromArray(value);
+        });
+    }
     const p = deserialize_plot(plot_data);
     plot_cache[p.plot_uuid] = p;
     scene.add(p);
@@ -21213,6 +21233,8 @@ function deserialize_scene(data, screen) {
     scene.backgroundcolor = data.backgroundcolor;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
+    scene.camera_relative_light = data.camera_relative_light;
+    scene.light_direction = data.light_direction;
     const camera = new MakieCamera();
     scene.wgl_camera = camera;
     function update_cam(camera_matrices) {
@@ -21220,8 +21242,9 @@ function deserialize_scene(data, screen) {
         camera.update_matrices(view, projection, resolution, eyepos);
     }
     update_cam(data.camera.value);
+    camera.update_light_dir(data.light_direction.value);
     if (data.cam3d_state) {
-        attach_3d_camera(canvas, camera, data.cam3d_state, scene);
+        attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
     }
     data.camera.on(update_cam);
     data.plots.forEach((plot_data)=>{

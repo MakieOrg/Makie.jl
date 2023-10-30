@@ -11,11 +11,16 @@ function create_shader(mscene::Scene, plot::Surface)
     px, py, pz = plot[1], plot[2], plot[3]
     grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
 
-    positions = Buffer(lift(grid, plot, px, py, pz, transform_func_obs(plot), get(plot, :space, :data)))
-    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
-    faces = Buffer(lift(r -> decompose(GLTriangleFace, r), plot, rect))
+    # TODO: Use Makie.surface2mesh
+    ps = lift(grid, plot, px, py, pz, transform_func_obs(plot), get(plot, :space, :data))
+    positions = Buffer(ps)
+    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
+    fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
+    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), plot, ps, fs)
+    faces = Buffer(fs)
+    # Why does this need to be different from surface2mesh?
     uv = Buffer(lift(decompose_uv, plot, rect))
-    normals = Buffer(lift(surface_normals, plot, px, py, pz))
+    normals = Buffer(lift(Makie.nan_aware_normals, plot, ps, fs))
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
 
     uniforms = Dict(:uniform_color => color, :color => false)
@@ -70,7 +75,8 @@ function create_shader(mscene::Scene, plot::Volume)
         :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
         # these get filled in later by serialization, but we need them
         # as dummy values here, so that the correct uniforms are emitted
-        :lightposition => Vec3f(1),
+        :light_direction => Vec3f(1),
+        :light_color => Vec3f(1),
         :eyeposition => Vec3f(1),
         :ambient => Vec3f(1),
         :picking => false,

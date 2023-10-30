@@ -53,6 +53,8 @@ function old_cam3d_cad!(scene::Scene; kw_args...)
     cam
 end
 
+get_space(::OldCamera3D) = :data
+
 """
     old_cam3d_turntable!(scene; kw_args...)
 
@@ -356,7 +358,9 @@ end
 
 Updates the camera's controls to point to the specified location.
 """
-update_cam!(scene::Scene, eyeposition, lookat, up = Vec3f(0, 0, 1)) = update_cam!(scene, cameracontrols(scene), eyeposition, lookat, up)
+function update_cam!(scene::Scene, eyeposition::VecTypes{3}, lookat::VecTypes{3}, up::VecTypes{3} = Vec3f(0, 0, 1))
+    return update_cam!(scene, cameracontrols(scene), eyeposition, lookat, up)
+end
 
 function update_cam!(scene::Scene, camera::OldCamera3D, eyeposition, lookat, up = Vec3f(0, 0, 1))
     camera.lookat[] = Vec3f(lookat)

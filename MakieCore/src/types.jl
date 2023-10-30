@@ -122,3 +122,9 @@ end
 Billboard() = Billboard(0f0)
 Billboard(angle::Real) = Billboard(Float32(angle))
 Billboard(angles::Vector) = Billboard(Float32.(angles))
+
+@enum ShadingAlgorithm begin
+    NoShading
+    FastShading
+    MultiLightShading
+end

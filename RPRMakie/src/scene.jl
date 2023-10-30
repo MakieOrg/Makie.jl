@@ -43,15 +43,58 @@ function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecializ
     end
 end
 
+@inline to_rpr_light(ctx, light, scene) = to_rpr_light(ctx, light)
+
+# TODO attenuation
 function to_rpr_light(context::RPR.Context, light::Makie.PointLight)
     pointlight = RPR.PointLight(context)
     map(light.position) do pos
         transform!(pointlight, Makie.translationmatrix(pos))
     end
-    map(light.radiance) do r
-        setradiantpower!(pointlight, red(r), green(r), blue(r))
+    map(light.color) do c
+        setradiantpower!(pointlight, red(c), green(c), blue(c))
     end
     return pointlight
+end
+
+# TODO: Move to RadeonProRender.jl
+function RPR.RPR.rprContextCreateSpotLight(context)
+    out_light = Ref{RPR.rpr_light}()
+    RPR.RPR.rprContextCreateSpotLight(context, out_light)
+    return out_light[]
+end
+
+function to_rpr_light(context::RPR.Context, light::Makie.DirectionalLight, scene)
+    directionallight = RPR.DirectionalLight(context)
+    map(light.direction) do dir
+        if light.camera_relative
+            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+            dir = normalize(T * dir)
+        else
+            dir = normalize(dir)
+        end
+        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
+        transform!(directionallight, Makie.rotationmatrix4(quart))
+    end
+    map(light.color) do c
+        setradiantpower!(directionallight, red(c), green(c), blue(c))
+    end
+    return directionallight
+end
+
+function to_rpr_light(context::RPR.Context, light::Makie.SpotLight)
+    spotlight = RPR.SpotLight(context)
+    map(light.position, light.direction) do pos, dir
+        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
+        transform!(spotlight, Makie.translationmatrix(pos) * Makie.rotationmatrix4(quart))
+    end
+    map(light.color) do c
+        setradiantpower!(spotlight, red(c), green(c), blue(c))
+    end
+    map(light.angles) do (inner, outer)
+        RadeonProRender.RPR.rprSpotLightSetConeShape(spotlight, inner, outer)
+    end
+    return spotlight
 end
 
 function to_rpr_light(context::RPR.Context, light::Makie.AmbientLight)
@@ -90,7 +133,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
         RPR.rprSceneSetBackgroundImage(scene, img)
     end
     for light in mscene.lights
-        rpr_light = to_rpr_light(context, light)
+        rpr_light = to_rpr_light(context, light, mscene)
         push!(scene, rpr_light)
     end
 

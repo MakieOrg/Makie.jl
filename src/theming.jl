@@ -66,9 +66,20 @@ const MAKIE_DEFAULT_THEME = Attributes(
         blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
-    ambient = RGBf(0.55, 0.55, 0.55),
-    lightposition = :eyeposition,
     inspectable = true,
+
+    # Vec is equvalent to 36° right/east, 39° up/north from camera position
+    # The order here is Vec3f(right of, up from, towards) viewer/camera
+    light_direction = Vec3f(-0.45679495, -0.6293204, -0.6287243),
+    camera_relative_light = true, # Only applies to default DirectionalLight
+    light_color = RGBf(0.5, 0.5, 0.5),
+    ambient = RGBf(0.35, 0.35, 0.35),
+
+    # Note: this can be set too
+    # lights = AbstractLight[
+    #     AmbientLight(RGBf(0.55, 0.55, 0.55)),
+    #     DirectionalLight(RGBf(0.8, 0.8, 0.8), Vec3f(2/3, 2/3, 1/3))
+    # ],
 
     CairoMakie = Attributes(
         px_per_unit = 2.0,
@@ -98,14 +109,17 @@ const MAKIE_DEFAULT_THEME = Attributes(
         monitor = nothing,
         visible = true,
 
-        # Postproccessor
+        # Shader constants & Postproccessor
         oit = true,
         fxaa = true,
         ssao = false,
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
-        transparency_weight_scale = 1000f0
+        transparency_weight_scale = 1000f0,
+        # maximum number of lights with shading = :verbose
+        max_lights = 64,
+        max_light_parameters = 5 * 64
     ),
 
     WGLMakie = Attributes(

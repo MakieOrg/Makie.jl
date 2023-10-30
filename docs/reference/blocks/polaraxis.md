@@ -104,7 +104,7 @@ ax = PolarAxis(f[1, 1], title = "Surface")
 rs = 0:10
 phis = range(0, 2pi, 37)
 cs = [r+cos(4phi) for phi in phis, r in rs]
-p = surface!(ax, 0..2pi, 0..10, cs, shading = false, colormap = :coolwarm)
+p = surface!(ax, 0..2pi, 0..10, cs, shading = NoShading, colormap = :coolwarm)
 ax.gridz[] = 100
 tightlimits!(ax) # surface plots include padding by default
 Colorbar(f[2, 1], p, vertical = false, flipaxis = false)

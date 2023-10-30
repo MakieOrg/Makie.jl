@@ -2,6 +2,100 @@ using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
+function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.AbstractLight})
+    @inline function push_inplace!(trg, idx, src)
+        for i in eachindex(src)
+            trg[idx + i] = src[i]
+        end
+        return idx + length(src)
+    end
+
+    MAX_LIGHTS = screen.config.max_lights
+    MAX_PARAMS = screen.config.max_light_parameters
+
+    # Every light has a type and a color. Therefore we have these as independent
+    # uniforms with a max length of MAX_LIGHTS.
+    # Other parameters like position, direction, etc differe between light types.
+    # To avoid wasting a bunch of memory we squash all of them into one vector of
+    # size MAX_PARAMS.
+    attr[:N_lights]         = Observable(0)
+    attr[:light_types]      = Observable(sizehint!(Int32[], MAX_LIGHTS))
+    attr[:light_colors]     = Observable(sizehint!(RGBf[], MAX_LIGHTS))
+    attr[:light_parameters] = Observable(sizehint!(Float32[], MAX_PARAMS))
+
+    on(screen.render_tick, priority = typemin(Int)) do _
+        # derive number of lights from available lights. Both MAX_LIGHTS and
+        # MAX_PARAMS are considered for this.
+        n_lights = 0
+        n_params = 0
+        for light in lights
+            delta = 0
+            if light isa PointLight
+                delta = 5 # 3 position + 2 attenuation
+            elseif light isa DirectionalLight
+                delta = 3 # 3 direction
+            elseif light isa SpotLight
+                delta = 8 # 3 position + 3 direction + 2 angles
+            end
+            if n_params + delta > MAX_PARAMS || n_lights == MAX_LIGHTS
+                if n_params > MAX_PARAMS
+                    @warn "Exceeded the maximum number of light parameters ($n_params > $MAX_PARAMS). Skipping lights beyond number $n_lights."
+                else
+                    @warn "Exceeded the maximum number of lights ($n_lights > $MAX_LIGHTS). Skipping lights beyond number $n_lights."
+                end
+                break
+            end
+            n_params += delta
+            n_lights += 1
+        end
+
+        # Update number of lights
+        attr[:N_lights][] = n_lights
+
+        # Update light types
+        trg = attr[:light_types][]
+        resize!(trg, n_lights)
+        map!(i -> Makie.light_type(lights[i]), trg, 1:n_lights)
+        notify(attr[:light_types])
+
+        # Update light colors
+        trg = attr[:light_colors][]
+        resize!(trg, n_lights)
+        map!(i -> Makie.light_color(lights[i]), trg, 1:n_lights)
+        notify(attr[:light_colors])
+
+        # Update other light parameters
+        # This precalculates world space pos/dir -> view/cam space pos/dir
+        parameters = attr[:light_parameters][]
+        resize!(parameters, n_params)
+        idx = 0
+        for i in 1:n_lights
+            light = lights[i]
+            if light isa PointLight
+                idx = push_inplace!(parameters, idx, light.position[])
+                idx = push_inplace!(parameters, idx, light.attenuation[])
+            elseif light isa DirectionalLight
+                if light.camera_relative
+                    T = inv(attr[:view][][Vec(1,2,3), Vec(1,2,3)])
+                    dir = normalize(T * light.direction[])
+                else
+                    dir = normalize(light.direction[])
+                end
+                idx = push_inplace!(parameters, idx, dir)
+            elseif light isa SpotLight
+                idx = push_inplace!(parameters, idx, light.position[])
+                idx = push_inplace!(parameters, idx, normalize(light.direction[]))
+                idx = push_inplace!(parameters, idx, cos.(light.angles[]))
+            end
+        end
+        notify(attr[:light_parameters])
+
+        return Consume(false)
+    end
+
+    return attr
+end
+
 Makie.el32convert(x::GLAbstraction.Texture) = x
 
 gpuvec(x) = GPUVector(GLBuffer(x))
@@ -48,7 +142,17 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
             end
         # end
     end
-    get!(gl_attributes, :normalmatrix) do
+
+    # for lighting
+    get!(gl_attributes, :world_normalmatrix) do
+        return lift(plot, gl_attributes[:model]) do m
+            i = Vec(1, 2, 3)
+            return transpose(inv(m[i, i]))
+        end
+    end
+
+    # for SSAO
+    get!(gl_attributes, :view_normalmatrix) do
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
             return transpose(inv(v[i, i] * m[i, i]))
@@ -144,22 +248,48 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             gl_attributes[:markerspace] = plot.markerspace
         end
         gl_attributes[:space] = plot.space
-
-        pointlight = Makie.get_point_light(scene)
-        if !isnothing(pointlight)
-            gl_attributes[:lightposition] = pointlight.position
-        end
-
-        ambientlight = Makie.get_ambient_light(scene)
-        if !isnothing(ambientlight)
-            gl_attributes[:ambient] = ambientlight.color
-        end
         gl_attributes[:px_per_unit] = screen.px_per_unit
 
         handle_intensities!(screen, gl_attributes, plot)
         connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
 
-        robj = robj_func(gl_attributes)
+        # TODO: remove depwarn & conversion after some time
+        if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
+            @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
+            gl_attributes[:shading] = ifelse(gl_attributes[:shading][], FastShading, NoShading)
+        elseif haskey(gl_attributes, :shading) && gl_attributes[:shading] isa Observable
+            gl_attributes[:shading] = gl_attributes[:shading][]
+        end
+
+        shading = to_value(get(gl_attributes, :shading, NoShading))
+
+        if shading == FastShading
+            dirlight = Makie.get_directional_light(scene)
+            if !isnothing(dirlight)
+                gl_attributes[:light_direction] = if dirlight.camera_relative
+                    map(gl_attributes[:view], dirlight.direction) do view, dir
+                        return  normalize(inv(view[Vec(1,2,3), Vec(1,2,3)]) * dir)
+                    end
+                else
+                    map(normalize, dirlight.direction)
+                end
+
+                gl_attributes[:light_color] = dirlight.color
+            else
+                gl_attributes[:light_direction] = Observable(Vec3f(0))
+                gl_attributes[:light_color] = Observable(RGBf(0,0,0))
+            end
+
+            ambientlight = Makie.get_ambient_light(scene)
+            if !isnothing(ambientlight)
+                gl_attributes[:ambient] = ambientlight.color
+            else
+                gl_attributes[:ambient] = Observable(RGBf(0,0,0))
+            end
+        elseif shading == MultiLightShading
+            handle_lights(gl_attributes, screen, scene.lights)
+        end
+        robj = robj_func(gl_attributes) # <-- here
 
         get!(gl_attributes, :ssao, Observable(false))
         screen.cache2plot[robj.id] = plot
@@ -235,7 +365,6 @@ pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Scatter, MeshScatter}))
     return cached_robj!(screen, scene, plot) do gl_attributes
         # signals not supported for shading yet
-        gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = pop!(gl_attributes, :marker)
 
         space = plot.space
@@ -379,7 +508,7 @@ function draw_atomic(screen::Screen, scene::Scene,
 
         # calculate quad metrics
         glyph_data = lift(plot, pos, glyphcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
-            Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
+            return Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
         end
 
         # unpack values from the one signal:
@@ -503,7 +632,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         gl_attributes[:texturecoordinates] = map(decompose_uv(rect)) do uv
             return 1.0f0 .- Vec2f(uv[2], uv[1])
         end
-        gl_attributes[:shading] = false
+        get!(gl_attributes, :shading, NoShading)
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
         if haskey(gl_attributes, :intensity)
@@ -517,8 +646,8 @@ end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=:data)
     # signals not supported for shading yet
-    shading = to_value(pop!(gl_attributes, :shading))
-    gl_attributes[:shading] = shading
+    shading = to_value(gl_attributes[:shading])::Makie.MakieCore.ShadingAlgorithm
+    matcap_active = !isnothing(to_value(get(gl_attributes, :matcap, nothing)))
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
@@ -560,25 +689,27 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
     end
-    if hasproperty(to_value(mesh), :normals) && shading
+    if hasproperty(to_value(mesh), :normals) && (shading !== NoShading || matcap_active)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
     end
     return draw_mesh(screen, gl_attributes)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
-    return cached_robj!(screen, scene, meshplot) do gl_attributes
+    x = cached_robj!(screen, scene, meshplot) do gl_attributes
         t = transform_func_obs(meshplot)
         space = meshplot.space # needs to happen before connect_camera! call
-        return mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
+        x = mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
+        return x
     end
+
+    return x
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     robj = cached_robj!(screen, scene, plot) do gl_attributes
         color = pop!(gl_attributes, :color)
         img = nothing
-        # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if haskey(gl_attributes, :intensity)
             img = pop!(gl_attributes, :intensity)
@@ -599,7 +730,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         space = plot.space
 
         gl_attributes[:image] = img
-        gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
 
         @assert to_value(plot[3]) isa AbstractMatrix
         types = map(v -> typeof(to_value(v)), plot[1:2])

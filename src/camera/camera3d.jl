@@ -1,5 +1,7 @@
 abstract type AbstractCamera3D <: AbstractCamera end
 
+get_space(::AbstractCamera3D) = :data
+
 struct Camera3D <: AbstractCamera3D
     # User settings
     settings::Attributes
@@ -39,6 +41,7 @@ Settings include anything that isn't a mouse or keyboard button.
 - `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
 - `clipping_mode = :bbox_relative`: Controls how `near` and `far` get processed. With `:static` they get passed as is, with `:view_relative` they get scaled by `norm(eyeposition - lookat)` and with `:bbox_relative` they get scaled to be just outside the scene bounding box. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
+- `center = true`: Controls whether the camera placement gets reset when calling `update_cam!(scene[, cam], bbox)`, which is called when a new plot is added. This is automatically set to `false` after calling `update_cam!(scene[, cam], eyepos, lookat[, up])`.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
 - `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
@@ -160,6 +163,7 @@ function Camera3D(scene::Scene; kwargs...)
         zoom_shift_lookat = true,
         fixed_axis = true,
         cad = false,
+        center = true,
         clipping_mode = :bbox_relative
     )
 
@@ -732,11 +736,12 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_proj_view!(camera(scene), proj, view)
 
     scene.camera.eyeposition[] = cam.eyeposition[]
+    scene.camera.lookat[] = cam.lookat[]
 end
 
 
 # Update camera position via bbox
-function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
+function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool = cam.settings.center[])
     bb = Rect3f(area3d)
     width = widths(bb)
     center = maximum(bb) - 0.5f0 * width
@@ -751,9 +756,12 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
         dist = radius
     end
 
-    cam.lookat[] = center
-    cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
-    cam.upvector[] = Vec3f(0, 0, 1) # Should we reset this?
+    if recenter
+        cam.lookat[] = center
+        cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
+        cam.upvector[] = normalize(cross(old_dir, cross(cam.upvector[], old_dir)))
+        # Vec3f(0, 0, 1) # Should we reset this?
+    end
 
     if cam.settings.clipping_mode[] === :static
         cam.near[] = 0.1f0 * dist
@@ -767,6 +775,7 @@ end
 
 # Update camera position via camera Position & Orientation
 function update_cam!(scene::Scene, camera::Camera3D, eyeposition::VecTypes, lookat::VecTypes, up::VecTypes = camera.upvector[])
+    camera.settings.center[] = false
     camera.lookat[]      = Vec3f(lookat)
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[]    = Vec3f(up)
@@ -787,6 +796,7 @@ function update_cam!(
         radius::Real = norm(camera.eyeposition[] - camera.lookat[]),
         center = camera.lookat[]
     )
+    camera.settings.center[] = false
     st, ct = sincos(theta)
     sp, cp = sincos(phi)
     v = Vec3f(ct * cp, ct * sp, st)

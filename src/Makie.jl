@@ -83,6 +83,7 @@ using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter,
 using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexBasedGrid, CellBasedGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
+using MakieCore: NoShading, FastShading, MultiLightShading
 using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
                   get_attribute, plotsym, plotkey, attributes, used_attributes
@@ -114,6 +115,7 @@ include("interaction/liftmacro.jl")
 include("colorsampler.jl")
 include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
+include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 
@@ -269,6 +271,7 @@ export Consume
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 export Billboard
+export NoShading, FastShading, MultiLightShading
 
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
@@ -346,7 +349,7 @@ export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatte
 export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
 export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
 
-export PointLight, EnvironmentLight, AmbientLight, SSAO
+export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, SSAO
 
 include("precompiles.jl")
 

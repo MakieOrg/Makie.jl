@@ -250,7 +250,7 @@ end
 
         @test screen.root_scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.2
+        @test (Base.summarysize(screen) / 10^6) < 1.21
     end
     # All should go to pool after close
     @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)

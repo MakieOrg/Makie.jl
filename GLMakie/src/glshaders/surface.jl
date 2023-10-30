@@ -12,17 +12,23 @@ function normal_calc(x::Bool, invert_normals::Bool = false)
     end
 end
 
+# TODO this shouldn't be necessary
 function light_calc(x::Bool)
-    if x
-        """
-        vec3 L      = normalize(o_lightdir);
-        vec3 N      = normalize(o_normal);
-        vec3 light1 = blinnphong(N, o_camdir, L, color.rgb);
-        vec3 light2 = blinnphong(N, o_camdir, -L, color.rgb);
-        color       = vec4(ambient * color.rgb + light1 + backlight * light2, color.a);
-        """
+    @error "shading::Bool is deprecated. Use `NoShading` instead of `false` and `FastShading` or `MultiLightShading` instead of true."
+    return light_calc(ifelse(x, FastShading, NoShading))
+end
+
+function light_calc(x::Makie.MakieCore.ShadingAlgorithm)
+    if x === NoShading
+        return "#define NO_SHADING"
+    elseif x === FastShading
+        return "#define FAST_SHADING"
+    elseif x === MultiLightShading
+        return "#define MULTI_LIGHT_SHADING"
+    # elseif x === :PBR # TODO?
     else
-        ""
+        @warn "Did not recognize shading value :$x. Defaulting to FastShading."
+        return "#define FAST_SHADING"
     end
 end
 
@@ -113,6 +119,7 @@ end
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
+    shading = pop!(data, :shading, FastShading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         scale = nothing
         position = nothing
@@ -120,8 +127,7 @@ function draw_surface(screen, main, data::Dict)
         position_y = nothing => Texture
         position_z = nothing => Texture
         image = nothing => Texture
-        shading = true
-        normal = shading
+        normal = shading != NoShading
         invert_normals = false
         backlight = 0f0
     end
@@ -141,12 +147,14 @@ function draw_surface(screen, main, data::Dict)
         transparency = false
         shader = GLVisualizeShader(
             screen,
-            "fragment_output.frag", "util.vert", "surface.vert",
-            "mesh.frag",
+            "util.vert", "surface.vert",
+            "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
-                "light_calc" => light_calc(shading),
+                "shading" => light_calc(shading),
+                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

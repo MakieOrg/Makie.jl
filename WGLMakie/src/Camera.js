@@ -39,7 +39,7 @@ function in_scene(scene, mouse_event) {
 }
 
 // Taken from https://andreasrohner.at/posts/Web%20Development/JavaScript/Simple-orbital-camera-controls-for-THREE-js/
-export function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
+export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     if (cam3d === undefined) {
         // we just support 3d cameras atm
         return;
@@ -77,6 +77,8 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, scene) {
             [width, height],
             [x, y, z]
         );
+
+        makie_camera.update_light_dir(light_dir.value);
     }
     function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
         let startDragX = null;
@@ -254,6 +256,10 @@ export class MakieCamera {
         // Lazy calculation, only if a plot type requests them
         // will be of the form: {[space, markerspace]: THREE.Uniform(...)}
         this.preprojections = {};
+
+        // For camera-relative light directions
+        // TODO: intial position wrong...
+        this.light_direction = new THREE.Uniform(new THREE.Vector3(-1, -1, -1).normalize());
     }
 
     calculate_matrices() {
@@ -286,6 +292,13 @@ export class MakieCamera {
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
         return;
+    }
+
+    update_light_dir(light_dir) {
+        const T = new THREE.Matrix3().setFromMatrix4(this.view.value).invert();
+        const new_dir = new THREE.Vector3().fromArray(light_dir);
+        new_dir.applyMatrix3(T).normalize();
+        this.light_direction.value = new_dir;
     }
 
     clip_to_space(space) {
