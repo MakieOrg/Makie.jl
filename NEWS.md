@@ -12,8 +12,10 @@
 
 ## master
 
-- Fix grouping of a zero-height bar in `barplot`. Now a zero-height bar shares the same properties of the previous bar, and if the bar is the first one, its height is treated as positive if and only if there exists a bar of positive height or all bars are zero-height. [#3058](https://github.com/MakieOrg/Makie.jl/pull/3058)
-- Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272)
+## v0.19.12
+
+- Fix grouping of a zero-height bar in `barplot`. Now a zero-height bar shares the same properties of the previous bar, and if the bar is the first one, its height is treated as positive if and only if there exists a bar of positive height or all bars are zero-height [#3058](https://github.com/MakieOrg/Makie.jl/pull/3058).
+- Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272).
 - Added `cornerradius` attribute to `Box` for rounded corners [#3308](https://github.com/MakieOrg/Makie.jl/pull/3308).
 - Upgraded `StableHashTraits` from 1.0 to 1.1 [#3309](https://github.com/MakieOrg/Makie.jl/pull/3309).
 

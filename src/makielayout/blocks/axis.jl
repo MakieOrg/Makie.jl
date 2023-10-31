@@ -1143,12 +1143,16 @@ with the symbols :l, :r, :b and :t.
 """
 function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     for s in spines
-        @match s begin
-            :l => (la.leftspinevisible = false)
-            :r => (la.rightspinevisible = false)
-            :b => (la.bottomspinevisible = false)
-            :t => (la.topspinevisible = false)
-            x => error("Invalid spine identifier $x. Valid options are :l, :r, :b and :t.")
+        if s === :l
+            la.leftspinevisible = false
+        elseif s === :r
+            la.rightspinevisible = false
+        elseif s === :b
+            la.bottomspinevisible = false
+        elseif s === :t
+            la.topspinevisible = false
+        else
+            error("Invalid spine identifier $s. Valid options are :l, :r, :b and :t.")
         end
     end
 end
