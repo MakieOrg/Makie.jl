@@ -3,27 +3,35 @@ module MouseEventTypes
         out
         enter
         over
+
         leftdown
         rightdown
         middledown
+
         leftup
         rightup
         middleup
+
         leftdragstart
         rightdragstart
         middledragstart
+
         leftdrag
         rightdrag
         middledrag
+
         leftdragstop
         rightdragstop
         middledragstop
+
         leftclick
         rightclick
         middleclick
+
         leftdoubleclick
         rightdoubleclick
         middledoubleclick
+
         downoutside
     end
     export MouseEventType
@@ -125,6 +133,58 @@ end
 # don't react to buttons beyond the first three
 _isstandardmousebutton(b) = (b == Mouse.left || b == Mouse.middle || b == Mouse.right)
 
+# TODO
+# Make these enums so we can just do `Mouse.left & Mouse.drag`
+
+function to_drag_event(b::Mouse.Button)
+    b === Mouse.left && return MouseEventTypes.leftdrag
+    b === Mouse.right && return MouseEventTypes.rightdrag
+    b === Mouse.middle && return MouseEventTypes.middledrag
+    error("No recognized mouse button $b")
+end
+
+function to_drag_start_event(b::Mouse.Button)
+    b === Mouse.left && return MouseEventTypes.leftdragstart
+    b === Mouse.right && return MouseEventTypes.rightdragstart
+    b === Mouse.middle && return MouseEventTypes.middledragstart
+    return error("No recognized mouse button $b")
+end
+
+function to_drag_stop_event(b::Mouse.Button)
+    b === Mouse.left && return MouseEventTypes.leftdragstop
+    b === Mouse.right && return MouseEventTypes.rightdragstop
+    b === Mouse.middle && return MouseEventTypes.middledragstop
+    return error("No recognized mouse button $b")
+end
+
+function to_down_event(b::Mouse.Button)
+    b === Mouse.left && return MouseEventTypes.leftdown
+    b === Mouse.right && return MouseEventTypes.rightdown
+    b === Mouse.middle && return MouseEventTypes.middledown
+    return error("No recognized mouse button $b")
+end
+
+function to_up_event(b::Mouse.Button)
+    b === Mouse.left && return MouseEventTypes.leftup
+    b === Mouse.right && return MouseEventTypes.rightup
+    b === Mouse.middle && return MouseEventTypes.middleup
+    return error("No recognized mouse button $b")
+end
+
+function to_doubleclick_event(b::Mouse.Button)
+    b === Mouse.left && return MouseEventTypes.leftdoubleclick
+    b === Mouse.right && return MouseEventTypes.rightdoubleclick
+    b === Mouse.middle && return MouseEventTypes.middledoubleclick
+    return error("No recognized mouse button $b")
+end
+
+function to_click_event(b::Mouse.Button)
+    b === Mouse.left && return MouseEventTypes.leftclick
+    b === Mouse.right && return MouseEventTypes.rightclick
+    b === Mouse.middle && return MouseEventTypes.middleclick
+    return error("No recognized mouse button $b")
+end
+
 function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     Mouse = Makie.Mouse
     dblclick_max_interval = 0.2
@@ -163,12 +223,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
             if drag_ongoing[]
                 # continue the drag
-                event = @match mouse_downed_button[] begin
-                    Mouse.left => MouseEventTypes.leftdrag
-                    Mouse.right => MouseEventTypes.rightdrag
-                    Mouse.middle => MouseEventTypes.middledrag
-                    x => error("No recognized mouse button $x")
-                end
+                event = to_drag_event(mouse_downed_button[])
                 x = setindex!(mouseevent,
                     MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                 )
@@ -178,23 +233,13 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                 # that means a drag started
                 if mouse_downed_inside[]
                     drag_ongoing[] = true
-                    event = @match mouse_downed_button[] begin
-                        Mouse.left => MouseEventTypes.leftdragstart
-                        Mouse.right => MouseEventTypes.rightdragstart
-                        Mouse.middle => MouseEventTypes.middledragstart
-                        x => error("No recognized mouse button $x")
-                    end
+                    event = to_drag_start_event(mouse_downed_button[])
                     x = setindex!(mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                     consumed = consumed || x
 
-                    event = @match mouse_downed_button[] begin
-                        Mouse.left => MouseEventTypes.leftdrag
-                        Mouse.right => MouseEventTypes.rightdrag
-                        Mouse.middle => MouseEventTypes.middledrag
-                        x => error("No recognized mouse button $x")
-                    end
+                    event = to_drag_event(mouse_downed_button[])
                     x = setindex!(mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
@@ -250,12 +295,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                 mouse_downed_button[] = button
 
                 if mouse_was_inside[]
-                    event = @match mouse_downed_button[] begin
-                        Mouse.left => MouseEventTypes.leftdown
-                        Mouse.right => MouseEventTypes.rightdown
-                        Mouse.middle => MouseEventTypes.middledown
-                        x => error("No recognized mouse button $x")
-                    end
+                    event = to_down_event(mouse_downed_button[])
                     x = setindex!(mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
@@ -281,12 +321,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
             if downed_button_missing_from_pressed && some_mouse_button_had_been_downed
 
                 if drag_ongoing[]
-                    event = @match mouse_downed_button[] begin
-                        Mouse.left => MouseEventTypes.leftdragstop
-                        Mouse.right => MouseEventTypes.rightdragstop
-                        Mouse.middle => MouseEventTypes.middledragstop
-                        x => error("No recognized mouse button $x")
-                    end
+                    event = to_drag_stop_event(mouse_downed_button[])
                     x = setindex!(mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
@@ -295,13 +330,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
                     if mouse_was_inside[]
                         # up after drag done over element
-                        event = @match mouse_downed_button[] begin
-                            Mouse.left => MouseEventTypes.leftup
-                            Mouse.right => MouseEventTypes.rightup
-                            Mouse.middle => MouseEventTypes.middleup
-                            x => error("No recognized mouse button $x")
-                        end
-
+                        event = to_up_event(mouse_downed_button[])
                         x = setindex!(mouseevent,
                             MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                         )
@@ -323,24 +352,14 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                             if dt_last_click < dblclick_max_interval && !last_click_was_double[] &&
                                     mouse_downed_button[] == b_last_click[]
 
-                                event = @match mouse_downed_button[] begin
-                                    Mouse.left => MouseEventTypes.leftdoubleclick
-                                    Mouse.right => MouseEventTypes.rightdoubleclick
-                                    Mouse.middle => MouseEventTypes.middledoubleclick
-                                    x => error("No recognized mouse button $x")
-                                end
+                                event = to_doubleclick_event(mouse_downed_button[])
                                 x = setindex!(mouseevent,
                                     MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                                 )
                                 consumed = consumed || x
                                 last_click_was_double[] = true
                             else
-                                event = @match mouse_downed_button[] begin
-                                    Mouse.left => MouseEventTypes.leftclick
-                                    Mouse.right => MouseEventTypes.rightclick
-                                    Mouse.middle => MouseEventTypes.middleclick
-                                    x => error("No recognized mouse button $x")
-                                end
+                                event = to_click_event(mouse_downed_button[])
                                 x = setindex!(mouseevent,
                                     MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                                 )
@@ -353,13 +372,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                         mouse_downed_inside[] = false
 
                         # up after click
-                        event = @match mouse_downed_button[] begin
-                            Mouse.left => MouseEventTypes.leftup
-                            Mouse.right => MouseEventTypes.rightup
-                            Mouse.middle => MouseEventTypes.middleup
-                            x => error("No recognized mouse button $x")
-                        end
-
+                        event =  to_up_event(mouse_downed_button[])
                         x = setindex!(mouseevent,
                             MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                         )
