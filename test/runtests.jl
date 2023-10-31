@@ -36,4 +36,5 @@ using Makie: volume
     include("PolarAxis.jl")
     include("barplot.jl")
     include("bezier.jl")
+    include("hist.jl")
 end
