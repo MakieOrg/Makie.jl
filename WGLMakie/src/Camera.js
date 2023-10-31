@@ -1,4 +1,5 @@
 import * as THREE from "./THREE.js";
+import { OrbitControls } from "./OrbitControls.js";
 
 // Unitless is the scene pixel unit space
 // so scene.px_area, or size(scene)
@@ -39,7 +40,13 @@ function in_scene(scene, mouse_event) {
 }
 
 // Taken from https://andreasrohner.at/posts/Web%20Development/JavaScript/Simple-orbital-camera-controls-for-THREE-js/
-export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
+export function attach_3d_camera(
+    canvas,
+    makie_camera,
+    cam3d,
+    light_dir,
+    scene
+) {
     if (cam3d === undefined) {
         // we just support 3d cameras atm
         return;
@@ -48,21 +55,21 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) 
     const camera = new THREE.PerspectiveCamera(
         cam3d.fov.value,
         w / h,
-        cam3d.near.value,
-        cam3d.far.value
+        0.01,
+        100.0
     );
 
     const center = new THREE.Vector3(...cam3d.lookat.value);
     camera.up = new THREE.Vector3(...cam3d.upvector.value);
     camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
-    const use_julia_cam = () =>
-        JSServe.can_send_to_julia && JSServe.can_send_to_julia();
 
-    function update() {
-        if (use_julia_cam()) {
-            return;
-        }
+    const use_orbit_cam = () =>
+        !(JSServe.can_send_to_julia && JSServe.can_send_to_julia());
+    const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e) =>
+        in_scene(scene, e)
+    );
+    controls.addEventListener("change", (e) => {
         const view = camera.matrixWorldInverse;
         const projection = camera.projectionMatrix;
         const [width, height] = cam3d.resolution.value;
@@ -70,113 +77,14 @@ export function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) 
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         camera.updateWorldMatrix();
-
         makie_camera.update_matrices(
             view.elements,
             projection.elements,
             [width, height],
             [x, y, z]
         );
-
         makie_camera.update_light_dir(light_dir.value);
-    }
-    function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
-        let startDragX = null;
-        let startDragY = null;
-        function mouseWheelHandler(e) {
-            if (use_julia_cam()) {
-                return;
-            }
-            if (!in_scene(scene, e)) {
-                return;
-            }
-            const delta = Math.sign(e.deltaY);
-            if (delta == -1) {
-                zoomOut();
-            } else if (delta == 1) {
-                zoomIn();
-            }
-            e.preventDefault();
-        }
-        function mouseDownHandler(e) {
-            if (use_julia_cam()) {
-                return;
-            }
-            if (!in_scene(scene, e)) {
-                return;
-            }
-            startDragX = e.clientX;
-            startDragY = e.clientY;
-
-            e.preventDefault();
-        }
-        function mouseMoveHandler(e) {
-            if (use_julia_cam()) {
-                return;
-            }
-            if (!in_scene(scene, e)) {
-                return;
-            }
-            if (startDragX === null || startDragY === null) return;
-
-            if (drag) drag(e.clientX - startDragX, e.clientY - startDragY);
-
-            startDragX = e.clientX;
-            startDragY = e.clientY;
-            e.preventDefault();
-        }
-        function mouseUpHandler(e) {
-            if (use_julia_cam()) {
-                return;
-            }
-            if (!in_scene(scene, e)) {
-                return;
-            }
-            mouseMoveHandler.call(this, e);
-            startDragX = null;
-            startDragY = null;
-            e.preventDefault();
-        }
-        domObject.addEventListener("wheel", mouseWheelHandler);
-        domObject.addEventListener("mousedown", mouseDownHandler);
-        domObject.addEventListener("mousemove", mouseMoveHandler);
-        domObject.addEventListener("mouseup", mouseUpHandler);
-    }
-
-    function drag(deltaX, deltaY) {
-        const radPerPixel = Math.PI / 450;
-        const deltaPhi = radPerPixel * deltaX;
-        const deltaTheta = radPerPixel * deltaY;
-        const pos = camera.position.sub(center);
-        const radius = pos.length();
-        let theta = Math.acos(pos.z / radius);
-        let phi = Math.atan2(pos.y, pos.x);
-
-        // Subtract deltaTheta and deltaPhi
-        theta = Math.min(Math.max(theta - deltaTheta, 0), Math.PI);
-        phi -= deltaPhi;
-
-        // Turn back into Cartesian coordinates
-        pos.x = radius * Math.sin(theta) * Math.cos(phi);
-        pos.y = radius * Math.sin(theta) * Math.sin(phi);
-        pos.z = radius * Math.cos(theta);
-
-        camera.position.add(center);
-        camera.lookAt(center);
-        update();
-    }
-
-    function zoomIn() {
-        camera.position.sub(center).multiplyScalar(0.9).add(center);
-        update();
-    }
-
-    function zoomOut() {
-        camera.position.sub(center).multiplyScalar(1.1).add(center);
-        update();
-    }
-
-    addMouseHandler(canvas, drag, zoomIn, zoomOut);
+    });
 }
 
 function mul(a, b) {
@@ -259,7 +167,9 @@ export class MakieCamera {
 
         // For camera-relative light directions
         // TODO: intial position wrong...
-        this.light_direction = new THREE.Uniform(new THREE.Vector3(-1, -1, -1).normalize());
+        this.light_direction = new THREE.Uniform(
+            new THREE.Vector3(-1, -1, -1).normalize()
+        );
     }
 
     calculate_matrices() {
@@ -281,7 +191,8 @@ export class MakieCamera {
         // update all existing preprojection matrices
         Object.keys(this.preprojections).forEach((key) => {
             const [space, markerspace] = key.split(","); // jeez js, really just converting array keys to "elem,elem"?
-            this.preprojections[key].value = this.calculate_preprojection_matrix(space, markerspace);
+            this.preprojections[key].value =
+                this.calculate_preprojection_matrix(space, markerspace);
         });
     }
 

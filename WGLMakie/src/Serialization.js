@@ -170,7 +170,6 @@ export function deserialize_plot(data) {
 
 const ON_NEXT_INSERT = new Set();
 
-
 export function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
@@ -198,7 +197,7 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-    const {px_per_unit} = scene.screen;
+    const { px_per_unit } = scene.screen;
     plot_data.uniforms.resolution = cam.resolution;
     plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
@@ -212,16 +211,18 @@ export function add_plot(scene, plot_data) {
 
     if (scene.camera_relative_light) {
         plot_data.uniforms.light_direction = cam.light_direction;
-        scene.light_direction.on(value => {
+        scene.light_direction.on((value) => {
             cam.update_light_dir(value);
-        })
+        });
     } else {
         // TODO how update?
-        const light_dir = new THREE.Vector3().fromArray(scene.light_direction.value);
+        const light_dir = new THREE.Vector3().fromArray(
+            scene.light_direction.value
+        );
         plot_data.uniforms.light_direction = new THREE.Uniform(light_dir);
-        scene.light_direction.on(value => {
+        scene.light_direction.on((value) => {
             plot_data.uniforms.light_direction.value.fromArray(value);
-        })
+        });
     }
 
     const p = deserialize_plot(plot_data);
@@ -275,7 +276,6 @@ function convert_RGB_to_RGBA(rgbArray) {
     return rgbaArray;
 }
 
-
 function create_texture(data) {
     const buffer = data.data;
     if (data.size.length == 3) {
@@ -326,17 +326,17 @@ function re_create_texture(old_texture, buffer, size) {
             old_texture.type
         );
     }
-    tex.minFilter = old_texture.minFilter
-    tex.magFilter = old_texture.magFilter
-    tex.anisotropy = old_texture.anisotropy
-    tex.wrapS = old_texture.wrapS
+    tex.minFilter = old_texture.minFilter;
+    tex.magFilter = old_texture.magFilter;
+    tex.anisotropy = old_texture.anisotropy;
+    tex.wrapS = old_texture.wrapS;
     if (size.length > 1) {
-        tex.wrapT = old_texture.wrapT
+        tex.wrapT = old_texture.wrapT;
     }
     if (size.length > 2) {
-        tex.wrapR = old_texture.wrapR
+        tex.wrapR = old_texture.wrapR;
     }
-    return tex
+    return tex;
 }
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);
@@ -556,20 +556,32 @@ export function deserialize_scene(data, screen) {
 
     scene.wgl_camera = camera;
 
-    function update_cam(camera_matrices) {
+    function update_cam(camera_matrices, force) {
+        if (!force) {
+            // we use the threejs orbit controls, if the julia connection is gone
+            // at least for 3d ... 2d is still a todo, and will stay static right now
+            if (!(JSServe.can_send_to_julia && JSServe.can_send_to_julia())) {
+                return;
+            }
+        }
         const [view, projection, resolution, eyepos] = camera_matrices;
         camera.update_matrices(view, projection, resolution, eyepos);
     }
 
-    update_cam(data.camera.value);
-    camera.update_light_dir(data.light_direction.value);
-
     if (data.cam3d_state) {
-        // add JS camera... This will only update the camera matrices via js if:
-        // JSServe.can_send_to_julia && can_send_to_julia()
-        Camera.attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
+        Camera.attach_3d_camera(
+            canvas,
+            camera,
+            data.cam3d_state,
+            data.light_direction,
+            scene
+        );
     }
+
+    update_cam(data.camera.value, true); // force update on first call
+    camera.update_light_dir(data.light_direction.value);
     data.camera.on(update_cam);
+
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
