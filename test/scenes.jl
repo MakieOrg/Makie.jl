@@ -6,6 +6,17 @@
     end
     @test theme(nothing, :nonexistant, default=1) == 1
     @test theme(scene, :nonexistant, default=1) == 1
+
+    # test that deprecated `resolution keyword still works but throws warning`
+    errstring = mktemp() do path, io
+        redirect_stderr(io) do
+            scene = Scene(; resolution = (999, 999), size = (123, 123))
+            @test scene.px_area[] == Rect2i((0, 0), (999, 999))
+        end
+        flush(io)
+        s = read(path, String)
+    end
+    @test occursin("The `resolution` keyword for `Scene`s and `Figure`s has been deprecated", errstring)
 end
 
 @testset "Lighting" begin
