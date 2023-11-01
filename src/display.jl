@@ -332,7 +332,7 @@ function FileIO.save(
             # If the scene already got displayed, we get the current screen its displayed on
             # Else, we create a new scene and update the state of the fig
             update && update_state_before_display!(fig)
-            visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
+            visible = isvisible(getscreen(scene)) # if already has a screen, don't hide it!
             config = Dict{Symbol, Any}(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
@@ -431,6 +431,10 @@ function get_sub_picture(image, format::ImageStorageFormat, rect)
     return image[start:stop, xmin:xmax]
 end
 
+# Needs to be overloaded by backends, with fallback true
+isvisible(screen::MakieScreen) = true
+isvisible(::Nothing) = false
+
 """
     colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
 
@@ -448,7 +452,8 @@ or RGBA.
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
     update && update_state_before_display!(fig)
-    visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
+    # if already has a screen, use their visibility value, if no screen, returns false
+    visible = isvisible(getscreen(scene))
     config = Dict{Symbol,Any}(screen_config)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)

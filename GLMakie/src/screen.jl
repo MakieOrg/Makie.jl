@@ -213,6 +213,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
     end
 end
 
+Makie.isvisible(screen::Screen) = screen.config.visible
+
 # for e.g. closeall, track all created screens
 # gets removed in destroy!(screen)
 const ALL_SCREENS = Set{Screen}()
