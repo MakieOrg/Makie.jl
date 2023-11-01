@@ -249,12 +249,14 @@ The scene graph can be used to create rigid transformations, like for a robot ar
 ```julia
 GLMakie.activate!() # hide
 parent = Scene()
-cam3d!(parent)
+cam3d!(parent; clipping_mode = :static)
 
 # One can set the camera lookat and eyeposition, by getting the camera controls and using `update_cam!`
 camc = cameracontrols(parent)
 update_cam!(parent, camc, Vec3f(0, 8, 0), Vec3f(4.0, 0, 0))
-
+# One may need to adjust the
+# near and far clip plane when adjusting the camera manually
+camc.far[] = 100f0
 s1 = Scene(parent, camera=parent.camera)
 mesh!(s1, Rect3f(Vec3f(0, -0.1, -0.1), Vec3f(5, 0.2, 0.2)))
 s2 = Scene(s1, camera=parent.camera)
