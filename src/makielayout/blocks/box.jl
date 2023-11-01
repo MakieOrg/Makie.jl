@@ -84,6 +84,18 @@ function attribute_examples(::Type{Box})
                     """
             )
         ],
+        :strokestyle => [
+            Example(
+                name = "Stroke style",
+                code = """
+                    fig = Figure()
+                    Box(fig[1, 1], strokestyle = :solid)
+                    Box(fig[1, 2], strokestyle = :dot)
+                    Box(fig[1, 3], strokestyle = :dash)
+                    fig
+                    """
+            )
+        ],
         :cornerradius => [
             Example(
                 name = "Corner radius",
