@@ -216,7 +216,13 @@ function Scene(;
 
     wasnothing = isnothing(px_area)
     if wasnothing
-        px_area = Observable(Recti(0, 0, m_theme.resolution[]); ignore_equal_values=true)
+        sz = if haskey(m_theme, :resolution)
+            @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
+            m_theme.resolution[]
+        else
+            m_theme.size[]
+        end
+        px_area = Observable(Recti(0, 0, sz); ignore_equal_values=true)
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
