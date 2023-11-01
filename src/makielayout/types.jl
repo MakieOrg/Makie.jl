@@ -862,6 +862,8 @@ end
         strokevisible = true
         "The color of the border."
         strokecolor = RGBf(0, 0, 0)
+        "The linestyle of the rectangle border"
+        strokestyle = nothing
         "The radius of the rounded corner. One number is for all four corners, four numbers for going clockwise from top-right."
         cornerradius = 0.0
         "The width setting of the rectangle."

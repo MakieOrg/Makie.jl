@@ -35,7 +35,7 @@ function initialize_block!(box::Box)
 
     poly!(blockscene, path, color = box.color, visible = box.visible,
         strokecolor = strokecolor_with_visibility, strokewidth = box.strokewidth,
-        inspectable = false)
+        inspectable = false, linestyle = box.strokestyle)
 
     # trigger bbox
     box.layoutobservables.suggestedbbox[] = box.layoutobservables.suggestedbbox[]
