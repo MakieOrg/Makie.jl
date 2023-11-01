@@ -37,7 +37,7 @@ The color generated from two overlapping transparent objects depends on their or
 using CairoMakie
 CairoMakie.activate!() # hide
 
-scene = Scene(resolution = (400, 275))
+scene = Scene(size = (400, 275))
 campixel!(scene)
 scatter!(
     scene, [100, 200, 300], [100, 100, 100],
@@ -124,7 +124,7 @@ Being an approximate scheme OIT has some strengths and weaknesses. There are two
 using GLMakie
 GLMakie.activate!() # hide
 
-fig = Figure(resolution = (800, 400))
+fig = Figure(size = (800, 400))
 ax1 = LScene(fig[1, 1], show_axis=false)
 p1 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :red, shading = NoShading, transparency = true)
 p2 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :blue, shading = NoShading, transparency = true)

@@ -17,7 +17,7 @@ A Scene's subscenes (also called children) can be accessed through `scene.childr
 
 Any `Scene` with an axis also has a `camera` associated with it; this can be accessed through `camera(scene)`, and its controls through `cameracontrols(scene)`.  More documentation about these is in the \myreflink{Cameras} section.
 
-`Scene`'s also have configurable size/resolution. You can set the size in pixels by doing `Scene(resolution = (500, 500))`.
+`Scene`s have a configurable size/resolution. You can set the size in device-independent pixels by doing `Scene(size = (500, 500))`. (More about sizes, resolutions and units in \myreflink{Figure size and units})
 
 Any keyword argument given to the `Scene` will be propagated to its plots; therefore, you can set the palette or the colormap in the Scene itself.
 
@@ -29,7 +29,7 @@ A subscene is no different than a normal Scene, except that it is linked to a "p
 
 * `scene.clear = true`: Scenes are drawn parent first onto the same image. If `clear = true` for a (sub)scene it will clear the previously drawn things in its region to its `backgroundcolor`. Otherwise the plots in `scene` will be drawn on top and the backgroundcolor will be ignored. Note that this is not technically an attribute but just a field of `Scene`.
 * `ssao = SSAO(bias = 0.025, blur=2, radius=0.5)`: Controls SSAO settings, see lighting documentation.
-* `resolution = (800, 600)`: Sets the size of the created window if the scene is the root scene.
+* `size = (800, 600)`: Sets the size of the created window if the scene is the root scene.
 
 ## Modifying A Scene
 

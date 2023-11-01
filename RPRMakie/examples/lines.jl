@@ -12,7 +12,7 @@ function box!(ax, size)
 end
 
 begin
-    fig = Figure(; resolution=(1000, 1000))
+    fig = Figure(; size=(1000, 1000))
     radiance = 100
     lights = Makie.AbstractLight[PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
     ax = LScene(fig[1, 1]; scenekw=(; lights=lights), show_axis=false)

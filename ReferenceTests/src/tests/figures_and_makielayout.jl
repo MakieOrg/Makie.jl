@@ -8,7 +8,7 @@
 end
 
 @reference_test "Figure with Blocks" begin
-    fig = Figure(resolution = (900, 900))
+    fig = Figure(size = (900, 900))
     ax, sc = scatter(fig[1, 1][1, 1], RNG.randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
     sc2 = scatter!(ax, RNG.randn(100, 2) .+ 2, color = :red)
     ll = fig[1, 1][1, 2] = Legend(fig, [sc, sc2], ["Scatter", "Other"])
@@ -50,7 +50,7 @@ end
 
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-    fig = Figure(resolution = (1000, 660))
+    fig = Figure(size = (1000, 660))
     m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=NoShading)
     lbl1 = Label(fig[1, 1:2], "HEADER "^10, fontsize = 40, word_wrap = true)
     m!(fig, lbl1)
@@ -150,7 +150,7 @@ end
 
 # may fail in WGLMakie due to missing dashes
 @reference_test "PolarAxis scatterlines spine" begin
-    f = Figure(resolution = (800, 400))
+    f = Figure(size = (800, 400))
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false, theta_as_x = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
@@ -165,7 +165,7 @@ end
 # may fail in CairoMakie due to different text stroke handling
 # and in WGLMakie due to missing stroke
 @reference_test "PolarAxis decorations" begin
-    f = Figure(resolution = (400, 400), backgroundcolor = :black)
+    f = Figure(size = (400, 400), backgroundcolor = :black)
     ax = PolarAxis(
         f[1, 1],
         backgroundcolor = :black,
@@ -184,7 +184,7 @@ end
 end
 
 @reference_test "PolarAxis limits" begin
-    f = Figure(resolution = (800, 600))
+    f = Figure(size = (800, 600))
     for (i, theta_0) in enumerate((0, -pi/6, pi/2))
         for (j, thetalims) in enumerate(((0, 2pi), (-pi/2, pi/2), (0, pi/12)))
             po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (1 + 2(j-1), 7))
@@ -201,7 +201,7 @@ end
 end
 
 @reference_test "Axis3 axis reversal" begin
-    f = Figure(resolution = (1000, 1000))
+    f = Figure(size = (1000, 1000))
     revstr(dir, rev) = rev ? "$dir rev" : ""
     for (i, (x, y, z)) in enumerate(Iterators.product(fill((false, true), 3)...))
         Axis3(f[fldmod1(i, 3)...], title = "$(revstr("x", x)) $(revstr("y", y)) $(revstr("z", z))", xreversed = x, yreversed = y, zreversed = z)
@@ -211,7 +211,7 @@ end
 end
 
 @reference_test "Colorbar for recipes" begin
-    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;resolution=(800, 800)))
+    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;size=(800, 800)))
     Colorbar(fig[1, 2], pl; size=100)
     x = LinRange(-1, 1, 20)
     y = LinRange(-1, 1, 20)

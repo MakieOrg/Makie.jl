@@ -274,7 +274,7 @@ filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
 
 """
-    FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
+    FileIO.save(filename, scene; size = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
 
 Save a `Scene` with the specified filename and format.
 
@@ -307,7 +307,7 @@ end
 
 function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
-        resolution = size(get_scene(fig)),
+        size = size(get_scene(fig)),
         backend = current_backend(),
         update = true,
         screen_config...

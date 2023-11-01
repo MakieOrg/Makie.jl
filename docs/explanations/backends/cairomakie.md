@@ -38,7 +38,7 @@ If you require an exact size in `pt`, consider setting `pt_per_unit = 1`.
 Here's an example:
 
 ```julia
-fig = Figure(resolution = (800, 600))
+fig = Figure(size = (800, 600))
 
 save("normal.pdf", fig) # size = 600 x 450 pt
 save("larger.pdf", fig, pt_per_unit = 2) # size = 1600 x 1200 pt
