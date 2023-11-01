@@ -21337,7 +21337,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
         vec3 screen_space(vec3 point) {
             vec4 vertex = projectionview * model * vec4(point, 1);
-            return vec3(vertex.xy * get_resolution(), vertex.z) / vertex.w;
+            return vec3(vertex.xy * get_resolution(), vertex.z + vertex.w * depth_shift) / vertex.w;
         }
 
         vec3 screen_space(vec2 point) {

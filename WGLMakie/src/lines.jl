@@ -3,6 +3,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     uniforms = Dict(
         :model => plot.model,
         :object_id => 1,
+        :depth_shift => plot.depth_shift,
         :picking => false,
     )
 
