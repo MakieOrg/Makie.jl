@@ -51,7 +51,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     patchcolor = RGBAf(0, 0, 0, 0.6),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
-    resolution = (600, 450), # 4/3 aspect ratio
+    size = (600, 450), # 4/3 aspect ratio
     visible = true,
     Axis = Attributes(),
     Axis3 = Attributes(),
@@ -210,7 +210,7 @@ restored afterwards, no matter if `f` succeeds or fails.
 Example:
 
 ```julia
-my_theme = Theme(resolution = (500, 500), color = :red)
+my_theme = Theme(size = (500, 500), color = :red)
 with_theme(my_theme, color = :blue, linestyle = :dashed) do
     scatter(randn(100, 2))
 end

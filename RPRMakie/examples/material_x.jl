@@ -7,7 +7,7 @@ img = begin
     radiance = 1000
     lights = [EnvironmentLight(0.5, load(RPR.assetpath("studio026.exr"))),
               PointLight(Vec3f(5), RGBf(radiance, radiance, radiance * 1.1))]
-    fig = Figure(; resolution=(1500, 700))
+    fig = Figure(; size=(1500, 700))
     ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
     screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar, iterations=500, resource=RPR.GPU0)
     matsys = screen.matsys

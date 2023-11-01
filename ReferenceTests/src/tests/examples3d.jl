@@ -275,7 +275,7 @@ end
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
-    scene = Scene(resolution=(500, 500), camera=cam3d!)
+    scene = Scene(size=(500, 500), camera=cam3d!)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
     psurf = surface!(scene, vx, vy, f)
     axis3d!(scene, frame = (linewidth = 2.0,))
@@ -526,7 +526,7 @@ end
 
 @reference_test "Depth Shift" begin
     # Up to some artifacts from fxaa the left side should be blue and the right red.
-    fig = Figure(resolution = (800, 400))
+    fig = Figure(size = (800, 400))
 
     prim = Rect3(Point3f(0), Vec3f(1))
     ps  = RNG.rand(Point3f, 10) .+ Point3f(0, 0, 1)

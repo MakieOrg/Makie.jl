@@ -55,12 +55,12 @@ f = Figure(backgroundcolor = :tomato)
 ```
 \end{examplefigure}
 
-Another common thing to do is to give a figure a different size or resolution.
+Another common thing to do is to give a figure a different size.
 The default is 800x600, let's try halving the height:
 
 \begin{examplefigure}{svg = true}
 ```julia
-f = Figure(backgroundcolor = :tomato, resolution = (800, 300))
+f = Figure(backgroundcolor = :tomato, size = (800, 300))
 ```
 \end{examplefigure}
 
@@ -178,13 +178,13 @@ You can pass any kind of object with symbol-value pairs and these will be used a
 x = range(0, 10, length=100)
 y = sin.(x)
 scatter(x, y;
-    figure = (; resolution = (400, 400)),
+    figure = (; size = (400, 400)),
     axis = (; title = "Scatter plot", xlabel = "x label")
 )
 ```
 \end{examplefigure}
 
-The `;` in `(; resolution = (400, 400))` is nothing special, it just clarifies that we want a one-element `NamedTuple` and not a variable called `resolution`.
+The `;` in `(; size = (400, 400))` is nothing special, it just clarifies that we want a one-element `NamedTuple` and not a variable called `size`.
 It's good habit to include it but it's not needed for `NamedTuple`s with more than one entry.
 
 ## Argument conversions

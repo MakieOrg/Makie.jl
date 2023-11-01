@@ -3,7 +3,7 @@ using Colors, FileIO, ImageShow
 using Colors: N0f8
 
 RPRMakie.activate!(plugin=RPR.Northstar, resource=RPR.GPU0)
-fig = Figure(; resolution=(800, 600), fontsize=26)
+fig = Figure(; size=(800, 600), fontsize=26)
 radiance = 10000
 lights = [EnvironmentLight(0.5, load(RPR.assetpath("studio026.exr"))),
           PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))]

@@ -162,7 +162,7 @@ using CairoMakie
 
 set_theme!(backgroundcolor = :gray90)
 
-f = Figure(resolution = (800, 600))
+f = Figure(size = (800, 600))
 
 for i in 1:3, j in 1:3
     ax = Axis(f[i, j], title = "$i, $j", width = 100, height = 100)

@@ -15,7 +15,7 @@ if Package === :WGLMakie
     WGLMakie.JSServe.use_electron_display()
 end
 
-set_theme!(resolution=(800, 600))
+set_theme!(size=(800, 600))
 
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 display_time = @ctime get_colorbuffer(fig)

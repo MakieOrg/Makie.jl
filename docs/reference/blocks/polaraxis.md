@@ -28,7 +28,7 @@ The order of a arguments can be changed with `ax.theta_as_x`.
 
 \begin{examplefigure}{svg = true}
 ```julia
-f = Figure(resolution = (800, 400))
+f = Figure(size = (800, 400))
 
 ax = PolarAxis(f[1, 1], title = "Theta as x")
 lineobject = lines!(ax, 0..2pi, sin, color = :red)
@@ -48,7 +48,7 @@ For example, we can limit `thetalimits` to a smaller range to generate a circle 
 
 \begin{examplefigure}{svg = true}
 ```julia
-f = Figure(resolution = (600, 600))
+f = Figure(size = (600, 600))
 
 ax = PolarAxis(f[1, 1], title = "Default")
 lines!(ax, range(0, 8pi, length=300), range(0, 10, length=300))
@@ -98,7 +98,7 @@ As a replacement for `heatmap` you can use `voronoiplot`, which generates cells 
 
 \begin{examplefigure}{svg = false}
 ```julia
-f = Figure(resolution = (800, 500))
+f = Figure(size = (800, 500))
 
 ax = PolarAxis(f[1, 1], title = "Surface")
 rs = 0:10
@@ -131,7 +131,7 @@ axis spine. You can manipulate it with the `spine...` attributes.
 
 \begin{examplefigure}{svg = true}
 ```julia
-f = Figure(resolution = (800, 400))
+f = Figure(size = (800, 400))
 ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
 scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
@@ -150,7 +150,7 @@ attributes in much the same way.
 
 \begin{examplefigure}{svg = true}
 ```julia
-f = Figure(resolution = (600, 600), backgroundcolor = :black)
+f = Figure(size = (600, 600), backgroundcolor = :black)
 ax = PolarAxis(
     f[1, 1],
     backgroundcolor = :black,

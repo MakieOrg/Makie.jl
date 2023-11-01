@@ -194,7 +194,7 @@ end
 # Layouts are already hooked up to this, so it's very simple.
 """
     resize!(fig::Figure, width, height)
-Resizes the given `Figure` to the resolution given by `width` and `height`.
+Resizes the given `Figure` to the size given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
 Makie.resize!(figure::Figure, width::Integer, height::Integer) = resize!(figure.scene, width, height)

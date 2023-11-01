@@ -279,7 +279,7 @@ CairoMakie.activate!() # hide
 
 set_theme!() # hide
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 Axis(f[1, 1], title = "Default cycle palette")
 

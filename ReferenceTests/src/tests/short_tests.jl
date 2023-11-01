@@ -158,7 +158,7 @@ end
 
 @reference_test "lines linesegments width test" begin
     res = 200
-    s = Scene(camera=campixel!, resolution=(res, res))
+    s = Scene(camera=campixel!, size=(res, res))
     half = res / 2
     linewidth = 10
     xstart = half - (half/2)
