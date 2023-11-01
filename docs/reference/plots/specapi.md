@@ -63,7 +63,7 @@ ax4 = S.Axis3(; plots=[S.contour(cube, alpha=0.5)])
 
 spec_array = S.Figure([ax1, ax2]);
 spec_matrix = S.Figure([ax1 ax2; ax3 ax4]);
-f = Figure(; resolution=(1000, 500))
+f = Figure(; size=(1000, 500))
 plot(f[1, 1], spec_array)
 plot(f[1, 2], spec_matrix)
 f

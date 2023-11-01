@@ -77,14 +77,14 @@
     
         # Lines (2D) & Linesegments (3D)
         ps = [exp(-0.01phi) * Point2f(cos(phi), sin(phi)) for phi in range(0, 20pi, length = 501)]
-        scene = Scene(resolution = (400, 400))
+        scene = Scene(size = (400, 400))
         p = lines!(scene, ps)
         cam2d!(scene)
         ray = Makie.Ray(scene, (325.0, 313.0))
         pos = Makie.position_on_plot(p, 157, ray)
         @test pos ≈ Point3f(0.6087957666683925, 0.5513198993583837, 0.0)
     
-        scene = Scene(resolution = (400, 400))
+        scene = Scene(size = (400, 400))
         p = linesegments!(scene, ps)
         cam3d!(scene)
         ray = Makie.Ray(scene, (238.0, 233.0))
@@ -93,14 +93,14 @@
     
     
         # Heatmap (2D) & Image (3D)
-        scene = Scene(resolution = (400, 400))
+        scene = Scene(size = (400, 400))
         p = heatmap!(scene, 0..1, -1..1, rand(10, 10))
         cam2d!(scene)
         ray = Makie.Ray(scene, (228.0, 91.0))
         pos = Makie.position_on_plot(p, 0, ray)
         @test pos ≈ Point3f(0.13999999, -0.54499996, 0.0)
     
-        scene = Scene(resolution = (400, 400))
+        scene = Scene(size = (400, 400))
         p = image!(scene, -1..1, -1..1, rand(10, 10))
         cam3d!(scene)
         ray = Makie.Ray(scene, (309.0, 197.0))
@@ -109,7 +109,7 @@
     
     
         # Mesh (3D)
-        scene = Scene(resolution = (400, 400))
+        scene = Scene(size = (400, 400))
         p = mesh!(scene, Rect3f(Point3f(0), Vec3f(1)))
         cam3d!(scene)
         ray = Makie.Ray(scene, (201.0, 283.0))
@@ -117,7 +117,7 @@
         @test pos ≈ Point3f(0.029754717, 0.043159597, 1.0)
     
         # Surface (3D)
-        scene = Scene(resolution = (400, 400))
+        scene = Scene(size = (400, 400))
         p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10])
         cam3d!(scene)
         ray = Makie.Ray(scene, (52.0, 238.0))
@@ -125,7 +125,7 @@
         @test pos ≈ Point3f(0.80910987, -1.6090667, 0.137722)
     
         # Volume (3D)
-        scene = Scene(resolution = (400, 400))
+        scene = Scene(size = (400, 400))
         p = volume!(scene, rand(10, 10, 10))
         cam3d!(scene)
         center!(scene)
@@ -137,7 +137,7 @@
     # For recreating the above:
     #= 
     # Scene setup from tests:
-    scene = Scene(resolution = (400, 400))
+    scene = Scene(size = (400, 400))
     p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10])
     cam3d!(scene)
     

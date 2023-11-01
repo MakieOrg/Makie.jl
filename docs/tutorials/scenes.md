@@ -14,7 +14,7 @@ scene = Scene(;
     # set_theme!(lightposition=:eyeposition, ambient=RGBf(0.5, 0.5, 0.5))`
     lights = Makie.automatic,
     backgroundcolor = :gray,
-    resolution = (500, 500);
+    size = (500, 500);
     # gets filled in with the currently set global theme
     theme_kw...
 )
@@ -368,7 +368,7 @@ lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
     PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
 ]
-s = Scene(resolution=(500, 500), lights=lights)
+s = Scene(size=(500, 500), lights=lights)
 cam3d!(s)
 c = cameracontrols(s)
 c.near[] = 5

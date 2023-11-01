@@ -135,7 +135,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         clipboard() = CLIP[]
     end
     @testset "copy_paste" begin
-        f = Figure(resolution=(640,480))
+        f = Figure(size=(640,480))
         tb = Textbox(f[1,1], placeholder="Copy/paste into me")
         e = events(f.scene)
 
@@ -166,7 +166,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         # Refresh figure to test right control + v combination
         empty!(f)
 
-        f = Figure(resolution=(640,480))
+        f = Figure(size=(640,480))
         tb = Textbox(f[1,1], placeholder="Copy/paste into me")
         e = events(f.scene)
 
@@ -196,7 +196,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
     # This testset is based on the results the current camera system has. If
     # cam3d! is updated this is likely to break.
     @testset "cam3d!" begin
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
@@ -231,7 +231,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
 
         # Reset state so this is indepentent from the last checks
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
@@ -266,7 +266,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
 
         # Reset state
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
@@ -292,7 +292,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
     end
 
     @testset "mouse state machine" begin
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         bbox = Observable(Rect2(200, 200, 400, 300))
         msm = addmouseevents!(scene, bbox, priority=typemax(Int))
@@ -443,7 +443,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
     # TODO: test more
     @testset "Axis Interactions" begin
-        f = Figure(resolution = (400, 400))
+        f = Figure(size = (400, 400))
         a = Axis(f[1, 1])
         e = events(f)
 

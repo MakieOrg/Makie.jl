@@ -28,7 +28,7 @@ brain = niread(Makie.assetpath("brain.nii.gz")).raw
 mini, maxi = extrema(brain)
 normed = Float32.((brain .- mini) ./ (maxi - mini))
 
-fig = Figure(resolution=(1000, 450))
+fig = Figure(size=(1000, 450))
 # Make a colormap, with the first value being transparent
 colormap = to_colormap(:plasma)
 colormap[1] = RGBAf(0,0,0,0)

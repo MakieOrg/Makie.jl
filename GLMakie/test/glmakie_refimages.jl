@@ -117,7 +117,7 @@ end
         PointLight(RGBf(0,1,1), Point3f( 4, -4, -2.5), 10.0),
     ]
 
-    scene = Scene(resolution = (400, 400), camera = cam3d!, lights = lights)
+    scene = Scene(size = (400, 400), camera = cam3d!, lights = lights)
     mesh!(
         scene,
         Rect3f(Point3f(-10, -10, -2.99), Vec3f(20, 20, 0.02)),
@@ -137,7 +137,7 @@ end
         DirectionalLight(RGBf(0,0,1), angle2dir(240)),
     ]
 
-    scene = Scene(resolution = (400, 400), camera = cam3d!, center = false, lights = lights, backgroundcolor = :black)
+    scene = Scene(size = (400, 400), camera = cam3d!, center = false, lights = lights, backgroundcolor = :black)
     mesh!(
         scene, Sphere(Point3f(0), 1f0), color = :white, shading = MultiLightShading,
         specular = Vec3f(1), shininess = 16f0

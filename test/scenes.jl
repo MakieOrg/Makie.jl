@@ -6,6 +6,14 @@
     end
     @test theme(nothing, :nonexistant, default=1) == 1
     @test theme(scene, :nonexistant, default=1) == 1
+
+    # test that deprecated `resolution keyword still works but throws warning`
+    logger = Test.TestLogger()
+    Base.with_logger(logger) do
+        scene = Scene(; resolution = (999, 999), size = (123, 123))
+        @test scene.px_area[] == Rect2i((0, 0), (999, 999))
+    end
+    @test occursin("The `resolution` keyword for `Scene`s and `Figure`s has been deprecated", logger.logs[1].message)
 end
 
 @testset "Lighting" begin

@@ -213,7 +213,7 @@ end
     GLMakie.closeall()
     set_theme!()
     screens = map(1:10) do i
-        fig = Figure(resolution=(500, 500))
+        fig = Figure(size=(500, 500))
         rng  = Random.MersenneTwister(0)
         ax, pl = image(fig[1, 1], 0..1, 0..1, rand(rng, 1000, 1000))
         scatter!(ax, rand(rng, Point2f, 1000), color=:red)
@@ -269,7 +269,7 @@ end
     N = 51
     x = collect(range(0.0, 2π, length=N))
     y = sin.(x)
-    fig, ax, pl = scatter(x, y, figure = (; resolution = (W, H)));
+    fig, ax, pl = scatter(x, y, figure = (; size = (W, H)));
     hidedecorations!(ax)
 
     # On OSX, the native window size has an underlying scale factor that we need to account

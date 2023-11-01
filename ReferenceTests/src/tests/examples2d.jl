@@ -13,7 +13,7 @@ end
 end
 
 @reference_test "heatmap_interpolation" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
     data = RNG.rand(32, 32)
     # the grayscale heatmap hides the problem that interpolation based on values
     # in GLMakie looks different than interpolation based on colors in CairoMakie
@@ -360,7 +360,7 @@ end
 
 
 @reference_test "Simple pie chart" begin
-    fig = Figure(resolution=(800, 800))
+    fig = Figure(size=(800, 800))
     pie(fig[1, 1], 1:5, color=collect(1:5), axis=(;aspect=DataAspect()))
     fig
 end
@@ -420,7 +420,7 @@ end
 @reference_test "space 2D" begin
     # This should generate a regular grid with text in a circle in a box. All
     # sizes and positions are scaled to be equal across all options.
-    fig = Figure(resolution = (700, 700))
+    fig = Figure(size = (700, 700))
     ax = Axis(fig[1, 1], width = 600, height = 600)
     spaces = (:data, :pixel, :relative, :clip)
     xs = [
@@ -462,7 +462,7 @@ end
     # - (x -> data) row should have stretched circle and text ain x direction
     # - (not data -> data) should keep aspect ratio for mesh and lines
     # - (data -> x) should be slightly missaligned with (not data -> x)
-    fig = Figure(resolution = (700, 700))
+    fig = Figure(size = (700, 700))
     ax = Axis(fig[1, 1], width = 600, height = 600)
     spaces = (:data, :pixel, :relative, :clip)
     xs = [
@@ -534,7 +534,7 @@ end
 end
 
 @reference_test "heatmap and image colormap interpolation" begin
-    f = Figure(resolution=(500, 500))
+    f = Figure(size=(500, 500))
     crange = LinRange(0, 255, 10)
     len = length(crange)
     img = zeros(Float32, len, len + 2)
@@ -561,7 +561,7 @@ end
     n = 100
     categorical = [false, true]
     scales = [exp, identity, log, log10]
-    fig = Figure(resolution = (500, 250))
+    fig = Figure(size = (500, 250))
     ax = Axis(fig[1, 1])
     for (i, cat) in enumerate(categorical)
         for (j, scale) in enumerate(scales)
@@ -580,7 +580,7 @@ end
 
 @reference_test "colormap with specific values" begin
     cmap = cgrad([:black,:white,:orange],[0,0.2,1])
-    fig = Figure(resolution=(400,200))
+    fig = Figure(size=(400,200))
     ax = Axis(fig[1,1])
     x = range(0,1,length=50)
     scatter!(fig[1,1],Point2.(x,fill(0.,50)),color=x,colormap=cmap)
@@ -633,7 +633,7 @@ end
 
 @reference_test "minor grid & scales" begin
     data = LinRange(0.01, 0.99, 200)
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
     for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
         row, col = fldmod1(i, 2)
         Axis(f[row, col], yscale = scale, title = string(scale),
@@ -808,7 +808,7 @@ end
 end
 
 @reference_test "contour labels with transform_func" begin
-    f = Figure(resolution = (400, 400))
+    f = Figure(size = (400, 400))
     a = Axis(f[1, 1], xscale = log10)
     xs = 10 .^ range(0, 3, length=101)
     ys = range(1, 4, length=101)
@@ -840,7 +840,7 @@ end
 
 @reference_test "trimspine" begin
     with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
-        f = Figure(resolution = (800, 800))
+        f = Figure(size = (800, 800))
 
         for (i, ts) in enumerate([(true, true), (true, false), (false, true), (false, false)])
             Label(f[0, i], string(ts), tellwidth = false)
@@ -859,7 +859,7 @@ end
 end
 
 @reference_test "hexbin bin int" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -875,7 +875,7 @@ end
 end
 
 @reference_test "hexbin bin tuple" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -893,7 +893,7 @@ end
 
 
 @reference_test "hexbin two cellsizes" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -909,7 +909,7 @@ end
 end
 
 @reference_test "hexbin one cellsize" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -925,7 +925,7 @@ end
 end
 
 @reference_test "hexbin threshold" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.randn(100000)
     y = RNG.randn(100000)
@@ -974,7 +974,7 @@ end
 end
 
 @reference_test "Rich text" begin
-    f = Figure(fontsize = 30, resolution = (800, 600))
+    f = Figure(fontsize = 30, size = (800, 600))
     ax = Axis(f[1, 1],
         limits = (1, 100, 0.001, 1),
         xscale = log10,
@@ -1066,7 +1066,7 @@ end
 end
 
 @reference_test "LaTeXStrings linesegment offsets" begin
-    s = Scene(camera = campixel!, resolution = (600, 600))
+    s = Scene(camera = campixel!, size = (600, 600))
     for (i, (offx, offy)) in enumerate(zip([0, 20, 50], [0, 10, 30]))
         for (j, rot) in enumerate([0, pi/4, pi/2])
             scatter!(s, 150i, 150j, color=:black)
@@ -1078,7 +1078,7 @@ end
 end
 
 @reference_test "Scalar colors from colormaps" begin
-    f = Figure(resolution = (600, 600))
+    f = Figure(size = (600, 600))
     ax = Axis(f[1, 1])
     hidedecorations!(ax)
     hidespines!(ax)
@@ -1107,7 +1107,7 @@ end
     # It seems like we can't define recipes in `@reference_test` yet,
     # so we'll have to fake a recipe's structure.
 
-    fig = Figure(resolution = (600, 600))
+    fig = Figure(size = (600, 600))
     # Create a recipe plot
     ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
     # Plot some recipes at the level below the contour
@@ -1351,7 +1351,7 @@ end
 end
 
 function ppu_test_plot(resolution, px_per_unit, scalefactor)
-    fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; resolution=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
+    fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
     DataInspector(ax)
     hidedecorations!(ax)
     return fig

@@ -378,7 +378,7 @@ end
 
 App() do session::Session
     # We can now use this wherever we want:
-    fig = Figure(resolution=(200, 200))
+    fig = Figure(size=(200, 200))
     contour(fig[1,1], rand(4,4))
     card = GridCard(
         Slider(1:100),

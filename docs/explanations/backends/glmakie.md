@@ -20,13 +20,13 @@ println("~~~")
 The sizes of figures are given in display-independent "logical" dimensions, and the
 GLMakie backend will scale the size of the displayed window on HiDPI/Retina displays
 automatically.
-For example, the default `resolution = (800, 600)` will be shown in a 1600 × 1200 window
+For example, the default `size = (800, 600)` will be shown in a 1600 × 1200 window
 on a HiDPI display which is configured with a 200% scaling factor.
 
 The scaling factor may be overridden by displaying the figure with a different
 `scalefactor` value:
 ```julia
-fig = Figure(resolution = (800, 600))
+fig = Figure(size = (800, 600))
 # ...
 display(fig, scalefactor = 1.5)
 ```
@@ -44,7 +44,7 @@ can be scaled to achieve HiDPI/Retina resolution renderings.
 The resolution scaling defaults to the same factor as the window scaling, but it may
 be independently overridden with the `px_per_unit` argument when showing a figure:
 ```julia
-fig = Figure(resolution = (800, 600))
+fig = Figure(size = (800, 600))
 # ...
 display(fig, px_per_unit = 2)
 ```

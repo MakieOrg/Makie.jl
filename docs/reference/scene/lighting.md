@@ -70,7 +70,7 @@ The different light sources control the `light_direction` and may further adjust
 using CairoMakie
 CairoMakie.activate!() # hide
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 ax11 = LScene(fig[1, 1], scenekw = (lights = [],))
 ax12 = LScene(fig[1, 2], scenekw = (lights = [AmbientLight(RGBf(0, 0, 0))],))
 ax21 = LScene(fig[2, 1], scenekw = (lights = [AmbientLight(RGBf(0.7, 0.7, 0.7))],))
@@ -92,7 +92,7 @@ fig
 using GLMakie
 GLMakie.activate!() # hide
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 ax11 = LScene(fig[1, 1], scenekw = (lights = [DirectionalLight(RGBf(0, 0, 0), Vec3f(-1, 0, 0))],))
 ax12 = LScene(fig[1, 2], scenekw = (lights = [DirectionalLight(RGBf(1, 1, 1), Vec3f(-1, 0, 0))],))
 lights = [
@@ -118,7 +118,7 @@ fig
 using GLMakie
 GLMakie.activate!() # hide
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 ax = LScene(fig[1, 1], scenekw = (lights = [PointLight(RGBf(1, 1, 1), Point3f(0, 0, 0))],))
 ps = [Point3f(x, y, z) for x in (-1, 0, 1) for y in (-1, 0, 1) for z in (-1, 0, 1)]
 meshscatter!(ax, ps, color = :white)
@@ -139,7 +139,7 @@ lights = [
     PointLight(RGBf(2, 2, 0), Point3f( 3, -3, 2), 10),
 ]
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 ax = LScene(fig[1, 1], scenekw = (lights = lights,))
 ps = [Point3f(x, y, 0) for x in -5:5 for y in -5:5]
 meshscatter!(ax, ps, color = :white, markersize = 0.75)
@@ -164,7 +164,7 @@ m = GeometryBasics.Mesh(meta(ps, normals = ps), decompose(GLTriangleFace, faces)
 
 lights = [PointLight(RGBf(10, 4, 2), Point3f(0, 0, 0), 5)]
 
-fig = Figure(resolution = (600, 600), backgroundcolor = :black)
+fig = Figure(size = (600, 600), backgroundcolor = :black)
 ax = LScene(fig[1, 1], scenekw = (lights = lights,), show_axis = false)
 update_cam!(ax.scene, ax.scene.camera_controls, Rect3f(Point3f(-2), Vec3f(4)))
 meshscatter!(
@@ -191,7 +191,7 @@ lights = [
     SpotLight(RGBf(0, 0, 1), Point3f( 3, 0, 3), Vec3f(0,  0, -1), Vec2f(0.25pi, 0.25pi)),
 ]
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 ax = LScene(fig[1, 1], scenekw = (lights = lights,))
 ps = [Point3f(x, y, 0) for x in -5:5 for y in -5:5]
 meshscatter!(ax, ps, color = :white, markersize = 0.75)

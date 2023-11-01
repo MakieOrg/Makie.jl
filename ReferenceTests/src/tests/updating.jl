@@ -43,7 +43,7 @@ end
 function generate_plot(N = 3)
     points = Observable(Point2f[])
     color = Observable(RGBAf[])
-    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(800, 800),))
+    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(800, 800),))
     function update_func(ij)
         push!(points.val, Point2f(Tuple(ij)))
         push!(color.val, RGBAf((Tuple(ij)./N)..., 0, 1))

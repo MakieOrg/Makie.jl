@@ -79,7 +79,7 @@ end
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
 
     # text transforms to pixel space atm (TODO)
-    fig = Figure(resolution = (400, 400))
+    fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1])
     p = text!(ax, Point2f(10), text = "test", fontsize = 20)
     bb = boundingbox(p)
