@@ -288,7 +288,7 @@ Save a `Scene` with the specified filename and format.
 
 ## All Backends
 
-- `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+- `size`: `(width::Int, height::Int)` of the scene in dimensionless units.
 - `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
 - `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
 - Further keywords will be forwarded to the screen.
@@ -307,14 +307,19 @@ end
 
 function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
-        size = size(get_scene(fig)),
+        size = Base.size(get_scene(fig)),
+        resolution = nothing,
         backend = current_backend(),
         update = true,
         screen_config...
     )
     scene = get_scene(fig)
-    if resolution != size(scene)
-        resize!(scene, resolution)
+    if resolution !== nothing
+        @warn "The keyword argument `resolution` for `save()` has been deprecated. Use `size` instead, which better reflects that this is a unitless size and not a pixel resolution."
+        size = resolution
+    end
+    if size != Base.size(scene)
+        resize!(scene, size)
     end
     filename = FileIO.filename(file)
     # Delete previous file if it exists and query only the file string for type.
