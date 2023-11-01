@@ -55,7 +55,7 @@ f = Figure(backgroundcolor = :tomato)
 ```
 \end{examplefigure}
 
-Another common thing to do is to give a figure a different size or resolution.
+Another common thing to do is to give a figure a different size.
 The default is 800x600, let's try halving the height:
 
 \begin{examplefigure}{svg = true}
@@ -184,7 +184,7 @@ scatter(x, y;
 ```
 \end{examplefigure}
 
-The `;` in `(; size = (400, 400))` is nothing special, it just clarifies that we want a one-element `NamedTuple` and not a variable called `resolution`.
+The `;` in `(; size = (400, 400))` is nothing special, it just clarifies that we want a one-element `NamedTuple` and not a variable called `size`.
 It's good habit to include it but it's not needed for `NamedTuple`s with more than one entry.
 
 ## Argument conversions

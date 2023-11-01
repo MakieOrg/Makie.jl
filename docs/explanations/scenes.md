@@ -17,7 +17,7 @@ A Scene's subscenes (also called children) can be accessed through `scene.childr
 
 Any `Scene` with an axis also has a `camera` associated with it; this can be accessed through `camera(scene)`, and its controls through `cameracontrols(scene)`.  More documentation about these is in the \myreflink{Cameras} section.
 
-`Scene`s have a configurable size/resolution. You can set the size in device-independent pixels by doing `Scene(size = (500, 500))`. (More about sizes, resolutions and units in \myreflink{Figure size and units})
+`Scene`s have a configurable size. You can set the size in device-independent pixels by doing `Scene(size = (500, 500))`. (More about sizes, resolutions and units in \myreflink{Figure size and units})
 
 Any keyword argument given to the `Scene` will be propagated to its plots; therefore, you can set the palette or the colormap in the Scene itself.
 
