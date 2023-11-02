@@ -21,7 +21,7 @@ end
     Ray(scene[, cam = cameracontrols(scene)], xy)
 
 Returns a `Ray` into the given `scene` passing through pixel position `xy`. Note
-that the pixel position should be relative to the origin of the scene, as it is 
+that the pixel position should be relative to the origin of the scene, as it is
 when calling `mouseposition_px(scene)`.
 """
 Ray(scene::Scene, xy::VecTypes{2}) = Ray(scene, cameracontrols(scene), xy)
@@ -35,7 +35,7 @@ function Ray(scene::Scene, cam::Camera3D, xy::VecTypes{2})
     u_z = normalize(viewdir)
     u_x = normalize(cross(u_z, cam.upvector[]))
     u_y = normalize(cross(u_x, u_z))
-    
+
     px_width, px_height = widths(scene.px_area[])
     aspect = px_width / px_height
     rel_pos = 2 .* xy ./ (px_width, px_height) .- 1
@@ -70,7 +70,7 @@ end
 
 Ray(scene::Scene, cam, xy::VecTypes{2}) = ray_from_projectionview(scene, xy)
 
-# This method should always work 
+# This method should always work
 function ray_from_projectionview(scene::Scene, xy::VecTypes{2})
     inv_view_proj = inv(camera(scene).projectionview[])
     area = pixelarea(scene)[]
@@ -126,7 +126,7 @@ end
 
 function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::Ray, ϵ = 1e-6)
     return ray_triangle_intersection(
-        to_ndim(Point3f, A, 0f0), to_ndim(Point3f, B, 0f0), to_ndim(Point3f, C, 0f0), 
+        to_ndim(Point3f, A, 0f0), to_ndim(Point3f, B, 0f0), to_ndim(Point3f, C, 0f0),
         ray, ϵ
     )
 end
@@ -206,8 +206,8 @@ end
 """
     position_on_plot(plot, index[, ray::Ray; apply_transform = true])
 
-This function calculates the world or input space position of a ray - plot 
-intersection with the result `plot, idx = pick(...)` and a ray cast from the 
+This function calculates the world or input space position of a ray - plot
+intersection with the result `plot, idx = pick(...)` and a ray cast from the
 picked position. If there is no intersection `Point3f(NaN)` will be returned.
 
 This should be called as
@@ -217,12 +217,12 @@ pos_in_ax = position_on_plot(plot, idx, Ray(ax, px_pos .- minimum(pixelarea(ax.s
 ```
 or more simply `plot, idx, pos_in_ax = ray_assisted_pick(ax, px_pos)`.
 
-You can switch between getting a position in world space (after applying 
-transformations like `log`, `translate!()`, `rotate!()` and `scale!()`) and 
+You can switch between getting a position in world space (after applying
+transformations like `log`, `translate!()`, `rotate!()` and `scale!()`) and
 input space (the raw position data of the plot) by adjusting `apply_transform`.
 
-Note that `position_on_plot` is only implemented for primitive plot types, i.e. 
-the  possible return types of `pick`. Depending on the plot type the calculation 
+Note that `position_on_plot` is only implemented for primitive plot types, i.e.
+the  possible return types of `pick`. Depending on the plot type the calculation
 differs:
 - `scatter` and `meshscatter` return the position of the picked marker/mesh
 - `text` is excluded, always returning `Point3f(NaN)`
@@ -233,26 +233,28 @@ differs:
 """
 function position_on_plot(plot::AbstractPlot, idx::Integer; apply_transform = true)
     return position_on_plot(
-        plot, idx, ray_at_cursor(parent_scene(plot)); 
+        plot, idx, ray_at_cursor(parent_scene(plot));
         apply_transform = apply_transform
     )
 end
 
 
 function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; apply_transform = true)
-    pos = to_ndim(Point3f, plot[1][][idx], 0f0)
-    if apply_transform && !isnan(pos)
-        return apply_transform_and_model(plot, pos)
+    point = plot[1][][idx]
+    point3f = to_ndim(Point3f, point, 0.0f0)
+    point_t = if apply_transform && !isnan(point3f)
+        apply_transform_and_model(plot, point3f)
     else
-        return pos
+        point3f
     end
+    return to_ndim(typeof(point), point_t, 0.0f0)
 end
 
 function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply_transform = true)
     p0, p1 = apply_transform_and_model(plot, plot[1][][idx-1:idx])
 
     pos = closest_point_on_line(p0, p1, ray)
-    
+
     if apply_transform
         return pos
     else
@@ -264,8 +266,8 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
 end
 
 function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_transform = true)
-    # Heatmap and Image are always a Rect2f. The transform function is currently 
-    # not allowed to change this, so applying it should be fine. Applying the 
+    # Heatmap and Image are always a Rect2f. The transform function is currently
+    # not allowed to change this, so applying it should be fine. Applying the
     # model matrix may add a z component to the Rect2f, which we can't represent.
     # So we instead inverse-transform the ray
     space = to_value(get(plot, :space, :data))
@@ -274,7 +276,7 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
     end
     ray = transform(inv(plot.model[]), ray)
     pos = ray_rect_intersection(Rect2f(p0, p1 - p0), ray)
-    
+
     if apply_transform
         p4d = plot.model[] * to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
@@ -305,7 +307,7 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
             end
         end
     end
-          
+
     @debug "Did not find intersection for index = $idx when casting a ray on mesh."
 
     return Point3f(NaN)
@@ -335,7 +337,7 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     ray = transform(inv(plot.model[]), ray)
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
-    
+
     # This isn't the most accurate so we include some neighboring faces
     pos = Point3f(NaN)
     for i in _i-1:_i+1, j in _j-1:_j+1
