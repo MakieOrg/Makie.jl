@@ -81,12 +81,12 @@ function plot!(plot::Violin)
             i1, i2 = searchsortedfirst(k.x, l1), searchsortedlast(k.x, l2)
             kde = (x = view(k.x, i1:i2), density = view(k.density, i1:i2))
             c = getuniquevalue(color, idxs)
-            return (x = key.x, side = key.side, color = to_color(c), kde = kde, median = median(v))
+            return (x = key.x, side = key.side, color = to_color(c), kde = kde, median = median(v), amount = length(idxs))
         end
 
         max = if max_density === automatic
             maximum(specs) do spec
-                _, max = extrema_nan(spec.kde.density)
+                _, max = extrema_nan(spec.kde.density .* spec.amount)
                 return max
             end
         else
@@ -98,7 +98,7 @@ function plot!(plot::Violin)
         colors = RGBA{Float32}[]
 
         for spec in specs
-            scale = 0.5*violinwidth/max
+            scale = 0.5 * violinwidth * spec.amount / max
             xl = reverse(spec.x .- spec.kde.density .* scale)
             xr = spec.x .+ spec.kde.density .* scale
             yl = reverse(spec.kde.x)
