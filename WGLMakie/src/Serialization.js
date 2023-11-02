@@ -547,6 +547,7 @@ export function deserialize_scene(data, screen) {
     scene.frustumCulled = false;
     scene.pixelarea = data.pixelarea;
     scene.backgroundcolor = data.backgroundcolor;
+    scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
     scene.camera_relative_light = data.camera_relative_light;

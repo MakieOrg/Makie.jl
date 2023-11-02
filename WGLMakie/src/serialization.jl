@@ -298,6 +298,7 @@ function serialize_scene(scene::Scene)
 
     serialized = Dict(:pixelarea => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor),
+                      :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor),
                       :clearscene => scene.clear,
                       :camera => serialize_camera(scene),
                       :light_direction => light_dir,

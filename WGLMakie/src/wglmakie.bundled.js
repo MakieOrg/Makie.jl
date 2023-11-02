@@ -21874,6 +21874,7 @@ function deserialize_scene(data, screen) {
     scene.frustumCulled = false;
     scene.pixelarea = data.pixelarea;
     scene.backgroundcolor = data.backgroundcolor;
+    scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
     scene.camera_relative_light = data.camera_relative_light;
@@ -21945,7 +21946,8 @@ function render_scene(scene, picking = false) {
             renderer.setClearAlpha(0);
             renderer.setClearColor(new mod.Color(0), 0.0);
         } else {
-            renderer.setClearColor(scene.backgroundcolor.value);
+            const alpha = scene.backgroundcolor_alpha.value;
+            renderer.setClearColor(scene.backgroundcolor.value, alpha);
         }
         renderer.render(scene, camera);
     }
@@ -21995,6 +21997,13 @@ function get_body_size() {
     return [
         width,
         height
+    ];
+}
+function get_parent_size(canvas) {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    return [
+        rect.width,
+        rect.height
     ];
 }
 function wglerror(gl, error) {
@@ -22112,7 +22121,12 @@ function add_canvas_events(screen, comm, resize_to_body) {
     canvas.addEventListener("contextmenu", (e)=>e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
     function resize_callback() {
-        const [width, height] = get_body_size();
+        let width, height;
+        if (true) {
+            [width, height] = get_body_size();
+        } else {
+            [width, height] = get_parent_size(canvas);
+        }
         comm.notify({
             resize: [
                 width / winscale,
@@ -22371,6 +22385,9 @@ function pick_sorted(scene, xy, range) {
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dx; j++){
             const d = x - i ^ 2 + (y - j) ^ 2;
+            if (plot_matrix.length <= pindex) {
+                continue;
+            }
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             const plot_index = selected.findIndex((x)=>x[0].plot_uuid == plot_uuid);
