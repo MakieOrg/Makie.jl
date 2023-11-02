@@ -163,7 +163,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         glDrawBuffer(normal_occ_id)  # occlusion buffer
         glViewport(0, 0, w, h)
         glEnable(GL_SCISSOR_TEST)
-
+        ppu = screen.px_per_unit[]
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
             # This should be per scene because projection may vary between
@@ -171,7 +171,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
             # the same region (though this is not guaranteed...)
             isempty(scene.children) || continue
             a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            glScissor(ppu * minimum(a)..., ppu * widths(a)...)
             # update uniforms
             data1[:projection] = scene.camera.projection[]
             data1[:bias] = scene.ssao.bias[]
@@ -185,7 +185,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
             # Select the area of one leaf scene
             isempty(scene.children) || continue
             a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            glScissor(ppu * minimum(a)..., ppu * widths(a)...)
             # update uniforms
             data2[:blur_range] = scene.ssao.blur
             GLAbstraction.render(pass2)
