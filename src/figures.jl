@@ -26,6 +26,9 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
+get_scene(gp::GridLayoutBase.GridPosition) = get_scene(get_figure(gp))
+get_scene(gp::GridLayoutBase.GridSubposition) = get_scene(get_figure(gp))
+
 
 
 const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
