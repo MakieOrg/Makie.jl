@@ -157,8 +157,13 @@ function default_shading!(plot, lights::Vector{<: AbstractLight})
     # Bad type
     shading = to_value(plot.attributes[:shading])
     if !(shading isa MakieCore.ShadingAlgorithm || shading === automatic)
-        @warn "`shading = $shading` is not valid. Use `automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `automatic`."
-        shading = automatic
+        prev = shading
+        if (shading isa Bool) && (shading == false)
+            shading = NoShading
+        else
+            shading = automatic
+        end
+        @warn "`shading = $prev` is not valid. Use `automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
     end
 
     # automatic conversion
@@ -184,11 +189,13 @@ function default_shading!(plot, lights::Vector{<: AbstractLight})
         end
 
         if dir_light_count + ambient_count == 0
-            plot.attributes[:shading] = NoShading
+            shading = NoShading
         else
-            plot.attributes[:shading] = FastShading
+            shading = FastShading
         end
     end
+
+    plot.attributes[:shading] = shading
 
     return
 end
