@@ -194,7 +194,6 @@ end
     x = [cospi(φ) * sinpi(θ) for θ in θ, φ in φ]
     y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
     z = [cospi(θ) for θ in θ, φ in φ]
-    RNG.rand([-1f0, 1f0], 3)
     pts = vec(Point3f.(x, y, z))
     f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end

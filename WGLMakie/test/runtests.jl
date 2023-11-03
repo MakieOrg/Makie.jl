@@ -31,20 +31,16 @@ excludes = Set([
     "FEM mesh 2D",
     "FEM polygon 2D",
     # missing transparency & image
-    "Wireframe of a Surface",
     "Image on Surface Sphere",
-    "Surface with image",
     # Marker size seems wrong in some occasions:
     "Hbox",
     "UnicodeMarker",
     # Not sure, looks pretty similar to me! Maybe blend mode?
     "Test heatmap + image overlap",
-    "heatmaps & surface",
-    "OldAxis + Surface",
+    # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
     "Order Independent Transparency",
     "Record Video",
     "fast pixel marker",
-    "Animated surface and wireframe",
     "Array of Images Scatter",
     "Image Scatter different sizes",
     "scatter with stroke",
