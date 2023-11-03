@@ -73,9 +73,17 @@ vec4 color_lookup(Nothing colormap, int index)
     return vec4(0);
 }
 
-vec3 gennormal(vec3 uvw, float d)
+vec3 gennormal(vec3 uvw, float d, vec3 o)
 {
+    // uvw samples positions (0..1 values)
+    // d is the sampling step. Could be any small value here
+    // o is half the uvw distance between two voxels. A distance smaller than
+    // that will result in equal positions when sampling on the edge of the
+    // volume, generating broken normals.
     vec3 a, b;
+
+    float eps = 0.001;
+
     // handle normals at edges!
     if(uvw.x + d >= 1.0){
         return vec3(1, 0, 0);
@@ -97,19 +105,25 @@ vec3 gennormal(vec3 uvw, float d)
         return vec3(0, 0, -1);
     }
 
-    a.x = texture(volumedata, uvw - vec3(d,0.0,0.0)).r;
-    b.x = texture(volumedata, uvw + vec3(d,0.0,0.0)).r;
+    a.x = texture(volumedata, uvw - vec3(o.x, 0.0, 0.0)).r;
+    b.x = texture(volumedata, uvw + vec3(o.x, 0.0, 0.0)).r;
 
-    a.y = texture(volumedata, uvw - vec3(0.0,d,0.0)).r;
-    b.y = texture(volumedata, uvw + vec3(0.0,d,0.0)).r;
+    a.y = texture(volumedata, uvw - vec3(0.0, o.y, 0.0)).r;
+    b.y = texture(volumedata, uvw + vec3(0.0, o.y, 0.0)).r;
 
-    a.z = texture(volumedata, uvw - vec3(0.0,0.0,d)).r;
-    b.z = texture(volumedata, uvw + vec3(0.0,0.0,d)).r;
+    a.z = texture(volumedata, uvw - vec3(0.0, 0.0, o.z)).r;
+    b.z = texture(volumedata, uvw + vec3(0.0, 0.0, o.z)).r;
     return normalize(a-b);
 }
 
 #ifndef NO_SHADING
 vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color);
+#endif
+
+#ifdef NO_SHADING
+vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
+    return normal;
+}
 #endif
 
 // Simple random generator found: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -198,6 +212,7 @@ vec4 contours(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(dir);
+    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
     {{depth_init}}
     // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i) {
@@ -209,7 +224,7 @@ vec4 contours(vec3 front, vec3 dir)
             // may write
             // vec4 frag_coord = projectionview * model * vec4(pos, 1);
             // depth = min(depth, frag_coord.z / frag_coord.w);
-            vec3 N = gennormal(pos, step_size);
+            vec3 N = gennormal(pos, step_size, edge_gap);
             vec4 world_pos = model * vec4(pos, 1);
             vec3 opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
             Lo += (T * opacity) * opaque;
@@ -232,6 +247,7 @@ vec4 isosurface(vec3 front, vec3 dir)
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
     vec3 camdir = normalize(dir);
+    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
     {{depth_init}}
     // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i){
@@ -241,7 +257,7 @@ vec4 isosurface(vec3 front, vec3 dir)
             // may write:
             // vec4 frag_coord = projectionview * model * vec4(pos, 1);
             // depth = min(depth, frag_coord.z / frag_coord.w);
-            vec3 N = gennormal(pos, step_size);
+            vec3 N = gennormal(pos, step_size, edge_gap);
             vec4 world_pos = model * vec4(pos, 1);
             c = vec4(
                 illuminate(world_pos.xyz / world_pos.w, camdir, N, diffuse_color.rgb),
