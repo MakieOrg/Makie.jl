@@ -84,7 +84,7 @@ function _position_calc(
         grid::Grid{2}, position_z::MatTypes{T}, target::Type{Texture}
     ) where T<:AbstractFloat
     """
-    int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
+    int index1D = index + offseti.x + offseti.y * dims.x; // + (index/(dims.x-1));
     ivec2 index2D = ind2sub(dims, index1D);
     vec2 index01 = (vec2(index2D) + 0.5) / (vec2(dims));
 
