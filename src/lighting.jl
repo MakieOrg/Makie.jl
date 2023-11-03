@@ -179,12 +179,12 @@ function default_shading!(plot, lights::Vector{<: AbstractLight})
             elseif light isa EnvironmentLight
                 continue
             else
-                shading = MultiLightShading
-                break
+                plot.attributes[:shading] = MultiLightShading
+                return
             end
             if ambient_count > 1 || dir_light_count > 1
-                shading = MultiLightShading
-                break
+                plot.attributes[:shading] = MultiLightShading
+                return
             end
         end
 
