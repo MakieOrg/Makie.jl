@@ -18,12 +18,19 @@ function create_shader(mscene::Scene, plot::Surface)
     fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
     fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
-    # Why does this need to be different from surface2mesh?
-    uv = Buffer(lift(decompose_uv, plot, rect))
+    # This adjusts uvs (compared to decompose_uv) so texture sampling starts at
+    # the center of a texture pixel rather than the edge, fixing
+    # https://github.com/MakieOrg/Makie.jl/pull/2598#discussion_r1152552196
+    uv = Buffer(lift(plot, rect) do r
+        Nx, Ny = r.nvertices
+        f = Vec2f(1 / Nx, 1 / Ny)
+        [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+    end)
     normals = Buffer(lift(Makie.nan_aware_normals, plot, ps, fs))
-    per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
 
+    per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
     uniforms = Dict(:uniform_color => color, :color => false)
+
     return draw_mesh(mscene, per_vertex, plot, uniforms)
 end
 
