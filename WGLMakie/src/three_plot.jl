@@ -44,7 +44,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         try {
             const renderer = WGL.create_scene(
                 $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
-                $(ta), $(config.framerate), $(config.resize_to_body), $(config.px_per_unit), $(config.scalefactor)
+                $(ta), $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
             )
             const gl = renderer.getContext()
             const err = gl.getError()

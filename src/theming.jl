@@ -124,7 +124,10 @@ const MAKIE_DEFAULT_THEME = Attributes(
 
     WGLMakie = Attributes(
         framerate = 30.0,
-        resize_to_body = false,
+        resize_to = nothing,
+        # DEPRECATED in favor of resize_to
+        # still needs to be here to gracefully deprecate it
+        resize_to_body = nothing,
         px_per_unit = automatic,
         scalefactor = automatic
     ),

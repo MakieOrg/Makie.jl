@@ -48,21 +48,75 @@ end
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
-    resize_to_body::Bool # false
+    resize_to::Any # nothing
     # We use nothing, since that serializes correctly to nothing in JS, which is important since that's where we calculate the defaults!
     # For the theming, we need to use Automatic though, since that's the Makie meaning for gets calculated somewhere else
     px_per_unit::Union{Nothing,Float64} # nothing, a.k.a the browser px_per_unit (devicePixelRatio)
     scalefactor::Union{Nothing,Float64}
-    function ScreenConfig(framerate::Number, resize_to_body::Bool, px_per_unit::Union{Number, Automatic, Nothing}, scalefactor::Union{Number, Automatic, Nothing})
+    resize_to_body::Bool
+    function ScreenConfig(
+            framerate::Number, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
+            scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool})
+
         if px_per_unit isa Automatic
             px_per_unit = nothing
         end
         if scalefactor isa Automatic
             scalefactor = nothing
         end
-        return new(framerate, resize_to_body, px_per_unit, scalefactor)
+        if resize_to_body isa Bool
+            @warn("`resize_to_body` is deprecated, use `resize_to = :body` instead")
+            if !(resize_to isa Nothing)
+                @warn("Setting `resize_to_body` and `resize_to` at the same time, only use resize_to")
+            else
+                resize_to = resize_to_body ? :body : nothing
+            end
+        end
+        ResizeType = Union{Nothing, Symbol}
+        if !(resize_to isa Union{ResizeType,Tuple{ResizeType,ResizeType}})
+            error("Only nothing, :parent, or :body allowed, or a tuple of those for width/height.")
+        end
+        return new(framerate, resize_to, px_per_unit, scalefactor)
     end
 end
+
+
+"""
+    WithConfig(fig::Makie.FigureLike; screen_config...)
+
+Allows to pass a screenconfig to a figure, inside a JSServe.App.
+This circumvents using `WGLMakie.activate!(; screen_config...)` inside an App, which modifies these values globally.
+Example:
+
+```julia
+App() do
+    f1 = scatter(1:4)
+    f2 = scatter(1:4; figure=(; backgroundcolor=:gray))
+    wc = WGLMakie.WithConfig(f2; resize_to=:parent)
+    DOM.div(f1, DOM.div(wc; style="height: 200px; width: 50%"))
+end
+```
+"""
+struct WithConfig
+    fig::Makie.FigureLike
+    config::ScreenConfig
+end
+
+function WithConfig(fig::Makie.FigureLike; kw...)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(kw))
+    return WithConfig(fig, config)
+end
+
+function JSServe.jsrender(session::Session, wconfig::WithConfig)
+    fig = wconfig.fig
+    Makie.update_state_before_display!(fig)
+    scene = Makie.get_scene(fig)
+    screen = Screen(scene, wconfig.config)
+    three, canvas, on_init = render_with_init(screen, session, scene)
+    return canvas
+end
+
+
 
 """
     Screen(args...; screen_config...)
@@ -96,7 +150,7 @@ function Base.show(io::IO, screen::Screen)
     sf = c.scalefactor
     print(io, """WGLMakie.Screen(
         framerate = $(c.framerate),
-        resize_to_body = $(c.resize_to_body),
+        resize_to = $(c.resize_to),
         px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
         scalefactor = $(isnothing(sf) ? :automatic : sf)
     )""")

@@ -22056,7 +22056,7 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
     const err = "THREE.WebGLProgram: Shader Error " + wglerror(gl, gl.getError()) + " - " + "VALIDATE_STATUS " + gl.getProgramParameter(program, gl.VALIDATE_STATUS) + "\n\n" + "Program Info Log:\n" + programLog + "\n" + vertexErrors + "\n" + fragmentErrors + "\n" + "Fragment log:\n" + fragmentLog + "Vertex log:\n" + vertexLog;
     JSServe.Connection.send_warning(err);
 }
-function add_canvas_events(screen, comm, resize_to_body) {
+function add_canvas_events(screen, comm, resize_to) {
     const { canvas , winscale  } = screen;
     function mouse_callback(event) {
         const [x, y] = events2unitless(screen, event);
@@ -22122,9 +22122,9 @@ function add_canvas_events(screen, comm, resize_to_body) {
     canvas.addEventListener("focusout", contextmenu);
     function resize_callback() {
         let width, height;
-        if (true) {
+        if (resize_to == "body") {
             [width, height] = get_body_size();
-        } else {
+        } else if (resize_to == "parent") {
             [width, height] = get_parent_size(canvas);
         }
         comm.notify({
@@ -22134,7 +22134,7 @@ function add_canvas_events(screen, comm, resize_to_body) {
             ]
         });
     }
-    if (resize_to_body) {
+    if (resize_to) {
         const resize_callback_throttled = throttle_function(resize_callback, 100);
         window.addEventListener("resize", (event)=>resize_callback_throttled());
         resize_callback_throttled();
@@ -22197,7 +22197,7 @@ function add_picking_target(screen) {
     screen.picking_target = new mod.WebGLRenderTarget(w, h);
     return;
 }
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, texture_atlas_obs, fps, resize_to_body, px_per_unit, scalefactor) {
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, texture_atlas_obs, fps, resize_to, px_per_unit, scalefactor) {
     if (!scalefactor) {
         scalefactor = window.devicePixelRatio || 1.0;
     }
@@ -22223,7 +22223,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         scalefactor,
         winscale
     };
-    add_canvas_events(screen, comm, resize_to_body);
+    add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
     const three_scene = deserialize_scene(scenes, screen);
     start_renderloop(three_scene);
