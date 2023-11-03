@@ -113,7 +113,14 @@ vec3 gennormal(vec3 uvw, float d, vec3 o)
 
     a.z = texture(volumedata, uvw - vec3(0.0, 0.0, o.z)).r;
     b.z = texture(volumedata, uvw + vec3(0.0, 0.0, o.z)).r;
-    return normalize(a-b);
+
+    vec3 diff = a - b;
+    float n = length(diff);
+
+    if (n < 0.000000000001) // 1e-12
+        return diff;
+
+    return diff / n;
 }
 
 #ifndef NO_SHADING
