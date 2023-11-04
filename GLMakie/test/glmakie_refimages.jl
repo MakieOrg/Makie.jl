@@ -145,3 +145,20 @@ end
     update_cam!(scene, Vec3f(0, 0, 3), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
     scene
 end
+
+
+@reference_test "Complex Lighting - DirectionalLight + specular reflection" begin
+    lights = Makie.AbstractLight[
+        AmbientLight(RGBf(0.1, 0.1, 0.1)),
+        RectLight(RGBf(0.5, 0, 0), Point3f(-1, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
+        RectLight(RGBf(0, 0.5, 0), Point3f(-1,  1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
+        RectLight(RGBf(0, 0, 0.5), Point3f( 1,  1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
+        RectLight(RGBf(0.5, 0.5, 0.5), Point3f( 1, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
+    ]
+
+    scene = Scene(lights = lights, camera = cam3d!)
+    p = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
+    update_cam!(scene, Vec3f(0, 0, 10), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
+
+    scene
+end
