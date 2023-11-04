@@ -104,6 +104,7 @@ const int Ambient          = 1;
 const int PointLight       = 2;
 const int DirectionalLight = 3;
 const int SpotLight        = 4;
+const int RectLight        = 5;
 
 // light parameters (maybe invalid depending on light type)
 uniform int N_lights;
@@ -147,6 +148,52 @@ vec3 calc_spot_light(vec3 light_color, int idx, vec3 world_pos, vec3 camdir, vec
     return intensity * blinn_phong(light_color, light_dir, camdir, normal, color);
 }
 
+vec3 calc_rect_light(vec3 light_color, int idx, vec3 world_pos, vec3 camdir, vec3 normal, vec3 color) {
+    // extract args
+    vec3 origin = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
+    vec3 u1 = vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]);
+    vec3 u2 = vec3(light_parameters[idx+6], light_parameters[idx+7], light_parameters[idx+8]);
+    vec3 n = normalize(cross(u1, u2));
+
+    // // mat3 basis = transpose(mat3(u1, u2, n));
+    // // vec3 weights = basis * (world_pos - origin);
+    // // vec3 position = origin + clamp(weights.x, -0.5, 0.5) * u1 + clamp(weights.y, -0.5, 0.5) * u2;
+
+    // // world_pos + t * normal hits plane
+    // float t = dot(origin - world_pos, n) / (0.01 + abs(dot(normal, n)));
+    // vec3 dir = world_pos + t * normal - origin;
+    // float w1 = dot(dir, u1) / dot(u1, u1);
+    // float w2 = dot(dir, u2) / dot(u2, u2);
+    // vec3 position = origin + clamp(w1, -0.5, 0.5) * u1 + clamp(w2, -0.5, 0.5) * u2;
+
+    // vec3 light_dir = normalize(world_pos - position);
+    // // float intensity = 1.0;
+    // // float intensity = 0.5 + 0.5 * smoothstep(0.45, 0.55, 1-abs(w1)) * smoothstep(0.45, 0.55, 1-abs(w2));
+    // float intensity = smoothstep(0.45, 0.55, 1-abs(w1)) * smoothstep(0.45, 0.55, 1-abs(w2));
+    // // float intensity = step(0.5, 1-abs(w1)) * step(0.5, 1-abs(w2));
+
+    // light_dir = normalize(intensity * light_dir + (1 - intensity) * normalize(world_pos - origin));
+    // intensity =
+
+    // // vec3 c = vec3(intensity, 0, 1-intensity);
+    // // return blinn_phong(light_color, light_dir, camdir, normal, c);
+    // return intensity * blinn_phong(light_color, light_dir, camdir, normal, color);
+
+    vec3 dir = world_pos - origin;
+    float w1 = dot(dir, u1) / dot(u1, u1);
+    float w2 = dot(dir, u2) / dot(u2, u2);
+    vec3 position = origin + clamp(w1, -0.5, 0.5) * u1 + clamp(w2, -0.5, 0.5) * u2;
+
+    vec3 light_dir = normalize(world_pos - position);
+    // float intensity = 0.5 + 0.5 * smoothstep(0.0, 0.55, 1-abs(w1)) * smoothstep(0.0, 0.55, 1-abs(w2));
+    // float intensity = 0.5 + 0.5 * min(smoothstep(0.45, 0.55, 1-abs(w1)), smoothstep(0.45, 0.55, 1-abs(w2)));
+    // float intensity = 0.5 + 0.5 * step(0.5, 1-abs(w1)) * step(0.5, 1-abs(w2));
+    // float intensity = step(0.5, 1-abs(w1)) * step(0.5, 1-abs(w2));
+    float intensity = smoothstep(0.45, 0.55, 1-abs(w1)) * smoothstep(0.45, 0.55, 1-abs(w2));
+
+    return intensity * blinn_phong(light_color, light_dir, camdir, normal, color);
+}
+
 vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
     vec3 final_color = vec3(0);
     int idx = 0;
@@ -166,6 +213,10 @@ vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
         case SpotLight:
             final_color += calc_spot_light(light_colors[i], idx, world_pos, camdir, normal, base_color);
             idx += 8; // 3 position, 3 direction, 1 parameter
+            break;
+        case RectLight:
+            final_color += calc_rect_light(light_colors[i], idx, world_pos, camdir, normal, base_color);
+            idx += 9;
             break;
         default:
             return vec3(1,0,1); // debug magenta

@@ -9,6 +9,7 @@ module LightType
     const PointLight       = 2
     const DirectionalLight = 3
     const SpotLight        = 4
+    const RectLight        = 5
 end
 
 # Each light should implement
@@ -142,6 +143,76 @@ struct EnvironmentLight <: AbstractLight
     intensity::Observable{Float32}
     image::Observable{Matrix{RGBf}}
 end
+
+"""
+    RectLight(color, r::Rect2)
+    RectLight(color, center::Point3f, b1::Vec3f, b2::Vec3f)
+
+Creates a RectLight with a given color. The first constructor derives the light
+from a `Rect2` extending in x and y direction. The second specifies the `center`
+of the rect (or more accurately parallelogram) with `b1` and `b2` specifying the
+width and height directions (including scale).
+
+Note that RectLight implements `translate!`, `rotate!` and `scale!` to simplify
+adjusting the light.
+"""
+struct RectLight <: AbstractLight
+    color::Observable{RGBf}
+    position::Observable{Point3f}
+    u1::Observable{Vec3f}
+    u2::Observable{Vec3f}
+end
+
+function RectLight(color::Union{Colorant, Observable{<: Colorant}}, r::Rect2)
+    mini = minimum(r); ws = widths(r)
+    position = Observable(to_ndim(Point3f, mini + 0.5 * ws, 0))
+    u1 = Observable(Vec3f(ws[1], 0, 0))
+    u2 = Observable(Vec3f(0, ws[2], 0))
+    return RectLight(color, position, u1, u2)
+end
+
+# Implement Transformable interface (more or less) to simplify working with
+# RectLights
+
+function translate!(::Type{T}, l::RectLight, v) where T
+    offset = to_ndim(Vec3f, Float32.(v), 0)
+    if T === Accum
+        l.position[] = l.position[] + offset
+    elseif T === Absolute
+        l.position[] = offset
+    else
+        error("Unknown translation type: $T")
+    end
+end
+translate!(l::RectLight, v) = translate!(Absolute, l, v)
+
+function rotate!(l::RectLight, q...)
+    rot = convert_attribute(q, key"rotation"())
+    l.u1[] = rot * l.u1[]
+    l.u2[] = rot * l.u2[]
+end
+
+function scale!(::Type{T}, l::RectLight, s) where T
+    scale = to_ndim(Vec2f, Float32.(s), 0)
+    if T === Accum
+        l.u1[] = scale[1] * l.u1[]
+        l.u2[] = scale[2] * l.u2[]
+    elseif T === Absolute
+        l.u1[] = scale[1] * normalize(l.u1[])
+        l.u2[] = scale[2] * normalize(l.u2[])
+    else
+        error("Unknown translation type: $T")
+    end
+end
+scale!(l::RectLight, x::Real, y::Real) = scale!(Accum, l, Vec2f(x, y))
+scale!(l::RectLight, xy::VecTypes) = scale!(Accum, l, xy)
+
+
+light_type(::RectLight) = LightType.RectLight
+light_color(l::RectLight) = l.color[]
+
+
+################################################################################
 
 
 function get_one_light(lights, Typ)

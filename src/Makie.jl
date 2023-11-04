@@ -349,7 +349,7 @@ export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatte
 export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
 export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
 
-export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, SSAO
+export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 
 include("precompiles.jl")
 
