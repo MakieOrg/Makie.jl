@@ -155,6 +155,9 @@ width and height directions (including scale).
 
 Note that RectLight implements `translate!`, `rotate!` and `scale!` to simplify
 adjusting the light.
+
+Availability:
+- GLMakie with `Shading = MultiLightShading`
 """
 struct RectLight <: AbstractLight
     color::Observable{RGBf}

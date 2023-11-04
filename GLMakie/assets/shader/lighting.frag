@@ -155,41 +155,24 @@ vec3 calc_rect_light(vec3 light_color, int idx, vec3 world_pos, vec3 camdir, vec
     vec3 u2 = vec3(light_parameters[idx+6], light_parameters[idx+7], light_parameters[idx+8]);
     vec3 n = normalize(cross(u1, u2));
 
-    // // mat3 basis = transpose(mat3(u1, u2, n));
-    // // vec3 weights = basis * (world_pos - origin);
-    // // vec3 position = origin + clamp(weights.x, -0.5, 0.5) * u1 + clamp(weights.y, -0.5, 0.5) * u2;
-
-    // // world_pos + t * normal hits plane
-    // float t = dot(origin - world_pos, n) / (0.01 + abs(dot(normal, n)));
-    // vec3 dir = world_pos + t * normal - origin;
-    // float w1 = dot(dir, u1) / dot(u1, u1);
-    // float w2 = dot(dir, u2) / dot(u2, u2);
-    // vec3 position = origin + clamp(w1, -0.5, 0.5) * u1 + clamp(w2, -0.5, 0.5) * u2;
-
-    // vec3 light_dir = normalize(world_pos - position);
-    // // float intensity = 1.0;
-    // // float intensity = 0.5 + 0.5 * smoothstep(0.45, 0.55, 1-abs(w1)) * smoothstep(0.45, 0.55, 1-abs(w2));
-    // float intensity = smoothstep(0.45, 0.55, 1-abs(w1)) * smoothstep(0.45, 0.55, 1-abs(w2));
-    // // float intensity = step(0.5, 1-abs(w1)) * step(0.5, 1-abs(w2));
-
-    // light_dir = normalize(intensity * light_dir + (1 - intensity) * normalize(world_pos - origin));
-    // intensity =
-
-    // // vec3 c = vec3(intensity, 0, 1-intensity);
-    // // return blinn_phong(light_color, light_dir, camdir, normal, c);
-    // return intensity * blinn_phong(light_color, light_dir, camdir, normal, color);
-
+    // Find the intersection of a ray from world_pos in - plane normal direction
+    // with the plane. With norm(u1) and norm(u2) being the width and height of
+    // the rect, the edge is hit at w1/2 = +- 0.5.
     vec3 dir = world_pos - origin;
     float w1 = dot(dir, u1) / dot(u1, u1);
     float w2 = dot(dir, u2) / dot(u2, u2);
-    vec3 position = origin + clamp(w1, -0.5, 0.5) * u1 + clamp(w2, -0.5, 0.5) * u2;
 
-    vec3 light_dir = normalize(world_pos - position);
-    // float intensity = 0.5 + 0.5 * smoothstep(0.0, 0.55, 1-abs(w1)) * smoothstep(0.0, 0.55, 1-abs(w2));
-    // float intensity = 0.5 + 0.5 * min(smoothstep(0.45, 0.55, 1-abs(w1)), smoothstep(0.45, 0.55, 1-abs(w2)));
-    // float intensity = 0.5 + 0.5 * step(0.5, 1-abs(w1)) * step(0.5, 1-abs(w2));
-    // float intensity = step(0.5, 1-abs(w1)) * step(0.5, 1-abs(w2));
+    // mask out light rays that aren't parallel to the plane normal
     float intensity = smoothstep(0.45, 0.55, 1-abs(w1)) * smoothstep(0.45, 0.55, 1-abs(w2));
+
+    // If we do not mask the plane we may want to consider light rays coming from
+    // the closest edge.
+    // vec3 position = origin + clamp(w1, -0.5, 0.5) * u1 + clamp(w2, -0.5, 0.5) * u2;
+    // vec3 light_dir = normalize(world_pos - position);
+
+    // If we do mask the plane all light rays are parallel to the plane. Assuming
+    // a two-sided light source we may need to invert the direction though.
+    vec3 light_dir = sign(dot(n, dir)) * n;
 
     return intensity * blinn_phong(light_color, light_dir, camdir, normal, color);
 }
