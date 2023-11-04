@@ -147,7 +147,7 @@ end
 end
 
 
-@reference_test "Complex Lighting - DirectionalLight + specular reflection" begin
+@reference_test "RectLight" begin
     lights = Makie.AbstractLight[
         AmbientLight(RGBf(0.1, 0.1, 0.1)),
         RectLight(RGBf(0.5, 0, 0), Point3f(-1, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
