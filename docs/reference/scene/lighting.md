@@ -18,7 +18,7 @@ Currently the following material attributes are available:
 - `diffuse::Vec3f = Vec3f(1.0)`: controls how strong the diffuse reflections of an object are in the red, green and blue color channel. A diffuse reflection is one where incoming light is scattered in every direction. The strength of this reflection is based on the amount of light hitting the surface, which is proportional to `dot(light_direction, -normal)`. It generally makes up the main color of an object in light.
 - `specular::Vec3f = Vec3f(0.4)`: controls the strength of specular reflection in the red, green and blue color channels. A specular reflection is a direct reflection of light, i.e. one where the incoming angle `dot(light_direction, -normal)` matches the outgoing angle `dot(camera_direction, -normal)`. It responsible for bright spots on objects. Note that this does not take the color of the object into account, as specular reflections typically match the light color.
 - `shininess::Float32 = 32f0`: controls how sharp specular reflections are. Low shininess will allow a larger difference between incoming outgoing angle to take effect, creating a larger and smoother bright spot. High shininess will respectively reduce the size of the bright spot and increase its sharpness. This value must be positive.
-- `backlight::Float32 = 0f0` controls how strongly light interacts with the backside of an object. Setting this to a value `> 0` can be helpful when visualizing a surface. (More precisely the light calculation is repeated with inverted normals and the result is mixed in with `backlight` as a prefactor.)
+- `backlight::Real = 0` controls how strongly light interacts with the backside of an object. Setting this to a value `> 0` can be helpful when visualizing a surface. (More precisely the light calculation is repeated with inverted normals and the result is mixed in with `backlight` as a prefactor.)
 
 !!! note
     RPRMakie does not use these material attributes.
@@ -169,7 +169,7 @@ ax = LScene(fig[1, 1], scenekw = (lights = lights,), show_axis = false)
 update_cam!(ax.scene, ax.scene.camera_controls, Rect3f(Point3f(-2), Vec3f(4)))
 meshscatter!(
     ax, [Point3f(0) for _ in 1:14], marker = m, markersize = 0.1:0.2:3.0,
-    color = :white, backlight = 1f0, transparency = false)
+    color = :white, backlight = 1, transparency = false)
 fig
 ```
 \end{examplefigure}
@@ -263,7 +263,7 @@ scale!(p2, Vec3f(4))
 for l in lights
     if l isa RectLight
         m = to_mesh(l)
-        mesh!(m, color = :white, backlight = 1f0)
+        mesh!(m, color = :white, backlight = 1)
     end
 end
 
