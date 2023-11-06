@@ -545,7 +545,7 @@ export function deserialize_scene(data, screen) {
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
-    scene.pixelarea = data.pixelarea;
+    scene.viewport = data.viewport;
     scene.backgroundcolor = data.backgroundcolor;
     scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;

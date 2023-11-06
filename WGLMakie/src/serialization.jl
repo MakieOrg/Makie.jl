@@ -277,7 +277,7 @@ end
 function serialize_scene(scene::Scene)
 
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
-    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, pixelarea(scene))
+    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, viewport(scene))
 
     cam_controls = cameracontrols(scene)
 
@@ -296,7 +296,7 @@ function serialize_scene(scene::Scene)
     light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
     cam_rel = isnothing(dirlight) ? false : dirlight.camera_relative
 
-    serialized = Dict(:pixelarea => pixel_area,
+    serialized = Dict(:viewport => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor),
                       :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor),
                       :clearscene => scene.clear,

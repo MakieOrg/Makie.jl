@@ -138,7 +138,7 @@ function tightlimits!(la::Axis, ::Top)
 end
 
 function GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...)
-    return GridLayout(args...; bbox=lift(Rect2f, pixelarea(scene)), kwargs...)
+    return GridLayout(args...; bbox=lift(Rect2f, viewport(scene)), kwargs...)
 end
 
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,

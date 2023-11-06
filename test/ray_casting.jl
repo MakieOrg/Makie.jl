@@ -1,7 +1,7 @@
 @testset "Ray Casting" begin
     @testset "View Rays" begin
         scene = Scene()
-        xy = 0.5 * widths(pixelarea(scene)[])
+        xy = 0.5 * widths(viewport(scene)[])
 
         orthographic_cam3d!(x) = cam3d!(x, perspectiveprojection = Makie.Orthographic)
 
@@ -20,13 +20,13 @@
     end
 
 
-    # transform() is used to apply a translation-rotation-scale matrix to rays 
+    # transform() is used to apply a translation-rotation-scale matrix to rays
     # instead of point like data
     # Generate random point + transform
     rot = Makie.rotation_between(rand(Vec3f), rand(Vec3f))
     model = Makie.transformationmatrix(rand(Vec3f), rand(Vec3f), rot)
     point = Point3f(1) + rand(Point3f)
-    
+
     # Generate rate that passes through transformed point
     transformed = Point3f(model * Point4f(point..., 1))
     direction = (1 + 10*rand()) * rand(Vec3f)
@@ -71,10 +71,10 @@
     end
 
 
-    # Note that these tests depend on the exact placement of plots and may 
+    # Note that these tests depend on the exact placement of plots and may
     # error when cameras are adjusted
     @testset "position_on_plot()" begin
-    
+
         # Lines (2D) & Linesegments (3D)
         ps = [exp(-0.01phi) * Point2f(cos(phi), sin(phi)) for phi in range(0, 20pi, length = 501)]
         scene = Scene(size = (400, 400))
@@ -83,15 +83,15 @@
         ray = Makie.Ray(scene, (325.0, 313.0))
         pos = Makie.position_on_plot(p, 157, ray)
         @test pos ≈ Point3f(0.6087957666683925, 0.5513198993583837, 0.0)
-    
+
         scene = Scene(size = (400, 400))
         p = linesegments!(scene, ps)
         cam3d!(scene)
         ray = Makie.Ray(scene, (238.0, 233.0))
         pos = Makie.position_on_plot(p, 178, ray)
         @test pos ≈ Point3f(-0.7850463447725504, -0.15125213957100314, 0.0)
-    
-    
+
+
         # Heatmap (2D) & Image (3D)
         scene = Scene(size = (400, 400))
         p = heatmap!(scene, 0..1, -1..1, rand(10, 10))
@@ -99,15 +99,15 @@
         ray = Makie.Ray(scene, (228.0, 91.0))
         pos = Makie.position_on_plot(p, 0, ray)
         @test pos ≈ Point3f(0.13999999, -0.54499996, 0.0)
-    
+
         scene = Scene(size = (400, 400))
         p = image!(scene, -1..1, -1..1, rand(10, 10))
         cam3d!(scene)
         ray = Makie.Ray(scene, (309.0, 197.0))
         pos = Makie.position_on_plot(p, 3, ray)
         @test pos ≈ Point3f(-0.7830243, 0.8614166, 0.0)
-    
-    
+
+
         # Mesh (3D)
         scene = Scene(size = (400, 400))
         p = mesh!(scene, Rect3f(Point3f(0), Vec3f(1)))
@@ -115,7 +115,7 @@
         ray = Makie.Ray(scene, (201.0, 283.0))
         pos = Makie.position_on_plot(p, 15, ray)
         @test pos ≈ Point3f(0.029754717, 0.043159597, 1.0)
-    
+
         # Surface (3D)
         scene = Scene(size = (400, 400))
         p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10])
@@ -123,7 +123,7 @@
         ray = Makie.Ray(scene, (52.0, 238.0))
         pos = Makie.position_on_plot(p, 57, ray)
         @test pos ≈ Point3f(0.80910987, -1.6090667, 0.137722)
-    
+
         # Volume (3D)
         scene = Scene(size = (400, 400))
         p = volume!(scene, rand(10, 10, 10))
@@ -135,12 +135,12 @@
     end
 
     # For recreating the above:
-    #= 
+    #=
     # Scene setup from tests:
     scene = Scene(size = (400, 400))
     p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10])
     cam3d!(scene)
-    
+
     pos = Observable(Point3f(0.5))
     on(events(scene).mousebutton, priority = 100) do event
         if event.button == Mouse.left && event.action == Mouse.press

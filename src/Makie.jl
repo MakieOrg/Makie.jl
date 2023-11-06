@@ -80,7 +80,7 @@ using Observables: listeners, to_value, notify
 
 using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
 using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
-using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexBasedGrid, CellBasedGrid, ImageLike, VolumeLike
+using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexBasedGrid, CellGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
 using MakieCore: NoShading, FastShading, MultiLightShading
@@ -93,7 +93,7 @@ import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshs
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 
 export @L_str, @colorant_str
-export ConversionTrait, NoConversion, PointBased, GridBased, VertexBasedGrid, CellBasedGrid, ImageLike, VolumeLike
+export ConversionTrait, NoConversion, PointBased, GridBased, VertexBasedGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
@@ -255,7 +255,7 @@ export SceneSpace, PixelSpace, Pixel
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
 export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
-export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
+export viewport, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events

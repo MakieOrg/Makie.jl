@@ -2,7 +2,7 @@ import * as THREE from "./THREE.js";
 import { OrbitControls } from "./OrbitControls.js";
 
 // Unitless is the scene pixel unit space
-// so scene.px_area, or size(scene)
+// so scene.viewport, or size(scene)
 // Which isn't the same as the framebuffer pixel size due to scalefactor/px_per_unit/devicePixelRatio
 export function events2unitless(screen, event) {
     const { canvas, winscale, renderer } = screen;
@@ -14,7 +14,7 @@ export function events2unitless(screen, event) {
 
 export function to_world(scene, x, y) {
     const proj_inv = scene.wgl_camera.projectionview_inverse.value;
-    const [_x, _y, w, h] = scene.pixelarea.value;
+    const [_x, _y, w, h] = scene.viewport.value;
     const pix_space = new THREE.Vector4(
         ((x - _x) / w) * 2 - 1,
         ((y - _y) / h) * 2 - 1,
@@ -35,7 +35,7 @@ function Identity4x4() {
 
 function in_scene(scene, mouse_event) {
     const [x, y] = events2unitless(scene.screen, mouse_event);
-    const [sx, sy, sw, sh] = scene.pixelarea.value;
+    const [sx, sy, sw, sh] = scene.viewport.value;
     return x >= sx && x < sx + sw && y >= sy && y < sy + sh;
 }
 

@@ -250,7 +250,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         transform_marker = false
     )
 
-    lift(scene.camera.projectionview, transformationmatrix(plot), scene.px_area,
+    lift(scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return

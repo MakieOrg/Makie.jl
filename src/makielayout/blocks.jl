@@ -475,7 +475,7 @@ free(::Block) = nothing
 function Base.delete!(block::Block)
     free(block)
     block.parent === nothing && return
-    # detach plots, cameras, transformations, px_area
+    # detach plots, cameras, transformations, viewport
     empty!(block.blockscene)
 
     gc = GridLayoutBase.gridcontent(block)

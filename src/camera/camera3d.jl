@@ -250,7 +250,7 @@ function Camera3D(scene::Scene; kwargs...)
             update_cam!(scene, cam)
         end
     end
-    on(camera(scene), scene.px_area, cam.near, cam.far, settings.projectiontype) do _, _, _, _
+    on(camera(scene), scene.viewport, cam.near, cam.far, settings.projectiontype) do _, _, _, _
         update_cam!(scene, cam)
     end
 
@@ -406,10 +406,10 @@ function add_mouse_controls!(scene, cam::Camera3D)
         if projectiontype[] == Perspective
           # TODO wrong scaling? :(
             ynorm = 2 * norm(cam.lookat[] - cam.eyeposition[]) * tand(0.5 * cam.fov[])
-            return ynorm / widths(scene.px_area[])[2] * delta
+            return ynorm / size(scene, 2) * delta
         else
             viewnorm = norm(cam.eyeposition[] - cam.lookat[])
-            return 2 * viewnorm / widths(scene.px_area[])[2] * delta
+            return 2 * viewnorm / size(scene, 2) * delta
         end
     end
 
@@ -622,7 +622,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
             # recontextualize the (dy, dx, 0) from mouse rotations so that
             # drawing circles creates continuous rotations around the fixed axis
             mp = mouseposition_px(scene)
-            past_half = 0.5f0 .* widths(scene.px_area[]) .> mp
+            past_half = 0.5f0 .* size(scene) .> mp
             flip = 2f0 * past_half .- 1f0
             angle = flip[1] * angles[1] + flip[2] * angles[2]
             angles = Vec3f(-angle, -angle, angle)
@@ -660,14 +660,15 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos   # -z
-
+    vp = viewport(scene)[]
+    scene_width = widths(vp)
     if cad
         # Rotate view based on offset from center
         u_z = normalize(viewdir)
         u_x = normalize(cross(u_z, cam.upvector[]))
         u_y = normalize(cross(u_x, u_z))
 
-        rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+        rel_pos = 2.0f0 * mouseposition_px(scene) ./ scene_width .- 1.0f0
         shift = rel_pos[1] * u_x + rel_pos[2] * u_y
         shift *= 0.1 * sign(1 - zoom_step) * norm(viewdir)
 
@@ -678,8 +679,7 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
         u_x = normalize(cross(u_z, cam.upvector[]))
         u_y = normalize(cross(u_x, u_z))
 
-        ws = widths(scene.px_area[])
-        rel_pos = (2.0 .* mouseposition_px(scene) .- ws) ./ ws[2]
+        rel_pos = (2.0 .* mouseposition_px(scene) .- scene_width) ./ scene_width[2]
         shift = (1 - zoom_step) * (rel_pos[1] * u_x + rel_pos[2] * u_y)
 
         if cam.settings.projectiontype[] == Makie.Orthographic
@@ -726,7 +726,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
     end
 
-    aspect = Float32((/)(widths(scene.px_area[])...))
+    aspect = Float32((/)(widths(scene)...))
     if cam.settings.projectiontype[] == Makie.Perspective
         proj = perspectiveprojection(fov, aspect, near, far)
     else

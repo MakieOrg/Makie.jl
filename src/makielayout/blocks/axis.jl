@@ -182,7 +182,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
 
-    scene = Scene(blockscene, px_area=scenearea)
+    scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
 
     if !isnothing(palette)
@@ -257,7 +257,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # 3. Update the view onto the plot (camera matrices)
     onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
 
-    xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.px_area;
+    xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
@@ -268,7 +268,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yaxis_endpoints = lift(blockscene, ax.yaxisposition, scene.px_area;
+    yaxis_endpoints = lift(blockscene, ax.yaxisposition, scene.viewport;
                            ignore_equal_values=true) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
@@ -345,7 +345,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.yaxis = yaxis
 
-    xoppositelinepoints = lift(blockscene, scene.px_area, ax.spinewidth, ax.xaxisposition;
+    xoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
                                ignore_equal_values=true) do r, sw, xaxpos
         if xaxpos === :top
             y = bottom(r)
@@ -360,7 +360,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yoppositelinepoints = lift(blockscene, scene.px_area, ax.spinewidth, ax.yaxisposition;
+    yoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
                                ignore_equal_values=true) do r, sw, yaxpos
         if yaxpos === :right
             x = left(r)
@@ -376,22 +376,22 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xticksmirrored = lift(mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-                          Ref(scene.px_area), :x, ax.xaxisposition[])
+                          Ref(scene.viewport), :x, ax.xaxisposition[])
     xticksmirrored_lines = linesegments!(blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-                          Ref(scene.px_area), :y, ax.yaxisposition[])
+                          Ref(scene.viewport), :y, ax.yaxisposition[])
     yticksmirrored_lines = linesegments!(blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-                               ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+                               ax.xminortickalign, Ref(scene.viewport), :x, ax.xaxisposition[])
     xminorticksmirrored_lines = linesegments!(blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-                               ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+                               ax.yminortickalign, Ref(scene.viewport), :y, ax.yaxisposition[])
     yminorticksmirrored_lines = linesegments!(blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
     translate!(yminorticksmirrored_lines, 0, 0, 10)
@@ -408,31 +408,31 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
-    onany(blockscene, xaxis.tickpositions, scene.px_area) do tickpos, area
+    onany(blockscene, xaxis.tickpositions, scene.viewport) do tickpos, area
         local pxheight::Float32 = height(area)
         local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xgridnode, Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.tickpositions, scene.px_area) do tickpos, area
+    onany(blockscene, yaxis.tickpositions, scene.viewport) do tickpos, area
         local pxwidth::Float32 = width(area)
         local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
     end
 
-    onany(blockscene, xaxis.minortickpositions, scene.px_area) do tickpos, area
-        local pxheight::Float32 = height(scene.px_area[])
+    onany(blockscene, xaxis.minortickpositions, scene.viewport) do tickpos, area
+        local pxheight::Float32 = height(scene.viewport[])
         local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.minortickpositions, scene.px_area) do tickpos, area
-        local pxwidth::Float32 = width(scene.px_area[])
+    onany(blockscene, yaxis.minortickpositions, scene.viewport) do tickpos, area
+        local pxwidth::Float32 = width(scene.viewport[])
         local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
-    subtitlepos = lift(blockscene, scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition,
+    subtitlepos = lift(blockscene, scene.viewport, ax.titlegap, ax.titlealign, ax.xaxisposition,
                        xaxis.protrusion;
                        ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
@@ -461,7 +461,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         markerspace = :data,
         inspectable = false)
 
-    titlepos = lift(calculate_title_position, blockscene, scene.px_area, ax.titlegap, ax.subtitlegap,
+    titlepos = lift(calculate_title_position, blockscene, scene.viewport, ax.titlegap, ax.subtitlegap,
         ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values=true)
 
     titlet = text!(
@@ -504,7 +504,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # compute limits that adhere to the limit aspect ratio whenever the targeted
     # limits or the scene size change, because both influence the displayed ratio
-    onany(blockscene, scene.px_area, targetlimits) do pxa, lims
+    onany(blockscene, scene.viewport, targetlimits) do pxa, lims
         adjustlimits!(ax)
     end
 
@@ -520,8 +520,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     return ax
 end
 
-function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
-    a = px_area[][]
+function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition)
+    a = viewport[][]
     if side === :x
         opp = axisposition === :bottom ? top(a) : bottom(a)
         sign =  axisposition === :bottom ? 1 : -1
@@ -955,7 +955,7 @@ end
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
-    area = la.scene.px_area[]
+    area = la.scene.viewport[]
 
     # in the simplest case, just update the final limits with the target limits
     if isnothing(asp) || width(area) == 0 || height(area) == 0
@@ -1845,7 +1845,7 @@ function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffe
         bb = axis_bounds_with_decoration(ax)
         Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
     else
-        pixelarea(ax.scene)[]
+        viewport(ax.scene)[]
     end
 
     img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)

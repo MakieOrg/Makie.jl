@@ -77,7 +77,7 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     # ignore rects with width almost 0
     any(x-> x ≈ 0.0, widths(area)) && return
 
-    pa = pixelarea(scene)[]
+    pa = viewport(scene)[]
     px_wh = normalize(widths(pa))
     wh = normalize(widths(area))
     ratio = px_wh ./ wh
@@ -106,7 +106,7 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
 end
 
 function correct_ratio!(scene, cam)
-    on(camera(scene), pixelarea(scene)) do area
+    on(camera(scene), viewport(scene)) do area
         neww = widths(area)
         change = neww .- cam.last_area[]
         if !(change ≈ Vec(0.0, 0.0))
@@ -140,7 +140,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             diff = startpos[] .- mp
             startpos[] = mp
             area = cam.area[]
-            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            diff = Vec(diff) .* wscale(viewport(scene)[], area)
             cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
             active[] = false
@@ -158,7 +158,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             diff = startpos[] .- pos
             startpos[] = pos
             area = cam.area[]
-            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            diff = Vec(diff) .* wscale(viewport(scene)[], area)
             cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
             return Consume(true)
@@ -173,7 +173,7 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
         @extractvalue cam (zoomspeed, zoombutton, area)
         zoom = Float32(x[2])
         if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
-            pa = pixelarea(scene)[]
+            pa = viewport(scene)[]
             z = (1f0 - zoomspeed)^zoom
             mp = Vec2f(e.mouseposition[]) - minimum(pa)
             mp = (mp .* wscale(pa, area)) + minimum(area)
@@ -190,7 +190,7 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
 end
 
 function camspace(scene::SceneLike, cam::Camera2D, point)
-    point = Vec(point) .* wscale(pixelarea(scene)[], cam.area[])
+    point = Vec(point) .* wscale(viewport(scene)[], cam.area[])
     return Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
@@ -345,10 +345,10 @@ function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     disconnect!(camera(scene))
     update_once = Observable(false)
     closure = UpdatePixelCam(camera(scene), nearclip, farclip)
-    on(closure, camera(scene), pixelarea(scene))
+    on(closure, camera(scene), viewport(scene))
     cam = PixelCamera()
     # update once
-    closure(pixelarea(scene)[])
+    closure(viewport(scene)[])
     cameracontrols!(scene, cam)
     update_once[] = true
     return cam

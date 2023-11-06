@@ -7,7 +7,7 @@ function setup!(screen::Screen)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
             if scene.visible[]
-                a = pixelarea(scene)[]
+                a = viewport(scene)[]
                 rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
                 glViewport(rt...)
                 if scene.clear[]
@@ -119,7 +119,7 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             found || continue
             scene.visible[] || continue
             ppu = screen.px_per_unit[]
-            a = pixelarea(scene)[]
+            a = viewport(scene)[]
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             render(elem)
         end

@@ -302,13 +302,13 @@ end
 @testset "GridBased and ImageLike conversions" begin
     # type tree
     @test GridBased <: ConversionTrait
-    @test CellBasedGrid <: GridBased
+    @test CellGrid <: GridBased
     @test VertexBasedGrid <: GridBased
     @test ImageLike <: ConversionTrait
 
     # Plot to trait
     @test conversion_trait(Image) === ImageLike()
-    @test conversion_trait(Heatmap) === CellBasedGrid()
+    @test conversion_trait(Heatmap) === CellGrid()
     @test conversion_trait(Surface) === VertexBasedGrid()
     @test conversion_trait(Contour) === VertexBasedGrid()
     @test conversion_trait(Contourf) === VertexBasedGrid()
@@ -349,7 +349,7 @@ end
         @test convert_arguments(Surface, m1, m2)      == (mo1, mo2, zeros(Float32, size(o3)))
     end
 
-    @testset "CellBasedGrid conversion" begin
+    @testset "CellGrid conversion" begin
         o1 = Float32.(0.5:1:10.5)
         o2 = Float32.(0.5:1:6.5)
         @test convert_arguments(Heatmap, m3)         == (o1, o2, o3)

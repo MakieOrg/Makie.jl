@@ -32,7 +32,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     scene_serialized = serialize_scene(scene)
     window_open = scene.events.window_open
     width, height = size(scene)
-    canvas_width = lift(x -> [round.(Int, widths(x))...], scene, pixelarea(scene))
+    canvas_width = lift(x -> [round.(Int, widths(x))...], scene, viewport(scene))
     canvas = DOM.m("canvas"; tabindex="0", style="display: block")
     wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())

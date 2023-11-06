@@ -7,7 +7,7 @@
   [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544)
 - Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie. [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598)
 - Improved 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
-- Refactored the `SurfaceLike` family of traits into `VertexBasedGrid`, `CellBasedGrid` and `ImageLike`. [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106)
+- Refactored the `SurfaceLike` family of traits into `VertexBasedGrid`, `CellGrid` and `ImageLike`. [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106)
 - Added `shading = :verbose` in GLMakie to allow for multiple light sources. Also added more light types, fixed light directions for the previous lighting model (now `shading = :fast`) and adjusted `backlight` to affect normals. [#3246](https://github.com/MakieOrg/Makie.jl/pull/3246)
 - Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
 

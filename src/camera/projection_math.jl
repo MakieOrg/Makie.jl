@@ -245,7 +245,7 @@ function to_world(scene::Scene, point::T) where T <: StaticVector
         inv(transformationmatrix(scene)[]) *
         inv(cam.view[]) *
         inv(cam.projection[]),
-        T(widths(pixelarea(scene)[]))
+        T(size(scene))
     )
     Point2f(x[1], x[2])
 end
@@ -280,7 +280,7 @@ end
 
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
-    area = pixelarea(scene)[]
+    area = viewport(scene)[]
     # TODO, I think we need  .+ minimum(area)
     # Which would be semi breaking at this point though, I suppose
     return project(

@@ -11,7 +11,7 @@ function initialize_block!(leg::Legend; entrygroups)
 
     legend_area = lift(round_to_IRect2D, blockscene, leg.layoutobservables.computedbbox)
 
-    scene = Scene(blockscene, blockscene.px_area, camera = campixel!)
+    scene = Scene(blockscene, blockscene.viewport, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = lift(blockscene, legend_area, leg.margin) do la, lm
@@ -625,7 +625,7 @@ to one occurrence.
 """
 function axislegend(ax, args...; position = :rt, kwargs...)
     Legend(ax.parent, args...;
-        bbox = ax.scene.px_area,
+        bbox = ax.scene.viewport,
         margin = (6, 6, 6, 6),
         legend_position_to_aligns(position)...,
         kwargs...)
