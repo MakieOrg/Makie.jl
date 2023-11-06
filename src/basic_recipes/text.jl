@@ -60,7 +60,7 @@ function plot!(plot::Text)
 
     sc = parent_scene(plot)
 
-    onany(plot, linesegs, positions, sc.camera.projectionview, sc.px_area,
+    onany(plot, linesegs, positions, sc.camera.projectionview, sc.viewport,
             transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
         pos_transf = plot_to_screen(plot, pos)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index

@@ -377,8 +377,8 @@ end
 function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
-    px_area = lift(identity, p, scene.px_area; ignore_equal_values=true)
-    canvas = canvas_obs(limits, px_area, p.agg, p.binsize)
+    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
+    canvas = canvas_obs(limits, viewport, p.agg, p.binsize)
     p._boundingbox = lift(fast_bb, p.points, p.point_transform)
     on_func = p.async[] ? onany_latest : onany
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
@@ -432,8 +432,8 @@ end
 function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
     scene = parent_scene(p)
     limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
-    px_area = lift(identity, p, scene.px_area; ignore_equal_values=true)
-    canvas = canvas_obs(limits, px_area, Observable(AggCount{Float32}()), p.binsize)
+    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
+    canvas = canvas_obs(limits, viewport, Observable(AggCount{Float32}()), p.binsize)
     p._boundingbox = lift(p.points, p.point_transform) do cats, func
         rects = map(points -> fast_bb(points, func), values(cats))
         return reduce(union, rects)

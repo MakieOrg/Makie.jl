@@ -34,7 +34,7 @@ export function render_scene(scene, picking = false) {
         return true;
     }
     renderer.autoClear = scene.clearscene.value;
-    const area = scene.pixelarea.value;
+    const area = scene.viewport.value;
     if (area) {
         const [x, y, w, h] = area.map((x) => x * px_per_unit);
         renderer.setViewport(x, y, w, h);

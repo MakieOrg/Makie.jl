@@ -42,7 +42,7 @@ function mouse_in_scene(scene::Scene; priority = 0)
     p = rootparent(scene)
     output = Observable(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp
-        output[] = Vec(mp) .- minimum(pixelarea(scene)[])
+        output[] = Vec(mp) .- minimum(viewport(scene)[])
         return Consume(false)
     end
     output
@@ -173,7 +173,7 @@ Normalizes mouse position `pos` relative to the screen rectangle.
 """
 screen_relative(x, mpos) = screen_relative(get_scene(x), mpos)
 function screen_relative(scene::Scene, mpos)
-    return Point2f(mpos) .- Point2f(minimum(pixelarea(scene)[]))
+    return Point2f(mpos) .- Point2f(minimum(viewport(scene)[]))
 end
 
 """

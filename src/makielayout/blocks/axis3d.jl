@@ -38,7 +38,7 @@ function initialize_block!(ax::Axis3)
         return
     end
 
-    matrices = lift(calculate_matrices, scene, finallimits, scene.px_area, ax.elevation, ax.azimuth,
+    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.elevation, ax.azimuth,
                     ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
 
     on(scene, matrices) do (model, view, proj, eyepos)
@@ -81,7 +81,7 @@ function initialize_block!(ax::Axis3)
     zticks, zticklabels, zlabel =
         add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
 
-    titlepos = lift(scene, scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
+    titlepos = lift(scene, scene.viewport, ax.titlegap, ax.titlealign) do a, titlegap, align
 
         align_factor = halign2num(align, "Horizontal title align $align not supported.")
         x = a.origin[1] + align_factor * a.widths[1]
@@ -162,7 +162,7 @@ function initialize_block!(ax::Axis3)
     return
 end
 
-function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect,
+function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspect,
     viewmode, xreversed, yreversed, zreversed)
 
     ori = limits.origin
@@ -218,8 +218,8 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 
     lookat_matrix = lookat(eyepos, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
 
-    w = width(px_area)
-    h = height(px_area)
+    w = width(viewport)
+    h = height(viewport)
 
     projection_matrix = projectionmatrix(
         lookat_matrix * model, limits, eyepos, radius, azim, elev, angle,
@@ -397,7 +397,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         visible = attr(:gridvisible), inspectable = false)
 
 
-    framepoints = lift(limits, scene.camera.projectionview, scene.px_area, min1, min2, xreversed, yreversed, zreversed
+    framepoints = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
             ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
         o = pxa.origin
 
@@ -434,7 +434,7 @@ end
 # this function projects a point from a 3d subscene into the parent space with a really
 # small z value
 function to_topscene_z_2d(p3d, scene)
-    o = scene.px_area[].origin
+    o = scene.viewport[].origin
     p2d = Point2f(o + Makie.project(scene, p3d))
     # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
     # to clip into plot objects anymore
@@ -458,7 +458,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     ticksize = attr(:ticksize)
 
     tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
-            scene.camera.projectionview, scene.px_area, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
+            scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
                 pview, pxa, tsize, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -498,7 +498,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     # we are going to transform the 3d tick segments into 2d of the topscene
     # because otherwise they
     # be cut when they extend beyond the scene boundary
-    tick_segments_2dz = lift(topscene, tick_segments, scene.camera.projectionview, scene.px_area) do ts, _, _
+    tick_segments_2dz = lift(topscene, tick_segments, scene.camera.projectionview, scene.viewport) do ts, _, _
         map(ts) do p1_p2
             to_topscene_z_2d.(p1_p2, Ref(scene))
         end
@@ -513,7 +513,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
-    map!(topscene, labels_positions, scene.px_area, scene.camera.projectionview,
+    map!(topscene, labels_positions, scene.viewport, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
@@ -549,7 +549,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     label_align = Observable((:center, :top))
 
     onany(topscene,
-            scene.px_area, scene.camera.projectionview, limits, miv, min1, min2,
+            scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 

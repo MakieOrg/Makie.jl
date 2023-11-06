@@ -221,7 +221,7 @@ lines([Point(0, 0), Point(5, 10), Point(10, 5)])
 
 The input arguments you can use with `lines` and `scatter` are mostly the same because they have the same conversion trait `PointBased`.
 Other plotting functions have different conversion traits, \myreflink{heatmap} for example expects two-dimensional grid data.
-The respective trait is called `CellBasedGrid`.
+The respective trait is called `CellGrid`.
 
 ## Layering multiple plots
 

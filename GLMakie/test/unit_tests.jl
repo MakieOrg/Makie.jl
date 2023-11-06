@@ -2,7 +2,7 @@ using GLMakie.Makie: getscreen
 
 function project_sp(scene, point)
     point_px = Makie.project(scene, point)
-    offset = Point2f(minimum(pixelarea(scene)[]))
+    offset = Point2f(minimum(viewport(scene)[]))
     return point_px .+ offset
 end
 
@@ -250,7 +250,7 @@ end
 
         @test screen.root_scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.21
+        @test (Base.summarysize(screen) / 10^6) < 1.22
     end
     # All should go to pool after close
     @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)

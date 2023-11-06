@@ -258,7 +258,7 @@ end
         #     bb = Makie.bbox(Makie.DEFAULT_MARKER_MAP[marker])
         #     w, h = widths(bb)
         #     ox, oy = origin(bb)
-        #     xy = map(pv -> Makie.project(pv, Vec2f(widths(pixelarea(scene)[])), Point2f(5, i)), scene.camera.projectionview)
+        #     xy = map(pv -> Makie.project(pv, Vec2f(widths(viewport(scene)[])), Point2f(5, i)), scene.camera.projectionview)
         #     bb = map(xy -> Rect2f(xy .+ 30 * Vec2f(ox, oy), 30 * Vec2f(w, h)), xy)
         #     lines!(bb, linewidth = 1, color = :orange, space = :pixel, linestyle = :dash)
         # end

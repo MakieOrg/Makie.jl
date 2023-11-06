@@ -36,7 +36,7 @@ function Ray(scene::Scene, cam::Camera3D, xy::VecTypes{2})
     u_x = normalize(cross(u_z, cam.upvector[]))
     u_y = normalize(cross(u_x, u_z))
 
-    px_width, px_height = widths(scene.px_area[])
+    px_width, px_height = widths(scene)
     aspect = px_width / px_height
     rel_pos = 2 .* xy ./ (px_width, px_height) .- 1
 
@@ -51,7 +51,7 @@ function Ray(scene::Scene, cam::Camera3D, xy::VecTypes{2})
 end
 
 function Ray(scene::Scene, cam::Camera2D, xy::VecTypes{2})
-    rel_pos = xy ./ widths(scene.px_area[])
+    rel_pos = xy ./ widths(scene)
     pv = scene.camera.projectionview[]
     m = Vec2f(pv[1, 1], pv[2, 2])
     b = Vec2f(pv[1, 4], pv[2, 4])
@@ -64,7 +64,7 @@ function Ray(::Scene, ::PixelCamera, xy::VecTypes{2})
 end
 
 function Ray(scene::Scene, ::RelativeCamera, xy::VecTypes{2})
-    origin = xy ./ widths(scene.px_area[])
+    origin = xy ./ widths(scene)
     return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
 end
 
@@ -73,7 +73,7 @@ Ray(scene::Scene, cam, xy::VecTypes{2}) = ray_from_projectionview(scene, xy)
 # This method should always work
 function ray_from_projectionview(scene::Scene, xy::VecTypes{2})
     inv_view_proj = inv(camera(scene).projectionview[])
-    area = pixelarea(scene)[]
+    area = viewport(scene)[]
 
     # This figures out the camera view direction from the projectionview matrix
     # and computes a ray from a near and a far point.
@@ -188,7 +188,7 @@ This function performs a `pick` at the given pixel position `xy` and returns the
 picked `plot`, `index` and world or input space `position::Point3f`. It is equivalent to
 ```
 plot, idx = pick(fig/ax/scene, xy)
-ray = Ray(parent_scene(plot), xy .- minimum(pixelarea(parent_scene(plot))[]))
+ray = Ray(parent_scene(plot), xy .- minimum(viewport(parent_scene(plot))[]))
 position = position_on_plot(plot, idx, ray, apply_transform = true)
 ```
 See [`position_on_plot`](@ref) for more information.
@@ -197,7 +197,7 @@ function ray_assisted_pick(obj, xy = events(obj).mouseposition[]; apply_transfor
     plot, idx = pick(get_scene(obj), xy)
     isnothing(plot) && return (plot, idx, Point3f(NaN))
     scene = parent_scene(plot)
-    ray = Ray(scene, xy .- minimum(pixelarea(scene)[]))
+    ray = Ray(scene, xy .- minimum(viewport(scene)[]))
     pos = position_on_plot(plot, idx, ray, apply_transform = apply_transform)
     return (plot, idx, pos)
 end
@@ -213,7 +213,7 @@ picked position. If there is no intersection `Point3f(NaN)` will be returned.
 This should be called as
 ```
 plot, idx = pick(ax, px_pos)
-pos_in_ax = position_on_plot(plot, idx, Ray(ax, px_pos .- minimum(pixelarea(ax.scene)[])))
+pos_in_ax = position_on_plot(plot, idx, Ray(ax, px_pos .- minimum(viewport(ax.scene)[])))
 ```
 or more simply `plot, idx, pos_in_ax = ray_assisted_pick(ax, px_pos)`.
 

@@ -54,7 +54,7 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     "The current pixel area of the Scene."
-    px_area::Observable{Rect2i}
+    viewport::Observable{Rect2i}
 
     "Whether the scene should be cleared."
     clear::Observable{Bool}
@@ -92,7 +92,7 @@ mutable struct Scene <: AbstractScene
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
-            px_area::Observable{Rect2i},
+            viewport::Observable{Rect2i},
             clear::Observable{Bool},
             camera::Camera,
             camera_controls::AbstractCamera,
@@ -109,7 +109,7 @@ mutable struct Scene <: AbstractScene
         scene = new(
             parent,
             events,
-            px_area,
+            viewport,
             clear,
             camera,
             camera_controls,
@@ -191,7 +191,7 @@ function Base.show(io::IO, scene::Scene)
 end
 
 function Scene(;
-        px_area::Union{Observable{Rect2i}, Nothing} = nothing,
+        viewport::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
         clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
         transform_func=identity,
@@ -214,7 +214,7 @@ function Scene(;
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
-    wasnothing = isnothing(px_area)
+    wasnothing = isnothing(viewport)
     if wasnothing
         sz = if haskey(m_theme, :resolution)
             @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
@@ -222,10 +222,10 @@ function Scene(;
         else
             m_theme.size[]
         end
-        px_area = Observable(Recti(0, 0, sz); ignore_equal_values=true)
+        viewport = Observable(Recti(0, 0, sz); ignore_equal_values=true)
     end
 
-    cam = camera isa Camera ? camera : Camera(px_area)
+    cam = camera isa Camera ? camera : Camera(viewport)
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
     # if we have an opaque background, automatically set clear to true!
@@ -235,7 +235,7 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, px_area, clear, cam, camera_controls,
+        parent, events, viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights
     )
@@ -243,8 +243,8 @@ function Scene(;
 
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
-                px_area[] = w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && viewport[] != w_area
+                viewport[] = w_area
             end
             return Consume(false)
         end
@@ -282,7 +282,7 @@ default_shading!(plot, scene::Scene) = default_shading!(plot, scene.lights)
 function Scene(
         parent::Scene;
         events=parent.events,
-        px_area=nothing,
+        viewport=nothing,
         clear=false,
         camera=nothing,
         camera_controls=parent.camera_controls,
@@ -293,10 +293,10 @@ function Scene(
     if camera !== parent.camera
         camera_controls = EmptyCamera()
     end
-    child_px_area = px_area isa Observable ? px_area : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
+    child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
     child = Scene(;
         events=events,
-        px_area=child_px_area,
+        viewport=child_px_area,
         clear=convert(Observable{Bool}, clear),
         camera=camera,
         camera_controls=camera_controls,
@@ -306,13 +306,13 @@ function Scene(
         theme=theme(parent),
         kw...
     )
-    if isnothing(px_area)
-        map!(identity, child, child_px_area, parent.px_area)
-    elseif px_area isa Rect2
-        child_px_area[] = Rect2i(px_area)
+    if isnothing(viewport)
+        map!(identity, child, child_px_area, parent.viewport)
+    elseif viewport isa Rect2
+        child_px_area[] = Rect2i(viewport)
     else
-        if !(px_area isa Observable)
-            error("px_area must be an Observable{Rect2} or a Rect2")
+        if !(viewport isa Observable)
+            error("viewport must be an Observable{Rect2} or a Rect2")
         end
     end
     push!(parent.children, child)
@@ -322,7 +322,7 @@ end
 
 # legacy constructor
 function Scene(parent::Scene, area; kw...)
-    return Scene(parent; px_area=area, kw...)
+    return Scene(parent; viewport=area, kw...)
 end
 
 # Base overloads for Scene
@@ -339,16 +339,17 @@ function root(scene::Scene)
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
 
-GeometryBasics.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
+GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
 
 Base.size(scene::Scene) = Tuple(widths(scene))
 Base.size(x::Scene, i) = size(x)[i]
+
 function Base.resize!(scene::Scene, xy::Tuple{Number,Number})
     resize!(scene, Recti(0, 0, xy))
 end
 Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
 function Base.resize!(scene::Scene, rect::Rect2)
-    pixelarea(scene)[] = rect
+    viewport(scene)[] = rect
     if isroot(scene)
         for screen in scene.current_screens
             resize!(screen, widths(rect)...)
@@ -399,7 +400,7 @@ end
 
 function free(scene::Scene)
     empty!(scene; free=true)
-    for field in [:backgroundcolor, :px_area, :visible]
+    for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
     end
     for screen in copy(scene.current_screens)
@@ -508,9 +509,14 @@ end
 cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
 cameracontrols!(x, cam) = cameracontrols!(get_scene(x), cam)
 
-pixelarea(x) = pixelarea(get_scene(x))
-pixelarea(scene::Scene) = scene.px_area
-pixelarea(scene::SceneLike) = pixelarea(scene.parent)
+viewport(x) = viewport(get_scene(x))
+"""
+    viewport(scene::Scene)
+
+Gets the viewport of the scene in device independent units as an `Observable{Rect2{Int}}`.
+"""
+viewport(scene::Scene) = scene.viewport
+viewport(scene::SceneLike) = viewport(scene.parent)
 
 plots(x) = plots(get_scene(x))
 plots(scene::SceneLike) = scene.plots

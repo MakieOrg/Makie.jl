@@ -465,7 +465,7 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
     screen = getscreen(backend, scene, config)
     img = colorbuffer(screen, format)
     if !isroot(scene)
-        return get_sub_picture(img, format, pixelarea(scene)[])
+        return get_sub_picture(img, format, viewport(scene)[])
     else
         return img
     end

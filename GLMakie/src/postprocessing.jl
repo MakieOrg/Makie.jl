@@ -171,7 +171,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
             # scenes. It should be a leaf scene to avoid repeatedly shading
             # the same region (though this is not guaranteed...)
             isempty(scene.children) || continue
-            a = pixelarea(scene)[]
+            a = viewport(scene)[]
             glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
             data1[:projection] = scene.camera.projection[]
@@ -185,7 +185,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
             isempty(scene.children) || continue
-            a = pixelarea(scene)[]
+            a = viewport(scene)[]
             glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
             data2[:blur_range] = scene.ssao.blur

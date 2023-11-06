@@ -36,7 +36,7 @@ With scenes, one can create subwindows. The window extends are given by a `Rect{
 using GLMakie, Makie
 GLMakie.activate!()
 scene = Scene(backgroundcolor=:gray)
-subwindow = Scene(scene, px_area=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
+subwindow = Scene(scene, viewport=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
 scene
 ```
 \end{examplefigure}
@@ -128,7 +128,7 @@ We can use those events to e.g. move the subwindow. If you execute the below in 
 ```julia
 on(scene.events.mouseposition) do mousepos
     if ispressed(subwindow, Mouse.left & Keyboard.left_control)
-        subwindow.px_area[] = Rect(Int.(mousepos)..., 200, 200)
+        subwindow.viewport[] = Rect(Int.(mousepos)..., 200, 200)
     end
 end
 ```

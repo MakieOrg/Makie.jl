@@ -46,7 +46,7 @@ function old_cam3d_cad!(scene::Scene; kw_args...)
     add_translation!(scene, cam, cam.pan_button, cam.move_key, false)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, false)
     cameracontrols!(scene, cam)
-    on(camera(scene), scene.px_area) do area
+    on(camera(scene), scene.viewport) do area
         # update cam when screen ratio changes
         update_cam!(scene, cam)
     end
@@ -84,7 +84,7 @@ function old_cam3d_turntable!(scene::Scene; kw_args...)
     add_translation!(scene, cam, cam.pan_button, cam.move_key, true)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, true)
     cameracontrols!(scene, cam)
-    on(camera(scene), scene.px_area) do area
+    on(camera(scene), scene.viewport) do area
         # update cam when screen ratio changes
         update_cam!(scene, cam)
     end
@@ -178,7 +178,7 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
 
     on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
-            cam_res = Vec2f(widths(scene.px_area[]))
+            cam_res = Vec2f(widths(scene))
             mouse_pos_normalized = mouseposition_px(scene) ./ cam_res
             mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
             zoom_step = scroll[2]
@@ -239,7 +239,7 @@ function translate_cam!(scene::Scene, cam::OldCamera3D, _translation::VecTypes)
 
     dir = eyeposition - lookat
     dir_len = norm(dir)
-    cam_res = Vec2f(widths(scene.px_area[]))
+    cam_res = Vec2f(widths(scene))
     z, x, y = translation
     z *= 0.1f0 * dir_len
 
@@ -330,7 +330,7 @@ function update_cam!(scene::Scene, cam::OldCamera3D)
     # TODO this means you can't set FarClip... SAD!
     # TODO use boundingbox(scene) for optimal far/near
     far = max(zoom * 5f0, 30f0)
-    proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
+    proj = projection_switch(scene.viewport[], fov, near, far, projectiontype, zoom)
     view = Makie.lookat(eyeposition, lookat, upvector)
     set_proj_view!(camera(scene), proj, view)
     scene.camera.eyeposition[] = cam.eyeposition[]

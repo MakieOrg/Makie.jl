@@ -200,7 +200,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     scene = parent_scene(plot)
 
     whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
-        scene.px_area, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
+        scene.viewport, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
 
         screenendpoints = plot_to_screen(plot, endpoints)
 
