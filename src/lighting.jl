@@ -145,13 +145,13 @@ struct EnvironmentLight <: AbstractLight
 end
 
 """
-    RectLight(color, r::Rect2)
-    RectLight(color, center::Point3f, b1::Vec3f, b2::Vec3f)
+    RectLight(color, r::Rect2[, direction = -normal])
+    RectLight(color, center::Point3f, b1::Vec3f, b2::Vec3f[, direction = -normal])
 
 Creates a RectLight with a given color. The first constructor derives the light
 from a `Rect2` extending in x and y direction. The second specifies the `center`
 of the rect (or more accurately parallelogram) with `b1` and `b2` specifying the
-width and height directions (including scale).
+width and height vectors (including scale).
 
 Note that RectLight implements `translate!`, `rotate!` and `scale!` to simplify
 adjusting the light.
@@ -164,14 +164,16 @@ struct RectLight <: AbstractLight
     position::Observable{Point3f}
     u1::Observable{Vec3f}
     u2::Observable{Vec3f}
+    direction::Observable{Vec3f}
 end
 
-function RectLight(color::Union{Colorant, Observable{<: Colorant}}, r::Rect2)
+RectLight(color, pos, u1, u2) = RectLight(color, pos, u1, u2, -normalize(cross(u1, u2)))
+function RectLight(color, r::Rect2)
     mini = minimum(r); ws = widths(r)
     position = Observable(to_ndim(Point3f, mini + 0.5 * ws, 0))
     u1 = Observable(Vec3f(ws[1], 0, 0))
     u2 = Observable(Vec3f(0, ws[2], 0))
-    return RectLight(color, position, u1, u2)
+    return RectLight(color, position, u1, u2, normalize(Vec3f(0,0,-1)))
 end
 
 # Implement Transformable interface (more or less) to simplify working with
@@ -193,6 +195,7 @@ function rotate!(l::RectLight, q...)
     rot = convert_attribute(q, key"rotation"())
     l.u1[] = rot * l.u1[]
     l.u2[] = rot * l.u2[]
+    l.direction[] = rot * l.direction[]
 end
 
 function scale!(::Type{T}, l::RectLight, s) where T

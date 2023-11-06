@@ -37,7 +37,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
             elseif light isa SpotLight
                 delta = 8 # 3 position + 3 direction + 2 angles
             elseif light isa RectLight
-                delta = 9 # 3 position + 2x 3 rect basis vectors
+                delta = 12 # 3 position + 2x 3 rect basis vectors + 3 direction
             end
             if n_params + delta > MAX_PARAMS || n_lights == MAX_LIGHTS
                 if n_params > MAX_PARAMS
@@ -92,6 +92,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
                 idx = push_inplace!(parameters, idx, light.position[])
                 idx = push_inplace!(parameters, idx, light.u1[])
                 idx = push_inplace!(parameters, idx, light.u2[])
+                idx = push_inplace!(parameters, idx, normalize(light.direction[]))
             end
         end
         notify(attr[:light_parameters])

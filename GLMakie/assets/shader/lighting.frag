@@ -153,26 +153,23 @@ vec3 calc_rect_light(vec3 light_color, int idx, vec3 world_pos, vec3 camdir, vec
     vec3 origin = vec3(light_parameters[idx], light_parameters[idx+1], light_parameters[idx+2]);
     vec3 u1 = vec3(light_parameters[idx+3], light_parameters[idx+4], light_parameters[idx+5]);
     vec3 u2 = vec3(light_parameters[idx+6], light_parameters[idx+7], light_parameters[idx+8]);
-    vec3 n = normalize(cross(u1, u2));
+    vec3 light_dir = vec3(light_parameters[idx+9], light_parameters[idx+10], light_parameters[idx+11]);
 
-    // Find the intersection of a ray from world_pos in - plane normal direction
-    // with the plane. With norm(u1) and norm(u2) being the width and height of
-    // the rect, the edge is hit at w1/2 = +- 0.5.
-    vec3 dir = world_pos - origin;
+    // Find t such that <world_pos + t * light_dir, light_dir> = <origin - world_pos, light_dir>
+    // to find the point p = world_pos + t * light_dir = origin + w1 * u1 + w2 * u2 + 0 * light_dir.
+    // Then check if p is inside the rectangle by computing w1 and w2.
+    float t = dot(origin - world_pos, light_dir);
+    vec3 dir = world_pos + t * light_dir - origin;
     float w1 = dot(dir, u1) / dot(u1, u1);
     float w2 = dot(dir, u2) / dot(u2, u2);
 
-    // mask out light rays that aren't parallel to the plane normal
+    // mask out light rays that do not come from inside the shape
     float intensity = smoothstep(0.45, 0.55, 1-abs(w1)) * smoothstep(0.45, 0.55, 1-abs(w2));
 
     // If we do not mask the plane we may want to consider light rays coming from
     // the closest edge.
     // vec3 position = origin + clamp(w1, -0.5, 0.5) * u1 + clamp(w2, -0.5, 0.5) * u2;
     // vec3 light_dir = normalize(world_pos - position);
-
-    // If we do mask the plane all light rays are parallel to the plane. Assuming
-    // a two-sided light source we may need to invert the direction though.
-    vec3 light_dir = sign(dot(n, dir)) * n;
 
     return intensity * blinn_phong(light_color, light_dir, camdir, normal, color);
 }
@@ -199,7 +196,7 @@ vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
             break;
         case RectLight:
             final_color += calc_rect_light(light_colors[i], idx, world_pos, camdir, normal, base_color);
-            idx += 9;
+            idx += 12;
             break;
         default:
             return vec3(1,0,1); // debug magenta

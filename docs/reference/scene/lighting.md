@@ -205,10 +205,12 @@ fig
 {{doc RectLight}}
 
 ```julia
+using FileIO, GeometryBasics, LinearAlgebra, GLMakie
+
 # Create mesh from RectLight parameters
 function to_mesh(l::RectLight)
     n = -normalize(cross(l.u1[], l.u2[]))
-    p = l.position[] - 0.5 * l.u1[] - 0.5 * l.u2[] - n
+    p = l.position[] - 0.5 * l.u1[] - 0.5 * l.u2[]
     positions = [p, p + l.u1[], p + l.u2[], p + l.u1[] + l.u2[]]
     faces = GLTriangleFace[(1,2,3), (2,3,4)]
     normals = [n,n,n,n]
@@ -220,10 +222,10 @@ fig = Figure(backgroundcolor = :black)
 # Prepare lights
 lights = Makie.AbstractLight[
     AmbientLight(RGBf(0.1, 0.1, 0.1)),
-    RectLight(RGBf(0.9,1,0.8), Point3f(-1, -1, 0), Vec3f(1.8, 0, 0), Vec3f(0, 1.8, 0)),
-    RectLight(RGBf(0.9,1,0.8), Point3f(-1,  1, 0), Vec3f(1.8, 0, 0), Vec3f(0, 1.8, 0)),
-    RectLight(RGBf(0.9,1,0.8), Point3f( 1,  1, 0), Vec3f(1.8, 0, 0), Vec3f(0, 1.8, 0)),
-    RectLight(RGBf(0.9,1,0.8), Point3f( 1, -1, 0), Vec3f(1.8, 0, 0), Vec3f(0, 1.8, 0)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f(-1.9, -1.9, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f(-1.9,  0.1, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f( 0.1,  0.1, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f( 0.1, -1.9, 1.8, 1.8)),
 ]
 
 for l in lights
@@ -261,7 +263,7 @@ scale!(p2, Vec3f(4))
 for l in lights
     if l isa RectLight
         m = to_mesh(l)
-        mesh!(m, color = :white)
+        mesh!(m, color = :white, backlight = 1f0)
     end
 end
 

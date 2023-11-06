@@ -149,16 +149,18 @@ end
 
 @reference_test "RectLight" begin
     lights = Makie.AbstractLight[
-        AmbientLight(RGBf(0.1, 0.1, 0.1)),
-        RectLight(RGBf(0.5, 0, 0), Point3f(-1, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
-        RectLight(RGBf(0, 0.5, 0), Point3f(-1,  1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
-        RectLight(RGBf(0, 0, 0.5), Point3f( 1,  1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
-        RectLight(RGBf(0.5, 0.5, 0.5), Point3f( 1, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
+        RectLight(RGBf(0.5, 0, 0), Point3f(-0.5, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
+        RectLight(RGBf(0, 0.5, 0), Rect2f(-1, 1, 1, 3)),
+        RectLight(RGBf(0, 0, 0.5), Point3f( 1,  0.5, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0)),
+        RectLight(RGBf(0.5, 0.5, 0.5), Point3f( 1, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0), Vec3f(-0.3, 0.3, -1)),
     ]
+    # Test transformations
+    translate!(lights[2], Vec3f(-1, 1, 2)) # translate to by default
+    scale!(lights[2], 3, 1)
 
-    scene = Scene(lights = lights, camera = cam3d!)
+    scene = Scene(lights = lights, camera = cam3d!, size = (400, 400))
     p = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
-    update_cam!(scene, Vec3f(0, 0, 10), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
+    update_cam!(scene, Vec3f(0, 0, 7), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
 
     scene
 end
