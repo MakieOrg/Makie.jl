@@ -226,7 +226,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         wsize = reverse(size(color))
         wh = wsize .- 1
         cvec = map(uv) do uv
-            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wsize)
             return color[end - (y - 1), x]
         end
         # TODO This is wrong and doesn't actually interpolate
