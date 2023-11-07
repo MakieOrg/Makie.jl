@@ -18,7 +18,7 @@ Currently the following material attributes are available:
 - `diffuse::Vec3f = Vec3f(1.0)`: controls how strong the diffuse reflections of an object are in the red, green and blue color channel. A diffuse reflection is one where incoming light is scattered in every direction. The strength of this reflection is based on the amount of light hitting the surface, which is proportional to `dot(light_direction, -normal)`. It generally makes up the main color of an object in light.
 - `specular::Vec3f = Vec3f(0.4)`: controls the strength of specular reflection in the red, green and blue color channels. A specular reflection is a direct reflection of light, i.e. one where the incoming angle `dot(light_direction, -normal)` matches the outgoing angle `dot(camera_direction, -normal)`. It responsible for bright spots on objects. Note that this does not take the color of the object into account, as specular reflections typically match the light color.
 - `shininess::Float32 = 32f0`: controls how sharp specular reflections are. Low shininess will allow a larger difference between incoming outgoing angle to take effect, creating a larger and smoother bright spot. High shininess will respectively reduce the size of the bright spot and increase its sharpness. This value must be positive.
-- `backlight::Float32 = 0f0` controls how strongly light interacts with the backside of an object. Setting this to a value `> 0` can be helpful when visualizing a surface. (More precisely the light calculation is repeated with inverted normals and the result is mixed in with `backlight` as a prefactor.)
+- `backlight::Real = 0` controls how strongly light interacts with the backside of an object. Setting this to a value `> 0` can be helpful when visualizing a surface. (More precisely the light calculation is repeated with inverted normals and the result is mixed in with `backlight` as a prefactor.)
 
 !!! note
     RPRMakie does not use these material attributes.
@@ -169,7 +169,7 @@ ax = LScene(fig[1, 1], scenekw = (lights = lights,), show_axis = false)
 update_cam!(ax.scene, ax.scene.camera_controls, Rect3f(Point3f(-2), Vec3f(4)))
 meshscatter!(
     ax, [Point3f(0) for _ in 1:14], marker = m, markersize = 0.1:0.2:3.0,
-    color = :white, backlight = 1f0, transparency = false)
+    color = :white, backlight = 1, transparency = false)
 fig
 ```
 \end{examplefigure}
@@ -199,6 +199,79 @@ scatter!(ax, map(l -> l.position[], lights), color = map(l -> l.color[], lights)
 fig
 ```
 \end{examplefigure}
+
+### RectLight
+
+{{doc RectLight}}
+
+```julia
+using FileIO, GeometryBasics, LinearAlgebra, GLMakie
+
+# Create mesh from RectLight parameters
+function to_mesh(l::RectLight)
+    n = -normalize(cross(l.u1[], l.u2[]))
+    p = l.position[] - 0.5 * l.u1[] - 0.5 * l.u2[]
+    positions = [p, p + l.u1[], p + l.u2[], p + l.u1[] + l.u2[]]
+    faces = GLTriangleFace[(1,2,3), (2,3,4)]
+    normals = [n,n,n,n]
+    return GeometryBasics.Mesh(meta(positions, normals = normals), faces)
+end
+
+fig = Figure(backgroundcolor = :black)
+
+# Prepare lights
+lights = Makie.AbstractLight[
+    AmbientLight(RGBf(0.1, 0.1, 0.1)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f(-1.9, -1.9, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f(-1.9,  0.1, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f( 0.1,  0.1, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f( 0.1, -1.9, 1.8, 1.8)),
+]
+
+for l in lights
+    if l isa RectLight
+        angle = pi/4
+        p = l.position[]
+        rotate!(l, Vec3f(0, 1, 0), angle)
+
+        p = 3 * Vec3f(1+sin(angle), 0, cos(angle)) +
+            p[1] * normalize(l.u1[]) +
+            p[2] * normalize(l.u2[])
+        translate!(l, p)
+    end
+end
+
+# Set scene
+scene = LScene(
+    fig[1, 1], show_axis = false,
+    scenekw=(lights = lights, backgroundcolor = :black, center = false),
+)
+
+# floor
+p = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
+translate!(p, 0, 0, -5)
+
+# Cat
+cat_mesh = FileIO.load(Makie.assetpath("cat.obj"))
+cat_texture = FileIO.load(Makie.assetpath("diffusemap.png"))
+p2 = mesh!(scene, cat_mesh, color = cat_texture)
+rotate!(p2, Vec3f(1,0,0), pi/2)
+translate!(p2, -2, 2, -5)
+scale!(p2, Vec3f(4))
+
+# Window/light source markers
+for l in lights
+    if l isa RectLight
+        m = to_mesh(l)
+        mesh!(m, color = :white, backlight = 1)
+    end
+end
+
+# place camera
+update_cam!(scene.scene, Vec3f(1.5, -13, 2), Vec3f(1, -2, 0), Vec3f(0, 0, 1))
+
+fig
+```
 
 ### EnvironmentLight
 
