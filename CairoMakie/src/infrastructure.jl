@@ -88,7 +88,7 @@ end
 function prepare_for_scene(screen::Screen, scene::Scene)
 
     # get the root area to correct for its size when translating
-    root_area_height = size(Makie.root(scene))[2]
+    root_area_height = widths(Makie.root(scene))[2]
     scene_area = viewport(scene)[]
     scene_height = widths(scene_area)[2]
     scene_x_origin, scene_y_origin = scene_area.origin
