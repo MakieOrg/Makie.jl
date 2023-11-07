@@ -337,7 +337,7 @@ function plot!(axis::Axis3D)
     onany(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
+        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...; update=true
     )
     return axis
 end
