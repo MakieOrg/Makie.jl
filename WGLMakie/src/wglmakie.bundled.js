@@ -21003,7 +21003,7 @@ function Identity4x4() {
 }
 function in_scene(scene, mouse_event) {
     const [x, y] = events2unitless(scene.screen, mouse_event);
-    const [sx, sy, sw, sh] = scene.pixelarea.value;
+    const [sx, sy, sw, sh] = scene.viewport.value;
     return x >= sx && x < sx + sw && y >= sy && y < sy + sh;
 }
 function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
@@ -21872,7 +21872,7 @@ function deserialize_scene(data, screen) {
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
-    scene.pixelarea = data.pixelarea;
+    scene.viewport = data.viewport;
     scene.backgroundcolor = data.backgroundcolor;
     scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
@@ -21936,7 +21936,7 @@ function render_scene(scene, picking = false) {
         return true;
     }
     renderer.autoClear = scene.clearscene.value;
-    const area = scene.pixelarea.value;
+    const area = scene.viewport.value;
     if (area) {
         const [x, y, w, h] = area.map((x)=>x * px_per_unit);
         renderer.setViewport(x, y, w, h);
