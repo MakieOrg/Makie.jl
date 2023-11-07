@@ -61,8 +61,7 @@ of results.
 
 #### Multiple Windows
 
-GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`.
-
+GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`. To close all windows, use `GLMakie.closeall()`.
 
 ## Forcing Dedicated GPU Use In Linux
 
