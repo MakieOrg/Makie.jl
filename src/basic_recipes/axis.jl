@@ -334,7 +334,7 @@ function plot!(axis::Axis3D)
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals..., axis.padding
     )
-    map_once(
+    onany(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
         axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
