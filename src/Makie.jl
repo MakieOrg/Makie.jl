@@ -232,7 +232,7 @@ export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
 # Observable/Signal related
-export Observable, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
+export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute

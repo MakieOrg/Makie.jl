@@ -34,7 +34,7 @@ create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=2
 display_time = @ctime Makie.colorbuffer(display(fig))
 # Runtime
 create_time = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-display_time = @benchmark Makie.colorbuffer(display(fig))
+display_time = @benchmark Makie.colorbuffer(fig)
 ```
 
 |               | using     | create   | display  | create   | display  |
