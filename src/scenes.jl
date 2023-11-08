@@ -455,7 +455,7 @@ function Base.push!(scene::Scene, @nospecialize(plot::AbstractPlot))
 end
 
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
-    @warn "Deleting plots not implemented for backend: $(typeof(screen))"
+    @debug "Deleting plots not implemented for backend: $(typeof(screen))"
 end
 
 function Base.delete!(screen::MakieScreen, ::Scene)

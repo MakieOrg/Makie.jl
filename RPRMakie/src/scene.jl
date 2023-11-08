@@ -43,10 +43,10 @@ function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecializ
     end
 end
 
-@inline to_rpr_light(ctx, light, scene) = to_rpr_light(ctx, light)
+to_rpr_light(ctx, rpr_scene, light, scene) = to_rpr_light(ctx, rpr_scene, light)
 
 # TODO attenuation
-function to_rpr_light(context::RPR.Context, light::Makie.PointLight)
+function to_rpr_light(context::RPR.Context, matsys, light::Makie.PointLight)
     pointlight = RPR.PointLight(context)
     map(light.position) do pos
         transform!(pointlight, Makie.translationmatrix(pos))
@@ -64,7 +64,7 @@ function RPR.RPR.rprContextCreateSpotLight(context)
     return out_light[]
 end
 
-function to_rpr_light(context::RPR.Context, light::Makie.DirectionalLight, scene)
+function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.DirectionalLight, scene)
     directionallight = RPR.DirectionalLight(context)
     map(light.direction) do dir
         if light.camera_relative
@@ -82,7 +82,24 @@ function to_rpr_light(context::RPR.Context, light::Makie.DirectionalLight, scene
     return directionallight
 end
 
-function to_rpr_light(context::RPR.Context, light::Makie.SpotLight)
+function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.RectLight)
+    mesh = lift(light.position, light.u1, light.u2) do pos, u1, u2
+        points = Point3f[pos, pos + u1, pos + u1 + u2, pos + u2]
+        faces = [GLTriangleFace(1, 2, 3), GLTriangleFace(1, 3, 4)]
+        return GeometryBasics.Mesh(points, faces)
+    end
+    rpr_mesh = RPR.Shape(context, mesh[])
+    env_img = fill(light.color[], 1, 1)
+    img = RPR.Image(context, env_img)
+    env_light = RPR.EnvironmentLight(context)
+    set!(env_light, img)
+    setintensityscale!(env_light, 0.1)
+    # TODO, this doesn't seem to properly create a rectangular portal -.-
+    setportal!(rpr_scene, env_light, rpr_mesh)
+    return env_light
+end
+
+function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.SpotLight)
     spotlight = RPR.SpotLight(context)
     map(light.position, light.direction) do pos, dir
         quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
@@ -97,7 +114,7 @@ function to_rpr_light(context::RPR.Context, light::Makie.SpotLight)
     return spotlight
 end
 
-function to_rpr_light(context::RPR.Context, light::Makie.AmbientLight)
+function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.AmbientLight)
     env_img = fill(light.color[], 1, 1)
     img = RPR.Image(context, env_img)
     env_light = RPR.EnvironmentLight(context)
@@ -105,7 +122,7 @@ function to_rpr_light(context::RPR.Context, light::Makie.AmbientLight)
     return env_light
 end
 
-function to_rpr_light(context::RPR.Context, light::Makie.EnvironmentLight)
+function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.EnvironmentLight)
     env_light = RPR.EnvironmentLight(context)
     last_img = RPR.Image(context, light.image[])
     set!(env_light, last_img)
@@ -133,7 +150,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
         RPR.rprSceneSetBackgroundImage(scene, img)
     end
     for light in mscene.lights
-        rpr_light = to_rpr_light(context, light, mscene)
+        rpr_light = to_rpr_light(context, scene, light, mscene)
         push!(scene, rpr_light)
     end
 
