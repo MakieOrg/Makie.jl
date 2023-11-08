@@ -7,6 +7,8 @@ using Colors
 using FileIO
 using Makie: colorbuffer
 
+examplepath(args...) = joinpath(dirname(@__DIR__), "examples", args...)
+
 const RPR = RadeonProRender
 
 """
@@ -34,6 +36,7 @@ function ScreenConfig(iterations::Int, max_recursion::Int, render_resource, rend
     )
 end
 
+include("lights.jl")
 include("scene.jl")
 include("lines.jl")
 include("meshes.jl")

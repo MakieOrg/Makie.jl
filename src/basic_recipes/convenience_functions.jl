@@ -29,35 +29,36 @@ function showgradients(
         fontsize = 0.7,
         resolution = (800, length(cgrads) * 84),
         monospace = true
-    )::Scene
+    )
 
-    scene = Scene(resolution = resolution)
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    hidedecorations!(ax); hidespines!(ax)
 
     map(collect(cgrads)) do cmap
         c = to_colormap(cmap)
 
         cbar = image!(
-            scene,
+            ax,
             range(0, stop = 10, length = length(c)),
-            range(0, stop = 1, length = length(c)),
+            range(h, stop = 1+h, length = length(c)),
             reshape(c, (length(c),1))
-        )[end]
+        )
 
         cmapstr = monospace ? UnicodeFun.to_latex("\\mono{$cmap}") : string(cmap, ":")
 
         text!(
-            scene,
+            ax,
             cmapstr,
-            position = Point2f(-0.1, 0.5 + h),
+            position = Point2f(0, 0.5 + h),
             align = (:right, :center),
             fontsize = fontsize
         )
 
-        translate!(cbar, 0, h, 0)
-
         h -= (1 + offset)
     end
-
-    scene
+    autolimits!(ax)
+    xlims!(ax, -3, 10)
+    fig
 
 end

@@ -16,14 +16,17 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Volume)
 
     mini, maxi = extrema(volume)
     vol_normed = (volume .- mini) ./ (maxi - mini)
-    grid = RPR.VoxelGrid(context, vol_normed)
     gridsampler = RPR.GridSamplerMaterial(matsys)
-    gridsampler.data = grid
+  
+    on(vol_normed_obs; update=true) do vol_normed
+        grid_sampler.data = RPR.VoxelGrid(context, vol_normed)
+    end
 
     color_sampler = RPR.ImageTextureMaterial(matsys)
-    color_sampler.data = RPR.Image(context, reverse(to_colormap(plot.colormap[])))
-    gridsampler2 = RPR.GridSamplerMaterial(matsys)
     color_sampler.uv = gridsampler
+    on(plot.colormap; update=true) do cmap
+        color_sampler.data = RPR.Image(context, reverse(to_colormap(cmap))')
+    end
 
     volmat = RPR.VolumeMaterial(matsys)
     on(plot.absorption; update=true) do absorption
@@ -32,6 +35,5 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Volume)
     volmat.densitygrid = gridsampler
     volmat.color = color_sampler
     set!(cube, volmat)
-
     return [cube]
 end
