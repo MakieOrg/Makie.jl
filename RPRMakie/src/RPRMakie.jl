@@ -34,6 +34,9 @@ function ScreenConfig(iterations::Int, max_recursion::Int, render_resource, rend
     )
 end
 
+Makie.apply_screen_config!(screen::RPRMakie.Screen, ::RPRMakie.ScreenConfig, args...) = screen
+Base.empty!(::RPRMakie.Screen) = nothing
+
 include("scene.jl")
 include("lines.jl")
 include("meshes.jl")
