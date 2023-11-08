@@ -429,7 +429,7 @@ function getscreen(backend::Union{Missing, Module}, scene::Scene, _config::Dict,
 end
 
 function get_sub_picture(image, format::ImageStorageFormat, rect)
-    xmin, ymin = minimum(rect) .- (1, 0)
+    xmin, ymin = minimum(rect) .- Vec(1, 0)
     xmax, ymax = maximum(rect)
     start = size(image, 1) - ymax
     stop = size(image, 1) - ymin
