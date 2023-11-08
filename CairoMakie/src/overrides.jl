@@ -85,7 +85,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     if isnothing(linestyle)
         linestyle_diffed = nothing
-    elseif linestyle isa AbstractVector{Float64}
+    elseif linestyle isa AbstractVector{<:Real}
         linestyle_diffed = diff(Float64.(linestyle))
     else
         error("Wrong type for linestyle: $(poly.linestyle[]).")
