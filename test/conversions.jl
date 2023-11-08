@@ -303,15 +303,15 @@ end
     # type tree
     @test GridBased <: ConversionTrait
     @test CellGrid <: GridBased
-    @test VertexBasedGrid <: GridBased
+    @test VertexGrid <: GridBased
     @test ImageLike <: ConversionTrait
 
     # Plot to trait
     @test conversion_trait(Image) === ImageLike()
     @test conversion_trait(Heatmap) === CellGrid()
-    @test conversion_trait(Surface) === VertexBasedGrid()
-    @test conversion_trait(Contour) === VertexBasedGrid()
-    @test conversion_trait(Contourf) === VertexBasedGrid()
+    @test conversion_trait(Surface) === VertexGrid()
+    @test conversion_trait(Contour) === VertexGrid()
+    @test conversion_trait(Contourf) === VertexGrid()
 
     m1 = [x for x in 1:10, y in 1:6]
     m2 = [y for x in 1:10, y in 1:6]
@@ -337,7 +337,7 @@ end
         @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
     end
 
-    @testset "VertexBasedGrid conversion" begin
+    @testset "VertexGrid conversion" begin
         vo1 = Float32.(v1)
         vo2 = Float32.(v2)
         mo1 = Float32.(m1)
