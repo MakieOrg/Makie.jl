@@ -16,7 +16,7 @@ end
 set_theme!(size=(800, 600))
 
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-display_time = @ctime colorbuffer(fig)
+display_time = @ctime colorbuffer(fig; px_per_unit=1)
 
 using BenchmarkTools
 using BenchmarkTools.JSON
@@ -30,7 +30,7 @@ old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 push!.(old[1:3], [t_using, create_time, display_time])
 
 b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-b2 = @benchmark colorbuffer(fig)
+b2 = @benchmark colorbuffer(fig; px_per_unit=1)
 
 using Statistics
 
