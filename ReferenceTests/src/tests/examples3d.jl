@@ -33,7 +33,7 @@ end
     cam.settings[:projectiontype][] = Makie.Orthographic
     cam.settings.center[] = false # This would be set by update_cam!()
     cam.upvector[] = (0.0, 0.0, 1.0)
-    cam.lookat[] = Vec3f(0.595, 2.5, 0.5)
+    cam.lookat[] = Vec3f(0.595, 1.5, 0.5)
     cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 0.61, cam.lookat[][3])
     update_cam!(scene, cam)
     fig

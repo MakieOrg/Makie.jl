@@ -40,7 +40,11 @@ Settings include anything that isn't a mouse or keyboard button.
 - `fixed_axis = true`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
 - `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
-- `clipping_mode = :bbox_relative`: Controls how `near` and `far` get processed. With `:static` they get passed as is, with `:view_relative` they get scaled by `norm(eyeposition - lookat)` and with `:bbox_relative` they get scaled to be just outside the scene bounding box. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
+- `clipping_mode = :adaptive`: Controls how `near` and `far` get processed. Options:
+    - `:static` passes `near` and `far` as is
+    - `:adaptive` scales `near` by `norm(eyeposition - lookat)` and passes `far` as is
+    - `:view_relative` scales `near` and `far` by `norm(eyeposition - lookat)`
+    - `:bbox_relative` scales `near` and `far` to the scene bounding box as passed to the camera with `update_cam!(..., bbox)`. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
 - `center = true`: Controls whether the camera placement gets reset when calling `update_cam!(scene[, cam], bbox)`, which is called when a new plot is added. This is automatically set to `false` after calling `update_cam!(scene[, cam], eyepos, lookat[, up])`.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
@@ -164,7 +168,7 @@ function Camera3D(scene::Scene; kwargs...)
         fixed_axis = true,
         cad = false,
         center = true,
-        clipping_mode = :bbox_relative
+        clipping_mode = :adaptive
     )
 
     replace!(settings, :Camera3D, scene, overwrites)
@@ -174,7 +178,7 @@ function Camera3D(scene::Scene; kwargs...)
     elseif settings.clipping_mode[] === :bbox_relative
         far_default = 1f0
     else
-        far_default = 10f0 # will be set when inserting a plot
+        far_default = 100f0 # will be set when inserting a plot
     end
 
     cam = Camera3D(
@@ -722,6 +726,9 @@ function update_cam!(scene::Scene, cam::Camera3D)
         far_dist = center_dist + radius(bounding_sphere)
         near = max(view_dist * near, center_dist - radius(bounding_sphere))
         far = far_dist * far
+    elseif cam.settings.clipping_mode[] === :adaptive
+        view_dist = norm(eyeposition - lookat)
+        near = view_dist * near; far = far
     elseif cam.settings.clipping_mode[] !== :static
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
     end
@@ -761,11 +768,13 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool =
         cam.lookat[] = center
         cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
         cam.upvector[] = normalize(cross(old_dir, cross(cam.upvector[], old_dir)))
-        # Vec3f(0, 0, 1) # Should we reset this?
     end
 
     if cam.settings.clipping_mode[] === :static
         cam.near[] = 0.1f0 * dist
+        cam.far[] = 2f0 * dist
+    elseif cam.settings.clipping_mode[] === :adaptive
+        cam.near[] = 0.1f0 * dist / norm(cam.eyeposition[] - cam.lookat[])
         cam.far[] = 2f0 * dist
     end
 
