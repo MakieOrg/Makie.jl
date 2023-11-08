@@ -9,7 +9,7 @@ function backend_display(args...)
 end
 
 @deprecate DiscreteSurface CellGrid true
-@deprecate ContinuousSurface VertexBasedGrid true
+@deprecate ContinuousSurface VertexGrid true
 
 
 function Base.getproperty(scene::Scene, field::Symbol)
