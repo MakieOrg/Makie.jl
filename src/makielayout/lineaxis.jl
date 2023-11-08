@@ -78,8 +78,8 @@ function create_linepoints(
             return [from, to]
         else
             x = position
-            pstart = Point2f(-0.5f0 * tickwidth, 0)
-            pend = Point2f(0.5f0 * tickwidth, 0)
+            pstart = Point2f(0, -0.5f0 * tickwidth)
+            pend = Point2f(0, 0.5f0 * tickwidth)
             from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents_oriented[1] - 0.5spine_width)
             to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents_oriented[2] + 0.5spine_width)
             return [from, to]
