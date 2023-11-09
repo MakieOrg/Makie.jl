@@ -8,6 +8,8 @@
     Don't hesitate to open issues if you run into unexpected behaviour.
     PRs are also more then welcome, the code isn't actually that complex and should be easy to dive into (src/basic_recipes/specapi.jl).
 
+
+
 The `SpecApi` is a convenient scope for creating PlotSpec objects.
 PlotSpecs are a simple way to create plots in a declarative way, which can then get converted to Makie plots.
 You can use `Observable{SpecApi.PlotSpec}`, or `Observable{SpecApi.Figure}` to create complete figures that can be updated dynamically.
@@ -59,7 +61,6 @@ ax1 = S.Axis(; title="Axis 1", plots=map(x -> S.density(x * randn(200) .+ 3x, co
 ax2 = S.Axis(; title="Axis 2", plots=[S.contourf(volcano; colormap=:inferno)])
 ax3 = S.Axis3(; title="Axis3", plots=[S.mesh(brain, colormap=:Spectral, color=[tri[1][2] for tri in brain for i in 1:3])])
 ax4 = S.Axis3(; plots=[S.contour(cube, alpha=0.5)])
-
 
 spec_array = S.Figure([ax1, ax2]);
 spec_matrix = S.Figure([ax1 ax2; ax3 ax4]);
