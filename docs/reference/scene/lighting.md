@@ -204,6 +204,7 @@ fig
 
 {{doc RectLight}}
 
+\begin{examplefigure}{}
 ```julia
 using FileIO, GeometryBasics, LinearAlgebra, GLMakie
 
@@ -272,6 +273,7 @@ update_cam!(scene.scene, Vec3f(1.5, -13, 2), Vec3f(1, -2, 0), Vec3f(0, 0, 1))
 
 fig
 ```
+\end{examplefigure}
 
 ### EnvironmentLight
 
