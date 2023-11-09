@@ -83,7 +83,8 @@ function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.DirectionalL
 end
 
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.RectLight)
-    mesh = lift(light.position, light.u1, light.u2) do pos, u1, u2
+    mesh = lift(light.position, light.u1, light.u2) do center, u1, u2
+        pos = center - 0.5u1 - 0.5u2
         points = Point3f[pos, pos + u1, pos + u1 + u2, pos + u2]
         faces = [GLTriangleFace(1, 2, 3), GLTriangleFace(1, 3, 4)]
         return GeometryBasics.Mesh(points, faces)
