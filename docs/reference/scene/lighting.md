@@ -233,7 +233,7 @@ for l in lights
     if l isa RectLight
         angle = pi/4
         p = l.position[]
-        rotate!(l, Vec3f(0, 1, 0), angle)
+        Makie.rotate!(l, Vec3f(0, 1, 0), angle)
 
         p = 3 * Vec3f(1+sin(angle), 0, cos(angle)) +
             p[1] * normalize(l.u1[]) +
@@ -256,7 +256,7 @@ translate!(p, 0, 0, -5)
 cat_mesh = FileIO.load(Makie.assetpath("cat.obj"))
 cat_texture = FileIO.load(Makie.assetpath("diffusemap.png"))
 p2 = mesh!(scene, cat_mesh, color = cat_texture)
-rotate!(p2, Vec3f(1,0,0), pi/2)
+Makie.rotate!(p2, Vec3f(1,0,0), pi/2)
 translate!(p2, -2, 2, -5)
 scale!(p2, Vec3f(4))
 
