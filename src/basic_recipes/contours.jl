@@ -110,8 +110,8 @@ function to_levels(n::Integer, cnorm)
     range(zmin + dz; step = dz, length = n)
 end
 
-conversion_trait(::Type{<: Contour3d}) = VertexBasedGrid()
-conversion_trait(::Type{<: Contour}) = VertexBasedGrid()
+conversion_trait(::Type{<: Contour3d}) = VertexGrid()
+conversion_trait(::Type{<: Contour}) = VertexGrid()
 conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<: Number, 3}}) = VolumeLike()
 conversion_trait(::Type{<: Contour}, ::AbstractArray{<: Number, 3}) = VolumeLike()
 
@@ -247,10 +247,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         align = (:center, :center),
         fontsize = labelsize,
         font = labelfont,
+        transform_marker = false
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, labelformatter,
-         lev_pos_col) do _, _, labels, labelcolor, labelformatter, lev_pos_col
+    lift(scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
+            labels, labelcolor, labelformatter, lev_pos_col
+        ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)

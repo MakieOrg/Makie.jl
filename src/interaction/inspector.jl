@@ -125,12 +125,12 @@ A --- B
 |     |
 D --- C
 
-this computes parameter `f` such that the line from `A + f * (B - A)` to 
-`D + f * (C - D)` crosses through the given point `P`. This assumes that `P` is 
+this computes parameter `f` such that the line from `A + f * (B - A)` to
+`D + f * (C - D)` crosses through the given point `P`. This assumes that `P` is
 inside the quad and that none of the edges cross.
 """
 function point_in_quad_parameter(
-        A::Point2, B::Point2, C::Point2, D::Point2, P::Point2; 
+        A::Point2, B::Point2, C::Point2, D::Point2, P::Point2;
         iterations = 50, epsilon = 1e-6
     )
 
@@ -166,9 +166,9 @@ end
 function shift_project(scene, pos)
     project(
         camera(scene).projectionview[],
-        Vec2f(widths(pixelarea(scene)[])),
+        Vec2f(size(scene)),
         pos
-    ) .+ Vec2f(origin(pixelarea(scene)[]))
+    ) .+ Vec2f(origin(viewport(scene)[]))
 end
 
 
@@ -236,7 +236,7 @@ returning a label. See Makie documentation for more detail.
 - `enable_indicators = true)`: Enables or disables indicators
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the
     tooltip is always in front.
-- `apply_tooltip_offset = true`: Enables or disables offsetting tooltips based 
+- `apply_tooltip_offset = true`: Enables or disables offsetting tooltips based
     on, for example, markersize.
 - and all attributes from `Tooltip`
 """
@@ -246,7 +246,7 @@ end
 
 function DataInspector(scene::Scene; priority = 100, kwargs...)
     parent = root(scene)
-    @assert origin(pixelarea(parent)[]) == Vec2f(0)
+    @assert origin(viewport(parent)[]) == Vec2f(0)
 
     attrib_dict = Dict(kwargs)
     base_attrib = Attributes(
@@ -397,7 +397,7 @@ end
 function update_tooltip_alignment!(inspector, proj_pos)
     inspector.plot[1][] = proj_pos
 
-    wx, wy = widths(pixelarea(inspector.root)[])
+    wx, wy = widths(viewport(inspector.root)[])
     px, py = proj_pos
 
     placement = py < 0.75wy ? (:above) : (:below)
@@ -515,8 +515,8 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     update_tooltip_alignment!(inspector, proj_pos)
 
     tt.offset[] = ifelse(
-        a.apply_tooltip_offset[], 
-        sv_getindex(plot.linewidth[], idx) + 2, 
+        a.apply_tooltip_offset[],
+        sv_getindex(plot.linewidth[], idx) + 2,
         a.offset[]
     )
 
@@ -560,7 +560,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
             end
 
             p = wireframe!(
-                scene, bbox, color = a.indicator_color, 
+                scene, bbox, color = a.indicator_color,
                 transformation = Transformation(),
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
@@ -661,7 +661,7 @@ function show_imagelike(inspector, plot, name, edge_based)
     a._color[] = if z isa AbstractFloat
         interpolated_getindex(
             to_colormap(plot.colormap[]), z,
-            to_value(get(plot.attributes, :colorrange, (0, 1)))
+            extract_colorrange(plot)
         )
     else
         z
@@ -672,16 +672,16 @@ function show_imagelike(inspector, plot, name, edge_based)
 
     if a.enable_indicators[]
         if plot.interpolate[]
-            if inspector.selection != plot || (length(inspector.temp_plots) != 1) || 
+            if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Scatter)
                 clear_temporary_plots!(inspector, plot)
                 p = scatter!(
                     scene, pos, color = a._color,
                     visible = a.indicator_visible,
                     inspectable = false, model = plot.model,
-                    # TODO switch to Rect with 2r-1 or 2r-2 markersize to have 
+                    # TODO switch to Rect with 2r-1 or 2r-2 markersize to have
                     # just enough space to always detect the underlying image
-                    marker=:rect, markersize = map(r -> 2r, a.range), 
+                    marker=:rect, markersize = map(r -> 2r, a.range),
                     strokecolor = a.indicator_color,
                     strokewidth = a.indicator_linewidth,
                     depth_shift = -1f-3
@@ -694,7 +694,7 @@ function show_imagelike(inspector, plot, name, edge_based)
             end
         else
             bbox = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
-            if inspector.selection != plot || (length(inspector.temp_plots) != 1) || 
+            if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Wireframe)
                 clear_temporary_plots!(inspector, plot)
                 p = wireframe!(
@@ -918,7 +918,7 @@ function show_poly(inspector, plot, poly, idx, source)
             clear_temporary_plots!(inspector, plot)
 
             p = lines!(
-                scene, line_collection, color = a.indicator_color, 
+                scene, line_collection, color = a.indicator_color,
                 transformation = Transformation(source),
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false, depth_shift = -1f-3
@@ -953,7 +953,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
     tt[1][] = proj_pos
-    
+
     world_pos = apply_transform_and_model(child, pos)
 
     if haskey(plot, :inspector_label)
@@ -1003,7 +1003,7 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
                     scene, [P1, P2], transformation = Transformation(plot.transformation),
-                    color = a.indicator_color, strokewidth = a.indicator_linewidth, 
+                    color = a.indicator_color, strokewidth = a.indicator_linewidth,
                     linestyle = a.indicator_linestyle,
                     visible = a.indicator_visible, inspectable = false,
                     depth_shift = -1f-3

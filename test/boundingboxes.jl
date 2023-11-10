@@ -34,8 +34,19 @@ end
 
     fig, ax, p = meshscatter([Point3f(x, y, z) for x in 1:5 for y in 1:5 for z in 1:5])
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(1)
-    @test bb.widths ≈ Vec3f(4)
+    # Note: awkwards numbers come from using mesh over Sphere
+    @test bb.origin ≈ Point3f(0.9011624, 0.9004657, 0.9)
+    @test bb.widths ≈ Vec3f(4.1986046, 4.199068, 4.2)
+
+    fig, ax, p = meshscatter(
+        [Point3f(0) for _ in 1:3],
+        marker = Rect3f(Point3f(-0.1, -0.1, -0.1), Vec3f(0.2, 0.2, 1.2)),
+        markersize = Vec3f(1, 1, 2),
+        rotations = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)])
+    )
+    bb = boundingbox(p)
+    @test bb.origin ≈ Point3f(-0.2)
+    @test bb.widths ≈ Vec3f(2.4)
 
     fig, ax, p = volume(rand(5, 5, 5))
     bb = boundingbox(p)
@@ -68,7 +79,7 @@ end
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
 
     # text transforms to pixel space atm (TODO)
-    fig = Figure(resolution = (400, 400))
+    fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1])
     p = text!(ax, Point2f(10), text = "test", fontsize = 20)
     bb = boundingbox(p)

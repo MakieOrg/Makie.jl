@@ -73,31 +73,57 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
+draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_poly(scene, screen, poly, [bezierpath])
 
-function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
+function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2,BezierPath}})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
+    projected_shapes = project_shape.(Ref(scene), space, shapes, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
 
     linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     if isnothing(linestyle)
         linestyle_diffed = nothing
-    elseif linestyle isa AbstractVector{Float64}
+    elseif linestyle isa AbstractVector{<:Real}
         linestyle_diffed = diff(Float64.(linestyle))
     else
         error("Wrong type for linestyle: $(poly.linestyle[]).")
     end
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-    broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
-        Cairo.rectangle(screen.context, origin(r)..., widths(r)...)
+    broadcast_foreach(projected_shapes, color, strokecolor, poly.strokewidth[]) do shape, c, sc, sw
+        create_shape_path!(screen.context, shape)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
         isnothing(linestyle_diffed) || Cairo.set_dash(screen.context, linestyle_diffed .* sw)
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
+    end
+end
+
+function project_shape(scene, space, shape::BezierPath, model)
+    commands = Makie.PathCommand[]
+    for cmd in shape.commands
+        if cmd isa EllipticalArc
+            bezier = Makie.elliptical_arc_to_beziers(cmd)
+            for b in bezier.commands
+                push!(commands, project_command(b, scene, space, model))
+            end
+        else
+            push!(commands, project_command(cmd, scene, space, model))
+        end
+    end
+    BezierPath(commands)
+end
+
+function create_shape_path!(ctx, r::Rect2)
+    Cairo.rectangle(ctx, origin(r)..., widths(r)...)
+end
+
+function create_shape_path!(ctx, b::BezierPath)
+    for cmd in b.commands
+        path_command(ctx, cmd)
     end
 end
 

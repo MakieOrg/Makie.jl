@@ -24,7 +24,7 @@ flat out uvec2 f_id;
 flat out vec2 f_uv_minmax;
 
 out vec3 o_view_pos;
-out vec3 o_normal;
+out vec3 o_view_normal;
 
 uniform vec2 resolution;
 uniform float pattern_length;
@@ -773,7 +773,7 @@ void main(void)
 {
     // These need to be set but don't have reasonable values here
     o_view_pos = vec3(0);
-    o_normal = vec3(0);
+    o_view_normal = vec3(0);
 
     // we generate very thin lines for linewidth 0, so we manually skip them:
     if (g_thickness[1] == 0.0 && g_thickness[2] == 0.0) {

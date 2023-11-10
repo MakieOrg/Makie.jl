@@ -136,7 +136,7 @@ The following examples are supposed to be self-explanatory. For further informat
 x = 1:0.1:10
 fig = lines(x, x.^2; label = "Parabola",
     axis = (; xlabel = "x", ylabel = "y", title ="Title"),
-    figure = (; resolution = (800,600), fontsize = 22))
+    figure = (; size = (800,600), fontsize = 22))
 axislegend(; position = :lt)
 save("./assets/parabola.png", fig)
 fig
@@ -167,8 +167,8 @@ with_theme(palette = (; patchcolor = cgrad(cmap, alpha=0.45))) do
     band!(x, sin.(x), approx .+= x .^ 5 / 120; label = L"n = 2")
     band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
     limits!(-3.8, 3.8, -1.5, 1.5)
-    axislegend(; position = :ct, bgcolor = (:white, 0.75), framecolor = :orange)
-    save("./assets/approxsin.png", fig, resolution = (800, 600))
+    axislegend(; position = :ct, backgroundcolor = (:white, 0.75), framecolor = :orange)
+    save("./assets/approxsin.png", fig, size = (800, 600))
     fig
 end
 ```

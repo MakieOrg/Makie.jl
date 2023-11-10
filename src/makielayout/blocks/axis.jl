@@ -163,19 +163,12 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
-    if palette === nothing
-        palette = fast_deepcopy(get(blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
-    end
-    ax.palette = palette isa Attributes ? palette : Attributes(palette)
-
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
     targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
     finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
-
-    ax.cycler = Cycler()
 
     on(blockscene, targetlimits) do lims
         # this should validate the targetlimits before anything else happens with them
@@ -189,12 +182,18 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
 
-    scene = Scene(blockscene, px_area=scenearea)
+    scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
+
+    if !isnothing(palette)
+        # Backwards compatibility for when palette was part of axis!
+        palette_attr = palette isa Attributes ? palette : Attributes(palette)
+        ax.scene.theme.palette = palette_attr
+    end
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(blockscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
+    background = poly!(blockscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=NoShading, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
@@ -258,7 +257,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # 3. Update the view onto the plot (camera matrices)
     onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
 
-    xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.px_area;
+    xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
@@ -269,7 +268,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yaxis_endpoints = lift(blockscene, ax.yaxisposition, scene.px_area;
+    yaxis_endpoints = lift(blockscene, ax.yaxisposition, scene.viewport;
                            ignore_equal_values=true) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
@@ -346,7 +345,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.yaxis = yaxis
 
-    xoppositelinepoints = lift(blockscene, scene.px_area, ax.spinewidth, ax.xaxisposition;
+    xoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
                                ignore_equal_values=true) do r, sw, xaxpos
         if xaxpos === :top
             y = bottom(r)
@@ -361,7 +360,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yoppositelinepoints = lift(blockscene, scene.px_area, ax.spinewidth, ax.yaxisposition;
+    yoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
                                ignore_equal_values=true) do r, sw, yaxpos
         if yaxpos === :right
             x = left(r)
@@ -377,22 +376,22 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xticksmirrored = lift(mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-                          Ref(scene.px_area), :x, ax.xaxisposition[])
+                          Ref(scene.viewport), :x, ax.xaxisposition[])
     xticksmirrored_lines = linesegments!(blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-                          Ref(scene.px_area), :y, ax.yaxisposition[])
+                          Ref(scene.viewport), :y, ax.yaxisposition[])
     yticksmirrored_lines = linesegments!(blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-                               ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+                               ax.xminortickalign, Ref(scene.viewport), :x, ax.xaxisposition[])
     xminorticksmirrored_lines = linesegments!(blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-                               ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+                               ax.yminortickalign, Ref(scene.viewport), :y, ax.yaxisposition[])
     yminorticksmirrored_lines = linesegments!(blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
     translate!(yminorticksmirrored_lines, 0, 0, 10)
@@ -409,31 +408,31 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
-    onany(blockscene, xaxis.tickpositions, scene.px_area) do tickpos, area
+    onany(blockscene, xaxis.tickpositions, scene.viewport) do tickpos, area
         local pxheight::Float32 = height(area)
         local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xgridnode, Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.tickpositions, scene.px_area) do tickpos, area
+    onany(blockscene, yaxis.tickpositions, scene.viewport) do tickpos, area
         local pxwidth::Float32 = width(area)
         local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
     end
 
-    onany(blockscene, xaxis.minortickpositions, scene.px_area) do tickpos, area
-        local pxheight::Float32 = height(scene.px_area[])
+    onany(blockscene, xaxis.minortickpositions, scene.viewport) do tickpos, area
+        local pxheight::Float32 = height(scene.viewport[])
         local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.minortickpositions, scene.px_area) do tickpos, area
-        local pxwidth::Float32 = width(scene.px_area[])
+    onany(blockscene, yaxis.minortickpositions, scene.viewport) do tickpos, area
+        local pxwidth::Float32 = width(scene.viewport[])
         local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
-    subtitlepos = lift(blockscene, scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition,
+    subtitlepos = lift(blockscene, scene.viewport, ax.titlegap, ax.titlealign, ax.xaxisposition,
                        xaxis.protrusion;
                        ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
@@ -462,7 +461,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         markerspace = :data,
         inspectable = false)
 
-    titlepos = lift(calculate_title_position, blockscene, scene.px_area, ax.titlegap, ax.subtitlegap,
+    titlepos = lift(calculate_title_position, blockscene, scene.viewport, ax.titlegap, ax.subtitlegap,
         ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values=true)
 
     titlet = text!(
@@ -505,7 +504,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # compute limits that adhere to the limit aspect ratio whenever the targeted
     # limits or the scene size change, because both influence the displayed ratio
-    onany(blockscene, scene.px_area, targetlimits) do pxa, lims
+    onany(blockscene, scene.viewport, targetlimits) do pxa, lims
         adjustlimits!(ax)
     end
 
@@ -521,8 +520,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     return ax
 end
 
-function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
-    a = px_area[][]
+function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition)
+    a = viewport[][]
     if side === :x
         opp = axisposition === :bottom ? top(a) : bottom(a)
         sign =  axisposition === :bottom ? 1 : -1
@@ -689,17 +688,11 @@ function get_cycle_for_plottype(cycle_raw)::Cycle
     end
 end
 
-
-function to_color(cycle, attribute_name, cycler, palette)
-    if cycle.covary
-        palettes[current_symbol][mod1(index, length(palettes[isym]))]
-    else
-        cis = CartesianIndices(Tuple(length(p) for p in palettes))
-        n = length(cis)
-        k = mod1(index, n)
-        idx = Tuple(cis[k])
-        palettes[isym][idx[isym]]
-    end
+function to_color(scene::Scene, attribute_name, cycled::Cycled)
+    palettes = to_value(scene.theme.palette)
+    attr_palette = to_value(palettes[attribute_name])
+    index = cycled.i
+    return attr_palette[mod1(index, length(attr_palette))]
 end
 
 function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler, palette::Attributes)
@@ -962,7 +955,7 @@ end
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
-    area = la.scene.px_area[]
+    area = la.scene.viewport[]
 
     # in the simplest case, just update the final limits with the target limits
     if isnothing(asp) || width(area) == 0 || height(area) == 0
@@ -1150,12 +1143,16 @@ with the symbols :l, :r, :b and :t.
 """
 function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     for s in spines
-        @match s begin
-            :l => (la.leftspinevisible = false)
-            :r => (la.rightspinevisible = false)
-            :b => (la.bottomspinevisible = false)
-            :t => (la.topspinevisible = false)
-            x => error("Invalid spine identifier $x. Valid options are :l, :r, :b and :t.")
+        if s === :l
+            la.leftspinevisible = false
+        elseif s === :r
+            la.rightspinevisible = false
+        elseif s === :b
+            la.bottomspinevisible = false
+        elseif s === :t
+            la.topspinevisible = false
+        else
+            error("Invalid spine identifier $s. Valid options are :l, :r, :b and :t.")
         end
     end
 end
@@ -1181,6 +1178,8 @@ function tight_xticklabel_spacing!(ax::Axis)
 end
 
 """
+    tight_ticklabel_spacing(ax::Axis)
+
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
 function tight_ticklabel_spacing!(ax::Axis)
@@ -1206,7 +1205,7 @@ end
 function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
-    elseif xlims[1] == xlims[2]
+    elseif xlims[1] == xlims[2] && xlims[1] !== nothing
         error("Can't set x limits to the same value $(xlims[1]).")
     elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
         xlims = reverse(xlims)
@@ -1214,8 +1213,9 @@ function Makie.xlims!(ax::Axis, xlims)
     else
         ax.xreversed[] = false
     end
+    mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, ax.limits[][2])
+    ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
     nothing
 end
@@ -1223,7 +1223,7 @@ end
 function Makie.ylims!(ax::Axis, ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
-    elseif ylims[1] == ylims[2]
+    elseif ylims[1] == ylims[2] && ylims[1] !== nothing
         error("Can't set y limits to the same value $(ylims[1]).")
     elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
         ylims = reverse(ylims)
@@ -1231,22 +1231,95 @@ function Makie.ylims!(ax::Axis, ylims)
     else
         ax.yreversed[] = false
     end
+    mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (ax.limits[][1], ylims)
+    ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
     nothing
 end
 
+"""
+    xlims!(ax, low, high)
+    xlims!(ax; low = nothing, high = nothing)
+    xlims!(ax, xlims)
+
+Set the x-axis limits of axis `ax` to `low` and `high` or a tuple
+`xlims = (low,high)`. If the limits are ordered high-low, the axis orientation
+will be reversed. If a limit is `nothing` it will be determined automatically
+from the plots in the axis.
+"""
 Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
+"""
+    ylims!(ax, low, high)
+    ylims!(ax; low = nothing, high = nothing)
+    ylims!(ax, ylims)
+
+Set the y-axis limits of axis `ax` to `low` and `high` or a tuple
+`ylims = (low,high)`. If the limits are ordered high-low, the axis orientation
+will be reversed. If a limit is `nothing` it will be determined automatically
+from the plots in the axis.
+"""
 Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
+"""
+    zlims!(ax, low, high)
+    zlims!(ax; low = nothing, high = nothing)
+    zlims!(ax, zlims)
+
+Set the z-axis limits of axis `ax` to `low` and `high` or a tuple
+`zlims = (low,high)`. If the limits are ordered high-low, the axis orientation
+will be reversed. If a limit is `nothing` it will be determined automatically
+from the plots in the axis.
+"""
 Makie.zlims!(ax, low, high) = Makie.zlims!(ax, (low, high))
 
+"""
+    xlims!(low, high)
+    xlims!(; low = nothing, high = nothing)
+
+Set the x-axis limits of the current axis to `low` and `high`. If the limits
+are ordered high-low, this reverses the axis orientation. A limit set to
+`nothing` will be determined automatically from the plots in the axis.
+"""
 Makie.xlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.xlims!(current_axis(), low, high)
+"""
+    ylims!(low, high)
+    ylims!(; low = nothing, high = nothing)
+
+Set the y-axis limits of the current axis to `low` and `high`. If the limits
+are ordered high-low, this reverses the axis orientation. A limit set to
+`nothing` will be determined automatically from the plots in the axis.
+"""
 Makie.ylims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
+"""
+    zlims!(low, high)
+    zlims!(; low = nothing, high = nothing)
+
+Set the z-axis limits of the current axis to `low` and `high`. If the limits
+are ordered high-low, this reverses the axis orientation. A limit set to
+`nothing` will be determined automatically from the plots in the axis.
+"""
 Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.zlims!(current_axis(), low, high)
 
+"""
+    xlims!(ax = current_axis())
+
+Reset the x-axis limits to be determined automatically from the plots in the
+axis.
+"""
 Makie.xlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.xlims!(ax, low, high)
+"""
+    ylims!(ax = current_axis())
+
+Reset the y-axis limits to be determined automatically from the plots in the
+axis.
+"""
 Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
+"""
+    zlims!(ax = current_axis())
+
+Reset the z-axis limits to be determined automatically from the plots in the
+axis.
+"""
 Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.zlims!(ax, low, high)
 
 """
@@ -1772,7 +1845,7 @@ function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffe
         bb = axis_bounds_with_decoration(ax)
         Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
     else
-        pixelarea(ax.scene)[]
+        viewport(ax.scene)[]
     end
 
     img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)

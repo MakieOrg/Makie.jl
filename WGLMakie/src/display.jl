@@ -13,7 +13,7 @@ end
 function Base.size(screen::ThreeDisplay)
     # look at d.qs().clientWidth for displayed width
     js = js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"
-    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; time_out=100))
+    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; timeout=100))
     return (width, height)
 end
 
@@ -48,21 +48,75 @@ end
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
-    resize_to_body::Bool # false
+    resize_to::Any # nothing
     # We use nothing, since that serializes correctly to nothing in JS, which is important since that's where we calculate the defaults!
     # For the theming, we need to use Automatic though, since that's the Makie meaning for gets calculated somewhere else
     px_per_unit::Union{Nothing,Float64} # nothing, a.k.a the browser px_per_unit (devicePixelRatio)
     scalefactor::Union{Nothing,Float64}
-    function ScreenConfig(framerate::Number, resize_to_body::Bool, px_per_unit::Union{Number, Automatic, Nothing}, scalefactor::Union{Number, Automatic, Nothing})
+    resize_to_body::Bool
+    function ScreenConfig(
+            framerate::Number, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
+            scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool})
+
         if px_per_unit isa Automatic
             px_per_unit = nothing
         end
         if scalefactor isa Automatic
             scalefactor = nothing
         end
-        return new(framerate, resize_to_body, px_per_unit, scalefactor)
+        if resize_to_body isa Bool
+            @warn("`resize_to_body` is deprecated, use `resize_to = :body` instead")
+            if !(resize_to isa Nothing)
+                @warn("Setting `resize_to_body` and `resize_to` at the same time, only use resize_to")
+            else
+                resize_to = resize_to_body ? :body : nothing
+            end
+        end
+        ResizeType = Union{Nothing, Symbol}
+        if !(resize_to isa Union{ResizeType,Tuple{ResizeType,ResizeType}})
+            error("Only nothing, :parent, or :body allowed, or a tuple of those for width/height.")
+        end
+        return new(framerate, resize_to, px_per_unit, scalefactor)
     end
 end
+
+
+"""
+    WithConfig(fig::Makie.FigureLike; screen_config...)
+
+Allows to pass a screenconfig to a figure, inside a JSServe.App.
+This circumvents using `WGLMakie.activate!(; screen_config...)` inside an App, which modifies these values globally.
+Example:
+
+```julia
+App() do
+    f1 = scatter(1:4)
+    f2 = scatter(1:4; figure=(; backgroundcolor=:gray))
+    wc = WGLMakie.WithConfig(f2; resize_to=:parent)
+    DOM.div(f1, DOM.div(wc; style="height: 200px; width: 50%"))
+end
+```
+"""
+struct WithConfig
+    fig::Makie.FigureLike
+    config::ScreenConfig
+end
+
+function WithConfig(fig::Makie.FigureLike; kw...)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(kw))
+    return WithConfig(fig, config)
+end
+
+function JSServe.jsrender(session::Session, wconfig::WithConfig)
+    fig = wconfig.fig
+    Makie.update_state_before_display!(fig)
+    scene = Makie.get_scene(fig)
+    screen = Screen(scene, wconfig.config)
+    three, canvas, on_init = render_with_init(screen, session, scene)
+    return canvas
+end
+
+
 
 """
     Screen(args...; screen_config...)
@@ -96,7 +150,7 @@ function Base.show(io::IO, screen::Screen)
     sf = c.scalefactor
     print(io, """WGLMakie.Screen(
         framerate = $(c.framerate),
-        resize_to_body = $(c.resize_to_body),
+        resize_to = $(c.resize_to),
         px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
         scalefactor = $(isnothing(sf) ? :automatic : sf)
     )""")
@@ -117,8 +171,6 @@ function mark_as_displayed!(screen::Screen, scene::Scene)
     end
     return
 end
-
-
 
 for M in Makie.WEB_MIMES
     @eval begin
@@ -192,7 +244,8 @@ end
 
 # TODO, create optimized screens, forward more options to JS/WebGL
 function Screen(scene::Scene; kw...)
-    return Screen(Channel{ThreeDisplay}(1), nothing, scene, Makie.merge_screen_config(ScreenConfig, kw))
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(kw))
+    return Screen(Channel{ThreeDisplay}(1), nothing, scene, config)
 end
 Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
@@ -209,7 +262,7 @@ Makie.wait_for_display(screen::Screen) = get_three(screen)
 function Base.display(screen::Screen, scene::Scene; unused...)
     Makie.push_screen!(scene, screen)
     # Reference to three object which gets set once we serve this to a browser
-    app = App() do session, request
+    app = App() do session
         screen.session = session
         three, canvas, done_init = three_display(screen, session, scene)
         on(session, done_init) do _
@@ -254,10 +307,14 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     if js_uuid(scene) in screen.displayed_scenes
         return true
     else
+        if !(js_uuid(scene.parent) in screen.displayed_scenes)
+            # Parents serialize their child scenes, so we only need to
+            # serialize & update the parent scene
+            return insert_scene!(disp, screen, scene.parent)
+        end
         scene_ser = serialize_scene(scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
-        insert_scene!(disp, screen, parent) # make sure parent is also already displayed
         err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
         evaljs_value(disp.session, js"""
         $(WGL).then(WGL=> {
@@ -274,14 +331,23 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     end
 end
 
-function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
+function insert_plot!(disp::ThreeDisplay, scene::Scene, @nospecialize(plot::Combined))
+    plot_data = serialize_plots(scene, [plot])
+    plot_sub = Session(disp.session)
+    JSServe.init_session(plot_sub)
+    plot.__wgl_session = plot_sub
+    js = js"""
+    $(WGL).then(WGL=> {
+        WGL.insert_plot($(js_uuid(scene)), $plot_data);
+    })"""
+    JSServe.evaljs_value(plot_sub, js; timeout=50)
+    return
+end
+
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Combined))
     disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
-        plot_data = serialize_plots(scene, [plot])
-        JSServe.evaljs_value(disp.session, js"""
-        $(WGL).then(WGL=> {
-            WGL.insert_plot($(js_uuid(scene)), $plot_data);
-        })""")
+        insert_plot!(disp, scene, plot)
     else
         # Newly created scene gets inserted!
         # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
@@ -299,25 +365,42 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     return
 end
 
-function delete_js_objects!(screen::Screen, scene::String, uuids::Vector{String})
+function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
+                            session::Union{Nothing,Session})
     three = get_three(screen)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
     JSServe.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
-        WGL.delete_plots($(scene), $(uuids));
+        WGL.delete_plots($(plot_uuids));
     })""")
+    !isnothing(session) && close(session)
     return
+end
+
+function all_plots_scenes(scene::Scene; scene_uuids=String[], plots=Combined[])
+    push!(scene_uuids, js_uuid(scene))
+    append!(plots, scene.plots)
+    for child in scene.children
+        all_plots_scenes(child; plots=plots, scene_uuids=scene_uuids)
+    end
+    return scene_uuids, plots
 end
 
 function delete_js_objects!(screen::Screen, scene::Scene)
     three = get_three(screen)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
-    scene_uuids, plot_uuids = all_plots_scenes(scene)
+    scene_uuids, plots = all_plots_scenes(scene)
+    for plot in plots
+        if haskey(plot, :__wgl_session)
+            session = plot.__wgl_session[]
+            close(session)
+        end
+    end
     JSServe.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
-        WGL.delete_scenes($scene_uuids, $plot_uuids);
+        WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
     })""")
     return
 end
@@ -357,12 +440,14 @@ function run_jobs!(queue::LockfreeQueue)
             if !isnothing(q)
                 while !isempty(q)
                     item = pop!(q)
-                    queue.execute_job(item...)
+                    Base.invokelatest(queue.execute_job, item...)
                 end
             end
             sleep(0.1)
         catch e
-            @warn "error while cleaning up JS objects" exception = (e, Base.catch_backtrace())
+            if !(e isa EOFError)
+                @warn "error while running JS objects" exception = (e, Base.catch_backtrace())
+            end
         end
     end
 end
@@ -378,14 +463,15 @@ function Base.push!(queue::LockfreeQueue, item)
 end
 
 const DISABLE_JS_FINALZING = Base.RefValue(false)
-const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_js_objects!)
+const DELETE_QUEUE = LockfreeQueue{Tuple{Screen, Vector{String}, Union{Session, Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
-    atomics = Makie.collect_atomic_plots(plot) # delete all atomics
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
-        push!(DELETE_QUEUE, (screen, js_uuid(scene), js_uuid.(atomics)))
+        plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
+        session = to_value(get(plot, :__wgl_session, nothing))
+        push!(DELETE_QUEUE, (screen, plot_uuids, session))
     end
     return
 end
@@ -394,4 +480,6 @@ function Base.delete!(screen::Screen, scene::Scene)
     if !DISABLE_JS_FINALZING[]
         push!(SCENE_DELETE_QUEUE, (screen, scene))
     end
+    delete!(screen.displayed_scenes, js_uuid(scene))
+    return
 end

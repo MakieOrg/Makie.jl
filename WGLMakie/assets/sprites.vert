@@ -61,15 +61,19 @@ void main(){
     vec2 sprite_bbox_centre = get_quad_offset() + bbox_signed_radius;
 
     mat4 pview = projection * view;
-    // Compute transform for the offset vectors from the central point
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
-    trans = (get_billboard() ? projection : pview) * qmat(get_rotations()) * trans;
 
     // Compute centre of billboard in clipping coordinates
-    vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
+    // Always transform text/scatter position argument
     vec4 data_point = get_preprojection() * model * vec4(tovec3(get_pos()), 1);
-    data_point = vec4(data_point.xyz / data_point.w + mat3(model) * tovec3(get_marker_offset()), 1);
+    // maybe transform marker_offset + glyph offsets
+    data_point = vec4(data_point.xyz / data_point.w + mat3(trans) * tovec3(get_marker_offset()), 1);
     data_point = pview * data_point;
+
+    // Compute transform for the offset vectors from the central point
+    trans = (get_billboard() ? projection : pview) * qmat(get_rotations()) * trans;
+    vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
+
     vec4 vclip = data_point + sprite_center;
 
     // Extra buffering is required around sprites which are antialiased so that

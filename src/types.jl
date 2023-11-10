@@ -1,4 +1,6 @@
 abstract type AbstractCamera end
+abstract type Block end
+abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
@@ -239,7 +241,12 @@ struct Camera
     resolution::Observable{Vec2f}
 
     """
-    Eye position of the camera, sued for e.g. ray tracing.
+    Focal point of the camera, used for e.g. camera synchronized light direction.
+    """
+    lookat::Observable{Vec3f}
+
+    """
+    Eye position of the camera, used for e.g. ray tracing.
     """
     eyeposition::Observable{Vec3f}
 
@@ -447,3 +454,10 @@ end
 (s::ReversibleScale)(args...) = s.forward(args...) # functor
 Base.show(io::IO, s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
 Base.show(io::IO, ::MIME"text/plain", s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
+
+
+struct Cycler
+    counters::IdDict{Type,Int}
+end
+
+Cycler() = Cycler(IdDict{Type,Int}())

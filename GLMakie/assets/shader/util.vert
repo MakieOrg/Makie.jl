@@ -1,5 +1,12 @@
 {{GLSL_VERSION}}
 
+// Sets which shading procedures to use
+// Options:
+// NO_SHADING           - skip shading calculation, handled outside
+// FAST_SHADING         - single point light (forward rendering)
+// MULTI_LIGHT_SHADING  - simple shading with multiple lights (forward rendering)
+{{shading}}
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -241,33 +248,47 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
     return get_color_from_cmap(intensity, color_map, color_norm);
 }
 
-out vec3 o_view_pos;
-out vec3 o_normal;
-out vec3 o_lightdir;
-out vec3 o_camdir;
-// transpose(inv(view * model))
-// Transformation for vectors (rather than points)
-uniform mat3 normalmatrix;
-uniform vec3 lightposition;
-uniform vec3 eyeposition;
+
 uniform float depth_shift;
 
+// TODO maybe ifdef SSAO this stuff?
+// transpose(inv(view * model))
+// Transformation for vectors (rather than points)
+uniform mat3 view_normalmatrix;
+out vec3 o_view_pos;
+out vec3 o_view_normal;
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
+
+#if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
+// transpose(inv(model))
+uniform mat3 world_normalmatrix;
+uniform vec3 eyeposition;
+
+out vec3 o_world_pos;
+out vec3 o_world_normal;
+out vec3 o_camdir;
+#endif
+
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 {
-    // normal in world space
-    o_normal = normalmatrix * normal;
     // position in view space (as seen from camera)
     vec4 view_pos = view * position_world;
+    view_pos /= view_pos.w;
+
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
     gl_Position.z += gl_Position.w * depth_shift;
-    // direction to light
-    o_lightdir = normalize(view*vec4(lightposition, 1.0) - view_pos).xyz;
-    // direction to camera
-    // This is equivalent to
-    // normalize(view*vec4(eyeposition, 1.0) - view_pos).xyz
-    // (by definition `view * eyeposition = 0`)
-    o_camdir = normalize(-view_pos).xyz;
+
+    // for lighting
+#if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
+    o_world_pos = position_world.xyz / position_world.w;
+    o_world_normal = world_normalmatrix * normal;
+    // direction from camera to vertex
+    o_camdir = position_world.xyz / position_world.w - eyeposition;
+#endif
+
+    // for SSAO
     o_view_pos = view_pos.xyz / view_pos.w;
+    // SSAO + matcap
+    o_view_normal = view_normalmatrix * normal;
 }

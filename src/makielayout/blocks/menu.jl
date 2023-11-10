@@ -59,7 +59,7 @@ function initialize_block!(m::Menu; default = 1)
 
     map!(blockscene, _direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
         if dir == Makie.automatic
-            pxa = pixelarea(blockscene)[]
+            pxa = viewport(blockscene)[]
             bottomspace = abs(bottom(pxa) - bottom(bb))
             topspace = abs(top(pxa) - top(bb))
             # slight preference for down
@@ -81,7 +81,7 @@ function initialize_block!(m::Menu; default = 1)
                 left(bbox),
                 right(bbox),
                 d === :down ? max(0, bottom(bbox) - h) : top(bbox),
-                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
+                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))))
     end
 
     menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
@@ -256,7 +256,7 @@ function initialize_block!(m::Menu; default = 1)
                     m.is_open[] = !m.is_open[]
                     if m.is_open[]
                         t = translation(menuscene)[]
-                        y_for_top_align = height(menuscene.px_area[]) - listheight[]
+                        y_for_top_align = height(menuscene.viewport[]) - listheight[]
                         translate!(menuscene, t[1], y_for_top_align, t[3])
                     end
                     return Consume(true)
@@ -295,7 +295,7 @@ function initialize_block!(m::Menu; default = 1)
             t = translation(menuscene)[]
             # Hack to differentiate mousewheel and trackpad scrolling
             step = m.scroll_speed[] * y
-            new_y = max(min(t[2] - step, 0), height(menuscene.px_area[]) - listheight[])
+            new_y = max(min(t[2] - step, 0), height(menuscene.viewport[]) - listheight[])
             translate!(menuscene, t[1], new_y, t[3])
             return Consume(true)
         else

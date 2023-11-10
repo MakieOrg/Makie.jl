@@ -144,7 +144,7 @@ function pick_hist_edges(vals, bins)
     if bins isa Int
         mi, ma = float.(extrema(vals))
         if mi == ma
-            return [mi - 0.5, ma + 0.5]
+            return (mi - 0.5):(ma + 0.5)
         end
         # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
         ma = nextfloat(ma)

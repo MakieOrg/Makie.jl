@@ -245,7 +245,7 @@ function to_world(scene::Scene, point::T) where T <: StaticVector
         inv(transformationmatrix(scene)[]) *
         inv(cam.view[]) *
         inv(cam.projection[]),
-        T(widths(pixelarea(scene)[]))
+        T(size(scene))
     )
     Point2f(x[1], x[2])
 end
@@ -280,7 +280,7 @@ end
 
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
-    area = pixelarea(scene)[]
+    area = viewport(scene)[]
     # TODO, I think we need  .+ minimum(area)
     # Which would be semi breaking at this point though, I suppose
     return project(
@@ -343,6 +343,22 @@ function clip_to_space(cam::Camera, space::Symbol)
         error("Space $space not recognized. Must be one of $(spaces())")
     end
 end
+
+function get_space(scene::Scene)
+    space = get_space(cameracontrols(scene))::Symbol
+    space === :data ? (:data,) : (:data, space)
+end
+get_space(::AbstractCamera) = :data
+# TODO: Should this be less specialized? ScenePlot? AbstractPlot?
+get_space(plot::Combined) = to_value(get(plot, :space, :data))::Symbol
+
+is_space_compatible(a, b) = is_space_compatible(get_space(a), get_space(b))
+is_space_compatible(a::Symbol, b::Symbol) = a === b
+is_space_compatible(a::Symbol, b::Union{Tuple, Vector}) = a in b
+function is_space_compatible(a::Union{Tuple, Vector}, b::Union{Tuple, Vector})
+    any(x -> is_space_compatible(x, b), a)
+end
+is_space_compatible(a::Union{Tuple, Vector}, b::Symbol) = is_space_compatible(b, a)
 
 function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
     input_space === output_space && return to_ndim(Point3f, pos, 0)

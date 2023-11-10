@@ -19,14 +19,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         transformation = Transformation(po.scene, transform_func = identity)
     )
 
-
-    # Setup Cycler
-    po.cycler = Cycler()
-    if palette === nothing
-        palette = fast_deepcopy(get(po.blockscene.theme, :palette, DEFAULT_PALETTES))
+    if !isnothing(palette)
+        # Backwards compatibility for when palette was part of axis!
+        palette_attr = palette isa Attributes ? palette : Attributes(palette)
+        po.scene.theme.palette = palette_attr
     end
-    po.palette = palette isa Attributes ? palette : Attributes(palette)
-
 
     # Setup camera/limits and Polar transform
     usable_fraction, radius_at_origin = setup_camera_matrices!(po)
@@ -56,7 +53,7 @@ function initialize_block!(po::PolarAxis; palette=nothing)
             thetaticklabelplot.plots[1].fontsize,
             thetaticklabelplot.plots[1].font,
             po.thetaticklabelpad,
-            po.overlay.px_area
+            po.overlay.viewport
         ) do _, _, _, rpad, _, _, _, tpad, area
 
         # get maximum size of tick label
@@ -87,7 +84,7 @@ function initialize_block!(po::PolarAxis; palette=nothing)
             po.target_rlims, po.target_thetalims, po.target_theta_0, po.direction,
             po.rticklabelsize, po.rticklabelpad,
             po.thetaticklabelsize, po.thetaticklabelpad,
-            po.overlay.px_area, po.overlay.camera.projectionview,
+            po.overlay.viewport, po.overlay.camera.projectionview,
             po.titlegap, po.titlesize, po.titlealign
         ) do rlims, thetalims, theta_0, dir, r_fs, r_pad, t_fs, t_pad, area, pv, gap, size, align
 
@@ -255,14 +252,14 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # update projection matrices
     # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -max_z ... max_z)
-    on(po.blockscene, po.scene.px_area) do area
+    on(po.blockscene, po.scene.viewport) do area
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
         camera(po.scene).projection[] = orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
-    on(po.blockscene, po.overlay.px_area) do area
+    on(po.blockscene, po.overlay.viewport) do area
         aspect = Float32((/)(widths(area)...))
         w = 1f0
         h = 1f0 / aspect
@@ -383,7 +380,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     on(po.blockscene, e.mouseposition) do _
         if drag_state[][3]
-            w = widths(po.scene.px_area[])
+            w = widths(po.scene)
             p0 = (last_px_pos[] .- 0.5w) ./ w
             p1 = Point2f(mouseposition_px(po.scene) .- 0.5w) ./ w
             if norm(p0) * norm(p1) < 1e-6
@@ -766,7 +763,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         visible = po.clip,
         fxaa = false,
         transformation = Transformation(), # no polar transform for this
-        shading = false
+        shading = NoShading
     )
 
     # inner clip is a (filled) circle sector which also needs to regenerate with
@@ -788,7 +785,7 @@ function draw_axis!(po::PolarAxis, radius_at_origin)
         visible = po.clip,
         fxaa = false,
         transformation = Transformation(),
-        shading = false
+        shading = NoShading
     )
 
     # handle placement with transform

@@ -42,7 +42,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 Axis(f[1, 1], backgroundcolor = "black")
 
 xs = LinRange(0, 2pi, 20)
@@ -103,7 +103,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-fig = Figure(resolution = (800, 800))
+fig = Figure(size = (800, 800))
 ax = Axis(fig[1, 1], backgroundcolor = "black")
 xs = LinRange(0, 2pi, 20)
 ys = LinRange(0, 3pi, 20)

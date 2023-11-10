@@ -158,7 +158,7 @@ grid with Inside alignment, and they are both effectively aligned exactly the sa
 ```julia
 using CairoMakie
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 Axis(f[1, 1], title = "No grid layout")
 Axis(f[2, 1], title = "No grid layout")
@@ -206,7 +206,7 @@ side titles.
 ```julia
 using CairoMakie
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 Axis(f[1, 1])
 for i in 1:3
@@ -233,7 +233,7 @@ This behavior has changed since GridLayoutBase.jl `v0.7.0`.
 ```julia
 using CairoMakie
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 for i in 1:3, j in 1:3
     Axis(f[i, j])

@@ -17,7 +17,7 @@ using Makie.FileIO
 CairoMakie.activate!() # hide
 
 f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
-    resolution = (1000, 700))
+    size = (1000, 700))
 ga = f[1, 1] = GridLayout()
 gb = f[2, 1] = GridLayout()
 gcd = f[1:2, 2] = GridLayout()
@@ -170,7 +170,7 @@ using FileIO
 CairoMakie.activate!() # hide
 
 f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
-    resolution = (1000, 700))
+    size = (1000, 700))
 ```
 \end{examplefigure}
 

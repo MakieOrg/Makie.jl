@@ -25,6 +25,16 @@ function colorbar_check(keys, kwargs_keys)
     end
 end
 
+function extract_colorrange(@nospecialize(plot::AbstractPlot))::Vec2{Float64}
+    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
+        return plot.calculated_colors[].colorrange[]
+    elseif haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
+        return plot.colorrange[]
+    else
+        error("colorrange not found and calculated_colors for the plot is missing or is not a proper color map. Heatmaps and images should always contain calculated_colors[].colorrange")
+    end
+end
+
 function extract_colormap(@nospecialize(plot::AbstractPlot))
     has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
@@ -243,7 +253,6 @@ function initialize_block!(cb::Colorbar)
             show_cats[] = true
         end
     end
-
     heatmap!(blockscene,
         xrange, yrange, continous_pixels;
         colormap=colormap,
@@ -401,11 +410,13 @@ function initialize_block!(cb::Colorbar)
     # trigger protrusions with one of the attributes
     notify(cb.vertical)
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
-    setfield!(cb, :limits, convert(Observable{Any}, limits))
-    setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
-    setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
-    setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
-    setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+    if (cb.colormap[] isa ColorMapping)
+        setfield!(cb, :limits, convert(Observable{Any}, limits))
+        setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
+        setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
+        setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
+        setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+    end
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)
     notify(barbox)

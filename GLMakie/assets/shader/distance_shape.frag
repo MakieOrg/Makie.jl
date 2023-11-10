@@ -31,7 +31,6 @@ uniform bool            transparent_picking;
 flat in float           f_viewport_from_u_scale;
 flat in float           f_distancefield_scale;
 flat in vec4            f_color;
-flat in vec4            f_bg_color;
 flat in vec4            f_stroke_color;
 flat in vec4            f_glow_color;
 flat in uvec2           f_id;
@@ -109,14 +108,10 @@ float ellipse(vec2 uv, vec2 scale)
     return (dot(p/wh,p/wh)>1.0) ? -d : d;
 }
 
-void fill(vec4 fillcolor, Nothing image, vec2 uv, float infill, inout vec4 color){
-    color = mix(color, fillcolor, infill);
-}
-void fill(vec4 c, sampler2D image, vec2 uv, float infill, inout vec4 color){
-    color.rgba = mix(color, texture(image, uv.yx), infill);
-}
-void fill(vec4 c, sampler2DArray image, vec2 uv, float infill, inout vec4 color){
-    color = mix(color, texture(image, vec3(uv.yx, f_primitive_index)), infill);
+vec4 fill(vec4 fillcolor, Nothing image, vec2 uv) { return fillcolor; }
+vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
+vec4 fill(vec4 c, sampler2DArray image, vec2 uv) {
+    return texture(image, vec3(uv.yx, f_primitive_index));
 }
 
 
@@ -132,8 +127,8 @@ void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color)
     if (glow_width > 0.0){
         float s_stroke_width = px_per_unit * stroke_width;
         float s_glow_width = px_per_unit * glow_width;
-        float outside = (abs(signed_distance)-s_stroke_width)/s_glow_width;
-        float alpha = 1-outside;
+        float outside = (abs(signed_distance) - s_stroke_width) / s_glow_width;
+        float alpha = 1 - outside;
         color = mix(vec4(glowcolor.rgb, glowcolor.a*alpha), color, inside);
     }
 }
@@ -185,11 +180,18 @@ void main(){
     float s_stroke_width = px_per_unit * stroke_width;
     float inside_start = max(-s_stroke_width, 0.0);
     float inside = aastep(inside_start, signed_distance);
-    vec4 final_color = f_bg_color;
 
-    fill(f_color, image, tex_uv, inside, final_color);
+    // For the initial coloring we can use the base pixel color and modulate
+    // its alpha value to create the shape set by the signed distance field. (i.e. inside)
+    vec4 final_color = fill(f_color, image, tex_uv);
+    final_color.a = final_color.a * inside;
+
+    // Stroke and glow need to also modulate colors (rgb) to smoothly transition
+    // from one to another.
     stroke(f_stroke_color, signed_distance, -s_stroke_width, final_color);
     glow(f_glow_color, signed_distance, aastep(-s_stroke_width, signed_distance), final_color);
+
+
     // TODO: In 3D, we should arguably discard fragments outside the sprite
     //       But note that this may interfere with object picking.
     // if (final_color == f_bg_color)

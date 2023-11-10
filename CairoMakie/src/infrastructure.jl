@@ -87,11 +87,9 @@ end
 
 function prepare_for_scene(screen::Screen, scene::Scene)
 
-    # get the root area to correct for its pixel size when translating
-    root_area = Makie.root(scene).px_area[]
-
-    root_area_height = widths(root_area)[2]
-    scene_area = pixelarea(scene)[]
+    # get the root area to correct for its size when translating
+    root_area_height = widths(Makie.root(scene))[2]
+    scene_area = viewport(scene)[]
     scene_height = widths(scene_area)[2]
     scene_x_origin, scene_y_origin = scene_area.origin
 
@@ -103,7 +101,7 @@ function prepare_for_scene(screen::Screen, scene::Scene)
     top_offset = root_area_height - scene_height - scene_y_origin
     Cairo.translate(screen.context, scene_x_origin, top_offset)
 
-    # clip the scene to its pixelarea
+    # clip the scene to its viewport
     Cairo.rectangle(screen.context, 0, 0, widths(scene_area)...)
     Cairo.clip(screen.context)
 
@@ -116,7 +114,7 @@ function draw_background(screen::Screen, scene::Scene)
     if scene.clear[]
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
-        r = pixelarea(scene)[]
+        r = viewport(scene)[]
         Cairo.rectangle(cr, origin(r)..., widths(r)...) # background
         fill(cr)
     end
@@ -148,8 +146,8 @@ end
 function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Combined, scale::Number = 1)
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
-    # Extract scene width in pixels
-    w, h = Int.(scene.px_area[].widths)
+    # Extract scene width in device indepentent units
+    w, h = size(scene)
     # Create a new Screen which renders directly to an image surface,
     # specifically for the plot's parent scene.
     scr = Screen(scene; px_per_unit = scale)
@@ -177,4 +175,8 @@ end
 
 function draw_atomic(::Scene, ::Screen, x)
     @warn "$(typeof(x)) is not supported by cairo right now"
+end
+
+function draw_atomic(::Scene, ::Screen, x::Makie.PlotList)
+    # Doesn't need drawing
 end

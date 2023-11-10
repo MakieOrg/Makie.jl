@@ -142,7 +142,7 @@ With and Without Box Plot
 
 \begin{examplefigure}{}
 ```julia
-fig = Figure(resolution = (800*2, 600*5))
+fig = Figure(size = (800*2, 600*5))
 colors = [Makie.wong_colors(); Makie.wong_colors()]
 
 category_labels, data_array = mockup_categories_and_data_array(3)

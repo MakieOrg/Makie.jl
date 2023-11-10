@@ -4,7 +4,7 @@ struct DelaunayTriangulation end
     tricontourf(triangles::Triangulation, zs; kwargs...)
     tricontourf(xs, ys, zs; kwargs...)
 
-Plots a filled tricontour of the height information in `zs` at the horizontal positions `xs` and 
+Plots a filled tricontour of the height information in `zs` at the horizontal positions `xs` and
 vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 
@@ -54,16 +54,16 @@ function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, 
     return (:triangulation,)
 end
 
-function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}; 
+function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
     triangulation=DelaunayTriangulation())
     z = elconvert(Float32, z)
     points = [x'; y']
     if triangulation isa DelaunayTriangulation
         tri = DelTri.triangulate(points)
     elseif !(triangulation isa DelTri.Triangulation)
-        # Wrap user's provided triangulation into a Triangulation. Their triangulation must be such that DelTri.add_triangle! is defined. 
-        if typeof(triangulation) <: AbstractMatrix{<:Int} && size(triangulation, 1) != 3 
-            triangulation = triangulation' 
+        # Wrap user's provided triangulation into a Triangulation. Their triangulation must be such that DelTri.add_triangle! is defined.
+        if typeof(triangulation) <: AbstractMatrix{<:Int} && size(triangulation, 1) != 3
+            triangulation = triangulation'
         end
         tri = DelTri.Triangulation(points)
         triangles = DelTri.get_triangles(tri)
@@ -198,7 +198,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = false,
+        shading = NoShading,
         inspectable = c.inspectable,
         transparency = c.transparency
     )

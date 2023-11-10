@@ -21,6 +21,7 @@ export function delete_scene(scene_id) {
     if (!scene) {
         return;
     }
+    delete_three_scene(scene);
     while (scene.children.length > 0) {
         scene.remove(scene.children[0]);
     }
@@ -40,7 +41,10 @@ export function find_plots(plot_uuids) {
 
 export function delete_scenes(scene_uuids, plot_uuids) {
     plot_uuids.forEach((plot_id) => {
-        delete plot_cache[plot_id];
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
+        }
     });
     scene_uuids.forEach((scene_id) => {
         delete_scene(scene_id);
@@ -54,14 +58,9 @@ export function insert_plot(scene_id, plot_data) {
     });
 }
 
-export function delete_plots(scene_id, plot_uuids) {
-    console.log(`deleting plots!: ${plot_uuids}`);
-    const scene = find_scene(scene_id);
+export function delete_plots(plot_uuids) {
     const plots = find_plots(plot_uuids);
-    plots.forEach((p) => {
-        scene.remove(p);
-        delete plot_cache[p.plot_uuid];
-    });
+    plots.forEach(delete_plot);
 }
 
 function convert_texture(data) {
@@ -198,7 +197,7 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-    const {px_per_unit} = scene.screen;
+    const { px_per_unit } = scene.screen;
     plot_data.uniforms.resolution = cam.resolution;
     plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
@@ -209,8 +208,25 @@ export function add_plot(scene, plot_data) {
             markerspace.value
         );
     }
+
+    if (scene.camera_relative_light) {
+        plot_data.uniforms.light_direction = cam.light_direction;
+        scene.light_direction.on((value) => {
+            cam.update_light_dir(value);
+        });
+    } else {
+        // TODO how update?
+        const light_dir = new THREE.Vector3().fromArray(
+            scene.light_direction.value
+        );
+        plot_data.uniforms.light_direction = new THREE.Uniform(light_dir);
+        scene.light_direction.on((value) => {
+            plot_data.uniforms.light_direction.value.fromArray(value);
+        });
+    }
+
     const p = deserialize_plot(plot_data);
-    plot_cache[plot_data.uuid] = p;
+    plot_cache[p.plot_uuid] = p;
     scene.add(p);
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy
@@ -259,7 +275,6 @@ function convert_RGB_to_RGBA(rgbArray) {
 
     return rgbaArray;
 }
-
 
 function create_texture(data) {
     const buffer = data.data;
@@ -311,17 +326,17 @@ function re_create_texture(old_texture, buffer, size) {
             old_texture.type
         );
     }
-    tex.minFilter = old_texture.minFilter
-    tex.magFilter = old_texture.magFilter
-    tex.anisotropy = old_texture.anisotropy
-    tex.wrapS = old_texture.wrapS
+    tex.minFilter = old_texture.minFilter;
+    tex.magFilter = old_texture.magFilter;
+    tex.anisotropy = old_texture.anisotropy;
+    tex.wrapS = old_texture.wrapS;
     if (size.length > 1) {
-        tex.wrapT = old_texture.wrapT
+        tex.wrapT = old_texture.wrapT;
     }
     if (size.length > 2) {
-        tex.wrapR = old_texture.wrapR
+        tex.wrapR = old_texture.wrapR;
     }
-    return tex
+    return tex;
 }
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);
@@ -530,33 +545,51 @@ export function deserialize_scene(data, screen) {
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
-    scene.pixelarea = data.pixelarea;
+    scene.viewport = data.viewport;
     scene.backgroundcolor = data.backgroundcolor;
+    scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
+    scene.camera_relative_light = data.camera_relative_light;
+    scene.light_direction = data.light_direction;
 
     const camera = new Camera.MakieCamera();
 
     scene.wgl_camera = camera;
 
-    function update_cam(camera_matrices) {
+    function update_cam(camera_matrices, force) {
+        if (!force) {
+            // we use the threejs orbit controls, if the julia connection is gone
+            // at least for 3d ... 2d is still a todo, and will stay static right now
+            if (!(JSServe.can_send_to_julia && JSServe.can_send_to_julia())) {
+                return;
+            }
+        }
         const [view, projection, resolution, eyepos] = camera_matrices;
         camera.update_matrices(view, projection, resolution, eyepos);
     }
 
-    update_cam(data.camera.value);
-
     if (data.cam3d_state) {
-        Camera.attach_3d_camera(canvas, camera, data.cam3d_state, scene);
-    } else {
-        data.camera.on(update_cam);
+        Camera.attach_3d_camera(
+            canvas,
+            camera,
+            data.cam3d_state,
+            data.light_direction,
+            scene
+        );
     }
+
+    update_cam(data.camera.value, true); // force update on first call
+    camera.update_light_dir(data.light_direction.value);
+    data.camera.on(update_cam);
+
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
-    scene.scene_children = data.children.map((child) =>
-        deserialize_scene(child, screen)
-    );
+    scene.scene_children = data.children.map((child) => {
+        const childscene = deserialize_scene(child, screen);
+        return childscene;
+    });
     return scene;
 }
 

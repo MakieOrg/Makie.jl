@@ -248,7 +248,7 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
 end
 
 function Screen(scene::Scene; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(scene, config)
 end
 
@@ -306,6 +306,7 @@ function Makie.colorbuffer(screen::Screen)
 end
 
 function Makie.colorbuffer(screen::Screen{IMAGE})
+    Makie.push_screen!(screen.scene, screen)
     empty!(screen)
     cairo_draw(screen, screen.scene)
     return PermutedDimsArray(screen.surface.data, (2, 1))

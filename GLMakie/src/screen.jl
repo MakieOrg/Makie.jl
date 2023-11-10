@@ -30,12 +30,14 @@ function renderloop end
 * `visible = true`: Whether or not the window should be visible when first created.
 * `scalefactor = automatic`: Sets the window scaling factor, such as `2.0` on HiDPI/Retina displays. It is set automatically based on the display, but may be any positive real number.
 
-## Postprocessor
+## Rendering constants & Postprocessor
 * `oit = false`: Whether to enable order independent transparency for the window.
 * `fxaa = true`: Whether to enable fxaa (anti-aliasing) for the window.
 * `ssao = true`: Whether to enable screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
 * `transparency_weight_scale = 1000f0`: Adjusts a factor in the rendering shaders for order independent transparency.
     This should be the same for all of them (within one rendering pipeline) otherwise depth "order" will be broken.
+* `max_lights = 64`: The maximum number of lights with `shading = MultiLightShading`
+* `max_light_parameters = 5 * N_lights`: The maximum number of light parameters that can be uploaded. These include everything other than the light color (i.e. position, direction, attenuation, angles) in terms of scalar floats.
 """
 mutable struct ScreenConfig
     # Renderloop
@@ -57,11 +59,13 @@ mutable struct ScreenConfig
     visible::Bool
     scalefactor::Union{Nothing, Float32}
 
-    # Postprocessor
+    # Render Constants & Postprocessor
     oit::Bool
     fxaa::Bool
     ssao::Bool
     transparency_weight_scale::Float32
+    max_lights::Int
+    max_light_parameters::Int
 
     function ScreenConfig(
             # Renderloop
@@ -86,7 +90,9 @@ mutable struct ScreenConfig
             oit::Bool,
             fxaa::Bool,
             ssao::Bool,
-            transparency_weight_scale::Number)
+            transparency_weight_scale::Number,
+            max_lights::Int,
+            max_light_parameters::Int)
         return new(
             # Renderloop
             renderloop isa Makie.Automatic ? GLMakie.renderloop : renderloop,
@@ -110,7 +116,9 @@ mutable struct ScreenConfig
             oit,
             fxaa,
             ssao,
-            transparency_weight_scale)
+            transparency_weight_scale,
+            max_lights,
+            max_light_parameters)
     end
 end
 
@@ -164,7 +172,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
-    render_tick::Observable{Nothing}
+    render_tick::Observable{Nothing} # listeners must not Consume(true)
     window_open::Observable{Bool}
     scalefactor::Observable{Float32}
 
@@ -204,6 +212,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
         return screen
     end
 end
+
+Makie.isvisible(screen::Screen) = screen.config.visible
 
 # for e.g. closeall, track all created screens
 # gets removed in destroy!(screen)
@@ -354,6 +364,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     replace_processor!(config.ssao ? ssao_postprocessor : empty_postprocessor, 1)
     replace_processor!(config.oit ? OIT_postprocessor : empty_postprocessor, 2)
     replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
+
+    # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
+
     # Set the config
     screen.config = config
     if start_renderloop
@@ -374,7 +387,7 @@ function Screen(;
         screen_config...
     )
     # Screen config is managed by the current active theme, so managed by Makie
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     screen = screen_from_pool(config.debugging)
     apply_config!(screen, config; start_renderloop=start_renderloop)
     if !isnothing(resolution)
@@ -400,7 +413,7 @@ function display_scene!(screen::Screen, scene::Scene)
 end
 
 function Screen(scene::Scene; start_renderloop=true, screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(scene, config; start_renderloop=start_renderloop)
 end
 
@@ -433,8 +446,9 @@ end
 
 function pollevents(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    notify(screen.render_tick)
     GLFW.PollEvents()
+    notify(screen.render_tick)
+    return
 end
 
 Base.wait(x::Screen) = !isnothing(x.rendertask) && wait(x.rendertask)
@@ -452,10 +466,10 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
         push!(screen.screens, (id, scene))
         screen.requires_update = true
         onany(
-            (_, _, _, _, _, _) -> screen.requires_update = true,
+            (args...) -> screen.requires_update = true,
             scene,
             scene.visible, scene.backgroundcolor, scene.clear,
-            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius
+            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview, scene.camera.resolution
         )
         return id
     end
@@ -713,7 +727,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
-    # GLFW.PollEvents()
+    pollevents(screen)
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render
     if screen.config.visible
@@ -912,9 +926,7 @@ function requires_update(screen::Screen)
         screen.requires_update = false
         return true
     end
-    for (_, _, robj) in screen.renderlist
-        robj.requires_update && return true
-    end
+
     return false
 end
 

@@ -39,7 +39,7 @@ xetopo, yetopo, zetopo = lonlat3D(lonext, lat, dataext)
 begin
     r = 30
     lights = [PointLight(Vec3f(2, 1, 3), RGBf(r, r, r))]
-    fig = Figure(; resolution=(1200, 1200), backgroundcolor=:black)
+    fig = Figure(; size=(1200, 1200), backgroundcolor=:black)
     ax = LScene(fig[1, 1]; show_axis=false)#, scenekw=(lights=lights,))
     pltobj = surface!(ax, xetopo, yetopo, zetopo; color=dataext, colormap=:hot, colorrange=(-6000, 5000))
     cam = cameracontrols(ax.scene)

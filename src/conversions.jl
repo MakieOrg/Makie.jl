@@ -328,14 +328,14 @@ function edges(v::AbstractVector)
     end
 end
 
-function adjust_axes(::CellBasedGrid, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
+function adjust_axes(::CellGrid, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
     x̂, ŷ = map((x, y), size(z)) do v, sz
         return length(v) == sz ? edges(v) : v
     end
     return x̂, ŷ, z
 end
 
-adjust_axes(::VertexBasedGrid, x, y, z) = x, y, z
+adjust_axes(::VertexGrid, x, y, z) = x, y, z
 
 """
     convert_arguments(ct::GridBased, x::VecOrMat, y::VecOrMat, z::Matrix)
@@ -352,7 +352,7 @@ function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<: Number}, y::Abs
     return map(el32convert, adjust_axes(ct, x, y, z))
 end
 
-convert_arguments(ct::VertexBasedGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
+convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x::RangeLike, y::RangeLike, z::AbstractMatrix)
@@ -1419,6 +1419,7 @@ to_spritemarker(x::Rect) = x
 to_spritemarker(b::BezierPath) = b
 to_spritemarker(b::Polygon) = BezierPath(b)
 to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
+to_spritemarker(x::Shape) = x
 
 function to_spritemarker(str::String)
     error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
@@ -1474,6 +1475,8 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+
+convert_attribute(value, ::key"backlight") = Float32(value)
 
 
 # SAMPLER overloads

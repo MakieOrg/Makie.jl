@@ -79,16 +79,17 @@ end
 """
 ### 3D shading attributes
 
-- `shading = true` enables lighting.
-- `diffuse::Vec3f = Vec3f(0.4)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
-- `specular::Vec3f = Vec3f(0.2)` sets how strongly the object reflects light in the red, green and blue channels.
+- `shading = automatic` sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie.
+- `diffuse::Vec3f = Vec3f(1.0)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
+- `specular::Vec3f = Vec3f(0.4)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.
+- `backlight::Float32 = 0f0` sets a weight for secondary light calculation with inverted normals.
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 function shading_attributes!(attr)
-    attr[:shading] = true
-    attr[:diffuse] = 0.4
-    attr[:specular] = 0.2
+    attr[:shading] = automatic
+    attr[:diffuse] = 1.0
+    attr[:specular] = 0.4
     attr[:shininess] = 32.0f0
     attr[:backlight] = 0f0
     attr[:ssao] = false
@@ -466,6 +467,7 @@ Plots one or multiple texts passed via the `text` keyword.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
 - `word_wrap_with::Real = -1` specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
+- `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the glyph itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)
 
 $(Base.Docs.doc(colormap_attributes!))
 
@@ -487,7 +489,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         justification = automatic,
         lineheight = 1.0,
         markerspace = :pixel,
-
+        transform_marker = false,
         offset = (0.0, 0.0),
         word_wrap_width = -1,
     )
@@ -537,7 +539,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         strokewidth = theme(scene, :patchstrokewidth),
         linestyle = nothing,
 
-        shading = false,
+        shading = NoShading,
         fxaa = true,
 
         cycle = [:color => :patchcolor],

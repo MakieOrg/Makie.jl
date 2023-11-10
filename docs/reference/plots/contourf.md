@@ -85,7 +85,7 @@ CairoMakie.activate!() # hide
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
-f = Figure(resolution = (800, 400))
+f = Figure(size = (800, 400))
 
 Axis(f[1, 1], title = "Relative mode, drop lowest 30%")
 contourf!(volcano, levels = 0.3:0.1:1, mode = :relative)

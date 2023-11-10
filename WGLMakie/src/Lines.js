@@ -50,7 +50,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
         vec3 screen_space(vec3 point) {
             vec4 vertex = projectionview * model * vec4(point, 1);
-            return vec3(vertex.xy * get_resolution() , vertex.z) / vertex.w;
+            return vec3(vertex.xy * get_resolution(), vertex.z + vertex.w * depth_shift) / vertex.w;
         }
 
         vec3 screen_space(vec2 point) {
@@ -71,7 +71,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
             vec2 yBasis = normalize(vec2(-xBasis.y, xBasis.x));
             vec2 point = pointA + xBasis * position.x + yBasis * width * position.y;
 
-            gl_Position = vec4(point.xy / get_resolution(), p_a.z, 1.0);
+            gl_Position = vec4(point.xy / get_resolution(), position.x == 1.0 ? p_b.z : p_a.z, 1.0);
         }
         `;
 }

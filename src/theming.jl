@@ -23,8 +23,6 @@ const DEFAULT_PALETTES = Attributes(
     side = [:left, :right]
 )
 
-Base.@deprecate_binding default_palettes DEFAULT_PALETTES
-
 const MAKIE_DEFAULT_THEME = Attributes(
     palette = DEFAULT_PALETTES,
     font = :regular,
@@ -53,7 +51,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     patchcolor = RGBAf(0, 0, 0, 0.6),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
-    resolution = (600, 450), # 4/3 aspect ratio
+    size = (600, 450), # 4/3 aspect ratio
     visible = true,
     Axis = Attributes(),
     Axis3 = Attributes(),
@@ -68,9 +66,20 @@ const MAKIE_DEFAULT_THEME = Attributes(
         blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
-    ambient = RGBf(0.55, 0.55, 0.55),
-    lightposition = :eyeposition,
     inspectable = true,
+
+    # Vec is equvalent to 36° right/east, 39° up/north from camera position
+    # The order here is Vec3f(right of, up from, towards) viewer/camera
+    light_direction = Vec3f(-0.45679495, -0.6293204, -0.6287243),
+    camera_relative_light = true, # Only applies to default DirectionalLight
+    light_color = RGBf(0.5, 0.5, 0.5),
+    ambient = RGBf(0.35, 0.35, 0.35),
+
+    # Note: this can be set too
+    # lights = AbstractLight[
+    #     AmbientLight(RGBf(0.55, 0.55, 0.55)),
+    #     DirectionalLight(RGBf(0.8, 0.8, 0.8), Vec3f(2/3, 2/3, 1/3))
+    # ],
 
     CairoMakie = Attributes(
         px_per_unit = 2.0,
@@ -100,19 +109,25 @@ const MAKIE_DEFAULT_THEME = Attributes(
         monitor = nothing,
         visible = true,
 
-        # Postproccessor
+        # Shader constants & Postproccessor
         oit = true,
         fxaa = true,
         ssao = false,
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
-        transparency_weight_scale = 1000f0
+        transparency_weight_scale = 1000f0,
+        # maximum number of lights with shading = :verbose
+        max_lights = 64,
+        max_light_parameters = 5 * 64
     ),
 
     WGLMakie = Attributes(
         framerate = 30.0,
-        resize_to_body = false,
+        resize_to = nothing,
+        # DEPRECATED in favor of resize_to
+        # still needs to be here to gracefully deprecate it
+        resize_to_body = nothing,
         px_per_unit = automatic,
         scalefactor = automatic
     ),
@@ -125,13 +140,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
     )
 )
 
-Base.@deprecate_binding minimal_default MAKIE_DEFAULT_THEME
-
-
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
 const THEME_LOCK = Base.ReentrantLock()
-
-
 
 # Basically like deepcopy but while merging it into another Attribute dict
 function merge_without_obs!(result::Attributes, theme::Attributes)
@@ -203,7 +213,7 @@ restored afterwards, no matter if `f` succeeds or fails.
 Example:
 
 ```julia
-my_theme = Theme(resolution = (500, 500), color = :red)
+my_theme = Theme(size = (500, 500), color = :red)
 with_theme(my_theme, color = :blue, linestyle = :dashed) do
     scatter(randn(100, 2))
 end
@@ -224,6 +234,7 @@ function with_theme(f, theme = Theme(); kwargs...)
 end
 
 theme(::Nothing, key::Symbol; default=nothing) = theme(key; default)
+theme(::Nothing) = CURRENT_DEFAULT_THEME
 function theme(key::Symbol; default=nothing)
     if haskey(CURRENT_DEFAULT_THEME, key)
         val = to_value(CURRENT_DEFAULT_THEME[key])

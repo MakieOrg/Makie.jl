@@ -24,9 +24,9 @@ export function render_scene(scene, picking = false) {
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("EXITING WGL");
+        delete_three_scene(scene);
         renderer.state.reset();
         renderer.dispose();
-        delete_three_scene(scene);
         return false;
     }
     // dont render invisible scenes
@@ -34,7 +34,7 @@ export function render_scene(scene, picking = false) {
         return true;
     }
     renderer.autoClear = scene.clearscene.value;
-    const area = scene.pixelarea.value;
+    const area = scene.viewport.value;
     if (area) {
         const [x, y, w, h] = area.map((x) => x * px_per_unit);
         renderer.setViewport(x, y, w, h);
@@ -44,7 +44,8 @@ export function render_scene(scene, picking = false) {
             renderer.setClearAlpha(0);
             renderer.setClearColor(new THREE.Color(0), 0.0);
         } else {
-            renderer.setClearColor(scene.backgroundcolor.value);
+            const alpha = scene.backgroundcolor_alpha.value;
+            renderer.setClearColor(scene.backgroundcolor.value, alpha);
         }
         renderer.render(scene, camera);
     }
@@ -130,7 +131,10 @@ function get_body_size() {
     const height = (window.innerHeight - height_padding);
     return [width, height];
 }
-
+function get_parent_size(canvas) {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    return [rect.width, rect.height];
+}
 
 export function wglerror(gl, error) {
     switch (error) {
@@ -219,7 +223,7 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
     JSServe.Connection.send_warning(err);
 }
 
-function add_canvas_events(screen, comm, resize_to_body) {
+function add_canvas_events(screen, comm, resize_to) {
     const { canvas,  winscale } = screen;
     function mouse_callback(event) {
         const [x, y] = events2unitless(screen, event);
@@ -295,11 +299,16 @@ function add_canvas_events(screen, comm, resize_to_body) {
     canvas.addEventListener("focusout", contextmenu);
 
     function resize_callback() {
-        const [width, height] = get_body_size();
+        let width, height;
+        if (resize_to == "body") {
+            [width, height] = get_body_size();
+        } else if (resize_to == "parent") {
+            [width, height] = get_parent_size(canvas);
+        }
         // Send the resize event to Julia
         comm.notify({ resize: [width / winscale, height / winscale] });
     }
-    if (resize_to_body) {
+    if (resize_to) {
         const resize_callback_throttled = throttle_function(
             resize_callback,
             100
@@ -400,7 +409,7 @@ function create_scene(
     height,
     texture_atlas_obs,
     fps,
-    resize_to_body,
+    resize_to,
     px_per_unit,
     scalefactor
 ) {
@@ -434,7 +443,7 @@ function create_scene(
         scalefactor,
         winscale,
     };
-    add_canvas_events(screen, comm, resize_to_body);
+    add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
 
     const three_scene = deserialize_scene(scenes, screen);
@@ -608,6 +617,9 @@ export function pick_sorted(scene, xy, range) {
     for (let i = 1; i <= dx; i++) {
         for (let j = 1; j <= dx; j++) {
             const d = (x - i) ^ (2 + (y - j)) ^ 2;
+            if (plot_matrix.length <= pindex) {
+                continue;
+            }
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             const plot_index = selected.findIndex(

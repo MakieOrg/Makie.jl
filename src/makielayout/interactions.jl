@@ -124,9 +124,11 @@ end
 
 function _selection_vertices(ax_scene, outer, inner)
     _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.px_area[])
-    outer = positivize(outer)
-    inner = positivize(inner)
+
+    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.viewport[])
+    transf = Makie.transform_func(ax_scene)
+    outer = positivize(Makie.apply_transform(transf, outer))
+    inner = positivize(Makie.apply_transform(transf, inner))
 
     obl = bottomleft(outer)
     obr = bottomright(outer)
@@ -241,7 +243,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     cam = camera(scene)
 
     if zoom != 0
-        pa = pixelarea(scene)[]
+        pa = viewport(scene)[]
 
         z = (1f0 - s.speed)^zoom
 
@@ -304,7 +306,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     scene = ax.scene
     cam = camera(scene)
-    pa = pixelarea(scene)[]
+    pa = viewport(scene)[]
 
     mp_axscene = Vec4f((event.px .- pa.origin)..., 0, 1)
     mp_axscene_prev = Vec4f((event.prev_px .- pa.origin)..., 0, 1)

@@ -13,7 +13,7 @@ entered_window(scene, native_window) = not_implemented_for(native_window)
 
 function connect_screen(scene::Scene, screen)
 
-    on(screen.window_open) do open
+    on(scene, screen.window_open) do open
         events(scene).window_open[] = open
     end
 
@@ -249,9 +249,9 @@ Furthermore you can also make any button, button collection or boolean
 expression exclusive by wrapping it in `Exclusively(...)`. With that `ispressed`
 will only return true if the currently pressed buttons match the request exactly.
 
-For cases where you want to react to a release event you can optionally add 
+For cases where you want to react to a release event you can optionally add
 a key or mousebutton `waspressed` which is then assumed to be pressed regardless
-of it's current state. For example, when reacting to a mousebutton event, you can 
+of it's current state. For example, when reacting to a mousebutton event, you can
 pass `event.button` so that a key combination including that button still evaluates
 as true.
 
@@ -264,7 +264,6 @@ ispressed(parent, result::Bool, waspressed = nothing) = result
 
 ispressed(parent, mb::Mouse.Button, waspressed = nothing) = ispressed(events(parent), mb, waspressed)
 ispressed(parent, key::Keyboard.Button, waspressed = nothing) = ispressed(events(parent), key, waspressed)
-@deprecate ispressed(scene, ::Nothing) ispressed(parent, true)
 
 # Boolean Operator evaluation
 ispressed(parent, op::And, waspressed = nothing) = ispressed(parent, op.left, waspressed) && ispressed(parent, op.right, waspressed)

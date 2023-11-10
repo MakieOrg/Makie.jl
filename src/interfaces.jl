@@ -1,6 +1,8 @@
 function color_and_colormap!(plot, colors = plot.color)
-    if haskey(plot, :cycle) && haskey(plot, :axis_cycler)
-        (cycler, palette) = plot.axis_cycler[]
+    scene = parent_scene(plot)
+    if !isnothing(scene) && haskey(plot, :cycle)
+        cycler = scene.cycler
+        palette = scene.theme.palette
         cycle = get_cycle_for_plottype(to_value(plot.cycle))
         add_cycle_attributes!(plot, cycle, cycler, palette)
     end
@@ -8,15 +10,17 @@ function color_and_colormap!(plot, colors = plot.color)
     attributes(plot.attributes)[:calculated_colors] = colors
 end
 
-function calculated_attributes!(T::Type{<: AbstractPlot}, plot)
-    if haskey(plot, :cycle) && haskey(plot, :axis_cycler)
-        (cycler, palette) = plot.axis_cycler[]
+function calculated_attributes!(::Type{<: AbstractPlot}, plot)
+    scene = parent_scene(plot)
+    if !isnothing(scene) && haskey(plot, :cycle)
+        cycler = scene.cycler
+        palette = scene.theme.palette
         cycle = get_cycle_for_plottype(to_value(plot.cycle))
         add_cycle_attributes!(plot, cycle, cycler, palette)
     end
 end
 
-function calculated_attributes!(T::Type{<: Mesh}, plot)
+function calculated_attributes!(::Type{<: Mesh}, plot)
     mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
     color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
     color_and_colormap!(plot, color)
@@ -123,14 +127,18 @@ function convert_arguments!(plot::Combined{F}) where {F}
 end
 
 function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
-    if first(args) isa Attributes
+    if !isempty(args) && first(args) isa Attributes
         merge!(plot_attributes, attributes(first(args)))
         return Combined{Func}(Base.tail(args), plot_attributes)
     end
     P = Combined{Func}
     used_attrs = used_attributes(P, to_value.(args)...)
-    kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
-    args_converted = convert_arguments(P, map(to_value, args)...; kw...)
+    if used_attrs === ()
+        args_converted = convert_arguments(P, map(to_value, args)...)
+    else
+        kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+        args_converted = convert_arguments(P, map(to_value, args)...; kw...)
+    end
     PNew, converted = apply_convert!(P, Attributes(), args_converted)
 
     obs_args = Any[convert(Observable, x) for x in args]
@@ -213,10 +221,10 @@ function plot!(::Combined{F}) where {F}
     end
 end
 
-function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
-    plot.parent = scene
+function connect_plot!(parent::SceneLike, plot::Combined{F}) where {F}
+    plot.parent = parent
 
-    apply_theme!(parent_scene(scene), plot)
+    apply_theme!(parent_scene(parent), plot)
     t_user = to_value(get(attributes(plot), :transformation, automatic))
     if t_user isa Transformation
         plot.transformation = t_user
@@ -228,11 +236,15 @@ function connect_plot!(scene::SceneLike, plot::Combined{F}) where {F}
             transform!(t, t_user)
             plot.transformation = t
         end
-        connect!(transformation(scene), transformation(plot))
+        if is_space_compatible(plot, parent)
+            obsfunc = connect!(transformation(parent), transformation(plot))
+            append!(plot.deregister_callbacks, obsfunc)
+        end
     end
     plot.model = transformationmatrix(plot)
     convert_arguments!(plot)
     calculated_attributes!(Combined{F}, plot)
+    default_shading!(plot, parent_scene(parent))
     plot!(plot)
     return plot
 end

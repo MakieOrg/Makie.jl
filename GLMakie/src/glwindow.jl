@@ -129,7 +129,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
-    buffer_ids = Dict(
+    buffer_ids = Dict{Symbol,GLuint}(
         :color    => GL_COLOR_ATTACHMENT0,
         :objectid => GL_COLOR_ATTACHMENT1,
         :HDR_color => GL_COLOR_ATTACHMENT2,
@@ -137,20 +137,20 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         :depth    => GL_DEPTH_ATTACHMENT,
         :stencil  => GL_STENCIL_ATTACHMENT,
     )
-    buffers = Dict(
-        :color    => color_buffer,
+    buffers = Dict{Symbol, Texture}(
+        :color => color_buffer,
         :objectid => objectid_buffer,
         :HDR_color => HDR_color_buffer,
         :OIT_weight => OIT_weight_buffer,
-        :depth    => depth_buffer,
-        :stencil  => depth_buffer
+        :depth => depth_buffer,
+        :stencil => depth_buffer
     )
 
     return GLFramebuffer(
         fb_size_node, frambuffer_id,
         buffer_ids, buffers,
         [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]
-    )
+    )::GLFramebuffer
 end
 
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)

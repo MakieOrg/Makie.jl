@@ -43,7 +43,7 @@ end
 function generate_plot(N = 3)
     points = Observable(Point2f[])
     color = Observable(RGBAf[])
-    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(800, 800),))
+    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(800, 800),))
     function update_func(ij)
         push!(points.val, Point2f(Tuple(ij)))
         push!(color.val, RGBAf((Tuple(ij)./N)..., 0, 1))
@@ -121,7 +121,9 @@ end
     obs = Observable(1:5)
     f, ax, pl = scatter(obs; markersize=150)
     s = display(f)
-    @test length(obs.listeners) == 1
+    # So, for GLMakie it will be 2, since we register an additional listener for
+    # State changes for the on demand renderloop
+    @test length(obs.listeners) in (1, 2)
     delete!(ax, pl)
     @test length(obs.listeners) == 0
     # ugh, hard to synchronize this with WGLMakie, so, we need to sleep for now to make sure the change makes it to the browser

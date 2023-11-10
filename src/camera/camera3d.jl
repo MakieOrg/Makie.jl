@@ -1,5 +1,7 @@
 abstract type AbstractCamera3D <: AbstractCamera end
 
+get_space(::AbstractCamera3D) = :data
+
 struct Camera3D <: AbstractCamera3D
     # User settings
     settings::Attributes
@@ -38,7 +40,12 @@ Settings include anything that isn't a mouse or keyboard button.
 - `fixed_axis = true`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
 - `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
-- `clipping_mode = :bbox_relative`: Controls how `near` and `far` get processed. With `:static` they get passed as is, with `:view_relative` they get scaled by `norm(eyeposition - lookat)` and with `:bbox_relative` they get scaled to be just outside the scene bounding box. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
+- `clipping_mode = :adaptive`: Controls how `near` and `far` get processed. Options:
+    - `:static` passes `near` and `far` as is
+    - `:adaptive` scales `near` by `norm(eyeposition - lookat)` and passes `far` as is
+    - `:view_relative` scales `near` and `far` by `norm(eyeposition - lookat)`
+    - `:bbox_relative` scales `near` and `far` to the scene bounding box as passed to the camera with `update_cam!(..., bbox)`. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
+- `center = true`: Controls whether the camera placement gets reset when calling `update_cam!(scene[, cam], bbox)`, which is called when a new plot is added. This is automatically set to `false` after calling `update_cam!(scene[, cam], eyepos, lookat[, up])`.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
 - `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
@@ -160,7 +167,8 @@ function Camera3D(scene::Scene; kwargs...)
         zoom_shift_lookat = true,
         fixed_axis = true,
         cad = false,
-        clipping_mode = :bbox_relative
+        center = true,
+        clipping_mode = :adaptive
     )
 
     replace!(settings, :Camera3D, scene, overwrites)
@@ -170,7 +178,7 @@ function Camera3D(scene::Scene; kwargs...)
     elseif settings.clipping_mode[] === :bbox_relative
         far_default = 1f0
     else
-        far_default = 10f0 # will be set when inserting a plot
+        far_default = 100f0 # will be set when inserting a plot
     end
 
     cam = Camera3D(
@@ -246,7 +254,7 @@ function Camera3D(scene::Scene; kwargs...)
             update_cam!(scene, cam)
         end
     end
-    on(camera(scene), scene.px_area, cam.near, cam.far, settings.projectiontype) do _, _, _, _
+    on(camera(scene), scene.viewport, cam.near, cam.far, settings.projectiontype) do _, _, _, _
         update_cam!(scene, cam)
     end
 
@@ -402,10 +410,10 @@ function add_mouse_controls!(scene, cam::Camera3D)
         if projectiontype[] == Perspective
           # TODO wrong scaling? :(
             ynorm = 2 * norm(cam.lookat[] - cam.eyeposition[]) * tand(0.5 * cam.fov[])
-            return ynorm / widths(scene.px_area[])[2] * delta
+            return ynorm / size(scene, 2) * delta
         else
             viewnorm = norm(cam.eyeposition[] - cam.lookat[])
-            return 2 * viewnorm / widths(scene.px_area[])[2] * delta
+            return 2 * viewnorm / size(scene, 2) * delta
         end
     end
 
@@ -447,12 +455,13 @@ function add_mouse_controls!(scene, cam::Camera3D)
             # reposition
             if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
                 plt, _, p = ray_assisted_pick(scene)
-                if p !== Point3f(NaN) && to_value(get(plt, :space, :data)) == :data && parent_scene(plt) == scene
+                p3d = to_ndim(Point3f, p, 0f0)
+                if !isnan(p3d) && to_value(get(plt, :space, :data)) == :data && parent_scene(plt) == scene
                     # if translation/rotation happens with on-click reposition,
                     # try uncommenting this
                     # dragging[] = (false, false)
-                    shift = p - cam.lookat[]
-                    update_cam!(scene, cam, cam.eyeposition[] + shift, p)
+                    shift = p3d - cam.lookat[]
+                    update_cam!(scene, cam, cam.eyeposition[] + shift, p3d)
                 end
                 consume = true
             end
@@ -617,7 +626,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
             # recontextualize the (dy, dx, 0) from mouse rotations so that
             # drawing circles creates continuous rotations around the fixed axis
             mp = mouseposition_px(scene)
-            past_half = 0.5f0 .* widths(scene.px_area[]) .> mp
+            past_half = 0.5f0 .* size(scene) .> mp
             flip = 2f0 * past_half .- 1f0
             angle = flip[1] * angles[1] + flip[2] * angles[2]
             angles = Vec3f(-angle, -angle, angle)
@@ -655,14 +664,15 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos   # -z
-
+    vp = viewport(scene)[]
+    scene_width = widths(vp)
     if cad
         # Rotate view based on offset from center
         u_z = normalize(viewdir)
         u_x = normalize(cross(u_z, cam.upvector[]))
         u_y = normalize(cross(u_x, u_z))
 
-        rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+        rel_pos = 2.0f0 * mouseposition_px(scene) ./ scene_width .- 1.0f0
         shift = rel_pos[1] * u_x + rel_pos[2] * u_y
         shift *= 0.1 * sign(1 - zoom_step) * norm(viewdir)
 
@@ -673,8 +683,7 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
         u_x = normalize(cross(u_z, cam.upvector[]))
         u_y = normalize(cross(u_x, u_z))
 
-        ws = widths(scene.px_area[])
-        rel_pos = (2.0 .* mouseposition_px(scene) .- ws) ./ ws[2]
+        rel_pos = (2.0 .* mouseposition_px(scene) .- scene_width) ./ scene_width[2]
         shift = (1 - zoom_step) * (rel_pos[1] * u_x + rel_pos[2] * u_y)
 
         if cam.settings.projectiontype[] == Makie.Orthographic
@@ -717,11 +726,14 @@ function update_cam!(scene::Scene, cam::Camera3D)
         far_dist = center_dist + radius(bounding_sphere)
         near = max(view_dist * near, center_dist - radius(bounding_sphere))
         far = far_dist * far
+    elseif cam.settings.clipping_mode[] === :adaptive
+        view_dist = norm(eyeposition - lookat)
+        near = view_dist * near; far = far
     elseif cam.settings.clipping_mode[] !== :static
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
     end
 
-    aspect = Float32((/)(widths(scene.px_area[])...))
+    aspect = Float32((/)(widths(scene)...))
     if cam.settings.projectiontype[] == Makie.Perspective
         proj = perspectiveprojection(fov, aspect, near, far)
     else
@@ -732,11 +744,12 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_proj_view!(camera(scene), proj, view)
 
     scene.camera.eyeposition[] = cam.eyeposition[]
+    scene.camera.lookat[] = cam.lookat[]
 end
 
 
 # Update camera position via bbox
-function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
+function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool = cam.settings.center[])
     bb = Rect3f(area3d)
     width = widths(bb)
     center = maximum(bb) - 0.5f0 * width
@@ -751,12 +764,17 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
         dist = radius
     end
 
-    cam.lookat[] = center
-    cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
-    cam.upvector[] = Vec3f(0, 0, 1) # Should we reset this?
+    if recenter
+        cam.lookat[] = center
+        cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
+        cam.upvector[] = normalize(cross(old_dir, cross(cam.upvector[], old_dir)))
+    end
 
     if cam.settings.clipping_mode[] === :static
         cam.near[] = 0.1f0 * dist
+        cam.far[] = 2f0 * dist
+    elseif cam.settings.clipping_mode[] === :adaptive
+        cam.near[] = 0.1f0 * dist / norm(cam.eyeposition[] - cam.lookat[])
         cam.far[] = 2f0 * dist
     end
 
@@ -767,6 +785,7 @@ end
 
 # Update camera position via camera Position & Orientation
 function update_cam!(scene::Scene, camera::Camera3D, eyeposition::VecTypes, lookat::VecTypes, up::VecTypes = camera.upvector[])
+    camera.settings.center[] = false
     camera.lookat[]      = Vec3f(lookat)
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[]    = Vec3f(up)
@@ -787,6 +806,7 @@ function update_cam!(
         radius::Real = norm(camera.eyeposition[] - camera.lookat[]),
         center = camera.lookat[]
     )
+    camera.settings.center[] = false
     st, ct = sincos(theta)
     sp, cp = sincos(phi)
     v = Vec3f(ct * cp, ct * sp, st)

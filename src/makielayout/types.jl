@@ -8,14 +8,6 @@ end
 
 struct DataAspect end
 
-
-struct Cycler
-    counters::IdDict{Type, Int}
-end
-
-Cycler() = Cycler(IdDict{Type, Int}())
-
-
 struct Cycle
     cycle::Vector{Pair{Vector{Symbol}, Symbol}}
     covary::Bool
@@ -211,8 +203,6 @@ end
     yaxislinks::Vector{Axis}
     targetlimits::Observable{Rect2f}
     finallimits::Observable{Rect2f}
-    cycler::Cycler
-    palette::Attributes
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -671,7 +661,7 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = false,
+    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = NoShading,
                  inspectable = false, visible=r.active, transparency=true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
@@ -856,14 +846,16 @@ end
         valign = :center
         "The horizontal alignment of the rectangle in its suggested boundingbox"
         halign = :center
-        "The extra space added to the sides of the rectangle boundingbox."
-        padding = (0f0, 0f0, 0f0, 0f0)
         "The line width of the rectangle's border."
         strokewidth = 1f0
         "Controls if the border of the rectangle is visible."
         strokevisible = true
         "The color of the border."
         strokecolor = RGBf(0, 0, 0)
+        "The linestyle of the rectangle border"
+        linestyle = nothing
+        "The radius of the rounded corner. One number is for all four corners, four numbers for going clockwise from top-right."
+        cornerradius = 0.0
         "The width setting of the rectangle."
         width = nothing
         "The height setting of the rectangle."
@@ -1187,8 +1179,10 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         padding = (6f0, 6f0, 6f0, 6f0)
         "The additional space between the legend and its suggested boundingbox."
         margin = (0f0, 0f0, 0f0, 0f0)
+        "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
+        bgcolor = nothing
         "The background color of the legend."
-        bgcolor = :white
+        backgroundcolor = :white
         "The color of the legend border."
         framecolor = :black
         "The line width of the legend border."
@@ -1356,8 +1350,6 @@ end
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
-    cycler::Cycler
-    palette::Attributes
     @attributes begin
         "The height setting of the scene."
         height = nothing
@@ -1644,8 +1636,6 @@ end
     target_rlims::Observable{Tuple{Float64, Float64}}
     target_thetalims::Observable{Tuple{Float64, Float64}}
     target_theta_0::Observable{Float32}
-    cycler::Cycler
-    palette::Attributes
     @attributes begin
         # Generic
 

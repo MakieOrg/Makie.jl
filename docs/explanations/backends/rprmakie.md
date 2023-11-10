@@ -94,7 +94,7 @@ using Colors: N0f8
 radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
-fig = Figure(; resolution=(1500, 700));
+fig = Figure(; size=(1500, 700));
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
 screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
 
@@ -178,7 +178,7 @@ function glow_material(data_normed)
 end
 
 RPRMakie.activate!(iterations=32, plugin=RPR.Northstar)
-fig = Figure(; resolution=(2000, 800))
+fig = Figure(; size=(2000, 800))
 radiance = 30000
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(0, 100, 100), RGBf(radiance, radiance, radiance))]
@@ -232,7 +232,7 @@ radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
           PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 
-fig = Figure(; resolution=(1500, 1000))
+fig = Figure(; size=(1500, 1000))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
 screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
@@ -397,7 +397,7 @@ lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
     PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
 ]
-s = Scene(resolution=(500, 500), lights=lights)
+s = Scene(size=(500, 500), lights=lights)
 
 cam3d!(s)
 c = cameracontrols(s)
@@ -491,7 +491,7 @@ earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/comm
 # the actual plot !
 RPRMakie.activate!(; iterations=100)
 scene = with_theme(theme_dark()) do
-    fig = Figure(; resolution=(1000, 1000))
+    fig = Figure(; size=(1000, 1000))
     radiance = 30
     lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
               PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
