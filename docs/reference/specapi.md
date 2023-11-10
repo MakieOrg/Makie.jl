@@ -14,39 +14,28 @@ The `SpecApi` is a convenient scope for creating PlotSpec objects.
 PlotSpecs are a simple way to create plots in a declarative way, which can then get converted to Makie plots.
 You can use `Observable{SpecApi.PlotSpec}`, or `Observable{SpecApi.Figure}` to create complete figures that can be updated dynamically.
 
-The API is supposed mirror the normal Makie API 1:1, just prefixed by `SpecApi`:
+The API is supposed to be similar to the normal API, just declarative, so you always need to create the specs in a nested fashion:
 ```julia
 import Makie.SpecApi as S # For convenience import it as a shorter name
 S.scatter(1:4) # create a single PlotSpec object
 
 # Create a complete figure
-f = S.Figure() #
-ax = S.Axis(f[1, 1])
-S.scatter!(ax, 1:4)
-fig_observable = Observable(f)
-plot(fig_observable) # Plot the whole figure
+p = S.scatter(1:4)
+ax = S.Axis(plots=[p])
+f, _, pl = plot(S.Figure(ax)) # Plot the whole figure
 # Efficiently update the complete figure with a new FigureSpec
-fig_observable[] = S.Figure(S.Axis(; title="lines", plots=[S.lines(1:4)]))
+pl[1] = S.Figure(S.Axis(; title="lines", plots=[S.lines(1:4)]))
 ```
 
 You can also drop to the lower level constructors:
 
 ```julia
 s = Makie.PlotSpec(:scatter, 1:4; color=:red)
-axis = Makie.BlockSpec(:Axis; position=(1, 1), title="Axis at layout position (1, 1)")
+axis = Makie.BlockSpec(:Axis; title="Axis at layout position (1, 1)")
 ```
 
-Or use the Declarative API:
-```julia
-f = S.Figure([
-    S.Axis(
-        plots = [
-            S.scatter(1:4)
-        ]
-    )
-])
-```
 For the declaritive API, `S.Figure` accepts a vector of blockspecs or matrix of blockspecs, which places the Blocks at the indices of those arrays:
+
 \begin{examplefigure}{}
 ```julia
 using GLMakie, DelimitedFiles, FileIO
@@ -64,12 +53,58 @@ ax4 = S.Axis3(; plots=[S.contour(cube, alpha=0.5)])
 
 spec_array = S.Figure([ax1, ax2]);
 spec_matrix = S.Figure([ax1 ax2; ax3 ax4]);
-f = Figure(; size=(1000, 500))
+spec_row = S.Figure(S.GridLayout([ax1 ax2]; rowsizes=[Fixed(100)]));
+f = Figure(; size=(1000, 700))
 plot(f[1, 1], spec_array)
 plot(f[1, 2], spec_matrix)
+plot(f[2, :], spec_row)
 f
 ```
 \end{examplefigure}
+
+There is also a GridLayout Spec, which can be used like this:
+
+### Manually specified positions
+\begin{examplefigure}{}
+```julia
+plot(S.Figure(S.GridLayout([
+    (1, 1) => S.Axis(),
+    (1, 2) => S.Axis(),
+    (2, :) => S.Axis(),
+    (2, 2, Right()) => S.Colorbar(),
+]; alignmode=Outside(30))))
+```
+\end{examplefigure}
+
+### Manually specified positions with nested gridlayout
+\begin{examplefigure}{}
+```julia
+plot(S.Figure([
+    (1, 1) => S.Axis(),
+    (1, 2) => S.Axis(),
+    (2, :) => S.GridLayout([
+        (1, 1) => S.Axis(),
+        (2, 1) => S.Axis(),
+    ]),
+    (1, 1, Right()) => S.Colorbar(),
+]))
+```
+\end{examplefigure}
+
+# keywords you can pass to gridlayout
+```julia
+S.GridLayout([...],
+    colsizes = [Auto(), Auto(), 300],
+    rowsizes = [Relative(0.4), Relative(0.6)],
+    colgaps,
+    rowgaps,
+    alignmode,
+    halign,
+    valign,
+    tellheight,
+    tellwidth,
+)
+```
 
 # Usage in convert_arguments
 
@@ -93,14 +128,8 @@ end
 
 Makie.used_attributes(::Type{<:AbstractPlot}, ::PlotGrid) = (:color,)
 function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::PlotGrid; color=:black)
-    f = S.Figure(; fontsize=30)
-    for i in 1:obj.nplots[1]
-        for j in 1:obj.nplots[2]
-            ax = S.Axis(f[i, j])
-            S.lines!(ax, cumsum(randn(1000)); color=color)
-        end
-    end
-    return f
+    axes = [S.Axis(plots=[S.lines(cumsum(randn(1000)); color=color)]) for i in 1:obj.nplots[1], j in 1:obj.nplots[2]]
+    return S.Figure(axes; fontsize=30)
 end
 
 f = Figure()

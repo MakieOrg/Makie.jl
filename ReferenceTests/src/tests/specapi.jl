@@ -22,24 +22,20 @@ end
                      S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)]))
     sync_step!(st)
     obs[] = begin
-        f = S.Figure()
-        ax = S.Axis(f[1, 1])
-        S.scatter!(ax, 1:4)
-        ax2 = S.Axis3(f[1, 2]; title="Title 0")
-        S.scatter!(ax2, 1:4; color=1:4, markersize=20)
-        S.Colorbar(f[1, 3]; limits=(0, 1), colormap=:heat)
-        f
+        ax = S.Axis(; plots=[S.scatter(1:4)])
+        ax2 = S.Axis3(; title="Title 0", plots=[S.scatter(1:4; color=1:4, markersize=20)])
+        c = S.Colorbar(; limits=(0, 1), colormap=:heat)
+        S.Figure([ax ax2 c])
     end
     sync_step!(st)
 
     obs[] = begin
-        f = S.Figure()
-        ax = S.Axis(f[1, 1]; title="Title 1")
-        S.scatter!(ax, 1:4; markersize=50)
-        ax2 = S.Axis3(f[1, 2])
-        S.scatter!(ax2, 2:4; color=1:3, markersize=30)
-        S.Colorbar(f[1, 3]; limits=(2, 10), colormap=:viridis, width=50)
-        f
+        p1 = S.scatter(1:4; markersize=50)
+        ax = S.Axis(; plots=[p1], title="Title 1")
+        p2 = S.scatter(2:4; color=1:3, markersize=30)
+        ax2 = S.Axis3(; plots=[p2])
+        c = S.Colorbar(; limits=(2, 10), colormap=:viridis, width=50)
+        S.Figure([ax ax2 c])
     end
     sync_step!(st)
 
@@ -60,16 +56,13 @@ end
                          points=Point2f[(0, 0), (0, 1), (1, 0), (1, 1)])
 
     obs[] = begin
-        f = S.Figure()
-        S.Legend(f[1, 1], [elem_1, elem_2, elem_3], ["elem 1", "elem 2", "elem 3"], "Legend Title")
-        f
+        S.Figure(S.Legend([elem_1, elem_2, elem_3], ["elem 1", "elem 2", "elem 3"], "Legend Title"))
     end
     sync_step!(st)
 
     obs[] = begin
-        f = S.Figure()
-        S.Legend(f[1, 1], [elem_1, elem_2], ["elem 1", "elem 2"], "New Title")
-        f
+        l = S.Legend([elem_1, elem_2], ["elem 1", "elem 2"], "New Title")
+        S.Figure(l)
     end
     sync_step!(st)
 
@@ -84,16 +77,12 @@ struct PlotGrid
 end
 
 function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::PlotGrid)
-    f = S.Figure(; fontsize=30)
-    for i in 1:obj.nplots[1]
-        for j in 1:obj.nplots[2]
-            ax = S.Axis(f[i, j])
-            S.lines!(ax, 1:4; linewidth=5, color=Cycled(1))
-            S.lines!(ax, 2:5; linewidth=7, color=Cycled(2))
-        end
-    end
-    return f
+    plots = [S.lines(1:4; linewidth=5, color=Cycled(1)),
+             S.lines(2:5; linewidth=7, color=Cycled(2))]
+    axes = [S.Axis(; plots=plots) for i in 1:obj.nplots[1], j in 1:obj.nplots[2]]
+    return S.Figure(axes; fontsize=30)
 end
+
 struct LineScatter
     show_lines::Bool
     show_scatter::Bool
@@ -112,6 +101,7 @@ end
 @reference_test "SpecApi in convert_arguments" begin
     f = Figure()
     p1 = plot(f[1, 1], PlotGrid((1, 1)))
+    f
     ax, p2 = plot(f[1, 2], LineScatter(true, true), 1:4)
     st = Makie.Stepper(f)
     sync_step!(st)

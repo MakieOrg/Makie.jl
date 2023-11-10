@@ -67,7 +67,6 @@ export Cycled
 
 # from GridLayoutBase
 export GridLayout, GridPosition, GridSubposition
-export GridLayoutSpec
 export BBox
 export LayoutObservables
 export Inside, Outside, Mixed

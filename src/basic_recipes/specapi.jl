@@ -1,5 +1,8 @@
-# Ideally we re-use Makie.PlotSpec, but right now we need a bit of special behaviour to make this work nicely.
-# If the implementation stabilizes, we should think about refactoring PlotSpec to work for both use cases, and then just have one PlotSpec type.
+
+using GridLayoutBase: GridLayoutBase
+
+import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inner, GridLayout, GridSubposition
+
 @nospecialize
 """
     PlotSpec(plottype, args...; kwargs...)
@@ -55,14 +58,13 @@ end
 
 plottype(p::PlotSpec) = Combined{getfield(Makie, p.type)}
 
-mutable struct BlockSpec
+struct BlockSpec
     type::Symbol
-    position::Union{Nothing, Tuple{Any,Any}}
     kwargs::Dict{Symbol,Any}
     plots::Vector{PlotSpec}
 end
 
-function BlockSpec(typ::Symbol, args...; position=nothing, plots::Vector{PlotSpec}=PlotSpec[], kw...)
+function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
     if typ == :Legend
         # TODO, this is hacky and works around the fact,
@@ -71,65 +73,123 @@ function BlockSpec(typ::Symbol, args...; position=nothing, plots::Vector{PlotSpe
         defaults = block_defaults(:Legend, attr, nothing)
         entrygroups = to_entry_group(Attributes(defaults), args...)
         attr[:entrygroups] = entrygroups
-        return BlockSpec(typ, position, attr, plots)
+        return BlockSpec(typ, attr, plots)
     else
         if !isempty(args)
             error("BlockSpecs, with an exception for Legend, don't support positional arguments yet.")
         end
-        return BlockSpec(typ, position, attr, plots)
+        return BlockSpec(typ, attr, plots)
     end
 end
+
+
+
+const GridLayoutPosition = Tuple{UnitRange{Int},UnitRange{Int},Side}
+
+to_span(range::UnitRange{Int}, span::UnitRange{Int}) = (range.start < span.start || range.stop > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range
+to_span(range::Int, span::UnitRange{Int}) = (range < span.start || range > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range:range
+to_span(::Colon, span::UnitRange{Int}) = span
+to_gridposition(rows_cols::Tuple{Any,Any}, rowspan, colspan) = to_gridposition((rows_cols..., Inner()), rowspan, colspan)
+to_gridposition(rows_cols_side::Tuple{Any,Any,Any}, rowspan, colspan) = (to_span(rows_cols_side[1], rowspan), to_span(rows_cols_side[2], colspan), rows_cols_side[3])
+
+rangeunion(r1, r2::UnitRange) = min(r1.start, r2.start):max(r1.stop, r2.stop)
+rangeunion(r1, r2::Int) = min(r1.start, r2):max(r1.stop, r2)
+rangeunion(r1, r2::Colon) = r1
+
+struct GridLayoutSpec
+    content::Vector{Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}}
+    colsizes::Vector{ContentSize}
+    rowsizes::Vector{ContentSize}
+    colgaps::Vector{GapSize}
+    rowgaps::Vector{GapSize}
+    alignmode::AlignMode
+    tellheight::Bool
+    tellwidth::Bool
+    halign::Float64
+    valign::Float64
+
+    function GridLayoutSpec(
+            content::AbstractVector{<:Pair};
+            colsizes = nothing,
+            rowsizes = nothing,
+            colgaps = nothing,
+            rowgaps = nothing,
+            alignmode::AlignMode = GridLayoutBase.Inside(),
+            tellheight::Bool = true,
+            tellwidth::Bool = true,
+            halign::Union{Symbol,Real} = :center,
+            valign::Union{Symbol,Real} = :center,
+        )
+
+        rowspan, colspan = foldl(content; init = (1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
+            rangeunion(rows, _rows), rangeunion(cols, _cols)
+        end
+
+        content = map(content) do (position, x)
+            p = Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}(to_gridposition(position, rowspan, colspan), x)
+            return p
+        end
+
+        nrows = length(rowspan)
+        ncols = length(colspan)
+        colsizes = GridLayoutBase.convert_contentsizes(ncols, colsizes)
+        rowsizes = GridLayoutBase.convert_contentsizes(nrows, rowsizes)
+        default_rowgap = Fixed(30) # TODO: where does this come from?
+        default_colgap = Fixed(30) # TODO: where does this come from?
+        colgaps = GridLayoutBase.convert_gapsizes(ncols - 1, colgaps, default_colgap)
+        rowgaps = GridLayoutBase.convert_gapsizes(nrows - 1, rowgaps, default_rowgap)
+
+        halign = GridLayoutBase.halign2shift(halign)
+        valign = GridLayoutBase.valign2shift(valign)
+
+        return new(
+            content,
+            colsizes,
+            rowsizes,
+            colgaps,
+            rowgaps,
+            alignmode,
+            tellheight,
+            tellwidth,
+            halign,
+            valign,
+        )
+    end
+end
+
+const LayoutEntry = Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}
+
+function GridLayoutSpec(v::AbstractVector; kwargs...)
+    GridLayoutSpec(reshape(v, :, 1); kwargs...)
+end
+
+function GridLayoutSpec(v::AbstractMatrix; kwargs...)
+    indices = vec([Tuple(c) for c in CartesianIndices(v)])
+    pairs = [
+        LayoutEntry((i:i, j:j, GridLayoutBase.Inner()), v[i, j]) for (i, j) in indices
+    ]
+    GridLayoutSpec(pairs; kwargs...)
+end
+
+Figure(pairs::Pair{Any, BlockSpec}...) = FigureSpec(pairs...)
+# Figure(::Vector{BlockScpec}) = FigureSpec(GridLayoutSpec([(i, 1) => b for b in blocks]))
+# Figure(::Matrix{BlockScpe}) = FigureSpec(pairs...)
 
 struct FigureSpec
-    blocks::Vector{BlockSpec}
+    layout::GridLayoutSpec
     kw::Dict{Symbol, Any}
-    function FigureSpec(blocks::Array{BlockSpec, N}, kw::Dict{Symbol, Any}) where N
-        if !(N in (1, 2))
-            error("Blocks need to be matrix or vector of BlockSpecs")
-        end
-        for ij in CartesianIndices(blocks)
-            block = blocks[ij]
-            if isnothing(block.position)
-                if N === 1
-                    block.position = (1, ij[1])
-                else
-                    block.position = Tuple(ij)
-                end
-            end
-        end
-        return new(vec(blocks), kw)
-    end
-
 end
 
-FigureSpec(blocks::BlockSpec...; kw...) = FigureSpec(BlockSpec[blocks...], Dict{Symbol,Any}(kw))
-FigureSpec(blocks::Array{BlockSpec, N}; kw...) where N = FigureSpec(blocks, Dict{Symbol,Any}(kw))
-
-struct FigurePosition
-    f::FigureSpec
-    position::Tuple{Any,Any}
+function FigureSpec(blocks::Array; padding=theme(:figure_padding)[], kw...)
+    return FigureSpec(GridLayoutSpec(blocks; alignmode=Outside(padding)), Dict{Symbol,Any}(kw))
 end
 
-function Base.getindex(f::FigureSpec, arg1, arg2)
-    return FigurePosition(f, (arg1, arg2))
+function FigureSpec(blocks::Union{BlockSpec, GridLayoutSpec}...; padding=theme(:figure_padding)[], kw...)
+    return FigureSpec(GridLayoutSpec(collect(blocks); alignmode=Outside(padding)), Dict{Symbol,Any}(kw))
 end
+FigureSpec(gls::GridLayoutSpec; kw...) = FigureSpec(gls, Dict{Symbol,Any}(kw))
 
-function BlockSpec(typ::Symbol, pos::FigurePosition, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
-    block = BlockSpec(typ, args...; position=pos.position, plots=plots, kw...)
-    push!(pos.f.blocks, block)
-    return block
-end
 
-function PlotSpec(type::Symbol, ax::BlockSpec, args...; kwargs...)
-    tstring = string(type)
-    if !endswith(tstring, "!")
-        error("Need to call $(type)! to create a plot in an axis")
-    end
-    type = Symbol(tstring[1:end-1])
-    plot = PlotSpec(type, args...; kwargs...)
-    push!(ax.plots, plot)
-    return plot
-end
 
 """
 apply for return type PlotSpec
@@ -167,6 +227,7 @@ const SpecApi = _SpecApi()
 
 function Base.getproperty(::_SpecApi, field::Symbol)
     field === :Figure && return FigureSpec
+    field === :GridLayout && return GridLayoutSpec
     # TODO, we wanted to track all recipe names in a set
     # in MakieCore via the recipe macro, but due to precompilation & caching
     # It seems impossible to merge the recipes from all modules
@@ -372,18 +433,44 @@ end
 
 ## BlockSpec
 
-function compare_block(a::BlockSpec, b::BlockSpec)
-    a.type === b.type || return false
-    a.position === b.position || return false
+function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP,BlockSpec}, (bnesting, bp, b)::Tuple{Int,GP,BlockSpec}) where {GP<:GridLayoutPosition}
+    anesting !== bnesting && return false
+    a.type !== b.type && return false
+    ap !== bp && return false
     return true
 end
 
-function to_block(fig, spec::BlockSpec)
-    BType = getfield(Makie, spec.type)
-    return BType(fig[spec.position...]; spec.kwargs...)
+function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP, GridLayoutSpec}, (bnesting, bp, b)::Tuple{Int,GP, GridLayoutSpec}) where {GP <: GridLayoutPosition}
+    return anesting === bnesting
 end
 
-function update_block!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
+compare_layout_slot(a, b) = false # types dont match
+
+function to_grid_content(parent, position::GridLayoutPosition, spec::BlockSpec)
+    BType = getfield(Makie, spec.type)
+    # TODO forward kw
+    block = BType(get_top_parent(parent); spec.kwargs...)
+    parent[position...] = block
+    return block
+end
+
+function to_grid_content(parent, position::GridLayoutPosition, spec::GridLayoutSpec)
+    # TODO pass colsizes  etc
+    gl = GridLayout(length(spec.rowsizes), length(spec.colsizes);
+                    colsizes=spec.colsizes,
+                    rowsizes=spec.rowsizes,
+                    colgaps=spec.colgaps,
+                    rowgaps=spec.rowgaps,
+                    alignmode=spec.alignmode,
+                    tellwidth=spec.tellwidth,
+                    tellheight=spec.tellheight,
+                    halign=spec.halign,
+                    valign=spec.valign)
+    parent[position...] = gl
+    return gl
+end
+
+function update_grid_content!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
     old_attr = keys(old_spec.kwargs)
     new_attr = keys(spec.kwargs)
     # attributes that have been set previously and need to get unset now
@@ -411,60 +498,121 @@ function update_block!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec)
     return
 end
 
-function update_fig!(fig, figure_obs)
-    cached_blocks = Pair{BlockSpec,Tuple{Block,Observable}}[]
+function to_gl_key(key::Symbol)
+    key === :colgaps && return :addedcolgaps
+    key === :rowgaps && return :addedrowgaps
+    return key
+end
+
+
+function update_grid_content!(layout::GridLayout, obs, old_spec::Union{GridLayoutSpec, Nothing}, spec::GridLayoutSpec)
+    # Block updates until very end where all children etc got deleted!
+    layout.block_updates = true
+    keys = (:alignmode, :tellwidth, :tellheight, :halign, :valign)
+    layout.size = (length(spec.rowsizes), length(spec.colsizes))
+    for k in keys
+        old_val = isnothing(old_spec) ? nothing : getproperty(old_spec, k)
+        new_val = getproperty(spec, k)
+        if is_different(old_val, new_val)
+            value_obs = getfield(layout, k)
+            if value_obs isa Observable
+                value_obs[] = new_val
+            end
+        end
+    end
+    # TODO update colsizes  etc
+    for field in [:colsizes, :rowsizes, :colgaps, :rowgaps]
+        old_val = isnothing(old_spec) ? nothing : getfield(old_spec, field)
+        new_val = getfield(spec, field)
+        if is_different(old_val, new_val)
+            setfield!(layout, to_gl_key(field), new_val)
+        end
+    end
+    layout.size = (length(spec.rowsizes), length(spec.colsizes))
+    return
+end
+
+function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
+                            gridspec::GridLayoutSpec, used_specs, cached_contents)
+    update_grid_content!(gridlayout, nothing, oldgridspec, gridspec)
+    for (position, spec) in gridspec.content
+        # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
+        idx = findfirst(x -> compare_layout_slot(x[1], (nesting, position, spec)), cached_contents)
+        if isnothing(idx)
+            @debug("Creating new content for spec")
+            # Create new plot, store it into our `cached_contents` dictionary
+            content = to_grid_content(gridlayout, position, spec)
+            obs = Observable(PlotSpec[])
+            if content isa AbstractAxis
+                obs = Observable(spec.plots)
+                scene = get_scene(content)
+                update_plotspecs!(scene, obs)
+                update_state_before_display!(content)
+            elseif content isa GridLayout
+                update_gridlayout!(content, nesting + 1, spec, spec, used_specs, cached_contents)
+            end
+            push!(cached_contents, (nesting, position, spec) => (content, obs))
+            push!(used_specs, length(cached_contents))
+        else
+            @debug("updating old block with spec")
+            push!(used_specs, idx)
+            (_, _, old_spec), (content, plot_obs) = cached_contents[idx]
+            if content isa GridLayout
+                update_gridlayout!(content, nesting + 1, old_spec, spec, used_specs, cached_contents)
+            else
+                update_grid_content!(content, plot_obs, old_spec, spec)
+                update_state_before_display!(content)
+            end
+            cached_contents[idx] = (nesting, position, spec) => (content, plot_obs)
+        end
+    end
+    gridlayout.block_updates = false
+    GridLayoutBase.update!(gridlayout)
+end
+
+get_layout(fig::Figure) = fig.layout
+get_layout(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing=true)
+
+function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs::Observable{FigureSpec})
+    # cached_contents = Pair{Tuple{Tuple{Int,GridLayoutPosition},Union{GridLayoutSpec,BlockSpec}},
+                        #    Tuple{Union{GridLayout,Block},Observable}}[]
+    cached_contents = Pair[]
     l = Base.ReentrantLock()
     pfig = fig isa Figure ? fig : get_top_parent(fig)
     on(pfig.scene, figure_obs; update=true) do figure
         lock(l) do
             used_specs = Set{Int}()
-            for spec in figure.blocks
-                # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-                idx = findfirst(x -> compare_block(x[1], spec), cached_blocks)
-                if isnothing(idx)
-                    @debug("Creating new block for spec")
-                    # Create new plot, store it into our `cached_blocks` dictionary
-                    block = to_block(fig, spec)
-                    if block isa AbstractAxis
-                        obs = Observable(spec.plots)
-                        scene = get_scene(block)
-                        update_plotspecs!(scene, obs)
-                    else
-                        obs = Observable([])
-                    end
-                    push!(cached_blocks, spec => (block, obs))
-                    push!(used_specs, length(cached_blocks))
-                else
-                    @debug("updating old block with spec")
-                    push!(used_specs, idx)
-                    old_spec, (block, plot_obs) = cached_blocks[idx]
-                    update_block!(block, plot_obs, old_spec, spec)
-                    cached_blocks[idx] = spec => (block, plot_obs)
-                end
-                update_state_before_display!(block)
-            end
-            unused_plots = setdiff(1:length(cached_blocks), used_specs)
+            layout = get_layout(fig)
+            update_gridlayout!(layout, 1, nothing, figure.layout, used_specs,
+                               cached_contents)
+            unused_contents = setdiff(1:length(cached_contents), used_specs)
             # Next, delete all plots that we haven't used
             # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
             layouts_to_trim = Set{GridLayout}()
-            for idx in unused_plots
-                _, (block, obs) = cached_blocks[idx]
-                gc = GridLayoutBase.gridcontent(block)
-                push!(layouts_to_trim, gc.parent)
+            for idx in unused_contents
+                _, (block, obs) = cached_contents[idx]
+                if block isa GridLayout
+                    push!(layouts_to_trim, block)
+                else
+                    gc = GridLayoutBase.gridcontent(block)
+                    push!(layouts_to_trim, gc.parent)
+                end
                 delete!(block)
-                Makie.Observables.clear(obs)
+                Observables.clear(obs)
             end
-            splice!(cached_blocks, sort!(collect(unused_plots)))
+            splice!(cached_contents, sort!(collect(unused_contents)))
             foreach(trim!, layouts_to_trim)
+            layout.block_updates = false
+            GridLayoutBase.update!(layout)
+            for (_, (content, _)) in cached_contents
+                if content isa GridLayout
+                    layout.block_updates = false
+                    GridLayoutBase.update!(content)
+                end
+            end
             return
         end
     end
-    return fig
-end
-
-function plot(figure_obs::Observable{FigureSpec}; figure=(;))
-    fig = Figure(; figure...)
-    update_fig!(fig, figure_obs)
     return fig
 end
 

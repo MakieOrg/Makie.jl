@@ -205,14 +205,14 @@ function create_axis_like(@nospecialize(::AbstractPlot), ::Dict, ::Union{Scene,A
     return error("Plotting into an axis without !")
 end
 
-figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
-figurelike_return(ax::AbstractAxis, plot) = AxisPlot(ax, plot)
-figurelike_return!(::AbstractAxis, plot) = plot
-figurelike_return!(::Union{Combined, Scene}, plot) = plot
+figurelike_return(fa::FigureAxis, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.axis, plot)
+figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
+figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
+figurelike_return!(::Union{Combined, Scene}, plot::AbstractPlot) = plot
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
-function plot!(ax::AbstractAxis, plot::P) where {P <: AbstractPlot}
+function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
@@ -285,6 +285,6 @@ end
 # This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
 # Which skips axis creation
 # TODO, what to return for the dynamically created axes?
-figurelike_return(f::GridPosition, p::Combined) = p
-figurelike_return(f::Figure, p::Combined) = FigureAxisPlot(f, nothing, p)
+figurelike_return(f::GridPosition, p::AbstractPlot) = p
+figurelike_return(f::Figure, p::AbstractPlot) = FigureAxisPlot(f, nothing, p)
 MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = fig

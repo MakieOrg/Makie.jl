@@ -107,7 +107,7 @@ function analyze(pr, master)
         end
     end
 
-    return @sprintf("%.2fx %s, %s, (%.2fd, %.2fp, %.2fstd)", speedup, result, mean_diff_str, d, p,
+    return @sprintf("%.2fx %s, %s (%.2fd, %.2fp, %.2fstd)", speedup, result, mean_diff_str, d, p,
                     std_p)
 end
 
