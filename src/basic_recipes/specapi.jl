@@ -549,6 +549,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
                 update_plotspecs!(scene, obs)
                 update_state_before_display!(content)
             elseif content isa GridLayout
+                # Make sure all plots & blocks are inserted
                 update_gridlayout!(content, nesting + 1, spec, spec, used_specs, cached_contents)
             end
             push!(cached_contents, (nesting, position, spec) => (content, obs))
@@ -563,11 +564,10 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
                 update_grid_content!(content, plot_obs, old_spec, spec)
                 update_state_before_display!(content)
             end
+            # insert with updated spec
             cached_contents[idx] = (nesting, position, spec) => (content, plot_obs)
         end
     end
-    gridlayout.block_updates = false
-    GridLayoutBase.update!(gridlayout)
 end
 
 get_layout(fig::Figure) = fig.layout
@@ -586,30 +586,39 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
             update_gridlayout!(layout, 1, nothing, figure.layout, used_specs,
                                cached_contents)
             unused_contents = setdiff(1:length(cached_contents), used_specs)
-            # Next, delete all plots that we haven't used
-            # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+
             layouts_to_trim = Set{GridLayout}()
             for idx in unused_contents
                 _, (block, obs) = cached_contents[idx]
                 if block isa GridLayout
-                    push!(layouts_to_trim, block)
+                    gc = block.layoutobservables.gridcontent[]
+                    if !isnothing(gc)
+                        GridLayoutBase.remove_from_gridlayout!(gc)
+                    end
                 else
                     gc = GridLayoutBase.gridcontent(block)
                     push!(layouts_to_trim, gc.parent)
+                    delete!(block)
                 end
-                delete!(block)
                 Observables.clear(obs)
             end
             splice!(cached_contents, sort!(collect(unused_contents)))
-            foreach(trim!, layouts_to_trim)
-            layout.block_updates = false
-            GridLayoutBase.update!(layout)
+
+            layouts_to_update = Set{GridLayout}([layout])
             for (_, (content, _)) in cached_contents
                 if content isa GridLayout
-                    layout.block_updates = false
-                    GridLayoutBase.update!(content)
+                    push!(layouts_to_update, content)
+                else
+                    gc = GridLayoutBase.gridcontent(content)
+                    push!(layouts_to_update, gc.parent)
                 end
             end
+            for l in layouts_to_update
+                trim!(l)
+                l.block_updates = false
+                GridLayoutBase.update!(l)
+            end
+            foreach(trim!, layouts_to_trim)
             return
         end
     end
