@@ -9,7 +9,6 @@ function synchronize()
 end
 
 function sync_step!(stepper)
-    display(stepper.figlike)
     synchronize()
     Makie.step!(stepper)
 end
@@ -40,7 +39,7 @@ end
     end
     sync_step!(st)
     ax1 = S.Axis(; plots=[S.scatter(1:4; markersize=20), S.lines(1:4; color=:darkred, linewidth=6)])
-    ax2 = S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)
+    ax2 = S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)])
     obs[] = S.Figure([ax1 ax2])
     sync_step!(st)
 
