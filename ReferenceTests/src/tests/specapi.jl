@@ -9,6 +9,7 @@ function synchronize()
 end
 
 function sync_step!(stepper)
+    display(stepper.figlike)
     synchronize()
     Makie.step!(stepper)
 end
@@ -18,8 +19,8 @@ end
     st = Makie.Stepper(f)
     sync_step!(st)
     obs = pl[1]
-    obs[] = S.Figure(S.Axis(; plots=[S.lines(1:4; color=:black, linewidth=5), S.scatter(1:4; markersize=20)]),
-                     S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)]))
+    obs[] = S.Figure([S.Axis(; plots=[S.lines(1:4; color=:black, linewidth=5), S.scatter(1:4; markersize=20)])
+                     S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)])])
     sync_step!(st)
     obs[] = begin
         ax = S.Axis(; plots=[S.scatter(1:4)])
@@ -38,12 +39,10 @@ end
         S.Figure([ax ax2 c])
     end
     sync_step!(st)
-
-    obs[] = S.Figure(
-        S.Axis(; plots=[S.scatter(1:4; markersize=20), S.lines(1:4; color=:darkred, linewidth=6)]),
-        S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)]))
+    ax1 = S.Axis(; plots=[S.scatter(1:4; markersize=20), S.lines(1:4; color=:darkred, linewidth=6)])
+    ax2 = S.Axis3(; plots=[S.scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)
+    obs[] = S.Figure([ax1 ax2])
     sync_step!(st)
-
 
     elem_1 = [LineElement(; color=:red, linestyle=nothing),
               MarkerElement(; color=:blue, marker='x', markersize=15,

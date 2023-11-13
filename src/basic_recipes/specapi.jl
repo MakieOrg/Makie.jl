@@ -157,7 +157,9 @@ struct GridLayoutSpec
     end
 end
 
-const LayoutEntry = Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}
+const Layoutable = Union{GridLayout,Block}
+const LayoutableSpec = Union{GridLayoutSpec,BlockSpec}
+const LayoutEntry = Pair{GridLayoutPosition,LayoutableSpec}
 
 function GridLayoutSpec(v::AbstractVector; kwargs...)
     GridLayoutSpec(reshape(v, :, 1); kwargs...)
@@ -171,25 +173,19 @@ function GridLayoutSpec(v::AbstractMatrix; kwargs...)
     GridLayoutSpec(pairs; kwargs...)
 end
 
-Figure(pairs::Pair{Any, BlockSpec}...) = FigureSpec(pairs...)
-# Figure(::Vector{BlockScpec}) = FigureSpec(GridLayoutSpec([(i, 1) => b for b in blocks]))
-# Figure(::Matrix{BlockScpe}) = FigureSpec(pairs...)
-
 struct FigureSpec
     layout::GridLayoutSpec
     kw::Dict{Symbol, Any}
 end
 
-function FigureSpec(blocks::Array; padding=theme(:figure_padding)[], kw...)
-    return FigureSpec(GridLayoutSpec(blocks; alignmode=Outside(padding)), Dict{Symbol,Any}(kw))
+function FigureSpec(blocks::Array; kw...)
+    return FigureSpec(GridLayoutSpec(blocks), Dict{Symbol,Any}(kw))
 end
 
 function FigureSpec(blocks::Union{BlockSpec, GridLayoutSpec}...; padding=theme(:figure_padding)[], kw...)
-    return FigureSpec(GridLayoutSpec(collect(blocks); alignmode=Outside(padding)), Dict{Symbol,Any}(kw))
+    return FigureSpec(GridLayoutSpec(collect(blocks)), Dict{Symbol,Any}(kw))
 end
 FigureSpec(gls::GridLayoutSpec; kw...) = FigureSpec(gls, Dict{Symbol,Any}(kw))
-
-
 
 """
 apply for return type PlotSpec
@@ -511,6 +507,13 @@ function update_grid_content!(layout::GridLayout, obs, old_spec::Union{GridLayou
     keys = (:alignmode, :tellwidth, :tellheight, :halign, :valign)
     layout.size = (length(spec.rowsizes), length(spec.colsizes))
     for k in keys
+        # TODO! The gridlayout in the top parent figure has a padding from the Figure
+        # Since in the SpecApi we can do nested specs with whole figure, we can't create the default there since
+        # We don't know which FigureSpec will be the main parent.
+        # So for now, we just ignore the padding for the top level gridlayout, since we assume the padding in the figurespec is wrong!
+        if layout.parent isa Figure && k == :alignmode
+            continue
+        end
         old_val = isnothing(old_spec) ? nothing : getproperty(old_spec, k)
         new_val = getproperty(spec, k)
         if is_different(old_val, new_val)
@@ -528,21 +531,22 @@ function update_grid_content!(layout::GridLayout, obs, old_spec::Union{GridLayou
             setfield!(layout, to_gl_key(field), new_val)
         end
     end
-    layout.size = (length(spec.rowsizes), length(spec.colsizes))
     return
 end
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
-                            gridspec::GridLayoutSpec, used_specs, cached_contents)
+                            gridspec::GridLayoutSpec, previous_contents, new_contents)
     update_grid_content!(gridlayout, nothing, oldgridspec, gridspec)
+
     for (position, spec) in gridspec.content
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        idx = findfirst(x -> compare_layout_slot(x[1], (nesting, position, spec)), cached_contents)
+        idx = findfirst(x -> compare_layout_slot(x[1], (nesting, position, spec)), previous_contents)
         if isnothing(idx)
             @debug("Creating new content for spec")
-            # Create new plot, store it into our `cached_contents` dictionary
+            # Create new plot, store it into `new_contents`
             content = to_grid_content(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
+            push!(new_contents, (nesting, position, spec) => (content, obs))
             if content isa AbstractAxis
                 obs = Observable(spec.plots)
                 scene = get_scene(content)
@@ -550,22 +554,19 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
                 update_state_before_display!(content)
             elseif content isa GridLayout
                 # Make sure all plots & blocks are inserted
-                update_gridlayout!(content, nesting + 1, spec, spec, used_specs, cached_contents)
+                update_gridlayout!(content, nesting + 1, spec, spec, previous_contents, new_contents)
             end
-            push!(cached_contents, (nesting, position, spec) => (content, obs))
-            push!(used_specs, length(cached_contents))
         else
             @debug("updating old block with spec")
-            push!(used_specs, idx)
-            (_, _, old_spec), (content, plot_obs) = cached_contents[idx]
+            (_, _, old_spec), (content, plot_obs) = previous_contents[idx]
             if content isa GridLayout
-                update_gridlayout!(content, nesting + 1, old_spec, spec, used_specs, cached_contents)
+                update_gridlayout!(content, nesting + 1, old_spec, spec, previous_contents, new_contents)
             else
                 update_grid_content!(content, plot_obs, old_spec, spec)
                 update_state_before_display!(content)
             end
-            # insert with updated spec
-            cached_contents[idx] = (nesting, position, spec) => (content, plot_obs)
+            # Carry over to cache it in new_contents
+            push!(new_contents, (nesting, position, spec) => (content, plot_obs))
         end
     end
 end
@@ -576,20 +577,24 @@ get_layout(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_
 function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs::Observable{FigureSpec})
     # cached_contents = Pair{Tuple{Tuple{Int,GridLayoutPosition},Union{GridLayoutSpec,BlockSpec}},
                         #    Tuple{Union{GridLayout,Block},Observable}}[]
-    cached_contents = Pair[]
+
+    cached_contents = Pair{Tuple{Int,GridLayoutPosition,LayoutableSpec},
+                           Tuple{Layoutable,Observable}}[]
     l = Base.ReentrantLock()
     pfig = fig isa Figure ? fig : get_top_parent(fig)
     on(pfig.scene, figure_obs; update=true) do figure
         lock(l) do
-            used_specs = Set{Int}()
             layout = get_layout(fig)
-            update_gridlayout!(layout, 1, nothing, figure.layout, used_specs,
-                               cached_contents)
-            unused_contents = setdiff(1:length(cached_contents), used_specs)
+            previous_contents = copy(cached_contents)
+            new_contents = empty!(cached_contents)
+            # TODO passing figure.layout for oldspec means this doesn't update the fig.layout values
+            update_gridlayout!(layout, 1, nothing, figure.layout, previous_contents, new_contents)
 
+            previous_layoutables = Set(map(x -> x[2][1], previous_contents))
+            new_layoutables = Set(map(x -> x[2][1], new_contents))
+            unused_contents = setdiff(previous_layoutables, new_layoutables)
             layouts_to_trim = Set{GridLayout}()
-            for idx in unused_contents
-                _, (block, obs) = cached_contents[idx]
+            for block in unused_contents
                 if block isa GridLayout
                     gc = block.layoutobservables.gridcontent[]
                     if !isnothing(gc)
@@ -600,12 +605,10 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
                     push!(layouts_to_trim, gc.parent)
                     delete!(block)
                 end
-                Observables.clear(obs)
             end
-            splice!(cached_contents, sort!(collect(unused_contents)))
 
             layouts_to_update = Set{GridLayout}([layout])
-            for (_, (content, _)) in cached_contents
+            for (_, (content, _)) in new_contents
                 if content isa GridLayout
                     push!(layouts_to_update, content)
                 else
@@ -617,6 +620,7 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
                 trim!(l)
                 l.block_updates = false
                 GridLayoutBase.update!(l)
+
             end
             foreach(trim!, layouts_to_trim)
             return
