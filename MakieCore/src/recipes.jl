@@ -3,7 +3,7 @@ not_implemented_for(x) = error("Not implemented for $(x). You might want to put:
 to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Fallback for Combined ...
 # Will get overloaded by recipe Macro
-plotsym(x) = :plot
+plotsym(x::Combined) = :plot
 
 function func2string(func::F) where F <: Function
     string(F.name.mt.name)

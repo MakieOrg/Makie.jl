@@ -3,6 +3,15 @@ using GridLayoutBase: GridLayoutBase
 
 import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inner, GridLayout, GridSubposition
 
+
+function get_recipe_function(name::Symbol)
+    if hasproperty(Makie, name)
+        return getfield(Makie, name)
+    else
+        return nothing
+    end
+end
+
 @nospecialize
 """
     PlotSpec(plottype, args...; kwargs...)
@@ -20,7 +29,11 @@ struct PlotSpec
             error("PlotSpec objects are supposed to be used without !, unless when using `S.$(type)(axis::P.Axis, args...; kwargs...)`")
         end
         if !isuppercase(type_str[1])
-            error("PlotSpec objects are supposed to be title case. Found: $(type_str)")
+            func = get_recipe_function(type)
+            func === nothing && error("PlotSpec need to be existing recipes or Makie plot objects. Found: $(type_str)")
+            plot_type = Combined{func}
+            type = plotsym(plot_type)
+            @warn("PlotSpec objects are supposed to be title case. Found: $(type_str). Please use $(type) instead.")
         end
         kw = Dict{Symbol,Any}()
         for (k, v) in kwargs
@@ -240,13 +253,21 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     # Since precompilation will cache only MakieCore's state
     # And once everything is compiled, and MakieCore is loaded into a package
     # The names are loaded from cache and dont contain anything after MakieCore.
-    func = getfield(Makie, field)
-    if func <: Combined
+    func = get_recipe_function(field)
+    if isnothing(func)
+        error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
+    elseif func isa Function
+        sym = plotsym(Combined{func})
+        if (sym === :plot) # fallback for plotsym, so not found!
+            error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
+        end
+        @warn("PlotSpec objects are supposed to be title case. Found: $(field). Please use $(sym) instead.")
+        return (args...; kw...) -> PlotSpec(sym, args...; kw...)
+    elseif func <: Combined
         return (args...; kw...) -> PlotSpec(field, args...; kw...)
     elseif func <: Block
         return (args...; kw...) -> BlockSpec(field, args...; kw...)
     else
-        # TODO better error!
         error("$(field) not a valid Block or Plot function")
     end
 end
