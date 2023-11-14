@@ -467,7 +467,12 @@ function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP,BlockSpec}, (bnesti
 end
 
 function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP, GridLayoutSpec}, (bnesting, bp, b)::Tuple{Int,GP, GridLayoutSpec}) where {GP <: GridLayoutPosition}
-    return anesting === bnesting
+    anesting !== bnesting && return false
+    ap !== bp && return false
+    for (ac, bc) in zip(a.content, b.content)
+        compare_layout_slot((anesting + 1, ac[1], ac[2]), (bnesting + 1, bc[1], bc[2])) || return false
+    end
+    return true
 end
 
 compare_layout_slot(a, b) = false # types dont match
@@ -601,6 +606,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
         else
             @debug("updating old block with spec")
             (_, _, old_spec), (content, plot_obs) = previous_contents[idx]
+            gridlayout[position...] = content
             if content isa GridLayout
                 update_gridlayout!(content, nesting + 1, old_spec, spec, previous_contents, new_layoutables)
             else
@@ -619,6 +625,14 @@ get_layout!(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout
 # We use this to decide if we can re-use a plot.
 # (nesting_level_in_layout, position_in_layout, spec)
 const LayoutableKey = Tuple{Int,GridLayoutPosition,LayoutableSpec}
+
+function Base.delete!(layout::GridLayout)
+    gc = layout.layoutobservables.gridcontent[]
+    if !isnothing(gc)
+        GridLayoutBase.remove_from_gridlayout!(gc)
+    end
+    return
+end
 
 function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs::Observable{FigureSpec})
 
@@ -645,15 +659,9 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
             _new_layoutables = Set(map(x -> x[2][1], new_layoutables))
             unused_contents = setdiff(_previous_layoutables, _new_layoutables)
             for block in unused_contents
-                if block isa GridLayout
-                    gc = block.layoutobservables.gridcontent[]
-                    if !isnothing(gc)
-                        GridLayoutBase.remove_from_gridlayout!(gc)
-                    end
-                else
-                    delete!(block)
-                end
+                delete!(block)
             end
+
             layouts_to_update = Set{GridLayout}([layout])
             for (_, (content, _)) in new_layoutables
                 if content isa GridLayout
