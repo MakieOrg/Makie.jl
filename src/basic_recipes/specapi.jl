@@ -15,8 +15,12 @@ struct PlotSpec
     args::Vector{Any}
     kwargs::Dict{Symbol, Any}
     function PlotSpec(type::Symbol, args...; kwargs...)
-        if string(type)[end] == '!'
+        type_str = string(type)
+        if type_str[end] == '!'
             error("PlotSpec objects are supposed to be used without !, unless when using `S.$(type)(axis::P.Axis, args...; kwargs...)`")
+        end
+        if !isuppercase(type_str[1])
+            error("PlotSpec objects are supposed to be title case. Found: $(type_str)")
         end
         kw = Dict{Symbol,Any}()
         for (k, v) in kwargs
@@ -49,17 +53,17 @@ end
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
-to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotkey(P), args...; kwargs...)
+to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotsym(P), args...; kwargs...)
 
 function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
     S = plottype(p)
-    return PlotSpec(plotkey(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
+    return PlotSpec(plotsym(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
 end
 
-plottype(p::PlotSpec) = Combined{getfield(Makie, p.type)}
+plottype(p::PlotSpec) = getfield(Makie, p.type)
 
 struct BlockSpec
-    type::Symbol
+    type::Symbol # Type as :Scatter, :BarPlot
     kwargs::Dict{Symbol,Any}
     plots::Vector{PlotSpec}
 end
@@ -98,6 +102,10 @@ rangeunion(r1, r2::Colon) = r1
 
 struct GridLayoutSpec
     content::Vector{Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}}
+
+    size::Tuple{Int, Int}
+    offsets::Tuple{Int, Int}
+
     colsizes::Vector{ContentSize}
     rowsizes::Vector{ContentSize}
     colgaps::Vector{GapSize}
@@ -134,8 +142,8 @@ struct GridLayoutSpec
         ncols = length(colspan)
         colsizes = GridLayoutBase.convert_contentsizes(ncols, colsizes)
         rowsizes = GridLayoutBase.convert_contentsizes(nrows, rowsizes)
-        default_rowgap = Fixed(30) # TODO: where does this come from?
-        default_colgap = Fixed(30) # TODO: where does this come from?
+        default_rowgap = Fixed(16) # TODO: where does this come from?
+        default_colgap = Fixed(16) # TODO: where does this come from?
         colgaps = GridLayoutBase.convert_gapsizes(ncols - 1, colgaps, default_colgap)
         rowgaps = GridLayoutBase.convert_gapsizes(nrows - 1, rowgaps, default_rowgap)
 
@@ -144,6 +152,8 @@ struct GridLayoutSpec
 
         return new(
             content,
+            (nrows, ncols),
+            (rowspan[1] - 1, colspan[1] - 1),
             colsizes,
             rowsizes,
             colgaps,
@@ -182,7 +192,7 @@ function FigureSpec(blocks::Array; kw...)
     return FigureSpec(GridLayoutSpec(blocks), Dict{Symbol,Any}(kw))
 end
 
-function FigureSpec(blocks::Union{BlockSpec, GridLayoutSpec}...; padding=theme(:figure_padding)[], kw...)
+function FigureSpec(blocks::Union{BlockSpec, GridLayoutSpec}...; kw...)
     return FigureSpec(GridLayoutSpec(collect(blocks)), Dict{Symbol,Any}(kw))
 end
 FigureSpec(gls::GridLayoutSpec; kw...) = FigureSpec(gls, Dict{Symbol,Any}(kw))
@@ -230,9 +240,8 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     # Since precompilation will cache only MakieCore's state
     # And once everything is compiled, and MakieCore is loaded into a package
     # The names are loaded from cache and dont contain anything after MakieCore.
-    fname = Symbol(replace(string(field), "!" => ""))
-    func = getfield(Makie, fname)
-    if func isa Function
+    func = getfield(Makie, field)
+    if func <: Combined
         return (args...; kw...) -> PlotSpec(field, args...; kw...)
     elseif func <: Block
         return (args...; kw...) -> BlockSpec(field, args...; kw...)
@@ -377,7 +386,7 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     # and re-create it if it ever returns.
     l = Base.ReentrantLock()
     cached_plots = IdDict{PlotSpec,Combined}()
-    on(scene, list_of_plotspecs; update=true) do plotspecs
+    on(list_of_plotspecs; update=true) do plotspecs
         lock(l) do
             old_plots = copy(cached_plots) # needed for set diff
             previoues_plots = copy(cached_plots) # needed to be mutated
@@ -466,7 +475,7 @@ function to_grid_content(parent, position::GridLayoutPosition, spec::GridLayoutS
     return gl
 end
 
-function update_grid_content!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
+function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
     old_attr = keys(old_spec.kwargs)
     new_attr = keys(spec.kwargs)
     # attributes that have been set previously and need to get unset now
@@ -490,7 +499,13 @@ function update_grid_content!(block::T, plot_obs, old_spec::BlockSpec, spec::Blo
     if hasproperty(block, :scene)
         empty!(block.scene.cycler.counters)
     end
-    plot_obs[] = spec.plots
+    if T <: AbstractAxis
+        plot_obs[] = spec.plots
+        scene = get_scene(block)
+        if any(needs_tight_limits, scene.plots)
+            tightlimits!(block)
+        end
+    end
     return
 end
 
@@ -501,11 +516,12 @@ function to_gl_key(key::Symbol)
 end
 
 
-function update_grid_content!(layout::GridLayout, obs, old_spec::Union{GridLayoutSpec, Nothing}, spec::GridLayoutSpec)
+function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutSpec, Nothing}, spec::GridLayoutSpec)
     # Block updates until very end where all children etc got deleted!
     layout.block_updates = true
     keys = (:alignmode, :tellwidth, :tellheight, :halign, :valign)
-    layout.size = (length(spec.rowsizes), length(spec.colsizes))
+    layout.size = spec.size
+    layout.offsets = spec.offsets
     for k in keys
         # TODO! The gridlayout in the top parent figure has a padding from the Figure
         # Since in the SpecApi we can do nested specs with whole figure, we can't create the default there since
@@ -524,7 +540,7 @@ function update_grid_content!(layout::GridLayout, obs, old_spec::Union{GridLayou
         end
     end
     # TODO update colsizes  etc
-    for field in [:colsizes, :rowsizes, :colgaps, :rowgaps]
+    for field in [:size, :offsets, :colsizes, :rowsizes, :colgaps, :rowgaps]
         old_val = isnothing(old_spec) ? nothing : getfield(old_spec, field)
         new_val = getfield(spec, field)
         if is_different(old_val, new_val)
@@ -535,65 +551,78 @@ function update_grid_content!(layout::GridLayout, obs, old_spec::Union{GridLayou
 end
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
-                            gridspec::GridLayoutSpec, previous_contents, new_contents)
-    update_grid_content!(gridlayout, nothing, oldgridspec, gridspec)
+                            gridspec::GridLayoutSpec, previous_contents, new_layoutables)
+
+    update_layoutable!(gridlayout, nothing, oldgridspec, gridspec)
 
     for (position, spec) in gridspec.content
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         idx = findfirst(x -> compare_layout_slot(x[1], (nesting, position, spec)), previous_contents)
         if isnothing(idx)
             @debug("Creating new content for spec")
-            # Create new plot, store it into `new_contents`
+            # Create new plot, store it into `new_layoutables`
             content = to_grid_content(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
-            push!(new_contents, (nesting, position, spec) => (content, obs))
             if content isa AbstractAxis
                 obs = Observable(spec.plots)
                 scene = get_scene(content)
                 update_plotspecs!(scene, obs)
+                if any(needs_tight_limits, scene.plots)
+                    tightlimits!(content)
+                end
                 update_state_before_display!(content)
             elseif content isa GridLayout
                 # Make sure all plots & blocks are inserted
-                update_gridlayout!(content, nesting + 1, spec, spec, previous_contents, new_contents)
+                update_gridlayout!(content, nesting + 1, spec, spec, previous_contents, new_layoutables)
             end
+            push!(new_layoutables, (nesting, position, spec) => (content, obs))
+
         else
             @debug("updating old block with spec")
             (_, _, old_spec), (content, plot_obs) = previous_contents[idx]
             if content isa GridLayout
-                update_gridlayout!(content, nesting + 1, old_spec, spec, previous_contents, new_contents)
+                update_gridlayout!(content, nesting + 1, old_spec, spec, previous_contents, new_layoutables)
             else
-                update_grid_content!(content, plot_obs, old_spec, spec)
+                update_layoutable!(content, plot_obs, old_spec, spec)
                 update_state_before_display!(content)
             end
-            # Carry over to cache it in new_contents
-            push!(new_contents, (nesting, position, spec) => (content, plot_obs))
+            # Carry over to cache it in new_layoutables
+            push!(new_layoutables, (nesting, position, spec) => (content, plot_obs))
         end
     end
 end
 
-get_layout(fig::Figure) = fig.layout
-get_layout(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing=true)
+get_layout!(fig::Figure) = fig.layout
+get_layout!(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing=true)
+
+# We use this to decide if we can re-use a plot.
+# (nesting_level_in_layout, position_in_layout, spec)
+const LayoutableKey = Tuple{Int,GridLayoutPosition,LayoutableSpec}
 
 function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs::Observable{FigureSpec})
-    # cached_contents = Pair{Tuple{Tuple{Int,GridLayoutPosition},Union{GridLayoutSpec,BlockSpec}},
-                        #    Tuple{Union{GridLayout,Block},Observable}}[]
 
-    cached_contents = Pair{Tuple{Int,GridLayoutPosition,LayoutableSpec},
-                           Tuple{Layoutable,Observable}}[]
+    # Global list of all layoutables. The LayoutableKey includes a nesting, so that we can keep even nested layouts in one global list
+    reusable_layoutables = Pair{LayoutableKey, Tuple{Layoutable,Observable{Vector{PlotSpec}}}}[]
+    new_layoutables = Pair{LayoutableKey,Tuple{Layoutable,Observable{Vector{PlotSpec}}}}[]
+    sizehint!(reusable_layoutables, 50)
+    sizehint!(new_layoutables, 50)
+
     l = Base.ReentrantLock()
-    pfig = fig isa Figure ? fig : get_top_parent(fig)
-    on(pfig.scene, figure_obs; update=true) do figure
-        lock(l) do
-            layout = get_layout(fig)
-            previous_contents = copy(cached_contents)
-            new_contents = empty!(cached_contents)
-            # TODO passing figure.layout for oldspec means this doesn't update the fig.layout values
-            update_gridlayout!(layout, 1, nothing, figure.layout, previous_contents, new_contents)
 
-            previous_layoutables = Set(map(x -> x[2][1], previous_contents))
-            new_layoutables = Set(map(x -> x[2][1], new_contents))
-            unused_contents = setdiff(previous_layoutables, new_layoutables)
-            layouts_to_trim = Set{GridLayout}()
+    on(get_topscene(fig), figure_obs; update=true) do figure
+        lock(l) do
+            layout = get_layout!(fig)
+            # For each update we look into `reusable_layoutables` to see if we can re-use a layoutable (GridLayout/Block)
+            # Every re-used layoutable and every newly created gets pushed into `new_layoutables`
+            # We don't use a set/dict here, because you can have multiple layoutables in the same layout slot,
+            # so LayoutableKey does not need to be unique
+            empty!(new_layoutables)
+            # TODO passing figure.layout for oldspec means this doesn't update the fig.layout values
+            update_gridlayout!(layout, 1, nothing, figure.layout, reusable_layoutables, new_layoutables)
+
+            _previous_layoutables = Set(map(x -> x[2][1], reusable_layoutables))
+            _new_layoutables = Set(map(x -> x[2][1], new_layoutables))
+            unused_contents = setdiff(_previous_layoutables, _new_layoutables)
             for block in unused_contents
                 if block isa GridLayout
                     gc = block.layoutobservables.gridcontent[]
@@ -601,14 +630,11 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
                         GridLayoutBase.remove_from_gridlayout!(gc)
                     end
                 else
-                    gc = GridLayoutBase.gridcontent(block)
-                    push!(layouts_to_trim, gc.parent)
                     delete!(block)
                 end
             end
-
             layouts_to_update = Set{GridLayout}([layout])
-            for (_, (content, _)) in new_contents
+            for (_, (content, _)) in new_layoutables
                 if content isa GridLayout
                     push!(layouts_to_update, content)
                 else
@@ -617,12 +643,14 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
                 end
             end
             for l in layouts_to_update
-                trim!(l)
                 l.block_updates = false
                 GridLayoutBase.update!(l)
-
             end
-            foreach(trim!, layouts_to_trim)
+            # Finally transfer all new_layoutables into reusable_layoutables,
+            # since in the next update they will be the once we re-use
+            # TODO: Is this actually more efficent for GC then `reusable_layoutables=new_layoutables` ?
+            empty!(reusable_layoutables)
+            append!(reusable_layoutables, new_layoutables)
             return
         end
     end

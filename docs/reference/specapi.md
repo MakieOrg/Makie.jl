@@ -17,20 +17,20 @@ You can use `Observable{SpecApi.PlotSpec}`, or `Observable{SpecApi.Figure}` to c
 The API is supposed to be similar to the normal API, just declarative, so you always need to create the specs in a nested fashion:
 ```julia
 import Makie.SpecApi as S # For convenience import it as a shorter name
-S.scatter(1:4) # create a single PlotSpec object
+S.Scatter(1:4) # create a single PlotSpec object
 
 # Create a complete figure
-p = S.scatter(1:4)
+p = S.Scatter(1:4)
 ax = S.Axis(plots=[p])
 f, _, pl = plot(S.Figure(ax)) # Plot the whole figure
 # Efficiently update the complete figure with a new FigureSpec
-pl[1] = S.Figure(S.Axis(; title="lines", plots=[S.lines(1:4)]))
+pl[1] = S.Figure(S.Axis(; title="Lines", plots=[S.Lines(1:4)]))
 ```
 
 You can also drop to the lower level constructors:
 
 ```julia
-s = Makie.PlotSpec(:scatter, 1:4; color=:red)
+s = Makie.PlotSpec(:Scatter, 1:4; color=:red)
 axis = Makie.BlockSpec(:Axis; title="Axis at layout position (1, 1)")
 ```
 
@@ -46,10 +46,10 @@ brain = load(assetpath("brain.stl"))
 r = LinRange(-1, 1, 100)
 cube = [(x .^ 2 + y .^ 2 + z .^ 2) for x = r, y = r, z = r]
 
-ax1 = S.Axis(; title="Axis 1", plots=map(x -> S.density(x * randn(200) .+ 3x, color=:y), 1:5))
-ax2 = S.Axis(; title="Axis 2", plots=[S.contourf(volcano; colormap=:inferno)])
-ax3 = S.Axis3(; title="Axis3", plots=[S.mesh(brain, colormap=:Spectral, color=[tri[1][2] for tri in brain for i in 1:3])])
-ax4 = S.Axis3(; plots=[S.contour(cube, alpha=0.5)])
+ax1 = S.Axis(; title="Axis 1", plots=map(x -> S.Density(x * randn(200) .+ 3x, color=:y), 1:5))
+ax2 = S.Axis(; title="Axis 2", plots=[S.Contourf(volcano; colormap=:inferno)])
+ax3 = S.Axis3(; title="Axis3", plots=[S.Mesh(brain, colormap=:Spectral, color=[tri[1][2] for tri in brain for i in 1:3])])
+ax4 = S.Axis3(; plots=[S.Contour(cube, alpha=0.5)])
 
 spec_array = S.Figure([ax1, ax2]);
 spec_matrix = S.Figure([ax1 ax2; ax3 ax4]);
@@ -79,15 +79,15 @@ plot(S.Figure(S.GridLayout([
 ### Manually specified positions with nested gridlayout
 \begin{examplefigure}{}
 ```julia
-plot(S.Figure([
+plot(S.Figure(S.GridLayout([
     (1, 1) => S.Axis(),
-    (1, 2) => S.Axis(),
+    (1, 2) => S.Axis(; ylabelvisible=false, yticklabelsvisible=false, yticksvisible=false),
     (2, :) => S.GridLayout([
         (1, 1) => S.Axis(),
         (2, 1) => S.Axis(),
     ]),
     (1, 1, Right()) => S.Colorbar(),
-]))
+]; colgaps=Fixed(40))))
 ```
 \end{examplefigure}
 
@@ -128,7 +128,7 @@ end
 
 Makie.used_attributes(::Type{<:AbstractPlot}, ::PlotGrid) = (:color,)
 function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::PlotGrid; color=:black)
-    axes = [S.Axis(plots=[S.lines(cumsum(randn(1000)); color=color)]) for i in 1:obj.nplots[1], j in 1:obj.nplots[2]]
+    axes = [S.Axis(plots=[S.Lines(cumsum(randn(1000)); color=color)]) for i in 1:obj.nplots[1], j in 1:obj.nplots[2]]
     return S.Figure(axes; fontsize=30)
 end
 
@@ -153,15 +153,15 @@ struct LineScatter
     show_scatter::Bool
     kw::Dict{Symbol,Any}
 end
-LineScatter(lines, scatter; kw...) = LineScatter(lines, scatter, Dict{Symbol,Any}(kw))
+LineScatter(Lines, Scatter; kw...) = LineScatter(Lines, Scatter, Dict{Symbol,Any}(kw))
 
 function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::LineScatter, data...)
     plots = PlotSpec[]
     if obj.show_lines
-        push!(plots, S.lines(data...; obj.kw...))
+        push!(plots, S.Lines(data...; obj.kw...))
     end
     if obj.show_scatter
-        push!(plots, S.scatter(data...; obj.kw...))
+        push!(plots, S.Scatter(data...; obj.kw...))
     end
     return plots
 end
@@ -197,7 +197,7 @@ function Makie.convert_arguments(::Type{<:AbstractPlot}, sim::MySimulation)
 end
 f = Figure()
 s = Slider(f[1, 1], range=1:10)
-m = Menu(f[1, 2], options=[:scatter, :lines, :barplot])
+m = Menu(f[1, 2], options=[:Scatter, :Lines, :BarPlot])
 sim = lift(s.value, m.selection) do n_plots, p
     args = [cumsum(randn(100)) for i in 1:n_plots]
     return MySimulation(p, args)
@@ -208,6 +208,7 @@ tight_ticklabel_spacing!(ax)
 on(sim; priority=-1) do x
     autolimits!(ax)
 end
+
 record(f, "interactive_specapi.mp4", framerate=1) do io
     pause = 0.1
     m.i_selected[] = 1
