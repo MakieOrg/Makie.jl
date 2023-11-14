@@ -3,7 +3,7 @@ not_implemented_for(x) = error("Not implemented for $(x). You might want to put:
 to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Fallback for Combined ...
 # Will get overloaded by recipe Macro
-plotsym(x::Combined) = :plot
+plotsym(x) = :plot
 
 function func2string(func::F) where F <: Function
     string(F.name.mt.name)
@@ -192,15 +192,15 @@ end
 Returns the Combined type that represents the signature of `args`.
 """
 function Plot(args::Vararg{Any,N}) where {N}
-    Combined{Any,<:Tuple{args...}}
+    Combined{plot, <:Tuple{args...}}
 end
 
 Base.@pure function Plot(::Type{T}) where {T}
-    Combined{Any,<:Tuple{T}}
+    Combined{plot, <:Tuple{T}}
 end
 
 Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1,T2}
-    Combined{Any,<:Tuple{T1,T2}}
+    Combined{plot, <:Tuple{T1,T2}}
 end
 
 """
