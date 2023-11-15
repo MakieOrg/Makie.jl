@@ -296,21 +296,22 @@ end
     return true
 end
 
-function update_plot!(plot::AbstractPlot, spec::PlotSpec)
+function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
     any_different = false
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
         arg_obs = plot.args[i]
-        if is_different(to_value(arg_obs), spec.args[i]) # only update if different
+        prev_val = oldspec.args[i]
+        if is_different(prev_val, spec.args[i]) # only update if different
             any_different = true
             arg_obs.val = spec.args[i]
+            push!(obs_to_notify, arg_obs)
         end
     end
 
     # Update attributes
-    to_notify = Symbol[]
     for (attribute, new_value) in spec.kwargs
         old_attr = plot[attribute]
         # only update if different
@@ -321,19 +322,8 @@ function update_plot!(plot::AbstractPlot, spec::PlotSpec)
                 @debug("updating kw $attribute")
                 old_attr.val = new_value
             end
-            push!(to_notify, attribute)
+            push!(obs_to_notify, old_attr)
         end
-    end
-    # We first update obs.val only to prevent dimension missmatch problems
-    # We shouldn't have many since we only update if the types match, but I already run into a few regardless
-    # TODO, have update!(plot, new_attributes), which doesn't run into this problem and
-    # is also more efficient e.g. for WGLMakie, where every update sends a separate message via the websocket
-    if any_different
-        # It should be enough to notify first arg, since `convert_arguments` depends on all args
-        notify(plot.args[1])
-    end
-    for attribute in to_notify
-        notify(plot[attribute])
     end
 end
 
@@ -405,50 +395,62 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    l = Base.ReentrantLock()
-    cached_plots = IdDict{PlotSpec,Combined}()
-    on(list_of_plotspecs; update=true) do plotspecs
-        lock(l) do
-            old_plots = copy(cached_plots) # needed for set diff
-            previoues_plots = copy(cached_plots) # needed to be mutated
-            empty!(cached_plots)
-            empty!(scene.cycler.counters)
-            for plotspec in plotspecs
-                # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-                reused_plot = nothing
-                for (spec, plot) in previoues_plots
-                    if compare_specs(spec, plotspec)
-                        reused_plot = plot
-                        delete!(previoues_plots, spec)
-                        break
-                    end
-                end
-                if isnothing(reused_plot)
-                    @debug("Creating new plot for spec")
-                    # Create new plot, store it into our `cached_plots` dictionary
-                    plot = plot!(scene, to_combined(plotspec))
-                    if !isnothing(plotlist)
-                        push!(plotlist.plots, plot)
-                    end
-                    cached_plots[plotspec] = plot
-                else
-                    @debug("updating old plot with spec")
-                    update_plot!(reused_plot, plotspec)
-                    cached_plots[plotspec] = reused_plot
+    reusable_plots = IdDict{PlotSpec,Combined}()
+    obs_to_notify = Observable[]
+    function update_plotlist(plotspecs)
+        new_plots = IdDict{PlotSpec,Combined}() # needed to be mutated
+        empty!(scene.cycler.counters)
+        empty!(obs_to_notify)
+        for plotspec in plotspecs
+            # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
+            reused_plot = nothing
+            old_spec = nothing
+            for (spec, plot) in reusable_plots
+                if compare_specs(spec, plotspec)
+                    reused_plot = plot
+                    old_spec = spec
+                    break
                 end
             end
-            unused_plots = setdiff(values(old_plots), values(cached_plots))
-            # Next, delete all plots that we haven't used
-            # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-            for plot in unused_plots
+            if isnothing(reused_plot)
+                @debug("Creating new plot for spec")
+                # Create new plot, store it into our `cached_plots` dictionary
+                plot = plot!(scene, to_combined(plotspec))
                 if !isnothing(plotlist)
-                    filter!(x -> x !== plot, plotlist.plots)
+                    push!(plotlist.plots, plot)
                 end
-                delete!(scene, plot)
+                new_plots[plotspec] = plot
+            else
+                @debug("updating old plot with spec")
+                update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
+                new_plots[plotspec] = reused_plot
             end
-            return
         end
+        unused_plots = setdiff(values(reusable_plots), values(new_plots))
+        # Next, delete all plots that we haven't used
+        # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+        for plot in unused_plots
+            if !isnothing(plotlist)
+                filter!(x -> x !== plot, plotlist.plots)
+            end
+            delete!(scene, plot)
+        end
+        @assert !any(x-> x in unused_plots, new_plots)
+        empty!(reusable_plots)
+        merge!(reusable_plots, new_plots)
+        for obs in obs_to_notify
+            notify(obs)
+        end
+        return
     end
+    l = Base.ReentrantLock()
+    on(scene, list_of_plotspecs; update=true) do plotspecs
+        lock(l) do
+            update_plotlist(plotspecs)
+        end
+        return
+    end
+    return
 end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
