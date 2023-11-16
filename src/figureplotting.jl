@@ -71,13 +71,13 @@ args_preferred_axis(::AbstractVector{<:Point2}) = Axis
 preferred_axis_type(::Volume) = LScene
 preferred_axis_type(::Union{Image,Heatmap}) = Axis
 
-function preferred_axis_type(p::Combined{F}) where F
+function preferred_axis_type(p::Plot{F}) where F
     # Otherwise, we check the arguments
     input_args = map(to_value, p.args)
-    result = args_preferred_axis(Combined{F}, input_args...)
+    result = args_preferred_axis(Plot{F}, input_args...)
     isnothing(result) || return result
     conv_args = map(to_value, p.converted)
-    result = args_preferred_axis(Combined{F}, conv_args...)
+    result = args_preferred_axis(Plot{F}, conv_args...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
 end
@@ -118,7 +118,7 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     end
 end
 
-MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Combined, Scene}) = s
+MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Plot, Scene}) = s
 
 function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ::Nothing)
     figure = current_figure()
@@ -208,7 +208,7 @@ end
 figurelike_return(fa::FigureAxis, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.axis, plot)
 figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
 figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
-figurelike_return!(::Union{Combined, Scene}, plot::AbstractPlot) = plot
+figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
 
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
 
@@ -222,7 +222,7 @@ end
 
 
 @inline plot_args(args...) = (nothing, args)
-@inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Combined,GridSubposition,GridPosition},
+@inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Plot,GridSubposition,GridPosition},
                            args...)
     return (a, args)
 end
@@ -241,7 +241,7 @@ end
 @noinline function MakieCore._create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
-    plot = Combined{F}(pargs, attributes)
+    plot = Plot{F}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return(ax, plot)
@@ -250,14 +250,14 @@ end
 @noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
-    plot = Combined{F}(pargs, attributes)
+    plot = Plot{F}(pargs, attributes)
     ax = create_axis_like!(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return!(ax, plot)
 end
 
 @noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
-    plot = Combined{F}(args, attributes)
+    plot = Plot{F}(args, attributes)
     plot!(scene, plot)
     return plot
 end

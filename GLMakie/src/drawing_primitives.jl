@@ -314,7 +314,7 @@ end
 
 Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
 
-function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Combined))
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)

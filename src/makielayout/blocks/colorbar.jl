@@ -57,7 +57,7 @@ function extract_colormap(plot::Union{Arrows, StreamPlot})
     return extract_colormap(plot.plots[1])
 end
 
-function extract_colormap(plot::Combined{volumeslices})
+function extract_colormap(plot::Plot{volumeslices})
     return extract_colormap(plot.plots[1])
 end
 
@@ -101,10 +101,10 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     func = plotfunc(plot)
     if isnothing(cmap)
         error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
-        If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Combined{func}))` to allow for the automatical creation of a Colorbar.")
+        If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatical creation of a Colorbar.")
     end
     if !(cmap isa ColorMapping)
-        error("extract_colormap(::$(Combined{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMapping`.")
+        error("extract_colormap(::$(Plot{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMapping`.")
     end
 
     if to_value(cmap.color) isa Union{AbstractVector{<: Colorant}, Colorant}

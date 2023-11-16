@@ -31,7 +31,7 @@ struct PlotSpec
         if !isuppercase(type_str[1])
             func = get_recipe_function(type)
             func === nothing && error("PlotSpec need to be existing recipes or Makie plot objects. Found: $(type_str)")
-            plot_type = Combined{func}
+            plot_type = Plot{func}
             type = plotsym(plot_type)
             @warn("PlotSpec objects are supposed to be title case. Found: $(type_str). Please use $(type) instead.")
         end
@@ -257,13 +257,13 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     if isnothing(func)
         error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
     elseif func isa Function
-        sym = plotsym(Combined{func})
+        sym = plotsym(Plot{func})
         if (sym === :plot) # fallback for plotsym, so not found!
             error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
         end
         @warn("PlotSpec objects are supposed to be title case. Found: $(field). Please use $(sym) instead.")
         return (args...; kw...) -> PlotSpec(sym, args...; kw...)
-    elseif func <: Combined
+    elseif func <: Plot
         return (args...; kw...) -> PlotSpec(field, args...; kw...)
     elseif func <: Block
         return (args...; kw...) -> BlockSpec(field, args...; kw...)
@@ -395,10 +395,10 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    reusable_plots = IdDict{PlotSpec,Combined}()
+    reusable_plots = IdDict{PlotSpec,Plot}()
     obs_to_notify = Observable[]
     function update_plotlist(plotspecs)
-        new_plots = IdDict{PlotSpec,Combined}() # needed to be mutated
+        new_plots = IdDict{PlotSpec,Plot}() # needed to be mutated
         empty!(scene.cycler.counters)
         empty!(obs_to_notify)
         for plotspec in plotspecs
@@ -690,9 +690,9 @@ end
 
 args_preferred_axis(::FigureSpec) = FigureOnly
 
-plot!(plot::Combined{MakieCore.plot,Tuple{Makie.FigureSpec}}) = plot
+plot!(plot::Plot{MakieCore.plot,Tuple{Makie.FigureSpec}}) = plot
 
-function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Combined{MakieCore.plot,Tuple{Makie.FigureSpec}})
+function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{Makie.FigureSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
     update_fig!(fig, plot[1])
@@ -700,7 +700,7 @@ function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Combined{M
 end
 
 function apply_convert!(P, attributes::Attributes, x::FigureSpec)
-    return (Combined{plot}, (x,))
+    return (Plot{plot}, (x,))
 end
 
 MakieCore.argtypes(::FigureSpec) = Tuple{Nothing}

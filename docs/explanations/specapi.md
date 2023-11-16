@@ -184,10 +184,11 @@ end
 
 # If we want to use the `color` attribute in the conversion, we have to
 # mark it via `used_attributes`
-Makie.used_attributes(::Type{<:AbstractPlot}, ::PlotGrid) = (:color,)
+Makie.used_attributes(::PlotGrid) = (:color,)
 
 # The conversion method creates a grid of `Axis` objects with `Lines` plot inside
-function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::PlotGrid; color=:black)
+# We restrict to Plot{plot}, so that only `plot(PlotGrid(...))` works, but not e.g. `scatter(PlotGrid(...))`.
+function Makie.convert_arguments(::Type{Plot{plot}}, obj::PlotGrid; color=:black)
     axes = [
         S.Axis(plots=[S.Lines(cumsum(randn(1000)); color=color)])
             for i in 1:obj.nplots[1],

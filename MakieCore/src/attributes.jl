@@ -187,8 +187,8 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
 # and not a plot for integer indexing. But, we want to treat plots as "atomic"
 # so from an interface point of view, one should assume that a plot doesn't contain subplots
-# Combined plots break this assumption in some way, but the way to look at it is,
-# that the plots contained in a Combined plot are not subplots, but _are_ actually
+# Plot plots break this assumption in some way, but the way to look at it is,
+# that the plots contained in a Plot plot are not subplots, but _are_ actually
 # the plot itself.
 Base.getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
 Base.getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]

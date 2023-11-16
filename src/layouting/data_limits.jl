@@ -106,7 +106,7 @@ end
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
-function foreach_plot(f, plot::Combined)
+function foreach_plot(f, plot::Plot)
     if isempty(plot.plots)
         f(plot)
     else
@@ -173,7 +173,7 @@ function data_limits(plot::AbstractPlot)
         return limits_from_transformed_points(iterate_transformed(plot))
     end
 
-    # Assume Combined Plot
+    # Assume Plot Plot
     bb_ref = Base.RefValue(data_limits(plot.plots[1]))
     for i in 2:length(plot.plots)
         update_boundingbox!(bb_ref, data_limits(plot.plots[i]))

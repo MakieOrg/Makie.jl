@@ -21,3 +21,4 @@ function Base.getproperty(scene::Scene, field::Symbol)
 end
 
 @deprecate pixelarea viewport true
+@deprecate Combined Plot true

@@ -29,11 +29,11 @@ $(ATTRIBUTES)
 end
 
 
-function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
+function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
 
     # markercolor is the same as linecolor if left automatic
     # RGBColors -> union of all colortypes that `to_color` accepts + returns
-    real_markercolor = Observable{RGBColors}() 
+    real_markercolor = Observable{RGBColors}()
     map!(real_markercolor, p.color, p.markercolor) do col, mcol
         if mcol === automatic
             return to_color(col)

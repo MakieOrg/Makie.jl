@@ -101,10 +101,10 @@ const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
     lines, surface, volume, heatmap, image
 )
-const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
+const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
-function convert_arguments!(plot::Combined{F}) where {F}
-    P = Combined{F,Any}
+function convert_arguments!(plot::Plot{F}) where {F}
+    P = Plot{F,Any}
     function on_update(kw, args...)
         nt = convert_arguments(P, args...; kw...)
         pnew, converted = apply_convert!(P, plot.attributes, nt)
@@ -126,12 +126,12 @@ function convert_arguments!(plot::Combined{F}) where {F}
     return
 end
 
-function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
+function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     if !isempty(args) && first(args) isa Attributes
         merge!(plot_attributes, attributes(first(args)))
-        return Combined{Func}(Base.tail(args), plot_attributes)
+        return Plot{Func}(Base.tail(args), plot_attributes)
     end
-    P = Combined{Func}
+    P = Plot{Func}
     used_attrs = used_attributes(P, to_value.(args)...)
     if used_attrs === ()
         args_converted = convert_arguments(P, map(to_value, args)...)
@@ -145,7 +145,7 @@ function Combined{Func}(args::Tuple, plot_attributes::Dict) where {Func}
 
     ArgTyp = MakieCore.argtypes(converted)
     converted_obs = map(Observable, converted)
-    plot = Combined{plotfunc(PNew),ArgTyp}(plot_attributes, obs_args, converted_obs)
+    plot = Plot{plotfunc(PNew),ArgTyp}(plot_attributes, obs_args, converted_obs)
     return plot
 end
 
@@ -171,15 +171,16 @@ Usage:
     end
 ```
 """
-used_attributes(PlotType, args...) = ()
+used_attributes(::Type{<:Plot}, args...) = used_attributes(args...)
+used_attributes(args...) = ()
 
 
 ## generic definitions
-# If the Combined has no plot func, calculate them
-plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
+# If the Plot has no plot func, calculate them
+plottype(::Type{<: Plot{Any}}, argvalues...) = plottype(argvalues...)
 plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 # If it has something more concrete than Any, use it directly
-plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
+plottype(P::Type{<: Plot{T}}, argvalues...) where T = P
 
 ## specialized definitions for types
 plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
@@ -199,7 +200,7 @@ plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
 """
-    plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})
+    plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
 
 Chooses the more concrete plot type
 ```julia
@@ -209,19 +210,19 @@ function convert_arguments(P::PlotFunc, args...)
 end
 ```
 """
-plottype(::Type{<: Combined{Any}}, P::Type{<: Combined{T}}) where T = P
-plottype(P::Type{<: Combined{T}}, ::Type{<: Combined}) where T = P
+plottype(::Type{<: Plot{Any}}, P::Type{<: Plot{T}}) where T = P
+plottype(P::Type{<: Plot{T}}, ::Type{<: Plot}) where T = P
 
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
 
-function plot!(::Combined{F}) where {F}
+function plot!(::Plot{F}) where {F}
     if !(F in atomic_functions)
         error("No recipe for $(F)")
     end
 end
 
-function connect_plot!(parent::SceneLike, plot::Combined{F}) where {F}
+function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.parent = parent
 
     apply_theme!(parent_scene(parent), plot)
@@ -243,19 +244,19 @@ function connect_plot!(parent::SceneLike, plot::Combined{F}) where {F}
     end
     plot.model = transformationmatrix(plot)
     convert_arguments!(plot)
-    calculated_attributes!(Combined{F}, plot)
+    calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
     plot!(plot)
     return plot
 end
 
-function plot!(scene::SceneLike, plot::Combined)
+function plot!(scene::SceneLike, plot::Plot)
     connect_plot!(scene, plot)
     push!(scene, plot)
     return plot
 end
 
-function apply_theme!(scene::Scene, plot::P) where {P<: Combined}
+function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
     raw_attr = attributes(plot.attributes)
     plot_theme = default_theme(scene, P)
     plot_sym = plotsym(P)

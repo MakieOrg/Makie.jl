@@ -131,19 +131,19 @@ mutable struct Scene <: AbstractScene
 end
 
 # on & map versions that deregister when scene closes!
-function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Combined,Scene}), @nospecialize(observable::Observable); update=false, priority=0)
+function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observable::Observable); update=false, priority=0)
     to_deregister = on(f, observable; update=update, priority=priority)::Observables.ObserverFunction
     push!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
     return to_deregister
 end
 
-function Observables.onany(@nospecialize(f), @nospecialize(scene::Union{Combined,Scene}), @nospecialize(observables...); priority=0)
+function Observables.onany(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observables...); priority=0)
     to_deregister = onany(f, observables...; priority=priority)
     append!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
     return to_deregister
 end
 
-@inline function Base.map!(f, @nospecialize(scene::Union{Combined,Scene}), result::AbstractObservable, os...;
+@inline function Base.map!(f, @nospecialize(scene::Union{Plot,Scene}), result::AbstractObservable, os...;
                            update::Bool=true, priority = 0)
     # note: the @inline prevents de-specialization due to the splatting
     callback = Observables.MapCallback(f, result, os)
@@ -154,7 +154,7 @@ end
     return result
 end
 
-@inline function Base.map(f::F, @nospecialize(scene::Union{Combined,Scene}), arg1::AbstractObservable, args...;
+@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::AbstractObservable, args...;
                           ignore_equal_values=false, priority = 0) where {F}
     # note: the @inline prevents de-specialization due to the splatting
     obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
@@ -442,7 +442,7 @@ function Base.empty!(scene::Scene; free=false)
     return nothing
 end
 
-function Base.push!(plot::Combined, subplot)
+function Base.push!(plot::Plot, subplot)
     subplot.parent = plot
     push!(plot.plots, subplot)
 end
@@ -559,7 +559,7 @@ function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
 end
 
 parent_scene(x) = parent_scene(get_scene(x))
-parent_scene(x::Combined) = parent_scene(parent(x))
+parent_scene(x::Plot) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
@@ -599,22 +599,22 @@ end
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 """
-    is_atomic_plot(plot::Combined)
+    is_atomic_plot(plot::Plot)
 
 Defines what Makie considers an atomic plot, used in `collect_atomic_plots`.
 Backends may have a different definition of what is considered an atomic plot,
 but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
 """
-is_atomic_plot(plot::Combined) = isempty(plot.plots)
+is_atomic_plot(plot::Plot) = isempty(plot.plots)
 
 """
     collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
-    collect_atomic_plots(x::Combined, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+    collect_atomic_plots(x::Plot, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
 
 Collects all plots in the provided `<: ScenePlot` and returns a vector of all plots
 which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
 """
-function collect_atomic_plots(xplot::Combined, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+function collect_atomic_plots(xplot::Plot, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
     if is_atomic_plot(xplot)
         # Atomic plot!
         push!(plots, xplot)

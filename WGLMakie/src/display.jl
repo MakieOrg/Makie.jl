@@ -331,7 +331,7 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     end
 end
 
-function insert_plot!(disp::ThreeDisplay, scene::Scene, @nospecialize(plot::Combined))
+function insert_plot!(disp::ThreeDisplay, scene::Scene, @nospecialize(plot::Plot))
     plot_data = serialize_plots(scene, [plot])
     plot_sub = Session(disp.session)
     JSServe.init_session(plot_sub)
@@ -344,7 +344,7 @@ function insert_plot!(disp::ThreeDisplay, scene::Scene, @nospecialize(plot::Comb
     return
 end
 
-function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Combined))
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
         insert_plot!(disp, scene, plot)
@@ -378,7 +378,7 @@ function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
     return
 end
 
-function all_plots_scenes(scene::Scene; scene_uuids=String[], plots=Combined[])
+function all_plots_scenes(scene::Scene; scene_uuids=String[], plots=Plot[])
     push!(scene_uuids, js_uuid(scene))
     append!(plots, scene.plots)
     for child in scene.children
@@ -466,7 +466,7 @@ const DISABLE_JS_FINALZING = Base.RefValue(false)
 const DELETE_QUEUE = LockfreeQueue{Tuple{Screen, Vector{String}, Union{Session, Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
-function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
+function Base.delete!(screen::Screen, scene::Scene, plot::Plot)
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
         plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
