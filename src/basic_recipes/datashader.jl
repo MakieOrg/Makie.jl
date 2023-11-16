@@ -468,7 +468,7 @@ end
 
 data_limits(p::DataShader) =  p._boundingbox[]
 
-used_attributes(::Type{<:Any}, ::Canvas) = (:operation, :local_operation)
+used_attributes(::Canvas) = (:operation, :local_operation)
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
                            operation=automatic, local_operation=identity)
