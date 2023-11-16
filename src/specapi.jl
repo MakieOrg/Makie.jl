@@ -182,31 +182,16 @@ const Layoutable = Union{GridLayout,Block}
 const LayoutableSpec = Union{GridLayoutSpec,BlockSpec}
 const LayoutEntry = Pair{GridLayoutPosition,LayoutableSpec}
 
-function GridLayoutSpec(v::AbstractVector; kwargs...)
-    GridLayoutSpec(reshape(v, :, 1); kwargs...)
-end
-
+GridLayoutSpec(v::AbstractVector; kwargs...) = GridLayoutSpec(reshape(v, :, 1); kwargs...)
 function GridLayoutSpec(v::AbstractMatrix; kwargs...)
     indices = vec([Tuple(c) for c in CartesianIndices(v)])
     pairs = [
         LayoutEntry((i:i, j:j, GridLayoutBase.Inner()), v[i, j]) for (i, j) in indices
     ]
-    GridLayoutSpec(pairs; kwargs...)
+    return GridLayoutSpec(pairs; kwargs...)
 end
 
-struct FigureSpec
-    layout::GridLayoutSpec
-    kw::Dict{Symbol, Any}
-end
-
-function FigureSpec(blocks::Array; kw...)
-    return FigureSpec(GridLayoutSpec(blocks), Dict{Symbol,Any}(kw))
-end
-
-function FigureSpec(blocks::Union{BlockSpec, GridLayoutSpec}...; kw...)
-    return FigureSpec(GridLayoutSpec(collect(blocks)), Dict{Symbol,Any}(kw))
-end
-FigureSpec(gls::GridLayoutSpec; kw...) = FigureSpec(gls, Dict{Symbol,Any}(kw))
+GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
 
 """
 apply for return type PlotSpec
@@ -243,7 +228,6 @@ struct _SpecApi end
 const SpecApi = _SpecApi()
 
 function Base.getproperty(::_SpecApi, field::Symbol)
-    field === :Figure && return FigureSpec
     field === :GridLayout && return GridLayoutSpec
     # TODO, we wanted to track all recipe names in a set
     # in MakieCore via the recipe macro, but due to precompilation & caching
@@ -597,7 +581,7 @@ function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutS
     for k in keys
         # TODO! The gridlayout in the top parent figure has a padding from the Figure
         # Since in the SpecApi we can do nested specs with whole figure, we can't create the default there since
-        # We don't know which FigureSpec will be the main parent.
+        # We don't know which GridLayout will be the main parent.
         # So for now, we just ignore the padding for the top level gridlayout, since we assume the padding in the figurespec is wrong!
         if layout.parent isa Figure && k == :alignmode
             continue
@@ -694,7 +678,7 @@ function delete_layoutable!(grid::GridLayout)
     return
 end
 
-function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs::Observable{FigureSpec})
+function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs::Observable{GridLayoutSpec})
     # Global list of all layoutables. The LayoutableKey includes a nesting, so that we can keep even nested layouts in one global list.
     # Vector of Pairs should allow to have an identical key without overwriting the previous value
     unused_layoutables = Pair{LayoutableKey, Tuple{Layoutable,Observable{Vector{PlotSpec}}}}[]
@@ -704,13 +688,13 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
     l = Base.ReentrantLock()
     layout = get_layout!(fig)
 
-    on(get_topscene(fig), figure_obs; update=true) do figure
+    on(get_topscene(fig), layout_obs; update=true) do layout_spec
         lock(l) do
             # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
             # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
             # while it gets removed from `unused_layoutables`.
             empty!(new_layoutables)
-            update_gridlayout!(layout, 1, nothing, figure.layout, unused_layoutables, new_layoutables)
+            update_gridlayout!(layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
             # Everything that still is in unused_layoutables is not used anymore and can be deleted
             for (key, (layoutable, obs)) in unused_layoutables
                 delete_layoutable!(layoutable)
@@ -740,19 +724,19 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, figure_obs
     return fig
 end
 
-args_preferred_axis(::FigureSpec) = FigureOnly
+args_preferred_axis(::GridLayoutSpec) = FigureOnly
 
-plot!(plot::Plot{MakieCore.plot,Tuple{FigureSpec}}) = plot
+plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
 
-function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{FigureSpec}})
+function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
     update_fig!(fig, plot[1])
     return fig
 end
 
-function apply_convert!(P, attributes::Attributes, x::FigureSpec)
+function apply_convert!(P, attributes::Attributes, x::GridLayoutSpec)
     return (Plot{plot}, (x,))
 end
 
-MakieCore.argtypes(::FigureSpec) = Tuple{Nothing}
+MakieCore.argtypes(::GridLayoutSpec) = Tuple{Nothing}
