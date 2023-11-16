@@ -1397,12 +1397,14 @@ function limits!(args...)
     limits!(current_axis(), args...)
 end
 
-function Base.delete!(ax::Axis, plot::AbstractPlot)
+const AxisOrLScene = Union{Axis, Axis3, LScene}
+
+function Base.delete!(ax::AxisOrLScene, plot::AbstractPlot)
     delete!(ax.scene, plot)
     ax
 end
 
-function Base.empty!(ax::Axis)
+function Base.empty!(ax::AxisOrLScene)
     while !isempty(ax.scene.plots)
         delete!(ax, ax.scene.plots[end])
     end
