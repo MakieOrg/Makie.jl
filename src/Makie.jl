@@ -139,7 +139,6 @@ include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
 
 # basic recipes
-include("basic_recipes/specapi.jl")
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")
@@ -177,6 +176,10 @@ include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
 include("layouting/layouting.jl")
 include("layouting/boundingbox.jl")
+
+# Declaritive SpecApi
+include("specapi.jl")
+
 # more default recipes
 # statistical recipes
 include("stats/conversions.jl")

@@ -96,7 +96,7 @@ plot(S.Figure(spec_row); figure = (; fontsize = 10))
 ```
 \end{examplefigure}
 
-## Advanced spec layouting 
+## Advanced spec layouting
 
 If you need even more control, you can pass the position of each object in your layout to `S.GridLayout` directly.
 These positions are specified as a tuple of `(rows, columns [, side])` where `side` is `Inside()` by default.
@@ -162,7 +162,7 @@ S.GridLayout([...],
 ## Using specs in `convert_arguments`
 
 !!! warning
-    It's not decided yet how to forward keyword arguments from `plots(...; kw...)` to `convert_arguments` for the SpecApi in a more convenient and performant way. Until then, you need to mark attributes you want to use in `convert_arguments` with `Makie.used_attributes`, but this will completely redraw the entire spec on change of any attribute.
+    It's not decided yet how to forward keyword arguments from `plots(...; kw...)` to `convert_arguments` for the SpecApi in a more convenient and performant way. Until then, you need to mark attributes you want to use in `convert_arguments` with `Makie.used_attributes`, but this will completely redraw the entire spec on change of any attribute. We also may require users to overload a different function in future versions.
 
 You can overload `convert_arguments` and return an array of `PlotSpecs` or a `FigureSpec`.
 The main difference between those is, that returning an array of `PlotSpecs` may be plotted like any recipe into axes, while overloads returning `FigureSpec` may not.
@@ -177,7 +177,7 @@ using CairoMakie
 import Makie.SpecApi as S
 CairoMakie.activate!() # hide
 
-# Our custom type we want to write a conversion method for 
+# Our custom type we want to write a conversion method for
 struct PlotGrid
     nplots::Tuple{Int,Int}
 end
