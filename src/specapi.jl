@@ -99,8 +99,6 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw.
     end
 end
 
-
-
 const GridLayoutPosition = Tuple{UnitRange{Int},UnitRange{Int},Side}
 
 to_span(range::UnitRange{Int}, span::UnitRange{Int}) = (range.start < span.start || range.stop > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range
@@ -272,8 +270,14 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-
-# comparison based entirely of types inside args + kwargs
+# We use this function to decide which plots to reuse + update instead of re-creating.
+# Comparison based entirely of types inside args + kwargs.
+# This will return false for the same plotspec with a new attribute
+# E.g. `compare_spec(S.Scatter(1:4; color=:red), S.Scatter(1:4; marker=:circle))`
+# While we could easily update this, we don't want to, since we're
+# pessimistic about what's updatable and to avoid issues with
+# Needing to reset attributes to their defaults, at the cost of re-creating more plots than necessary.
+# TODO when focussing better performance, this is one of the first things we want to try
 function compare_specs(a::PlotSpec, b::PlotSpec)
     a.type === b.type || return false
     length(a.args) == length(b.args) || return false
@@ -298,26 +302,24 @@ end
 
 function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
-    any_different = false
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
         arg_obs = plot.args[i]
         prev_val = oldspec.args[i]
         if is_different(prev_val, spec.args[i]) # only update if different
-            any_different = true
             arg_obs.val = spec.args[i]
             push!(obs_to_notify, arg_obs)
         end
     end
-
+    scene = parent_scene(plot)
     # Update attributes
     for (attribute, new_value) in spec.kwargs
         old_attr = plot[attribute]
         # only update if different
         if is_different(old_attr[], new_value)
             if new_value isa Cycled
-                old_attr.val = to_color(parent_scene(plot), attribute, new_value)
+                old_attr.val = to_color(scene, attribute, new_value)
             else
                 @debug("updating kw $attribute")
                 old_attr.val = new_value
@@ -325,6 +327,16 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
             push!(obs_to_notify, old_attr)
         end
     end
+    # Cycling needs to be handled separately sadly,
+    # since they're implicitely mutating attributes, e.g. if I re-use a plot
+    # that has been on cycling position 2, and now I re-use it for the first plot in the list
+    # it will need to change to the color of cycling position 1
+    if haskey(plot, :cycle)
+        uncycled = filter(x-> !haskey(spec.kwargs, x), plot.cycle[])
+        add_cycle_attribute!(plot, scene, uncycled)
+        append!(obs_to_notify, (plot[k] for k in uncycled))
+    end
+    return
 end
 
 """
@@ -385,9 +397,48 @@ function Base.show(io::IO, spec::PlotSpec)
     return
 end
 
-function to_combined(ps::PlotSpec)
+function to_plot_object(ps::PlotSpec)
     P = plottype(ps)
     return P((ps.args...,), copy(ps.kwargs))
+end
+
+function find_reusable_plot(plotspec::PlotSpec, reusable_plots::IdDict{PlotSpec,Plot})
+    for (spec, plot) in reusable_plots
+        if compare_specs(spec, plotspec)
+            return plot, spec
+        end
+    end
+    return nothing, nothing
+end
+
+function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify, reusable_plots,
+                        plotlist::Union{Nothing,PlotList}=nothing)
+    new_plots = IdDict{PlotSpec,Plot}() # needed to be mutated
+    empty!(scene.cycler.counters)
+    # Global list of observables that need updating
+    # Updating them all at once in the end avoids problems with triggering updates while updating
+    # And at some point we may be able to optimize notify(list_of_observables)
+    empty!(obs_to_notify)
+    for plotspec in plotspecs
+        # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
+        reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots)
+        if isnothing(reused_plot)
+            @debug("Creating new plot for spec")
+            # Create new plot, store it into our `cached_plots` dictionary
+            plot = plot!(scene, to_plot_object(plotspec))
+            if !isnothing(plotlist)
+                push!(plotlist.plots, plot)
+            end
+            new_plots[plotspec] = plot
+        else
+            @debug("updating old plot with spec")
+            # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
+            delete!(reusable_plots, old_spec)
+            update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
+            new_plots[plotspec] = reused_plot
+        end
+    end
+    return new_plots
 end
 
 function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist::Union{Nothing, PlotList}=nothing)
@@ -395,52 +446,31 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    reusable_plots = IdDict{PlotSpec,Plot}()
+    unused_plots = IdDict{PlotSpec,Plot}()
     obs_to_notify = Observable[]
     function update_plotlist(plotspecs)
-        new_plots = IdDict{PlotSpec,Plot}() # needed to be mutated
-        empty!(scene.cycler.counters)
+        # Global list of observables that need updating
+        # Updating them all at once in the end avoids problems with triggering updates while updating
+        # And at some point we may be able to optimize notify(list_of_observables)
         empty!(obs_to_notify)
-        for plotspec in plotspecs
-            # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-            reused_plot = nothing
-            old_spec = nothing
-            for (spec, plot) in reusable_plots
-                if compare_specs(spec, plotspec)
-                    reused_plot = plot
-                    old_spec = spec
-                    break
-                end
-            end
-            if isnothing(reused_plot)
-                @debug("Creating new plot for spec")
-                # Create new plot, store it into our `cached_plots` dictionary
-                plot = plot!(scene, to_combined(plotspec))
-                if !isnothing(plotlist)
-                    push!(plotlist.plots, plot)
-                end
-                new_plots[plotspec] = plot
-            else
-                @debug("updating old plot with spec")
-                update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
-                new_plots[plotspec] = reused_plot
-            end
-        end
-        unused_plots = setdiff(values(reusable_plots), values(new_plots))
+        empty!(scene.cycler.counters) # Reset Cycler
+        # diff_plotlist! deletes all plots that get re-used from unused_plots
+        # so, this will become our list of unused plots!
+        new_plots = diff_plotlist!(scene, plotspecs, obs_to_notify, unused_plots, plotlist)
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        for plot in unused_plots
+        for (_, plot) in unused_plots
             if !isnothing(plotlist)
                 filter!(x -> x !== plot, plotlist.plots)
             end
             delete!(scene, plot)
         end
+        # Transfer all new plots into unused_plots for the next update!
         @assert !any(x-> x in unused_plots, new_plots)
-        empty!(reusable_plots)
-        merge!(reusable_plots, new_plots)
-        for obs in obs_to_notify
-            notify(obs)
-        end
+        empty!(unused_plots)
+        merge!(unused_plots, new_plots)
+        # finally, notify all changes at once
+        foreach(notify, obs_to_notify)
         return
     end
     l = Base.ReentrantLock()
