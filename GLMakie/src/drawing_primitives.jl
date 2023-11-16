@@ -246,6 +246,9 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             on(plot, plot.model) do x
                 screen.requires_update = true
             end
+            on(plot, scene.camera.projectionview) do x
+                screen.requires_update = true
+            end
         end
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
