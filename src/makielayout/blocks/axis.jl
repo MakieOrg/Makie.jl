@@ -720,7 +720,7 @@ function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler
         # otherwise there's no cycle in which to look up a value
         for k in manually_cycled_attributes
             if !any(x -> k in x, cycle_attrsyms)
-                error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $P.")
+                error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $(typeof(plot)).")
             end
         end
 

@@ -145,7 +145,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-    attr = Attributes(plot)
+    attr = copy(Attributes(plot))
     attr[:colorrange] = cliprange
     attr[:colormap] = cmap
     attr[:algorithm] = 7

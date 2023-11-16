@@ -35,23 +35,23 @@ import Makie.SpecApi as S
 
 scatterspec = S.Scatter(1:4) # a PlotSpec describing a Scatter plot
 axspec = S.Axis(plots=[scatterspec]) # a BlockSpec describing an Axis with a Scatter plot
-figspec = S.Figure(ax) # a FigureSpec describing a Figure with an Axis with a Scatter plot
+layout_spec = S.GridLayout(axspec) # a Layout describing a Figure with an Axis with a Scatter plot
 
 # Now we can instantiate the spec into a fully realized Figure.
 # Note that the output type from `plot` is currently, a bit confusingly, a
 # FigureAxisPlot type, which does not really fit because `pl` is not a normal plot
 # and there can be zero or many axes in the figure.
 # This will be changed in future iterations.
-f, _, pl = plot(figspec)
+f, _, pl = plot(layout_spec)
 
 # By updating the input observable of `pl`, our "plot" object, we can
 # update all the content in the Figure with something new. In this case,
 # we just change the plot type in the Axis from Scatter to Lines, and the
 # axis title to "Lines".
-pl[1] = S.Figure(S.Axis(; title="Lines", plots=[S.Lines(1:4)]))
+pl[1] = S.GridLayout(S.Axis(; title="Lines", plots=[S.Lines(1:4)]))
 ```
 
-You can not only `plot` specs describing whole `Figure`s, but also specs describing `Block`s or just single plots.
+You can not only `plot` specs describing whole layout, but also specs describing `Block`s or just single plots.
 
 ```julia
 s = Makie.PlotSpec(:Scatter, 1:4; color=:red)
@@ -60,7 +60,7 @@ axis = Makie.BlockSpec(:Axis; title="Axis at layout position (1, 1)")
 
 ## Building layouts for specs
 
-To build layouts quickly, you can pass column vectors, row vectors or matrices of block specs to `S.Figure`. If you need more control over the layout, you can use `S.GridLayout` to specify row and column sizes and gaps directly.
+To build layouts quickly, you can pass column vectors, row vectors or matrices of block specs to `S.GridLayout`. If you need more control over the layout, you can specify row and column sizes and gaps directly.
 
 \begin{examplefigure}{}
 ```julia
@@ -92,7 +92,7 @@ spec_column_vector = S.GridLayout([ax_densities, ax_volcano, ax_brain]);
 spec_matrix = S.GridLayout([ax_densities ax_volcano; ax_brain ax_cube]);
 spec_row = S.GridLayout([spec_column_vector spec_matrix], colsizes = [Auto(), Auto(4)])
 
-plot(S.Figure(spec_row); figure = (; fontsize = 10))
+f, ax, pl = plot(S.GridLayout(spec_row); figure = (; fontsize = 10))
 ```
 \end{examplefigure}
 
@@ -111,7 +111,7 @@ Makie.inline!(true) # hide
 CairoMakie.activate!() # hide
 
 plot(
-    S.Figure(S.GridLayout([
+    S.GridLayout([
         (1, 1) => S.Axis(),
         (1, 2) => S.Axis(),
         (2, :) => S.Axis(),
@@ -121,7 +121,7 @@ plot(
             rotation = pi/2,
             padding = (10, 10, 10, 10)
         ),
-    ]))
+    ])
 )
 ```
 \end{examplefigure}
@@ -135,11 +135,11 @@ import Makie.SpecApi as S
 Makie.inline!(true) # hide
 CairoMakie.activate!() # hide
 
-plot(S.Figure(S.GridLayout([
+plot(S.GridLayout([
     (1, 1) => S.Axis(),
     (1, 2) => S.Axis(),
     (2, :) => S.GridLayout(fill(S.Axis(), 1, 3)),
-])))
+]))
 ```
 \end{examplefigure}
 
@@ -164,10 +164,10 @@ S.GridLayout([...],
 !!! warning
     It's not decided yet how to forward keyword arguments from `plots(...; kw...)` to `convert_arguments` for the SpecApi in a more convenient and performant way. Until then, you need to mark attributes you want to use in `convert_arguments` with `Makie.used_attributes`, but this will completely redraw the entire spec on change of any attribute. We also may require users to overload a different function in future versions.
 
-You can overload `convert_arguments` and return an array of `PlotSpecs` or a `FigureSpec`.
-The main difference between those is, that returning an array of `PlotSpecs` may be plotted like any recipe into axes, while overloads returning `FigureSpec` may not.
+You can overload `convert_arguments` and return an array of `PlotSpecs` or a `GridLayoutSpec`.
+The main difference between those is, that returning an array of `PlotSpecs` may be plotted like any recipe into axes, while overloads returning `GridLayoutSpec` may not.
 
-## `convert_arguments` for `FigureSpec`
+## `convert_arguments` for `GridLayoutSpec`
 
 In this example, we overload `convert_arguments` for a custom type to create facet grids easily.
 
@@ -194,7 +194,7 @@ function Makie.convert_arguments(::Type{Plot{plot}}, obj::PlotGrid; color=:black
             for i in 1:obj.nplots[1],
                 j in 1:obj.nplots[2]
     ]
-    return S.Figure(axes; fontsize=30)
+    return S.GridLayout(axes)
 end
 
 # Now, when we plot `PlotGrid` we get a whole facet layout
@@ -290,6 +290,7 @@ f = Figure()
 s = Slider(f[1, 1], range=1:10)
 m = Menu(f[1, 2], options=[:Scatter, :Lines, :BarPlot])
 sim = lift(s.value, m.selection) do n_plots, p
+    Random.seed!(123)
     args = [cumsum(randn(100)) for i in 1:n_plots]
     return MySimulation(p, args)
 end

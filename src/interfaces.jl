@@ -1,10 +1,15 @@
+
+function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))
+    cycler = scene.cycler
+    palette = scene.theme.palette
+    add_cycle_attributes!(plot, cycle, cycler, palette)
+    return
+end
+
 function color_and_colormap!(plot, colors = plot.color)
     scene = parent_scene(plot)
     if !isnothing(scene) && haskey(plot, :cycle)
-        cycler = scene.cycler
-        palette = scene.theme.palette
-        cycle = get_cycle_for_plottype(to_value(plot.cycle))
-        add_cycle_attributes!(plot, cycle, cycler, palette)
+        add_cycle_attribute!(plot, scene)
     end
     colors = assemble_colors(colors[], colors, plot)
     attributes(plot.attributes)[:calculated_colors] = colors
@@ -13,10 +18,7 @@ end
 function calculated_attributes!(::Type{<: AbstractPlot}, plot)
     scene = parent_scene(plot)
     if !isnothing(scene) && haskey(plot, :cycle)
-        cycler = scene.cycler
-        palette = scene.theme.palette
-        cycle = get_cycle_for_plottype(to_value(plot.cycle))
-        add_cycle_attributes!(plot, cycle, cycler, palette)
+        add_cycle_attribute!(plot, scene)
     end
 end
 

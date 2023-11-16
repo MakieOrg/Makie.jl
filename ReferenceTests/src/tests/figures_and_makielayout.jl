@@ -26,7 +26,7 @@ end
 end
 
 @reference_test "Figure with boxes" begin
-    fig = Figure(resolution = (900, 900))
+    fig = Figure(size = (900, 900))
     Box(fig[1,1], color = :red, strokewidth = 3, linestyle = :solid, strokecolor = :black)
     Box(fig[1,2], color = (:red, 0.5), strokewidth = 3, linestyle = :dash, strokecolor = :red)
     Box(fig[1,3], color = :white, strokewidth = 3, linestyle = :dot, strokecolor = (:black, 0.5))
