@@ -47,7 +47,7 @@ import Makie.SpecApi as S
 
     @testset "diff_plotlist!" begin
         scene = Scene();
-        plotspecs = [S.Scatter(1:4; color=:green), S.Scatter(1:4; color=:red)]
+        plotspecs = [S.Scatter(1:4; color=:red), S.Scatter(1:4; color=:red)]
         reusable_plots = IdDict{PlotSpec,Plot}()
         obs_to_notify = Observable[]
         new_plots = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, reusable_plots)
@@ -61,7 +61,7 @@ import Makie.SpecApi as S
         @test Set(scene.plots) == Set(values(new_plots2))
         @test isempty(obs_to_notify)
 
-        plotspecs = [S.Scatter(1:4; color=:red), S.Scatter(1:4; color=:green)]
+        plotspecs = [S.Scatter(1:4; color=:yellow), S.Scatter(1:4; color=:green)]
         new_plots3 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, new_plots2)
 
         @test isempty(new_plots) # they got all used up

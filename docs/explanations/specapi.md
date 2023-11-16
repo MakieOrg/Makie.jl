@@ -92,7 +92,7 @@ spec_column_vector = S.GridLayout([ax_densities, ax_volcano, ax_brain]);
 spec_matrix = S.GridLayout([ax_densities ax_volcano; ax_brain ax_cube]);
 spec_row = S.GridLayout([spec_column_vector spec_matrix], colsizes = [Auto(), Auto(4)])
 
-plot(S.Figure(spec_row); figure = (; fontsize = 10))
+f, ax, pl = plot(S.Figure(spec_row); figure = (; fontsize = 10))
 ```
 \end{examplefigure}
 
@@ -290,6 +290,7 @@ f = Figure()
 s = Slider(f[1, 1], range=1:10)
 m = Menu(f[1, 2], options=[:Scatter, :Lines, :BarPlot])
 sim = lift(s.value, m.selection) do n_plots, p
+    Random.seed!(123)
     args = [cumsum(randn(100)) for i in 1:n_plots]
     return MySimulation(p, args)
 end

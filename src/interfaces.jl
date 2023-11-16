@@ -1,9 +1,8 @@
 
-function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=plot.cycle[])
+function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))
     cycler = scene.cycler
     palette = scene.theme.palette
-    plot_cycle = get_cycle_for_plottype(cycle)
-    add_cycle_attributes!(plot, plot_cycle, cycler, palette)
+    add_cycle_attributes!(plot, cycle, cycler, palette)
     return
 end
 
