@@ -610,6 +610,7 @@ struct Figure
     content::Vector
     attributes::Attributes
     current_axis::Ref{Any}
+    time::Observable
 
     function Figure(args...)
         f = new(args...)

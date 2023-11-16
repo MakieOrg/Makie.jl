@@ -33,6 +33,7 @@ end
 
 to_native(window::MakieScreen) = error("to_native(window) not implemented for $(typeof(window)).")
 disconnect!(window::MakieScreen, signal) = disconnect!(to_native(window), signal)
+render_tick(::MakieScreen) = Observable(nothing)
 
 function disconnect_screen(scene::Scene, screen)
     e = events(scene)

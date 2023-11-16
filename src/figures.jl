@@ -95,7 +95,6 @@ to_rectsides(n::Number) = to_rectsides((n, n, n, n))
 to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
 
 function Figure(; kwargs...)
-
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, clear = true, kwargs_dict...)
@@ -110,13 +109,20 @@ function Figure(; kwargs...)
     end
     notify(alignmode)
 
+    # Setup the global time
+    figure_time = Observable(0.0)
+
     f = Figure(
         scene,
         layout,
         [],
         Attributes(),
-        Ref{Any}(nothing)
+        Ref{Any}(nothing),
+        figure_time
     )
+
+
+
     # set figure as layout parent so GridPositions can refer to the figure
     # if connected correctly
     layout.parent = f
@@ -200,3 +206,16 @@ Resizes the given `Figure` to the resolution given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
 Makie.resize!(figure::Figure, width::Integer, height::Integer) = resize!(figure.scene, width, height)
+
+function sync_global_time(figure::Figure, observable)
+    previous_tick_time = Observable(time())
+    on(observable) do _
+        dt = time() - previous_tick_time[]
+        figure.time[] += dt
+    end
+
+    # Allow to reset time by setting fig.time[] directly
+    on(figure.time) do _
+        previous_tick_time[] = time()
+    end
+end

@@ -931,3 +931,5 @@ function plot2robjs(screen::Screen, plot)
 end
 
 export plot2robjs
+
+render_tick(screen::Screen) = screen.render_tick
