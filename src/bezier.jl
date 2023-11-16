@@ -264,27 +264,29 @@ function parse_bezier_commands(svg)
     commands = PathCommand[]
     lastcomm = nothing
     function lastp()
-        c = commands[end]
         if isnothing(lastcomm)
             Point(0, 0)
-        elseif c isa ClosePath
-            r = reverse(commands)
-            backto = findlast(x -> !(x isa ClosePath), r)
-            if isnothing(backto)
-                error("No point to go back to")
-            end
-            r[backto].p
-        elseif c isa EllipticalArc
-            let
-                ϕ = c.angle
-                a2 = c.a2
-                rx = c.r1
-                ry = c.r2
-                m = Mat2(cos(ϕ), sin(ϕ), -sin(ϕ), cos(ϕ))
-                m * Point(rx * cos(a2), ry * sin(a2)) + c.c
-            end
         else
-            c.p
+            c = commands[end]
+            if c isa ClosePath
+                r = reverse(commands)
+                backto = findlast(x -> !(x isa ClosePath), r)
+                if isnothing(backto)
+                    error("No point to go back to")
+                end
+                r[backto].p
+            elseif c isa EllipticalArc
+                let
+                    ϕ = c.angle
+                    a2 = c.a2
+                    rx = c.r1
+                    ry = c.r2
+                    m = Mat2(cos(ϕ), sin(ϕ), -sin(ϕ), cos(ϕ))
+                    m * Point(rx * cos(a2), ry * sin(a2)) + c.c
+                end
+            else
+                c.p
+            end
         end
     end
 
@@ -489,13 +491,13 @@ function render_path(path, bitmap_size_px = 256)
     scale_factor = bitmap_size_px * 64
 
     # We transform the path into a rectangle of size (aspect, 1) or (1, aspect)
-    # such that aspect ≤ 1. We then scale that rectangle up to a size of 4096 by 
+    # such that aspect ≤ 1. We then scale that rectangle up to a size of 4096 by
     # 4096 * aspect, which results in at most a 64px by 64px bitmap
 
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    # Minimal size that becomes integer when mutliplying by 64 (target size for 
+    # Minimal size that becomes integer when mutliplying by 64 (target size for
     # atlas). This adds padding to avoid blurring/scaling factors from rounding
     # during sdf generation
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))
@@ -512,7 +514,7 @@ function render_path(path, bitmap_size_px = 256)
     # Adjust bitmap size to match path size
     w = ceil(Int, bitmap_size_px * path_size[1])
     h = ceil(Int, bitmap_size_px * path_size[2])
-    
+
     pitch = w * 1 # 8 bit gray
     pixelbuffer = zeros(UInt8, h * pitch)
     bitmap_ref = Ref{FT_Bitmap}()

@@ -120,23 +120,31 @@ function replace_scene_rpr!(scene::Makie.Scene, screen=Screen(scene); refresh=Ob
 
     # translate!(im, 0, 0, 1000)
 
-    clear = true
+    clear = Threads.Atomic{Bool}(true)
     onany(refresh, cam.projectionview) do _, _
-        clear = true
+        clear[] = true
         return
     end
 
     RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 1)
     cam_values = (;)
+
     task = @async while isopen(scene)
+        t = time()
         cam_values = update_rpr_camera!(cam_values, camera, cam_controls, cam)
-        framebuffer2 = render(screen; clear=clear, iterations=1)
-        if clear
-            clear = false
+        framebuffer2 = render(screen; clear=clear[], iterations=1)
+        if clear[]
+            clear[] = false
         end
         data = RPR.get_data(framebuffer2)
         im[1] = reverse(reshape(data, screen.fb_size); dims=2)
-        sleep(1/10)
+        tframe = time() - t
+        to_sleep = (1/10) - tframe
+        if to_sleep < 0.0
+            yield()
+        else
+            sleep(to_sleep)
+        end
     end
     return context, task, rpr_scene
 end
