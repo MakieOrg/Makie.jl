@@ -210,20 +210,6 @@ figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
 figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
 figurelike_return!(::Union{Combined, Scene}, plot::AbstractPlot) = plot
 
-plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
-
-function plot!(ax::AbstractAxis, plot::AbstractPlot)
-    plot!(ax.scene, plot)
-    # some area-like plots basically always look better if they cover the whole plot area.
-    # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(ax)
-    if is_open_or_any_parent(ax.scene)
-        reset_limits!(ax)
-    end
-    return plot
-end
-
-
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
 
 function update_state_before_display!(f::Figure)
@@ -233,12 +219,6 @@ function update_state_before_display!(f::Figure)
     return
 end
 
-Makie.can_be_current_axis(ax::AbstractAxis) = true
-
-function update_state_before_display!(ax::AbstractAxis)
-    reset_limits!(ax)
-    return
-end
 
 
 @inline plot_args(args...) = (nothing, args)
@@ -288,3 +268,37 @@ end
 figurelike_return(f::GridPosition, p::AbstractPlot) = p
 figurelike_return(f::Figure, p::AbstractPlot) = FigureAxisPlot(f, nothing, p)
 MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = fig
+
+# Axis interface
+
+Makie.can_be_current_axis(ax::AbstractAxis) = true
+
+function update_state_before_display!(ax::AbstractAxis)
+    reset_limits!(ax)
+    return
+end
+
+plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
+
+function plot!(ax::AbstractAxis, plot::AbstractPlot)
+    plot!(ax.scene, plot)
+    # some area-like plots basically always look better if they cover the whole plot area.
+    # adjust the limit margins in those cases automatically.
+    needs_tight_limits(plot) && tightlimits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
+    return plot
+end
+
+function Base.delete!(ax::AbstractAxis, plot::AbstractPlot)
+    delete!(ax.scene, plot)
+    return ax
+end
+
+function Base.empty!(ax::AbstractAxis)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
+    end
+    return ax
+end

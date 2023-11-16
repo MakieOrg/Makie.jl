@@ -1361,18 +1361,6 @@ function limits!(args...)
     limits!(current_axis(), args...)
 end
 
-function Base.delete!(ax::Axis, plot::AbstractPlot)
-    delete!(ax.scene, plot)
-    ax
-end
-
-function Base.empty!(ax::Axis)
-    while !isempty(ax.scene.plots)
-        delete!(ax, ax.scene.plots[end])
-    end
-    ax
-end
-
 Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 
 # these functions pick limits for different x and y scales, so that
