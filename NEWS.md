@@ -10,7 +10,8 @@
 - Refactored the `SurfaceLike` family of traits into `VertexBasedGrid`, `CellGrid` and `ImageLike`. [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106)
 - Added `shading = :verbose` in GLMakie to allow for multiple light sources. Also added more light types, fixed light directions for the previous lighting model (now `shading = :fast`) and adjusted `backlight` to affect normals. [#3246](https://github.com/MakieOrg/Makie.jl/pull/3246)
 - Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
-
+- Changed the glyph used for negative numbers in tick labels from hyphen to minus [#3379](https://github.com/MakieOrg/Makie.jl/pull/3379).
+ 
 ## master
 
 - Added `cornerradius` attribute to `Box` for rounded corners [#3346](https://github.com/MakieOrg/Makie.jl/pull/3346).
