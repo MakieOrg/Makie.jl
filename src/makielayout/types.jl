@@ -1664,19 +1664,19 @@ end
         clip::Bool = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
         clipcolor = automatic
-        "Sets a threshold relative to `rmin/rmax` after which radii are distorted to fit more on the screen. No distortion is applied if `radial_distortion_threshold ≥ 1`"
-        radial_distortion_threshold::Float64 = 1.0
 
         # Limits & transformation settings
 
         "The radial limits of the PolarAxis."
-        rlimits = (0.0, nothing)
+        rlimits = (:origin, nothing)
         "The angle limits of the PolarAxis. (0.0, 2pi) results a full circle. (nothing, nothing) results in limits picked based on plot limits."
         thetalimits = (0.0, 2pi)
         "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
         direction::Int = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
         theta_0::Float32 = 0f0
+        "Sets the radius at the origin of the PolarAxis, such that `r_out = r_in - radius_at_origin`."
+        radius_at_origin::Float32 = 0f0
         "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
         theta_as_x::Bool = true
         "The relative margins added to the autolimits in r direction."
