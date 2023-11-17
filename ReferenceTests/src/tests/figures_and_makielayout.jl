@@ -211,6 +211,23 @@ end
     f
 end
 
+@reference_test "PolarAxis radial shift" begin
+    phis = range(pi/4, 9pi/4, length=201)
+    rs = 1.0 ./ sin.(range(pi/4, 3pi/4, length=51)[1:end-1])
+    rs = vcat(rs, rs, rs, rs, rs[1])
+
+    fig = Figure(size = (900, 300))
+    ax1 = PolarAxis(fig[1, 1], radius_at_origin = -2)  # should reveal red square, rest distorted
+    ax2 = PolarAxis(fig[1, 2], radius_at_origin = -2)  # black square, blue distorted
+    ax3 = PolarAxis(fig[1, 3], radius_at_origin = 0.5) # black distorted, blue square
+    for ax in (ax1, ax2, ax3)
+        lines!(ax, phis, rs .- 2, color = :red, linewidth = 4)
+        lines!(ax, phis, rs, color = :black, linewidth = 4)
+        lines!(ax, phis, rs .+ 0.5, color = :blue, linewidth = 4)
+    end
+    fig
+end
+
 @reference_test "Axis3 axis reversal" begin
     f = Figure(size = (1000, 1000))
     revstr(dir, rev) = rev ? "$dir rev" : ""
