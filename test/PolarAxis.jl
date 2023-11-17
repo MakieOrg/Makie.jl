@@ -68,7 +68,7 @@
         @test ax.thetaautolimitmargin[] == (0.05, 0.05)
 
         # default should have mostly set default limits
-        @test ax.rlimits[] == (0.0, nothing)
+        @test ax.rlimits[] == (:origin, nothing)
         @test ax.thetalimits[] == (0.0, 2pi)
         @test ax.target_rlims[] == (0.0, 10.0)
         @test ax.target_thetalims[] == (0.0, 2pi)
@@ -130,7 +130,7 @@
 
         # with default limits
         reset_limits!(ax)
-        @test ax.rlimits[] == (0.0, nothing)
+        @test ax.rlimits[] == (:origin, nothing)
         @test ax.thetalimits[] == (0.0, 2pi)
         @test ax.target_rlims[] == (0.0, 5.0)
         @test ax.target_thetalims[] == (0.0, 2pi)
