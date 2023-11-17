@@ -118,7 +118,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
-        diffuse, specular, shininess,
+        diffuse, specular, shininess, shading,
         fxaa, ssao, transparency, visible, inspectable
     )
 
@@ -210,25 +210,21 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
         meshscatter!(
             arrowplot,
-            start, rotations = directions,
-            marker=marker_tail,
-            markersize = msize,
-                     color=line_c, colormap=colormap, colorscale=colorscale, colorrange=arrowplot.colorrange,
-            fxaa = fxaa_bool, ssao = ssao,
-            diffuse = diffuse,
-            specular = specular, shininess = shininess, inspectable = inspectable,
-            transparency = transparency, visible = visible
+            start, rotations = directions, markersize = msize,
+            marker = marker_tail,
+            color = line_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
+            fxaa = fxaa_bool, ssao = ssao, shading = shading,
+            diffuse = diffuse, specular = specular, shininess = shininess,
+            inspectable = inspectable, transparency = transparency, visible = visible
         )
         meshscatter!(
             arrowplot,
-            start, rotations = directions,
-            marker=marker_head,
-            markersize = markersize,
-                     color=arrow_c, colormap=colormap, colorscale=colorscale, colorrange=arrowplot.colorrange,
-            fxaa = fxaa_bool, ssao = ssao,
-            diffuse = diffuse,
-            specular = specular, shininess = shininess, inspectable = inspectable,
-            transparency = transparency, visible = visible
+            start, rotations = directions, markersize = markersize,
+            marker = marker_head,
+            color = arrow_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
+            fxaa = fxaa_bool, ssao = ssao, shading = shading,
+            diffuse = diffuse, specular = specular, shininess = shininess,
+            inspectable = inspectable, transparency = transparency, visible = visible
         )
     end
 

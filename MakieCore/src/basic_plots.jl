@@ -573,16 +573,11 @@ end
         colorscale = identity,
 
         quality = 32,
-        inspectable = theme(scene, :inspectable),
         markerspace = :pixel,
-
-        diffuse=0.4,
-        specular=0.2,
-        shininess=32.0f0,
-        ssao = false
     )
 
     generic_plot_attributes!(attr)
+    shading_attributes!(attr)
     colormap_attributes!(attr, theme(scene, :colormap))
 
     attr[:fxaa] = automatic
