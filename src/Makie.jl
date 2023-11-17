@@ -12,6 +12,12 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
+# Import FilePaths for invalidations
+# When loading Electron for WGLMakie, which depends on FilePaths
+# It invalidates half of Makie. Simplest fix is to load it early on in Makie
+# So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
+#
+import FilePaths
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -72,20 +78,22 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
+using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
 using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
-using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
+using MakieCore: NoShading, FastShading, MultiLightShading
 using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
-get_attribute, plotsym, plotkey, attributes, used_attributes
+                  get_attribute, plotsym, plotkey, attributes, used_attributes
+import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 
 export @L_str, @colorant_str
-export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
@@ -107,6 +115,7 @@ include("interaction/liftmacro.jl")
 include("colorsampler.jl")
 include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
+include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 
@@ -167,6 +176,10 @@ include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
 include("layouting/layouting.jl")
 include("layouting/boundingbox.jl")
+
+# Declaritive SpecApi
+include("specapi.jl")
+
 # more default recipes
 # statistical recipes
 include("stats/conversions.jl")
@@ -201,7 +214,7 @@ export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, MakieScreen
-export AbstractPlot, Combined, Atomic, OldAxis
+export AbstractPlot, Plot, Atomic, OldAxis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme, update_theme!
@@ -222,7 +235,7 @@ export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
 # Observable/Signal related
-export Observable, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
+export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
@@ -245,11 +258,11 @@ export SceneSpace, PixelSpace, Pixel
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
 export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
-export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
+export viewport, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
+export mouseover, onpick, pick, Events, Keyboard, Mouse, is_mouseinside
 export ispressed, Exclusively
 export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
@@ -261,6 +274,7 @@ export Consume
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 export Billboard
+export NoShading, FastShading, MultiLightShading
 
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
@@ -338,7 +352,7 @@ export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatte
 export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
 export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
 
-export PointLight, EnvironmentLight, AmbientLight, SSAO
+export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 
 include("precompiles.jl")
 

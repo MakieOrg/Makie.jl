@@ -189,8 +189,9 @@ function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
         return DelTri.triangulate(transformed)
     end
 
-    transform = Transformation(p.transformation; transform_func=identity)
-    return triplot!(p, attr, tri; transformation=transform)
+    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
+    triplot!(p, attr, tri)
+    return
 end
 
 function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})

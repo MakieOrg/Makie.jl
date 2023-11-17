@@ -1,49 +1,20 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
-function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    model = map(transformationmatrix, translation_o, scale_o, rotation_o)
-    return Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-end
-
-function Transformation(transformable::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1),
-                        transform_func = copy(transformation(transformable).transform_func))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    parent_transform = transformation(transformable)
-
-    pmodel = parent_transform.model
-    model = map(translation_o, scale_o, rotation_o, pmodel) do t, s, r, p
-        return p * transformationmatrix(t, s, r)
+function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
+    tfuncs = []
+    obsfunc = on(parent.model; update=true) do m
+        return child.parent_model[] = m
     end
-
-    trans = Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-
-    trans.parent[] = parent_transform
-    return trans
+    push!(tfuncs, obsfunc)
+    if connect_func
+        t2 = on(parent.transform_func; update=true) do f
+            child.transform_func[] = f
+            return
+        end
+        push!(tfuncs, t2)
+    end
+    child.parent[] = parent
+    return tfuncs
 end
 
 function free(transformation::Transformation)
@@ -69,7 +40,7 @@ end
 function translated(scene::Scene; kw_args...)
     tscene = Scene(scene, transformation = Transformation())
     transform!(tscene; kw_args...)
-    tscene
+     tscene
 end
 
 function transform!(
@@ -84,7 +55,7 @@ function transform!(
 end
 
 function transform!(
-        scene::Transformable, attributes::Union{Attributes, AbstractDict}
+        scene::Transformable, attributes::Union{Attributes, AbstractDict, NamedTuple}
     )
     transform!(scene; attributes...)
 end

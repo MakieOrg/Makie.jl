@@ -8,14 +8,6 @@ end
 
 struct DataAspect end
 
-
-struct Cycler
-    counters::IdDict{Type, Int}
-end
-
-Cycler() = Cycler(IdDict{Type, Int}())
-
-
 struct Cycle
     cycle::Vector{Pair{Vector{Symbol}, Symbol}}
     covary::Bool
@@ -205,14 +197,12 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
-@Block Axis begin
+@Block Axis <: AbstractAxis begin
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
     targetlimits::Observable{Rect2f}
     finallimits::Observable{Rect2f}
-    cycler::Cycler
-    palette::Attributes
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -330,9 +320,9 @@ end
         "The horizontal and vertical alignment of the yticklabels."
         yticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The size of the xtick marks."
-        xticksize::Float64 = 6f0
+        xticksize::Float64 = 5f0
         "The size of the ytick marks."
-        yticksize::Float64 = 6f0
+        yticksize::Float64 = 5f0
         "Controls if the xtick marks are visible."
         xticksvisible::Bool = true
         "Controls if the ytick marks are visible."
@@ -589,7 +579,7 @@ end
         "The alignment of x minor ticks on the axis spine"
         xminortickalign::Float64 = 0f0
         "The tick size of x minor ticks"
-        xminorticksize::Float64 = 4f0
+        xminorticksize::Float64 = 3f0
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
@@ -608,7 +598,7 @@ end
         "The alignment of y minor ticks on the axis spine"
         yminortickalign::Float64 = 0f0
         "The tick size of y minor ticks"
-        yminorticksize::Float64 = 4f0
+        yminorticksize::Float64 = 3f0
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
@@ -671,7 +661,7 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = false,
+    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = NoShading,
                  inspectable = false, visible=r.active, transparency=true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
@@ -713,7 +703,7 @@ end
         "The color of the tick labels."
         ticklabelcolor = @inherit(:textcolor, :black)
         "The size of the tick marks."
-        ticksize = 6f0
+        ticksize = 5f0
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
@@ -795,7 +785,7 @@ end
         "The alignment of minor ticks on the axis spine"
         minortickalign = 0f0
         "The tick size of minor ticks"
-        minorticksize = 4f0
+        minorticksize = 3f0
         "The tick width of minor ticks"
         minortickwidth = 1f0
         "The tick color of minor ticks"
@@ -803,7 +793,7 @@ end
         "The tick locator for the minor ticks"
         minorticks = IntervalsBetween(5)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
-        size = 16
+        size = 12
     end
 end
 
@@ -901,7 +891,7 @@ end
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
         value = 0
         "The width of the slider line"
-        linewidth::Float32 = 15
+        linewidth::Float32 = 10
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."
@@ -965,7 +955,7 @@ end
         "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
         interval = (0, 0)
         "The width of the slider line"
-        linewidth::Float64 = 15.0
+        linewidth::Float64 = 10.0
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."
@@ -988,7 +978,7 @@ end
         "The vertical alignment of the button in its suggested boundingbox"
         valign = :center
         "The extra space added to the sides of the button label's boundingbox."
-        padding = (10f0, 10f0, 10f0, 10f0)
+        padding = (8f0, 8f0, 8f0, 8f0)
         "The font size of the button label."
         fontsize = @inherit(:fontsize, 16f0)
         "The text of the button label."
@@ -1037,9 +1027,9 @@ end
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
         "The width of the toggle."
-        width = 60
+        width = 32
         "The height of the toggle."
-        height = 28
+        height = 18
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -1101,13 +1091,13 @@ end
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
-        dropdown_arrow_size = 20
+        dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
         fontsize = @inherit(:fontsize, 16f0)
         "Padding of entry texts"
-        textpadding = (10, 10, 10, 10)
+        textpadding = (8, 10, 8, 8)
         "Color of entry texts"
         textcolor = :black
         "The opening direction of the menu (:up or :down)"
@@ -1186,7 +1176,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "The vertical alignment of the entry labels."
         labelvalign = :center
         "The additional space between the legend content and the border."
-        padding = (10f0, 10f0, 8f0, 8f0)
+        padding = (6f0, 6f0, 6f0, 6f0)
         "The additional space between the legend and its suggested boundingbox."
         margin = (0f0, 0f0, 0f0, 0f0)
         "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
@@ -1260,7 +1250,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
     end
 end
 
-@Block LScene begin
+@Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
         "The height setting of the scene."
@@ -1335,13 +1325,13 @@ end
         "Color of the box border when focused and invalid."
         bordercolor_focused_invalid = RGBf(1, 0, 0)
         "Width of the box border."
-        borderwidth = 2f0
+        borderwidth = 1f0
         "Padding of the text against the box."
-        textpadding = (10, 10, 10, 10)
+        textpadding = (8, 8, 8, 8)
         "If the textbox is focused and receives text input."
         focused = false
         "Corner radius of text box."
-        cornerradius = 8
+        cornerradius = 5
         "Corner segments of one rounded corner."
         cornersegments = 20
         "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."
@@ -1353,15 +1343,13 @@ end
     end
 end
 
-@Block Axis3 begin
+@Block Axis3 <: AbstractAxis begin
     scene::Scene
     finallimits::Observable{Rect3f}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
-    cycler::Cycler
-    palette::Attributes
     @attributes begin
         "The height setting of the scene."
         height = nothing
@@ -1642,14 +1630,12 @@ end
     end
 end
 
-@Block PolarAxis begin
+@Block PolarAxis <: AbstractAxis begin
     scene::Scene
     overlay::Scene
     target_rlims::Observable{Tuple{Float64, Float64}}
     target_thetalims::Observable{Tuple{Float64, Float64}}
     target_theta_0::Observable{Float32}
-    cycler::Cycler
-    palette::Attributes
     @attributes begin
         # Generic
 

@@ -24,7 +24,7 @@ faces = [
 
 colors = [:red, :green, :blue, :orange]
 
-scene = mesh(vertices, faces, color = colors, shading = false)
+scene = mesh(vertices, faces, color = colors, shading = NoShading)
 ```
 \end{examplefigure}
 
@@ -41,7 +41,7 @@ mesh(
     brain,
     color = [tri[1][2] for tri in brain for i in 1:3],
     colormap = Reverse(:Spectral),
-    figure = (resolution = (1000, 1000),)
+    figure = (size = (1000, 1000),)
 )
 ```
 \end{examplefigure}

@@ -14,7 +14,7 @@ scene = Scene(;
     # set_theme!(lightposition=:eyeposition, ambient=RGBf(0.5, 0.5, 0.5))`
     lights = Makie.automatic,
     backgroundcolor = :gray,
-    resolution = (500, 500);
+    size = (500, 500);
     # gets filled in with the currently set global theme
     theme_kw...
 )
@@ -36,7 +36,7 @@ With scenes, one can create subwindows. The window extends are given by a `Rect{
 using GLMakie, Makie
 GLMakie.activate!()
 scene = Scene(backgroundcolor=:gray)
-subwindow = Scene(scene, px_area=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
+subwindow = Scene(scene, viewport=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
 scene
 ```
 \end{examplefigure}
@@ -128,7 +128,7 @@ We can use those events to e.g. move the subwindow. If you execute the below in 
 ```julia
 on(scene.events.mouseposition) do mousepos
     if ispressed(subwindow, Mouse.left & Keyboard.left_control)
-        subwindow.px_area[] = Rect(Int.(mousepos)..., 200, 200)
+        subwindow.viewport[] = Rect(Int.(mousepos)..., 200, 200)
     end
 end
 ```
@@ -249,12 +249,14 @@ The scene graph can be used to create rigid transformations, like for a robot ar
 ```julia
 GLMakie.activate!() # hide
 parent = Scene()
-cam3d!(parent)
+cam3d!(parent; clipping_mode = :static)
 
 # One can set the camera lookat and eyeposition, by getting the camera controls and using `update_cam!`
 camc = cameracontrols(parent)
 update_cam!(parent, camc, Vec3f(0, 8, 0), Vec3f(4.0, 0, 0))
-
+# One may need to adjust the
+# near and far clip plane when adjusting the camera manually
+camc.far[] = 100f0
 s1 = Scene(parent, camera=parent.camera)
 mesh!(s1, Rect3f(Vec3f(0, -0.1, -0.1), Vec3f(5, 0.2, 0.2)))
 s2 = Scene(s1, camera=parent.camera)
@@ -368,7 +370,7 @@ lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
     PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
 ]
-s = Scene(resolution=(500, 500), lights=lights)
+s = Scene(size=(500, 500), lights=lights)
 cam3d!(s)
 c = cameracontrols(s)
 c.near[] = 5

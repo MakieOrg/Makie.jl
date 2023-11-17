@@ -11,8 +11,7 @@ if !GLMakie.ModernGL.enable_opengl_debugging
     @warn("TESTING WITHOUT OPENGL DEBUGGING")
 end
 
-
-GLMakie.activate!(framerate=1.0)
+GLMakie.activate!(framerate=1.0, scalefactor=1.0)
 
 @testset "mimes" begin
     Makie.inline!(true)

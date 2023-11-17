@@ -16,7 +16,7 @@ end
     showgradients(
         cgrads::AbstractVector{Symbol};
         h = 0.0, offset = 0.2, fontsize = 0.7,
-        resolution = (800, length(cgrads) * 84)
+        size = (800, length(cgrads) * 84)
     )::Scene
 
 Plots the given colour gradients arranged as horizontal colourbars.
@@ -27,11 +27,11 @@ function showgradients(
         h = 0.0,
         offset = 0.4,
         fontsize = 0.7,
-        resolution = (800, length(cgrads) * 84),
+        size = (800, length(cgrads) * 84),
         monospace = true
     )::Scene
 
-    scene = Scene(resolution = resolution)
+    scene = Scene(size = resolution)
 
     map(collect(cgrads)) do cmap
         c = to_colormap(cmap)

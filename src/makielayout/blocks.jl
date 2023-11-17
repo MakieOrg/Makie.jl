@@ -1,4 +1,4 @@
-abstract type Block end
+
 
 function is_attribute end
 function default_attribute_values end
@@ -6,13 +6,14 @@ function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
 
-
-macro Block(name::Symbol, body::Expr = Expr(:block))
+macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
+    type_expr = _name isa Expr ? _name : :($_name <: Makie.Block)
+    name = _name isa Symbol ? _name : _name.args[1]
     structdef = quote
-        mutable struct $name <: Makie.Block
+        mutable struct $(type_expr)
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
             blockscene::Scene
@@ -255,6 +256,7 @@ end
 
 can_be_current_axis(x) = false
 
+get_top_parent(gp::GridLayout) = GridLayoutBase.top_parent(gp)
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = get_top_parent(gp.parent)
 
@@ -269,15 +271,40 @@ function _block(T::Type{<:Block},
     b
 end
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
-        args...; bbox = nothing, kwargs...)
+
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
+    return _block(T, fig_or_scene, Any[args...], Dict{Symbol,Any}(kwargs), bbox)
+end
+
+function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
+    default_attrs = default_attribute_values(getfield(Makie, blockname), scene)
+    typekey_scene_attrs = get(theme(scene), blockname, Attributes())
+    typekey_attrs = theme(blockname; default=Attributes())::Attributes
+    attributes = Dict{Symbol,Any}()
+    # make a final attribute dictionary using different priorities
+    # for the different themes
+    for (key, val) in default_attrs
+        # give kwargs priority
+        if haskey(attribute_kwargs, key)
+            attributes[key] = attribute_kwargs[key]
+            # otherwise scene theme
+        elseif haskey(typekey_scene_attrs, key)
+            attributes[key] = typekey_scene_attrs[key]
+            # otherwise global theme
+        elseif haskey(typekey_attrs, key)
+            attributes[key] = typekey_attrs[key]
+            # otherwise its the value from the type default theme
+        else
+            attributes[key] = val
+        end
+    end
+    return attributes
+end
+
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete=false)
 
     # first sort out all user kwargs that correspond to block attributes
-    kwdict = Dict(kwargs)
-
-    if haskey(kwdict, :textsize)
-        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
-    end
+    check_textsize_deprecation(kwdict)
 
     attribute_kwargs = Dict{Symbol, Any}()
     for (key, value) in kwdict
@@ -291,28 +318,11 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     topscene = get_topscene(fig_or_scene)
     # retrieve the default attributes for this block given the scene theme
     # and also the `Block = (...` style attributes from scene and global theme
-    default_attrs = default_attribute_values(T, topscene)
-    typekey_scene_attrs = get(theme(topscene), nameof(T), Attributes())::Attributes
-    typekey_attrs = theme(nameof(T); default=Attributes())::Attributes
-    # make a final attribute dictionary using different priorities
-    # for the different themes
-    attributes = Dict{Symbol, Any}()
-    for (key, val) in default_attrs
-        # give kwargs priority
-        if haskey(attribute_kwargs, key)
-            attributes[key] = attribute_kwargs[key]
-        # otherwise scene theme
-        elseif haskey(typekey_scene_attrs, key)
-            attributes[key] = typekey_scene_attrs[key]
-        # otherwise global theme
-        elseif haskey(typekey_attrs, key)
-            attributes[key] = typekey_attrs[key]
-        # otherwise its the value from the type default theme
-        else
-            attributes[key] = val
-        end
+    if kwdict_complete
+        attributes = attribute_kwargs
+    else
+        attributes = block_defaults(nameof(T), attribute_kwargs, topscene)
     end
-
     # create basic layout observables and connect attribute observables further down
     # after creating the block with its observable fields
 
@@ -404,6 +414,7 @@ end
 """
 Get the scene which blocks need from their parent to plot stuff into
 """
+get_topscene(f::Union{GridPosition, GridSubposition}) = get_topscene(get_top_parent(f))
 get_topscene(f::Figure) = f.scene
 function get_topscene(s::Scene)
     if !(Makie.cameracontrols(s) isa Makie.PixelCamera)
@@ -465,7 +476,7 @@ free(::Block) = nothing
 function Base.delete!(block::Block)
     free(block)
     block.parent === nothing && return
-    # detach plots, cameras, transformations, px_area
+    # detach plots, cameras, transformations, viewport
     empty!(block.blockscene)
 
     gc = GridLayoutBase.gridcontent(block)
@@ -509,22 +520,22 @@ end
 
 # if a non-observable is passed, its value is converted and placed into an observable of
 # the correct type which is then used as the block field
-function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecialize(value))
+function init_observable!(@nospecialize(block), key::Symbol, @nospecialize(OT), @nospecialize(value))
     o = convert_for_attribute(observable_type(OT), value)
-    setfield!(x, key, OT(o))
-    return x
+    setfield!(block, key, OT(o))
+    return block
 end
 
 # if an observable is passed, a converted type is lifted off of it, so it is
 # not used directly as a block field
-function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecialize(value::Observable))
+function init_observable!(@nospecialize(block), key::Symbol, @nospecialize(OT), @nospecialize(value::Observable))
     obstype = observable_type(OT)
     o = Observable{obstype}()
     map!(o, value) do v
         convert_for_attribute(obstype, v)
     end
-    setfield!(x, key, o)
-    return x
+    setfield!(block, key, o)
+    return block
 end
 
 observable_type(x::Type{Observable{T}}) where T = T

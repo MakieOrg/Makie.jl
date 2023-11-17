@@ -38,7 +38,6 @@ end
     X4 = rand(2,10)
     V4 = to_vertices(X4)
     @test Float32(X4[1,7]) == V4[7][1]
-    @test V4[7][3] == 0
 
     X5 = rand(3,10)
     V5 = to_vertices(X5)
@@ -47,7 +46,6 @@ end
     X6 = rand(10,2)
     V6 = to_vertices(X6)
     @test Float32(X6[7,1]) == V6[7][1]
-    @test V6[7][3] == 0
 
     X7 = rand(10,3)
     V7 = to_vertices(X7)
@@ -117,8 +115,7 @@ end
 
 @testset "functions" begin
     x = -pi..pi
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
@@ -126,8 +123,7 @@ end
     end
 
     x = range(-pi, stop=pi, length=100)
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
@@ -301,6 +297,68 @@ end
     f, ax, pl = poly(Vector{Point2f}[])
     pl[1] = [points]
     @test pl.plots[1][1][] == Makie.poly_convert(points)
+end
+
+@testset "GridBased and ImageLike conversions" begin
+    # type tree
+    @test GridBased <: ConversionTrait
+    @test CellGrid <: GridBased
+    @test VertexGrid <: GridBased
+    @test ImageLike <: ConversionTrait
+
+    # Plot to trait
+    @test conversion_trait(Image) === ImageLike()
+    @test conversion_trait(Heatmap) === CellGrid()
+    @test conversion_trait(Surface) === VertexGrid()
+    @test conversion_trait(Contour) === VertexGrid()
+    @test conversion_trait(Contourf) === VertexGrid()
+
+    m1 = [x for x in 1:10, y in 1:6]
+    m2 = [y for x in 1:10, y in 1:6]
+    m3 = rand(10, 6)
+
+    r1 = 1:10
+    r2 = 1:6
+
+    v1 = collect(1:10)
+    v2 = collect(1:6)
+
+    i1 = 1..10
+    i2 = 1..6
+
+    o3 = Float32.(m3)
+
+    # Conversions
+    @testset "ImageLike conversion" begin
+        @test convert_arguments(Image, m3)         == (0f0..10f0, 0f0..6f0, o3)
+        @test convert_arguments(Image, v1, r2, m3) == (1f0..10f0, 1f0..6f0, o3)
+        @test convert_arguments(Image, i1, v2, m3) == (1f0..10f0, 1f0..6f0, o3)
+        @test_throws ErrorException convert_arguments(Image, m1, m2, m3)
+        @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
+    end
+
+    @testset "VertexGrid conversion" begin
+        vo1 = Float32.(v1)
+        vo2 = Float32.(v2)
+        mo1 = Float32.(m1)
+        mo2 = Float32.(m2)
+        @test convert_arguments(Surface, m3)          == (vo1, vo2, o3)
+        @test convert_arguments(Contour, i1, v2, m3)  == (vo1, vo2, o3)
+        @test convert_arguments(Contourf, v1, r2, m3) == (vo1, vo2, o3)
+        @test convert_arguments(Surface, m1, m2, m3)  == (mo1, mo2, o3)
+        @test convert_arguments(Surface, m1, m2)      == (mo1, mo2, zeros(Float32, size(o3)))
+    end
+
+    @testset "CellGrid conversion" begin
+        o1 = Float32.(0.5:1:10.5)
+        o2 = Float32.(0.5:1:6.5)
+        @test convert_arguments(Heatmap, m3)         == (o1, o2, o3)
+        @test convert_arguments(Heatmap, r1, i2, m3) == (o1, o2, o3)
+        @test convert_arguments(Heatmap, v1, r2, m3) == (o1, o2, o3)
+        @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0f0:10f0), o2, o3)
+        @test_throws ErrorException convert_arguments(Heatmap, m1, m2, m3)
+        @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
+    end
 end
 
 @testset "Triplot" begin

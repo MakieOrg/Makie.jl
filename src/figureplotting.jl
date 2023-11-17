@@ -3,6 +3,11 @@ struct AxisPlot
     plot::AbstractPlot
 end
 
+struct FigureAxis
+    figure::Figure
+    axis::Any
+end
+
 Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
 
@@ -27,94 +32,151 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
-@nospecialize
-function get_axis(fig, P, axis_kw::Dict, plot_attr, plot_args)
-    if haskey(axis_kw, :type)
-        axtype = axis_kw[:type]
-        pop!(axis_kw, :type)
-        ax = axtype(fig; axis_kw...)
-    else
-        proxyscene = Scene()
-        # We dont forward the attributes to the plot, since we only need the arguments to determine the axis type
-        # Remove arguments may not work with plotting into the scene
-        delete!(plot_attr, :show_axis)
-        delete!(plot_attr, :limits)
-        if get(plot_attr, :color, nothing) isa Cycled
-            # Color may contain Cycled(1), which needs the axis to get resolved to a color
-            delete!(plot_attr, :color)
-        end
-        plot!(proxyscene, P, Attributes(plot_attr), plot_args...)
-        if is2d(proxyscene)
-            ax = Axis(fig; axis_kw...)
-        else
-            ax = LScene(fig; axis_kw...)
-        end
-        empty!(proxyscene)
+# For plots that dont require an axis,
+# E.g. BlockSpec
+struct FigureOnly end
+
+
+function args_preferred_axis(::Type{<:Union{Wireframe,Surface,Contour3d}}, x::AbstractArray, y::AbstractArray,
+                             z::AbstractArray)
+    return all(x -> z[1] ≈ x, z) ? Axis : LScene
+end
+
+args_preferred_axis(x) = nothing
+
+function args_preferred_axis(@nospecialize(args...))
+    # Fallback: check each single arg if they have a favorite axis type
+    for arg in args
+        r = args_preferred_axis(arg)
+        isnothing(r) || return r
     end
-    return ax
-end
-@specialize
-
-function plot(P::PlotFunc, args...; axis=NamedTuple(), figure=NamedTuple(), kw_attributes...)
-    _validate_nt_like_keyword(axis, "axis")
-    _validate_nt_like_keyword(figure, "figure")
-
-    fig = Figure(; figure...)
-
-    axis = Dict(pairs(axis))
-    ax = get_axis(fig, P, axis, Dict{Symbol, Any}(kw_attributes), args)
-
-    fig[1, 1] = ax
-    p = plot!(ax, P, Attributes(kw_attributes), args...)
-    return FigureAxisPlot(fig, ax, p)
+    return nothing
 end
 
-# without scenelike, use current axis of current figure
+args_preferred_axis(::AbstractVector, ::AbstractVector, ::AbstractVector, ::Function) = LScene
+args_preferred_axis(::AbstractArray{T,3}) where {T} = LScene
 
-function plot!(P::PlotFunc, args...; kw_attributes...)
+function args_preferred_axis(::AbstractVector{<:Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}}) where {DIM}
+    return DIM === 2 ? Axis : LScene
+end
+
+function args_preferred_axis(::Union{AbstractGeometry{DIM},GeometryBasics.Mesh{DIM}}) where {DIM}
+    return DIM === 2 ? Axis : LScene
+end
+
+args_preferred_axis(::AbstractVector{<:Point3}) = LScene
+args_preferred_axis(::AbstractVector{<:Point2}) = Axis
+
+
+preferred_axis_type(::Volume) = LScene
+preferred_axis_type(::Union{Image,Heatmap}) = Axis
+
+function preferred_axis_type(p::Plot{F}) where F
+    # Otherwise, we check the arguments
+    input_args = map(to_value, p.args)
+    result = args_preferred_axis(Plot{F}, input_args...)
+    isnothing(result) || return result
+    conv_args = map(to_value, p.converted)
+    result = args_preferred_axis(Plot{F}, conv_args...)
+    isnothing(result) && return Axis # Fallback to Axis if nothing found
+    return result
+end
+
+to_dict(dict::Dict) = dict
+to_dict(nt::NamedTuple) = Dict{Symbol,Any}(pairs(nt))
+to_dict(attr::Attributes) = attributes(attr)
+
+function extract_attributes(dict, key)
+    attributes = pop!(dict, key, Dict{Symbol,Any}())
+    _validate_nt_like_keyword(attributes, key)
+    return to_dict(attributes)
+end
+
+function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Dict)
+    axis_kw = extract_attributes(attributes, :axis)
+    AxType = if haskey(axis_kw, :type)
+        pop!(axis_kw, :type)
+    else
+        preferred_axis_type(plot)
+    end
+    if AxType == FigureOnly # For FigureSpec, which creates Axes dynamically
+        return nothing
+    end
+    bbox = pop!(axis_kw, :bbox, nothing)
+    return _block(AxType, figure, [], axis_kw, bbox)
+end
+
+function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
+    figure_kw = extract_attributes(attributes, :figure)
+    figure = Figure(; figure_kw...)
+    ax = create_axis_for_plot(figure, plot, attributes)
+    if isnothing(ax) # For FigureSpec
+        return figure
+    else
+        figure[1, 1] = ax
+        return FigureAxis(figure, ax)
+    end
+end
+
+MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Plot, Scene}) = s
+
+function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ::Nothing)
     figure = current_figure()
     isnothing(figure) && error("There is no current figure to plot into.")
+    _disallow_keyword(:figure, attributes)
     ax = current_axis(figure)
     isnothing(ax) && error("There is no current axis to plot into.")
-    return plot!(P, ax, args...; kw_attributes...)
+    _disallow_keyword(:axis, attributes)
+    return ax
 end
 
-function plot(P::PlotFunc, gp::GridPosition, args...; axis=NamedTuple(), kw_attributes...)
-    _validate_nt_like_keyword(axis, "axis")
 
-    c = contents(gp; exact=true)
-    if !isempty(c)
-        error("""
-        You have used the non-mutating plotting syntax with a GridPosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
-
-        $(c)
-
-        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
-        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
-        """)
-    end
-
-    axis = Dict(pairs(axis))
-    fig = get_top_parent(gp)
-    ax = get_axis(fig, P, axis, Dict{Symbol,Any}(kw_attributes), args)
-
-    gp[] = ax
-    p = plot!(P, ax, args...; kw_attributes...)
-    return AxisPlot(ax, p)
-end
-
-function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
+function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gp::GridPosition)
+    _disallow_keyword(:figure, attributes)
     c = contents(gp; exact=true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
-    return plot!(P, ax, args...; kwargs...)
+    _disallow_keyword(:axis, attributes)
+    return ax
 end
 
-function plot(P::PlotFunc, gsp::GridSubposition, args...; axis=NamedTuple(), kw_attributes...)
-    _validate_nt_like_keyword(axis, "axis")
+function create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition)
+    _disallow_keyword(:figure, attributes)
+    figure = get_top_parent(gp)
+    c = contents(gp; exact=true)
+    if !isempty(c)
+        error("""
+        You have used the non-mutating plotting syntax with a GridPosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+        $(c)
+        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
+        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
+        """)
+    end
+    ax = create_axis_for_plot(figure, plot, attributes)
+    if isnothing(ax) # For FigureSpec
+        return gp
+    else
+        gp[] = ax
+        return ax
+    end
+end
 
+function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gsp::GridSubposition)
+    _disallow_keyword(:figure, attributes)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
+    gp = layout[gsp.rows, gsp.cols, gsp.side]
+    c = contents(gp; exact=true)
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
+        error("There is not just one axis at $(gp).")
+    end
+    _disallow_keyword(:axis, attributes)
+    return first(c)
+end
+
+function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposition)
+    _disallow_keyword(:figure, attributes)
     GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
     c = contents(gsp; exact=true)
     if !isempty(c)
@@ -128,27 +190,25 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis=NamedTuple(), kw_
         """)
     end
 
-    fig = get_top_parent(gsp)
-    axis = Dict(pairs(axis))
-    ax = get_axis(fig, P, axis, Dict{Symbol,Any}(kw_attributes), args)
-
+    figure = get_top_parent(gsp)
+    ax = create_axis_for_plot(figure, plot, attributes)
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
-    p = plot!(P, ax, args...; kw_attributes...)
-    return AxisPlot(ax, p)
+    return ax
 end
 
-function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
-    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
-
-    gp = layout[gsp.rows, gsp.cols, gsp.side]
-
-    c = contents(gp; exact=true)
-    if !(length(c) == 1 && can_be_current_axis(c[1]))
-        error("There is not just one axis at $(gp).")
-    end
-    ax = first(c)
-    return plot!(P, ax, args...; kwargs...)
+function create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ax::AbstractAxis)
+    _disallow_keyword(:axis, attributes)
+    return ax
 end
+
+function create_axis_like(@nospecialize(::AbstractPlot), ::Dict, ::Union{Scene,AbstractAxis})
+    return error("Plotting into an axis without !")
+end
+
+figurelike_return(fa::FigureAxis, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.axis, plot)
+figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
+figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
+figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
 
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
 
@@ -157,4 +217,88 @@ function update_state_before_display!(f::Figure)
         update_state_before_display!(c)
     end
     return
+end
+
+
+
+@inline plot_args(args...) = (nothing, args)
+@inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Plot,GridSubposition,GridPosition},
+                           args...)
+    return (a, args)
+end
+function fig_keywords!(kws)
+    figkws = Dict{Symbol,Any}()
+    if haskey(kws, :axis)
+        figkws[:axis] = pop!(kws, :axis)
+    end
+    if haskey(kws, :figure)
+        figkws[:figure] = pop!(kws, :figure)
+    end
+    return figkws
+end
+
+# Don't inline these, since they will get called from `scatter!(args...; kw...)` which gets specialized to all kw args
+@noinline function MakieCore._create_plot(F, attributes::Dict, args...)
+    figarg, pargs = plot_args(args...)
+    figkws = fig_keywords!(attributes)
+    plot = Plot{F}(pargs, attributes)
+    ax = create_axis_like(plot, figkws, figarg)
+    plot!(ax, plot)
+    return figurelike_return(ax, plot)
+end
+
+@noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
+    figarg, pargs = plot_args(args...)
+    figkws = fig_keywords!(attributes)
+    plot = Plot{F}(pargs, attributes)
+    ax = create_axis_like!(plot, figkws, figarg)
+    plot!(ax, plot)
+    return figurelike_return!(ax, plot)
+end
+
+@noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
+    plot = Plot{F}(args, attributes)
+    plot!(scene, plot)
+    return plot
+end
+
+# This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
+# Which skips axis creation
+# TODO, what to return for the dynamically created axes?
+figurelike_return(f::GridPosition, p::AbstractPlot) = p
+figurelike_return(f::Figure, p::AbstractPlot) = FigureAxisPlot(f, nothing, p)
+MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = fig
+
+# Axis interface
+
+Makie.can_be_current_axis(ax::AbstractAxis) = true
+
+function update_state_before_display!(ax::AbstractAxis)
+    reset_limits!(ax)
+    return
+end
+
+plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
+
+function plot!(ax::AbstractAxis, plot::AbstractPlot)
+    plot!(ax.scene, plot)
+    # some area-like plots basically always look better if they cover the whole plot area.
+    # adjust the limit margins in those cases automatically.
+    needs_tight_limits(plot) && tightlimits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
+    return plot
+end
+
+function Base.delete!(ax::AbstractAxis, plot::AbstractPlot)
+    delete!(ax.scene, plot)
+    return ax
+end
+
+function Base.empty!(ax::AbstractAxis)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
+    end
+    return ax
 end
