@@ -1070,7 +1070,8 @@ end
     hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
 
-Hide decorations of the x-axis: label, ticklabels, ticks and grid.
+Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
 """
 function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1098,7 +1099,8 @@ end
     hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
 
-Hide decorations of the y-axis: label, ticklabels, ticks and grid.
+Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
 """
 function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1123,9 +1125,13 @@ function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = tr
 end
 
 """
-    hidedecorations!(la::Axis)
+    hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true,
+                     grid = true, minorgrid = true, minorticks = true)
 
 Hide decorations of both x and y-axis: label, ticklabels, ticks and grid.
+Keyword arguments can be used to disable hiding of certain types of decorations.
+
+See also [`hidexdecorations!`], [`hideydecorations!`], [`hidezdecorations!`]
 """
 function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1139,7 +1145,8 @@ end
     hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 
 Hide all specified axis spines. Hides all spines by default, otherwise choose
-with the symbols :l, :r, :b and :t.
+which sides to hide with the symbols :l (left), :r (right), :b (bottom) and
+:t (top).
 """
 function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     for s in spines
@@ -1158,9 +1165,9 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 end
 
 """
-    space = tight_xticklabel_spacing!(ax::Axis)
+    space = tight_yticklabel_spacing!(ax::Axis)
 
-Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
+Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_yticklabel_spacing!(ax::Axis)
     space = tight_ticklabel_spacing!(ax.yaxis)
@@ -1170,7 +1177,7 @@ end
 """
     space = tight_xticklabel_spacing!(ax::Axis)
 
-Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
+Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_xticklabel_spacing!(ax::Axis)
     space = tight_ticklabel_spacing!(ax.xaxis)
@@ -1178,7 +1185,7 @@ function tight_xticklabel_spacing!(ax::Axis)
 end
 
 """
-    tight_ticklabel_spacing(ax::Axis)
+    tight_ticklabel_spacing!(ax::Axis)
 
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
