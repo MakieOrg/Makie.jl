@@ -1680,6 +1680,8 @@ end
         radius_at_origin = 0f0
         "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
         theta_as_x::Bool = true
+        "Controls whether `r < 0` (after applying `radius_at_origin`) gets clipped (true) or not (false)."
+        clip_r::Bool = true
         "The relative margins added to the autolimits in r direction."
         rautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
         "The relative margins added to the autolimits in theta direction."

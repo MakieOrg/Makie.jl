@@ -30,11 +30,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
 
     Observables.connect!(
         po.scene.transformation.transform_func,
-        @lift(Polar($(po.theta_as_x), $(po.target_theta_0), $(po.direction), $(po.target_r0)))
+        @lift(Polar($(po.target_theta_0), $(po.direction), $(po.target_r0), $(po.theta_as_x), $(po.clip_r)))
     )
     Observables.connect!(
         po.overlay.transformation.transform_func,
-        @lift(Polar(false, $(po.target_theta_0), $(po.direction)))
+        @lift(Polar($(po.target_theta_0), $(po.direction), 0.0, false))
     )
 
     # Draw clip, grid lines, spine, ticks

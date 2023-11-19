@@ -378,26 +378,36 @@ end
 ################################################################################
 
 """
-    Polar(theta_0::Float64 = 0.0, direction::Int = +1, r0::Float64 = 0)
+    Polar(theta_as_x = true, clip_r = true, theta_0::Float64 = 0.0, direction::Int = +1, r0::Float64 = 0)
 
-This struct defines a general polar-to-cartesian transformation, i.e.,
+This struct defines a general polar-to-cartesian transformation, i.e.
+
 ```math
 (r, θ) -> ((r - r₀) ⋅ \\cos(direction ⋅ (θ + θ₀)), (r - r₀) ⋅ \\sin(direction \\cdot (θ + θ₀)))
 ```
 
-where theta is assumed to be in radians.
+where θ is assumed to be in radians.
 
-`direction` should be either -1 or +1, `r0` should be positive and `theta_0` may be any value.
-
-Note that for `r0 != 0` the inversion may return wrong results.
+Controls:
+- `theta_as_x = true` controls the order of incoming arguments. If true, a `Point2f`
+is interpreted as `(θ, r)`, otherwise `(r, θ)`.
+- `clip_r = true` controls whether negative radii are clipped. If true, `r < 0`
+produces `NaN`, otherwise they simply enter in the formula above as is. Note that
+the inversion only returns `r ≥ 0`
+- `theta_0 = 0` offsets angles by the specified amount.
+- `direction = +1` inverts the direction of θ.
+- `r0 = 0` offsets radii by the specified amount. Not that this will affect the
+shape of transformed objects.
 """
 struct Polar
     theta_as_x::Bool
+    clip_r::Bool
     theta_0::Float64
     direction::Int
     r0::Float64
-    function Polar(theta_as_x = true, theta_0 = 0.0, direction = +1, r0 = 0)
-        return new(theta_as_x, theta_0, direction, r0)
+
+    function Polar(theta_0::Real = 0.0, direction::Int = +1, r0::Real = 0, theta_as_x::Bool = true, clip_r::Bool = true)
+        return new(theta_as_x, clip_r, theta_0, direction, r0)
     end
 end
 
@@ -405,12 +415,15 @@ Base.broadcastable(x::Polar) = (x,)
 
 function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
     if trans.theta_as_x
-        r = max(0.0, point[2] - trans.r0)
-        θ = trans.direction * (point[1] + trans.theta_0)
+        θ, r = point
     else
-        r = max(0.0, point[1] - trans.r0)
-        θ = trans.direction * (point[2] + trans.theta_0)
+        r, θ = point
     end
+    r = r - trans.r0
+    if trans.clip_r && (r < 0.0)
+        return Point2{T}(NaN)
+    end
+    θ = trans.direction * (θ + trans.theta_0)
     y, x = r .* sincos(θ)
     return Point2{T}(x, y)
 end
