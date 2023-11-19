@@ -213,7 +213,7 @@ function setup_camera_matrices!(po::PolarAxis)
     setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((0.0, 10.0)))
     setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((0.0, 2pi)))
     setfield!(po, :target_theta_0, map(identity, po.theta_0))
-    setfield!(po, :target_r0, Observable{Float32}(0f0))
+    setfield!(po, :target_r0, Observable{Float32}(po.radius_at_origin[] isa Real ? po.radius_at_origin[] : 0f0))
     reset_limits!(po)
     onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
 
