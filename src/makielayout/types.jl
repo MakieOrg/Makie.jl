@@ -1636,6 +1636,7 @@ end
     target_rlims::Observable{Tuple{Float64, Float64}}
     target_thetalims::Observable{Tuple{Float64, Float64}}
     target_theta_0::Observable{Float32}
+    target_r0::Observable{Float32}
     @attributes begin
         # Generic
 
@@ -1675,8 +1676,8 @@ end
         direction::Int = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
         theta_0::Float32 = 0f0
-        "Sets the radius at the origin of the PolarAxis, such that `r_out = r_in - radius_at_origin`."
-        radius_at_origin::Float32 = 0f0
+        "Sets the radius at the origin of the PolarAxis such that `r_out = r_in - radius_at_origin`. Can be set to `automatic` to match rmin."
+        radius_at_origin = 0f0
         "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
         theta_as_x::Bool = true
         "The relative margins added to the autolimits in r direction."
