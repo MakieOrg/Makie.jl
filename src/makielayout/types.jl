@@ -1668,7 +1668,7 @@ end
 
         # Limits & transformation settings
 
-        "The radial limits of the PolarAxis."
+        "The radial limits of the PolarAxis. "
         rlimits = (:origin, nothing)
         "The angle limits of the PolarAxis. (0.0, 2pi) results a full circle. (nothing, nothing) results in limits picked based on plot limits."
         thetalimits = (0.0, 2pi)
@@ -1676,8 +1676,8 @@ end
         direction::Int = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
         theta_0::Float32 = 0f0
-        "Sets the radius at the origin of the PolarAxis such that `r_out = r_in - radius_at_origin`. Can be set to `automatic` to match rmin."
-        radius_at_origin = 0f0
+        "Sets the radius at the origin of the PolarAxis such that `r_out = r_in - radius_at_origin`. Can be set to `automatic` to match rmin. Note that this will affect the shape of plotted objects."
+        radius_at_origin = automatic
         "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
         theta_as_x::Bool = true
         "Controls whether `r < 0` (after applying `radius_at_origin`) gets clipped (true) or not (false)."

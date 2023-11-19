@@ -250,8 +250,8 @@ rs = 1.0 ./ sin.(range(pi/4, 3pi/4, length=51)[1:end-1])
 rs = vcat(rs, rs, rs, rs, rs[1])
 
 fig = Figure(size = (900, 300))
-ax1 = PolarAxis(fig[1, 1], radius_at_origin = -2, title = "radius_at_origin = -2")
-ax2 = PolarAxis(fig[1, 2], title = "radius_at_origin = 0")
+ax1 = PolarAxis(fig[1, 1], radius_at_origin = -2,  title = "radius_at_origin = -2")
+ax2 = PolarAxis(fig[1, 2], radius_at_origin = 0,   title = "radius_at_origin = 0")
 ax3 = PolarAxis(fig[1, 3], radius_at_origin = 0.5, title = "radius_at_origin = 0.5")
 for ax in (ax1, ax2, ax3)
     lines!(ax, phis, rs .- 2, color = :red, linewidth = 4)
@@ -271,8 +271,8 @@ With that setting `r_out < 0` will pass through the polar transform as is, resul
 \begin{examplefigure}{svg = true}
 ```julia
 fig = Figure(size = (600, 300))
-ax1 = PolarAxis(fig[1, 1], clip_r = true, title = "clip_r = true")
-ax2 = PolarAxis(fig[1, 2], clip_r = false, title = "clip_r = false")
+ax1 = PolarAxis(fig[1, 1], radius_at_origin = 0.0, clip_r = true, title = "clip_r = true")
+ax2 = PolarAxis(fig[1, 2], radius_at_origin = 0.0, clip_r = false, title = "clip_r = false")
 for ax in (ax1, ax2)
     lines!(ax, 0..2pi, phi -> cos(2phi) - 0.5, color = :red, linewidth = 4)
     lines!(ax, 0..2pi, phi -> sin(2phi), color = :black, linewidth = 4)

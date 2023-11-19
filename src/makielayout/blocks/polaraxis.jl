@@ -485,7 +485,7 @@ function reset_limits!(po::PolarAxis)
             if po.radius_at_origin[] isa Real
                 po.target_r0[] = po.radius_at_origin[]
             else
-                po.target_r0[] = rmin
+                po.target_r0[] = min(0.0, rmin)
             end
 
             # cleanup autolimits (0 width, rmin ≥ target_r0)
