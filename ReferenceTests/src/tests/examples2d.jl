@@ -1218,7 +1218,7 @@ end
 
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
-    ax = PolarAxis(f[1, 1])
+    ax = PolarAxis(f[1, 1], radius_at_origin = 0.0)
     points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = triplot!(ax, points)
     f
