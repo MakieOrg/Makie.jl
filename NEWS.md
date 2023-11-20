@@ -1,5 +1,7 @@
 # News
 
+## master
+
 ## 0.20
 
 - GLMakie has gained support for HiDPI (aka Retina) screens. This also enables saving images with higher resolution than screen pixel dimensions [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544).
@@ -9,12 +11,12 @@
 - Changed the glyph used for negative numbers in tick labels from hyphen to minus [#3379](https://github.com/MakieOrg/Makie.jl/pull/3379).
 - New declarative API for AlgebraOfGraphics, Pluto and easier dashboards [#3281](https://github.com/MakieOrg/Makie.jl/pull/3281).
 - WGLMakie gets faster line rendering with less updating bugs [#3062](https://github.com/MakieOrg/Makie.jl/pull/3062).
+- **breaking** Replaced `PolarAxis.radial_distortion_threshold` with `PolarAxis.radius_at_origin`. [#3381](https://github.com/MakieOrg/Makie.jl/pull/3381)
 - **breaking** Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
 - **breaking** Refactored the `SurfaceLike` family of traits into `VertexGrid`, `CellGrid` and `ImageLike` [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106).
 - **breaking** Deprecated `pixelarea(scene)` and `scene.px_area` in favor of viewport.
 - **breaking** Refactoring the `Combined` Plot object and renaming it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
 - **breaking** removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
-
 
 ## v0.19.12
 

@@ -1636,6 +1636,7 @@ end
     target_rlims::Observable{Tuple{Float64, Float64}}
     target_thetalims::Observable{Tuple{Float64, Float64}}
     target_theta_0::Observable{Float32}
+    target_r0::Observable{Float32}
     @attributes begin
         # Generic
 
@@ -1664,21 +1665,23 @@ end
         clip::Bool = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
         clipcolor = automatic
-        "Sets a threshold relative to `rmin/rmax` after which radii are distorted to fit more on the screen. No distortion is applied if `radial_distortion_threshold ≥ 1`"
-        radial_distortion_threshold::Float64 = 1.0
 
         # Limits & transformation settings
 
-        "The radial limits of the PolarAxis."
-        rlimits = (0.0, nothing)
+        "The radial limits of the PolarAxis. "
+        rlimits = (:origin, nothing)
         "The angle limits of the PolarAxis. (0.0, 2pi) results a full circle. (nothing, nothing) results in limits picked based on plot limits."
         thetalimits = (0.0, 2pi)
         "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
         direction::Int = 1
         "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
         theta_0::Float32 = 0f0
+        "Sets the radius at the origin of the PolarAxis such that `r_out = r_in - radius_at_origin`. Can be set to `automatic` to match rmin. Note that this will affect the shape of plotted objects."
+        radius_at_origin = automatic
         "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
         theta_as_x::Bool = true
+        "Controls whether `r < 0` (after applying `radius_at_origin`) gets clipped (true) or not (false)."
+        clip_r::Bool = true
         "The relative margins added to the autolimits in r direction."
         rautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
         "The relative margins added to the autolimits in theta direction."

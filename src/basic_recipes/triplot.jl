@@ -239,3 +239,17 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
              strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift=-3.0f-5)
     return p
 end
+
+
+function data_limits(p::Triplot{<:Tuple{<:Vector{<:Point}}})
+    if transform_func(p) isa Polar
+        # Because the Polar transform is handled explicitly we cannot rely
+        # on the default data_limits. (data limits are pre transform)
+        iter = (to_ndim(Point3f, p, 0f0) for p in p.converted[1][])
+        limits_from_transformed_points(iter)
+    else
+        # First component is either another Voronoiplot or a poly plot. Both
+        # cases span the full limits of the plot
+        data_limits(p.plots[1])
+    end
+end

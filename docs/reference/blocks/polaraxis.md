@@ -204,9 +204,9 @@ clipping via the `clip` attribute.
 
 For reference, the z values used by `PolarAxis` are `po.griddepth[] = 8999` for grid lines, 9000 for the clip polygons, 9001 for spines and 9002 for tick labels.
 
-### Radial Distortion
+### Radial Offset
 
-If you have a plot with a large rmin and rmax over a wide range of angles you will end up with a narrow PolarAxis.
+If you have a plot with rlimits far away from 0 you will end up with a lot of empty space in the PolarAxis.
 Consider for example:
 
 \begin{examplefigure}{svg = true}
@@ -218,22 +218,68 @@ fig
 ```
 \end{examplefigure}
 
-In this case you may want to distort the r-direction to make more of your data visible.
-This can be done by setting `ax.radial_distortion_threshold` to a value between 0 and 1.
+In this case you may want to offset the r-direction to make more of your data visible.
+This can be done by setting `ax.radius_at_origin` which translates radii as `r_out = r_in - radius_at_origin`.
 
 \begin{examplefigure}{svg = true}
 ```julia
 fig = Figure()
-ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radial_distortion_threshold = 0.2, rlimits = (nothing, nothing))
+ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radius_at_origin = 8)
 lines!(ax, range(0, pi, length=100), 10 .+ sin.(0.3 .* (1:100)))
 fig
 ```
 \end{examplefigure}
 
-Internally PolarAxis will check `rmin/rmax` against the set threshold.
-If that ratio exceed the threshold, the polar transform is adjusted to shift all radii by some `r0` such that `(rmin - r0) / rmax - r0) == ax.radial_distortion_threshold`.
-In effect this will hold the inner cutout/clip radius at a fraction of the outer radius.
-Note that at `ax.radial_distortion_threshold >= 1.0` (default) this will never distort your data.
+This can also be used to show a plot with negative radii:
+
+\begin{examplefigure}{svg = true}
+```julia
+fig = Figure()
+ax = PolarAxis(fig[1, 1], thetalimits = (0, pi), radius_at_origin = -12)
+lines!(ax, range(0, pi, length=100), sin.(0.3 .* (1:100)) .- 10)
+fig
+```
+\end{examplefigure}
+
+Note however that translating radii results in some level of distortion:
+
+\begin{examplefigure}{svg = true}
+```julia
+phis = range(pi/4, 9pi/4, length=201)
+rs = 1.0 ./ sin.(range(pi/4, 3pi/4, length=51)[1:end-1])
+rs = vcat(rs, rs, rs, rs, rs[1])
+
+fig = Figure(size = (900, 300))
+ax1 = PolarAxis(fig[1, 1], radius_at_origin = -2,  title = "radius_at_origin = -2")
+ax2 = PolarAxis(fig[1, 2], radius_at_origin = 0,   title = "radius_at_origin = 0")
+ax3 = PolarAxis(fig[1, 3], radius_at_origin = 0.5, title = "radius_at_origin = 0.5")
+for ax in (ax1, ax2, ax3)
+    lines!(ax, phis, rs .- 2, color = :red, linewidth = 4)
+    lines!(ax, phis, rs, color = :black, linewidth = 4)
+    lines!(ax, phis, rs .+ 0.5, color = :blue, linewidth = 4)
+end
+fig
+```
+\end{examplefigure}
+
+### Radial clipping
+
+By default radii `r_out = r_in - radius_at_origin < 0` are clipped by the Polar transform.
+This can be disabled by setting `ax.clip_r = false`.
+With that setting `r_out < 0` will pass through the polar transform as is, resulting in a coordinate at $(|r_{out}|, \theta - pi)$.
+
+\begin{examplefigure}{svg = true}
+```julia
+fig = Figure(size = (600, 300))
+ax1 = PolarAxis(fig[1, 1], radius_at_origin = 0.0, clip_r = true, title = "clip_r = true")
+ax2 = PolarAxis(fig[1, 2], radius_at_origin = 0.0, clip_r = false, title = "clip_r = false")
+for ax in (ax1, ax2)
+    lines!(ax, 0..2pi, phi -> cos(2phi) - 0.5, color = :red, linewidth = 4)
+    lines!(ax, 0..2pi, phi -> sin(2phi), color = :black, linewidth = 4)
+end
+fig
+```
+\end{examplefigure}
 
 ## Attributes
 
