@@ -1,25 +1,26 @@
 # News
 
-- (Breaking) Replaced `PolarAxis.radial_distortion_threshold` with `PolarAxis.radius_at_origin`. [#3381](https://github.com/MakieOrg/Makie.jl/pull/3381)
-
-## beta
-
-- GLMakie has gained support for HiDPI (aka Retina) screens.
-  This also enables saving images with higher resolution than screen pixel dimensions.
-  [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544)
-- Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie. [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598)
-- Improved 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
-- Refactored the `SurfaceLike` family of traits into `VertexBasedGrid`, `CellGrid` and `ImageLike`. [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106)
-- Added `shading = :verbose` in GLMakie to allow for multiple light sources. Also added more light types, fixed light directions for the previous lighting model (now `shading = :fast`) and adjusted `backlight` to affect normals. [#3246](https://github.com/MakieOrg/Makie.jl/pull/3246)
-- Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
-- Changed the glyph used for negative numbers in tick labels from hyphen to minus [#3379](https://github.com/MakieOrg/Makie.jl/pull/3379).
-
 ## master
 
-- Added `cornerradius` attribute to `Box` for rounded corners [#3346](https://github.com/MakieOrg/Makie.jl/pull/3346).
+## 0.20
+
+- GLMakie has gained support for HiDPI (aka Retina) screens. This also enables saving images with higher resolution than screen pixel dimensions [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544).
+- Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598).
+- Improved 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746).
+- Added `shading = :verbose` in GLMakie to allow for multiple light sources. Also added more light types, fixed light directions for the previous lighting model (now `shading = :fast`) and adjusted `backlight` to affect normals[#3246](https://github.com/MakieOrg/Makie.jl/pull/3246).
+- Changed the glyph used for negative numbers in tick labels from hyphen to minus [#3379](https://github.com/MakieOrg/Makie.jl/pull/3379).
+- New declarative API for AlgebraOfGraphics, Pluto and easier dashboards [#3281](https://github.com/MakieOrg/Makie.jl/pull/3281).
+- WGLMakie gets faster line rendering with less updating bugs [#3062](https://github.com/MakieOrg/Makie.jl/pull/3062).
+- **breaking** Replaced `PolarAxis.radial_distortion_threshold` with `PolarAxis.radius_at_origin`. [#3381](https://github.com/MakieOrg/Makie.jl/pull/3381)
+- **breaking** Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
+- **breaking** Refactored the `SurfaceLike` family of traits into `VertexGrid`, `CellGrid` and `ImageLike` [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106).
+- **breaking** Deprecated `pixelarea(scene)` and `scene.px_area` in favor of viewport.
+- **breaking** Refactoring the `Combined` Plot object and renaming it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
+- **breaking** removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
 
 ## v0.19.12
 
+- Added `cornerradius` attribute to `Box` for rounded corners [#3346](https://github.com/MakieOrg/Makie.jl/pull/3346).
 - Fix grouping of a zero-height bar in `barplot`. Now a zero-height bar shares the same properties of the previous bar, and if the bar is the first one, its height is treated as positive if and only if there exists a bar of positive height or all bars are zero-height [#3058](https://github.com/MakieOrg/Makie.jl/pull/3058).
 - Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272).
 - Added `cornerradius` attribute to `Box` for rounded corners [#3308](https://github.com/MakieOrg/Makie.jl/pull/3308).
