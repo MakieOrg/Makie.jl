@@ -260,7 +260,7 @@ function initialize_block!(cb::Colorbar)
         inspectable=false
     )
     image!(blockscene,
-        lift(x-> LinRange(extrema(x)..., 2), xrange), lift(y-> LinRange(extrema(y)..., 2), yrange), continous_pixels;
+        lift(extrema, xrange), lift(extrema, yrange), continous_pixels;
         colormap = colormap,
         visible = show_continous,
         inspectable = false
