@@ -21,7 +21,24 @@ function get_frames(video)
 end
 
 function compare_media(a::Matrix, b::Matrix; sigma=[1,1])
-    Images.test_approx_eq_sigma_eps(a, b, sigma, Inf)
+    binwidth_px_approx = 15
+
+    n_tiles = ceil.(Int, size(a) ./ binwidth_px_approx)
+    boundaries_x = round.(Int, range(1, size(a, 1), length = n_tiles[1] + 1))
+    boundaries_y = round.(Int, range(1, size(a, 2), length = n_tiles[2] + 1))
+
+    pixel_distance(a::RGBf, b::RGBf) = (a.r - b.r) ^ 2 + (a.g - b.g) ^ 2 + (a.b - b.b) ^ 2
+
+    map(Iterators.product(zip(boundaries_x[1:end-1], boundaries_x[2:end]), zip(boundaries_y[1:end-1], boundaries_y[2:end]))) do ((xstart, xstop), (ystart, ystop))
+        diff_score = let 
+            tile_a = @view(a[xstart:xstop, ystart:ystop])
+            tile_b = @view(b[xstart:xstop, ystart:ystop])
+            sum(zip(tile_a, tile_b)) do (_a, _b)
+                pixel_distance(_a, _b)
+            end / length(tile_a)
+
+        end
+    end
 end
 
 function compare_media(a, b; sigma=[1,1])
