@@ -25,7 +25,7 @@ end
                     logger.logs[1].message)
         scene = Scene(; size=(600, 450))
         msg = @depwarn_message scene.px_area
-        @test occursin(".px_area` got renamed to `.viewport`, and means the area the scene maps to in device indepentent units",
+        @test occursin(".px_area` got renamed to `.viewport`, and means the area the scene maps to in device independent units",
                        msg)
         # @test_deprecated seems to be broken on 1.10?!
         msg = @depwarn_message pixelarea(scene)
@@ -45,5 +45,11 @@ end
         @test occursin("DiscreteSurface is deprecated", msg)
         msg = @depwarn_message ContinuousSurface()
         @test occursin("ContinuousSurface is deprecated", msg)
+    end
+    @testset "AbstractVector ImageLike" begin
+        msg = @depwarn_message image(1:10, 1..10, zeros(10, 10))
+        @test occursin("Encountered an `AbstractVector` with value 1:10 on side x", msg)
+        msg = @depwarn_message image(1..10, 1:10, zeros(10, 10))
+        @test occursin("Encountered an `AbstractVector` with value 1:10 on side y", msg)
     end
 end
