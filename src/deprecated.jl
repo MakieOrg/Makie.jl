@@ -6,7 +6,7 @@ Base.@deprecate_binding ContinuousSurface VertexGrid true
 
 function Base.getproperty(scene::Scene, field::Symbol)
     if field === :px_area
-        @warn "`.px_area` got renamed to `.viewport`, and means the area the scene maps to in device indepentent units, not pixels. Note, `size(scene) == widths(scene.viewport[])`"
+        @warn "`.px_area` got renamed to `.viewport`, and means the area the scene maps to in device independent units, not pixels. Note, `size(scene) == widths(scene.viewport[])`"
         return scene.viewport
     end
     return getfield(scene, field)
