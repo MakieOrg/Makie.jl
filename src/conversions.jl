@@ -1340,42 +1340,263 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-const DEFAULT_MARKER_MAP = Dict{Symbol, BezierPath}()
+#=
+The below is the output from:
+```julia
+# The bezier markers should not look out of place when used together with text
+# where both markers and text are given the same size, i.e. the marker and fontsizes
+# should correspond approximately in a visual sense.
+
+# All the basic bezier shapes are approximately built in a 1 by 1 square centered
+# around the origin, with slight deviations to match them better to each other.
+
+# An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
+# shapes are just used as is, they look much too large in comparison.
+# To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
+size_factor = 0.75
+DEFAULT_MARKER_MAP[:rect] = scale(BezierSquare, size_factor)
+DEFAULT_MARKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
+DEFAULT_MARKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:cross] = scale(BezierCross, size_factor)
+DEFAULT_MARKER_MAP[:xcross] = scale(BezierX, size_factor)
+DEFAULT_MARKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
+DEFAULT_MARKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
+DEFAULT_MARKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
+DEFAULT_MARKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
+DEFAULT_MARKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
+DEFAULT_MARKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
+DEFAULT_MARKER_MAP[:+] = scale(BezierCross, size_factor)
+DEFAULT_MARKER_MAP[:x] = scale(BezierX, size_factor)
+DEFAULT_MARKER_MAP[:circle] = scale(BezierCircle, size_factor)
+```
+We have to write this out to make sure we rotate/scale don't generate slightly different values between Julia versions.
+This would create different hashes, making the caching in the texture atlas fail!
+See: https://github.com/MakieOrg/Makie.jl/pull/3394
+=#
+
+const DEFAULT_MARKER_MAP = Dict(:+ => BezierPath([Makie.MoveTo([0.1245, 0.375]),
+                                                  Makie.LineTo([0.1245, 0.1245]),
+                                                  Makie.LineTo([0.375, 0.1245]),
+                                                  Makie.LineTo([0.375, -0.12449999999999999]),
+                                                  Makie.LineTo([0.1245, -0.1245]),
+                                                  Makie.LineTo([0.12450000000000003, -0.375]),
+                                                  Makie.LineTo([-0.12449999999999997, -0.375]),
+                                                  Makie.LineTo([-0.12449999999999999, -0.12450000000000003]),
+                                                  Makie.LineTo([-0.375, -0.12450000000000006]),
+                                                  Makie.LineTo([-0.375, 0.12449999999999994]),
+                                                  Makie.LineTo([-0.12450000000000003, 0.12449999999999999]),
+                                                  Makie.LineTo([-0.12450000000000007, 0.37499999999999994]),
+                                                  Makie.ClosePath()]),
+                                :diamond => BezierPath([Makie.MoveTo([0.4464931614186469,
+                                                                      -5.564531862779532e-17]),
+                                                        Makie.LineTo([2.10398220755128e-17,
+                                                                      0.4464931614186469]),
+                                                        Makie.LineTo([-0.4464931614186469,
+                                                                      5.564531862779532e-17]),
+                                                        Makie.LineTo([-2.10398220755128e-17,
+                                                                      -0.4464931614186469]),
+                                                        Makie.ClosePath()]),
+                                :star4 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.13258251920342445,
+                                                                    0.13258251920342445]),
+                                                      Makie.LineTo([-0.44999999999999996,
+                                                                    5.5109108366332553e-17]),
+                                                      Makie.LineTo([-0.13258251920342445,
+                                                                    -0.13258251920342445]),
+                                                      Makie.LineTo([-8.266365659379842e-17,
+                                                                    -0.44999999999999996]),
+                                                      Makie.LineTo([0.13258251920342445,
+                                                                    -0.13258251920342445]),
+                                                      Makie.LineTo([0.44999999999999996,
+                                                                    -1.1021821673266511e-16]),
+                                                      Makie.LineTo([0.13258251920342445, 0.13258251920342445]),
+                                                      Makie.ClosePath()]),
+                                :star8 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.09471414797008038, 0.2286601772904396]),
+                                                      Makie.LineTo([-0.31819804608821867,
+                                                                    0.31819804608821867]),
+                                                      Makie.LineTo([-0.2286601772904396, 0.09471414797008038]),
+                                                      Makie.LineTo([-0.44999999999999996,
+                                                                    5.5109108366332553e-17]),
+                                                      Makie.LineTo([-0.2286601772904396,
+                                                                    -0.09471414797008038]),
+                                                      Makie.LineTo([-0.31819804608821867,
+                                                                    -0.31819804608821867]),
+                                                      Makie.LineTo([-0.09471414797008038,
+                                                                    -0.2286601772904396]),
+                                                      Makie.LineTo([-8.266365659379842e-17,
+                                                                    -0.44999999999999996]),
+                                                      Makie.LineTo([0.09471414797008038, -0.2286601772904396]),
+                                                      Makie.LineTo([0.31819804608821867,
+                                                                    -0.31819804608821867]),
+                                                      Makie.LineTo([0.2286601772904396, -0.09471414797008038]),
+                                                      Makie.LineTo([0.44999999999999996,
+                                                                    -1.1021821673266511e-16]),
+                                                      Makie.LineTo([0.2286601772904396, 0.09471414797008038]),
+                                                      Makie.LineTo([0.31819804608821867, 0.31819804608821867]),
+                                                      Makie.LineTo([0.09471414797008038, 0.2286601772904396]),
+                                                      Makie.ClosePath()]),
+                                :star6 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.11249999999999999, 0.1948557123541832]),
+                                                      Makie.LineTo([-0.3897114247083664, 0.22499999999999998]),
+                                                      Makie.LineTo([-0.22499999999999998,
+                                                                    2.7554554183166277e-17]),
+                                                      Makie.LineTo([-0.3897114247083664,
+                                                                    -0.22499999999999998]),
+                                                      Makie.LineTo([-0.11249999999999999,
+                                                                    -0.1948557123541832]),
+                                                      Makie.LineTo([-8.266365659379842e-17,
+                                                                    -0.44999999999999996]),
+                                                      Makie.LineTo([0.11249999999999999, -0.1948557123541832]),
+                                                      Makie.LineTo([0.3897114247083664, -0.22499999999999998]),
+                                                      Makie.LineTo([0.22499999999999998,
+                                                                    -5.5109108366332553e-17]),
+                                                      Makie.LineTo([0.3897114247083664, 0.22499999999999998]),
+                                                      Makie.LineTo([0.11249999999999999, 0.1948557123541832]),
+                                                      Makie.ClosePath()]),
+                                :rtriangle => BezierPath([Makie.MoveTo([0.485, -8.909305463796994e-17]),
+                                                          Makie.LineTo([-0.24249999999999994, 0.36375]),
+                                                          Makie.LineTo([-0.2425000000000001,
+                                                                        -0.36374999999999996]),
+                                                          Makie.ClosePath()]),
+                                :x => BezierPath([Makie.MoveTo([-0.1771302486872301, 0.35319983720268056]),
+                                                  Makie.LineTo([1.39759596452057e-17, 0.17606958851545035]),
+                                                  Makie.LineTo([0.17713024868723018, 0.3531998372026805]),
+                                                  Makie.LineTo([0.3531998372026805, 0.17713024868723012]),
+                                                  Makie.LineTo([0.17606958851545035, -1.025465786723834e-17]),
+                                                  Makie.LineTo([0.3531998372026805, -0.17713024868723015]),
+                                                  Makie.LineTo([0.17713024868723015, -0.3531998372026805]),
+                                                  Makie.LineTo([1.1151998010815531e-17, -0.17606958851545035]),
+                                                  Makie.LineTo([-0.17713024868723015, -0.3531998372026805]),
+                                                  Makie.LineTo([-0.35319983720268044, -0.17713024868723018]),
+                                                  Makie.LineTo([-0.17606958851545035,
+                                                                -1.4873299788782892e-17]),
+                                                  Makie.LineTo([-0.3531998372026805, 0.1771302486872301]),
+                                                  Makie.ClosePath()]),
+                                :circle => BezierPath([Makie.MoveTo([0.3525, 0.0]),
+                                                       EllipticalArc([0.0, 0.0], 0.3525, 0.3525, 0.0, 0.0,
+                                                                     6.283185307179586), Makie.ClosePath()]),
+                                :pentagon => BezierPath([Makie.MoveTo([2.2962128485971897e-17, 0.375]),
+                                                         Makie.LineTo([-0.35664620250463486,
+                                                                       0.11588137596845627]),
+                                                         Makie.LineTo([-0.22041946649551392,
+                                                                       -0.30338137596845627]),
+                                                         Makie.LineTo([0.22041946649551392,
+                                                                       -0.30338137596845627]),
+                                                         Makie.LineTo([0.35664620250463486,
+                                                                       0.11588137596845627]),
+                                                         Makie.ClosePath()]),
+                                :vline => BezierPath([Makie.MoveTo([0.063143668438509, -0.315718342192545]),
+                                                      Makie.LineTo([0.063143668438509, 0.315718342192545]),
+                                                      Makie.LineTo([-0.063143668438509, 0.315718342192545]),
+                                                      Makie.LineTo([-0.063143668438509, -0.315718342192545]),
+                                                      Makie.ClosePath()]),
+                                :cross => BezierPath([Makie.MoveTo([0.1245, 0.375]),
+                                                      Makie.LineTo([0.1245, 0.1245]),
+                                                      Makie.LineTo([0.375, 0.1245]),
+                                                      Makie.LineTo([0.375, -0.12449999999999999]),
+                                                      Makie.LineTo([0.1245, -0.1245]),
+                                                      Makie.LineTo([0.12450000000000003, -0.375]),
+                                                      Makie.LineTo([-0.12449999999999997, -0.375]),
+                                                      Makie.LineTo([-0.12449999999999999,
+                                                                    -0.12450000000000003]),
+                                                      Makie.LineTo([-0.375, -0.12450000000000006]),
+                                                      Makie.LineTo([-0.375, 0.12449999999999994]),
+                                                      Makie.LineTo([-0.12450000000000003,
+                                                                    0.12449999999999999]),
+                                                      Makie.LineTo([-0.12450000000000007,
+                                                                    0.37499999999999994]),
+                                                      Makie.ClosePath()]),
+                                :xcross => BezierPath([Makie.MoveTo([-0.1771302486872301,
+                                                                     0.35319983720268056]),
+                                                       Makie.LineTo([1.39759596452057e-17,
+                                                                     0.17606958851545035]),
+                                                       Makie.LineTo([0.17713024868723018, 0.3531998372026805]),
+                                                       Makie.LineTo([0.3531998372026805, 0.17713024868723012]),
+                                                       Makie.LineTo([0.17606958851545035,
+                                                                     -1.025465786723834e-17]),
+                                                       Makie.LineTo([0.3531998372026805,
+                                                                     -0.17713024868723015]),
+                                                       Makie.LineTo([0.17713024868723015,
+                                                                     -0.3531998372026805]),
+                                                       Makie.LineTo([1.1151998010815531e-17,
+                                                                     -0.17606958851545035]),
+                                                       Makie.LineTo([-0.17713024868723015,
+                                                                     -0.3531998372026805]),
+                                                       Makie.LineTo([-0.35319983720268044,
+                                                                     -0.17713024868723018]),
+                                                       Makie.LineTo([-0.17606958851545035,
+                                                                     -1.4873299788782892e-17]),
+                                                       Makie.LineTo([-0.3531998372026805, 0.1771302486872301]),
+                                                       Makie.ClosePath()]),
+                                :rect => BezierPath([Makie.MoveTo([0.315718342192545, -0.315718342192545]),
+                                                     Makie.LineTo([0.315718342192545, 0.315718342192545]),
+                                                     Makie.LineTo([-0.315718342192545, 0.315718342192545]),
+                                                     Makie.LineTo([-0.315718342192545, -0.315718342192545]),
+                                                     Makie.ClosePath()]),
+                                :ltriangle => BezierPath([Makie.MoveTo([-0.485, 2.969768487932331e-17]),
+                                                          Makie.LineTo([0.2425, -0.36375]),
+                                                          Makie.LineTo([0.24250000000000005, 0.36375]),
+                                                          Makie.ClosePath()]),
+                                :dtriangle => BezierPath([Makie.MoveTo([-0.0, -0.485]),
+                                                          Makie.LineTo([0.36375, 0.24250000000000002]),
+                                                          Makie.LineTo([-0.36375, 0.24250000000000002]),
+                                                          Makie.ClosePath()]),
+                                :utriangle => BezierPath([Makie.MoveTo([0.0, 0.485]),
+                                                          Makie.LineTo([-0.36375, -0.24250000000000002]),
+                                                          Makie.LineTo([0.36375, -0.24250000000000002]),
+                                                          Makie.ClosePath()]),
+                                :star5 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.12343490123748782,
+                                                                    0.16989357054233553]),
+                                                      Makie.LineTo([-0.4279754430055618, 0.13905765116214752]),
+                                                      Makie.LineTo([-0.19972187340259556,
+                                                                    -0.06489357054233552]),
+                                                      Makie.LineTo([-0.2645033597946167, -0.3640576511621475]),
+                                                      Makie.LineTo([-3.8576373077105933e-17,
+                                                                    -0.21000000000000002]),
+                                                      Makie.LineTo([0.2645033597946167, -0.3640576511621475]),
+                                                      Makie.LineTo([0.19972187340259556,
+                                                                    -0.06489357054233552]),
+                                                      Makie.LineTo([0.4279754430055618, 0.13905765116214752]),
+                                                      Makie.LineTo([0.12343490123748782, 0.16989357054233553]),
+                                                      Makie.ClosePath()]),
+                                :octagon => BezierPath([Makie.MoveTo([2.2962128485971897e-17, 0.375]),
+                                                        Makie.LineTo([-0.2651650384068489,
+                                                                      0.2651650384068489]),
+                                                        Makie.LineTo([-0.375, 4.5924256971943795e-17]),
+                                                        Makie.LineTo([-0.2651650384068489,
+                                                                      -0.2651650384068489]),
+                                                        Makie.LineTo([-6.888638049483202e-17, -0.375]),
+                                                        Makie.LineTo([0.2651650384068489,
+                                                                      -0.2651650384068489]),
+                                                        Makie.LineTo([0.375, -9.184851394388759e-17]),
+                                                        Makie.LineTo([0.2651650384068489, 0.2651650384068489]),
+                                                        Makie.ClosePath()]),
+                                :hline => BezierPath([Makie.MoveTo([0.315718342192545, -0.063143668438509]),
+                                                      Makie.LineTo([0.315718342192545, 0.063143668438509]),
+                                                      Makie.LineTo([-0.315718342192545, 0.063143668438509]),
+                                                      Makie.LineTo([-0.315718342192545, -0.063143668438509]),
+                                                      Makie.ClosePath()]),
+                                :hexagon => BezierPath([Makie.MoveTo([2.2962128485971897e-17, 0.375]),
+                                                        Makie.LineTo([-0.32475952059030533, 0.1875]),
+                                                        Makie.LineTo([-0.32475952059030533, -0.1875]),
+                                                        Makie.LineTo([-6.888638049483202e-17, -0.375]),
+                                                        Makie.LineTo([0.32475952059030533, -0.1875]),
+                                                        Makie.LineTo([0.32475952059030533, 0.1875]),
+                                                        Makie.ClosePath()]))
 
 function default_marker_map()
-    # The bezier markers should not look out of place when used together with text
-    # where both markers and text are given the same size, i.e. the marker and fontsizes
-    # should correspond approximately in a visual sense.
-
-    # All the basic bezier shapes are approximately built in a 1 by 1 square centered
-    # around the origin, with slight deviations to match them better to each other.
-
-    # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
-    # shapes are just used as is, they look much too large in comparison.
-    # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
-    if isempty(DEFAULT_MARKER_MAP)
-        size_factor = 0.75
-        DEFAULT_MARKER_MAP[:rect] = scale(BezierSquare, size_factor)
-        DEFAULT_MARKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
-        DEFAULT_MARKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:cross] = scale(BezierCross, size_factor)
-        DEFAULT_MARKER_MAP[:xcross] = scale(BezierX, size_factor)
-        DEFAULT_MARKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
-        DEFAULT_MARKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
-        DEFAULT_MARKER_MAP[:+] = scale(BezierCross, size_factor)
-        DEFAULT_MARKER_MAP[:x] = scale(BezierX, size_factor)
-        DEFAULT_MARKER_MAP[:circle] = scale(BezierCircle, size_factor)
-    end
     return DEFAULT_MARKER_MAP
 end
 
