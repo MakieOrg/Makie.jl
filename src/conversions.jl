@@ -1,7 +1,7 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
+const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Any,Any}}
 
 # if no plot type based conversion is defined, we try using a trait
 function convert_arguments(T::PlotFunc, args...; kw...)
@@ -373,9 +373,22 @@ function convert_arguments(::ImageLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
     return (0f0 .. n, 0f0 .. m, el32convert(data))
 end
+
+function print_range_warning(side::String, value)
+    @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait. Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop. Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
+end
+
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike, data::AbstractMatrix)
-    x = Float32(minimum(xs)) .. Float32(maximum(xs))
-    y = Float32(minimum(ys)) .. Float32(maximum(ys))
+    if xs isa AbstractVector
+        print_range_warning("x", xs)
+    end
+    if ys isa AbstractVector
+        print_range_warning("y", ys)
+    end
+    _interval(v::Union{Interval,AbstractVector}) = Float32(minimum(v)) .. Float32(maximum(v)) # having minimum and maximum here actually invites bugs
+    _interval(t::Tuple{Any, Any}) = Float32(t[1]) .. Float32(t[2])
+    x = _interval(xs)
+    y = _interval(ys)
     return (x, y, el32convert(data))
 end
 
