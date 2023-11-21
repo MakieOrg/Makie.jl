@@ -17,7 +17,8 @@
 - **breaking** Deprecated `pixelarea(scene)` and `scene.px_area` in favor of viewport.
 - **breaking** Refactoring the `Combined` Plot object and renaming it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
 - **breaking** removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
-
+- **breaking** Deprecate using AbstractVector as sides of `image` [#3395](https://github.com/MakieOrg/Makie.jl/pull/3395).
+  
 ## v0.19.12
 
 - Added `cornerradius` attribute to `Box` for rounded corners [#3346](https://github.com/MakieOrg/Makie.jl/pull/3346).
