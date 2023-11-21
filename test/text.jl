@@ -1,3 +1,20 @@
+@testset "texture atlas" begin
+    @testset "defaults" for arg in [(1024, 32), (2048, 64)]
+        # Makes sure hashing and downloading default texture atlas works:
+        atlas = Makie.get_texture_atlas(arg...)
+        data = copy(atlas.data)
+        @test length(atlas.mapping) == 274
+        # Make sure that all default glyphs are already in there
+        Makie.render_default_glyphs!(atlas)
+        # So no rendering & no change of data should happen in default glyphs are present!
+        @test data == atlas.data
+        @test length(atlas.mapping) == 274
+
+        @test haskey(Makie.TEXTURE_ATLASES, arg) # gets into global texture atlas cache
+        @test Makie.TEXTURE_ATLASES[arg] === atlas
+    end
+end
+
 @testset "Glyph Collections" begin
     using Makie.FreeTypeAbstraction
 
