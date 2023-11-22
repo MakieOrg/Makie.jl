@@ -1,7 +1,7 @@
 # the hyphen which is usually used to store negative number strings
 # is shorter than the dedicated minus in most fonts, the minus glyph
 # looks more balanced with numbers, especially in superscripts or subscripts
-const MINUS_SIGN = "−"
+const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
 
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
     attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
