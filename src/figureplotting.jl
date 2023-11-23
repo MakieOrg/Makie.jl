@@ -237,11 +237,15 @@ function fig_keywords!(kws)
     return figkws
 end
 
+# Narrows down the default plotfunc early on, if `plot` is used
+default_plot_func(f::F, args) where {F} = f
+default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args)...))
+
 # Don't inline these, since they will get called from `scatter!(args...; kw...)` which gets specialized to all kw args
 @noinline function MakieCore._create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
-    plot = Plot{F}(pargs, attributes)
+    plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return(ax, plot)
@@ -250,14 +254,14 @@ end
 @noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
-    plot = Plot{F}(pargs, attributes)
+    plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like!(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return!(ax, plot)
 end
 
 @noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
-    plot = Plot{F}(args, attributes)
+    plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)
     return plot
 end

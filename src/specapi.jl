@@ -735,7 +735,7 @@ function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{Makie
     return fig
 end
 
-function apply_convert!(P, attributes::Attributes, x::GridLayoutSpec)
+function apply_convert!(P, ::Attributes, x::GridLayoutSpec)
     return (Plot{plot}, (x,))
 end
 

@@ -65,7 +65,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
+            curdeftheme = Makie.fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
@@ -277,7 +277,11 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; b
 end
 
 function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
-    default_attrs = default_attribute_values(getfield(Makie, blockname), scene)
+    return block_defaults(getfield(Makie, blockname), attribute_kwargs, scene)
+end
+function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing, Scene}) where {B <: Block}
+    default_attrs = default_attribute_values(B, scene)
+    blockname = nameof(B)
     typekey_scene_attrs = get(theme(scene), blockname, Attributes())
     typekey_attrs = theme(blockname; default=Attributes())::Attributes
     attributes = Dict{Symbol,Any}()
@@ -321,7 +325,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
     if kwdict_complete
         attributes = attribute_kwargs
     else
-        attributes = block_defaults(nameof(T), attribute_kwargs, topscene)
+        attributes = block_defaults(T, attribute_kwargs, topscene)
     end
     # create basic layout observables and connect attribute observables further down
     # after creating the block with its observable fields

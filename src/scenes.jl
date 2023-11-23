@@ -137,8 +137,8 @@ function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}
     return to_deregister
 end
 
-function Observables.onany(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observables...); priority=0)
-    to_deregister = onany(f, observables...; priority=priority)
+function Observables.onany(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observables...); update=false, priority=0)
+    to_deregister = onany(f, observables...; priority=priority, update=update)
     append!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
     return to_deregister
 end
