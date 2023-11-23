@@ -2,6 +2,8 @@
 
 ## master
 
+- Disable SDF based anti-aliasing in scatter, text and lines plots when `fxaa = true` in GLMakie. This allows removing outline artifacts at the cost of quality. [#3408](https://github.com/MakieOrg/Makie.jl/pull/3408)
+
 ## 0.20
 
 - GLMakie has gained support for HiDPI (aka Retina) screens. This also enables saving images with higher resolution than screen pixel dimensions [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544).
@@ -19,7 +21,7 @@
 - **breaking** Removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
 - **breaking** Deprecated using AbstractVector as sides of `image` [#3395](https://github.com/MakieOrg/Makie.jl/pull/3395).
 - **breaking** `errorbars` and `rangebars` now use color cycling [#3230](https://github.com/MakieOrg/Makie.jl/pull/3230).
-  
+
 ## v0.19.12
 
 - Added `cornerradius` attribute to `Box` for rounded corners [#3346](https://github.com/MakieOrg/Makie.jl/pull/3346).
