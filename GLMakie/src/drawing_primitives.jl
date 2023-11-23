@@ -571,6 +571,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = plot.visible
+        gl_attributes[:fxaa] = get(plot, :fxaa, Observable(false))
         cam = scene.camera
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
