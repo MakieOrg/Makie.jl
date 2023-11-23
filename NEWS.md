@@ -4,9 +4,9 @@
 
 ## 0.20.1
 
-- triangulate on transformed points, fixing poly for GeoMakie [#3402](https://github.com/MakieOrg/Makie.jl/pull/3402).
-- Don't return false early just because one MIME type isn't displayable [#3403](https://github.com/MakieOrg/Makie.jl/pull/3403).
-- Fixes for GeoMakie and plottype [#3401](https://github.com/MakieOrg/Makie.jl/pull/3401).
+- Fixed bad rendering of `poly` in GLMakie by triangulating points after transformations [#3402](https://github.com/MakieOrg/Makie.jl/pull/3402).
+- Fixed bug regarding inline display in VSCode Jupyter notebooks and other similar environments [#3403](https://github.com/MakieOrg/Makie.jl/pull/3403).
+- Fixed issue with `plottype`, allowed `onany(...; update = true)` and fixed `Block` macro use outside Makie [#3401](https://github.com/MakieOrg/Makie.jl/pull/3401).
 
 ## 0.20
 
@@ -17,14 +17,14 @@
 - Changed the glyph used for negative numbers in tick labels from hyphen to minus [#3379](https://github.com/MakieOrg/Makie.jl/pull/3379).
 - Added new declarative API for AlgebraOfGraphics, Pluto and easier dashboards [#3281](https://github.com/MakieOrg/Makie.jl/pull/3281).
 - WGLMakie got faster line rendering with less updating bugs [#3062](https://github.com/MakieOrg/Makie.jl/pull/3062).
-- **breaking** Replaced `PolarAxis.radial_distortion_threshold` with `PolarAxis.radius_at_origin`. [#3381](https://github.com/MakieOrg/Makie.jl/pull/3381)
-- **breaking** Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
-- **breaking** Refactored the `SurfaceLike` family of traits into `VertexGrid`, `CellGrid` and `ImageLike` [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106).
-- **breaking** Deprecated `pixelarea(scene)` and `scene.px_area` in favor of viewport.
-- **breaking** Refactored the `Combined` Plot object and renamed it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
-- **breaking** Removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
-- **breaking** Deprecated using AbstractVector as sides of `image` [#3395](https://github.com/MakieOrg/Makie.jl/pull/3395).
-- **breaking** `errorbars` and `rangebars` now use color cycling [#3230](https://github.com/MakieOrg/Makie.jl/pull/3230).
+- **Breaking** Replaced `PolarAxis.radial_distortion_threshold` with `PolarAxis.radius_at_origin`. [#3381](https://github.com/MakieOrg/Makie.jl/pull/3381)
+- **Breaking** Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
+- **Breaking** Refactored the `SurfaceLike` family of traits into `VertexGrid`, `CellGrid` and `ImageLike` [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106).
+- **Breaking** Deprecated `pixelarea(scene)` and `scene.px_area` in favor of viewport.
+- **Breaking** Refactored the `Combined` Plot object and renamed it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
+- **Breaking** Removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
+- **Breaking** Deprecated using AbstractVector as sides of `image` [#3395](https://github.com/MakieOrg/Makie.jl/pull/3395).
+- **Breaking** `errorbars` and `rangebars` now use color cycling [#3230](https://github.com/MakieOrg/Makie.jl/pull/3230).
 
 ## v0.19.12
 
@@ -44,7 +44,7 @@
 
 - Fixed bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).
 - Added experimental Datashader implementation [#2883](https://github.com/MakieOrg/Makie.jl/pull/2883).
-- [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- **Breaking** Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 - General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 
 ## v0.19.9
