@@ -37,30 +37,30 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
 end
 
 # Poly conversion
-function poly_convert(geometries::AbstractVector, transform_func)
+function poly_convert(geometries::AbstractVector, transform_func=identity)
     isempty(geometries) && return typeof(GeometryBasics.Mesh(Point2f[], GLTriangleFace[]))[]
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry, transform_func)
+function poly_convert(geometry::AbstractGeometry, transform_func=identity)
     return GeometryBasics.triangle_mesh(geometry)
 end
 
-poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func) = poly_convert.(meshes, (transform_func,))
+poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
 
-function poly_convert(polys::AbstractVector{<:Polygon}, transform_func)
+function poly_convert(polys::AbstractVector{<:Polygon}, transform_func=identity)
     # GLPlainMesh2D is not concrete?
     T = GeometryBasics.Mesh{2, Float32, GeometryBasics.Ngon{2, Float32, 3, Point2f}, SimpleFaceView{2, Float32, 3, GLIndex, Point2f, GLTriangleFace}}
     return isempty(polys) ? T[] : poly_convert.(polys, (transform_func,))
 end
 
-function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_func)
+function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_func=identity)
     return [merge(poly_convert.(multipoly.polygons, (transform_func,))) for multipoly in multipolygons]
 end
 
-poly_convert(mesh::GeometryBasics.Mesh, transform_func) = mesh
+poly_convert(mesh::GeometryBasics.Mesh, transform_func=identity) = mesh
 
-function poly_convert(polygon::Polygon, transform_func)
+function poly_convert(polygon::Polygon, transform_func=identity)
     outer = metafree(coordinates(polygon.exterior))
     points = Vector{Point2f}[apply_transform(transform_func, outer)]
     points_flat = Point2f[outer;]
@@ -77,7 +77,7 @@ function poly_convert(polygon::Polygon, transform_func)
     return GeometryBasics.Mesh(points_flat, faces)
 end
 
-function poly_convert(polygon::AbstractVector{<:VecTypes}, transform_func)
+function poly_convert(polygon::AbstractVector{<:VecTypes}, transform_func=identity)
     point2f = convert(Vector{Point2f}, polygon)
     points_transformed = apply_transform(transform_func, point2f)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
@@ -85,7 +85,7 @@ function poly_convert(polygon::AbstractVector{<:VecTypes}, transform_func)
     return GeometryBasics.Mesh(point2f, faces)
 end
 
-function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func)
+function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
     return map(polygons) do poly
         return poly_convert(poly, transform_func)
     end
