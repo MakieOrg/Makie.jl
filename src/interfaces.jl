@@ -147,8 +147,8 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
 
     ArgTyp = MakieCore.argtypes(converted)
     converted_obs = map(Observable, converted)
-    plot = Plot{plotfunc(PNew),ArgTyp}(plot_attributes, obs_args, converted_obs)
-    return plot
+    FinalPlotFunc = plotfunc(plottype(PNew, converted...))
+    return Plot{FinalPlotFunc,ArgTyp}(plot_attributes, obs_args, converted_obs)
 end
 
 """
@@ -178,11 +178,27 @@ used_attributes(args...) = ()
 
 
 ## generic definitions
-# If the Plot has no plot func, calculate them
-plottype(::Type{<: Plot{Any}}, argvalues...) = plottype(argvalues...)
-plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
-# If it has something more concrete than Any, use it directly
-plottype(P::Type{<: Plot{T}}, argvalues...) where T = P
+# Chose the more specific plot type from arguments or input type
+# Note the plottype(Scatter, Plot{plot}) will return Scatter
+# And plottype(args...) falls back to Plot{plot}
+plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argvalues...))
+plottype(P::Type{<:Plot{T}}) where {T} = P
+plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
+plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
+"""
+    plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
+
+Chooses the more concrete plot type
+```julia
+function convert_arguments(P::PlotFunc, args...)
+    ptype = plottype(P, Lines)
+    ...
+end
+```
+"""
+plottype(::Type{Plot{plot}}, P::Type{<:Plot{T}}) where {T} = P
+plottype(P::Type{<:Plot{T}}, ::Type{Plot{plot}}) where {T} = P
+
 
 ## specialized definitions for types
 plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
@@ -201,19 +217,7 @@ plottype(::GeometryBasics.AbstractPolygon) = Poly
 plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
-"""
-    plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
 
-Chooses the more concrete plot type
-```julia
-function convert_arguments(P::PlotFunc, args...)
-    ptype = plottype(P, Lines)
-    ...
-end
-```
-"""
-plottype(::Type{<: Plot{Any}}, P::Type{<: Plot{T}}) where T = P
-plottype(P::Type{<: Plot{T}}, ::Type{<: Plot}) where T = P
 
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}

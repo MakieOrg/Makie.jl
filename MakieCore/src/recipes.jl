@@ -35,8 +35,9 @@ function _create_plot end
 function _create_plot! end
 
 
-plot(args...; kw...) = _create_plot(plotfunc(plottype(map(to_value, args)...)), Dict{Symbol, Any}(kw), args...)
-plot!(args...; kw...) = _create_plot!(plotfunc(plottype(map(to_value, args)...)), Dict{Symbol, Any}(kw), args...)
+
+plot(args...; kw...) = _create_plot(plot, Dict{Symbol, Any}(kw), args...)
+plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
@@ -231,4 +232,4 @@ e.g.:
     plottype(x::Array{<: AbstractFloat, 3}) = Volume
 ```
 """
-plottype(plot_args...) = Plot{plot, Tuple{map(typeof, plot_args)...}} # default to dispatch to type recipes!
+plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
