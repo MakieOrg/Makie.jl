@@ -210,7 +210,7 @@ end
 plot(MyType(...))
 ```
 """
-function Plot(args::Vararg{<:DataType,N}) where {N}
+function Plot(args::Vararg{DataType,N}) where {N}
     Plot{plot, <:Tuple{args...}}
 end
 
