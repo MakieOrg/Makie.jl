@@ -296,7 +296,7 @@ end
 
     f, ax, pl = poly(Vector{Point2f}[])
     pl[1] = [points]
-    @test pl.plots[1][1][] == Makie.poly_convert(points)
+    @test pl.plots[1][1][][1] == Makie.poly_convert(points)
 end
 
 @testset "GridBased and ImageLike conversions" begin
