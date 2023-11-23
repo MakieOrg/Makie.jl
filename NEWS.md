@@ -9,15 +9,16 @@
 - Improved 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746).
 - Added `shading = :verbose` in GLMakie to allow for multiple light sources. Also added more light types, fixed light directions for the previous lighting model (now `shading = :fast`) and adjusted `backlight` to affect normals[#3246](https://github.com/MakieOrg/Makie.jl/pull/3246).
 - Changed the glyph used for negative numbers in tick labels from hyphen to minus [#3379](https://github.com/MakieOrg/Makie.jl/pull/3379).
-- New declarative API for AlgebraOfGraphics, Pluto and easier dashboards [#3281](https://github.com/MakieOrg/Makie.jl/pull/3281).
-- WGLMakie gets faster line rendering with less updating bugs [#3062](https://github.com/MakieOrg/Makie.jl/pull/3062).
+- Added new declarative API for AlgebraOfGraphics, Pluto and easier dashboards [#3281](https://github.com/MakieOrg/Makie.jl/pull/3281).
+- WGLMakie got faster line rendering with less updating bugs [#3062](https://github.com/MakieOrg/Makie.jl/pull/3062).
 - **breaking** Replaced `PolarAxis.radial_distortion_threshold` with `PolarAxis.radius_at_origin`. [#3381](https://github.com/MakieOrg/Makie.jl/pull/3381)
 - **breaking** Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
 - **breaking** Refactored the `SurfaceLike` family of traits into `VertexGrid`, `CellGrid` and `ImageLike` [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106).
 - **breaking** Deprecated `pixelarea(scene)` and `scene.px_area` in favor of viewport.
-- **breaking** Refactoring the `Combined` Plot object and renaming it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
-- **breaking** removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
-- **breaking** Deprecate using AbstractVector as sides of `image` [#3395](https://github.com/MakieOrg/Makie.jl/pull/3395).
+- **breaking** Refactored the `Combined` Plot object and renamed it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
+- **breaking** Removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
+- **breaking** Deprecated using AbstractVector as sides of `image` [#3395](https://github.com/MakieOrg/Makie.jl/pull/3395).
+- **breaking** `errorbars` and `rangebars` now use color cycling [#3230](https://github.com/MakieOrg/Makie.jl/pull/3230).
   
 ## v0.19.12
 
