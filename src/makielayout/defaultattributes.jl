@@ -49,7 +49,7 @@ function generic_plot_attributes(::Type{LineAxis})
         tickformat = Makie.automatic,
         ticklabelalign = (:center, :top),
         ticksvisible = true,
-        ticklabelfont = "TeX Gyre Heros"
+        ticklabelfont = "TeX Gyre Heros",
         ticklabelrotation = 0f0,
         ticklabelsize = 20f0,
         ticklabelcolor = RGBf(0, 0, 0),
@@ -65,6 +65,7 @@ function generic_plot_attributes(::Type{LineAxis})
         ticklabelpad = 3f0,
         labelpadding = 5f0,
         reversed = false,
+        minorticks = IntervalsBetween(2),
         minorticksvisible = true,
         minortickalign = 0f0,
         minorticksize = 4f0,
