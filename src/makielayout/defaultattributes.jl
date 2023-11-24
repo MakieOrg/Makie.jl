@@ -59,6 +59,7 @@ function generic_plot_attributes(::Type{LineAxis})
         labelfont = "TeX Gyre Heros",
         labelsize = 20f0,
         labelcolor = RGBf(0, 0, 0),
+        labelrotation = 0,
         labelvisible = true,
         ticklabelspace = Makie.automatic,
         ticklabelpad = 3f0,
@@ -70,6 +71,8 @@ function generic_plot_attributes(::Type{LineAxis})
         minortickwidth = 1f0,
         minortickcolor = :black,
         minorticks = Makie.automatic,
+        spinevisible = true,
+        spinecolor = :black,
         scale = identity,
     )
 end
