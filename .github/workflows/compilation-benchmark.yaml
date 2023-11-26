@@ -31,7 +31,7 @@ jobs:
           version: '1'
           include-all-prereleases: true
           arch: x64
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@6a6c9655f5b96cc88bac8ae777c87d01883af170
       - name: Benchmark
         continue-on-error: true
         env:

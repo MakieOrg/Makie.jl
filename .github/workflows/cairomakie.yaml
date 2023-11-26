@@ -36,7 +36,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@6a6c9655f5b96cc88bac8ae777c87d01883af170
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
