@@ -41,6 +41,8 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@6a6c9655f5b96cc88bac8ae777c87d01883af170
+        with:
+          cache-name: 'julia-cache-${{ github.workflow }}-${{ github.job }}'
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
