@@ -22,26 +22,26 @@ To add contour labels, use `labels = true`, and pass additional label attributes
 $(ATTRIBUTES)
 """
 @recipe(Contour) do scene
-    default = default_theme(scene)
-    # pop!(default, :color)
-    Attributes(;
-        default...,
+    attr = Attributes(;
         color = nothing,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
         linestyle = nothing,
-        alpha = 1.0,
         enable_depth = true,
         transparency = false,
         labels = false,
+
         labelfont = theme(scene, :font),
         labelcolor = nothing,  # matches color by default
         labelformatter = contour_label_formatter,
         labelsize = 10,  # arbitrary
     )
+
+
+    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
+    MakieCore.generic_plot_attributes!(attr)
+
+    return attr
 end
 
 """
@@ -146,11 +146,13 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     end
 
     attr = copy(Attributes(plot))
+
     attr[:colorrange] = cliprange
     attr[:colormap] = cmap
     attr[:algorithm] = 7
     pop!(attr, :levels)
     pop!(attr, :alpha) # don't apply alpha 2 times
+
     # unused attributes
     pop!(attr, :labels)
     pop!(attr, :labelfont)
@@ -320,7 +322,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
-        linestyle = plot.linestyle
+        linestyle = plot.linestyle,
+        MakieCore.generic_plot_attributes(plot)...
     )
     plot
 end
