@@ -83,7 +83,7 @@ function Makie.plot!(p::Union{HLines, VLines})
     line_attributes = copy(p.attributes)
     foreach(key-> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
     # Drop transform_func because we handle it manually
-    T = Transformation(p, transform_func = identity)
-    linesegments!(p, line_attributes, points, transformation = T)
+    line_attributes[:transformation] = Transformation(p, transform_func = identity)
+    linesegments!(p, line_attributes, points)
     p
 end
