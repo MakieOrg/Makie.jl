@@ -269,9 +269,12 @@ end
 # This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
 # Which skips axis creation
 # TODO, what to return for the dynamically created axes?
-figurelike_return(f::GridPosition, p::AbstractPlot) = p
-figurelike_return(f::Figure, p::AbstractPlot) = FigureAxisPlot(f, nothing, p)
-MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = fig
+const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
+
+figurelike_return(f::GridPosition, p::PlotSpecPlot) = p
+figurelike_return(f::Figure, p::PlotSpecPlot) = FigureAxisPlot(f, nothing, p)
+MakieCore.create_axis_like!(::PlotSpecPlot, attributes::Dict, fig::Figure) = fig
+MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = nothing
 
 # Axis interface
 
