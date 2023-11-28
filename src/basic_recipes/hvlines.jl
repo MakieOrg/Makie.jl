@@ -91,17 +91,17 @@ end
 function data_limits(p::HLines)
     scene = parent_scene(p)
     limits = projview_to_2d_limits(scene.camera.projectionview[])
-    xmin = minimum(limits)[1]
-    w = widths(limits)[1]
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
     ymin, ymax = extrema(p[1][])
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(w, ymax - ymin, 0))
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
 end
 
 function data_limits(p::VLines)
     scene = parent_scene(p)
     limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
     xmin, xmax = extrema(p[1][])
-    ymin = minimum(limits)[2]
-    h = widths(limits)[2]
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, h, 0))
+    ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
 end
