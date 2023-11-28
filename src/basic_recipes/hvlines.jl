@@ -87,3 +87,21 @@ function Makie.plot!(p::Union{HLines, VLines})
     linesegments!(p, line_attributes, points)
     p
 end
+
+function data_limits(p::HLines)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    xmin = minimum(limits)[1]
+    w = widths(limits)[1]
+    ymin, ymax = extrema(p[1][])
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(w, ymax - ymin, 0))
+end
+
+function data_limits(p::VLines)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    xmin, xmax = extrema(p[1][])
+    ymin = minimum(limits)[2]
+    h = widths(limits)[2]
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, h, 0))
+end
