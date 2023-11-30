@@ -3,6 +3,7 @@
 ## master
 
 - Fixed a bug with h/vlines and h/vspan not correctly resolving transformations [#3418](https://github.com/MakieOrg/Makie.jl/pull/3418)
+- Fixed clipping when zooming out of a 3D (L)Scene [#3433](https://github.com/MakieOrg/Makie.jl/pull/3433)
 
 ## 0.20.1
 
