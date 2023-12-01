@@ -320,10 +320,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot, masked_lines;
         color = colors,
         linewidth = plot.linewidth,
-        inspectable = plot.inspectable,
-        transparency = plot.transparency,
         linestyle = plot.linestyle,
-        MakieCore.generic_plot_attributes(plot)...
+        visible=plot.visible,
+        transparency=plot.transparency,
+        overdraw=plot.overdraw,
+        inspectable=plot.inspectable,
+        depth_shift=plot.depth_shift,
+        space=plot.space
     )
     plot
 end
