@@ -3,6 +3,7 @@
 ## master
 
 - Fixed a bug with h/vlines and h/vspan not correctly resolving transformations [#3418](https://github.com/MakieOrg/Makie.jl/pull/3418)
+- Fixed a bug with h/vlines and h/vspan returning the wrong limits, causing an error in Axis [#3427](https://github.com/MakieOrg/Makie.jl/pull/3427)
 
 ## 0.20.1
 
