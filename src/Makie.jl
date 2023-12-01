@@ -319,6 +319,9 @@ function logo()
     FileIO.load(assetpath("logo.png"))
 end
 
+# populated by __init__()
+makie_cache_dir = ""
+
 function __init__()
     # Make GridLayoutBase default row and colgaps themeable when using Makie
     # This mutates module-level state so it could mess up other libraries using
@@ -336,6 +339,8 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
         "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+
+    global makie_cache_dir = @get_scratch!("makie")
 end
 
 include("figures.jl")
