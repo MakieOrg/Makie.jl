@@ -78,8 +78,8 @@ function Makie.plot!(plot::StepHist)
     pop!(attr, :normalization)
     pop!(attr, :scale_to)
     pop!(attr, :bins)
-    # plot the values, not the observables, to be in control of updating
-    stairs!(plot, points[]; attr..., color=color)
+    stairs!(plot, points; attr..., color=color)
+    plot
 end
 
 """
@@ -186,6 +186,9 @@ function Makie.plot!(plot::Hist)
     on(plot, widths) do w
         bp[1].val = points[]
         bp.width = w
+    end
+    onany(plot, plot.normalization, plot.scale_to, plot.weights) do _, _, _
+        bp[1][] = points[]
     end
     plot
 end
