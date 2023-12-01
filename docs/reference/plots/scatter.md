@@ -370,3 +370,31 @@ scatter(a[1:50:end, :], marker = '✈',
     markersize = 20, color = :black)
 ```
 \end{examplefigure}
+
+### Dealing with outline artifacts in GLMakie
+
+In GLMakie 3D scatter plots can generate outline artifacts depending on the order markers are rendered in.
+Currently there are a few ways to mitigate this problem, but they all come at a cost:
+- `fxaa = true` will disable the native anti-aliasing of scatter markers and use fxaa instead. This results in less detailed markers, especially for thin markers like characters.
+- `transparency = true` will disable depth testing to a degree, resulting in all markers being rendered without artifacts. However with this markers always have some level of transparency
+- `overdraw = true` will disable depth testing entirely (read and write) for the plot, removing artifacts. This will however change the z-order of markers and allow plots rendered later to show up on top of the scatter plot
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+ps = rand(Point3f, 500)
+cs = rand(500)
+f = Figure(size = (600, 650))
+Label(f[1, 1], "base", tellwidth = false)
+scatter(f[2, 1], ps, color = cs, markersize = 20, fxaa = false)
+Label(f[1, 2], "fxaa = true", tellwidth = false)
+scatter(f[2, 2], ps, color = cs, markersize = 20, fxaa = true)
+Label(f[3, 1], "transparency = true", tellwidth = false)
+scatter(f[4, 1], ps, color = cs, markersize = 20, transparency = true)
+Label(f[3, 2], "overdraw = true", tellwidth = false)
+scatter(f[4, 2], ps, color = cs, markersize = 20, overdraw = true)
+f
+```
+\end{examplefigure}
