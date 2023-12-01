@@ -3,6 +3,14 @@
 ## master
 
 - Disable SDF based anti-aliasing in scatter, text and lines plots when `fxaa = true` in GLMakie. This allows removing outline artifacts at the cost of quality. [#3408](https://github.com/MakieOrg/Makie.jl/pull/3408)
+- Fixed a bug with h/vlines and h/vspan not correctly resolving transformations [#3418](https://github.com/MakieOrg/Makie.jl/pull/3418)
+- Fixed a bug with h/vlines and h/vspan returning the wrong limits, causing an error in Axis [#3427](https://github.com/MakieOrg/Makie.jl/pull/3427)
+
+## 0.20.1
+
+- Fixed bad rendering of `poly` in GLMakie by triangulating points after transformations [#3402](https://github.com/MakieOrg/Makie.jl/pull/3402).
+- Fixed bug regarding inline display in VSCode Jupyter notebooks and other similar environments [#3403](https://github.com/MakieOrg/Makie.jl/pull/3403).
+- Fixed issue with `plottype`, allowed `onany(...; update = true)` and fixed `Block` macro use outside Makie [#3401](https://github.com/MakieOrg/Makie.jl/pull/3401).
 
 ## 0.20
 

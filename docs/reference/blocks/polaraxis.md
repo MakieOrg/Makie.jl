@@ -92,8 +92,7 @@ Not every plot type is compatible with the polar transform.
 For example `image` is not as it expects to be drawn on a rectangle.
 `heatmap` works to a degree in CairoMakie, but not GLMakie due to differences in the backend implementation.
 `surface` can be used as a replacement for `image` as it generates a triangle mesh.
-However it also has a component in z-direction which will affect drawing order.
-You can use `translate!(plot, 0, 0, z_shift)` to work around that.
+To avoid having the `surface` plot extend in z-direction and thus messing with render order it is recommended to pass the color-data through the `color` attribute and use a matrix of zeros for the z-data.
 As a replacement for `heatmap` you can use `voronoiplot`, which generates cells of arbitrary shape around points given to it. Here you will generally need to set `rlims!(ax, rmax)` yourself.
 
 \begin{examplefigure}{svg = false}
@@ -104,7 +103,7 @@ ax = PolarAxis(f[1, 1], title = "Surface")
 rs = 0:10
 phis = range(0, 2pi, 37)
 cs = [r+cos(4phi) for phi in phis, r in rs]
-p = surface!(ax, 0..2pi, 0..10, cs, shading = NoShading, colormap = :coolwarm)
+p = surface!(ax, 0..2pi, 0..10, zeros(size(cs)), color = cs, shading = NoShading, colormap = :coolwarm)
 ax.gridz[] = 100
 tightlimits!(ax) # surface plots include padding by default
 Colorbar(f[2, 1], p, vertical = false, flipaxis = false)

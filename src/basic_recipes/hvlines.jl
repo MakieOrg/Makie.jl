@@ -83,7 +83,25 @@ function Makie.plot!(p::Union{HLines, VLines})
     line_attributes = copy(p.attributes)
     foreach(key-> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
     # Drop transform_func because we handle it manually
-    T = Transformation(p, transform_func = identity)
-    linesegments!(p, line_attributes, points, transformation = T)
+    line_attributes[:transformation] = Transformation(p, transform_func = identity)
+    linesegments!(p, line_attributes, points)
     p
+end
+
+function data_limits(p::HLines)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
+    ymin, ymax = extrema(p[1][])
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+end
+
+function data_limits(p::VLines)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin, xmax = extrema(p[1][])
+    ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
 end

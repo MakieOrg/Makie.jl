@@ -106,6 +106,8 @@ end
         pl = meshscatter!(LScene(sub[1, 3]), rand(Point3f, 10))
         @test pl isa AbstractPlot
 
+        f = Figure()
+        @test_throws ErrorException lines!(f, [1, 2])
     end
 end
 
