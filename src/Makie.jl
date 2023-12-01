@@ -34,6 +34,7 @@ using Packing
 using SignedDistanceFields
 using Markdown
 using DocStringExtensions # documentation
+using Scratch
 using StructArrays
 # Text related packages
 using FreeType

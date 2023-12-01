@@ -6,6 +6,7 @@
 - Fixed a bug with h/vlines and h/vspan not correctly resolving transformations [#3418](https://github.com/MakieOrg/Makie.jl/pull/3418).
 - Fixed a bug with h/vlines and h/vspan returning the wrong limits, causing an error in Axis [#3427](https://github.com/MakieOrg/Makie.jl/pull/3427).
 - Fixed clipping when zooming out of a 3D (L)Scene [#3433](https://github.com/MakieOrg/Makie.jl/pull/3433).
+- Moved the texture atlas cache to `.julia/scratchspaces` instead of a dedicated `.julia/makie` [#3437](https://github.com/MakieOrg/Makie.jl/pull/3437)
 
 ## 0.20.1
 
