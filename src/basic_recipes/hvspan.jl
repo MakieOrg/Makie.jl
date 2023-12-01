@@ -88,3 +88,24 @@ _apply_x_transform(other, v) = error("x transform not defined for transform func
 _apply_y_transform(t::Tuple, v) = apply_transform(t[2], v)
 _apply_y_transform(other, v) = error("y transform not defined for transform function $(typeof(other))")
 _apply_y_transform(::typeof(identity), v) = v
+
+
+function data_limits(p::HSpan)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
+    ymin = minimum(p[1][])
+    ymax = maximum(p[2][])
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+end
+
+function data_limits(p::VSpan)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin = minimum(p[1][])
+    xmax = maximum(p[2][])
+    ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+end
