@@ -82,12 +82,8 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
     # so the output is deterministic
     salt = repr(CRC32c.crc32c(svg))[end-7:end]
 
-    ids = sort(unique(collect(m[1] for m in eachmatch(r"id\s*=\s*\"([^\"]*)\"", svg))))
-
-    for id in ids
-        svg = replace(svg, id => "$id-$salt")
-    end
-
+    svg = replace(svg, r"((?:id|xlink:href)=\"[^\"]+)" => SubstitutionString("\\1-$salt"))
+    
     print(io, svg)
     return screen
 end
