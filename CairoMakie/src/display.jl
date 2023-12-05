@@ -82,7 +82,11 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
     # so the output is deterministic
     salt = repr(CRC32c.crc32c(svg))[end-7:end]
 
-    svg = replace(svg, r"((?:id|xlink:href)=\"[^\"]+)" => SubstitutionString("\\1-$salt"))
+    # matches:
+    # id="someid"
+    # xlink:href="someid" (but not xlink:href="data:someothercontent" which is how image data is attached)
+    # url(#someid)
+    svg = replace(svg, r"((?:(?:id|xlink:href)=\"(?!data:)[^\"]+)|url\(#[^)]+)" => SubstitutionString("\\1-$salt"))
     
     print(io, svg)
     return screen
