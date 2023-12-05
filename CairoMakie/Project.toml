@@ -1,7 +1,7 @@
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
-version = "0.11.2"
+version = "0.11.3"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
@@ -16,6 +16,7 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 
 [compat]
+CRC32c = "1.0, 1.6"
 Cairo = "1.0.4"
 Colors = "0.10, 0.11, 0.12"
 FFTW = "1"
@@ -25,7 +26,6 @@ GeometryBasics = "0.4.1"
 LinearAlgebra = "1.0, 1.6"
 Makie = "=0.20.2"
 PrecompileTools = "1.0"
-CRC32c = "1.0, 1.6"
 julia = "1.3"
 
 [extras]
