@@ -20,8 +20,10 @@ end
 using Makie
 
 function html_docstring(fname)
-    fname in [:Makie, :SpecApi] && return ""
-    doc = Base.doc(getfield(Makie, Symbol(fname)))
+    fname == :SpecApi && return ""
+    obj = getfield(Makie, Symbol(fname))
+    obj isa Module && return "" # modules usually don't have docstrings and have READMEs copied in otherwise, which is messy
+    doc = Base.doc(obj)
     body = Markdown.html(doc)
 
     # body = fd2html(replace(txt, raw"$" => raw"\$"), internal = true)
