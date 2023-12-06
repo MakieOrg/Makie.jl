@@ -296,6 +296,7 @@ td {
     margin: auto;
     display: block;
     text-align: center;
+    object-fit: contain;
 }
 
 .franklin-content video {
