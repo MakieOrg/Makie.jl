@@ -20,7 +20,7 @@ end
 using Makie
 
 function html_docstring(fname)
-    fname == :SpecApi && return ""
+    fname in [:Makie, :SpecApi] && return ""
     doc = Base.doc(getfield(Makie, Symbol(fname)))
     body = Markdown.html(doc)
 
