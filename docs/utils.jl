@@ -93,7 +93,7 @@ function env_examplefigure(com, _)
         print(io, sz[1], " ", sz[2])                       # hide
     end                                                    # hide
     save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str, px_per_unit = 2, pt_per_unit = 0.75) # hide
-    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str, px_per_unit = 2, pt_per_unit = 0.75) # hide" : "")
+    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str, px_per_unit = 2, pt_per_unit = 0.75)" : "") # hide
     nothing # hide
     ```
     ~~~
