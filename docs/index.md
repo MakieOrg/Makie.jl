@@ -69,7 +69,7 @@ set_theme!() # hide
 
 ## Installation and Import
 
-Add one or more of the Makie backend packages [`GLMakie.jl`](/documentation/backends/glmakie/) (OpenGL), [`CairoMakie.jl`](/documentation/backends/cairomakie/) (Cairo), or [`WGLMakie.jl`](/documentation/backends/wglmakie/) (WebGL), [`RPRMakie`](/documentation/backends/rprmakie/) (RadeonProRender) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
+Add one or more of the Makie backend packages [`GLMakie.jl`](/explanations/backends/glmakie/) (OpenGL), [`CairoMakie.jl`](/explanations/backends/cairomakie/) (Cairo), or [`WGLMakie.jl`](/explanations/backends/wglmakie/) (WebGL), [`RPRMakie`](/explanations/backends/rprmakie/) (RadeonProRender) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
 
 Makie is the core package, and the backends have no user facing functionality.  They only render the final result.  See the \myreflink{Backends} page for more information!
 
@@ -133,7 +133,7 @@ There are four backends, each of which has particular strengths. You can switch 
 
 @@box-container
   @@box
-    ~~~<a class="boxlink" href="/documentation/backends/glmakie/">~~~
+    ~~~<a class="boxlink" href="/explanations/backends/glmakie/">~~~
     @@title GLMakie.jl@@
     @@box-content
       @@description
@@ -147,7 +147,7 @@ There are four backends, each of which has particular strengths. You can switch 
   @@
 
   @@box
-    ~~~<a class="boxlink" href="/documentation/backends/cairomakie/">~~~
+    ~~~<a class="boxlink" href="/explanations/backends/cairomakie/">~~~
     @@title CairoMakie.jl @@
     @@box-content
       @@description
@@ -161,7 +161,7 @@ There are four backends, each of which has particular strengths. You can switch 
   @@
 
   @@box
-    ~~~<a class="boxlink" href="/documentation/backends/wglmakie/">~~~
+    ~~~<a class="boxlink" href="/explanations/backends/wglmakie/">~~~
     @@title WGLMakie.jl @@
     @@box-content
       @@description
@@ -174,7 +174,7 @@ There are four backends, each of which has particular strengths. You can switch 
     ~~~</a>~~~
   @@
   @@box
-    ~~~<a class="boxlink" href="documentation/backends/rprmakie/">~~~
+    ~~~<a class="boxlink" href="explanations/backends/rprmakie/">~~~
     @@title RPRMakie.jl @@
     @@box-content
       @@description
