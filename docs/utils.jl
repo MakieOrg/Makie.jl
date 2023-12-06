@@ -99,7 +99,7 @@ function env_examplefigure(com, _)
     ~~~
     <a id="$name">
     ~~~
-    \\examplefig{$name.$(svg ? "svg" : "png")}
+    {{examplefig $name.$(svg ? "svg" : "png")}}
     ~~~
     </a>
     ~~~
@@ -107,8 +107,7 @@ function env_examplefigure(com, _)
     return str
 end
 
-function lx_examplefig(lxc, _)
-    params = split(Franklin.stent(lxc.braces[1]), ",", limit = 2)
+@delay function hfun_examplefig(params)
     if length(params) != 1
         error("\\examplefig needs exactly one argument, got $params")
     end
@@ -125,9 +124,7 @@ function lx_examplefig(lxc, _)
     relative_figure_path = joinpath(relative_asset_path, filename)
     
     """
-    ~~~
-    <img width="$width" height="$height" src="$relative_figure_path">
-    ~~~
+    <img width="$width" height="$height" src="/$relative_figure_path">
     """
 end
 
