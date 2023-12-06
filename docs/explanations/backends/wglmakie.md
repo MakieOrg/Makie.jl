@@ -306,7 +306,7 @@ end
 ```
 Or also specify a proxy URL, if you have a more complex proxy setup.
 For more advanced setups consult the `?Page` docs and `JSServe.configure_server!`.
-In the [headless](/documentation/headless/index.html#wglmakie) documentation, you can also read more about setting up the JSServe server and port forwarding.
+In the [headless](/explanations/headless/index.html#wglmakie) documentation, you can also read more about setting up the JSServe server and port forwarding.
 
 ## Styling
 
