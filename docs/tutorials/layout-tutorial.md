@@ -163,7 +163,7 @@ We could say that A and B are in one column, and C and D are in one column. We c
 
 Ok, let's create the figure first with a gray backgroundcolor, and a predefined font:
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 using FileIO
@@ -195,7 +195,7 @@ Now we can start placing objects into the figure. We start with A.
 
 There are three axes and a legend. We can place the axes first, link them appropriately, and plot the first data into them.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 axtop = Axis(ga[1, 1])
 axmain = Axis(ga[2, 1], xlabel = "before", ylabel = "after")
@@ -219,7 +219,7 @@ f
 
 There's a small gap between the density plots and their axes, which we can remove by fixing one side of the limits.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 ylims!(axtop, low = 0)
 xlims!(axright, low = 0)
@@ -230,7 +230,7 @@ f
 
 We can also choose different x ticks with whole numbers.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 axmain.xticks = 0:3:9
 axtop.xticks = 0:3:9
@@ -243,7 +243,7 @@ f
 
 We have set the `label` attribute in the scatter call so it's easier to construct the legend. We can just pass `axmain` as the second argument to `Legend`.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 leg = Legend(ga[1, 2], axmain)
 
@@ -257,7 +257,7 @@ There are a couple things we want to change. There are unnecessary decorations f
 
 Also, the top axis does not have the same height as the legend. That's because a legend is usually used on the right of an `Axis` and is therefore preset with `tellheight = false`. We set this attribute to `true` so the row in which the legend sits can contract to its known size.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
@@ -269,7 +269,7 @@ f
 
 The axes are still a bit too far apart, so we reduce column and row gaps.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 colgap!(ga, 10)
 rowgap!(ga, 10)
@@ -280,7 +280,7 @@ f
 
 We can make a title by placing a label across the top two elements.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 Label(ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
     font = :bold,
@@ -294,7 +294,7 @@ f
 
 Let's move to B. We have two axes stacked on top of each other, and a colorbar alongside them. This time, we create the axes by just plotting into the right `GridLayout` slots. This can be more convenient than creating an `Axis` first.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 xs = LinRange(0.5, 6, 50)
 ys = LinRange(0.5, 6, 50)
@@ -320,7 +320,7 @@ f
 Now we need a colorbar.
 Because we haven't set specific edges for the two contour plots, just how many levels there are, we can make a colorbar using one of the contour plots and then label the bins in there from one to six.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 cb = Colorbar(gb[1:2, 2], hm, label = "cell group")
 low, high = extrema(data1)
@@ -339,7 +339,7 @@ This can later cause a bit of a gap between the density plot and content on the 
 
 In order to improve this, we can pull the colorbar labels into its layout cell using the `Mixed` alignmode. The keyword `right = 0` means that the right side of the colorbar should pull its protrusion content inward with an additional padding of `0`.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 cb.alignmode = Mixed(right = 0)
 
@@ -349,7 +349,7 @@ f
 
 As in A, the axes are a bit too far apart.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 colgap!(gb, 10)
 rowgap!(gb, 10)
@@ -362,7 +362,7 @@ f
 
 Now, we move on to panel C. This is just an `Axis3` with a colorbar on the side.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 brain = load(assetpath("brain.stl"))
 
@@ -387,7 +387,7 @@ You can set the attribute `ax3.protrusions` to a tuple of four values (left, rig
 
 We move on to Panel D, which has a grid of 3x2 axes.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 axs = [Axis(gd[row, col]) for row in 1:3, col in 1:2]
 hidedecorations!.(axs, grid = false, label = false)
@@ -410,7 +410,7 @@ f
 
 We can make a little title for the six axes by placing a `Label` in the top protrusion of row 1 and across both columns.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 Label(gd[1, :, Top()], "EEG traces", valign = :bottom,
     font = :bold,
@@ -422,7 +422,7 @@ f
 
 Again, we bring the subplots closer together by reducing gap sizes.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 rowgap!(gd, 10)
 colgap!(gd, 10)
@@ -435,7 +435,7 @@ f
 
 Now, we add three boxes on the side with labels in them. In this case, we just place them in another column to the right.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 for (i, label) in enumerate(["sleep", "awake", "test"])
     Box(gd[i, 3], color = :gray90)
@@ -448,7 +448,7 @@ f
 
 The boxes are in the correct positions, but we still need to remove the column gap.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 colgap!(gd, 2, 0)
 
@@ -463,7 +463,7 @@ We want to scale the axes so that they both have the same zoom level.
 We can do this by setting the column widths to `Auto(x)` where x is a number proportional to the number of data points of the axis.
 This way, both will have the same relative scaling.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 n_day_1 = length(0:0.1:6pi)
 n_day_2 = length(0:0.1:10pi)
@@ -480,7 +480,7 @@ f
 Now, we can add the subplot labels. We already have our four `GridLayout` objects that enclose each panel's content, so the easiest way is to create `Label`s in the top left protrusion of these layouts.
 That will leave all other alignments intact, because we're not creating any new columns or rows. The labels belong to the gaps between the layouts instead.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
@@ -502,7 +502,7 @@ This gives the column a smaller weight when distributing widths between all colu
 
 You can also use `Relative` or `Fixed` but they are not as flexible if you add more things later, so I prefer using `Auto`.
 
-\begin{examplefigure}{px_per_unit = 1.5}
+\begin{examplefigure}{}
 ```julia
 colsize!(f.layout, 1, Auto(0.5))
 
@@ -514,7 +514,7 @@ The EEG traces are currently as high as the brain axis, let's increase the size 
 
 And that is the final result:
 
-\begin{examplefigure}{name = "final_result", px_per_unit = 1.5}
+\begin{examplefigure}{name = "final_result"}
 ```julia
 rowsize!(gcd, 1, Auto(1.5))
 
