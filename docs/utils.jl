@@ -107,6 +107,12 @@ function env_examplefigure(com, _)
     return str
 end
 
+# this function inserts an image generated within `env_examplefigure` and annotates
+# the img tag with the size of the source figure, which it reads from a text file that
+# `env_examplefigure` writes into the output folder when running the code.
+# this is a bit convoluted but we don't have direct access to Franklin's code running mechanism.
+# Maybe in the future, it wouldn't be too hard to just run the code ourselves from within `env_examplefigure`
+# and then we could use the resulting size directly
 @delay function hfun_examplefig(params)
     if length(params) != 1
         error("\\examplefig needs exactly one argument, got $params")
