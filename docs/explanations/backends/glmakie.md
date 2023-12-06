@@ -86,7 +86,7 @@ You can find a demo on how to set that up in this [nextjournal article](https://
 
 GLMakie's CI has no GPU, so you can also look at [.github/workflows/glmakie.yaml](https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/glmakie.yaml) for a working setup.
 
-If none of these work for you, take a look at the other [backends](/documentation/backends/), which all work without a GPU.
+If none of these work for you, take a look at the other [backends](/explanation/backends/), which all work without a GPU.
 
 If you get an error pointing to [GLFW.jl](https://github.com/JuliaGL/GLFW.jl), please look into the existing [GLFW issues](https://github.com/JuliaGL/GLFW.jl/issues), and also google for those errors. This is then very likely something that needs fixing in the  [glfw c library](https://github.com/glfw/glfw) or in the GPU drivers.
 
