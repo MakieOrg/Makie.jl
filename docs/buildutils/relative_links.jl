@@ -49,7 +49,7 @@ function make_links_relative()
     function check_local_link!(invalid_relative_links, file_location, link)
         link_without_id = replace(link, r"#[a-zA-Z0-9!_\-\(\)]*$" => "")
         absolute_link = if startswith(link, "/")
-            replace(link, "^/+" => "")
+            replace(link_without_id, r"^/+" => "")
         else
             normpath(joinpath(file_location, link_without_id))
         end
@@ -113,6 +113,17 @@ function make_links_relative()
                     return print(f, html)
                 end
             end
+        end
+    end
+
+    # these two are generated only in deployment
+    delete!(invalid_relative_links, "siteinfo.js")
+    delete!(invalid_relative_links, "../versions.js")
+
+    for (key, value) in invalid_relative_links
+        if startswith(key, "api/@ref")
+            @warn "Ignoring an invalid `@ref` link on the API page, this should be fixed: $key $value"
+            delete!(invalid_relative_links, key)
         end
     end
 
