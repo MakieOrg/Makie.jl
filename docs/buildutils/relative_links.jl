@@ -88,7 +88,7 @@ function make_links_relative()
                         if is_local_link(link)
                             relative_link = make_relative(link, path)
                             check_local_link!(invalid_relative_links, root, link)
-                            # e.attributes["src"] = relative_link
+                            e.attributes["src"] = relative_link
                         end
 
                     elseif (e isa HTMLElement{:link} || e isa HTMLElement{:a}) && haskey(e.attributes, "href")
@@ -96,7 +96,7 @@ function make_links_relative()
                         if is_local_link(link)
                             relative_link = make_relative(link, path)
                             check_local_link!(invalid_relative_links, root, link)
-                            # e.attributes["href"] = relative_link
+                            e.attributes["href"] = relative_link
                         end
 
                     elseif e isa HTMLElement{:form} && haskey(e.attributes, "action")
@@ -104,7 +104,7 @@ function make_links_relative()
                         if is_local_link(link)
                             relative_link = make_relative(link, path)
                             check_local_link!(invalid_relative_links, root, link)
-                            # e.attributes["action"] = relative_link
+                            e.attributes["action"] = relative_link
                         end
                     end
                 end
