@@ -47,7 +47,7 @@ end
 
 function generate_colorschemes_table(ks)
     extra_dir = get(ENV, "CI", "false") == "true" ? "../" : ""
-    html = "<head><link type=\"text/css\" rel=\"stylesheet\" href=\"$(extra_dir)../assets/tables.css\" /></head><body><table><tr class=\"headerrow\">"
+    html = "<table><tr class=\"headerrow\">"
     for header in ["NAME", "Categorical variant", "Continuous variant"]
         html *= "<th>$header</th>"
     end
@@ -68,7 +68,7 @@ function generate_colorschemes_table(ks)
         # html *= colors_svg(cp7, 35, h)
         html *= "</td></tr>"
     end
-    html *= "</table></body>"
+    html *= "</table>"
     return html
 end
 

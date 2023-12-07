@@ -33,17 +33,26 @@ macro reference_test(name, code)
             if $skip
                 @test_broken false
             else
+                t1 = time()
                 if $title in $REGISTERED_TESTS
                     error("title must be unique. Duplicate title: $(title)")
                 end
                 println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
-                Makie.set_theme!(resolution=(500, 500))
+                Makie.set_theme!(; size=(500, 500),
+                                CairoMakie=(; px_per_unit=1),
+                                GLMakie=(; scalefactor=1, px_per_unit=1),
+                                WGLMakie=(; scalefactor=1, px_per_unit=1))
                 ReferenceTests.RNG.seed_rng!()
                 result = let
                     $(esc(code))
                 end
                 @test save_result(joinpath(RECORDING_DIR[], $title), result)
                 push!($REGISTERED_TESTS, $title)
+                elapsed = round(time() - t1; digits=5)
+                total = Sys.total_memory()
+                mem = round((total - Sys.free_memory()) / 10^9; digits=3)
+                # TODO, write to file and create an overview in the end, similar to the benchmark results!
+                println("Used $(mem)gb of $(round(total / 10^9; digits=3))gb RAM, time: $(elapsed)s")
             end
         end
     end

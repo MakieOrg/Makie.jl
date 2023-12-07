@@ -25,6 +25,16 @@ function colorbar_check(keys, kwargs_keys)
     end
 end
 
+function extract_colorrange(@nospecialize(plot::AbstractPlot))::Vec2{Float64}
+    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
+        return plot.calculated_colors[].colorrange[]
+    elseif haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
+        return plot.colorrange[]
+    else
+        error("colorrange not found and calculated_colors for the plot is missing or is not a proper color map. Heatmaps and images should always contain calculated_colors[].colorrange")
+    end
+end
+
 function extract_colormap(@nospecialize(plot::AbstractPlot))
     has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
@@ -47,7 +57,7 @@ function extract_colormap(plot::Union{Arrows, StreamPlot})
     return extract_colormap(plot.plots[1])
 end
 
-function extract_colormap(plot::Combined{volumeslices})
+function extract_colormap(plot::Plot{volumeslices})
     return extract_colormap(plot.plots[1])
 end
 
@@ -91,10 +101,10 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     func = plotfunc(plot)
     if isnothing(cmap)
         error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
-        If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Combined{func}))` to allow for the automatical creation of a Colorbar.")
+        If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatical creation of a Colorbar.")
     end
     if !(cmap isa ColorMapping)
-        error("extract_colormap(::$(Combined{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMapping`.")
+        error("extract_colormap(::$(Plot{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMapping`.")
     end
 
     if to_value(cmap.color) isa Union{AbstractVector{<: Colorant}, Colorant}
@@ -243,7 +253,6 @@ function initialize_block!(cb::Colorbar)
             show_cats[] = true
         end
     end
-
     heatmap!(blockscene,
         xrange, yrange, continous_pixels;
         colormap=colormap,
@@ -251,7 +260,7 @@ function initialize_block!(cb::Colorbar)
         inspectable=false
     )
     image!(blockscene,
-        lift(x-> LinRange(extrema(x)..., 2), xrange), lift(y-> LinRange(extrema(y)..., 2), yrange), continous_pixels;
+        lift(extrema, xrange), lift(extrema, yrange), continous_pixels;
         colormap = colormap,
         visible = show_continous,
         inspectable = false
@@ -401,11 +410,13 @@ function initialize_block!(cb::Colorbar)
     # trigger protrusions with one of the attributes
     notify(cb.vertical)
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
-    setfield!(cb, :limits, convert(Observable{Any}, limits))
-    setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
-    setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
-    setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
-    setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+    if (cb.colormap[] isa ColorMapping)
+        setfield!(cb, :limits, convert(Observable{Any}, limits))
+        setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
+        setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
+        setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
+        setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+    end
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)
     notify(barbox)

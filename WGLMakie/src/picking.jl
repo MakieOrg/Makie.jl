@@ -48,6 +48,7 @@ end
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
+
     session = get_three(screen; error="Can't do picking!").session
     selection = JSServe.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))

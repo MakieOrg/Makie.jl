@@ -54,7 +54,7 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         @async try
             @handle msg.mouseposition begin
                 x, y = Float64.((mouseposition...,))
-                e.mouseposition[] = (x, size(scene)[2] - y)
+                e.mouseposition[] = (x, y)
             end
             @handle msg.mousedown begin
                 # This can probably be done better from the JS side?

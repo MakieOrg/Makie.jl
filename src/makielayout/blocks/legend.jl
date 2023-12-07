@@ -1,6 +1,5 @@
-function initialize_block!(leg::Legend,
-        entry_groups::Observable{Vector{Tuple{Any, Vector{LegendEntry}}}})
-
+function initialize_block!(leg::Legend; entrygroups)
+    entry_groups = convert(Observable{Vector{Tuple{Any,Vector{LegendEntry}}}}, entrygroups)
     blockscene = leg.blockscene
 
     # by default, `tellwidth = true` and `tellheight = false` for vertical legends
@@ -12,16 +11,23 @@ function initialize_block!(leg::Legend,
 
     legend_area = lift(round_to_IRect2D, blockscene, leg.layoutobservables.computedbbox)
 
-    scene = Scene(blockscene, blockscene.px_area, camera = campixel!)
+    scene = Scene(blockscene, blockscene.viewport, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = lift(blockscene, legend_area, leg.margin) do la, lm
         enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
+    backgroundcolor = if !isnothing(leg.bgcolor[])
+        @warn("Keyword argument `bgcolor` is deprecated, use `backgroundcolor` instead.")
+        leg.bgcolor
+    else
+        leg.backgroundcolor
+    end
+
     bg = poly!(scene,
         legendrect,
-        color = leg.bgcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
+        color = backgroundcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
         strokecolor = leg.framecolor, inspectable = false)
     translate!(bg, 0, 0, -7) # bg behind patches but before content at 0 (legend is at +10)
 
@@ -461,7 +467,24 @@ function Base.propertynames(legendelement::T) where T <: LegendElement
     [fieldnames(T)..., keys(legendelement.attributes)...]
 end
 
+function to_entry_group(legend_defaults, contents::AbstractVector, labels::AbstractVector, title=nothing)
+    if length(contents) != length(labels)
+        error("Number of elements not equal: $(length(contents)) content elements and $(length(labels)) labels.")
+    end
+    entries = [LegendEntry(label, content, legend_defaults) for (content, label) in zip(contents, labels)]
+    return [(title, entries)]
+end
 
+function to_entry_group(
+        legend_defaults, contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector}, titles::AbstractVector)
+    if !(length(titles) == length(contentgroups) == length(labelgroups))
+        error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
+    end
+    entries = [[LegendEntry(l, pg, legend_defaults) for (l, pg) in zip(labelgroup, contentgroup)]
+        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
+    return [(t, en) for (t, en) in zip(titles, entries)]
+end
 
 """
     Legend(
@@ -480,17 +503,15 @@ function Legend(fig_or_scene,
         contents::AbstractVector,
         labels::AbstractVector,
         title = nothing;
-        kwargs...)
+                bbox=nothing, kwargs...)
 
-    if length(contents) != length(labels)
-        error("Number of elements not equal: $(length(contents)) content elements and $(length(labels)) labels.")
-    end
-
-    entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
-    entries = [LegendEntry(label, content, legend) for (content, label) in zip(contents, labels)]
-    entrygroups[] = [(title, entries)]
-    legend
+    scene = get_topscene(fig_or_scene)
+    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
+    entry_groups = to_entry_group(Attributes(legend_defaults), contents, labels, title)
+    entrygroups = Observable(entry_groups)
+    legend_defaults[:entrygroups] = entrygroups
+    # Use low-level constructor to not calculate legend_defaults a second time
+    return _block(Legend, fig_or_scene, (), legend_defaults, bbox; kwdict_complete=true)
 end
 
 
@@ -515,19 +536,14 @@ function Legend(fig_or_scene,
         contentgroups::AbstractVector{<:AbstractVector},
         labelgroups::AbstractVector{<:AbstractVector},
         titles::AbstractVector;
-        kwargs...)
+        bbox=nothing, kwargs...)
 
-    if !(length(titles) == length(contentgroups) == length(labelgroups))
-        error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
-    end
-
-
-    entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
-    entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]
-        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
-    entrygroups[] = [(t, en) for (t, en) in zip(titles, entries)]
-    legend
+    scene = get_scene(fig_or_scene)
+    legend_defaults = block_defaults(:Legend, Dict{Symbol,Any}(kwargs), scene)
+    entry_groups = to_entry_group(legend_defaults, contentgroups, labelgroups, titles)
+    entrygroups = Observable(entry_groups)
+    legend_defaults[:entrygroups] = entrygroups
+    return _block(Legend, fig_or_scene, (), legend_defaults, bbox; kwdict_complete=true)
 end
 
 
@@ -609,8 +625,8 @@ to one occurrence.
 """
 function axislegend(ax, args...; position = :rt, kwargs...)
     Legend(ax.parent, args...;
-        bbox = ax.scene.px_area,
-        margin = (10, 10, 10, 10),
+        bbox = ax.scene.viewport,
+        margin = (6, 6, 6, 6),
         legend_position_to_aligns(position)...,
         kwargs...)
 end

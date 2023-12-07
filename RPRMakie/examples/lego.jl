@@ -69,7 +69,7 @@ lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
     PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
 ]
-s = Scene(resolution=(500, 500), lights=lights)
+s = Scene(size=(500, 500), lights=lights)
 
 cam3d!(s)
 c = cameracontrols(s)

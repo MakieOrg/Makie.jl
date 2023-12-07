@@ -31,6 +31,7 @@ using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_s
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
 const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
+# Main.download("https://cdn.esm.sh/v66/three@0.157/es2021/three.js", joinpath(@__DIR__, "THREE.js"))
 
 include("display.jl")
 include("three_plot.jl")
@@ -55,11 +56,13 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 $(Base.doc(ScreenConfig))
 """
 function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config...)
-    JSServe.browser_display()
     Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
+    if !JSServe.has_html_display()
+        JSServe.browser_display()
+    end
     return
 end
 

@@ -3,17 +3,6 @@
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
-    push!(scene_uuids, js_uuid(scene))
-    for plot in scene.plots
-        append!(plot_uuids, (js_uuid(p) for p in Makie.collect_atomic_plots(plot)))
-    end
-    for child in scene.children
-        all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
-    end
-    return scene_uuids, plot_uuids
-end
-
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSourceContext)
     uuids = js_uuid.(Makie.collect_atomic_plots(plot))
     # This is a bit more complicated then it has to be, since evaljs / on_document_load
@@ -38,13 +27,12 @@ function JSServe.print_js_code(io::IO, scene::Scene, context::JSServe.JSSourceCo
     JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
 end
 
-function three_display(session::Session, scene::Scene; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
+function three_display(screen::Screen, session::Session, scene::Scene)
+    config = screen.config
     scene_serialized = serialize_scene(scene)
-
     window_open = scene.events.window_open
     width, height = size(scene)
-    canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
+    canvas_width = lift(x -> [round.(Int, widths(x))...], scene, viewport(scene))
     canvas = DOM.m("canvas"; tabindex="0", style="display: block")
     wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
@@ -54,7 +42,15 @@ function three_display(session::Session, scene::Scene; screen_config...)
     evaljs(session, js"""
     $(WGL).then(WGL => {
         try {
-            WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(ta), $(config.framerate), $(config.resize_to_body))
+            const renderer = WGL.create_scene(
+                $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+                $(ta), $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
+            )
+            const gl = renderer.getContext()
+            const err = gl.getError()
+            if (err != gl.NO_ERROR) {
+                throw new Error("WebGL error: " + WGL.wglerror(gl, err))
+            }
             $(done_init).notify(true)
         } catch (e) {
             JSServe.Connection.send_error("error initializing scene", e)
@@ -70,3 +66,4 @@ function three_display(session::Session, scene::Scene; screen_config...)
     three = ThreeDisplay(session)
     return three, wrapper, done_init
 end
+|

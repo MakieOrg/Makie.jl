@@ -2,7 +2,6 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 in vec3 frag_vert;
-in vec3 o_light_dir;
 
 const float max_distance = 1.3;
 
@@ -54,16 +53,25 @@ vec3 gennormal(vec3 uvw, float d)
     return normalize(a-b);
 }
 
+// Smoothes out edge around 0 light intensity, see GLMakie
+float smooth_zero_max(float x) {
+    const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
+    const float shift = 1.0 + xswap - yswap;
+    float pow8 = x + shift;
+    pow8 = pow8 * pow8; pow8 = pow8 * pow8; pow8 = pow8 * pow8;
+    return x < yswap ? c * pow8 : x;
+}
+
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0) + max(dot(L, -N), 0.0);
+    // TODO use backlight here too?
+    float diff_coeff = smooth_zero_max(dot(L, -N)) + smooth_zero_max(dot(L, N));
     // specular coefficient
     vec3 H = normalize(L + V);
-    float spec_coeff = pow(max(dot(H, N), 0.0) + max(dot(H, -N), 0.0), shininess);
+    float spec_coeff = pow(max(dot(H, -N), 0.0) + max(dot(H, N), 0.0), shininess);
     // final lighting model
-    return vec3(
-        ambient * color +
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
+    return ambient * color + get_light_color() * vec3(
+        get_diffuse() * diff_coeff * color +
+        get_specular() * spec_coeff
     );
 }
 
@@ -122,14 +130,14 @@ vec4 contours(vec3 front, vec3 dir)
     float T = 1.0;
     vec3 Lo = vec3(0.0);
     int i = 0;
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 density = color_lookup(intensity, colormap, colorrange);
         float opacity = density.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
+            vec3 L = get_light_direction();
             vec3 opaque = blinnphong(N, camdir, L, density.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;
@@ -147,12 +155,12 @@ vec4 isosurface(vec3 front, vec3 dir)
     vec4 c = vec4(0.0);
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, colormap, colorrange);
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
     for (i; i < num_samples; ++i){
         float density = texture(volumedata, pos).x;
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
+            vec3 L = get_light_direction();
             c = vec4(
                 blinnphong(N, camdir, L, diffuse_color.rgb),
                 diffuse_color.a

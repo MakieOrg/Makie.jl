@@ -47,7 +47,7 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     end
 end
 
-function project_rect(scenelike, space, rect::Rect, model)
+function project_shape(scenelike, space, rect::Rect, model)
     mini = project_position(scenelike, space, minimum(rect), model)
     maxi = project_position(scenelike, space, maximum(rect), model)
     return Rect(mini, maxi .- mini)
@@ -117,6 +117,15 @@ function rgbatuple(c)
 end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
+
+# handle patterns
+function Cairo.CairoPattern(color::Makie.AbstractPattern)
+    # the Cairo y-coordinate are fliped
+    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
+    cairoimage = Cairo.CairoImageSurface(bitmappattern)
+    cairopattern = Cairo.CairoPattern(cairoimage)
+    return cairopattern
+end
 
 ########################################
 #        Common color utilities        #
@@ -217,7 +226,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         wsize = reverse(size(color))
         wh = wsize .- 1
         cvec = map(uv) do uv
-            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wsize)
             return color[end - (y - 1), x]
         end
         # TODO This is wrong and doesn't actually interpolate
@@ -231,14 +240,10 @@ function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
 end
 
-# not piracy
-function Cairo.CairoPattern(color::Makie.AbstractPattern)
-    # the Cairo y-coordinate are fliped
-    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
-    cairoimage = Cairo.CairoImageSurface(bitmappattern)
-    cairopattern = Cairo.CairoPattern(cairoimage)
-    return cairopattern
-end
+################################################################################
+#                                Font handling                                 #
+################################################################################
+
 
 """
 Finds a font that can represent the unicode character!

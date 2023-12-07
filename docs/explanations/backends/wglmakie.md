@@ -306,7 +306,7 @@ end
 ```
 Or also specify a proxy URL, if you have a more complex proxy setup.
 For more advanced setups consult the `?Page` docs and `JSServe.configure_server!`.
-In the [headless](/documentation/headless/index.html#wglmakie) documentation, you can also read more about setting up the JSServe server and port forwarding.
+In the [headless](/explanations/headless/index.html#wglmakie) documentation, you can also read more about setting up the JSServe server and port forwarding.
 
 ## Styling
 
@@ -378,7 +378,7 @@ end
 
 App() do session::Session
     # We can now use this wherever we want:
-    fig = Figure(resolution=(200, 200))
+    fig = Figure(size=(200, 200))
     contour(fig[1,1], rand(4,4))
     card = GridCard(
         Slider(1:100),

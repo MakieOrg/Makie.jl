@@ -17,7 +17,6 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
     parameters      ::TextureParameters{NDIM}
     size            ::NTuple{NDIM, Int}
     context         ::GLContext
-    requires_update ::Observable{Bool}
     observers       ::Vector{Observables.ObserverFunction}
     function Texture{T, NDIM}(
             id              ::GLuint,
@@ -37,7 +36,6 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             parameters,
             size,
             current_context(),
-            Observable(true),
             Observables.ObserverFunction[]
         )
         finalizer(free, tex)
@@ -49,11 +47,8 @@ end
 mutable struct TextureBuffer{T <: GLArrayEltypes} <: OpenglTexture{T, 1}
     texture::Texture{T, 1}
     buffer::GLBuffer{T}
-    requires_update::Observable{Bool}
-
     function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where T
-        x = map((_, _) -> true, buffer.requires_update, texture.requires_update)
-        new{T}(texture, buffer, x)
+        new{T}(texture, buffer)
     end
 end
 Base.size(t::TextureBuffer) = size(t.buffer)
@@ -72,7 +67,6 @@ ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture
 function unsafe_free(tb::TextureBuffer)
     unsafe_free(tb.texture)
     unsafe_free(tb.buffer)
-    Observables.clear(tb.requires_update)
 end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
@@ -148,8 +142,7 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         anisotropic = s.anisotropic; mipmap = s.anisotropic != 1f0, kwargs...
     )
     obsfunc = ShaderAbstractions.connect!(s, tex)
-    obsfunc2 = on(x -> tex.requires_update[] = true, s.updates.update)
-    push!(tex.observers, obsfunc, obsfunc2)
+    push!(tex.observers, obsfunc)
     return tex
 end
 

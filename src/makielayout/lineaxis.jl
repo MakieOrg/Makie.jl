@@ -1,3 +1,8 @@
+# the hyphen which is usually used to store negative number strings
+# is shorter than the dedicated minus in most fonts, the minus glyph
+# looks more balanced with numbers, especially in superscripts or subscripts
+const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
+
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
     attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
     return LineAxis(parent, attrs)
@@ -78,8 +83,8 @@ function create_linepoints(
             return [from, to]
         else
             x = position
-            pstart = Point2f(-0.5f0 * tickwidth, 0)
-            pend = Point2f(0.5f0 * tickwidth, 0)
+            pstart = Point2f(0, -0.5f0 * tickwidth)
+            pend = Point2f(0, 0.5f0 * tickwidth)
             from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents_oriented[1] - 0.5spine_width)
             to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents_oriented[2] + 0.5spine_width)
             return [from, to]
@@ -600,7 +605,7 @@ function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
         xs -> Showoff.showoff(xs, :plain),
         ticks_scaled
     )
-    labels = rich.(_logbase(scale), superscript.(labels_scaled, offset = Vec2f(0.1f0, 0f0)))
+    labels = rich.(_logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0f0)))
 
     ticks, labels
 end
@@ -663,9 +668,9 @@ end
 """
     get_ticklabels(::Automatic, values)
 
-Gets tick labels by applying `showoff` to `values`.
+Gets tick labels by applying `showoff_minus` to `values`.
 """
-get_ticklabels(::Automatic, values) = Showoff.showoff(values)
+get_ticklabels(::Automatic, values) = showoff_minus(values)
 
 """
     get_ticklabels(formatfunction::Function, values)
@@ -686,7 +691,7 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmax = vmax / m.multiple
     multiples = Makie.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
-    multiples .* m.multiple, Showoff.showoff(multiples) .* m.suffix
+    multiples .* m.multiple, showoff_minus(multiples) .* m.suffix
 end
 
 function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
@@ -718,7 +723,13 @@ function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
     # We also need to be careful that we don't remove significant digits
     sigdigits = ceil(Int, log10(1000 * max(abs(vmin), abs(vmax)) / delta))
 
-    return multiples, Showoff.showoff(round.(multiples .* m.label_factor, sigdigits = sigdigits)) .* m.suffix
+    return multiples, showoff_minus(round.(multiples .* m.label_factor, sigdigits = sigdigits)) .* m.suffix
+end
+
+# Replaces hyphens in negative numbers with the unicode MINUS_SIGN
+function showoff_minus(x::AbstractVector)
+    # TODO: don't use the `replace` workaround
+    replace.(Showoff.showoff(x), r"-(?=\d)" => MINUS_SIGN)
 end
 
 # identity or unsupported scales

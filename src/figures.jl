@@ -26,11 +26,12 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
+get_scene(gp::GridLayoutBase.GridPosition) = get_scene(get_figure(gp))
+get_scene(gp::GridLayoutBase.GridSubposition) = get_scene(get_figure(gp))
+
 
 
 const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
-Base.@deprecate_binding _current_figure CURRENT_FIGURE
-
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 
 """
@@ -183,10 +184,7 @@ function resize_to_layout!(fig::Figure)
 end
 
 function Base.empty!(fig::Figure)
-    screens = copy(fig.scene.current_screens)
     empty!(fig.scene)
-    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
-    append!(fig.scene.current_screens, screens)
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)
@@ -199,7 +197,7 @@ end
 # Layouts are already hooked up to this, so it's very simple.
 """
     resize!(fig::Figure, width, height)
-Resizes the given `Figure` to the resolution given by `width` and `height`.
+Resizes the given `Figure` to the size given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
 Makie.resize!(figure::Figure, width::Integer, height::Integer) = resize!(figure.scene, width, height)
