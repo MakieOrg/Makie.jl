@@ -81,7 +81,8 @@ end
 
 function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     # TODO align
-
+    # TODO Move transform_func + model from DataInspector in here?
+    # TODO (remove forced connection of model in that case, see end of function)
     scene = parent_scene(p)
     px_pos = map(scene.camera.projectionview, scene.camera.resolution, p[1]) do _, _, p
         project(scene, p)
@@ -268,6 +269,14 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     )
 
     notify(p[1])
+
+    # TODO Force connect transform to allow depth translations to continue to apply
+    for plot in p.plots
+        if !isassigned(plot.transformation.parent)
+            obsfunc = connect!(transformation(p), transformation(plot))
+            append!(plot.deregister_callbacks, obsfunc)
+        end
+    end
 
     return p
 end
