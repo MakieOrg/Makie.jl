@@ -60,7 +60,7 @@ function initialize_block!(controller::CameraWidget; axis::Union{LScene, Axis3},
         end
     end
 
-    scene = Scene(blockscene, px_area = scene_region) # clear = false
+    scene = Scene(blockscene, viewport = scene_region) # clear = false
 
     # Handle textures
     # scene size threshholds for texture swaps
@@ -83,14 +83,13 @@ function initialize_block!(controller::CameraWidget; axis::Union{LScene, Axis3},
 
     on(scene_region) do bb
         w, h = widths(bb)
-
-        if h < controller.low_mid_threshold[] - 10 && selected_texture[] != :low
+        if (h <= controller.low_mid_threshold[]) && (selected_texture[] != :low)
             selected_texture[] = :low
             texture[] = controller.texture_low[]
-        elseif controller.low_mid_threshold[] + 10 < h < controller.mid_high_threshold[] - 20 && selected_texture[] != :mid
+        elseif (controller.low_mid_threshold[] < h <= controller.mid_high_threshold[]) && (selected_texture[] != :mid)
             selected_texture[] = :mid
             texture[] = controller.texture_mid[]
-        elseif controller.mid_high_threshold[] + 20 < h && selected_texture[] != :high
+        elseif (controller.mid_high_threshold[] < h) && (selected_texture[] != :high)
             selected_texture[] = :high
             texture[] = controller.texture_high[]
         end
@@ -99,7 +98,7 @@ function initialize_block!(controller::CameraWidget; axis::Union{LScene, Axis3},
     # Generate sphere mesh
     m = uv_normal_mesh(Tesselation(Sphere(Point3f(0), 1f0), 50))
     mp = mesh!(
-        scene, m, color = map(x -> ShaderAbstractions.Sampler(x, anisotropic = 16f0), texture),
+        scene, m, color = ShaderAbstractions.Sampler(texture, anisotropic = 16f0),
         transparency = false, fxaa=!false
     )
     rotate!(mp, Vec3f(0, 0, 1), pi)
@@ -200,7 +199,7 @@ function initialize_block!(controller::CameraWidget; axis::Union{LScene, Axis3},
     on(scene, events(scene).mousebutton, priority = 101) do e
         if float && is_mouseinside(scene) && e.button == Mouse.right
             if e.action == Mouse.press
-                drag_offset[] = origin(scene.px_area[]) .- events(scene).mouseposition[]
+                drag_offset[] = origin(scene.viewport[]) .- events(scene).mouseposition[]
                 in_drag[] = true
             else
                 in_drag[] = false
@@ -298,8 +297,8 @@ function CameraWidgetCamera(scene::Scene, axis; kwargs...)
     cameracontrols!(scene, cam)
 
     # Trigger updates on scene resize and settings change
-    # scene.px_area,
-    on(camera(scene), scene.px_area, attr[:fov], attr[:projectiontype]) do _, _, _
+    # scene.viewport,
+    on(camera(scene), scene.viewport, attr[:fov], attr[:projectiontype]) do _, _, _
         update_cam!(scene, cam)
     end
 
@@ -322,7 +321,7 @@ function Ray(scene::Scene, cam::CameraWidgetCamera, xy::VecTypes{2})
     u_x = normalize(cross(u_z, up))
     u_y = normalize(cross(u_x, u_z))
 
-    px_width, px_height = widths(scene.px_area[])
+    px_width, px_height = widths(scene.viewport[])
     aspect = px_width / px_height
     rel_pos = 2 .* xy ./ (px_width, px_height) .- 1
 
@@ -340,8 +339,8 @@ end
 function _hovered_angles(scene, cam, step)
     # Pick in a small region to allow picking past lines on the sphere
     mp = events(scene).mouseposition[]
-    mini = max.(minimum(scene.px_area[]) .+ 1, mp .- 2)
-    maxi = min.(maximum(scene.px_area[]), mp .+ 2)
+    mini = max.(minimum(scene.viewport[]) .+ 1, mp .- 2)
+    maxi = min.(maximum(scene.viewport[]), mp .+ 2)
     selections = Makie.pick(scene, Rect2i(mini, maxi-mini))
     isempty(selections) && return NaN, NaN
 
@@ -464,7 +463,7 @@ function update_cam!(scene::Scene, cam::CameraWidgetCamera)
 
     view = Makie.lookat(eyeposition, lookat, upvector)
 
-    aspect = Float32((/)(widths(scene.px_area[])...))
+    aspect = Float32((/)(widths(scene.viewport[])...))
     if cam.attributes.projectiontype[] == Makie.Perspective
         view_norm = norm(eyeposition - lookat)
         proj = Makie.perspectiveprojection(Float32(fov), aspect, view_norm * 0.1f0, view_norm * 2f0)
@@ -585,7 +584,7 @@ function generate_ball_controller_texture(;
     parent = Scene(resolution = resolution, backgroundcolor = top_color, clear = true)
     Scene(
         parent,
-        px_area = map(r -> Rect2i(0, 0, widths(r)[1], 0.5widths(r)[2]), parent.px_area),
+        viewport = map(r -> Rect2i(0, 0, widths(r)[1], 0.5widths(r)[2]), parent.viewport),
         backgroundcolor = bottom_color, clear = true
     )
     scene = Scene(parent, backgroundcolor = :transparent, clear = false)
