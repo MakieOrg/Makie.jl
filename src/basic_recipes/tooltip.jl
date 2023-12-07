@@ -49,6 +49,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
         transparency = false,
         visible = true,
         inspectable = false,
+        space = :data,
 
         # Text
         textpadding = (4, 4, 4, 4), # LRBT
@@ -81,11 +82,16 @@ end
 
 function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     # TODO align
-    # TODO Move transform_func + model from DataInspector in here?
-    # TODO (remove forced connection of model in that case, see end of function)
     scene = parent_scene(p)
-    px_pos = map(scene.camera.projectionview, scene.camera.resolution, p[1]) do _, _, p
-        project(scene, p)
+    px_pos = map(
+            p, p[1], scene.camera.projectionview, p.model, transform_func(p),
+            p.space, scene.viewport) do pos, _, model, tf, space, viewport
+
+        # Adjusted from error_and_rangebars
+        spvm = clip_to_space(scene.camera, :pixel) * space_to_clip(scene.camera, space) * model
+        transformed = apply_transform(tf, pos, space)
+        p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+        return Point3f(p4d) / p4d[4]
     end
 
     # Text
@@ -140,17 +146,17 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         strokewidth = p.strokewidth, strokecolor = p.strokecolor,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable, space = :pixel
+        inspectable = p.inspectable, space = :pixel, transformation = Transformation()
     )
     translate!(tp, 0, 0, 1)
 
     # TODO react to glyphcollection instead
     bbox = map(
-            px_pos, p.text, text_align, text_offset, textpadding, p.align
+            p, px_pos, p.text, text_align, text_offset, textpadding, p.align
         ) do p, s, _, o, pad, align
-        bb = Rect2f(boundingbox(tp)) + o
+        bb = boundingbox(tp) + to_ndim(Vec3f, o, 0)
         l, r, b, t = pad
-        return Rect2f(origin(bb) .- (l, b), widths(bb) .+ (l+r, b+t))
+        return Rect3f(origin(bb) .- (l, b, 0), widths(bb) .+ (l+r, b+t, 0))
     end
 
     # Text background mesh
@@ -160,7 +166,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         color = p.backgroundcolor, fxaa = false,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable
+        inspectable = p.inspectable, transformation = Transformation()
     )
 
     # Triangle mesh
@@ -175,27 +181,27 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         color = p.backgroundcolor,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable
+        inspectable = p.inspectable, transformation = Transformation()
     )
     onany(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
         o = origin(bb); w = widths(bb)
         scale!(mp, s, s, s)
 
         if placement === :left
-            translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], 0))
+            translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], o[3]))
             rotate!(mp, qrotation(Vec3f(0,0,1), 0.5pi))
         elseif placement === :right
             translate!(mp, Vec3f(o[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), -0.5pi))
         elseif placement in (:below, :down, :bottom)
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2] + w[2], 0))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2] + w[2], o[3]))
             rotate!(mp, Quaternionf(0,0,1,0)) # pi
         elseif placement in (:above, :up, :top)
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2], 0))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
             rotate!(mp, Quaternionf(0,0,0,1)) # 0
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2], 0))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
             rotate!(mp, Quaternionf(0,0,0,1))
         end
         return
@@ -204,7 +210,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     # Outline
 
     outline = map(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
-        l, b = origin(bb); w, h = widths(bb)
+        l, b, z = origin(bb); w, h, _ = widths(bb)
         r, t = (l, b) .+ (w, h)
 
         # We start/end at half width/height here to avoid corners like this:
@@ -256,7 +262,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
             ]
         end
 
-        return shift
+        return to_ndim.(Vec3f, shift, z)
     end
 
     lines!(
@@ -265,18 +271,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable
+        inspectable = p.inspectable, transformation = Transformation()
     )
 
     notify(p[1])
-
-    # TODO Force connect transform to allow depth translations to continue to apply
-    for plot in p.plots
-        if !isassigned(plot.transformation.parent)
-            obsfunc = connect!(transformation(p), transformation(plot))
-            append!(plot.deregister_callbacks, obsfunc)
-        end
-    end
 
     return p
 end
