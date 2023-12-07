@@ -422,8 +422,8 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    pos = position_on_plot(plot, idx)
-    proj_pos = shift_project(scene, pos)
+    pos = position_on_plot(plot, idx, apply_transform = false)
+    proj_pos = shift_project(scene, apply_transform_and_model(plot, pos))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if haskey(plot, :inspector_label)
@@ -489,8 +489,8 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         a.indicator_visible[] = true
     end
 
-    pos = position_on_plot(plot, idx)
-    proj_pos = shift_project(scene, pos)
+    pos = position_on_plot(plot, idx, apply_transform = false)
+    proj_pos = shift_project(scene, apply_transform_and_model(plot, pos))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if haskey(plot, :inspector_label)
@@ -510,8 +510,8 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     scene = parent_scene(plot)
 
     # cast ray from cursor into screen, find closest point to line
-    pos = position_on_plot(plot, idx)
-    proj_pos = shift_project(scene, pos)
+    pos = position_on_plot(plot, idx, apply_transform = false)
+    proj_pos = shift_project(scene, apply_transform_and_model(plot, pos))
     update_tooltip_alignment!(inspector, proj_pos)
 
     tt.offset[] = ifelse(
@@ -596,7 +596,7 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    pos = position_on_plot(plot, idx)
+    pos = position_on_plot(plot, idx, apply_transform = false)
 
     if !isnan(pos)
         tt[1][] = proj_pos
@@ -810,8 +810,8 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    pos = apply_transform_and_model(plot, plot[1][][idx])
-    proj_pos = shift_project(scene, to_ndim(Point3f, pos, 0))
+    pos = plot[1][][idx]
+    proj_pos = shift_project(scene, apply_transform_and_model(plot, to_ndim(Point3f, pos, 0)))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
@@ -852,7 +852,7 @@ end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a = inspector.attributes
     tt = inspector.plot
-    pos = apply_transform_and_model(plot, plot[1][][idx])
+    pos = plot[1][][idx]
 
     mpos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, mpos)
