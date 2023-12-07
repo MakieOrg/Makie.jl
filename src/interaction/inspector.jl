@@ -371,7 +371,12 @@ end
 
 # clears temporary plots (i.e. bboxes) and update selection
 function clear_temporary_plots!(inspector::DataInspector, plot)
-    inspector.selection = plot
+    if inspector.selection !== plot
+        if haskey(inspector.selection, :inspector_clear)
+            inspector.selection[:inspector_clear][](inspector, inspector.selection)
+        end
+        inspector.selection = plot
+    end
 
     for i in length(inspector.obsfuncs):-1:3
         off(pop!(inspector.obsfuncs))
