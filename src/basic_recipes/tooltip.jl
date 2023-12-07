@@ -90,7 +90,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Text
 
-    textpadding = map(p.textpadding) do pad
+    textpadding = map(p, p.textpadding) do pad
         if pad isa Real
             return (pad, pad, pad, pad)
         elseif length(pad) == 4
@@ -101,7 +101,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         end
     end
 
-    text_offset = map(p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
+    text_offset = map(p, p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
         l, r, b, t = pad
 
         if placement === :left
@@ -118,7 +118,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         end
     end
 
-    text_align = map(p.placement, p.align) do placement, align
+    text_align = map(p, p.placement, p.align) do placement, align
         if placement === :left
             return (1.0, align)
         elseif placement === :right
@@ -177,7 +177,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable
     )
-    onany(bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
+    onany(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
         o = origin(bb); w = widths(bb)
         scale!(mp, s, s, s)
 
@@ -203,7 +203,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Outline
 
-    outline = map(bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
+    outline = map(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
         l, b = origin(bb); w, h = widths(bb)
         r, t = (l, b) .+ (w, h)
 
