@@ -1,49 +1,20 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
-function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    model = map(transformationmatrix, translation_o, scale_o, rotation_o)
-    return Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-end
-
-function Transformation(transformable::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1),
-                        transform_func = copy(transformation(transformable).transform_func))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    parent_transform = transformation(transformable)
-
-    pmodel = parent_transform.model
-    model = map(translation_o, scale_o, rotation_o, pmodel) do t, s, r, p
-        return p * transformationmatrix(t, s, r)
+function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
+    tfuncs = []
+    obsfunc = on(parent.model; update=true) do m
+        return child.parent_model[] = m
     end
-
-    trans = Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-
-    trans.parent[] = parent_transform
-    return trans
+    push!(tfuncs, obsfunc)
+    if connect_func
+        t2 = on(parent.transform_func; update=true) do f
+            child.transform_func[] = f
+            return
+        end
+        push!(tfuncs, t2)
+    end
+    child.parent[] = parent
+    return tfuncs
 end
 
 function free(transformation::Transformation)
@@ -69,7 +40,7 @@ end
 function translated(scene::Scene; kw_args...)
     tscene = Scene(scene, transformation = Transformation())
     transform!(tscene; kw_args...)
-    tscene
+     tscene
 end
 
 function transform!(
@@ -84,7 +55,7 @@ function transform!(
 end
 
 function transform!(
-        scene::Transformable, attributes::Union{Attributes, AbstractDict}
+        scene::Transformable, attributes::Union{Attributes, AbstractDict, NamedTuple}
     )
     transform!(scene; attributes...)
 end
@@ -407,26 +378,36 @@ end
 ################################################################################
 
 """
-    Polar(theta_0::Float64 = 0.0, direction::Int = +1, r0::Float64 = 0)
+    Polar(theta_as_x = true, clip_r = true, theta_0::Float64 = 0.0, direction::Int = +1, r0::Float64 = 0)
 
-This struct defines a general polar-to-cartesian transformation, i.e.,
+This struct defines a general polar-to-cartesian transformation, i.e.
+
 ```math
 (r, θ) -> ((r - r₀) ⋅ \\cos(direction ⋅ (θ + θ₀)), (r - r₀) ⋅ \\sin(direction \\cdot (θ + θ₀)))
 ```
 
-where theta is assumed to be in radians.
+where θ is assumed to be in radians.
 
-`direction` should be either -1 or +1, `r0` should be positive and `theta_0` may be any value.
-
-Note that for `r0 != 0` the inversion may return wrong results.
+Controls:
+- `theta_as_x = true` controls the order of incoming arguments. If true, a `Point2f`
+is interpreted as `(θ, r)`, otherwise `(r, θ)`.
+- `clip_r = true` controls whether negative radii are clipped. If true, `r < 0`
+produces `NaN`, otherwise they simply enter in the formula above as is. Note that
+the inversion only returns `r ≥ 0`
+- `theta_0 = 0` offsets angles by the specified amount.
+- `direction = +1` inverts the direction of θ.
+- `r0 = 0` offsets radii by the specified amount. Not that this will affect the
+shape of transformed objects.
 """
 struct Polar
     theta_as_x::Bool
+    clip_r::Bool
     theta_0::Float64
     direction::Int
     r0::Float64
-    function Polar(theta_as_x = true, theta_0 = 0.0, direction = +1, r0 = 0)
-        return new(theta_as_x, theta_0, direction, r0)
+
+    function Polar(theta_0::Real = 0.0, direction::Int = +1, r0::Real = 0, theta_as_x::Bool = true, clip_r::Bool = true)
+        return new(theta_as_x, clip_r, theta_0, direction, r0)
     end
 end
 
@@ -434,12 +415,15 @@ Base.broadcastable(x::Polar) = (x,)
 
 function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
     if trans.theta_as_x
-        r = max(0.0, point[2] - trans.r0)
-        θ = trans.direction * (point[1] + trans.theta_0)
+        θ, r = point
     else
-        r = max(0.0, point[1] - trans.r0)
-        θ = trans.direction * (point[2] + trans.theta_0)
+        r, θ = point
     end
+    r = r - trans.r0
+    if trans.clip_r && (r < 0.0)
+        return Point2{T}(NaN)
+    end
+    θ = trans.direction * (θ + trans.theta_0)
     y, x = r .* sincos(θ)
     return Point2{T}(x, y)
 end

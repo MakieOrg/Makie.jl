@@ -18,6 +18,8 @@ using Makie: volume
         @test all(hi .>= (8,8,10))
     end
 
+    include("deprecated.jl")
+    include("specapi.jl")
     include("primitives.jl")
     include("pipeline.jl")
     include("record.jl")

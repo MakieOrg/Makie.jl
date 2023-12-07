@@ -27,7 +27,7 @@ end
 end
 
 @reference_test "shading" begin
-    mesh(Sphere(Point3f(0), 1f0), color=:orange, shading=false)
+    mesh(Sphere(Point3f(0), 1f0), color=:orange, shading=NoShading)
 end
 
 @reference_test "visible" begin

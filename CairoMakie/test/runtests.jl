@@ -37,7 +37,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
     @testset "saving pdf two times" begin
         # https://github.com/MakieOrg/Makie.jl/issues/2433
-        fig = Figure(resolution=(480, 792))
+        fig = Figure(size = (480, 792))
         ax = Axis(fig[1, 1])
         # The IO was shared between screens, which left the second figure empty
         save("fig.pdf", fig, pt_per_unit=0.5)
@@ -52,17 +52,17 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         # https://github.com/MakieOrg/Makie.jl/issues/2438
         # This bug was caused by using the screen size of the pdf screen, which
         # has a different device_scaling_factor, and therefore a different screen size
-        fig = scatter(1:4, figure=(; resolution=(800, 800)))
+        fig = scatter(1:4, figure=(; size = (800, 800)))
         save("test.pdf", fig)
         size(Makie.colorbuffer(fig)) == (800, 800)
         rm("test.pdf")
     end
 
     @testset "switching from pdf screen to png, save" begin
-        fig = scatter(1:4, figure=(; resolution=(800, 800)))
+        fig = scatter(1:4, figure=(; size = (800, 800)))
         save("test.pdf", fig)
         save("test.png", fig)
-        @test size(load("test.png")) == (800, 800)
+        @test size(load("test.png")) == (1600, 1600)
         rm("test.pdf")
         rm("test.png")
     end
@@ -89,7 +89,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
     @testset "changing resolution of same format" begin
         # see: https://github.com/MakieOrg/Makie.jl/issues/2433
         # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441
-        scene = Scene(resolution=(800, 800));
+        scene = Scene(size = (800, 800));
         load_save(s; kw...) = (save("test.png", s; kw...); load("test.png"))
         @test size(load_save(scene, px_per_unit=2)) == (1600, 1600)
         @test size(load_save(scene, px_per_unit=1)) == (800, 800)
@@ -122,7 +122,7 @@ end
 @testset "VideoStream & screen options" begin
     N = 3
     points = Observable(Point2f[])
-    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(600, 800),))
+    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(600, 800),))
     vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=CairoMakie)
     @test vio.screen isa CairoMakie.Screen{CairoMakie.IMAGE}
     @test size(vio.screen) == size(f.scene) .* 2
@@ -134,7 +134,6 @@ end
     rm("test.mp4")
 end
 
-using ReferenceTests
 
 excludes = Set([
     "Colored Mesh",
@@ -191,7 +190,7 @@ excludes = Set([
 functions = [:volume, :volume!, :uv_mesh]
 
 @testset "refimages" begin
-    CairoMakie.activate!(type = "png")
+    CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions=functions)
     recorded_files, recording_dir = @include_reference_tests "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)

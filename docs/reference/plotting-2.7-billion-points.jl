@@ -61,7 +61,7 @@ points = Mmap.mmap(open(path, "r"), Vector{Point2f});
                            =#
                            point_func=reverse,
                            axis=(; type=Axis, autolimitaspect=1),
-                           figure=(; figure_padding=0, resolution=(1200, 600)))
+                           figure=(; figure_padding=0, size=(1200, 600)))
     hidedecorations!(ax)
     hidespines!(ax)
     display(f)

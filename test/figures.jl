@@ -62,6 +62,7 @@ end
     current_axis!(ax2)
     @test current_axis() === ax2
     @test current_figure() === fig
+
 end
 
 @testset "Deleting from figures" begin
@@ -155,10 +156,10 @@ end
 end
 
 @testset "Figure and axis kwargs validation" begin
-    @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()), figure = (resolution = (100, 100)))
-    @test_throws ArgumentError lines(1:10, figure = (resolution = (100, 100)))
+    @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()), figure = (size = (100, 100)))
+    @test_throws ArgumentError lines(1:10, figure = (size = (100, 100)))
     @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()))
-    
+
     # these just shouldn't error
     lines(1:10, axis = (aspect = DataAspect(),))
     lines(1:10, axis = Attributes(aspect = DataAspect()))

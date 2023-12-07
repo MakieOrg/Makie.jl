@@ -26,6 +26,7 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
 uniform mat4 projectionview, model;
 uniform uint objectid;
 uniform int total_length;
+uniform float px_per_unit;
 
 out uvec2 g_id;
 out vec4 g_color;
@@ -50,7 +51,7 @@ void main()
     int index = gl_VertexID;
     g_id = uvec2(objectid, index+1);
     g_valid_vertex = get_valid_vertex(valid_vertex);
-    g_thickness = thickness;
+    g_thickness = px_per_unit * thickness;
 
     g_color = _color(color, intensity, color_map, color_norm, index, total_length);
     #ifdef FAST_PATH
