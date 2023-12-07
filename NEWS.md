@@ -2,6 +2,8 @@
 
 ## master
 
+- Fixed DataInspector depth order and fixed positional labels being in transformed space. [#3454](https://github.com/MakieOrg/Makie.jl/pull/3454)
+
 ## 0.20.2
 
 - Switched from SHA512 to CRC32c salting in CairoMakie svgs, drastically improving svg rendering speed [#3435](https://github.com/MakieOrg/Makie.jl/pull/3435).
