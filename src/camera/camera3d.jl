@@ -299,7 +299,7 @@ function deselect_all_cameras!(scene)
     end
     nothing
 end
-deselect_camera!(cam::Camera3D) = cam.attributes.selected[] = false
+deselect_camera!(cam::Camera3D) = cam.selected[] = false
 deselect_camera!(::AbstractCamera) = nothing
 
 
