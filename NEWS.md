@@ -2,7 +2,7 @@
 
 ## master
 
-- Fixed DataInspector depth order and fixed positional labels being in transformed space. [#3454](https://github.com/MakieOrg/Makie.jl/pull/3454)
+- DataInspector Fixes: Fixed depth order, positional labels being in transformed space and `:inspector_clear` not getting called when moving from one plot to another. [#3454](https://github.com/MakieOrg/Makie.jl/pull/3454)
 
 ## 0.20.2
 
