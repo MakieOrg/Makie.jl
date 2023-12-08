@@ -2,6 +2,8 @@
 
 ## master
 
+- Fixed bug in GLMakie where the update from a (i, j) sized GPU buffer to a (j, i) sized buffer would fail [#3456](https://github.com/MakieOrg/Makie.jl/pull/3456).
+
 ## 0.20.2
 
 - Switched from SHA512 to CRC32c salting in CairoMakie svgs, drastically improving svg rendering speed [#3435](https://github.com/MakieOrg/Makie.jl/pull/3435).
