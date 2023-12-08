@@ -393,3 +393,13 @@ end
 
     GLMakie.closeall()
 end
+
+@testset "image size changes" begin
+    s = Scene()
+    im = image!(s, 0..10, 0..10, zeros(RGBf, 10, 20))
+    display(s)
+    im[3][] = zeros(RGBf, 20, 10) # same length, different size
+    im[3][] = zeros(RGBf, 15, 5) # smaller size
+    im[3][] = zeros(RGBf, 25, 15) # larger size
+    GLMakie.closeall()
+end
