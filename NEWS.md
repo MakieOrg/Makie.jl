@@ -3,6 +3,7 @@
 ## master
 
 - DataInspector Fixes: Fixed depth order, positional labels being in transformed space and `:inspector_clear` not getting called when moving from one plot to another. [#3454](https://github.com/MakieOrg/Makie.jl/pull/3454)
+- Fixed bug in GLMakie where the update from a (i, j) sized GPU buffer to a (j, i) sized buffer would fail [#3456](https://github.com/MakieOrg/Makie.jl/pull/3456).
 
 ## 0.20.2
 
