@@ -897,14 +897,17 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 end
 
 """
+    autolimits!()
     autolimits!(la::Axis)
 
 Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
+The argument `la` defaults to `current_axis()`.
 """
 function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
     return
 end
+autolimits!() = autolimits!(current_axis())
 
 function autolimits(ax::Axis, dim::Integer)
     # try getting x limits for the axis and then union them with linked axes
