@@ -163,9 +163,8 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
             return bb
         end
     end
-
-    transform = Transformation(p.transformation; transform_func=identity)
-    return voronoiplot!(p, attr, vorn; transformation=transform)
+    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
+    return voronoiplot!(p, attr, vorn)
 end
 
 function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}

@@ -1,10 +1,10 @@
-const histogram_plot_types = [BarPlot, Heatmap, Volume]
+const histogram_plot_types = (BarPlot, Heatmap, Volume)
 
 function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any, N}) where N
     ptype = plottype(P, histogram_plot_types[N])
     f(edges) = edges[1:end-1] .+ diff(edges)./2
     kwargs = N == 1 ? (; width = step(h.edges[1]), gap = 0, dodge_gap = 0) : NamedTuple()
-    to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
+    return to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
@@ -78,8 +78,8 @@ function Makie.plot!(plot::StepHist)
     pop!(attr, :normalization)
     pop!(attr, :scale_to)
     pop!(attr, :bins)
-    # plot the values, not the observables, to be in control of updating
-    stairs!(plot, points[]; attr..., color=color)
+    stairs!(plot, points; attr..., color=color)
+    plot
 end
 
 """
@@ -144,7 +144,7 @@ function pick_hist_edges(vals, bins)
     if bins isa Int
         mi, ma = float.(extrema(vals))
         if mi == ma
-            return [mi - 0.5, ma + 0.5]
+            return (mi - 0.5):(ma + 0.5)
         end
         # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
         ma = nextfloat(ma)
@@ -186,6 +186,9 @@ function Makie.plot!(plot::Hist)
     on(plot, widths) do w
         bp[1].val = points[]
         bp.width = w
+    end
+    onany(plot, plot.normalization, plot.scale_to, plot.weights) do _, _, _
+        bp[1][] = points[]
     end
     plot
 end

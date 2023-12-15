@@ -1,5 +1,4 @@
 import Formatting
-using Match
 import Animations
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
@@ -68,7 +67,6 @@ export Cycled
 
 # from GridLayoutBase
 export GridLayout, GridPosition, GridSubposition
-export GridLayoutSpec
 export BBox
 export LayoutObservables
 export Inside, Outside, Mixed
@@ -93,5 +91,3 @@ export grid!, hgrid!, vgrid!
 export swap!
 export ncols, nrows
 export contents, content
-
-Base.@deprecate_binding MakieLayout Makie true "The module `MakieLayout` has been removed and integrated into Makie, so simply replace all usage of `MakieLayout` with `Makie`."

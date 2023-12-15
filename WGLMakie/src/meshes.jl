@@ -3,8 +3,8 @@ function vertexbuffer(x, trans, space)
     return apply_transform(trans,  pos, space)
 end
 
-function vertexbuffer(x::Observable, p)
-    return Buffer(lift(vertexbuffer, x, transform_func_obs(p), get(p, :space, :data)))
+function vertexbuffer(x::Observable, @nospecialize(p))
+    return Buffer(lift(vertexbuffer, p, x, transform_func_obs(p), get(p, :space, :data)))
 end
 
 facebuffer(x) = faces(x)
@@ -12,7 +12,7 @@ facebuffer(x::AbstractArray{<:GLTriangleFace}) = x
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
 
 function converted_attribute(plot::AbstractPlot, key::Symbol)
-    return lift(plot[key]) do value
+    return lift(plot, plot[key]) do value
         return convert_attribute(value, Key{key}(), Key{plotkey(plot)}())
     end
 end
@@ -21,7 +21,7 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
     color = plot.calculated_colors
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
 
-    convert_text(x) = permute_tex ? lift(permutedims, x) : x
+    convert_text(x) = permute_tex ? lift(permutedims, plot, x) : x
 
     if color[] isa Colorant
         uniforms[uniform_color_name] = color
@@ -55,28 +55,32 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
     return
 end
 
+lift_or(f, p, x) = f(x)
+lift_or(f, @nospecialize(p), x::Observable) = lift(f, p, x)
+
 function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
     handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
     get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
-    get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
+    get!(uniforms, :light_direction, Vec3f(1))
+    get!(uniforms, :light_color, Vec3f(1))
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
-    get!(uniforms, :shading,  get(plot, :shading, false))
+    get!(uniforms, :shading, to_value(get(plot, :shading, NoShading)) != NoShading)
 
-    uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
+    uniforms[:normalmatrix] = map(plot.model) do m
         i = Vec(1, 2, 3)
-        return transpose(inv(v[i, i] * m[i, i]))
+        return transpose(inv(m[i, i]))
     end
 
 
     for key in (:diffuse, :specular, :shininess, :backlight, :depth_shift)
         if !haskey(uniforms, key)
-            uniforms[key] = lift_or(x -> convert_attribute(x, Key{key}()), plot[key])
+            uniforms[key] = lift_or(x -> convert_attribute(x, Key{key}()), plot, plot[key])
         end
     end
     if haskey(uniforms, :color) && haskey(per_vertex, :color)
@@ -98,7 +102,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
     mattributes = GeometryBasics.attributes
-    get_attribute(mesh, key) = lift(x -> getproperty(x, key), mesh)
+    get_attribute(mesh, key) = lift(x -> getproperty(x, key), plot, mesh)
     data = mattributes(mesh_signal[])
 
     uniforms = Dict{Symbol,Any}()

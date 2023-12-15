@@ -129,7 +129,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
-    buffer_ids = Dict(
+    buffer_ids = Dict{Symbol,GLuint}(
         :color    => GL_COLOR_ATTACHMENT0,
         :objectid => GL_COLOR_ATTACHMENT1,
         :HDR_color => GL_COLOR_ATTACHMENT2,
@@ -137,31 +137,29 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         :depth    => GL_DEPTH_ATTACHMENT,
         :stencil  => GL_STENCIL_ATTACHMENT,
     )
-    buffers = Dict(
-        :color    => color_buffer,
+    buffers = Dict{Symbol, Texture}(
+        :color => color_buffer,
         :objectid => objectid_buffer,
         :HDR_color => HDR_color_buffer,
         :OIT_weight => OIT_weight_buffer,
-        :depth    => depth_buffer,
-        :stencil  => depth_buffer
+        :depth => depth_buffer,
+        :stencil => depth_buffer
     )
 
     return GLFramebuffer(
         fb_size_node, frambuffer_id,
         buffer_ids, buffers,
         [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]
-    )
+    )::GLFramebuffer
 end
 
-function Base.resize!(fb::GLFramebuffer, window_size)
-    ws = Int.((window_size[1], window_size[2]))
-    if ws != size(fb) && all(x-> x > 0, window_size)
-        for (name, buffer) in fb.buffers
-            resize_nocopy!(buffer, ws)
-        end
-        fb.resolution[] = ws
+function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
+    (w > 0 && h > 0 && (w, h) != size(fb)) || return
+    for (name, buffer) in fb.buffers
+        resize_nocopy!(buffer, (w, h))
     end
-    nothing
+    fb.resolution[] = (w, h)
+    return nothing
 end
 
 
@@ -217,10 +215,21 @@ function destroy!(nw::GLFW.Window)
     was_current && ShaderAbstractions.switch_context!()
 end
 
-function windowsize(nw::GLFW.Window)
+function window_size(nw::GLFW.Window)
     was_destroyed(nw) && return (0, 0)
-    size = GLFW.GetFramebufferSize(nw)
-    return (size.width, size.height)
+    return Tuple(GLFW.GetWindowSize(nw))
+end
+function window_position(nw::GLFW.Window)
+    was_destroyed(nw) && return (0, 0)
+    return Tuple(GLFW.GetWindowPos(window))
+end
+function framebuffer_size(nw::GLFW.Window)
+    was_destroyed(nw) && return (0, 0)
+    return Tuple(GLFW.GetFramebufferSize(nw))
+end
+function scale_factor(nw::GLFW.Window)
+    was_destroyed(nw) && return 1f0
+    return minimum(GLFW.GetWindowContentScale(nw))
 end
 
 function Base.isopen(window::GLFW.Window)

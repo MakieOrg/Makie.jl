@@ -55,7 +55,7 @@ function Makie.plot!(pl::Bracket)
     end
 
     onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
-          scene.px_area, pl.offset, pl.width, pl.orientation, realtextoffset,
+          scene.viewport, pl.offset, pl.width, pl.orientation, realtextoffset,
           pl.style) do points, _, _, _, _, offset, width, orientation, textoff, style
 
         empty!(bp[])

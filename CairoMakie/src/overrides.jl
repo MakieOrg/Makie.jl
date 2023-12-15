@@ -9,7 +9,7 @@ complex and slower to draw than standard paths with single color.
 function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # dispatch on input arguments to poly to use smarter drawing methods than
     # meshes if possible
-    draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
+    return draw_poly(scene, screen, poly, to_value.(poly.args)...)
 end
 
 # Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,
@@ -85,7 +85,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     if isnothing(linestyle)
         linestyle_diffed = nothing
-    elseif linestyle isa AbstractVector{Float64}
+    elseif linestyle isa AbstractVector{<:Real}
         linestyle_diffed = diff(Float64.(linestyle))
     else
         error("Wrong type for linestyle: $(poly.linestyle[]).")

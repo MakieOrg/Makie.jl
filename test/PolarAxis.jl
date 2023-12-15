@@ -68,7 +68,7 @@
         @test ax.thetaautolimitmargin[] == (0.05, 0.05)
 
         # default should have mostly set default limits
-        @test ax.rlimits[] == (0.0, nothing)
+        @test ax.rlimits[] == (:origin, nothing)
         @test ax.thetalimits[] == (0.0, 2pi)
         @test ax.target_rlims[] == (0.0, 10.0)
         @test ax.target_thetalims[] == (0.0, 2pi)
@@ -130,7 +130,7 @@
 
         # with default limits
         reset_limits!(ax)
-        @test ax.rlimits[] == (0.0, nothing)
+        @test ax.rlimits[] == (:origin, nothing)
         @test ax.thetalimits[] == (0.0, 2pi)
         @test ax.target_rlims[] == (0.0, 5.0)
         @test ax.target_thetalims[] == (0.0, 2pi)
@@ -144,17 +144,9 @@
         @test all(isapprox.(ax.target_thetalims[], (0.5pi, 1.0pi), rtol=1e-6))
     end
 
-    @testset "Radial Distortion" begin
+    @testset "Radial Offset" begin
         fig = Figure()
-        ax = PolarAxis(fig[1, 1], radial_distortion_threshold = 0.2, rlimits = (0, 10))
-        tf = ax.scene.transformation.transform_func
-        @test /(ax.target_rlims[]...) == 0.0
-        @test /((ax.target_rlims[] .- tf[].r0)...) == 0.0
-        rlims!(ax, 1, 10)
-        @test /(ax.target_rlims[]...) == 0.1
-        @test /((ax.target_rlims[] .- tf[].r0)...) == 0.1
-        rlims!(ax, 5, 10)
-        @test /(ax.target_rlims[]...) == 0.5
-        @test /((ax.target_rlims[] .- tf[].r0)...) ≈ 0.2
+        ax = PolarAxis(fig[1, 1], radius_at_origin = -1.0, rlimits = (0, 10))
+        @test ax.scene.transformation.transform_func[].r0 == -1.0
     end
 end

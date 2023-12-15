@@ -22,26 +22,26 @@ To add contour labels, use `labels = true`, and pass additional label attributes
 $(ATTRIBUTES)
 """
 @recipe(Contour) do scene
-    default = default_theme(scene)
-    # pop!(default, :color)
-    Attributes(;
-        default...,
+    attr = Attributes(;
         color = nothing,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
         linestyle = nothing,
-        alpha = 1.0,
         enable_depth = true,
         transparency = false,
         labels = false,
+
         labelfont = theme(scene, :font),
         labelcolor = nothing,  # matches color by default
         labelformatter = contour_label_formatter,
         labelsize = 10,  # arbitrary
     )
+
+
+    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
+    MakieCore.generic_plot_attributes!(attr)
+
+    return attr
 end
 
 """
@@ -110,10 +110,10 @@ function to_levels(n::Integer, cnorm)
     range(zmin + dz; step = dz, length = n)
 end
 
-conversion_trait(::Type{<: Contour3d}) = ContinuousSurface()
-conversion_trait(::Type{<: Contour}) = ContinuousSurface()
-conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
-conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
+conversion_trait(::Type{<: Contour3d}) = VertexGrid()
+conversion_trait(::Type{<: Contour}) = VertexGrid()
+conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<: Number, 3}}) = VolumeLike()
+conversion_trait(::Type{<: Contour}, ::AbstractArray{<: Number, 3}) = VolumeLike()
 
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
@@ -145,12 +145,14 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-    attr = Attributes(plot)
+    attr = copy(Attributes(plot))
+
     attr[:colorrange] = cliprange
     attr[:colormap] = cmap
     attr[:algorithm] = 7
     pop!(attr, :levels)
     pop!(attr, :alpha) # don't apply alpha 2 times
+
     # unused attributes
     pop!(attr, :labels)
     pop!(attr, :labelfont)
@@ -247,10 +249,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         align = (:center, :center),
         fontsize = labelsize,
         font = labelfont,
+        transform_marker = false
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, labelformatter,
-         lev_pos_col) do _, _, labels, labelcolor, labelformatter, lev_pos_col
+    lift(scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
+            labels, labelcolor, labelformatter, lev_pos_col
+        ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
@@ -316,9 +320,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot, masked_lines;
         color = colors,
         linewidth = plot.linewidth,
-        inspectable = plot.inspectable,
-        transparency = plot.transparency,
-        linestyle = plot.linestyle
+        linestyle = plot.linestyle,
+        visible=plot.visible,
+        transparency=plot.transparency,
+        overdraw=plot.overdraw,
+        inspectable=plot.inspectable,
+        depth_shift=plot.depth_shift,
+        space=plot.space
     )
     plot
 end

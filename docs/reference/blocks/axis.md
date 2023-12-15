@@ -298,7 +298,7 @@ mutable struct MyInteraction
 end
 
 function Makie.process_interaction(interaction::MyInteraction, event::MouseEvent, axis)
-    if interaction.use_left_click && event.type === MouseEventTypes.leftclick
+    if interaction.allow_left_click && event.type === MouseEventTypes.leftclick
         println("Left click in correct mode")
     end
     if interaction.allow_right_click && event.type === MouseEventTypes.rightclick
