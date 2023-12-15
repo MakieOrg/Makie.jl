@@ -535,7 +535,7 @@ end
 function init_observable!(@nospecialize(block), key::Symbol, @nospecialize(OT), @nospecialize(value::Observable))
     obstype = observable_type(OT)
     o = Observable{obstype}()
-    map!(o, value) do v
+    map!(block.blockscene, o, value) do v
         convert_for_attribute(obstype, v)
     end
     setfield!(block, key, o)
