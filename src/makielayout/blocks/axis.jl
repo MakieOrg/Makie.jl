@@ -255,7 +255,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
+    onany(update_axis_camera, blockscene, camera(scene), scene.transformation.transform_func, finallimits,
+          ax.xreversed, ax.yreversed; priority=-2)
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
