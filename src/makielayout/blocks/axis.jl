@@ -907,7 +907,11 @@ function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
     return
 end
-autolimits!() = autolimits!(current_axis())
+function autolimits!()
+    curr_ax = current_axis()
+    isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
+    autolimits!()
+end
 
 function autolimits(ax::Axis, dim::Integer)
     # try getting x limits for the axis and then union them with linked axes
