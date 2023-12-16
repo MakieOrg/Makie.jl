@@ -1,7 +1,7 @@
 # WGLMakie
 
 [WGLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie) is the web-based backend, which is mostly implemented in Julia right now.
-WGLMakie uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.
+WGLMakie uses [Bonito](https://github.com/SimonDanisch/Bonito.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.
 Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
 
 
@@ -21,27 +21,27 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 ##### IJulia
 
 
-* JSServe now uses the IJulia connection, and therefore can be used even with complex proxy setup without any additional setup
+* Bonito now uses the IJulia connection, and therefore can be used even with complex proxy setup without any additional setup
 * reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
 
 #### JupyterHub / Jupyterlab / Binder
 
 
-* WGLMakie should mostly work with a websocket connection. JSServe tries to [infer the proxy setup](https://github.com/SimonDanisch/JSServe.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem, on hosted ones one may need add `jupyter-server-proxy`. See:
+* WGLMakie should mostly work with a websocket connection. Bonito tries to [infer the proxy setup](https://github.com/SimonDanisch/Bonito.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem, on hosted ones one may need add `jupyter-server-proxy`. See:
     * https://github.com/MakieOrg/Makie.jl/issues/2464
     * https://github.com/MakieOrg/Makie.jl/issues/2405
 
 
 #### Pluto
 
-* still uses JSServe's Websocket connection, so needs extra setup for remote servers.
+* still uses Bonito's Websocket connection, so needs extra setup for remote servers.
 * reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
 * static html export not fully working yet
 
 #### JuliaHub
 
 * VSCode in the browser should work out of the box.
-* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/JSServe.jl/issues/140) with the websocket connection. So, you will see a plot, but interaction doesn't work.
+* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/Bonito.jl/issues/140) with the websocket connection. So, you will see a plot, but interaction doesn't work.
 
 
 #### Browser Support
@@ -66,13 +66,13 @@ println("~~~")
 
 ## Output
 
-You can use JSServe and WGLMakie in Pluto, IJulia, Webpages and Documenter to create interactive apps and dashboards, serve them on live webpages, or export them to static HTML.
+You can use Bonito and WGLMakie in Pluto, IJulia, Webpages and Documenter to create interactive apps and dashboards, serve them on live webpages, or export them to static HTML.
 
 This tutorial will run through the different modes and what kind of limitations to expect.
 
 ### Page
 
-`Page()` can be used to reset the JSServe state needed for multipage output like it's the case for `Documenter` or the various notebooks (IJulia/Pluto/etc).
+`Page()` can be used to reset the Bonito state needed for multipage output like it's the case for `Documenter` or the various notebooks (IJulia/Pluto/etc).
 Previously, it was necessary to always insert and display the `Page` call in notebooks, but now the call to `Page()` is optional and doesn't need to be displayed.
 What it does is purely reset the state for a new multi-page output, which is usually the case for `Documenter`, which creates multiple pages in one Julia session, or you can use it to reset the state in notebooks, e.g. after a page reload.
 `Page(exportable=true, offline=true)` can be used to force inlining all data & js dependencies, so that everything can be loaded in a single HTML object without a running Julia process. The defaults should already be chosen this way for e.g. Documenter, so this should mostly be used for e.g. `Pluto` offline export (which is currently not fully supported, but should be soon).
@@ -82,7 +82,7 @@ Here is an example of how to use this in Franklin:
 \begin{showhtml}{}
 ```julia
 using WGLMakie
-using JSServe, Markdown
+using Bonito, Markdown
 Page(exportable=true, offline=true) # for Franklin, you still need to configure
 WGLMakie.activate!()
 Makie.inline!(true) # Make sure to inline plots into Documenter output!
@@ -115,7 +115,7 @@ There are a couple of ways to keep interacting with Plots in a static export.
 
 ## Record a statemap
 
-JSServe allows to record a statemap for all widgets, that satisfy the following interface:
+Bonito allows to record a statemap for all widgets, that satisfy the following interface:
 
 ```julia
 # must be true to be found inside the DOM
@@ -149,19 +149,19 @@ App() do session::Session
     end
     heatmap(fig[1, 2], slice)
     slider = DOM.div("z-index: ", index_slider, index_slider.value)
-    return JSServe.record_states(session, DOM.div(slider, fig))
+    return Bonito.record_states(session, DOM.div(slider, fig))
 end
 ```
 \end{showhtml}
 
 ## Execute Javascript directly
 
-JSServe makes it easy to build whole HTML and JS applications.
+Bonito makes it easy to build whole HTML and JS applications.
 You can for example directly register javascript function that get run on change.
 
 \begin{showhtml}{}
 ```julia
-using JSServe
+using Bonito
 
 App() do session::Session
     s1 = Slider(1:100)
@@ -188,7 +188,7 @@ But while this isn't in place, logging the the returned object makes it pretty e
 
 \begin{showhtml}{}
 ```julia
-using JSServe: on_document_load
+using Bonito: on_document_load
 using WGLMakie
 
 App() do session::Session
@@ -261,7 +261,7 @@ This summarizes the current state of interactivity with WGLMakie inside static p
 `Makie.DataInspector` works just fine with WGLMakie, but it requires a running Julia process to show and update the tooltip.
 
 There is also a way to show a tooltip in Javascript directly, which needs to be inserted into the HTML dom.
-This means, we actually need to use `JSServe.App` to return a `DOM` object:
+This means, we actually need to use `Bonito.App` to return a `DOM` object:
 
 \begin{showhtml}{}
 ```julia
@@ -299,28 +299,28 @@ Locally, WGLMakie should just work out of the box for Pluto/IJulia, but if you'r
 
 ```julia
 begin
-    using JSServe
+    using Bonito
     some_forwarded_port = 8080
     Page(listen_url="0.0.0.0", listen_port=some_forwarded_port)
 end
 ```
 Or also specify a proxy URL, if you have a more complex proxy setup.
-For more advanced setups consult the `?Page` docs and `JSServe.configure_server!`.
-In the [headless](/explanations/headless/index.html#wglmakie) documentation, you can also read more about setting up the JSServe server and port forwarding.
+For more advanced setups consult the `?Page` docs and `Bonito.configure_server!`.
+In the [headless](/explanations/headless/index.html#wglmakie) documentation, you can also read more about setting up the Bonito server and port forwarding.
 
 ## Styling
 
 You may have noticed, styling isn't really amazing right now.
 The good news is, that one can use the whole mighty power of the CSS/HTML universe.
-If it wasn't clear so far, JSServe allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
+If it wasn't clear so far, Bonito allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
 
 Tailwind is quite a amazing and has a great documentation especially for CSS beginners:
 https://tailwindcss.com/docs/
 
-Note, that JSServe.TailwindCSS is nothing but:
+Note, that Bonito.TailwindCSS is nothing but:
 
 ```julia
-TailwindCSS = JSServe.Asset("/path/to/tailwind.min.css")
+TailwindCSS = Bonito.Asset("/path/to/tailwind.min.css")
 ```
 
 So any other CSS file can be used.
@@ -335,19 +335,19 @@ rows(args...; class="") = DOM.div(args..., class=class * " flex flex-row")
 It would be more correct to define it as:
 
 ```julia
-rows(args...; class="") = DOM.div(JSServe.TailwindCSS, args..., class=class * " flex flex-row")
+rows(args...; class="") = DOM.div(Bonito.TailwindCSS, args..., class=class * " flex flex-row")
 ```
 
-JSServe will then make sure, that `JSServe.TailwindCSS` is loaded, and will only load it once!
+Bonito will then make sure, that `Bonito.TailwindCSS` is loaded, and will only load it once!
 
 
-Note, that JSServe.TailwindDashboard already defines something like the above `rows`:
+Note, that Bonito.TailwindDashboard already defines something like the above `rows`:
 
 \begin{showhtml}{}
 ```julia
 using Colors
-using JSServe
-import JSServe.TailwindDashboard as D
+using Bonito
+import Bonito.TailwindDashboard as D
 
 App() do session::Session
     hue_slider = Slider(0:360)
@@ -372,8 +372,8 @@ end
 
 GridCard(elements...) = GridCard(elements)
 
-function JSServe.jsrender(card::GridCard)
-    return DOM.div(JSServe.TailwindCSS, card.elements..., class="rounded-lg p-2 m-2 shadow-lg grid auto-cols-max grid-cols-2 gap-4")
+function Bonito.jsrender(card::GridCard)
+    return DOM.div(Bonito.TailwindCSS, card.elements..., class="rounded-lg p-2 m-2 shadow-lg grid auto-cols-max grid-cols-2 gap-4")
 end
 
 App() do session::Session
@@ -399,19 +399,19 @@ end
 ```
 \end{showhtml}
 
-Hopefully, over time there will be helper libraries with lots of stylised elements like the above, to make flashy dashboards with JSServe + WGLMakie.
+Hopefully, over time there will be helper libraries with lots of stylised elements like the above, to make flashy dashboards with Bonito + WGLMakie.
 
 
 # Export
 
 Documenter just renders the plots + Page as html,
-so if you want to inline WGLMakie/JSServe objects into your own page,
+so if you want to inline WGLMakie/Bonito objects into your own page,
 one can just use something like this:
 
 ```julia
-using WGLMakie, JSServe
+using WGLMakie, Bonito
 
-using WGLMakie, JSServe
+using WGLMakie, Bonito
 WGLMakie.activate!()
 
 open("index.html", "w") do io
@@ -425,8 +425,8 @@ open("index.html", "w") do io
     # Then, you can just inline plots or whatever you want :)
     show(io, MIME"text/html"(), scatter(1:4))
     show(io, MIME"text/html"(), surface(rand(4, 4)))
-    # or anything else from JSServe, or that can be displayed as html:
-    show(io, MIME"text/html"(), JSServe.Slider(1:3))
+    # or anything else from Bonito, or that can be displayed as html:
+    show(io, MIME"text/html"(), Bonito.Slider(1:3))
     println(io, """
         </body>
     </html>

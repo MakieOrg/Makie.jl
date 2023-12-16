@@ -65,7 +65,7 @@ export function attach_3d_camera(
     camera.lookAt(center);
 
     const use_orbit_cam = () =>
-        !(JSServe.can_send_to_julia && JSServe.can_send_to_julia());
+        !(Bonito.can_send_to_julia && Bonito.can_send_to_julia());
     const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e) =>
         in_scene(scene, e)
     );

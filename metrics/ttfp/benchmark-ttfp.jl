@@ -10,7 +10,7 @@ t_using = @ctime @eval using $Package
 
 if Package === :WGLMakie
     import Electron
-    WGLMakie.JSServe.use_electron_display()
+    WGLMakie.Bonito.use_electron_display()
 end
 
 set_theme!(size=(800, 600))

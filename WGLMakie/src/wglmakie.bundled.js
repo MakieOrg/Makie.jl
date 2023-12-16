@@ -21016,7 +21016,7 @@ function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     camera.up = new A(...cam3d.upvector.value);
     camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
-    const use_orbit_cam = ()=>!(JSServe.can_send_to_julia && JSServe.can_send_to_julia());
+    const use_orbit_cam = ()=>!(Bonito.can_send_to_julia && Bonito.can_send_to_julia());
     const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e)=>in_scene(scene, e));
     controls.addEventListener("change", (e)=>{
         const view = camera.matrixWorldInverse;
@@ -21883,7 +21883,7 @@ function deserialize_scene(data, screen) {
     scene.wgl_camera = camera;
     function update_cam(camera_matrices, force) {
         if (!force) {
-            if (!(JSServe.can_send_to_julia && JSServe.can_send_to_julia())) {
+            if (!(Bonito.can_send_to_julia && Bonito.can_send_to_julia())) {
                 return;
             }
         }
@@ -22054,7 +22054,7 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
     const vertexLog = gl.getShaderInfoLog(glVertexShader).trim();
     const fragmentLog = gl.getShaderInfoLog(glFragmentShader).trim();
     const err = "THREE.WebGLProgram: Shader Error " + wglerror(gl, gl.getError()) + " - " + "VALIDATE_STATUS " + gl.getProgramParameter(program, gl.VALIDATE_STATUS) + "\n\n" + "Program Info Log:\n" + programLog + "\n" + vertexErrors + "\n" + fragmentErrors + "\n" + "Fragment log:\n" + fragmentLog + "Vertex log:\n" + vertexLog;
-    JSServe.Connection.send_warning(err);
+    Bonito.Connection.send_warning(err);
 }
 function add_canvas_events(screen, comm, resize_to) {
     const { canvas , winscale  } = screen;

@@ -1,8 +1,8 @@
 struct ThreeDisplay
-    session::JSServe.Session
+    session::Bonito.Session
 end
 
-JSServe.session(td::ThreeDisplay) = td.session
+Bonito.session(td::ThreeDisplay) = td.session
 Base.empty!(::ThreeDisplay) = nothing # TODO implement
 
 
@@ -13,7 +13,7 @@ end
 function Base.size(screen::ThreeDisplay)
     # look at d.qs().clientWidth for displayed width
     js = js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"
-    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; timeout=100))
+    width, height = round.(Int, Bonito.evaljs_value(screen.session, js; timeout=100))
     return (width, height)
 end
 
@@ -32,15 +32,15 @@ function render_with_init(screen, session, scene)
     return three, canvas, on_init
 end
 
-function JSServe.jsrender(session::Session, scene::Scene)
+function Bonito.jsrender(session::Session, scene::Scene)
     screen = Screen(scene)
     three, canvas, on_init = render_with_init(screen, session, scene)
     return canvas
 end
 
-function JSServe.jsrender(session::Session, fig::Makie.FigureLike)
+function Bonito.jsrender(session::Session, fig::Makie.FigureLike)
     Makie.update_state_before_display!(fig)
-    return JSServe.jsrender(session, Makie.get_scene(fig))
+    return Bonito.jsrender(session, Makie.get_scene(fig))
 end
 
 """
@@ -84,7 +84,7 @@ end
 """
     WithConfig(fig::Makie.FigureLike; screen_config...)
 
-Allows to pass a screenconfig to a figure, inside a JSServe.App.
+Allows to pass a screenconfig to a figure, inside a Bonito.App.
 This circumvents using `WGLMakie.activate!(; screen_config...)` inside an App, which modifies these values globally.
 Example:
 
@@ -107,7 +107,7 @@ function WithConfig(fig::Makie.FigureLike; kw...)
     return WithConfig(fig, config)
 end
 
-function JSServe.jsrender(session::Session, wconfig::WithConfig)
+function Bonito.jsrender(session::Session, wconfig::WithConfig)
     fig = wconfig.fig
     Makie.update_state_before_display!(fig)
     scene = Makie.get_scene(fig)
@@ -211,7 +211,7 @@ function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=
     if isnothing(screen.session)
         throw_error("Screen has no session. Not yet displayed?"); return nothing
     end
-    if !(screen.session.status in (JSServe.RENDERED, JSServe.DISPLAYED, JSServe.OPEN))
+    if !(screen.session.status in (Bonito.RENDERED, Bonito.DISPLAYED, Bonito.OPEN))
         throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status)"); return nothing
     end
     tstart = time()
@@ -289,9 +289,9 @@ function session2image(session::Session, scene::Scene)
         })
     }()
     """
-    picture_base64 = JSServe.evaljs_value(session, to_data; timeout=100)
+    picture_base64 = Bonito.evaljs_value(session, to_data; timeout=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
-    bytes = JSServe.Base64.base64decode(picture_base64)
+    bytes = Bonito.Base64.base64decode(picture_base64)
     return PNGFiles.load(IOBuffer(bytes))
 end
 
@@ -334,13 +334,13 @@ end
 function insert_plot!(disp::ThreeDisplay, scene::Scene, @nospecialize(plot::Plot))
     plot_data = serialize_plots(scene, [plot])
     plot_sub = Session(disp.session)
-    JSServe.init_session(plot_sub)
+    Bonito.init_session(plot_sub)
     plot.__wgl_session = plot_sub
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
-    JSServe.evaljs_value(plot_sub, js; timeout=50)
+    Bonito.evaljs_value(plot_sub, js; timeout=50)
     return
 end
 
@@ -370,7 +370,7 @@ function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
     three = get_three(screen)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
-    JSServe.evaljs(three.session, js"""
+    Bonito.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
         WGL.delete_plots($(plot_uuids));
     })""")
@@ -398,7 +398,7 @@ function delete_js_objects!(screen::Screen, scene::Scene)
             close(session)
         end
     end
-    JSServe.evaljs(three.session, js"""
+    Bonito.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
         WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
     })""")
