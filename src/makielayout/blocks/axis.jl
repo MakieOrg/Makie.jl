@@ -910,7 +910,7 @@ end
 function autolimits!()
     curr_ax = current_axis()
     isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
-    autolimits!()
+    autolimits!(curr_ax)
 end
 
 function autolimits(ax::Axis, dim::Integer)
