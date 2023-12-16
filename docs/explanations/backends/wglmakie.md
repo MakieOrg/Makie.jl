@@ -41,7 +41,7 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 #### JuliaHub
 
 * VSCode in the browser should work out of the box.
-* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/Bonito.jl/issues/140) with the websocket connection. So, you will see a plot, but interaction doesn't work.
+* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/Bonito.jl/issues/140) with the WebSocket connection. So, you will see a plot, but interaction doesn't work.
 
 
 #### Browser Support
@@ -157,7 +157,7 @@ end
 ## Execute Javascript directly
 
 Bonito makes it easy to build whole HTML and JS applications.
-You can for example directly register javascript function that get run on change.
+You can for example directly register JavaScript function that get run on change.
 
 \begin{showhtml}{}
 ```julia
@@ -310,44 +310,31 @@ In the [headless](/explanations/headless/index.html#wglmakie) documentation, you
 
 ## Styling
 
-You may have noticed, styling isn't really amazing right now.
-The good news is, that one can use the whole mighty power of the CSS/HTML universe.
-If it wasn't clear so far, Bonito allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
-
-Tailwind is quite a amazing and has a great documentation especially for CSS beginners:
-https://tailwindcss.com/docs/
-
-Note, that Bonito.TailwindCSS is nothing but:
+Bonito allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
+So any CSS file can be used, e.g. even libraries like [Tailwind](https://tailwindcss.com/) with `Asset`:
 
 ```julia
 TailwindCSS = Bonito.Asset("/path/to/tailwind.min.css")
 ```
 
-So any other CSS file can be used.
-
-It's also pretty easy to make reusable blocks from styled elements.
-E.g. the `rows` function above is nothing but:
+Bonito also offers the `Styles` type, which allows to define whole stylesheets and assign them to any DOM object.
+That's how Bonito creates styleable components:
 
 ```julia
-rows(args...; class="") = DOM.div(args..., class=class * " flex flex-row")
+Rows(args...) = DOM.div(args..., style=Styles(
+    "display" => "grid",
+    "grid-template-rows" => "fr",
+    "grid-template-columns" => "repeat($(length(args)), fr)",
+))
 ```
+This Style object will only be inserted one time into the DOM in one Session, and subsequent uses will just give the div the same class.
 
-It would be more correct to define it as:
-
-```julia
-rows(args...; class="") = DOM.div(Bonito.TailwindCSS, args..., class=class * " flex flex-row")
-```
-
-Bonito will then make sure, that `Bonito.TailwindCSS` is loaded, and will only load it once!
-
-
-Note, that Bonito.TailwindDashboard already defines something like the above `rows`:
+Note, that Bonito already defines something like the above `Rows`:
 
 \begin{showhtml}{}
 ```julia
 using Colors
 using Bonito
-import Bonito.TailwindDashboard as D
 
 App() do session::Session
     hue_slider = Slider(0:360)
@@ -355,46 +342,30 @@ App() do session::Session
     onjs(session, hue_slider.value, js"""function (hue){
         $(color_swatch).style.backgroundColor = "hsl(" + hue + ",60%,50%)"
     }""")
-    return D.FlexRow(hue_slider, color_swatch)
+    return Row(hue_slider, color_swatch)
 end
 ```
 \end{showhtml}
 
-With this, we can create a styled, reusable card componenent:
+Bonito also offers a styleable Card component:
 
 \begin{showhtml}{}
 ```julia
 using Markdown
 
-struct GridCard
-    elements::Any
-end
-
-GridCard(elements...) = GridCard(elements)
-
-function Bonito.jsrender(card::GridCard)
-    return DOM.div(Bonito.TailwindCSS, card.elements..., class="rounded-lg p-2 m-2 shadow-lg grid auto-cols-max grid-cols-2 gap-4")
-end
-
 App() do session::Session
     # We can now use this wherever we want:
-    fig = Figure(size=(200, 200))
+    fig = Figure(size=(300, 300))
     contour(fig[1,1], rand(4,4))
-    card = GridCard(
-        Slider(1:100),
-        DOM.h1("hello"),
+    card = Card(Grid(
+        Centered(DOM.h1("Hello"); style=Styles("grid-column" => "1 / 3")),
+        StylableSlider(1:100; style=Styles("grid-column" => "1 / 3")),
         DOM.img(src="https://julialang.org/assets/infra/logo.svg"),
-        fig
-    )
+        fig; columns="1fr 1fr", justify_items="stretch"
+    ))
     # Markdown creates a DOM as well, and you can interpolate
     # arbitrary jsrender'able elements in there:
-    return md"""
-
-    # Wow, Markdown works as well?
-
-    $(card)
-
-    """
+    return DOM.div(card)
 end
 ```
 \end{showhtml}
@@ -409,9 +380,7 @@ so if you want to inline WGLMakie/Bonito objects into your own page,
 one can just use something like this:
 
 ```julia
-using WGLMakie, Bonito
-
-using WGLMakie, Bonito
+using WGLMakie, Bonito, FileIO
 WGLMakie.activate!()
 
 open("index.html", "w") do io
@@ -423,10 +392,19 @@ open("index.html", "w") do io
     """)
     Page(exportable=true, offline=true)
     # Then, you can just inline plots or whatever you want :)
-    show(io, MIME"text/html"(), scatter(1:4))
-    show(io, MIME"text/html"(), surface(rand(4, 4)))
+    # Of course it would make more sense to put this into a single app
+    app = App() do
+        C(x;kw...) = Card(x; height="fit-content", width="fit-content", kw...)
+        figure = (; size=(300, 300))
+        f1 = scatter(1:4; figure)
+        f2 = mesh(load(assetpath("brain.stl")); figure)
+        C(DOM.div(
+            Bonito.StylableSlider(1:100),
+            Row(C(f1), C(f2))
+        ); padding="30px", margin="15px")
+    end
+    show(io, MIME"text/html"(), app)
     # or anything else from Bonito, or that can be displayed as html:
-    show(io, MIME"text/html"(), Bonito.Slider(1:3))
     println(io, """
         </body>
     </html>
