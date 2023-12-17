@@ -2,7 +2,7 @@ name: Reference Image Status
 
 on:
   workflow_run:
-    workflows: [Makie CI]
+    workflows: [Backends]
     types:
       - completed
 
