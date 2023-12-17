@@ -136,7 +136,7 @@ As the second part of defining `MyPlot`, you should implement the actual
 plotting of the `MyPlot` object by specializing `plot!`:
 
 ```julia
-function plot!(myplot::MyPlot)
+function Makie.plot!(myplot::MyPlot)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `myplot`:
     lines!(myplot, rand(10), color = myplot.plot_color)
