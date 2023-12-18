@@ -214,13 +214,13 @@ $(Base.doc(VideoStreamOptions))
 """
 function VideoStream(fig::FigureLike;
         format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
-        loglevel="quiet", visible=false, connect=false, backend=current_backend(),
+        loglevel="quiet", visible=false, update=true, backend=current_backend(),
         screen_config...)
 
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
-    update_state_before_display!(fig)
+    update && update_state_before_display!(fig)
     config = Dict{Symbol,Any}(screen_config)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)

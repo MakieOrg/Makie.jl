@@ -278,7 +278,7 @@ end
     cam3d!(scene[; kwargs...])
 
 Creates a `Camera3D` with `zoom_shift_lookat = true` and `fixed_axis = true`.
-For more information, see [`Camera3D``](@ref)
+For more information, see [`Camera3D`](@ref)
 """
 cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...) =
     Camera3D(scene, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
@@ -287,7 +287,7 @@ cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...) =
     cam3d_cad!(scene[; kwargs...])
 
 Creates a `Camera3D` with `cad = true`, `zoom_shift_lookat = false` and
-`fixed_axis = false`. For more information, see [`Camera3D``](@ref)
+`fixed_axis = false`. For more information, see [`Camera3D`](@ref)
 """
 cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...) =
     Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
@@ -728,7 +728,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
         far = far_dist * far
     elseif cam.settings.clipping_mode[] === :adaptive
         view_dist = norm(eyeposition - lookat)
-        near = view_dist * near; far = far
+        near = view_dist * near; far = max(1f0, view_dist) * far
     elseif cam.settings.clipping_mode[] !== :static
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
     end
@@ -775,7 +775,7 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool =
         cam.far[] = 2f0 * dist
     elseif cam.settings.clipping_mode[] === :adaptive
         cam.near[] = 0.1f0 * dist / norm(cam.eyeposition[] - cam.lookat[])
-        cam.far[] = 2f0 * dist
+        cam.far[] = 2.2f0 * dist / norm(cam.eyeposition[] - cam.lookat[])
     end
 
     update_cam!(scene, cam)

@@ -442,7 +442,22 @@ function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, str
     Cairo.restore(ctx)
 end
 
-draw_path(ctx, bp::BezierPath) = foreach(x -> path_command(ctx, x), bp.commands)
+function draw_path(ctx, bp::BezierPath)
+    for i in eachindex(bp.commands)
+        @inbounds command = bp.commands[i]
+        if command isa MoveTo
+            path_command(ctx, command)
+        elseif command isa LineTo
+            path_command(ctx, command)
+        elseif command isa CurveTo
+            path_command(ctx, command)
+        elseif command isa ClosePath
+            path_command(ctx, command)
+        elseif command isa EllipticalArc
+            path_command(ctx, command)
+        end
+    end
+end
 path_command(ctx, c::MoveTo) = Cairo.move_to(ctx, c.p...)
 path_command(ctx, c::LineTo) = Cairo.line_to(ctx, c.p...)
 path_command(ctx, c::CurveTo) = Cairo.curve_to(ctx, c.c1..., c.c2..., c.p...)
