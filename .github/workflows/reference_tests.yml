@@ -53,7 +53,7 @@ jobs:
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
+          name: ReferenceImages_CairoMakie_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: ./CairoMakie/test/recorded_reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
@@ -102,7 +102,7 @@ jobs:
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
+          name: ReferenceImages_GLMakie_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: |
             ./GLMakie/test/recorded_reference_images/
       - name: Save number of missing refimages to file
@@ -162,7 +162,7 @@ jobs:
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
+          name: ReferenceImages_WGLMakie_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: ./WGLMakie/test/recorded_reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
