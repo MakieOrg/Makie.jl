@@ -175,13 +175,15 @@ end
     scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = false)
     ys = fill(130, length(xs))
     scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = true)
+    ys = fill(90, length(xs))
+    scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, depthsorting = true)
 
     # lines/linesegments shader
     xs = 20:10:270
-    ys = [70 + shift for _ in 1:13 for shift in (-10, 10)]
+    ys = [50 + shift for _ in 1:13 for shift in (-10, 10)]
     zs = range(3, 1, length=length(xs))
     lines!(scene, xs, ys, zs, color = :blue, linewidth = 4, fxaa = false)
-    ys = [30 + shift for _ in 1:13 for shift in (-10, 10)]
+    ys = [20 + shift for _ in 1:13 for shift in (-10, 10)]
     lines!(scene, xs, ys, zs, color = :blue, linewidth = 4, fxaa = true)
 
     # create some harder contrasts
