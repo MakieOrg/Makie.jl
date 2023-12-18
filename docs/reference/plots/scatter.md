@@ -378,6 +378,7 @@ Currently there are a few ways to mitigate this problem, but they all come at a 
 - `fxaa = true` will disable the native anti-aliasing of scatter markers and use fxaa instead. This results in less detailed markers, especially for thin markers like characters.
 - `transparency = true` will disable depth testing to a degree, resulting in all markers being rendered without artifacts. However with this markers always have some level of transparency
 - `overdraw = true` will disable depth testing entirely (read and write) for the plot, removing artifacts. This will however change the z-order of markers and allow plots rendered later to show up on top of the scatter plot
+- `depthsorting = true` will sort markers by depth before rendering to fix the issue. This only works within a plot call, so when other plots are involved the issue may reappear.
 
 \begin{examplefigure}{}
 ```julia
@@ -386,15 +387,22 @@ GLMakie.activate!() # hide
 
 ps = rand(Point3f, 500)
 cs = rand(500)
-f = Figure(size = (600, 650))
+f = Figure(size = (900, 650))
 Label(f[1, 1], "base", tellwidth = false)
 scatter(f[2, 1], ps, color = cs, markersize = 20, fxaa = false)
 Label(f[1, 2], "fxaa = true", tellwidth = false)
 scatter(f[2, 2], ps, color = cs, markersize = 20, fxaa = true)
+
 Label(f[3, 1], "transparency = true", tellwidth = false)
 scatter(f[4, 1], ps, color = cs, markersize = 20, transparency = true)
 Label(f[3, 2], "overdraw = true", tellwidth = false)
 scatter(f[4, 2], ps, color = cs, markersize = 20, overdraw = true)
+
+Label(f[1, 3], "depthsorting = true", tellwidth = false)
+scatter(f[2, 3], ps, color = cs, markersize = 20, depthsorting = true)
+Label(f[3, 3], "depthsorting = true", tellwidth = false)
+scatter(f[4, 3], ps, color = cs, markersize = 20, depthsorting = true)
+mesh!(Rect3f(Point3f(0), Vec3f(0.9, 0.9, 0.9)), color = :orange)
 f
 ```
 \end{examplefigure}
