@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - sd/beta-20
   push:
     tags:
       - '*'
@@ -52,7 +51,7 @@ jobs:
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         if: matrix.version == '1'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ReferenceImages_CairoMakie
           path: ./CairoMakie/test/recorded_reference_images/
@@ -102,12 +101,13 @@ jobs:
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         if: matrix.version == '1'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ReferenceImages_GLMakie
           path: |
             ./GLMakie/test/recorded_reference_images/
       - name: Save number of missing refimages to file
+        if: matrix.version == '1'
         env:
           N_MISSING: ${{ steps.referencetests.outputs.n_missing_refimages }}
           COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -116,7 +116,8 @@ jobs:
           echo $N_MISSING > ./n_missing/n_missing_refimages
           echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
       - name: Upload artifact with number of missing refimages
-        uses: actions/upload-artifact@v3
+        if: matrix.version == '1'
+        uses: actions/upload-artifact@v4
         with:
           name: n_missing_refimages
           path: n_missing/
@@ -163,7 +164,7 @@ jobs:
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         if: matrix.version == '1'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ReferenceImages_WGLMakie
           path: ./WGLMakie/test/recorded_reference_images/
