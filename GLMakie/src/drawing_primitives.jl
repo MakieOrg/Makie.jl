@@ -802,11 +802,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             )
             return convert(Mat4f, m) * m2
         end
+        interp = to_value(pop!(gl_attributes, :interpolate))
+        interp = interp ? :linear : :nearest
+        Tex(x) = Texture(x; minfilter=interp)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
-            return draw_volume(screen, intensity, gl_attributes)
+            return draw_volume(screen, Tex(intensity), gl_attributes)
         else
-            return draw_volume(screen, plot[4], gl_attributes)
+            return draw_volume(screen, Tex(plot[4]), gl_attributes)
         end
     end
 end
