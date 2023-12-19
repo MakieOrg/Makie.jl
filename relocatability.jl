@@ -12,25 +12,38 @@ end
 
 end # module MakieApp
 """
-using PackageCompiler
 
 using Pkg
-tmpdir = mktempdir()
 
+makie_dir = joinpath(pwd(), "dev", "Makie")
+tmpdir = mktempdir()
 # create a temporary project
 cd(tmpdir)
-rm("MakieApp", recursive=true)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
-Pkg.add([(name ="GLMakie", rev="sd/relocatability")])
+
+paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
+
+Pkg.develop(map(x-> (;path=x), paths))
+
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)
 end
+
 Pkg.activate(".")
 Pkg.add("PackageCompiler")
 
 using PackageCompiler
-rm("executable", recursive=true)
+
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
 
-isfile(joinpath(pwd(), "MakieApp", "Project.toml"))
+julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
+@test isdir(julia_pkg_dir)
+mvd_julia_pkg_dir = julia_pkg_dir * ".old"
+# Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
+try
+    mv(julia_pkg_dir, mvd_julia_pkg_dir)
+    @test success(`executable\\bin\\MakieApp`)
+catch e
+    mv(mvd_julia_pkg_dir, julia_pkg_dir)
+end
