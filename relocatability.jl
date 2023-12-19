@@ -15,7 +15,7 @@ end # module MakieApp
 
 using Pkg
 
-makie_dir = joinpath(pwd(), "dev", "Makie")
+makie_dir = pwd()
 tmpdir = mktempdir()
 # create a temporary project
 cd(tmpdir)
