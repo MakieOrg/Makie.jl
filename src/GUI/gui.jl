@@ -1,5 +1,7 @@
 using ImageClipboard
 
+include("file-dialogue.jl")
+
 function set_vis!(scene::Scene, v::Bool)
     return scene.visible[] = v
 end
