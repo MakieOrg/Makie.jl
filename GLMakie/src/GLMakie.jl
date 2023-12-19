@@ -43,7 +43,7 @@ export Sampler, Buffer
 
 const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
-const LOADED_SHADERS = Dict{String, String}()
+const LOADED_SHADERS = Dict{String,AbstractString}()
 
 function loadshader(name)
     # Turns out, joinpath is so slow, that it actually makes sense
