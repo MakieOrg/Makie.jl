@@ -13,7 +13,7 @@ end
 end # module MakieApp
 """
 
-using Pkg
+using Pkg, Test
 
 makie_dir = pwd()
 tmpdir = mktempdir()
@@ -36,7 +36,7 @@ Pkg.add("PackageCompiler")
 using PackageCompiler
 
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
-
+@test success(`executable\\bin\\MakieApp`)
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
 mvd_julia_pkg_dir = julia_pkg_dir * ".old"
