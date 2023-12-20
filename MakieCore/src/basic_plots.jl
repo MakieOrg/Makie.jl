@@ -192,6 +192,7 @@ Available algorithms are:
 - `algorithm::Union{Symbol, RaymarchAlgorithm} = :mip` sets the volume algorithm that is used.
 - `isorange::Real = 0.05` sets the range of values picked up by the IsoValue algorithm.
 - `isovalue = 0.5` sets the target value for the IsoValue algorithm.
+- `interpolate::Bool = true` sets whether the volume data should be sampled with interpolation.
 
 $(Base.Docs.doc(shading_attributes!))
 
@@ -205,7 +206,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         algorithm = :mip,
         isovalue = 0.5,
         isorange = 0.05,
-
+        interpolate = true,
         fxaa = true,
     )
     generic_plot_attributes!(attr)
