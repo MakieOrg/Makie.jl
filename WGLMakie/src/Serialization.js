@@ -561,7 +561,7 @@ export function deserialize_scene(data, screen) {
         if (!force) {
             // we use the threejs orbit controls, if the julia connection is gone
             // at least for 3d ... 2d is still a todo, and will stay static right now
-            if (!(JSServe.can_send_to_julia && JSServe.can_send_to_julia())) {
+            if (!(Bonito.can_send_to_julia && Bonito.can_send_to_julia())) {
                 return;
             }
         }

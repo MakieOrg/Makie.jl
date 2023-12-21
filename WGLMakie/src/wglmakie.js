@@ -220,7 +220,7 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
         "Vertex log:\n" +
         vertexLog;
 
-    JSServe.Connection.send_warning(err);
+    Bonito.Connection.send_warning(err);
 }
 
 function add_canvas_events(screen, comm, resize_to) {
