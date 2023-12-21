@@ -1,6 +1,8 @@
 # News
 
-## master
+## master 
+
+## 0.20.3
 
 - Add `depthsorting` as a hidden attribute for scatter plots in GLMakie as an alternative fix for outline artifacts. [#3432](https://github.com/MakieOrg/Makie.jl/pull/3432)
 - Disable SDF based anti-aliasing in scatter, text and lines plots when `fxaa = true` in GLMakie. This allows removing outline artifacts at the cost of quality. [#3408](https://github.com/MakieOrg/Makie.jl/pull/3408)
