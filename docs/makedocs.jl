@@ -1,7 +1,6 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
-Pkg.add(url="https://github.com/SimonDanisch/Bonito.jl")
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 Pkg.precompile()
 
