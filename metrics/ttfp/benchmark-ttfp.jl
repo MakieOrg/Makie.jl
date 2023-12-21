@@ -10,7 +10,9 @@ t_using = @ctime @eval using $Package
 
 if Package === :WGLMakie
     import Electron
-    WGLMakie.Bonito.use_electron_display()
+    # Backwards compatibility for master
+    Bonito = isdefined(WGLMakie, :Bonito) ? WGLMakie.Bonito : WGLMakie.JSServe
+    Bonito.use_electron_display()
 end
 
 set_theme!(size=(800, 600))
