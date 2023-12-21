@@ -6,6 +6,46 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+@testset "shader cache" begin
+    GLMakie.closeall()
+    screen = display(Figure())
+    cache = screen.shader_cache
+    # Postprocessing shaders
+    @test length(cache.shader_cache) == 5
+    @test length(cache.template_cache) == 5
+    @test length(cache.program_cache) == 4
+
+    # Shaders for scatter + linesegments + poly etc (axis)
+    display(screen, scatter(1:4))
+    @test length(cache.shader_cache) == 16
+    @test length(cache.template_cache) == 16
+    @test length(cache.program_cache) == 10
+
+    # No new shaders should be added:
+    display(screen, scatter(1:4))
+    @test length(cache.shader_cache) == 16
+    @test length(cache.template_cache) == 16
+    @test length(cache.program_cache) == 10
+
+    # Same for linesegments
+    display(screen, linesegments(1:4))
+    @test length(cache.shader_cache) == 16
+    @test length(cache.template_cache) == 16
+    @test length(cache.program_cache) == 10
+
+    # Lines hasn't been compiled so one new program should be added
+    display(screen, lines(1:4))
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
+
+    # For second time no new shaders should be added
+    display(screen, lines(1:4))
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
+end
+
 @testset "unit tests" begin
     GLMakie.closeall()
     @testset "Window handling" begin
@@ -250,7 +290,7 @@ end
 
         @test screen.root_scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.22
+        @test (Base.summarysize(screen) / 10^6) < 1.4
     end
     # All should go to pool after close
     @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)

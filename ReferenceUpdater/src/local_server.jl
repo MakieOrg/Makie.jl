@@ -102,7 +102,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
         id = checkrun["id"]
         right_combination = any(["GLMakie", "CairoMakie", "WGLMakie"]) do package
             # We need to match the name quite specifically, since we need to keep this synchronized to the CI script anyways.
-            startswith(name, "$package Julia 1.6")
+            name == "$package Julia 1"
         end
         if right_combination
             if name in unique_artifacts
@@ -133,6 +133,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
         error("Cancelled")
     end
     check = checkruns[choice]
+    chosen_backend = match(r"(\w+) Julia 1", check["name"])[1]
 
     job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
@@ -140,7 +141,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
 
     for a in artifacts
-        if endswith(a["name"], "1.6")
+        if a["name"] == "ReferenceImages_$chosen_backend"
             @info "Choosing artifact $(a["name"])"
             download_url = a["archive_download_url"]
             if !haskey(URL_CACHE, download_url)
@@ -194,6 +195,7 @@ function unzip(file, exdir = "")
         if (endswith(f.name,"/") || endswith(f.name,"\\"))
             mkdir(fullFilePath)
         else
+            mkpath(dirname(fullFilePath))
             write(fullFilePath, read(f))
         end
     end

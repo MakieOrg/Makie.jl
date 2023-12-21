@@ -28,7 +28,7 @@ struct Shader
     id::GLuint
     context::GLContext
     function Shader(name, source, typ, id)
-        new(name, source, typ, id, current_context())
+        new(Symbol(name), source, typ, id, current_context())
     end
 end
 
