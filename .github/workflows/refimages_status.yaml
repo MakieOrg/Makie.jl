@@ -2,7 +2,7 @@ name: Reference Image Status
 
 on:
   workflow_run:
-    workflows: [GLMakie CI]
+    workflows: [Backends]
     types:
       - completed
 

@@ -164,3 +164,30 @@ end
 
     scene
 end
+
+@reference_test "Signed Distance Field - FXAA interaction" begin
+    scene = Scene(size = (300, 200), camera = campixel!)
+
+    # scatter/text shader
+    xs = 20:20:280
+    ys = fill(170, length(xs))
+    zs = range(3, 1, length=length(xs))
+    scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = false)
+    ys = fill(130, length(xs))
+    scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = true)
+    ys = fill(90, length(xs))
+    scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, depthsorting = true)
+
+    # lines/linesegments shader
+    xs = 20:10:270
+    ys = [50 + shift for _ in 1:13 for shift in (-10, 10)]
+    zs = range(3, 1, length=length(xs))
+    lines!(scene, xs, ys, zs, color = :blue, linewidth = 4, fxaa = false)
+    ys = [20 + shift for _ in 1:13 for shift in (-10, 10)]
+    lines!(scene, xs, ys, zs, color = :blue, linewidth = 4, fxaa = true)
+
+    # create some harder contrasts
+    mesh!(scene, Rect2f(0, 0, 300, 200), color = :red)
+
+    scene
+end
