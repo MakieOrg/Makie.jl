@@ -557,7 +557,7 @@ end
         The function `autolimits!` resets the value of `limits` to `(nothing, nothing)` and adjusts the axis limits according
         to the extents of the plots added to the axis.
 
-        The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, high)` where each value
+        The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, yhigh)` where each value
         can be a real number or `nothing`.
         It can also be a tuple `(x, y)` where `x` and `y` can be `nothing` or a tuple `(low, high)`.
         In all cases, `nothing` means that the respective limit values will be automatically determined.
