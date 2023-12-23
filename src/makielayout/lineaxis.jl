@@ -187,6 +187,10 @@ function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observ
     return
 end
 
+# if labels are given manually, it's possible that some of them are outside the displayed limits
+# we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
+is_valid_tick(tv, limits) = (limits[1] <= tv || limits[1] ≈ tv) && (tv <= limits[2] || tv ≈ limits[2])
+
 function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
 
     tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits_obs = closure_args
@@ -204,12 +208,7 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     lim_o = limits[1]
     lim_w = limits[2] - limits[1]
 
-    # if labels are given manually, it's possible that some of them are outside the displayed limits
-    # we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
-    i_values_within_limits = findall(tickvalues_unfiltered) do tv
-        return (limits[1] <= tv || limits[1] ≈ tv) &&
-                (tv <= limits[2] || tv ≈ limits[2])
-    end
+    i_values_within_limits = findall(tv -> is_valid_tick(tv, limits), tickvalues_unfiltered)
 
     tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
 
@@ -231,13 +230,15 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     return
 end
 
-function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
+function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_extents_horizontal, minortickvalues_unfiltered, scale, reversed::Bool)
     position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal
 
     extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
 
     px_o = extents[1]
     px_width = extents[2] - extents[1]
+
+    minortickvalues = filter(tv -> is_valid_tick(tv, limits), minortickvalues_unfiltered)
 
     tickvalues_scaled = scale.(minortickvalues)
 
