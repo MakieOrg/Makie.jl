@@ -189,7 +189,7 @@ end
 
 # if labels are given manually, it's possible that some of them are outside the displayed limits
 # we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
-is_valid_tick(tv, limits) = (limits[1] <= tv || limits[1] ≈ tv) && (tv <= limits[2] || tv ≈ limits[2])
+is_within_limits(tv, limits) = (limits[1] ≤ tv || limits[1] ≈ tv) && (tv ≤ limits[2] || tv ≈ limits[2])
 
 function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
 
@@ -208,7 +208,7 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     lim_o = limits[1]
     lim_w = limits[2] - limits[1]
 
-    i_values_within_limits = findall(tv -> is_valid_tick(tv, limits), tickvalues_unfiltered)
+    i_values_within_limits = findall(tv -> is_within_limits(tv, limits), tickvalues_unfiltered)
 
     tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
 
@@ -238,7 +238,7 @@ function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_
     px_o = extents[1]
     px_width = extents[2] - extents[1]
 
-    minortickvalues = filter(tv -> is_valid_tick(tv, limits), minortickvalues_unfiltered)
+    minortickvalues = filter(tv -> is_within_limits(tv, limits), minortickvalues_unfiltered)
 
     tickvalues_scaled = scale.(minortickvalues)
 
