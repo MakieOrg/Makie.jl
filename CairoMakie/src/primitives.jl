@@ -86,24 +86,21 @@ function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space,
     Cairo.set_source_rgba(ctx, rgbatuple(color)...)
     Cairo.set_line_width(ctx, linewidth)
     Cairo.stroke(ctx)
-    return
+    nothing
 end
 
-function project_command(m::MoveTo, scene, space, model)
+project_command(m::MoveTo, scene, space, model) =
     MoveTo(project_position(scene, space, m.p, model))
-end
 
-function project_command(l::LineTo, scene, space, model)
+project_command(l::LineTo, scene, space, model) =
     LineTo(project_position(scene, space, l.p, model))
-end
 
-function project_command(c::CurveTo, scene, space, model)
+project_command(c::CurveTo, scene, space, model) =
     CurveTo(
         project_position(scene, space, c.c1, model),
         project_position(scene, space, c.c2, model),
         project_position(scene, space, c.p, model),
     )
-end
 
 project_command(c::ClosePath, scene, space, model) = c
 
@@ -130,9 +127,7 @@ function draw_single(primitive::Lines, ctx, positions)
 end
 
 function draw_single(primitive::LineSegments, ctx, positions)
-
     @assert iseven(length(positions))
-
     @inbounds for i in 1:2:length(positions)-1
         p1 = positions[i]
         p2 = positions[i+1]
@@ -150,14 +145,12 @@ function draw_single(primitive::LineSegments, ctx, positions)
 end
 
 # if linewidth is not an array
-function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, dash)
+draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, dash) =
     draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors], dash)
-end
 
 # if color is not an array
-function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, dash)
+draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, dash) =
     draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths, dash)
-end
 
 function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, dash)
     @assert iseven(length(positions))
@@ -175,9 +168,8 @@ function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArr
         Cairo.line_to(ctx, positions[i+1]...)
         Cairo.set_line_width(ctx, linewidths[i])
 
-        !isnothing(dash) && Cairo.set_dash(ctx, dash .* linewidths[i])
-        c1 = colors[i]
-        c2 = colors[i+1]
+        isnothing(dash) || Cairo.set_dash(ctx, dash .* linewidths[i])
+        c1, c2 = colors[i], colors[i+1]
         # we can avoid the more expensive gradient if the colors are the same
         # this happens if one color was given for each segment
         if c1 == c2
@@ -204,14 +196,10 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
     prev_nan = isnan(prev_position)
     prev_continued = false
 
-    if !prev_nan
-        # first is not nan, move_to
-        Cairo.move_to(ctx, positions[begin]...)
-    else
-        # first is nan, do nothing
-    end
+    # first is not nan, move_to
+    prev_nan || Cairo.move_to(ctx, positions[begin]...)
 
-    for i in eachindex(positions)[2:end]
+    for i in eachindex(positions)[begin+1:end]
         this_position = positions[i]
         this_color = colors[i]
         this_nan = isnan(this_position)
@@ -221,7 +209,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
             if prev_continued
                 # and this is prev_continued, so set source and stroke to finish previous line
                 Cairo.set_line_width(ctx, this_linewidth)
-                !isnothing(dash) && Cairo.set_dash(ctx, dash .* this_linewidth)
+                isnothing(dash) || Cairo.set_dash(ctx, dash .* this_linewidth)
                 Cairo.set_source_rgba(ctx, red(prev_color), green(prev_color), blue(prev_color), alpha(prev_color))
                 Cairo.stroke(ctx)
             else
@@ -230,17 +218,14 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
         end
         if prev_nan
             # previous was nan
-            if !this_nan
-                # but this is not nan, so move to this position
+            if this_nan  # this is also nan, do nothing
+            else  # this is not nan, so move to this position
                 Cairo.move_to(ctx, this_position...)
-            else
-                # and this is also nan, do nothing
             end
         else
             if this_color == prev_color
                 # this color is like the previous
-                if !this_nan
-                    # and this is not nan, so line_to and set prev_continued
+                if !this_nan  # this is not nan, so line_to and set prev_continued
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     Cairo.line_to(ctx, this_position...)
                     prev_continued = true
@@ -248,23 +233,21 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                     if i == lastindex(positions)
                         # this is the last element so stroke this
                         Cairo.set_line_width(ctx, this_linewidth)
-                        !isnothing(dash) && Cairo.set_dash(ctx, dash .* this_linewidth)
+                        isnothing(dash) || Cairo.set_dash(ctx, dash .* this_linewidth)
                         Cairo.set_source_rgba(ctx, red(this_color), green(this_color), blue(this_color), alpha(this_color))
                         Cairo.stroke(ctx)
                     end
-                else
-                    # but this is nan, so do nothing
                 end
             else
                 prev_continued = false
-                if !this_nan
+                if !this_nan  # this is not nan, so line_to and set prev_continued
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     # this is not nan
                     # and this color is different than the previous, so move_to prev and line_to this
                     # create gradient pattern and stroke
                     Cairo.move_to(ctx, prev_position...)
                     Cairo.line_to(ctx, this_position...)
-                    !isnothing(dash) && Cairo.set_dash(ctx, dash .* this_linewidth)
+                    isnothing(dash) || Cairo.set_dash(ctx, dash .* this_linewidth)
                     Cairo.set_line_width(ctx, this_linewidth)
 
                     pat = Cairo.pattern_create_linear(prev_position..., this_position...)
@@ -275,8 +258,6 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                     Cairo.destroy(pat)
 
                     Cairo.move_to(ctx, this_position...)
-                else
-                    # this is nan, do nothing
                 end
             end
         end
@@ -308,9 +289,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     space = primitive.space[]
     transfunc = Makie.transform_func(primitive)
 
-    return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotations, model, positions, size_model, font, markerspace,
-                               space)
+    draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
+                        marker_offset, rotations, model, positions, size_model, font, markerspace, space)
 end
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
@@ -339,7 +319,7 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         end
         Cairo.restore(ctx)
     end
-    return
+    nothing
 end
 
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
@@ -520,10 +500,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
         model, space, markerspace, offset, primitive.transformation, transform_marker
     )
-
     nothing
 end
-
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
@@ -587,6 +565,11 @@ function draw_glyph_collection(
         # offsets and scale apply in markerspace
         gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
 
+        if any(isnan, gp3)
+            Cairo.restore(ctx)
+            return
+        end
+
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
 
         # the CairoMatrix is found by transforming the right and up vector
@@ -632,7 +615,7 @@ function draw_glyph_collection(
     end
 
     Cairo.restore(ctx)
-    return
+    nothing
 end
 
 ################################################################################
@@ -647,15 +630,15 @@ If not, returns array unchanged.
 function regularly_spaced_array_to_range(arr)
     diffs = unique!(sort!(diff(arr)))
     step = sum(diffs) ./ length(diffs)
-    if all(x-> x ≈ step, diffs)
+    return if all(x-> x ≈ step, diffs)
         m, M = extrema(arr)
         if step < zero(step)
             m, M = M, m
         end
         # don't use stop=M, since that may not include M
-        return range(m; step=step, length=length(arr))
+        range(m; step=step, length=length(arr))
     else
-        return arr
+        arr
     end
 end
 
@@ -673,19 +656,15 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
-    if !(xs isa AbstractVector)
-        l, r = extrema(xs)
-        N = size(image, 1)
-        xs = range(l, r, length = N+1)
+    xs = if xs isa AbstractVector
+        regularly_spaced_array_to_range(xs)
     else
-        xs = regularly_spaced_array_to_range(xs)
+        range(extrema(xs)..., length = size(image, 1) + 1)
     end
-    if !(ys isa AbstractVector)
-        l, r = extrema(ys)
-        N = size(image, 2)
-        ys = range(l, r, length = N+1)
+    ys = if ys isa AbstractVector
+        regularly_spaced_array_to_range(ys)
     else
-        ys = regularly_spaced_array_to_range(ys)
+        range(extrema(ys)..., length = size(image, 2) + 1)
     end
     model = primitive.model[]::Mat4f
     interpolate = to_value(primitive.interpolate)
@@ -712,12 +691,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     if interpolate
-        if !regular_grid
-            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
-        end
-        if !identity_transform
-            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
-        end
+        regular_grid || error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
+        identity_transform || error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
     end
 
     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
@@ -817,7 +792,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         end
         draw_mesh3D(scene, screen, primitive, mesh)
     end
-    return nothing
+    nothing
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
@@ -829,7 +804,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
-    return draw_mesh2D(scene, screen, cols, space, transform_func, vs, fs, model)
+    draw_mesh2D(scene, screen, cols, space, transform_func, vs, fs, model)
 end
 
 function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func,
@@ -866,7 +841,6 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func
         Cairo.paint(ctx)
         Cairo.destroy(pattern)
     end
-    return nothing
 end
 
 function average_z(positions, face)
@@ -982,7 +956,7 @@ function draw_mesh3D(
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
 
     draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdirection, light_color, shininess, diffuse, ambient, specular)
-    return
+    nothing
 end
 
 function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
@@ -1070,7 +1044,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     end
     draw_mesh3D(scene, screen, primitive, mesh)
     primitive[:color] = old
-    return nothing
+    nothing
 end
 
 
@@ -1123,6 +1097,5 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
             rotation = rotation
         )
     end
-
-    return nothing
+    nothing
 end
