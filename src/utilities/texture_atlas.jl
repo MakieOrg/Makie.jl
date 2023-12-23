@@ -1,4 +1,4 @@
-const SERIALIZATION_FORMAT_VERSION = "v5"
+const SERIALIZATION_FORMAT_VERSION = "v6"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -74,7 +74,7 @@ end
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
     path = abspath(
-        first(Base.DEPOT_PATH), "makie",
+        makie_cache_dir,
         "$(SERIALIZATION_FORMAT_VERSION)_texture_atlas_$(resolution)_$(pix_per_glyph).bin"
     )
     if !ispath(dirname(path))
@@ -157,7 +157,7 @@ function get_texture_atlas(resolution::Int = 2048, pix_per_glyph::Int = 64)
     end
 end
 
-const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.19.0/"
+const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.20.0/"
 
 function cached_load(resolution::Int, pix_per_glyph::Int)
     path = get_cache_path(resolution, pix_per_glyph)
@@ -187,8 +187,6 @@ end
 const DEFAULT_FONT = NativeFont[]
 const ALTERNATIVE_FONTS = NativeFont[]
 const FONT_LOCK = Base.ReentrantLock()
-Base.@deprecate_binding _default_font DEFAULT_FONT
-Base.@deprecate_binding _alternative_fonts ALTERNATIVE_FONTS
 
 function defaultfont()
     lock(FONT_LOCK) do
@@ -219,9 +217,8 @@ function alternativefonts()
 end
 
 function render_default_glyphs!(atlas)
-    font = defaultfont()
-    chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-']
-    fonts = to_font.(to_value.(values(Makie.MAKIE_DEFAULT_THEME.fonts)))
+    chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-', MINUS_SIGN]
+    fonts = map(x-> to_font(to_value(x)), values(MAKIE_DEFAULT_THEME.fonts))
     for font in fonts
         for c in chars
             insert_glyph!(atlas, c, font)
@@ -291,18 +288,25 @@ function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
     return atlas.uv_rectangles[glyph_index!(atlas, b)]
 end
 
+
+# Seems like StableHashTraits is so slow, that it's worthwhile to memoize the hashes
+const MEMOIZED_HASHES = Dict{Any, UInt32}()
+
+function fast_stable_hash(x)
+    return get!(MEMOIZED_HASHES, x) do
+        return StableHashTraits.stable_hash(x; alg=crc32c, version=2)
+    end
+end
+
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
-    hash = StableHashTraits.stable_hash((glyphindex, FreeTypeAbstraction.fontname(font));
-                                        alg=crc32c, version=2)
+    hash = fast_stable_hash((glyphindex, FreeTypeAbstraction.fontname(font)))
     return insert_glyph!(atlas, hash, (glyphindex, font))
 end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
-    return insert_glyph!(atlas, StableHashTraits.stable_hash(path; alg=crc32c, version=2), 
-                         path)
+    return insert_glyph!(atlas, fast_stable_hash(path), path)
 end
-
 
 function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{BezierPath, Tuple{UInt64, NativeFont}})
     return get!(atlas.mapping, hash) do
@@ -434,6 +438,7 @@ function marker_to_sdf_shape(arr::AbstractVector)
     shape1 = marker_to_sdf_shape(first(arr))
     for elem in arr
         shape2 = marker_to_sdf_shape(elem)
+        shape2 isa Shape && shape1 isa Shape && continue
         shape1 !== shape2 && error("Can't use an array of markers that require different primitive_shapes $(typeof.(arr)).")
     end
     return shape1
@@ -552,10 +557,11 @@ end
 
 offset_marker(atlas, marker, font, markersize, markeroffset) = markeroffset
 
-function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset)
+function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset, plot_object)
     atlas_obs = Observable(atlas) # for map to work
-    scale = map(rescale_marker, atlas_obs, marker, font, markersize; ignore_equal_values=true)
-    quad_offset = map(offset_marker, atlas_obs, marker, font, markersize, marker_offset; ignore_equal_values=true)
+    scale = map(rescale_marker, plot_object, atlas_obs, marker, font, markersize; ignore_equal_values=true)
+    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize, marker_offset;
+                      ignore_equal_values=true)
 
     return scale, quad_offset
 end

@@ -29,38 +29,37 @@ This is the sequential logic by which conversions in Makie are attempted:
 
 ### Multiple Argument Conversion with `convert_arguments`
 
-Plotting of a `Circle` for example can be defined via a conversion into a vector of points:
+Plotting of a `Circle` for example can be defined via a conversion into a vector of points for any existing plot type:
 
 ```julia
-Makie.convert_arguments(x::Circle) = (decompose(Point2f, x),)
+Makie.convert_arguments(::Type{<: AbstractPlot}, x::Circle) = (decompose(Point2f, x),)
 
 # or if you picked up MakieCore as a light-weight recipe system dependency
-MakieCore.convert_arguments(x::Circle) = (decompose(Point2f, x),)
+MakieCore.convert_arguments(::Type{<: AbstractPlot}, x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning
     `convert_arguments` must always return a Tuple.
 
-You can restrict conversion to a subset of plot types, like only for scatter plots:
+Defining a conversion for every plot type likely won't make sense, so one can restrict the conversion to a subset of plot types, like only for scatter plots:
 
 ```julia
-Makie.convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
+Makie.convert_arguments(P::Type{<:Scatter}, ::MyType) = convert_arguments(P, rand(10))
 ```
 
 Conversion traits make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc. Predefined are `NoConversion`, `PointBased`, `SurfaceLike` and `VolumeLike`.
 
 ```julia
-Makie.convert_arguments(P::PointBased, x::MyType) = ...
+Makie.convert_arguments(::PointBased, ::MyType) = ...
 ```
 
-Lastly, it is also possible to convert multiple arguments together.
+It is also possible to convert multiple arguments together.
 
 ```julia
-Makie.convert_arguments(P::Type{<:Scatter}, x::MyType, y::MyOtherType) = ...
+Makie.convert_arguments(::Type{<:Scatter}, x::MyType, y::MyOtherType) = ...
 ```
 
-Optionally you may define the default plot type so that `plot(x::MyType)` will
-use it directly:
+Optionally you may define the default plot type so that `plot(x::MyType)` will always plot as e.g. a surface plot:
 
 ```julia
 plottype(::MyType) = Surface
@@ -94,10 +93,10 @@ end
 This macro expands to several things. Firstly a type definition:
 
 ```julia
-const MyPlot{ArgTypes} = Combined{myplot, ArgTypes}
+const MyPlot{ArgTypes} = Plot{myplot, ArgTypes}
 ```
 
-The type parameter of `Combined` contains the function `myplot` instead of e.g. a
+The type parameter of `Plot` contains the function `myplot` instead of e.g. a
 symbol `MyPlot`. This way the mapping from `MyPlot` to `myplot` is safer and simpler.
 The following signatures are automatically defined to make `MyPlot` nice to use:
 
@@ -113,13 +112,13 @@ A specialization of `argument_names` is emitted if you have an argument list
 argument_names(::Type{<: MyPlot}) = (:x, :y, :z)
 ```
 
-This is optional but it will allow the use of `plot_object[:x]` to
+This is optional but it will allow the use of `plot_object.x` to
 fetch the first argument from the call
 `plot_object = myplot(rand(10), rand(10), rand(10))`, for example.
 
 Alternatively you can always fetch the `i`th argument using `plot_object[i]`,
 and if you leave out the `(x,y,z)`, the default version of `argument_names`
-will provide `plot_object[:arg1]` etc.
+will provide `plot_object.arg1` etc.
 
 The theme given in the body of the `@recipe` invocation is inserted into a
 specialization of `default_theme` which inserts the theme into any scene that
@@ -137,11 +136,11 @@ As the second part of defining `MyPlot`, you should implement the actual
 plotting of the `MyPlot` object by specializing `plot!`:
 
 ```julia
-function plot!(myplot::MyPlot)
+function Makie.plot!(myplot::MyPlot)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `myplot`:
-    lines!(myplot, rand(10), color = myplot[:plot_color])
-    plot!(myplot, myplot[:x], myplot[:y])
+    lines!(myplot, rand(10), color = myplot.plot_color)
+    plot!(myplot, myplot.x, myplot.y)
     myplot
 end
 ```

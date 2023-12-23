@@ -24,7 +24,7 @@ flat out uvec2 f_id;
 flat out vec2 f_uv_minmax;
 
 out vec3 o_view_pos;
-out vec3 o_normal;
+out vec3 o_view_normal;
 
 uniform vec2 resolution;
 uniform float pattern_length;
@@ -56,7 +56,7 @@ void emit_vertex(vec3 position, vec2 uv, int index, float thickness)
     gl_Position = vec4((position.xy / resolution), position.z, 1.0);
     f_id        = g_id[index];
     // linewidth scaling may shrink the effective linewidth
-    f_thickness = thickness; 
+    f_thickness = thickness;
     EmitVertex();
 }
 // default for miter joins
@@ -131,7 +131,7 @@ void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv)
 
 // Generate line segment with 3 triangles
 // - p1, p2 are the line start and end points in pixel space
-// - miter_a and miter_b are the offsets from p1 and p2 respectively that 
+// - miter_a and miter_b are the offsets from p1 and p2 respectively that
 //   generate the line segment quad. This should include thickness and AA
 // - u1, u2 are the u values at p1 and p2. These should be in uv scale (px2uv applied)
 // - thickness_aa1, thickness_aa2 are linewidth at p1 and p2 with AA added. They
@@ -162,7 +162,7 @@ void generate_line_segment(
         //  \  /
         //   \/
         //   /\
-        //  >--<  
+        //  >--<
         // Line segment has zero or negative width on short side
 
         // Pulled apart, we draw these two triangles (vertical lines added)
@@ -171,9 +171,9 @@ void generate_line_segment(
         //  X |    | X
         //   \|    |/
         //
-        // where X is u1/p1 (left) and u2/p2 (right) respectively. To avoid 
-        // drawing outside the line segment due to AA padding, we cut off the 
-        // left triangle on the right side at u2 via f_uv_minmax.y, and 
+        // where X is u1/p1 (left) and u2/p2 (right) respectively. To avoid
+        // drawing outside the line segment due to AA padding, we cut off the
+        // left triangle on the right side at u2 via f_uv_minmax.y, and
         // analogously the right triangle at u1 via f_uv_minmax.x.
         // These triangles will still draw over each other like this.
 
@@ -194,7 +194,7 @@ void generate_line_segment(
         // outgoing side
         f_uv_minmax.x = u1;
         f_uv_minmax.y = old;
-        
+
         emit_vertex(p2, -miter_b, v1, vec2(u2, -thickness_aa2), 2);
         emit_vertex(p2, +miter_b, v1, vec2(u2, +thickness_aa2), 2);
         if (line_offset_b < 0){ // finish triangle on -miter_b side
@@ -220,9 +220,9 @@ void generate_line_segment_debug(
         emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
         emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
         emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(1, 0, 0, 0.5));
-            
+
         EndPrimitive();
-            
+
         emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(0, 0, 1, 0.5));
         emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
         emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b), -thickness_aa2), 2, vec4(0, 0, 1, 0.5));
@@ -238,13 +238,13 @@ void generate_line_segment_debug(
             emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
             emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
             emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(1, 0, 0, 0.5));
-            
+
             EndPrimitive();
-            
+
             emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(0, 1, 0, 0.5));
             emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 1, 0, 0.5));
             emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 1, 0, 0.5));
-            
+
             EndPrimitive();
 
             emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 0, 1, 0.5));
@@ -256,13 +256,13 @@ void generate_line_segment_debug(
             emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
             emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
             emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(1, 0, 0, 0.5));
-            
+
             EndPrimitive();
-            
+
             emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(0, 1, 0, 0.5));
             emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 1, 0, 0.5));
             emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 1, 0, 0.5));
-            
+
             EndPrimitive();
 
             emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 0, 1, 0.5));
@@ -279,14 +279,14 @@ void generate_line_segment_debug(
         emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
         if (line_offset_a > 0){ // finish triangle on -miter_a side
             emit_vertex(
-                p1 + vec3(2 * line_offset_a * v1 - miter_a, 0), 
-                vec2(u1 + px2uv * (2 * line_offset_a - dot(v1, miter_a)), -thickness_aa1), 
+                p1 + vec3(2 * line_offset_a * v1 - miter_a, 0),
+                vec2(u1 + px2uv * (2 * line_offset_a - dot(v1, miter_a)), -thickness_aa1),
                 1, vec4(1, 0, 0, 0.5)
             );
         } else {
             emit_vertex(
-                p1 + vec3(-2 * line_offset_a * v1 + miter_a, 0), 
-                vec2(u1 + px2uv * (-2 * line_offset_a + dot(v1, miter_a)), thickness_aa1), 
+                p1 + vec3(-2 * line_offset_a * v1 + miter_a, 0),
+                vec2(u1 + px2uv * (-2 * line_offset_a + dot(v1, miter_a)), thickness_aa1),
                 1, vec4(1, 0, 0, 0.5)
             );
         }
@@ -300,14 +300,14 @@ void generate_line_segment_debug(
         emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
         if (line_offset_b < 0){ // finish triangle on -miter_b side
             emit_vertex(
-                p2 + vec3(2 * line_offset_b * v1 - miter_b, 0), 
-                vec2(u2 + px2uv * (2 * line_offset_b - dot(v1, miter_b)), -thickness_aa2), 
+                p2 + vec3(2 * line_offset_b * v1 - miter_b, 0),
+                vec2(u2 + px2uv * (2 * line_offset_b - dot(v1, miter_b)), -thickness_aa2),
                 2, vec4(0, 0, 1, 0.5)
             );
         } else {
             emit_vertex(
-                p2 + vec3(-2 * line_offset_b * v1 + miter_b, 0), 
-                vec2(u2 + px2uv * (-2 * line_offset_b + dot(v1, miter_b)), thickness_aa2), 
+                p2 + vec3(-2 * line_offset_b * v1 + miter_b, 0),
+                vec2(u2 + px2uv * (-2 * line_offset_b + dot(v1, miter_b)), thickness_aa2),
                 2, vec4(0, 0, 1, 0.5)
             );
         }
@@ -601,8 +601,8 @@ void draw_patterned_line(bool isvalid[4])
 
         // Debug - show each triangle
         // generate_line_segment_debug(
-        //     p1, miter_a, start, thickness_aa1, 
-        //     p2, miter_b, stop, thickness_aa2, 
+        //     p1, miter_a, start, thickness_aa1,
+        //     p2, miter_b, stop, thickness_aa2,
         //     v1.xy, segment_length
         // );
 
@@ -773,7 +773,7 @@ void main(void)
 {
     // These need to be set but don't have reasonable values here
     o_view_pos = vec3(0);
-    o_normal = vec3(0);
+    o_view_normal = vec3(0);
 
     // we generate very thin lines for linewidth 0, so we manually skip them:
     if (g_thickness[1] == 0.0 && g_thickness[2] == 0.0) {

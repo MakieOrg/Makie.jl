@@ -1,13 +1,20 @@
+function check_textsize_deprecation(@nospecialize(dictlike))
+    if haskey(dictlike, :textsize)
+        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+    end
+end
+
 function plot!(plot::Text)
+    check_textsize_deprecation(plot)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphcollections = Observable(GlyphCollection[])
-    linesegs = Observable(Point2f[])
-    linewidths = Observable(Float32[])
-    linecolors = Observable(RGBAf[])
+    glyphcollections = Observable(GlyphCollection[]; ignore_equal_values=true)
+    linesegs = Observable(Point2f[]; ignore_equal_values=true)
+    linewidths = Observable(Float32[]; ignore_equal_values=true)
+    linecolors = Observable(RGBAf[]; ignore_equal_values=true)
     lineindices = Ref(Int[])
 
-    onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
+    onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
                 ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
@@ -23,7 +30,8 @@ function plot!(plot::Text)
         lwidths = Float32[]
         lcolors = RGBAf[]
         lindices = Int[]
-        function push_args((gc, ls, lw, lc, lindex))
+        function push_args(args...)
+            gc, ls, lw, lc, lindex = _get_glyphcollection_and_linesegments(args...)
             push!(gcs, gc)
             append!(lsegs, ls)
             append!(lwidths, lw)
@@ -31,18 +39,15 @@ function plot!(plot::Text)
             append!(lindices, lindex)
             return
         end
-        func = push_args ∘ _get_glyphcollection_and_linesegments
         if str isa Vector
             # If we have a Vector of strings, Vector arguments are interpreted
             # as per string.
-            broadcast_foreach(
-                func,
-                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
+            broadcast_foreach(push_args, str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
             )
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
-            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
+            push_args(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         end
         glyphcollections[] = gcs
         linewidths[] = lwidths
@@ -51,11 +56,11 @@ function plot!(plot::Text)
         linesegs[] = lsegs
     end
 
-    linesegs_shifted = Observable(Point2f[])
+    linesegs_shifted = Observable(Point2f[]; ignore_equal_values=true)
 
     sc = parent_scene(plot)
 
-    onany(linesegs, positions, sc.camera.projectionview, sc.px_area,
+    onany(plot, linesegs, positions, sc.camera.projectionview, sc.viewport,
             transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
         pos_transf = plot_to_screen(plot, pos)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
@@ -157,7 +162,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
     text!(plot, positions; text = strings, attrs...)
 
     # update both text and positions together
-    on(strings_and_positions) do str_pos
+    on(plot, strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
 

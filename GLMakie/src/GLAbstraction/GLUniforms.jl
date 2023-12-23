@@ -241,6 +241,7 @@ gl_convert(x::Mat{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
 gl_convert(a::AbstractVector{<: AbstractFace}) = indexbuffer(s)
 gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a
 gl_convert(::Type{<: GPUArray}, a::StaticVector) = gl_convert(a)
+gl_convert(x::Vector) = x
 
 function gl_convert(T::Type{<: GPUArray}, a::AbstractArray{X, N}; kw_args...) where {X, N}
     T(convert(AbstractArray{gl_promote(X), N}, a); kw_args...)
@@ -259,18 +260,6 @@ function gl_convert(::Type{T}, a::Observable{<: AbstractArray{X, N}}; kw_args...
     TGL = gl_promote(X)
     s = (X == TGL) ? a : lift(x-> convert(Array{TGL, N}, x), a)
     T(s; kw_args...)
-end
-
-lift_convert(a::AbstractArray, T, N) = lift(x -> convert(Array{T, N}, x), a)
-function lift_convert(a::ShaderAbstractions.Sampler, T, N)
-    ShaderAbstractions.Sampler(
-        lift(x -> convert(Array{T, N}, x.data), a),
-        minfilter = a[].minfilter, magfilter = a[].magfilter,
-        x_repeat = a[].repeat[1],
-        y_repeat = a[].repeat[min(2, N)],
-        z_repeat = a[].repeat[min(3, N)],
-        anisotropic = a[].anisotropic, swizzle_mask = a[].swizzle_mask
-    )
 end
 
 gl_convert(f::Function, a) = f(a)

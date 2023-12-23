@@ -39,7 +39,7 @@ using GLMakie
 GLMakie.activate!() # hide
 # FigureAxisPlot takes figure and axis keywords
 fig, ax, p = lines(cumsum(randn(1000)),
-    figure = (resolution = (1000, 600),),
+    figure = (size = (1000, 600),),
     axis = (ylabel = "Temperature",),
     color = :red)
 

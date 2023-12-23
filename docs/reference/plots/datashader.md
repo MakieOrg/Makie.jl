@@ -21,7 +21,7 @@ fig, ax, ds = datashader(airports,
     # for documentation output we shouldn't calculate the image async,
     # since it won't wait for the render to finish and inline a blank image
     async = false,
-    figure = (; figurepadding=0, resolution=(360*3, 160*3))
+    figure = (; figurepadding=0, size=(360*2, 160*2))
 )
 Colorbar(fig[1, 2], ds, label="Number of airports")
 hidedecorations!(ax); hidespines!(ax)
@@ -60,7 +60,7 @@ cargs = [[0, 0, -1.3, -1.3, -1.8, -1.9],
     [0, 0, -1.7, 1.5, -0.5, 0.7]
 ]
 
-fig = Figure(resolution=(1000, 1000))
+fig = Figure(size=(1000, 1000))
 fig_grid = CartesianIndices((3, 4))
 cmap = to_colormap(:BuPu_9)
 cmap[1] = RGBAf(1, 1, 1, 1) # make sure background is white
@@ -120,7 +120,7 @@ end
     f, ax, dsplot = datashader(points;
         colormap=:fire,
         axis=(; type=Axis, autolimitaspect = 1),
-        figure=(;figure_padding=0, resolution=(1200, 600))
+        figure=(;figure_padding=0, size=(1200, 600))
     )
     # make image fill the whole screen
     hidedecorations!(ax)
@@ -158,7 +158,7 @@ points = Mmap.mmap(open(path, "r"), Vector{Point2f});
         =#
         point_transform=reverse,
         axis=(; type=Axis, autolimitaspect = 1),
-        figure=(;figure_padding=0, resolution=(1200, 600))
+        figure=(;figure_padding=0, size=(1200, 600))
     )
     hidedecorations!(ax)
     hidespines!(ax)
@@ -206,7 +206,7 @@ fig
 We can also re-use the previous NYC example for a categorical plot:
 ```julia
 @time begin
-    f = Figure(figure_padding=0, resolution=(1200, 600))
+    f = Figure(figure_padding=0, size=(1200, 600))
     ax = Axis(
         f[1, 1],
         autolimitaspect=1,

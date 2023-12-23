@@ -317,8 +317,8 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     return
 end
 
-function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
-    axis = Axis3D(scene, attributes, args)
+function plot!(axis::Axis3D)
+    scene = get_scene(axis)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
     textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,
@@ -334,12 +334,11 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals..., axis.padding
     )
-    map_once(
+    onany(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
+        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...; update=true
     )
-    push!(scene, axis)
     return axis
 end
 

@@ -57,9 +57,9 @@ function draw_mesh_particle(screen, p, data)
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
-        shading = true
     end
 
+    shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing
@@ -71,16 +71,19 @@ function draw_mesh_particle(screen, p, data)
         fetch_pixel = false
         interpolate_in_fragment_shader = false
         uv_scale = Vec2f(1)
+        backlight = 0f0
 
         instances = const_lift(length, position)
-        shading = true
         transparency = false
         shader = GLVisualizeShader(
             screen,
-            "util.vert", "particles.vert", "mesh.frag", "fragment_output.frag",
+            "util.vert", "particles.vert",
+            "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
-                "light_calc" => light_calc(shading),
+                "shading" => light_calc(shading),
+                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
@@ -173,6 +176,20 @@ function draw_scatter(screen, (marker, position), data)
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
 
+    if to_value(pop!(data, :depthsorting, false))
+        data[:indices] = map(
+            data[:projectionview], data[:preprojection], data[:model],
+            position
+        ) do pv, pp, m, pos
+            T = pv * pp * m
+            depth_vals = map(pos) do p
+                p4d = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
+                p4d[3] / p4d[4]
+            end
+            UInt32.(sortperm(depth_vals, rev = true) .- 1)
+        end |> indexbuffer
+    end
+
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
@@ -191,6 +208,7 @@ function draw_scatter(screen, (marker, position), data)
             return shape
         end
     end
+
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -223,6 +241,7 @@ function draw_scatter(screen, (marker, position), data)
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
+
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)
