@@ -397,7 +397,9 @@ function parse_bezier_commands(svg)
             push!(commands, LineTo(Point2d(l[1], y)))
             i += 2
         else
-            foreach(println, commands)
+            for c in commands
+                println(c)
+            end
             error("Parsing $comm not implemented.")
         end
 
