@@ -1,10 +1,10 @@
-using StatsBase: Histogram
 using Makie, StatsBase
-import Distributions
 using KernelDensity
 
-using Random: seed!
-using GeometryBasics: Rect2f
+import GeometryBasics: Rect2f
+import StatsBase: Histogram
+import Distributions
+import Random: seed!
 
 seed!(0)
 

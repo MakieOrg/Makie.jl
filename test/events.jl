@@ -1,5 +1,4 @@
-using Makie: MouseButtonEvent, KeyEvent, Figure, Textbox
-using Makie: Not, And, Or
+import Makie: MouseButtonEvent, KeyEvent, Figure, Textbox, Not, And, Or
 using InteractiveUtils
 
 # rudimentary equality for tests

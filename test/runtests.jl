@@ -5,9 +5,7 @@ using Makie.GeometryBasics
 using Makie.PlotUtils
 using Makie.FileIO
 using Makie.IntervalSets
-using GeometryBasics: Pyramid
-
-using Makie: volume
+using LinearAlgebra
 
 @testset "Unit tests" begin
     include("barplot.jl")
