@@ -120,7 +120,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             d1 = ((_x - nx)^2 + (yweight * (_y - ny))^2)
             d2 = ((_x - nxs)^2 + (yweight * (_y - nys))^2)
 
-            id = if d1 < d2
+            id = if (is_grid1 = d1 < d2)
                 (
                     cld(dvx, 2),
                     iseven(dvy) ? dvy : dvy+1
