@@ -181,7 +181,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
             # a singular colorrange error down the line.
             if mi == ma
-                (0, ma == 0 ? 1 : ma)
+                (0, ma == 0 ? one(ma) : ma)
             else
                 (mi, ma)
             end

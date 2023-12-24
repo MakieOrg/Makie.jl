@@ -295,3 +295,13 @@ end
     @test p2.plots[2][:color][] === :white
     @test p2.plots[2][:visible][] === :false
 end
+
+@tetset "hexbin" begin
+    # degenerate case with singleton 0
+    hexbin([0, 0], [1, 2])
+    hexbin([1, 2], [0, 0])
+
+    # degenerate case with singleton 1
+    hexbin([1, 1], [1, 2])
+    hexbin([1, 2], [1, 1])
+end
