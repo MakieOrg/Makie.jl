@@ -1354,7 +1354,7 @@ function ppu_test_plot(resolution, px_per_unit, scalefactor)
     fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
     DataInspector(ax)
     hidedecorations!(ax)
-    return fig
+    fig
 end
 
 @reference_test "px_per_unit and scalefactor" begin
@@ -1372,4 +1372,11 @@ end
         end
         st
     end
+end
+
+@reference_test "spurious minor tick (#3487)" begin
+    fig = Figure(size=(227, 170))
+    ax = Axis(fig[1, 1]; yticks = 0:.2:1, yminorticksvisible = true)
+    ylims!(ax, 0, 1)
+    fig
 end
