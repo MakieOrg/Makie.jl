@@ -441,3 +441,12 @@ end
     @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
     @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
 end
+
+@testset "markers conversion" begin
+    T = Union{Char, Symbol}
+    marker = Observable(T[:cross, :cross])
+    marker_converted = Observable(convert_attribute(marker[], key"marker"(), key"scatter"()))
+    @test T <: eltype(marker_converted[])
+    marker[][1] = 'x'
+    marker_converted[] = marker[]
+end

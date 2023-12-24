@@ -1643,7 +1643,10 @@ struct FastPixel end
 Vector of anything that is accepted as a single marker will give each point it's own marker.
 Note that it needs to be a uniform vector with the same element type!
 """
-to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)
+function to_spritemarker(marker::AbstractVector{T}) where T
+    spritemarker = map(to_spritemarker, marker)
+    convert(Vector{Union{T,eltype(spritemarker)}}, spritemarker)  # retain original type T
+end
 to_spritemarker(marker::AbstractVector{Char}) = marker # Don't dispatch to the above!
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
@@ -1687,9 +1690,6 @@ function to_spritemarker(marker::Symbol)
         return '●'
     end
 end
-
-
-
 
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
