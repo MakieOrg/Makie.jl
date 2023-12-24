@@ -211,7 +211,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
         # first is nan, do nothing
     end
 
-    for i in eachindex(positions)[2:end]
+    for i in eachindex(positions)[begin+1:end]
         this_position = positions[i]
         this_color = colors[i]
         this_nan = isnan(this_position)
@@ -524,7 +524,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
     nothing
 end
 
-
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
         model::Mat, space, markerspace, offset, transformation, transform_marker
@@ -586,6 +585,11 @@ function draw_glyph_collection(
 
         # offsets and scale apply in markerspace
         gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
+
+        if any(isnan, gp3)
+            Cairo.restore(ctx)
+            return
+        end
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
 
