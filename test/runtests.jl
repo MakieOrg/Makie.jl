@@ -41,7 +41,7 @@ using Makie: volume
     include("bezier.jl")
     include("hist.jl")
 
-    @tetset "Hexbin singleton (#3357)" begin
+    @testset "Hexbin singleton (#3357)" begin
         # degenerate case with singleton 0
         hexbin([0, 0], [1, 2])
         hexbin([1, 2], [0, 0])

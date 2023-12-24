@@ -91,11 +91,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         isempty(xy) && return
 
         # enclose data in limits
-        _expand((lo, hi)) = if lo ≈ hi
-            prevfloat(lo), nextfloat(hi)
-        else
-            lo, hi
-        end
+        _expand((lo, hi)) = prevfloat(lo), nextfloat(hi)
 
         xmi, xma = _expand(extrema((p[1] for p in xy)))
         ymi, yma = _expand(extrema((p[2] for p in xy)))
