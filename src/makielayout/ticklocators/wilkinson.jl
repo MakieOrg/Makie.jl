@@ -7,7 +7,7 @@ function WilkinsonTicks(k_ideal::Int; k_min = 2, k_max = 10,
         min_px_dist = 50.0)
 
     if !(0 < k_min <= k_ideal <= k_max)
-        error("Invalid tick number specifications k_ideal $k_ideal, k_min $k_min, k_max $k_max")
+        error("Invalid tick number specifications k_ideal=$k_ideal, k_min=$k_min, k_max=$k_max")
     end
 
     WilkinsonTicks(k_ideal, k_min, k_max, Q, granularity_weight, simplicity_weight,
@@ -17,9 +17,8 @@ end
 get_tickvalues(ticks::WilkinsonTicks, vmin, vmax) = get_tickvalues(ticks, Float64(vmin), Float64(vmax))
 
 function get_tickvalues(ticks::WilkinsonTicks, vmin::Float64, vmax::Float64)
-
     tickvalues, _ = PlotUtils.optimize_ticks(Float64(vmin), Float64(vmax);
-        extend_ticks = false, strict_span=true, span_buffer = nothing,
+        extend_ticks = false, span_buffer = nothing, strict_span = vmin ≉ vmax,
         k_min = ticks.k_min,
         k_max = ticks.k_max,
         k_ideal = ticks.k_ideal,

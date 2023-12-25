@@ -32,7 +32,8 @@ end
 
 function distinct_extrema_nan(x)
     lo, hi = extrema_nan(x)
-    lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
+    δ = lo == hi ? eps(Float32) : 0
+    (lo - δ, hi + δ)
 end
 
 function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
