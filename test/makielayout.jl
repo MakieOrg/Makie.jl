@@ -33,7 +33,7 @@ end
     @test isempty(ax.scene.plots)
 end
 
-@testset "zero heatmap" begin
+@testset "Colorbar: zero heatmap" begin
     xs = LinRange(0, 20, 10)
     ys = LinRange(0, 15, 10)
     zs = zeros(length(xs), length(ys))
@@ -52,7 +52,13 @@ end
     @test cb.limits[] == Vec(-1, 1)
 end
 
-@testset "zero contourf" begin
+@testset "Colorbar: invalid limits" begin
+    fig = Figure()
+    Axis(fig[1, 1])
+    @test_throws ErrorException Colorbar(fig[1, 2], limits = (1, 1))
+end
+
+@testset "Colorbar: zero contourf" begin
     x = [0, 1]
     y = [0, 2]
     z = zeros(2, 2)
@@ -66,7 +72,7 @@ end
     end
 end
 
-@testset "zero tricontourf" begin
+@testset "Colorbar: zero tricontourf" begin
     x = randn(10)
     y = randn(10)
     z = @. -sqrt(x^2 + y^2) + 0.1 * randn()
