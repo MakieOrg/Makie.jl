@@ -32,7 +32,7 @@ end
 
 function distinct_extrema_nan(x)
     lo, hi = extrema_nan(x)
-    δ = lo == hi ? eps(Float32) : 0
+    δ = lo == hi ? eps(Float32) : zero(lo)
     (lo - δ, hi + δ)
 end
 
