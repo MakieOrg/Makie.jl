@@ -116,7 +116,7 @@ void main(){
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = abs(get_markersize().x);
+    float sprite_from_u_scale = min(abs(get_markersize().x), abs(get_markersize().y));
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
     frag_color = tovec4(get_color());
