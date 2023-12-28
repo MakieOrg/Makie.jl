@@ -12,7 +12,6 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 
 #### Missing Backend Features
 
-* glow & stroke for scatter markers aren't implemented yet
 * `lines(...)` just creates unconnected linesegments and `linestyle` isn't supported
 
 #### Browser Support
