@@ -12,6 +12,12 @@ in vec2 frag_uv;
 
 // Half width of antialiasing smoothstep
 #define ANTIALIAS_RADIUS 0.8
+
+in float frag_uvscale;
+in float frag_distancefield_scale;
+in vec4 frag_uv_offset_width;
+flat in uint frag_instance_id;
+
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
@@ -58,9 +64,6 @@ void fill(sampler2D image, vec4 fillcolor, vec2 uv, float infill, inout vec4 col
     color = mix(color, im_color, infill);
 }
 
-in float frag_uvscale;
-in float frag_distancefield_scale;
-in vec4 frag_uv_offset_width;
 
 float scaled_distancefield(sampler2D distancefield, vec2 uv){
     // Glyph distance field units are in pixels. Convert to same distance
@@ -73,7 +76,6 @@ float scaled_distancefield(bool distancefield, vec2 uv){
     return 0.0;
 }
 
-flat in uint frag_instance_id;
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
     unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
@@ -84,11 +86,12 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-
-    int shape = get_shape_type();
     float signed_distance = 0.0;
+
     vec4 uv_off = frag_uv_offset_width;
     vec2 tex_uv = mix(uv_off.xy, uv_off.zw, clamp(frag_uv, 0.0, 1.0));
+
+    int shape = get_shape_type();
     if(shape == CIRCLE)
         signed_distance = circle(frag_uv);
     else if(shape == DISTANCEFIELD)
@@ -110,6 +113,8 @@ void main() {
         }
         return;
     }
+
+
     if (final_color.a <= 0.0){
         discard;
     }

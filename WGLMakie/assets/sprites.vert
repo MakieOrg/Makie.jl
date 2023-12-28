@@ -9,6 +9,10 @@ out float frag_uvscale;
 out float frag_distancefield_scale;
 out vec4 frag_uv_offset_width;
 
+flat out uint frag_instance_id;
+
+#define ANTIALIAS_RADIUS 0.8
+
 
 mat4 qmat(vec4 quat){
     float num = quat.x * 2.0;
@@ -54,11 +58,12 @@ float _determinant(mat2 m) {
   return m[0][0] * m[1][1] - m[0][1] * m[1][0];
 }
 
-flat out uint frag_instance_id;
-
 void main(){
-    vec2 bbox_signed_radius = 0.5 * get_markersize(); // note; components may be negative.
-    vec2 sprite_bbox_centre = get_quad_offset() + bbox_signed_radius;
+    // get_pos() returns the position of the scatter marker
+    // get_position() returns the (relative) position of the current quad vertex
+
+    vec2 bbox_radius = 0.5 * get_markersize();
+    vec2 sprite_bbox_centre = get_quad_offset() + bbox_radius;
 
     mat4 pview = projection * view;
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
@@ -118,7 +123,7 @@ void main(){
     frag_uv = get_uv();
     frag_uv_offset_width = get_uv_offset_width();
     // screen space coordinates of the position
-    vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
+    vec4 quad_vertex = (trans * vec4(2.0 * bbox_radius * get_position(), 0.0, 0.0));
     gl_Position = vclip + quad_vertex;
     gl_Position.z += gl_Position.w * get_depth_shift();
 
