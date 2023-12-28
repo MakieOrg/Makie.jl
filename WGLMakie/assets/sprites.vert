@@ -119,11 +119,22 @@ void main(){
     float sprite_from_u_scale = min(abs(get_markersize().x), abs(get_markersize().y));
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
+
+    // add padding for AA, stroke and glow (non native distancefields don't need
+    // AA padding but CIRCLE etc do)
+    vec2 padded_bbox_size = bbox_radius + (
+        ANTIALIAS_RADIUS + max(0.0, get_strokewidth()) + max(0.0, get_glowwidth())
+    ) / viewport_from_sprite_scale;
+    vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
+
     frag_color = tovec4(get_color());
-    frag_uv = get_uv();
     frag_uv_offset_width = get_uv_offset_width();
+    // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
+    // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)
+    frag_uv = vec2(0.5) + (get_uv() - vec2(0.5)) * uv_pad_scale;
+
     // screen space coordinates of the position
-    vec4 quad_vertex = (trans * vec4(2.0 * bbox_radius * get_position(), 0.0, 0.0));
+    vec4 quad_vertex = (trans * vec4(2.0 * padded_bbox_size * get_position(), 0.0, 0.0));
     gl_Position = vclip + quad_vertex;
     gl_Position.z += gl_Position.w * get_depth_shift();
 
