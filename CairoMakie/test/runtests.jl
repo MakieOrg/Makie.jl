@@ -192,7 +192,7 @@ functions = [:volume, :volume!, :uv_mesh]
 @testset "refimages" begin
     CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions=functions)
-    recorded_files, recording_dir = @include_reference_tests "refimages.jl"
+    recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)
-    ReferenceTests.test_comparison(scores; threshold = 0.032)
+    ReferenceTests.test_comparison(scores; threshold = 0.001)
 end

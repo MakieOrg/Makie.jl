@@ -56,9 +56,9 @@ function get_all_relative_filepaths_recursively(dir)
     end
 end
 
-function record_comparison(base_folder::String; record_folder_name="recorded", reference_name = basename(base_folder), tag=last_major_version())
+function record_comparison(base_folder::String; record_folder_name="recorded", tag=last_major_version())
     record_folder = joinpath(base_folder, record_folder_name)
-    reference_folder = download_refimages(tag; name=reference_name)
+    reference_folder = download_refimages(tag)
     # we copy the reference images into the output folder, since we want to upload it all as an artifact, to know against what images we compared
     cp(reference_folder, joinpath(base_folder, "reference"))
     testimage_paths = get_all_relative_filepaths_recursively(record_folder)
