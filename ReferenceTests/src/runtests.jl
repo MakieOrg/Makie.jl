@@ -42,6 +42,8 @@ function compare_images(a::Matrix{<:Union{RGBf,RGBAf}}, b::Matrix{<:Union{RGBf,R
     # compute the difference score as the maximum of the mean squared differences over the color
     # values of tiles over the image. using tiles is a simple way to increase the local sensitivity
     # without directly going to pixel-based comparison
+    # it also makes the scores more comparable between reference images of different sizes, because the same
+    # local differences would be normed to different mean scores if the images have different numbers of pixels
     return maximum(Iterators.product(boundary_iter(range_dim1), boundary_iter(range_dim2))) do ((mi1, ma1), (mi2, ma2))
         @views mean(_norm.(a[mi1:ma1, mi2:ma2], b[mi1:ma1, mi2:ma2]))
     end
