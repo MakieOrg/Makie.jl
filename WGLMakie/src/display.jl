@@ -344,10 +344,10 @@ end
 
 function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
                             session::Union{Nothing,Session})
-    session = get_screen_session(screen)
-    isnothing(session) && return # if no session we haven't displayed and dont need to delete
-    isready(session) || return
-    Bonito.evaljs(session, js"""
+    main_session = get_screen_session(screen)
+    isnothing(main_session) && return # if no session we haven't displayed and dont need to delete
+    isready(main_session) || return
+    Bonito.evaljs(main_session, js"""
     $(WGL).then(WGL=> {
         WGL.delete_plots($(plot_uuids));
     })""")
