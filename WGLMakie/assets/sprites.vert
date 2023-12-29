@@ -9,6 +9,10 @@ out float frag_uvscale;
 out float frag_distancefield_scale;
 out vec4 frag_uv_offset_width;
 
+flat out uint frag_instance_id;
+
+#define ANTIALIAS_RADIUS 0.8
+
 
 mat4 qmat(vec4 quat){
     float num = quat.x * 2.0;
@@ -54,11 +58,12 @@ float _determinant(mat2 m) {
   return m[0][0] * m[1][1] - m[0][1] * m[1][0];
 }
 
-flat out uint frag_instance_id;
-
 void main(){
-    vec2 bbox_signed_radius = 0.5 * get_markersize(); // note; components may be negative.
-    vec2 sprite_bbox_centre = get_quad_offset() + bbox_signed_radius;
+    // get_pos() returns the position of the scatter marker
+    // get_position() returns the (relative) position of the current quad vertex
+
+    vec2 bbox_radius = 0.5 * get_markersize();
+    vec2 sprite_bbox_centre = get_quad_offset() + bbox_radius;
 
     mat4 pview = projection * view;
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
@@ -111,14 +116,25 @@ void main(){
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = abs(get_markersize().x);
+    float sprite_from_u_scale = min(abs(get_markersize().x), abs(get_markersize().y));
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
+
+    // add padding for AA, stroke and glow (non native distancefields don't need
+    // AA padding but CIRCLE etc do)
+    vec2 padded_bbox_size = bbox_radius + (
+        ANTIALIAS_RADIUS + max(0.0, get_strokewidth()) + max(0.0, get_glowwidth())
+    ) / viewport_from_sprite_scale;
+    vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
+
     frag_color = tovec4(get_color());
-    frag_uv = get_uv();
     frag_uv_offset_width = get_uv_offset_width();
+    // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
+    // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)
+    frag_uv = vec2(0.5) + (get_uv() - vec2(0.5)) * uv_pad_scale;
+
     // screen space coordinates of the position
-    vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
+    vec4 quad_vertex = (trans * vec4(2.0 * padded_bbox_size * get_position(), 0.0, 0.0));
     gl_Position = vclip + quad_vertex;
     gl_Position.z += gl_Position.w * get_depth_shift();
 

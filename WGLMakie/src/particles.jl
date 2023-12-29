@@ -201,6 +201,13 @@ function scatter_shader(scene::Scene, attributes, plot)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
+
+    # Make sure these exist
+    get!(uniform_dict, :strokewidth, 0f0)
+    get!(uniform_dict, :strokecolor, RGBAf(0, 0, 0, 0))
+    get!(uniform_dict, :glowwidth, 0f0)
+    get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
+
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
