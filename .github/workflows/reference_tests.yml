@@ -106,21 +106,6 @@ jobs:
           name: ReferenceImages_GLMakie
           path: |
             ./GLMakie/test/reference_images/
-      - name: Save number of missing refimages to file
-        if: matrix.version == '1'
-        env:
-          N_MISSING: ${{ steps.referencetests.outputs.n_missing_refimages }}
-          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        run: |
-          mkdir -p ./n_missing
-          echo $N_MISSING > ./n_missing/n_missing_refimages
-          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
-      - name: Upload artifact with number of missing refimages
-        if: matrix.version == '1'
-        uses: actions/upload-artifact@v4
-        with:
-          name: n_missing_refimages
-          path: n_missing/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
@@ -224,3 +209,16 @@ jobs:
         with:
           name: ReferenceImages
           path: ./ReferenceImagesCombined/
+      - name: Save number of missing refimages to file
+        env:
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p ./n_missing
+          N_MISSING=$(wc -l < ./ReferenceImagesCombined/new_files.txt)
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v4
+        with:
+          name: n_missing_refimages
+          path: n_missing/
