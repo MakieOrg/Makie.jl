@@ -4,9 +4,7 @@ function serve_update_page_from_dir(folder)
 
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
-    refimages_name = last(splitpath(realpath(folder)))
-    @info "Refimage set name is $refimages_name"
-
+    
     router = HTTP.Router()
 
     function receive_update(req)
@@ -32,7 +30,7 @@ function serve_update_page_from_dir(folder)
 
         @info "Uploading updated reference images under tag \"$tag\""
         try
-            upload_reference_images(tempdir, tag; name = refimages_name)
+            upload_reference_images(tempdir, tag)
             @info "Upload successful. You can ctrl+c out now."
             HTTP.Response(200, "Upload successful")
         catch e
@@ -156,23 +154,8 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 @info "$download_url cached at $tmpdir"
             end
 
-            folders = readdir(tmpdir)
-            if length(folders) == 0
-                error("No folder in zip")
-            elseif length(folders) == 1
-                folder = only(folders)
-            else
-                menu = REPL.TerminalMenus.RadioMenu(folders, pagesize=4)
-                choice = REPL.TerminalMenus.request("Choose a reference image set:", menu)
-
-                if choice == -1
-                    error("Cancelled")
-                end
-                folder = folders[choice]
-            end
-
-            @info "Serving update page for folder $folder."
-            serve_update_page_from_dir(joinpath(tmpdir, folder))
+            @info "Serving update page from folder $tmpdir."
+            serve_update_page_from_dir(tmpdir)
             return
         end
     end
