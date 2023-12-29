@@ -122,8 +122,9 @@ void main(){
 
     // add padding for AA, stroke and glow (non native distancefields don't need
     // AA padding but CIRCLE etc do)
+    float ppu = get_px_per_unit();
     vec2 padded_bbox_size = bbox_radius + (
-        ANTIALIAS_RADIUS + max(0.0, get_strokewidth() * get_px_per_unit()) + max(0.0, get_glowwidth())
+        ANTIALIAS_RADIUS + max(0.0, get_strokewidth() * ppu) + max(0.0, get_glowwidth() * ppu)
     ) / viewport_from_sprite_scale;
     vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
 

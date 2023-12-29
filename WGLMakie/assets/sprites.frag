@@ -73,7 +73,7 @@ void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 col
 }
 
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
-    float glow_width = get_glowwidth();
+    float glow_width = get_glowwidth() * get_px_per_unit();
     float stroke_width = get_strokewidth() * get_px_per_unit();
     if (glow_width > 0.0){
         float outside = (abs(signed_distance) - stroke_width) / glow_width;
