@@ -204,7 +204,7 @@ jobs:
           # Create new top-level directory for combined files
           mkdir -p "./ReferenceImagesCombined"
           
-          # Copy the reference folder from GLMakie
+          # Copy the reference folder from GLMakie, it's the same for all backends
           cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
           
           # Initialize empty files for concatenation
