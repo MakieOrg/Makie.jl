@@ -251,7 +251,10 @@ function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; appl
 end
 
 function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply_transform = true)
-    p0, p1 = apply_transform_and_model(plot, plot[1][][idx-1:idx])
+    if idx == 1
+        idx = 2
+    end
+    p0, p1 = apply_transform_and_model(plot, plot[1][][(idx-1):idx])
 
     pos = closest_point_on_line(p0, p1, ray)
 

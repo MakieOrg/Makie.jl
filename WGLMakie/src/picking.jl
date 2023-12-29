@@ -2,7 +2,7 @@
 function pick_native(screen::Screen, rect::Rect2i)
     (x, y) = minimum(rect)
     (w, h) = widths(rect)
-    session = get_three(screen; error="Can't do picking!").session
+    session = get_screen_session(screen; error="Can't do picking!")
     scene = screen.scene
     picking_data = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
@@ -36,7 +36,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     # isopen(screen) || return (nothing, 0)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
-    session = get_three(screen; error="Can't do picking!").session
+    session = get_screen_session(screen; error="Can't do picking!")
     selection = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_closest(scene, $(xy_vec), $(range)))
     """)
@@ -49,7 +49,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
 
-    session = get_three(screen; error="Can't do picking!").session
+    session = get_screen_session(screen; error="Can't do picking!")
     selection = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
     """)
