@@ -98,16 +98,8 @@ function serve_update_page(; commit = nothing, pr = nothing)
     checkruns = filter(checksinfo["check_runs"]) do checkrun
         name = checkrun["name"]
         id = checkrun["id"]
-        right_combination = any(["GLMakie", "CairoMakie", "WGLMakie"]) do package
-            # We need to match the name quite specifically, since we need to keep this synchronized to the CI script anyways.
-            name == "$package Julia 1"
-        end
-        if right_combination
-            if name in unique_artifacts
-                return false
-            else
-                push!(unique_artifacts, name)
-            end
+    
+        if name == "Merge artifacts"
             job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
             if run["status"] != "completed"
@@ -121,17 +113,13 @@ function serve_update_page(; commit = nothing, pr = nothing)
         end
     end
     if isempty(checkruns)
-        error("No check runs fit the criteria, check if something about names or versions might have changed.")
+        error("\"Merge artifacts\" run is not available.")
+    end
+    if length(checkruns) > 1
+        error("Found multiple checkruns for \"Merge artifacts\", this is unexpected.")
     end
 
-    menu = REPL.TerminalMenus.RadioMenu([x["name"] for x in checkruns])
-    choice = REPL.TerminalMenus.request("Choose a workflow run:", menu)
-
-    if choice == -1
-        error("Cancelled")
-    end
-    check = checkruns[choice]
-    chosen_backend = match(r"(\w+) Julia 1", check["name"])[1]
+    check = only(checkruns)
 
     job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
@@ -139,8 +127,8 @@ function serve_update_page(; commit = nothing, pr = nothing)
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
 
     for a in artifacts
-        if a["name"] == "ReferenceImages_$chosen_backend"
-            @info "Choosing artifact $(a["name"])"
+        if a["name"] == "ReferenceImages"
+            @info "Choosing artifact \"$(a["name"])\""
             download_url = a["archive_download_url"]
             if !haskey(URL_CACHE, download_url)
                 @info "Downloading artifact from $download_url"
@@ -160,7 +148,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
         end
     end
     error("""
-        Reference image artifacts found for commit $headsha and job id $(check["id"]).
+        No \"ReferenceImages\" artifact found for commit $headsha and job id $(check["id"]).
         This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
         Artifacts are only available for complete runs.
     """)
