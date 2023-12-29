@@ -194,9 +194,6 @@ jobs:
         with:
           name: ReferenceImages_GLMakie
           path: ./ReferenceImages/GLMakie
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: '1'
       - name: Consolidate reference image folders
         run: |
           baseDir="./ReferenceImages"
