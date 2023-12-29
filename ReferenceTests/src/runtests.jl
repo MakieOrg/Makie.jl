@@ -19,11 +19,15 @@ function get_frames(video::AbstractString)
             samples = 1:istep:length(aframes)
             aframes = aframes[samples]
         end
-        return rgbf_convert.(load.(aframes))
+        return load.(aframes)
     end
 end
 
-function compare_images(a::Matrix{<:Union{RGBf,RGBAf}}, b::Matrix{<:Union{RGBf,RGBAf}})
+function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{<:Union{RGB,RGBA}})
+
+    a = rgbf_convert(a)
+    b = rgbf_convert(b)
+
     if size(a) != size(b)
         @warn "images don't have the same size, difference will be Inf"
         return Inf
@@ -52,8 +56,8 @@ end
 function compare_media(a::AbstractString, b::AbstractString)
     _, ext = splitext(a)
     if ext in (".png", ".jpg", ".jpeg", ".JPEG", ".JPG")
-        imga = rgbf_convert(load(a))
-        imgb = rgbf_convert(load(b))
+        imga = load(a)
+        imgb = load(b)
         return compare_images(imga, imgb)
     elseif ext in (".mp4", ".gif")
         aframes = get_frames(a)

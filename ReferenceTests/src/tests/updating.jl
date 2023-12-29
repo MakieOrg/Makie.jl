@@ -74,7 +74,7 @@ function compare_videos(reference, vpath, dir)
     @test n == length(reference)
 
     @test all(1:n) do i
-        v = ReferenceTests.compare_media(reference[i], to_compare[i])
+        v = ReferenceTests.compare_images(reference[i], to_compare[i])
         return v < 0.02
     end
 end
