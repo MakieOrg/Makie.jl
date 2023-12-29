@@ -73,8 +73,8 @@ void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 col
 }
 
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
-    float glow_width = get_glowwidth();
-    float stroke_width = get_strokewidth();
+    float glow_width = get_glowwidth() * get_px_per_unit();
+    float stroke_width = get_strokewidth() * get_px_per_unit();
     if (glow_width > 0.0){
         float outside = (abs(signed_distance) - stroke_width) / glow_width;
         float alpha = 1.0 - outside;
@@ -130,7 +130,7 @@ void main() {
     signed_distance *= frag_uvscale;
 
 
-    float stroke_width = get_strokewidth();
+    float stroke_width = get_strokewidth() * get_px_per_unit();
     float inside_start = max(-stroke_width, 0.0);
     float inside = aastep(inside_start, signed_distance);
 
