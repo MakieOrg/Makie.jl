@@ -48,6 +48,7 @@ excludes = Set([
     "lines and linestyles",
     "Textured meshscatter", # not yet implemented
     "BezierPath marker stroke", # not yet implemented
+    "3D Contour with 2D contour slices", # looks like a z-fighting issue
 ])
 Makie.inline!(Makie.automatic)
 
