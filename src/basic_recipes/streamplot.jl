@@ -28,7 +28,7 @@ See the function `Makie.streamplot_impl` for implementation details.
         maxsteps = 500,
         color = norm,
 
-        arrow_size = 15,
+        arrow_size = automatic,
         arrow_head = automatic,
         density = 1.0,
         quality = 16,
@@ -213,10 +213,18 @@ function plot!(p::StreamPlot)
         rotations = map(x -> x[2], data)
     end
 
+    if p.arrow_size[] === automatic
+        if N == 3
+            arrow_size = 0.2 * minimum(p.limits[].widths) / minimum(p.gridsize[])
+        else
+            arrow_size = 15
+        end
+    end
+
     scatterfun(N)(
         p,
         lift(first, p, data);
-        markersize=p.arrow_size, rotations=rotations,
+        markersize=arrow_size, rotations=rotations,
         color=lift(x -> x[4], p, data),
         marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
         colormap_args...,
