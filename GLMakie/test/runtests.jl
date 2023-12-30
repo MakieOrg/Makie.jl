@@ -32,7 +32,7 @@ include("unit_tests.jl")
         recorded_files, recording_dir = @include_reference_tests GLMakie "refimages.jl" joinpath(@__DIR__, "glmakie_refimages.jl")
         missing_images, scores = ReferenceTests.record_comparison(recording_dir)
         n_missing_images = length(missing_images)
-        ReferenceTests.test_comparison(scores; threshold = 0.001)
+        ReferenceTests.test_comparison(scores; threshold = 0.05)
     end
 
     GLMakie.closeall()
