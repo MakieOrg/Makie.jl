@@ -63,7 +63,5 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         window_open[] = true
     end
     connect_scene_events!(scene, comm)
-    three = ThreeDisplay(session)
-    return three, wrapper, done_init
+    return wrapper, done_init
 end
-|

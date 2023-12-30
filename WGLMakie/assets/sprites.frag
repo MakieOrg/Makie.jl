@@ -12,6 +12,12 @@ in vec2 frag_uv;
 
 // Half width of antialiasing smoothstep
 #define ANTIALIAS_RADIUS 0.8
+
+in float frag_uvscale;
+in float frag_distancefield_scale;
+in vec4 frag_uv_offset_width;
+flat in uint frag_instance_id;
+
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
@@ -58,9 +64,23 @@ void fill(sampler2D image, vec4 fillcolor, vec2 uv, float infill, inout vec4 col
     color = mix(color, im_color, infill);
 }
 
-in float frag_uvscale;
-in float frag_distancefield_scale;
-in vec4 frag_uv_offset_width;
+void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
+    if (width != 0.0){
+        float t = aastep(min(width, 0.0), max(width, 0.0), signed_distance);
+        vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
+        color = mix(bg_color, strokecolor, t);
+    }
+}
+
+void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
+    float glow_width = get_glowwidth() * get_px_per_unit();
+    float stroke_width = get_strokewidth() * get_px_per_unit();
+    if (glow_width > 0.0){
+        float outside = (abs(signed_distance) - stroke_width) / glow_width;
+        float alpha = 1.0 - outside;
+        color = mix(vec4(glowcolor.rgb, glowcolor.a*alpha), color, inside);
+    }
+}
 
 float scaled_distancefield(sampler2D distancefield, vec2 uv){
     // Glyph distance field units are in pixels. Convert to same distance
@@ -73,7 +93,6 @@ float scaled_distancefield(bool distancefield, vec2 uv){
     return 0.0;
 }
 
-flat in uint frag_instance_id;
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
     unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
@@ -84,16 +103,24 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-
-    int shape = get_shape_type();
     float signed_distance = 0.0;
+
     vec4 uv_off = frag_uv_offset_width;
     vec2 tex_uv = mix(uv_off.xy, uv_off.zw, clamp(frag_uv, 0.0, 1.0));
+
+    int shape = get_shape_type();
     if(shape == CIRCLE)
         signed_distance = circle(frag_uv);
-    else if(shape == DISTANCEFIELD)
+    else if(shape == DISTANCEFIELD) {
         signed_distance = scaled_distancefield(distancefield, tex_uv);
-    else if(shape == ROUNDED_RECTANGLE)
+        if (get_strokewidth() > 0.0 || get_glowwidth() > 0.0) {
+            // Compensate for the clamping of tex_uv by an approximate
+            // extension of the signed distance outside the valid texture
+            // region.
+            vec2 bufuv = frag_uv - clamp(frag_uv, 0.0, 1.0);
+            signed_distance -= length(bufuv);
+        }
+    } else if(shape == ROUNDED_RECTANGLE)
         signed_distance = rounded_rectangle(frag_uv, vec2(0.2), vec2(0.8));
     else if(shape == RECTANGLE)
         signed_distance = 1.0; // rectangle(f_uv);
@@ -101,15 +128,32 @@ void main() {
         signed_distance = triangle(frag_uv);
 
     signed_distance *= frag_uvscale;
-    float inside = aastep(0.0, signed_distance);
+
+
+    float stroke_width = get_strokewidth() * get_px_per_unit();
+    float inside_start = max(-stroke_width, 0.0);
+    float inside = aastep(inside_start, signed_distance);
+
     vec4 final_color = vec4(frag_color.xyz, 0);
     fill(image, frag_color, frag_uv, inside, final_color);
+    stroke(get_strokecolor(), signed_distance, -stroke_width, final_color);
+    glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance), final_color);
+
+    // debug - show background
+    // final_color.a = clamp(final_color.a, 0.0, 1.0);
+    // final_color = vec4(
+    //     vec3(1,0,0) * (1.0 - final_color.a) + final_color.rgb * final_color.a,
+    //     0.4 + 0.6 * final_color.a
+    // );
+
     if (picking) {
         if (final_color.a > 0.1) {
             fragment_color = pack_int(object_id, frag_instance_id);
         }
         return;
     }
+
+
     if (final_color.a <= 0.0){
         discard;
     }

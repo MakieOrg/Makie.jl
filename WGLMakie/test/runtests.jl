@@ -43,11 +43,8 @@ excludes = Set([
     "fast pixel marker",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "scatter with stroke",
-    "scatter with glow",
     "lines and linestyles",
     "Textured meshscatter", # not yet implemented
-    "BezierPath marker stroke", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "colorscale (lines)", # also z-fighting
 ])
