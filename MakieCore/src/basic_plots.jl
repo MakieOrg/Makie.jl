@@ -498,6 +498,14 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
+@recipe(Voxel, chunk) do scene
+    attr = Attributes()
+    shading_attributes!(attr)
+    generic_plot_attributes!(attr)
+    return colormap_attributes!(attr, theme(scene, :colormap))
+end
+
+
 """
     poly(vertices, indices; kwargs...)
     poly(points; kwargs...)

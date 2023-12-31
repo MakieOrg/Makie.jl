@@ -815,3 +815,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         end
     end
 end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
+    return cached_robj!(screen, scene, plot) do gl_attributes
+        @assert to_value(plot[1]) isa Array{UInt8, 3}
+        tex = Texture(plot[1], minfilter = :nearest)
+        return draw_voxels(screen, tex, gl_attributes)
+    end
+end

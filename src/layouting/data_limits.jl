@@ -57,6 +57,15 @@ function data_limits(text::Text)
     return data_limits(text.plots[1])
 end
 
+function point_iterator(plot::Voxel)
+    s = size(plot[1][])
+    r = Rect3f(Point3f(-0.5 .* s), Vec3f(s))
+    return map(corners(r)) do p
+        p4d = plot.model[] * Point4f(p[1], p[2], p[3], 1.0)
+        return Point3f(p4d) / p4d[4]
+    end
+end
+
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
 
 function point_iterator(list::AbstractVector)

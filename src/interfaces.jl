@@ -54,6 +54,11 @@ function calculated_attributes!(::Type{<:Volume}, plot)
     return
 end
 
+function calculated_attributes!(::Type{<:Voxel}, plot)
+    color_and_colormap!(plot, plot[1])
+    return
+end
+
 function calculated_attributes!(::Type{<:Text}, plot)
     color_and_colormap!(plot)
     return
@@ -101,7 +106,7 @@ end
 
 const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
-    lines, surface, volume, heatmap, image
+    lines, surface, volume, heatmap, image, voxel
 )
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
