@@ -4,8 +4,10 @@
 
 in vec2 vertices;
 
-flat out vec3 f_normal;
-out vec3 f_uvw;
+flat out vec3 o_normal;
+out vec3 o_uvw;
+out vec3 o_camdir;
+out vec3 o_world_pos;
 
 uniform mat4 model;
 uniform mat3 world_normalmatrix;
@@ -74,6 +76,7 @@ void main() {
     vec3 displacement = id * unit_vecs[dim];
     vec3 voxel_pos = size * (orientations[dim] * vertices) + displacement;
     vec4 world_pos = model * vec4(voxel_pos, 1.0f);
+    o_world_pos = world_pos.xyz;
     gl_Position = projectionview * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 
@@ -83,8 +86,8 @@ void main() {
     // If we assume the viewer to be outside of a voxel, the normal direction
     // should always be facing them. Thus:
     vec3 n = world_normalmatrix * unit_vecs[dim];
-    vec3 camdir = eyeposition - world_pos.xyz / world_pos.w;
-    f_normal = normalize(sign(dot(camdir, n)) * n);
+    o_camdir = eyeposition - world_pos.xyz / world_pos.w;
+    o_normal = normalize(sign(dot(o_camdir, n)) * n);
 
     // The texture coordinate can also be derived. `voxel_pos` effectively gives
     // an integer index into the chunk, shifted to be centered. We can convert
@@ -98,7 +101,7 @@ void main() {
     // | 1 | 2 | 0 |   v
     // If we shift in +normal direction (towards viewer) the planes would sample
     // from the id closer to the viewer, drawing a backface.
-    f_uvw = (voxel_pos - 0.5 * f_normal) / size + 0.5;
+    o_uvw = (voxel_pos - 0.5 * o_normal) / size + 0.5;
 
     // TODO:
     // - verify no missing faces (we are missing 3 planes I think, but that should be possible...)
