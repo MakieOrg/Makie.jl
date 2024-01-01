@@ -502,7 +502,9 @@ end
     attr = Attributes(
         color = nothing,
         limits = automatic,
-        is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
+        is_air = x -> isnothing(x) || ismissing(x) || isnan(x),
+        uvmap = nothing,
+        interpolate = false, # texture
     )
     shading_attributes!(attr)
     generic_plot_attributes!(attr)

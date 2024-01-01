@@ -124,7 +124,7 @@ function compile_shader(source::ShaderSource, template_src::String)
     glShaderSource(shaderid, template_src)
     glCompileShader(shaderid)
     if !GLAbstraction.iscompiled(shaderid)
-        GLAbstraction.print_with_lines(String(source.source))
+        GLAbstraction.print_with_lines(template_src)
         @warn("shader $(name) didn't compile. \n$(GLAbstraction.getinfolog(shaderid))")
     end
     return Shader(name, Vector{UInt8}(template_src), source.typ, shaderid)

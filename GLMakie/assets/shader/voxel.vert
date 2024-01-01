@@ -6,6 +6,9 @@ in vec2 vertices;
 
 flat out vec3 o_normal;
 out vec3 o_uvw;
+flat out int o_side;
+out vec2 o_tex_uv;
+
 out vec3 o_camdir;
 out vec3 o_world_pos;
 
@@ -68,12 +71,9 @@ void main() {
         id = gl_InstanceID - (size.x + 1);
     }
 
-    // start rendering from center
-    ivec3 offset = size / 2;
-    id = id <= (size[dim] >> 1) ? -id : id - (size[dim] >> 1);
-
     // plane placement
-    vec3 displacement = id * unit_vecs[dim];
+    vec3 offset = 0.5 * vec3(size);
+    vec3 displacement = (id - offset[dim]) * unit_vecs[dim];
     vec3 voxel_pos = size * (orientations[dim] * vertices) + displacement;
     vec4 world_pos = model * vec4(voxel_pos, 1.0f);
     o_world_pos = world_pos.xyz;
@@ -87,7 +87,8 @@ void main() {
     // should always be facing them. Thus:
     vec3 n = world_normalmatrix * unit_vecs[dim];
     o_camdir = eyeposition - world_pos.xyz / world_pos.w;
-    o_normal = normalize(sign(dot(o_camdir, n)) * n);
+    float normal_dir = sign(dot(o_camdir, n));
+    o_normal = normalize(normal_dir * n);
 
     // The texture coordinate can also be derived. `voxel_pos` effectively gives
     // an integer index into the chunk, shifted to be centered. We can convert
@@ -103,7 +104,13 @@ void main() {
     // from the id closer to the viewer, drawing a backface.
     o_uvw = (voxel_pos - 0.5 * o_normal) / size + 0.5;
 
+    // normal in: -x -y -z +x +y +z direction
+    o_side = dim + 3 * (1 + int(normal_dir));
+
+    // map voxel_pos (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
+    // if the normal is negative invert range (w .. 0)
+    o_tex_uv = transpose(orientations[dim]) * (normal_dir * voxel_pos + offset);
+
     // TODO:
-    // - verify no missing faces (we are missing 3 planes I think, but that should be possible...)
     // - verify idx
 }

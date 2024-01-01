@@ -9,37 +9,67 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 // Sets which shading procedures to use
 {{shading}}
 
-in vec3 o_normal;
+flat in vec3 o_normal;
 in vec3 o_uvw;
+flat in int o_side;
+in vec2 o_tex_uv;
 
 uniform isampler3D voxel_id;
 uniform uint objectid;
 
-// TODO: uv_map and texturemap
+{{uv_map_type}} uv_map;
 {{color_map_type}} color_map;
 {{color_type}} color;
 
-vec3 debug_color(uint id) {
-    return vec3(
+vec4 debug_color(uint id) {
+    return vec4(
         float((id & uint(225)) >> uint(5)) / 5.0,
         float((id & uint(25)) >> uint(3)) / 3.0,
-        float((id & uint(7)) >> uint(1)) / 3.0
+        float((id & uint(7)) >> uint(1)) / 3.0,
+        1.0
     );
 }
-vec3 debug_color(int id) { return debug_color(uint(id)); }
+vec4 debug_color(int id) { return debug_color(uint(id)); }
 
-vec3 get_color(Nothing color, Nothing color_map, int id) {
+// unused but compilation requires it
+vec4 get_lrbt(Nothing uv_map, int id, int side) {
+    return vec4(0,0,1,1);
+}
+vec4 get_lrbt(sampler1D uv_map, int id, int side) {
+    return texelFetch(uv_map, id-1, 0);
+}
+vec4 get_lrbt(sampler2D uv_map, int id, int side) {
+    return texelFetch(uv_map, ivec2(id-1, side), 0);
+}
+
+vec4 get_color_from_texture(sampler2D color, int id) {
+    vec4 lrbt = get_lrbt(uv_map, id, o_side);
+    // compute uv normalized to voxel
+    vec2 voxel_uv = mod(o_tex_uv, 1.0);
+    voxel_uv = mix(lrbt.xy, lrbt.zw, voxel_uv);
+    return texture(color, voxel_uv);
+}
+
+
+vec4 get_color(Nothing color, Nothing color_map, int id) {
     return debug_color(id);
 }
-vec3 get_color(Nothing color, sampler1D color_map, int id) {
-    return texelFetch(color_map, id-1, 0).xyz;
+vec4 get_color(Nothing color, sampler1D color_map, int id) {
+    return texelFetch(color_map, id-1, 0);
 }
-vec3 get_color(sampler1D color, sampler1D color_map, int id) {
-    return texelFetch(color, id-1, 0).xyz;
+vec4 get_color(sampler1D color, sampler1D color_map, int id) {
+    return texelFetch(color, id-1, 0);
 }
-vec3 get_color(sampler1D color, Nothing color_map, int id) {
-    return texelFetch(color, id-1, 0).xyz;
+vec4 get_color(sampler1D color, Nothing color_map, int id) {
+    return texelFetch(color, id-1, 0);
 }
+vec4 get_color(sampler2D color, sampler1D color_map, int id) {
+    return get_color_from_texture(color, id);
+}
+vec4 get_color(sampler2D color, Nothing color_map, int id) {
+    return get_color_from_texture(color, id);
+}
+
 
 void write2framebuffer(vec4 color, uvec2 id);
 
@@ -58,10 +88,10 @@ void main()
     }
 
     // otherwise we draw. For now just some color...
-    vec3 voxel_color = get_color(color, color_map, id);
+    vec4 voxel_color = get_color(color, color_map, id);
 
     #ifndef NO_SHADING
-    voxel_color = illuminate(o_normal, voxel_color);
+    voxel_color.rgb = illuminate(o_normal, voxel_color.rgb);
     #endif
 
     // TODO: index into 3d array
@@ -70,5 +100,5 @@ void main()
     int lin = 1 + idx.x + size.x * (idx.y + size.y * idx.z);
 
     // draw
-    write2framebuffer(vec4(voxel_color, 1.0), uvec2(objectid, lin));
+    write2framebuffer(voxel_color, uvec2(objectid, lin));
 }

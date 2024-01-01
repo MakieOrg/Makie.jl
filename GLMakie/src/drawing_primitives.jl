@@ -833,8 +833,23 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
         pop!(gl_attributes, :limits)
         pop!(gl_attributes, :is_air)
 
-        haskey(gl_attributes, :color) && !isnothing(gl_attributes[:color]) && println("color length: ", length(gl_attributes[:color][]))
-        haskey(gl_attributes, :color_map) && println("color_map length: ", length(gl_attributes[:color_map]))
+        get!(gl_attributes, :color, nothing)
+        get!(gl_attributes, :color_map, nothing)
+
+        # process texture mapping
+        uv_map = pop!(gl_attributes, :uvmap)
+        if !isnothing(to_value(uv_map))
+            gl_attributes[:uv_map] = Texture(uv_map, minfilter = :nearest)
+
+            interp = to_value(pop!(gl_attributes, :interpolate))
+            interp = interp ? :linear : :nearest
+            color = gl_attributes[:color]
+            gl_attributes[:color] = Texture(color, minfilter = interp)
+            @info gl_attributes[:color].texturetype
+        elseif !isnothing(to_value(gl_attributes[:color]))
+            gl_attributes[:color] = Texture(gl_attributes[:color], minfilter = :nearest)
+            @info gl_attributes[:color].texturetype
+        end
 
         return draw_voxels(screen, tex, gl_attributes)
     end
