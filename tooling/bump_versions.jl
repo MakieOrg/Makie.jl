@@ -94,10 +94,10 @@ function bump_versions()
         new_toml["version"] = new_version
 
         compat = new_toml["compat"]
-        if haskey(compat, "Makie")
+        if haskey(new_versions, "Makie")
             compat["Makie"] = "=$(new_versions["Makie"])"
         end
-        if haskey(compat, "MakieCore")
+        if haskey(new_versions, "MakieCore")
             compat["MakieCore"] = "=$(new_versions["MakieCore"])"
         end
 

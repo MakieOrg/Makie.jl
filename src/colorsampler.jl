@@ -244,13 +244,19 @@ colormapping_type(@nospecialize(colormap)) = continuous
 colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
 colormapping_type(::Categorical) = categorical
 
-function ColorMapping(
-        color::AbstractArray{<:Number, N}, colors_obs, colormap, colorrange,
-        colorscale, alpha, lowclip, highclip, nan_color,
-        color_mapping_type=lift(colormapping_type, colormap; ignore_equal_values=true)) where {N}
 
-    T = _array_value_type(color)
-    color_tight = convert(Observable{T}, colors_obs)
+function _colormapping(
+        color_tight::Observable{V},
+        @nospecialize(colors_obs),
+        @nospecialize(colormap),
+        @nospecialize(colorrange),
+        @nospecialize(colorscale),
+        @nospecialize(alpha),
+        @nospecialize(lowclip),
+        @nospecialize(highclip),
+        @nospecialize(nan_color),
+        color_mapping_type) where {V <: AbstractArray{T, N}} where {N, T}
+
     map_colors = Observable(RGBAf[]; ignore_equal_values=true)
     raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
     mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing; ignore_equal_values=true)
@@ -276,7 +282,7 @@ function ColorMapping(
 
     _lowclip = Observable{Union{Automatic,RGBAf}}(automatic; ignore_equal_values=true)
     on(lowclip; update=true) do lc
-        _lowclip[] = lc isa Union{Nothing, Automatic} ? automatic : to_color(lc)
+        _lowclip[] = lc isa Union{Nothing,Automatic} ? automatic : to_color(lc)
         return
     end
     _highclip = Observable{Union{Automatic,RGBAf}}(automatic; ignore_equal_values=true)
@@ -296,21 +302,38 @@ function ColorMapping(
     color_scaled = lift(color_tight, colorscale) do color, scale
         return el32convert(apply_scale(scale, color))
     end
-    CT = ColorMapping{N,T,typeof(color_scaled[])}
+    CT = ColorMapping{N,V,typeof(color_scaled[])}
 
-    return CT(
-        color_tight,
-        map_colors,
-        raw_colormap,
-        colorscale,
-        mapping,
-        colorrange,
-        _lowclip,
-        _highclip,
-        lift(to_color, nan_color),
-        color_mapping_type,
-        colorrange_scaled,
-        color_scaled)
+    return CT(color_tight,
+              map_colors,
+              raw_colormap,
+              colorscale,
+              mapping,
+              colorrange,
+              _lowclip,
+              _highclip,
+              lift(to_color, nan_color),
+              color_mapping_type,
+              colorrange_scaled,
+              color_scaled)
+end
+
+function ColorMapping(
+        color::AbstractArray{<:Number, N},
+        @nospecialize(colors_obs),
+        @nospecialize(colormap),
+        @nospecialize(colorrange),
+        @nospecialize(colorscale),
+        @nospecialize(alpha),
+        @nospecialize(lowclip),
+        @nospecialize(highclip),
+        @nospecialize(nan_color),
+        color_mapping_type=lift(colormapping_type, colormap; ignore_equal_values=true)) where {N}
+
+    T = _array_value_type(color)
+    color_tight = convert(Observable{T}, colors_obs)::Observable{T}
+    _colormapping(color_tight, colors_obs, colormap, colorrange,
+                         colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
 end
 
 function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nospecialize(plot))

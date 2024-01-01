@@ -158,16 +158,10 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-
     blockscene = ax.blockscene
 
     elements = Dict{Symbol, Any}()
     ax.elements = elements
-
-    if palette === nothing
-        palette = fast_deepcopy(get(blockscene.theme, :palette, Makie.DEFAULT_PALETTES))
-    end
-    ax.palette = palette isa Attributes ? palette : Attributes(palette)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
@@ -175,8 +169,6 @@ function initialize_block!(ax::Axis; palette = nothing)
     finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
-
-    ax.cycler = Cycler()
 
     on(blockscene, targetlimits) do lims
         # this should validate the targetlimits before anything else happens with them
@@ -190,12 +182,18 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
 
-    scene = Scene(blockscene, px_area=scenearea)
+    scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
+
+    if !isnothing(palette)
+        # Backwards compatibility for when palette was part of axis!
+        palette_attr = palette isa Attributes ? palette : Attributes(palette)
+        ax.scene.theme.palette = palette_attr
+    end
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(blockscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
+    background = poly!(blockscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=NoShading, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
@@ -257,9 +255,10 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
+    onany(update_axis_camera, blockscene, camera(scene), scene.transformation.transform_func, finallimits,
+          ax.xreversed, ax.yreversed; priority=-2)
 
-    xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.px_area;
+    xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
@@ -270,7 +269,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yaxis_endpoints = lift(blockscene, ax.yaxisposition, scene.px_area;
+    yaxis_endpoints = lift(blockscene, ax.yaxisposition, scene.viewport;
                            ignore_equal_values=true) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
@@ -347,7 +346,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.yaxis = yaxis
 
-    xoppositelinepoints = lift(blockscene, scene.px_area, ax.spinewidth, ax.xaxisposition;
+    xoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
                                ignore_equal_values=true) do r, sw, xaxpos
         if xaxpos === :top
             y = bottom(r)
@@ -362,7 +361,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yoppositelinepoints = lift(blockscene, scene.px_area, ax.spinewidth, ax.yaxisposition;
+    yoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
                                ignore_equal_values=true) do r, sw, yaxpos
         if yaxpos === :right
             x = left(r)
@@ -378,22 +377,22 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xticksmirrored = lift(mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-                          Ref(scene.px_area), :x, ax.xaxisposition[])
+                          Ref(scene.viewport), :x, ax.xaxisposition[])
     xticksmirrored_lines = linesegments!(blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-                          Ref(scene.px_area), :y, ax.yaxisposition[])
+                          Ref(scene.viewport), :y, ax.yaxisposition[])
     yticksmirrored_lines = linesegments!(blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-                               ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+                               ax.xminortickalign, Ref(scene.viewport), :x, ax.xaxisposition[])
     xminorticksmirrored_lines = linesegments!(blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-                               ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+                               ax.yminortickalign, Ref(scene.viewport), :y, ax.yaxisposition[])
     yminorticksmirrored_lines = linesegments!(blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
     translate!(yminorticksmirrored_lines, 0, 0, 10)
@@ -410,31 +409,31 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
-    onany(blockscene, xaxis.tickpositions, scene.px_area) do tickpos, area
+    onany(blockscene, xaxis.tickpositions, scene.viewport) do tickpos, area
         local pxheight::Float32 = height(area)
         local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xgridnode, Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.tickpositions, scene.px_area) do tickpos, area
+    onany(blockscene, yaxis.tickpositions, scene.viewport) do tickpos, area
         local pxwidth::Float32 = width(area)
         local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
     end
 
-    onany(blockscene, xaxis.minortickpositions, scene.px_area) do tickpos, area
-        local pxheight::Float32 = height(scene.px_area[])
+    onany(blockscene, xaxis.minortickpositions, scene.viewport) do tickpos, area
+        local pxheight::Float32 = height(scene.viewport[])
         local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.minortickpositions, scene.px_area) do tickpos, area
-        local pxwidth::Float32 = width(scene.px_area[])
+    onany(blockscene, yaxis.minortickpositions, scene.viewport) do tickpos, area
+        local pxwidth::Float32 = width(scene.viewport[])
         local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
-    subtitlepos = lift(blockscene, scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition,
+    subtitlepos = lift(blockscene, scene.viewport, ax.titlegap, ax.titlealign, ax.xaxisposition,
                        xaxis.protrusion;
                        ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
@@ -463,7 +462,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         markerspace = :data,
         inspectable = false)
 
-    titlepos = lift(calculate_title_position, blockscene, scene.px_area, ax.titlegap, ax.subtitlegap,
+    titlepos = lift(calculate_title_position, blockscene, scene.viewport, ax.titlegap, ax.subtitlegap,
         ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values=true)
 
     titlet = text!(
@@ -506,7 +505,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # compute limits that adhere to the limit aspect ratio whenever the targeted
     # limits or the scene size change, because both influence the displayed ratio
-    onany(blockscene, scene.px_area, targetlimits) do pxa, lims
+    onany(blockscene, scene.viewport, targetlimits) do pxa, lims
         adjustlimits!(ax)
     end
 
@@ -522,8 +521,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     return ax
 end
 
-function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
-    a = px_area[][]
+function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition)
+    a = viewport[][]
     if side === :x
         opp = axisposition === :bottom ? top(a) : bottom(a)
         sign =  axisposition === :bottom ? 1 : -1
@@ -651,7 +650,6 @@ end
 function convert_limit_attribute(lims::Tuple{Any, Any})
     lims
 end
-can_be_current_axis(ax::Axis) = true
 
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
     mi = minimum(lims)
@@ -675,61 +673,55 @@ attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
 
 function get_cycler_index!(c::Cycler, P::Type)
     if !haskey(c.counters, P)
-        c.counters[P] = 1
+        return c.counters[P] = 1
     else
-        c.counters[P] += 1
+        return c.counters[P] += 1
     end
 end
 
-function get_cycle_for_plottype(allattrs, P)::Cycle
-    psym = MakieCore.plotsym(P)
-
-    plottheme = Makie.default_theme(nothing, P)
-
-    cycle_raw = if haskey(allattrs, :cycle)
-        allattrs.cycle[]
-    else
-        global_theme_cycle = theme(psym)
-        if !isnothing(global_theme_cycle) && haskey(global_theme_cycle, :cycle)
-            global_theme_cycle.cycle[]
-        else
-            haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
-        end
-    end
-
+function get_cycle_for_plottype(cycle_raw)::Cycle
     if isnothing(cycle_raw)
-        Cycle([])
+        return Cycle([])
     elseif cycle_raw isa Cycle
-        cycle_raw
+        return cycle_raw
     else
-        Cycle(cycle_raw)
+        return Cycle(cycle_raw)
     end
 end
 
-function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Attributes)
+function to_color(scene::Scene, attribute_name, cycled::Cycled)
+    palettes = to_value(scene.theme.palette)
+    attr_palette = to_value(palettes[attribute_name])
+    index = cycled.i
+    return attr_palette[mod1(index, length(attr_palette))]
+end
+
+function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler, palette::Attributes)
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler
     # if any of the cycled attributes were specified manually
-    no_cycle_attribute_passed = !any(keys(allattrs)) do key
+    user_attributes = plot.kw
+    no_cycle_attribute_passed = !any(keys(user_attributes)) do key
         any(syms -> key in syms, attrsyms(cycle))
     end
 
     # check if any attributes were passed as `Cycled` entries
     # because if there were any, these are looked up directly
     # in the cycler without advancing the counter etc.
-    manually_cycled_attributes = filter(keys(allattrs)) do key
-        to_value(allattrs[key]) isa Cycled
+    manually_cycled_attributes = filter(keys(user_attributes)) do key
+        return to_value(user_attributes[key]) isa Cycled
     end
 
     # if there are any manually cycled attributes, we don't do the normal
     # cycling but only look up exactly the passed attributes
     cycle_attrsyms = attrsyms(cycle)
+
     if !isempty(manually_cycled_attributes)
         # an attribute given as Cycled needs to be present in the cycler,
         # otherwise there's no cycle in which to look up a value
         for k in manually_cycled_attributes
             if !any(x -> k in x, cycle_attrsyms)
-                error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $P.")
+                error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $(typeof(plot)).")
             end
         end
 
@@ -737,10 +729,10 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 
         for sym in manually_cycled_attributes
             isym = findfirst(syms -> sym in syms, attrsyms(cycle))
-            index = allattrs[sym][].i
+            index = plot[sym][].i
             # replace the Cycled values with values from the correct palettes
             # at the index inside the Cycled object
-            allattrs[sym] = if cycle.covary
+            plot[sym] = if cycle.covary
                 palettes[isym][mod1(index, length(palettes[isym]))]
             else
                 cis = CartesianIndices(Tuple(length(p) for p in palettes))
@@ -752,13 +744,13 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
         end
 
     elseif no_cycle_attribute_passed
-        index = get_cycler_index!(cycler, P)
+        index = get_cycler_index!(cycler, typeof(plot))
 
         palettes = [palette[sym][] for sym in palettesyms(cycle)]
 
         for (isym, syms) in enumerate(attrsyms(cycle))
             for sym in syms
-                allattrs[sym] = if cycle.covary
+                plot[sym] = if cycle.covary
                     palettes[isym][mod1(index, length(palettes[isym]))]
                 else
                     cis = CartesianIndices(Tuple(length(p) for p in palettes))
@@ -772,37 +764,10 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function Makie.plot!(
-        la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
-
-    allattrs = merge(attributes, Attributes(kw_attributes))
-
-    _disallow_keyword(:axis, allattrs)
-    _disallow_keyword(:figure, allattrs)
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
-
-    # some area-like plots basically always look better if they cover the whole plot area.
-    # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(la)
-
-    if is_open_or_any_parent(la.scene)
-        reset_limits!(la)
-    end
-    plot
-end
-
 is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)
 is_open_or_any_parent(::Nothing) = false
 
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
-end
+
 
 needs_tight_limits(@nospecialize any) = false
 needs_tight_limits(::Union{Heatmap, Image}) = true
@@ -933,13 +898,20 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 end
 
 """
+    autolimits!()
     autolimits!(la::Axis)
 
 Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
+The argument `la` defaults to `current_axis()`.
 """
 function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
     return
+end
+function autolimits!()
+    curr_ax = current_axis()
+    isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
+    autolimits!(curr_ax)
 end
 
 function autolimits(ax::Axis, dim::Integer)
@@ -991,7 +963,7 @@ end
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
-    area = la.scene.px_area[]
+    area = la.scene.viewport[]
 
     # in the simplest case, just update the final limits with the target limits
     if isnothing(asp) || width(area) == 0 || height(area) == 0
@@ -1106,7 +1078,8 @@ end
     hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
 
-Hide decorations of the x-axis: label, ticklabels, ticks and grid.
+Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
 """
 function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1134,7 +1107,8 @@ end
     hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
 
-Hide decorations of the y-axis: label, ticklabels, ticks and grid.
+Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
 """
 function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1159,9 +1133,13 @@ function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = tr
 end
 
 """
-    hidedecorations!(la::Axis)
+    hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true,
+                     grid = true, minorgrid = true, minorticks = true)
 
 Hide decorations of both x and y-axis: label, ticklabels, ticks and grid.
+Keyword arguments can be used to disable hiding of certain types of decorations.
+
+See also [`hidexdecorations!`], [`hideydecorations!`], [`hidezdecorations!`]
 """
 function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1175,7 +1153,8 @@ end
     hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 
 Hide all specified axis spines. Hides all spines by default, otherwise choose
-with the symbols :l, :r, :b and :t.
+which sides to hide with the symbols :l (left), :r (right), :b (bottom) and
+:t (top).
 """
 function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     for s in spines
@@ -1194,9 +1173,9 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 end
 
 """
-    space = tight_xticklabel_spacing!(ax::Axis)
+    space = tight_yticklabel_spacing!(ax::Axis)
 
-Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
+Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_yticklabel_spacing!(ax::Axis)
     space = tight_ticklabel_spacing!(ax.yaxis)
@@ -1206,7 +1185,7 @@ end
 """
     space = tight_xticklabel_spacing!(ax::Axis)
 
-Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
+Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_xticklabel_spacing!(ax::Axis)
     space = tight_ticklabel_spacing!(ax.xaxis)
@@ -1214,7 +1193,7 @@ function tight_xticklabel_spacing!(ax::Axis)
 end
 
 """
-    tight_ticklabel_spacing(ax::Axis)
+    tight_ticklabel_spacing!(ax::Axis)
 
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
@@ -1397,18 +1376,6 @@ function limits!(args...)
     limits!(current_axis(), args...)
 end
 
-function Base.delete!(ax::Axis, plot::AbstractPlot)
-    delete!(ax.scene, plot)
-    ax
-end
-
-function Base.empty!(ax::Axis)
-    while !isempty(ax.scene.plots)
-        delete!(ax, ax.scene.plots[end])
-    end
-    ax
-end
-
 Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 
 # these functions pick limits for different x and y scales, so that
@@ -1445,10 +1412,6 @@ defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 
-function update_state_before_display!(ax::Axis)
-    reset_limits!(ax)
-    return
-end
 
 function attribute_examples(::Type{Axis})
     Dict(
@@ -1885,7 +1848,7 @@ function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffe
         bb = axis_bounds_with_decoration(ax)
         Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
     else
-        pixelarea(ax.scene)[]
+        viewport(ax.scene)[]
     end
 
     img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)

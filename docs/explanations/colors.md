@@ -36,7 +36,7 @@ theme = Attributes(
 
 with_theme(theme) do
 
-    f = Figure(resolution = (800, 1200))
+    f = Figure(size = (800, 1200))
     ax = Axis(f[1, 1], xautolimitmargin = (0.2, 0.2), yautolimitmargin = (0.1, 0.1))
     hidedecorations!(ax)
     hidespines!(ax)

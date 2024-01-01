@@ -2,8 +2,52 @@
 
 ## master
 
+- Changes for Bonito rename and WGLMakie docs improvements [#3477](https://github.com/MakieOrg/Makie.jl/pull/3477).
+- Add stroke and glow support to scatter and text in WGLMakie [#3518](https://github.com/MakieOrg/Makie.jl/pull/3518)
+
+## 0.20.3
+
+- Add `depthsorting` as a hidden attribute for scatter plots in GLMakie as an alternative fix for outline artifacts. [#3432](https://github.com/MakieOrg/Makie.jl/pull/3432)
+- Disable SDF based anti-aliasing in scatter, text and lines plots when `fxaa = true` in GLMakie. This allows removing outline artifacts at the cost of quality. [#3408](https://github.com/MakieOrg/Makie.jl/pull/3408)
+- DataInspector Fixes: Fixed depth order, positional labels being in transformed space and `:inspector_clear` not getting called when moving from one plot to another. [#3454](https://github.com/MakieOrg/Makie.jl/pull/3454)
+- Fixed bug in GLMakie where the update from a (i, j) sized GPU buffer to a (j, i) sized buffer would fail [#3456](https://github.com/MakieOrg/Makie.jl/pull/3456).
+- Add `interpolate=true` to `volume(...)`, allowing to disable interpolation [#3485](https://github.com/MakieOrg/Makie.jl/pull/3485).
+
+## 0.20.2
+
+- Switched from SHA512 to CRC32c salting in CairoMakie svgs, drastically improving svg rendering speed [#3435](https://github.com/MakieOrg/Makie.jl/pull/3435).
+- Fixed a bug with h/vlines and h/vspan not correctly resolving transformations [#3418](https://github.com/MakieOrg/Makie.jl/pull/3418).
+- Fixed a bug with h/vlines and h/vspan returning the wrong limits, causing an error in Axis [#3427](https://github.com/MakieOrg/Makie.jl/pull/3427).
+- Fixed clipping when zooming out of a 3D (L)Scene [#3433](https://github.com/MakieOrg/Makie.jl/pull/3433).
+- Moved the texture atlas cache to `.julia/scratchspaces` instead of a dedicated `.julia/makie` [#3437](https://github.com/MakieOrg/Makie.jl/pull/3437)
+
+## 0.20.1
+
+- Fixed bad rendering of `poly` in GLMakie by triangulating points after transformations [#3402](https://github.com/MakieOrg/Makie.jl/pull/3402).
+- Fixed bug regarding inline display in VSCode Jupyter notebooks and other similar environments [#3403](https://github.com/MakieOrg/Makie.jl/pull/3403).
+- Fixed issue with `plottype`, allowed `onany(...; update = true)` and fixed `Block` macro use outside Makie [#3401](https://github.com/MakieOrg/Makie.jl/pull/3401).
+
+## 0.20
+
+- GLMakie has gained support for HiDPI (aka Retina) screens. This also enables saving images with higher resolution than screen pixel dimensions [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544).
+- Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598).
+- Improved 3D camera handling, hotkeys and functionality [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746).
+- Added `shading = :verbose` in GLMakie to allow for multiple light sources. Also added more light types, fixed light directions for the previous lighting model (now `shading = :fast`) and adjusted `backlight` to affect normals[#3246](https://github.com/MakieOrg/Makie.jl/pull/3246).
+- Changed the glyph used for negative numbers in tick labels from hyphen to minus [#3379](https://github.com/MakieOrg/Makie.jl/pull/3379).
+- Added new declarative API for AlgebraOfGraphics, Pluto and easier dashboards [#3281](https://github.com/MakieOrg/Makie.jl/pull/3281).
+- WGLMakie got faster line rendering with less updating bugs [#3062](https://github.com/MakieOrg/Makie.jl/pull/3062).
+- **Breaking** Replaced `PolarAxis.radial_distortion_threshold` with `PolarAxis.radius_at_origin`. [#3381](https://github.com/MakieOrg/Makie.jl/pull/3381)
+- **Breaking** Deprecated the `resolution` keyword in favor of `size` to reflect that this value is not a pixel resolution anymore [#3343](https://github.com/MakieOrg/Makie.jl/pull/3343).
+- **Breaking** Refactored the `SurfaceLike` family of traits into `VertexGrid`, `CellGrid` and `ImageLike` [#3106](https://github.com/MakieOrg/Makie.jl/pull/3106).
+- **Breaking** Deprecated `pixelarea(scene)` and `scene.px_area` in favor of viewport.
+- **Breaking** Refactored the `Combined` Plot object and renamed it to `Plot`, improving compile times ~2x [#3082](https://github.com/MakieOrg/Makie.jl/pull/3082).
+- **Breaking** Removed old depreactions in [#3113](https://github.com/MakieOrg/Makie.jl/pull/3113/commits/3a39210ef87a0032d78cb27c0c1019faa604effd).
+- **Breaking** Deprecated using AbstractVector as sides of `image` [#3395](https://github.com/MakieOrg/Makie.jl/pull/3395).
+- **Breaking** `errorbars` and `rangebars` now use color cycling [#3230](https://github.com/MakieOrg/Makie.jl/pull/3230).
+
 ## v0.19.12
 
+- Added `cornerradius` attribute to `Box` for rounded corners [#3346](https://github.com/MakieOrg/Makie.jl/pull/3346).
 - Fix grouping of a zero-height bar in `barplot`. Now a zero-height bar shares the same properties of the previous bar, and if the bar is the first one, its height is treated as positive if and only if there exists a bar of positive height or all bars are zero-height [#3058](https://github.com/MakieOrg/Makie.jl/pull/3058).
 - Fixed a bug where Axis still consumes scroll events when interactions are disabled [#3272](https://github.com/MakieOrg/Makie.jl/pull/3272).
 - Added `cornerradius` attribute to `Box` for rounded corners [#3308](https://github.com/MakieOrg/Makie.jl/pull/3308).
@@ -17,9 +61,9 @@
 
 ## v0.19.10
 
-- Fix bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).
-- Add experimental Datashader implementation [#2883](https://github.com/MakieOrg/Makie.jl/pull/2883).
-- [Breaking] Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
+- Fixed bugs with Colorbar in recipes, add new API for creating a recipe colorbar and introduce experimental support for Categorical colormaps [#3090](https://github.com/MakieOrg/Makie.jl/pull/3090).
+- Added experimental Datashader implementation [#2883](https://github.com/MakieOrg/Makie.jl/pull/2883).
+- **Breaking** Changed the default order Polar arguments to (theta, r). [#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 - General improvements to `PolarAxis`: full rlimtis & thetalimits, more controls and visual tweaks. See pr for more details.[#3154](https://github.com/MakieOrg/Makie.jl/pull/3154)
 
 ## v0.19.9
@@ -62,7 +106,7 @@
 - Fixed DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002)
 - Added option `WGLMakie.activate!(resize_to_body=true)`, to make plots resize to the VSCode plotpane. Resizes to the HTML body element, so may work outside VSCode [#3044](https://github.com/MakieOrg/Makie.jl/pull/3044), [#3042](https://github.com/MakieOrg/Makie.jl/pull/3042).
 - Fixed DataInspector interaction with transformations [#3002](https://github.com/MakieOrg/Makie.jl/pull/3002).
-- Fix incomplete stroke with some Bezier markers in CairoMakie and blurry strokes in GLMakie [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
+- Fixed incomplete stroke with some Bezier markers in CairoMakie and blurry strokes in GLMakie [#2961](https://github.com/MakieOrg/Makie.jl/pull/2961)
 - Added the ability to use custom triangulations from DelaunayTriangulation.jl [#2896](https://github.com/MakieOrg/Makie.jl/pull/2896).
 - Adjusted scaling of scatter/text stroke, glow and anti-aliasing width under non-uniform 2D scaling (Vec2f markersize/fontsize) in GLMakie [#2950](https://github.com/MakieOrg/Makie.jl/pull/2950).
 - Scaled `errorbar` whiskers and `bracket` correctly with transformations [#3012](https://github.com/MakieOrg/Makie.jl/pull/3012).
@@ -119,7 +163,7 @@
 - Do less copies of Observables in Attributes + plot pipeline [#2443](https://github.com/MakieOrg/Makie.jl/pull/2443).
 - Add Search Page and tweak Result Ordering [#2474](https://github.com/MakieOrg/Makie.jl/pull/2474).
 - Remove all global attributes from TextureAtlas implementation and fix julia#master [#2498](https://github.com/MakieOrg/Makie.jl/pull/2498).
-- Use new JSServe, implement WGLMakie picking, improve performance and fix lots of WGLMakie bugs [#2428](https://github.com/MakieOrg/Makie.jl/pull/2428).
+- Use new Bonito, implement WGLMakie picking, improve performance and fix lots of WGLMakie bugs [#2428](https://github.com/MakieOrg/Makie.jl/pull/2428).
 
 ## v0.19.0
 

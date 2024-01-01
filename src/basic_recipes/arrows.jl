@@ -118,7 +118,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
-        diffuse, specular, shininess,
+        diffuse, specular, shininess, shading,
         fxaa, ssao, transparency, visible, inspectable
     )
 
@@ -146,7 +146,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         # for 2D arrows, compute the correct marker rotation given the projection / scene size
         # for the screen-space marker
         if is_pixel_space(arrowplot.markerspace[])
-            rotations = lift(arrowplot, scene.camera.projectionview, scene.px_area, headstart) do pv, pxa, hs
+            rotations = lift(arrowplot, scene.camera.projectionview, scene.viewport, headstart) do pv, pxa, hs
                 angles = map(hs) do (start, stop)
                     pstart = project(scene, start)
                     pstop = project(scene, stop)
@@ -210,25 +210,21 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
         meshscatter!(
             arrowplot,
-            start, rotations = directions,
-            marker=marker_tail,
-            markersize = msize,
-                     color=line_c, colormap=colormap, colorscale=colorscale, colorrange=arrowplot.colorrange,
-            fxaa = fxaa_bool, ssao = ssao,
-            diffuse = diffuse,
-            specular = specular, shininess = shininess, inspectable = inspectable,
-            transparency = transparency, visible = visible
+            start, rotations = directions, markersize = msize,
+            marker = marker_tail,
+            color = line_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
+            fxaa = fxaa_bool, ssao = ssao, shading = shading,
+            diffuse = diffuse, specular = specular, shininess = shininess,
+            inspectable = inspectable, transparency = transparency, visible = visible
         )
         meshscatter!(
             arrowplot,
-            start, rotations = directions,
-            marker=marker_head,
-            markersize = markersize,
-                     color=arrow_c, colormap=colormap, colorscale=colorscale, colorrange=arrowplot.colorrange,
-            fxaa = fxaa_bool, ssao = ssao,
-            diffuse = diffuse,
-            specular = specular, shininess = shininess, inspectable = inspectable,
-            transparency = transparency, visible = visible
+            start, rotations = directions, markersize = markersize,
+            marker = marker_head,
+            color = arrow_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
+            fxaa = fxaa_bool, ssao = ssao, shading = shading,
+            diffuse = diffuse, specular = specular, shininess = shininess,
+            inspectable = inspectable, transparency = transparency, visible = visible
         )
     end
 

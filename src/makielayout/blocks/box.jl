@@ -35,7 +35,7 @@ function initialize_block!(box::Box)
 
     poly!(blockscene, path, color = box.color, visible = box.visible,
         strokecolor = strokecolor_with_visibility, strokewidth = box.strokewidth,
-        inspectable = false)
+        inspectable = false, linestyle = box.linestyle)
 
     # trigger bbox
     box.layoutobservables.suggestedbbox[] = box.layoutobservables.suggestedbbox[]
@@ -80,6 +80,18 @@ function attribute_examples(::Type{Box})
                     Box(fig[1, 1], strokewidth = 1)
                     Box(fig[1, 2], strokewidth = 10)
                     Box(fig[1, 3], strokewidth = 0)
+                    fig
+                    """
+            )
+        ],
+        :linestyle => [
+            Example(
+                name = "Stroke style",
+                code = """
+                    fig = Figure()
+                    Box(fig[1, 1], linestyle = :solid)
+                    Box(fig[1, 2], linestyle = :dot)
+                    Box(fig[1, 3], linestyle = :dash)
                     fig
                     """
             )

@@ -37,7 +37,7 @@ The color generated from two overlapping transparent objects depends on their or
 using CairoMakie
 CairoMakie.activate!() # hide
 
-scene = Scene(resolution = (400, 275))
+scene = Scene(size = (400, 275))
 campixel!(scene)
 scatter!(
     scene, [100, 200, 300], [100, 100, 100],
@@ -66,8 +66,8 @@ CairoMakie.activate!() # hide
 
 fig = Figure()
 ax = LScene(fig[1, 1], show_axis=false)
-p1 = mesh!(ax, Rect2f(-1.5, -1, 3, 3), color = (:red, 0.5), shading = false)
-p2 = mesh!(ax, Rect2f(-1.5, -2, 3, 3), color = (:blue, 0.5), shading = false)
+p1 = mesh!(ax, Rect2f(-1.5, -1, 3, 3), color = (:red, 0.5), shading = NoShading)
+p2 = mesh!(ax, Rect2f(-1.5, -2, 3, 3), color = (:blue, 0.5), shading = NoShading)
 rotate!(p1, Vec3f(0, 1, 0), 0.1)
 rotate!(p2, Vec3f(0, 1, 0), -0.1)
 fig
@@ -81,8 +81,8 @@ GLMakie.activate!() # hide
 
 fig = Figure()
 ax = LScene(fig[1, 1], show_axis=false)
-p1 = mesh!(ax, Rect2f(-1.5, -1, 3, 3), color = (:red, 0.5), shading = false)
-p2 = mesh!(ax, Rect2f(-1.5, -2, 3, 3), color = (:blue, 0.5), shading = false)
+p1 = mesh!(ax, Rect2f(-1.5, -1, 3, 3), color = (:red, 0.5), shading = NoShading)
+p2 = mesh!(ax, Rect2f(-1.5, -2, 3, 3), color = (:blue, 0.5), shading = NoShading)
 rotate!(p1, Vec3f(0, 1, 0), 0.1)
 rotate!(p2, Vec3f(0, 1, 0), -0.1)
 fig
@@ -105,9 +105,9 @@ GLMakie.activate!() # hide
 
 fig = Figure()
 ax = LScene(fig[1, 1], show_axis=false)
-p1 = mesh!(ax, Rect2f(-2, -2, 4, 4), color = (:red, 0.5), shading = false, transparency = true)
-p2 = mesh!(ax, Rect2f(-2, -2, 4, 4), color = (:blue, 0.5), shading = false, transparency = true)
-p3 = mesh!(ax, Rect2f(-2, -2, 4, 4), color = (:red, 0.5), shading = false, transparency = true)
+p1 = mesh!(ax, Rect2f(-2, -2, 4, 4), color = (:red, 0.5), shading = NoShading, transparency = true)
+p2 = mesh!(ax, Rect2f(-2, -2, 4, 4), color = (:blue, 0.5), shading = NoShading, transparency = true)
+p3 = mesh!(ax, Rect2f(-2, -2, 4, 4), color = (:red, 0.5), shading = NoShading, transparency = true)
 for (dz, p) in zip((-1, 0, 1), (p1, p2, p3))
     translate!(p, 0, 0, dz)
 end
@@ -124,18 +124,18 @@ Being an approximate scheme OIT has some strengths and weaknesses. There are two
 using GLMakie
 GLMakie.activate!() # hide
 
-fig = Figure(resolution = (800, 400))
+fig = Figure(size = (800, 400))
 ax1 = LScene(fig[1, 1], show_axis=false)
-p1 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :red, shading = false, transparency = true)
-p2 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :blue, shading = false, transparency = true)
-p3 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :red, shading = false, transparency = true)
+p1 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :red, shading = NoShading, transparency = true)
+p2 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :blue, shading = NoShading, transparency = true)
+p3 = mesh!(ax1, Rect2f(-2, -2, 4, 4), color = :red, shading = NoShading, transparency = true)
 for (dz, p) in zip((-1, 0, 1), (p1, p2, p3))
     translate!(p, 0, 0, dz)
 end
 
 ax2 = LScene(fig[1, 2], show_axis=false)
-p1 = mesh!(ax2, Rect2f(-1.5, -1, 3, 3), color = (:red, 0.5), shading = false, transparency=true)
-p2 = mesh!(ax2, Rect2f(-1.5, -2, 3, 3), color = (:blue, 0.5), shading = false, transparency=true)
+p1 = mesh!(ax2, Rect2f(-1.5, -1, 3, 3), color = (:red, 0.5), shading = NoShading, transparency=true)
+p2 = mesh!(ax2, Rect2f(-1.5, -2, 3, 3), color = (:blue, 0.5), shading = NoShading, transparency=true)
 rotate!(p1, Vec3f(0, 1, 0), 0.1)
 rotate!(p2, Vec3f(0, 1, 0), -0.1)
 fig

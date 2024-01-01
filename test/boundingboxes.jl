@@ -15,6 +15,23 @@ end
 
     fig, ax, p = bracket(ps...)
     @test data_limits(p) ≈ Rect3f(Point3f(0), Vec3f(1, 1, 0))
+
+    fig = Figure()
+    ax = Axis(fig[1, 1], yscale=log, xscale=log)
+    scatter!(ax, [0.5, 1, 2], [0.5, 1, 2])
+    p1 = vlines!(ax, [0.5])
+    p2 = hlines!(ax, [0.5])
+    p3 = vspan!(ax, [0.25], [0.75])
+    p4 = hspan!(ax, [0.25], [0.75])
+    Makie.reset_limits!(ax)
+
+    lims = ax.finallimits[]
+    x, y = minimum(lims); w, h = widths(lims)
+
+    @test data_limits(p1) ≈ Rect3f(Point3f(0.5, y, 0), Vec3f(0, h, 0))
+    @test data_limits(p2) ≈ Rect3f(Point3f(x, 0.5, 0), Vec3f(w, 0, 0))
+    @test data_limits(p3) ≈ Rect3f(Point3f(0.25, y, 0), Vec3f(0.5, h, 0))
+    @test data_limits(p4) ≈ Rect3f(Point3f(x, 0.25, 0), Vec3f(w, 0.5, 0))
 end
 
 @testset "boundingbox(plot)" begin
@@ -29,13 +46,24 @@ end
 
     fig, ax, p = surface([x*y for x in 1:10, y in 1:10])
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(0.0, 0.0, 1.0)
-    @test bb.widths ≈ Vec3f(10.0, 10.0, 99.0)
+    @test bb.origin ≈ Point3f(1.0, 1.0, 1.0)
+    @test bb.widths ≈ Vec3f(9.0, 9.0, 99.0)
 
     fig, ax, p = meshscatter([Point3f(x, y, z) for x in 1:5 for y in 1:5 for z in 1:5])
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(1)
-    @test bb.widths ≈ Vec3f(4)
+    # Note: awkwards numbers come from using mesh over Sphere
+    @test bb.origin ≈ Point3f(0.9011624, 0.9004657, 0.9)
+    @test bb.widths ≈ Vec3f(4.1986046, 4.199068, 4.2)
+
+    fig, ax, p = meshscatter(
+        [Point3f(0) for _ in 1:3],
+        marker = Rect3f(Point3f(-0.1, -0.1, -0.1), Vec3f(0.2, 0.2, 1.2)),
+        markersize = Vec3f(1, 1, 2),
+        rotations = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)])
+    )
+    bb = boundingbox(p)
+    @test bb.origin ≈ Point3f(-0.2)
+    @test bb.widths ≈ Vec3f(2.4)
 
     fig, ax, p = volume(rand(5, 5, 5))
     bb = boundingbox(p)
@@ -68,10 +96,19 @@ end
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
 
     # text transforms to pixel space atm (TODO)
-    fig = Figure(resolution = (400, 400))
+    fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1])
     p = text!(ax, Point2f(10), text = "test", fontsize = 20)
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(340, 341, 0)
+    @test bb.origin ≈ Point3f(343.0, 345.0, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)
+end
+
+@testset "invalid contour bounding box" begin
+    a = b = 1:3
+    levels = collect(1:3)
+    c = [0 1 2; 1 2 3; 4 5 NaN]
+    contour(a, b, c; levels, labels = true)
+    c = [0 1 2; 1 2 3; 4 5 Inf]
+    contour(a, b, c; levels, labels = true)
 end

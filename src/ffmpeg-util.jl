@@ -17,13 +17,13 @@
     higher numbers giving lower quality and smaller file sizes (higher compression). The
     minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
-    `profile = high444`.
+    `profile = "high444"`.
     - For `webm`, `63` is the maximum.
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
 you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
+applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
 - `loop = 0`: Number of times the video is repeated, for a `gif`. Defaults to `0`, which
 means infinite looping. A value of `-1` turns off looping, and a value of `n > 0` and above
 means `n` repetitions (i.e. the video is played `n+1` times).
@@ -214,14 +214,17 @@ $(Base.doc(VideoStreamOptions))
 """
 function VideoStream(fig::FigureLike;
         format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
-        loglevel="quiet", visible=false, connect=false, backend=current_backend(),
+        loglevel="quiet", visible=false, update=true, backend=current_backend(),
         screen_config...)
 
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
-    update_state_before_display!(fig)
-    screen = getscreen(backend, scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
+    update && update_state_before_display!(fig)
+    config = Dict{Symbol,Any}(screen_config)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    screen = getscreen(backend, scene, config, GLNative)
     _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1

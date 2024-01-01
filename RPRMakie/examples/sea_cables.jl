@@ -50,7 +50,7 @@ earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/comm
 # the actual plot !
 RPRMakie.activate!(; iterations=100)
 scene = with_theme(theme_dark()) do
-    fig = Figure(; resolution=(1000, 1000))
+    fig = Figure(; size=(1000, 1000))
     radiance = 30
     lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
               PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]

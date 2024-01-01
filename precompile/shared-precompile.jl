@@ -1,6 +1,5 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
-
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 
 @compile scatter(0..1, rand(10), markersize=rand(10) .* 20)
@@ -55,7 +54,7 @@ end
 
 @compile begin
     res = 200
-    s = Scene(camera=campixel!, resolution=(res, res))
+    s = Scene(camera=campixel!, size=(res, res))
     half = res / 2
     linewidth = 10
     xstart = half - (half/2)

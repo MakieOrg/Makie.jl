@@ -55,6 +55,9 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     @assert issorted(edges)
     edges
 end
+
+conversion_trait(::Type{<:Contourf}) = VertexGrid()
+
 function _get_isoband_levels(::Val{:normal}, levels, values)
     return _get_isoband_levels(levels, extrema_nan(values)...)
 end
@@ -63,9 +66,6 @@ function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     mi, ma = extrema_nan(values)
     return Float32.(levels .* (ma - mi) .+ mi)
 end
-
-conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
-
 
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
@@ -141,7 +141,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = false,
+        shading = NoShading,
         inspectable = c.inspectable,
         transparency = c.transparency
     )
