@@ -54,11 +54,6 @@ function calculated_attributes!(::Type{<:Volume}, plot)
     return
 end
 
-function calculated_attributes!(::Type{<:Voxel}, plot)
-    color_and_colormap!(plot, plot[1])
-    return
-end
-
 function calculated_attributes!(::Type{<:Text}, plot)
     color_and_colormap!(plot)
     return

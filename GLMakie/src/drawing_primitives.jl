@@ -820,6 +820,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
     return cached_robj!(screen, scene, plot) do gl_attributes
         @assert to_value(plot[1]) isa Array{UInt8, 3}
         tex = Texture(plot[1], minfilter = :nearest)
+        # color attribute adjustments
+        # TODO:
+        pop!(gl_attributes, :lowclip, nothing)
+        pop!(gl_attributes, :highclip, nothing)
+        # Invalid:
+        pop!(gl_attributes, :nan_color, nothing)
+        pop!(gl_attributes, :alpha, nothing) # Why is this even here?
+        pop!(gl_attributes, :intensity, nothing)
+        pop!(gl_attributes, :color_norm, nothing)
+
+        haskey(gl_attributes, :color) && println("color length: ", length(gl_attributes[:color][]))
+        haskey(gl_attributes, :color_map) && println("color_map length: ", length(gl_attributes[:color_map]))
+
         return draw_voxels(screen, tex, gl_attributes)
     end
 end

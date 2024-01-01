@@ -6,11 +6,10 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
 
     # Not applicable
     for key in (
-            :color, :lowclip,
-            :color_map, :nan_color,
-            :color_norm, :highclip,
+            :limits,
             :px_per_unit, :pixel_space,
-            :alpha, :intensity, :backlight
+            :backlight,
+            :air
         )
         pop!(data, key)
     end
@@ -20,6 +19,8 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
         model = Mat4f(I)
         transparency = false
         backlight = 0f0
+        color = nothing => Texture
+        color_map = nothing => Texture
         shader = GLVisualizeShader(
             screen,
             "voxel.vert",

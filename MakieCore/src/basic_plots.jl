@@ -499,7 +499,11 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 end
 
 @recipe(Voxel, chunk) do scene
-    attr = Attributes()
+    attr = Attributes(
+        color = nothing,
+        limits = automatic,
+        air = automatic
+    )
     shading_attributes!(attr)
     generic_plot_attributes!(attr)
     return colormap_attributes!(attr, theme(scene, :colormap))
