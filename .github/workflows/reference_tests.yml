@@ -50,10 +50,9 @@ jobs:
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: ReferenceImages_CairoMakie
+          name: ReferenceImages_CairoMakie_${{ matrix.version }}
           path: ./CairoMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
@@ -100,10 +99,9 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: ReferenceImages_GLMakie
+          name: ReferenceImages_GLMakie_${{ matrix.version }}
           path: |
             ./GLMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
@@ -148,10 +146,9 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: ReferenceImages_WGLMakie
+          name: ReferenceImages_WGLMakie_${{ matrix.version }}
           path: ./WGLMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
@@ -169,15 +166,15 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_WGLMakie
+          name: ReferenceImages_WGLMakie_1
           path: ./ReferenceImages/WGLMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_CairoMakie
+          name: ReferenceImages_CairoMakie_1
           path: ./ReferenceImages/CairoMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_GLMakie
+          name: ReferenceImages_GLMakie_1
           path: ./ReferenceImages/GLMakie
       - name: Consolidate reference image folders
         run: |
