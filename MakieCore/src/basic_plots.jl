@@ -502,7 +502,7 @@ end
     attr = Attributes(
         color = nothing,
         limits = automatic,
-        air = automatic
+        is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
     )
     shading_attributes!(attr)
     generic_plot_attributes!(attr)

@@ -829,8 +829,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
         pop!(gl_attributes, :alpha, nothing) # Why is this even here?
         pop!(gl_attributes, :intensity, nothing)
         pop!(gl_attributes, :color_norm, nothing)
+        # cleanup
+        pop!(gl_attributes, :limits)
+        pop!(gl_attributes, :is_air)
 
-        haskey(gl_attributes, :color) && println("color length: ", length(gl_attributes[:color][]))
+        haskey(gl_attributes, :color) && !isnothing(gl_attributes[:color]) && println("color length: ", length(gl_attributes[:color][]))
         haskey(gl_attributes, :color_map) && println("color_map length: ", length(gl_attributes[:color_map]))
 
         return draw_voxels(screen, tex, gl_attributes)

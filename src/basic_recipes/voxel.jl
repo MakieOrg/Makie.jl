@@ -75,12 +75,15 @@ function update(plot::Voxel, i::Integer, j::Integer, k::Integer, value::Real)
     return nothing
 end
 
-Base.@propagate_inbounds function _update_chunk(output::Array{UInt8, 3}, input::Array{<: Any, 3}, i::Integer, scale, mini::Real, maxi::Real)
+Base.@propagate_inbounds function _update_chunk(
+        output::Array{UInt8, 3}, input::Array{<: Any, 3}, i::Integer,
+        is_air::Function, scale, mini::Real, maxi::Real
+    )
     @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
     # Rescale data to UInt8 range for voxel ids
     @inbounds begin
         x = input[i]
-        if isnothing(x) || isnan(x) || ismissing(x)
+        if is_air(x)
             output[i] = UInt8(0)
         else
             lin = clamp(254 * (apply_scale(scale, x) - mini) / (maxi - mini), 0, 254)
@@ -90,7 +93,10 @@ Base.@propagate_inbounds function _update_chunk(output::Array{UInt8, 3}, input::
     return nothing
 end
 
-Base.@propagate_inbounds function _update_chunk(output::Array{UInt8, 3}, input::Array{UInt8, 3}, i::Integer, scale, mini::Real, maxi::Real)
+Base.@propagate_inbounds function _update_chunk(
+        output::Array{UInt8, 3}, input::Array{UInt8, 3}, i::Integer,
+        is_air::Function, scale, mini::Real, maxi::Real
+    )
     @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
     # If input data is UInt8 we assume it to be voxel ids and directly pass it
     @inbounds output[i] = input[i]
@@ -105,7 +111,7 @@ function plot!(plot::Voxel)
     off(input, input.listeners[1][2])
 
     # Use new mapping that doesn't recalculate limits
-    onany(plot, input, plot.limits, plot.colorscale) do chunk, lims, scale
+    onany(plot, input, plot.limits, plot.is_air, plot.colorscale) do chunk, lims, is_air, scale
         output = plot.converted[1]
 
         # maybe resize
@@ -116,7 +122,7 @@ function plot!(plot::Voxel)
         # if the input data is UInt8 we assume raw voxel ids being passed
         mini, maxi = apply_scale(scale, lims)
         @inbounds for i in eachindex(chunk)
-            _update_chunk(output.val, chunk, i, scale, mini, maxi)
+            _update_chunk(output.val, chunk, i, is_air, scale, mini, maxi)
         end
 
         # trigger converted
@@ -129,7 +135,7 @@ function plot!(plot::Voxel)
     if plot.limits[] === automatic
         mini, maxi = (Inf, -Inf)
         for elem in input.val
-            (isnan(elem) || isnothing(elem) || ismissing(elem)) && continue
+            plot.is_air[](elem) && continue
             mini = min(mini, elem)
             maxi = max(maxi, elem)
         end

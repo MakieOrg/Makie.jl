@@ -3,16 +3,6 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
     geom = Rect2f(Point2f(-0.5), Vec2f(1.0))
     to_opengl_mesh!(data, const_lift(GeometryBasics.triangle_mesh, geom))
     shading = pop!(data, :shading, FastShading)
-
-    # Not applicable
-    for key in (
-            :limits,
-            :px_per_unit, :pixel_space,
-            :backlight,
-            :air
-        )
-        pop!(data, key)
-    end
     @gen_defaults! data begin
         voxel_id = main => Texture
         instances = const_lift(t -> sum(size(t)) + 3, voxel_id)
