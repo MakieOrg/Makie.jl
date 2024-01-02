@@ -69,15 +69,18 @@ function calculated_attributes!(::Type{<:Voxel}, plot)
     return nothing
 end
 
-# TODO: update texture locally
-function update(plot::Voxel, i::Integer, j::Integer, k::Integer, value::Real)
+# TODO: document: update voxel id's and voxel id texture for the given indices or ranges
+function update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Integer, UnitRange}, ks::Union{Integer, UnitRange})
+    to_range(i::Integer) = i:i
+    to_range(r::UnitRange) = r
+
     mini, maxi = apply_scale(plot.colorscale[], plot.limits[])
-    input = plot.args[1].val
-    input[i, j, k] = value
-    idx = i + size(input, 1) * (j + size(input, 2) * k)
-    _update_chunk(plot.converted[1].val, input, idx, mini, maxi)
-    # TODO:
-    # _update_backend(...)
+    input = plot.args[1][]
+    for k in ks, j in js, i in is
+        idx = i + size(input, 1) * ((j-1) + size(input, 2) * (k-1))
+        _update_chunk(plot.converted[1].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
+    end
+    plot._local_update[] = to_range.((is, js, ks))
     return nothing
 end
 

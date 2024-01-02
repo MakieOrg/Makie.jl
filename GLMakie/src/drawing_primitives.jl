@@ -819,7 +819,25 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
     return cached_robj!(screen, scene, plot) do gl_attributes
         @assert to_value(plot[1]) isa Array{UInt8, 3}
+
+        # voxel ids
         tex = Texture(plot[1], minfilter = :nearest)
+        # local update
+        buffer = Vector{UInt8}(undef, 1)
+        on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
+            required_length = length(is) * length(js) * length(ks)
+            if length(buffer) < required_length
+                resize(buffer, required_length)
+            end
+            idx = 1
+            for k in ks, j in js, i in is
+                buffer[idx] = plot.converted[1].val[i, j, k]
+                idx += 1
+            end
+            GLAbstraction.texsubimage(tex, buffer, is, js, ks)
+            return
+        end
+
         # color attribute adjustments
         # TODO:
         pop!(gl_attributes, :lowclip, nothing)
