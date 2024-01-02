@@ -89,14 +89,19 @@ function Makie.plot!(p::Waterfall)
             xs = first(
                 compute_x_and_width(first.(fromto.xy), width, gap, dodge, n_dodge, dodge_gap)
             )
-            xy = similar(fromto.xy)
-            shapes = fill(marker_pos, length(xs))
+            MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
+            DataType = eltype(fromto.xy)
+            shapes = MarkerType[]
+            xy = DataType[]
             for i in eachindex(xs)
                 y = last(fromto.xy[i])
                 fillto = fromto.fillto[i]
-                xy[i] = (xs[i], (y + fillto) / 2)
                 if fillto > y
-                    shapes[i] = marker_neg
+                    push!(xy, (xs[i], (y + fillto) / 2))
+                    push!(shapes, marker_neg)
+                elseif fillto < y
+                    push!(xy, (xs[i], (y + fillto) / 2))
+                    push!(shapes, marker_pos)
                 end
             end
             return (xy=xy, shapes=shapes)
