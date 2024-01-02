@@ -71,40 +71,39 @@ void main() {
     For now we alternate x, y, z planes and start from the center.
     */
 
-    // TODO: render z first!
+    // TODO: might be better for transparent rendering to alternate xyz?
     ivec3 size = textureSize(voxel_id, 0);
-    int dim = 0, id = gl_InstanceID;
-    if (gl_InstanceID > size.x + size.y + 1) {
-        dim = 2;
-        id = gl_InstanceID - (size.x + size.y + 2);
-    } else if (gl_InstanceID > size.x) {
+    int dim = 2, id = gl_InstanceID;
+    if (gl_InstanceID > size.z + size.y + 1) {
+        dim = 0;
+        id = gl_InstanceID - (size.z + size.y + 2);
+    } else if (gl_InstanceID > size.z) {
         dim = 1;
-        id = gl_InstanceID - (size.x + 1);
+        id = gl_InstanceID - (size.z + 1);
     }
 
 #ifdef DEBUG_RENDER_ORDER
     plane_render_idx = float(id) / float(size[dim]-1);
 #endif
 
-    // TODO: invert plane direction if normal direction inverts
-    // TODO: we need lookat/viewdir here...
     // plane placement
     // Figure out which plane to start with
     vec3 offset = 0.5 * vec3(size);
     vec3 normal = world_normalmatrix * unit_vecs[dim];
-    float dir = sign(dot(view_direction, normal));
+    int dir = int(sign(dot(view_direction, normal)));
     vec3 displacement;
     if (depthsorting) {
-        // depthsorted should start far away from viewer
+        // depthsorted should start far away from viewer so every plane draws
         displacement = -dir * (id - offset[dim]) * unit_vecs[dim];
     } else {
-        // no sorting should start at viewer and expand in view direction
+        // no sorting should start at viewer and expand in view direction so
+        // that depth test can quickly eliminate unnecessary fragments
         vec4 origin = model * vec4(-offset, 1);
         float dist = dot(eyeposition - origin.xyz / origin.w, normal) / dot(normal, normal);
         int start = clamp(int(dist), 0, size[dim]);
-        displacement = (mod(start + dir * id, size[dim] + 0.1) - offset[dim]) * unit_vecs[dim];
+        // this should work better with integer modulo...
+        displacement = (mod(start + dir * id, size[dim] + 0.001) - offset[dim]) * unit_vecs[dim];
     }
-
 
     // place plane vertices
     vec3 voxel_pos = size * (orientations[dim] * vertices) + displacement;
