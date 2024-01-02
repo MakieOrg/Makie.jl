@@ -105,7 +105,7 @@ void main() {
     o_uvw = (voxel_pos - 0.5 * o_normal) / size + 0.5;
 
     // normal in: -x -y -z +x +y +z direction
-    o_side = dim + 3 * (1 + int(normal_dir));
+    o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);
 
     // map voxel_pos (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
     // if the normal is negative invert range (w .. 0)

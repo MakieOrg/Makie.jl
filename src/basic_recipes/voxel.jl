@@ -7,14 +7,20 @@ end
 function calculated_attributes!(::Type{<:Voxel}, plot)
     if !isnothing(plot.color[])
         cc = lift(plot, plot.color, plot.alpha) do color, a
-            output = Vector{RGBAf}(undef, 255)
-            if color isa AbstractArray
+            if color isa AbstractVector
+                output = Vector{RGBAf}(undef, 255)
                 @inbounds for i in 1:min(255, length(color))
                     c = to_color(color[i])
                     output[i] = RGBAf(Colors.color(c), Colors.alpha(c) * a)
                 end
                 for i in min(255, length(color))+1 : 255
                     output[i] = RGBAf(0,0,0,0)
+                end
+            elseif color isa AbstractArray
+                output = similar(color, RGBAf)
+                @inbounds for i in eachindex(color)
+                    c = to_color(color[i])
+                    output[i] = RGBAf(Colors.color(c), Colors.alpha(c) * a)
                 end
             else
                 c = to_color(color)
