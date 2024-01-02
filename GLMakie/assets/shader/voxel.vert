@@ -2,12 +2,19 @@
 // {{GLSL_VERSION}}
 // {{GLSL_EXTENSIONS}}
 
+// debug FLAGS
+// #define DEBUG_RENDER_ORDER
+
 in vec2 vertices;
 
 flat out vec3 o_normal;
 out vec3 o_uvw;
 flat out int o_side;
 out vec2 o_tex_uv;
+
+#ifdef DEBUG_RENDER_ORDER
+flat out float plane_render_idx;
+#endif
 
 out vec3 o_camdir;
 out vec3 o_world_pos;
@@ -16,8 +23,10 @@ uniform mat4 model;
 uniform mat3 world_normalmatrix;
 uniform mat4 projectionview;
 uniform vec3 eyeposition;
+uniform vec3 view_direction;
 uniform isampler3D voxel_id;
 uniform float depth_shift;
+uniform bool depthsorting;
 
 const vec3 unit_vecs[3] = vec3[]( vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1) );
 const mat2x3 orientations[3] = mat2x3[](
@@ -61,6 +70,7 @@ void main() {
 
     For now we alternate x, y, z planes and start from the center.
     */
+
     ivec3 size = textureSize(voxel_id, 0);
     int dim = 0, id = gl_InstanceID;
     if (gl_InstanceID > size.x + size.y + 1) {
@@ -71,9 +81,24 @@ void main() {
         id = gl_InstanceID - (size.x + 1);
     }
 
+#ifdef DEBUG_RENDER_ORDER
+    plane_render_idx = float(id) / float(size[dim]-1);
+#endif
+
+    // TODO: invert plane direction if normal direction inverts
+    // TODO: we need lookat/viewdir here...
     // plane placement
+    // Figure out which plane to start with
+    vec3 normal = world_normalmatrix * unit_vecs[dim];
     vec3 offset = 0.5 * vec3(size);
-    vec3 displacement = (id - offset[dim]) * unit_vecs[dim];
+    vec4 origin = model * vec4(-offset, 1);
+    // get distance in plane units
+    float dist = dot(eyeposition - origin.xyz / origin.w, normal) / dot(normal, normal);
+    int start = clamp(int(dist), 0, size[dim]);
+    float dir = sign(dot(view_direction, normal));
+
+    // place plane vertices
+    vec3 displacement = (mod(start + dir * id, size[dim] + 0.1) - offset[dim]) * unit_vecs[dim];
     vec3 voxel_pos = size * (orientations[dim] * vertices) + displacement;
     vec4 world_pos = model * vec4(voxel_pos, 1.0f);
     o_world_pos = world_pos.xyz;
@@ -85,10 +110,9 @@ void main() {
     // whether it's +n or -n.
     // If we assume the viewer to be outside of a voxel, the normal direction
     // should always be facing them. Thus:
-    vec3 n = world_normalmatrix * unit_vecs[dim];
     o_camdir = eyeposition - world_pos.xyz / world_pos.w;
-    float normal_dir = sign(dot(o_camdir, n));
-    o_normal = normalize(normal_dir * n);
+    float normal_dir = sign(dot(o_camdir, normal));
+    o_normal = normalize(normal_dir * normal);
 
     // The texture coordinate can also be derived. `voxel_pos` effectively gives
     // an integer index into the chunk, shifted to be centered. We can convert
@@ -110,7 +134,4 @@ void main() {
     // map voxel_pos (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
     // if the normal is negative invert range (w .. 0)
     o_tex_uv = transpose(orientations[dim]) * (normal_dir * voxel_pos + offset);
-
-    // TODO:
-    // - verify idx
 }

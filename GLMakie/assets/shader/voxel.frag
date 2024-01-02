@@ -2,6 +2,9 @@
 // {{GLSL VERSION}}
 // {{GLSL_EXTENSIONS}}
 
+// debug FLAGS
+// #define DEBUG_RENDER_ORDER 0 // (0, 1, 2) - dimensions
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -13,6 +16,10 @@ flat in vec3 o_normal;
 in vec3 o_uvw;
 flat in int o_side;
 in vec2 o_tex_uv;
+
+#ifdef DEBUG_RENDER_ORDER
+flat in float plane_render_idx; // debug
+#endif
 
 uniform isampler3D voxel_id;
 uniform uint objectid;
@@ -90,9 +97,15 @@ void main()
     // otherwise we draw. For now just some color...
     vec4 voxel_color = get_color(color, color_map, id);
 
-    #ifndef NO_SHADING
+#ifdef DEBUG_RENDER_ORDER
+    if (mod(o_side, 3) != DEBUG_RENDER_ORDER)
+        discard;
+    vec4 voxel_color = vec4(plane_render_idx, 0, 0, id == 0 ? 0.01 : 1.0);
+#endif
+
+#ifndef NO_SHADING
     voxel_color.rgb = illuminate(o_normal, voxel_color.rgb);
-    #endif
+#endif
 
     // TODO: index into 3d array
     ivec3 size = ivec3(textureSize(voxel_id, 0).xyz);

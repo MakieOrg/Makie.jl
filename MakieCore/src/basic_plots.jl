@@ -505,6 +505,8 @@ end
         is_air = x -> isnothing(x) || ismissing(x) || isnan(x),
         uvmap = nothing,
         interpolate = false, # texture
+        _local_update = (0:0, 0:0, 0:0),
+        depthsorting = false # false = fast, true = correct transparency
     )
     shading_attributes!(attr)
     generic_plot_attributes!(attr)

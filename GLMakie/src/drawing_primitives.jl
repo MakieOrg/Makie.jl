@@ -851,6 +851,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
         pop!(gl_attributes, :limits)
         pop!(gl_attributes, :is_air)
 
+        # make sure these exist
         get!(gl_attributes, :color, nothing)
         get!(gl_attributes, :color_map, nothing)
 
@@ -868,6 +869,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
             gl_attributes[:color] = Texture(gl_attributes[:color], minfilter = :nearest)
             @info gl_attributes[:color].texturetype
         end
+
+        # for depthsorting
+        gl_attributes[:view_direction] = camera(scene).view_direction
 
         return draw_voxels(screen, tex, gl_attributes)
     end

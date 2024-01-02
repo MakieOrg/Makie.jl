@@ -744,7 +744,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_proj_view!(camera(scene), proj, view)
 
     scene.camera.eyeposition[] = cam.eyeposition[]
-    scene.camera.lookat[] = cam.lookat[]
+    scene.camera.view_direction[] = normalize(cam.lookat[] - cam.eyeposition[])
 end
 
 

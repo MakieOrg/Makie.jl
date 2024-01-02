@@ -84,7 +84,7 @@ function Camera(viewport)
         proj,
         proj_view,
         lift(a-> Vec2f(widths(a)), viewport),
-        Observable(Vec3f(0)),
+        Observable(Vec3f(0, 0, -1)),
         Observable(Vec3f(1)),
         ObserverFunction[],
         Dict{Symbol, Observable}()
