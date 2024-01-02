@@ -71,6 +71,7 @@ void main() {
     For now we alternate x, y, z planes and start from the center.
     */
 
+    // TODO: render z first!
     ivec3 size = textureSize(voxel_id, 0);
     int dim = 0, id = gl_InstanceID;
     if (gl_InstanceID > size.x + size.y + 1) {
@@ -89,16 +90,23 @@ void main() {
     // TODO: we need lookat/viewdir here...
     // plane placement
     // Figure out which plane to start with
-    vec3 normal = world_normalmatrix * unit_vecs[dim];
     vec3 offset = 0.5 * vec3(size);
-    vec4 origin = model * vec4(-offset, 1);
-    // get distance in plane units
-    float dist = dot(eyeposition - origin.xyz / origin.w, normal) / dot(normal, normal);
-    int start = clamp(int(dist), 0, size[dim]);
+    vec3 normal = world_normalmatrix * unit_vecs[dim];
     float dir = sign(dot(view_direction, normal));
+    vec3 displacement;
+    if (depthsorting) {
+        // depthsorted should start far away from viewer
+        displacement = -dir * (id - offset[dim]) * unit_vecs[dim];
+    } else {
+        // no sorting should start at viewer and expand in view direction
+        vec4 origin = model * vec4(-offset, 1);
+        float dist = dot(eyeposition - origin.xyz / origin.w, normal) / dot(normal, normal);
+        int start = clamp(int(dist), 0, size[dim]);
+        displacement = (mod(start + dir * id, size[dim] + 0.1) - offset[dim]) * unit_vecs[dim];
+    }
+
 
     // place plane vertices
-    vec3 displacement = (mod(start + dir * id, size[dim] + 0.1) - offset[dim]) * unit_vecs[dim];
     vec3 voxel_pos = size * (orientations[dim] * vertices) + displacement;
     vec4 world_pos = model * vec4(voxel_pos, 1.0f);
     o_world_pos = world_pos.xyz;

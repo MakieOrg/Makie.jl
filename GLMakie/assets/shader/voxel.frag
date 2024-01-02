@@ -3,7 +3,7 @@
 // {{GLSL_EXTENSIONS}}
 
 // debug FLAGS
-// #define DEBUG_RENDER_ORDER 0 // (0, 1, 2) - dimensions
+// #define DEBUG_RENDER_ORDER 2 // (0, 1, 2) - dimensions
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
@@ -100,7 +100,7 @@ void main()
 #ifdef DEBUG_RENDER_ORDER
     if (mod(o_side, 3) != DEBUG_RENDER_ORDER)
         discard;
-    vec4 voxel_color = vec4(plane_render_idx, 0, 0, id == 0 ? 0.01 : 1.0);
+    voxel_color = vec4(plane_render_idx, 0, 0, id == 0 ? 0.01 : 1.0);
 #endif
 
 #ifndef NO_SHADING
