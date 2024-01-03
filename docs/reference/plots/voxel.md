@@ -1,0 +1,240 @@
+# voxel
+
+{{doc voxel}}
+
+### Examples
+
+
+
+#### Basic Example
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+# Same as volume example
+r = LinRange(-1, 1, 100)
+cube = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
+cube_with_holes = cube .* (cube .> 1.4)
+
+# To match the volume example with isovalue=1.7 and isorange=0.05 we map all
+# values outside the range (1.65..1.75) to invisible air blocks with is_air
+f, a, p = voxel(cube_with_holes, is_air = x -> !(1.65 <= x <= 1.75))
+```
+\end{examplefigure}
+
+
+
+#### Colormaps
+
+Attributes related to colormaps work as usual, with the exception of `nan_color` which is not applicable:
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+chunk = reshape(collect(1:512), 8, 8, 8)
+
+f, a, p = voxel(chunk,
+    colorrange = (65, 448), colorscale = log10,
+    lowclip = :red, highclip = :orange,
+    colormap = [:blue, :green]
+)
+```
+\end{examplefigure}
+
+
+
+#### Color and the internal representation
+
+Voxels are represented as an `Array{UInt8, 3}` of voxel ids internally.
+In this representation the voxel id `0x00` is defined as an invisible air block.
+All other ids (0x01 - 0xff or 1 - 255) are used to sample either the given `colormap`, a `color` vector or the `uvmap`.
+
+The `color` vector is indexing directly by the voxel id:
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+chunk = UInt8[
+    1 0 2; 0 0 0; 3 0 4;;;
+    0 0 0; 0 0 0; 0 0 0;;;
+    5 0 6; 0 0 0; 7 0 8;;;
+]
+f, a, p = voxel(chunk, color = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta])
+```
+\end{examplefigure}
+
+
+Passing a chunk of type `Array{UInt8, 3}` will result in it being used directly, i.e. `p.converted[1][] === p.args[1][]`.
+It will also circumvent a bunch of processing related to colormaps, disabling `colorscale` and `colorrange`.
+(I.e. voxel ids 2..254 will be mapped directly to the `colormap`, 1 to `lowclip` and 255 to `highclip`.)
+Because of this it may be more useful to use `color` instead of `colormap` here.
+In general you should see slightly better performance and significantly lower memory usage when passing an `Array{UInt8, 3}`.
+
+
+
+#### Texturemaps
+
+You can also map a texture to voxels based on their id (and optionally the direction the face is facing).
+For this `plot.color` needs to be an image and `plot.uvmap` needs to be defined.
+The `uvmap` can take two forms here.
+The first is a `Vector{Vec4f}` which maps voxel ids (starting at 1) to normalized uv coordinates, formatted left-right-bottom-top.
+
+\begin{examplefigure}{}
+```julia
+using GLMakie, FileIO
+GLMakie.activate!() # hide
+
+# load a sprite sheet with 10 x 9 textures
+texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
+
+# create a map idx -> LRBT coordinate of the textures, normalized to a 0..1 range
+uv_map = [
+    Vec4f(x, x+1/10, y, y+1/9)
+    for x in range(0.0, 1.0, length = 11)[1:end-1]
+    for y in range(0.0, 1.0, length = 10)[1:end-1]
+]
+
+# Define which textures/uvs apply to which voxels (0 is invisible/air)
+voxels = UInt8[
+    1 0 2; 0 0 0; 3 0 4;;;
+    0 0 0; 0 0 0; 0 0 0;;;
+    5 0 6; 0 0 0; 7 0 9;;;
+]
+
+# draw
+f, a, p = voxel(voxels, uvmap = uv_map, color = texture)
+```
+\end{examplefigure}
+
+The second format allows you define sides in the second dimension of the uvmap.
+The order of sides is: -x, -y, -z, +x, +y, +z.
+
+\begin{examplefigure}{}
+```julia
+using GLMakie, FileIO
+GLMakie.activate!() # hide
+
+texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
+
+# idx -> uv LRBT map for convenience. Note the change in order loop order
+uvs = [
+    Vec4f(x, x+1/10, y, y+1/9)
+    for y in range(0.0, 1.0, length = 10)[1:end-1]
+    for x in range(0.0, 1.0, length = 11)[1:end-1]
+]
+
+# Create uvmap with sides (-x -y -z x y z) in second dimension
+uv_map = Matrix{Vec4f}(undef, 4, 6)
+uv_map[1, :] = [uvs[9],  uvs[9],  uvs[8],  uvs[9],  uvs[9],  uvs[8]]  # 1 -> birch
+uv_map[2, :] = [uvs[11], uvs[11], uvs[10], uvs[11], uvs[11], uvs[10]] # 2 -> oak
+uv_map[3, :] = [uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[18]] # 3 -> crafting table
+uv_map[4, :] = [uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1]]  # 4 -> planks
+
+voxels = UInt8[
+    1 0 1; 0 0 0; 1 0 1;;;
+    0 0 0; 0 0 0; 0 0 0;;;
+    2 0 2; 0 0 0; 3 0 4;;;
+]
+
+f, a, p = voxel(voxels, uvmap = uv_map, color = texture)
+```
+\end{examplefigure}
+
+The textures used in these examples are from [Kenney's Voxel Pack](https://www.kenney.nl/assets/voxel-pack).
+
+
+
+#### Updating Voxels
+
+The `voxel` plot is a bit different from other plot types which affects how you can and should update its data.
+
+First you *can* pass your data as an `Observable` and update that observable as usual:
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+chunk = Observable(ones(8,8,8))
+f, a, p = voxel(chunk, colorrange = (0, 1))
+chunk[] = rand(8,8,8)
+f
+```
+\end{examplefigure}
+
+Accessing your input data from the plot object directly does not work with `p[1]` though.
+This returns `p.converted[1]` which is the internal representation of the voxel data.
+Instead you need to use `p.args[1]`:
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+f, a, p = voxel(ones(8,8,8), colorrange = (0, 1))
+p.args[1][] = rand(8,8,8)
+f
+```
+\end{examplefigure}
+
+Both of these solutions triggers a full replacement of the input matrix (i.e. `chunk`), the internal representation (`plot.converted[1]`) and the texture on gpu.
+This can be quite slow and wasteful if you only want to update a small section of a large chunk.
+In that case you should instead update your input data without triggering an update and then call `local_update(plot, is, js, ks)` to process the update:
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+chunk = Observable(rand(64, 64, 64))
+f, a, p = voxel(chunk, colorrange = (0, 1))
+chunk.val[30:34, :, :] .= NaN # or p.args[1].val
+Makie.local_update(p, 30:34, 1:64, 1:64)
+f
+```
+\end{examplefigure}
+
+
+
+#### Transparency
+
+A Voxel plot has an extra argument that is relevant for transparency - `depthsorting`.
+The default `depthsorting = false` results in voxels (or technically planes) being rendered starting at the viewers position.
+This helps reduce overdraw, making rendering faster.
+However it also means that objects behind transparent voxels (planes) are not rendered unless `transparency = true`.
+To fix this voxels (planes) can be rendered back-to-front by setting `depthsorting = true`.
+
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+fig = Figure()
+
+Label(fig[1, 2], "depthsorting = false", tellwidth = false)
+Label(fig[1, 3], "depthsorting = true",  tellwidth = false)
+Label(fig[2, 1], "transparency = false", tellheight = false, rotation = pi/2)
+Label(fig[3, 1], "transparency = true",  tellheight = false, rotation = pi/2)
+
+chunk = rand(8, 8, 8)
+for (j, depthsorting) in zip(2:3, (false, true))
+    for (i, transparency) in zip(2:3, (false, true))
+        ax = LScene(fig[i, j], show_axis = false)
+        mesh!(Sphere(Point3f(0), 1f0), color = :red)
+        voxel!(
+            ax, chunk, alpha = 0.2,
+            depthsorting = depthsorting, transparency = transparency
+        )
+    end
+end
+
+fig
+```
+\end{examplefigure}
