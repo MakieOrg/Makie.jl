@@ -54,7 +54,7 @@ vec4 get_color_from_texture(sampler2D color, int id) {
     // compute uv normalized to voxel
     // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
-    voxel_uv = mix(lrbt.xy, lrbt.zw, voxel_uv);
+    voxel_uv = mix(lrbt.xz, lrbt.yw, voxel_uv);
     return texture(color, voxel_uv);
 }
 
