@@ -47,6 +47,9 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "colorscale (lines)", # also z-fighting
+    "Voxel - texture mapping", # not yet implemented
+    "Voxel - colors and colormap", # not yet implemented
+    "Voxel - lowclip and highclip", # not yet implemented
 ])
 Makie.inline!(Makie.automatic)
 

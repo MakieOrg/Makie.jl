@@ -501,7 +501,8 @@ end
     ]
 
     fig = Figure(size = (800, 400))
-    a1, p1 = voxel(fig[1, 1], flat_voxels, uvmap = flat_uv_map, color = texture, axis=(show_axis = false,))
+    a1 = LScene(fig[1, 1], show_axis = false)
+    p1 = voxel!(a1, flat_voxels, uvmap = flat_uv_map, color = texture)
 
     # Use red for x, green for y, blue for z
     sided_uv_map = Matrix{Vec4f}(undef, 1, 6)
@@ -509,7 +510,8 @@ end
     sided_uv_map[1, 4:6] .= flat_uv_map[5:7]
 
     sided_voxels = reshape(UInt8[1], 1, 1, 1)
-    a2, p2 = voxel(fig[1, 2], sided_voxels, uvmap = sided_uv_map, color = texture, axis=(show_axis = false,))
+    a2 = LScene(fig[1, 2], show_axis = false)
+    p2 = voxel!(a2, sided_voxels, uvmap = sided_uv_map, color = texture)
 
     fig
 end
