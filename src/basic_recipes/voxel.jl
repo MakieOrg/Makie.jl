@@ -67,16 +67,18 @@ function calculated_attributes!(::Type{<:Voxel}, plot)
     return nothing
 end
 
+# TODO: allow Colon()
 # TODO: document: update voxel id's and voxel id texture for the given indices or ranges
 function local_update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Integer, UnitRange}, ks::Union{Integer, UnitRange})
     to_range(i::Integer) = i:i
     to_range(r::UnitRange) = r
 
-    mini, maxi = apply_scale(plot.colorscale[], plot.limits[])
+    lims = plot.colorrange[] === automatic ? plot._limits[] : plot.colorrange[]
+    mini, maxi = apply_scale(plot.colorscale[], lims)
     input = plot.args[1][]
     for k in ks, j in js, i in is
         idx = i + size(input, 1) * ((j-1) + size(input, 2) * (k-1))
-        _update_chunk(plot.converted[1].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
+        _update_voxel(plot.converted[1].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
     end
     plot._local_update[] = to_range.((is, js, ks))
     return nothing
@@ -131,7 +133,7 @@ function plot!(plot::Voxel)
         # update voxel ids
         lims = colorrange === automatic ? limits : colorrange
         mini, maxi = apply_scale(scale, lims)
-        maxi = max(mini + 10eps(mini), maxi)
+        maxi = max(mini + 10eps(float(mini)), maxi)
         @inbounds for i in eachindex(chunk)
             _update_voxel(output.val, chunk, i, is_air, scale, mini, maxi)
         end
