@@ -35,33 +35,31 @@ function calculated_attributes!(::Type{<:Voxel}, plot)
         # ...
         dummy_data = Observable(UInt8[1, 255])
 
-        # Always sample 255 colors
-        cmap = map(plot.colormap) do cmap
-            if cmap isa Vector && length(cmap) != 255
-                return resample_cmap(cmap, 255)
+        # Always sample N colors
+        cmap = map(plot.colormap, plot.lowclip, plot.highclip) do cmap, lowclip, highclip
+            cm = if cmap isa Vector && length(cmap) != 255
+                resample_cmap(cmap, 253)
             else
-                return categorical_colors(cmap, 255)
+                categorical_colors(cmap, 253)
             end
+            lc = lowclip === automatic ? first(cm) : to_color(lowclip)
+            hc = highclip === automatic ? last(cm) : to_color(highclip)
+            return [lc; cm; hc]
         end
 
-        # always use 1..255
+        # always use 1..N
         colorrange = Observable(Vec2f(1, 255))
 
         # Needs to happen in voxel id generation
         colorscale = Observable(identity)
 
-        # TODO: We can have this but it needs to be embedded into colormap
-        lowclip = Observable(automatic)
-        highclip = Observable(automatic)
-
         # We always treat nan as air, invalid
         nan_color = Observable(:transparent)
 
         # TODO: categorical?
-
         attributes(plot.attributes)[:calculated_colors] = ColorMapping(
             dummy_data[], dummy_data, cmap, colorrange, colorscale,
-            plot.alpha, lowclip, highclip, nan_color
+            plot.alpha, plot.lowclip, plot.highclip, nan_color
         )
 
     end
@@ -70,7 +68,7 @@ function calculated_attributes!(::Type{<:Voxel}, plot)
 end
 
 # TODO: document: update voxel id's and voxel id texture for the given indices or ranges
-function update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Integer, UnitRange}, ks::Union{Integer, UnitRange})
+function local_update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Integer, UnitRange}, ks::Union{Integer, UnitRange})
     to_range(i::Integer) = i:i
     to_range(r::UnitRange) = r
 
@@ -84,30 +82,32 @@ function update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Integer, U
     return nothing
 end
 
-Base.@propagate_inbounds function _update_chunk(
+Base.@propagate_inbounds function _update_voxel(
         output::Array{UInt8, 3}, input::Array{<: Any, 3}, i::Integer,
-        is_air::Function, scale, mini::Real, maxi::Real
+        is_air::Function, scale, mini::Real, maxi::Real,
     )
+
     @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
     # Rescale data to UInt8 range for voxel ids
+    c = 252.99998
     @inbounds begin
         x = input[i]
         if is_air(x)
-            output[i] = UInt8(0)
+            output[i] = 0x00
         else
-            lin = clamp(254 * (apply_scale(scale, x) - mini) / (maxi - mini), 0, 254)
-            output[i] = 0x01 + trunc(UInt8, lin)
+            lin = clamp(c * (apply_scale(scale, x) - mini) / (maxi - mini) + 2, 1, 255)
+            output[i] = trunc(UInt8, lin)
         end
     end
     return nothing
 end
 
-Base.@propagate_inbounds function _update_chunk(
+Base.@propagate_inbounds function _update_voxel(
         output::Array{UInt8, 3}, input::Array{UInt8, 3}, i::Integer,
-        is_air::Function, scale, mini::Real, maxi::Real
+        is_air::Function, scale, mini::Real, maxi::Real, has_low::Bool, has_high::Bool
     )
     @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
-    # If input data is UInt8 we assume it to be voxel ids and directly pass it
+    # If input data is in the same format we assume the user is directly specifying voxel ids
     @inbounds output[i] = input[i]
     return nothing
 end
@@ -120,7 +120,7 @@ function plot!(plot::Voxel)
     off(input, input.listeners[1][2])
 
     # Use new mapping that doesn't recalculate limits
-    onany(plot, input, plot.limits, plot.is_air, plot.colorscale) do chunk, lims, is_air, scale
+    onany(plot, input, plot.limits, plot.colorrange, plot.is_air, plot.colorscale) do chunk, limits, colorrange, is_air, scale
         output = plot.converted[1]
 
         # maybe resize
@@ -128,10 +128,11 @@ function plot!(plot::Voxel)
             resize!(output.val, size(chunk))
         end
 
-        # if the input data is UInt8 we assume raw voxel ids being passed
+        # update voxel ids
+        lims = colorrange === automatic ? limits : colorrange
         mini, maxi = apply_scale(scale, lims)
         @inbounds for i in eachindex(chunk)
-            _update_chunk(output.val, chunk, i, is_air, scale, mini, maxi)
+            _update_voxel(output.val, chunk, i, is_air, scale, mini, maxi)
         end
 
         # trigger converted
