@@ -474,3 +474,66 @@ end
 
     fig
 end
+
+@reference_test "Voxel - texture mapping" begin
+    texture = let
+        w = RGBf(1,1,1); r = RGBf(1,0,0); g = RGBf(0,1,0); b = RGBf(0,0,1)
+        o = RGBf(1,1,0); c = RGBf(0,1,1); m = RGBf(1,0,1); k = RGBf(0,0,0)
+        [
+            r w g w b w k w;
+            w w w w w w w w;
+            r k g k b k w k;
+            k k k k k k k k;
+        ]
+    end
+
+    # Use same uvs/texture-sections for every side of one voxel id
+    flat_uv_map = [
+        Vec4f(x, y, x+1/2, y+1/4)
+        for x in range(0.0, 1.0, length = 3)[1:end-1]
+        for y in range(0.0, 1.0, length = 5)[1:end-1]
+    ]
+
+    flat_voxels = UInt8[
+        1 0 2; 0 0 0; 3 0 4;;;
+        0 0 0; 0 0 0; 0 0 0;;;
+        5 0 6; 0 0 0; 7 0 8;;;
+    ]
+
+    fig = Figure(size = (800, 400))
+    a1, p1 = voxel(fig[1, 1], flat_voxels, uvmap = flat_uv_map, color = texture, axis=(show_axis = false,))
+
+    # Use red for x, green for y, blue for z
+    sided_uv_map = Matrix{Vec4f}(undef, 1, 6)
+    sided_uv_map[1, 1:3] .= flat_uv_map[1:3]
+    sided_uv_map[1, 4:6] .= flat_uv_map[5:7]
+
+    sided_voxels = reshape(UInt8[1], 1, 1, 1)
+    a2, p2 = voxel(fig[1, 2], sided_voxels, uvmap = sided_uv_map, color = texture, axis=(show_axis = false,))
+
+    fig
+end
+
+@reference_test "Voxel - colors and colormap" begin
+    # test direct mapping of ids to colors & upsampling of vector colormap
+    fig = Figure(size = (800, 400))
+    chunk = UInt8[
+        1 0 2; 0 0 0; 3 0 4;;;
+        0 0 0; 0 0 0; 0 0 0;;;
+        5 0 6; 0 0 0; 7 0 8;;;
+    ]
+    cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
+    voxel(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
+    a, p = voxel(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], axis=(show_axis = false,))
+    fig
+end
+
+@reference_test "Voxel - lowclip and highclip" begin
+    # test that lowclip and highclip are visible for values just outside the colorrange
+    fig = Figure(size = (800, 400))
+    chunk = reshape(collect(1:900), 30, 30, 1)
+    a1, _ = voxel(fig[1,1], chunk, lowclip = :red, highclip = :red, colorrange = (1.0, 900.0), shading = NoShading)
+    a2, _ = voxel(fig[1,2], chunk, lowclip = :red, highclip = :red, colorrange = (1.1, 899.9), shading = NoShading)
+    foreach(a -> update_cam!(a.scene, Vec3f(0, 0, 40), Vec3f(0), Vec3f(0,1,0)), (a1, a2))
+    fig
+end

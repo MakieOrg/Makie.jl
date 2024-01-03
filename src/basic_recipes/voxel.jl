@@ -84,7 +84,7 @@ end
 
 Base.@propagate_inbounds function _update_voxel(
         output::Array{UInt8, 3}, input::Array{<: Any, 3}, i::Integer,
-        is_air::Function, scale, mini::Real, maxi::Real,
+        is_air::Function, scale, mini::Real, maxi::Real
     )
 
     @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
@@ -104,7 +104,7 @@ end
 
 Base.@propagate_inbounds function _update_voxel(
         output::Array{UInt8, 3}, input::Array{UInt8, 3}, i::Integer,
-        is_air::Function, scale, mini::Real, maxi::Real, has_low::Bool, has_high::Bool
+        is_air::Function, scale, mini::Real, maxi::Real
     )
     @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
     # If input data is in the same format we assume the user is directly specifying voxel ids
@@ -131,6 +131,7 @@ function plot!(plot::Voxel)
         # update voxel ids
         lims = colorrange === automatic ? limits : colorrange
         mini, maxi = apply_scale(scale, lims)
+        maxi = max(mini + 10eps(mini), maxi)
         @inbounds for i in eachindex(chunk)
             _update_voxel(output.val, chunk, i, is_air, scale, mini, maxi)
         end
