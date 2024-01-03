@@ -18,8 +18,8 @@ function Base.show(io::IO, camera::Camera)
     println(io, "  projection: ", camera.projection[])
     println(io, "  projectionview: ", camera.projectionview[])
     println(io, "  resolution: ", camera.resolution[])
-    println(io, "  lookat: ", camera.lookat[])
     println(io, "  eyeposition: ", camera.eyeposition[])
+    println(io, "  view direction: ", camera.view_direction[])
 end
 
 function disconnect!(c::Camera)
