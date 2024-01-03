@@ -3,6 +3,9 @@
 function convert_arguments(::Type{<:Voxel}, chunk::Array{<: Any, 3})
     return (Array{UInt8, 3}(undef, size(chunk)),)
 end
+function convert_arguments(::Type{<:Voxel}, chunk::Array{UInt8, 3})
+    return (chunk,)
+end
 
 function calculated_attributes!(::Type{<:Voxel}, plot)
     if !isnothing(plot.color[])
@@ -107,9 +110,6 @@ Base.@propagate_inbounds function _update_voxel(
         output::Array{UInt8, 3}, input::Array{UInt8, 3}, i::Integer,
         is_air::Function, scale, mini::Real, maxi::Real
     )
-    @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
-    # If input data is in the same format we assume the user is directly specifying voxel ids
-    @inbounds output[i] = input[i]
     return nothing
 end
 
@@ -117,8 +117,15 @@ function plot!(plot::Voxel)
     # Disconnect automatic mapping
     # I want to avoid recalculating limits every time the input is updated.
     # Maybe this can be done with conversion kwargs...?
-    input = plot.args[1]
-    off(input, input.listeners[1][2])
+    off(plot.args[1], plot.args[1].listeners[1][2])
+
+    # If a UInt8 Array is passed we don't do any mapping between plot.args and
+    # plot.converted. Instead we just set plot.converted = plot.args in
+    # convert_arguments
+    if eltype(plot.args[1][]) == UInt8
+        return
+    end
+
 
     # Use new mapping that doesn't recalculate limits
     onany(plot, plot._limits, plot.is_air, plot.colorscale) do lims, is_air, scale
