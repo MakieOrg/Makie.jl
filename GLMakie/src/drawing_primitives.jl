@@ -827,7 +827,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
         on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
             required_length = length(is) * length(js) * length(ks)
             if length(buffer) < required_length
-                resize(buffer, required_length)
+                resize!(buffer, required_length)
             end
             idx = 1
             for k in ks, j in js, i in is
@@ -848,7 +848,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
         pop!(gl_attributes, :intensity, nothing)
         pop!(gl_attributes, :color_norm, nothing)
         # cleanup
-        pop!(gl_attributes, :limits)
+        pop!(gl_attributes, :_limits)
         pop!(gl_attributes, :is_air)
 
         # make sure these exist
