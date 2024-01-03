@@ -73,8 +73,7 @@ function local_update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Inte
     to_range(i::Integer) = i:i
     to_range(r::UnitRange) = r
 
-    lims = plot.colorrange[] === automatic ? plot._limits[] : plot.colorrange[]
-    mini, maxi = apply_scale(plot.colorscale[], lims)
+    mini, maxi = apply_scale(plot.colorscale[], plot._limits[])
     input = plot.args[1][]
     for k in ks, j in js, i in is
         idx = i + size(input, 1) * ((j-1) + size(input, 2) * (k-1))
@@ -122,16 +121,18 @@ function plot!(plot::Voxel)
     off(input, input.listeners[1][2])
 
     # Use new mapping that doesn't recalculate limits
-    onany(plot, input, plot.limits, plot.colorrange, plot.is_air, plot.colorscale) do chunk, limits, colorrange, is_air, scale
+    onany(plot, plot._limits, plot.is_air, plot.colorscale) do lims, is_air, scale
+        # _limits always triggers after plot.args[1]
+        chunk = plot.args[1][]
         output = plot.converted[1]
 
+        # TODO: Julia doesn't allow this
         # maybe resize
-        if size(chunk) != size(output.val)
-            resize!(output.val, size(chunk))
-        end
+        # if size(chunk) != size(output.val)
+        #     resize!(output.val, size(chunk))
+        # end
 
         # update voxel ids
-        lims = colorrange === automatic ? limits : colorrange
         mini, maxi = apply_scale(scale, lims)
         maxi = max(mini + 10eps(float(mini)), maxi)
         @inbounds for i in eachindex(chunk)
@@ -145,9 +146,13 @@ function plot!(plot::Voxel)
     end
 
     # Initial limits
-    if plot.limits[] === automatic
+    map!(plot, plot._limits, plot.args[1], plot.colorrange) do data, colorrange
+        if colorrange !== automatic
+            return colorrange
+        end
+
         mini, maxi = (Inf, -Inf)
-        for elem in input.val
+        for elem in data
             plot.is_air[](elem) && continue
             mini = min(mini, elem)
             maxi = max(maxi, elem)
@@ -155,7 +160,7 @@ function plot!(plot::Voxel)
         if !(isfinite(mini) && isfinite(maxi) && isa(mini, Real))
             throw(ArgumentError("Voxel Chunk contains invalid data, resulting in invalid limits ($mini, $maxi)."))
         end
-        plot.limits[] = (mini, maxi)
+        return (mini, maxi)
     end
 
     return
