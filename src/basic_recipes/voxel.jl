@@ -82,17 +82,22 @@ end
 
 # TODO: allow Colon()
 # TODO: document: update voxel id's and voxel id texture for the given indices or ranges
-function local_update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Integer, UnitRange}, ks::Union{Integer, UnitRange})
-    to_range(i::Integer) = i:i
-    to_range(r::UnitRange) = r
+function local_update(plot::Voxel, is, js, ks)
+    to_range(N, i::Integer) = i:i
+    to_range(N, r::UnitRange) = r
+    to_range(N, ::Colon) = 1:N
+    to_range(N, x::Any) = throw(ArgumentError("Indices can't be converted to a range representation ($x)"))
+
+    _size = size(plot.converted[end].val)
+    is, js, ks = to_range.(_size, (is, js, ks))
 
     mini, maxi = apply_scale(plot.colorscale[], plot._limits[])
     input = plot.args[end][]
     for k in ks, j in js, i in is
-        idx = i + size(input, 1) * ((j-1) + size(input, 2) * (k-1))
+        idx = i + _size[1] * ((j-1) + _size[2] * (k-1))
         _update_voxel(plot.converted[end].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
     end
-    plot._local_update[] = to_range.((is, js, ks))
+    plot._local_update[] = (is, js, ks)
     return nothing
 end
 
