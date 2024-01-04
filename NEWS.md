@@ -6,6 +6,7 @@
 
 - Changes for Bonito rename and WGLMakie docs improvements [#3477](https://github.com/MakieOrg/Makie.jl/pull/3477).
 - Add stroke and glow support to scatter and text in WGLMakie [#3518](https://github.com/MakieOrg/Makie.jl/pull/3518).
+- Fix clipping issues with Camera3D when zooming in [#3529](https://github.com/MakieOrg/Makie.jl/pull/3529)
 
 ## 0.20.3
 
