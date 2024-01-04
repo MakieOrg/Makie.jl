@@ -728,7 +728,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
         far = far_dist * far
     elseif cam.settings.clipping_mode[] === :adaptive
         view_dist = norm(eyeposition - lookat)
-        near = view_dist * near; far = max(radius(bounding_sphere), view_dist) * far
+        near = view_dist * near; far = max(radius(bounding_sphere) / tand(0.5f0 * cam.fov[]), view_dist) * far
     elseif cam.settings.clipping_mode[] !== :static
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
     end
@@ -774,8 +774,8 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool =
         cam.near[] = 0.1f0 * dist
         cam.far[] = 2f0 * dist
     elseif cam.settings.clipping_mode[] === :adaptive
-        cam.near[] = 0.1f0 * dist / norm(cam.eyeposition[] - cam.lookat[])
-        cam.far[] = 2f0 * dist / radius
+        cam.near[] = 0.1f0
+        cam.far[] = 2f0
     end
 
     update_cam!(scene, cam)
