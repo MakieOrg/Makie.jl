@@ -499,18 +499,17 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 end
 
 """
+    voxel(x, y, z, chunk::Array{<:Real, 3})
     voxel(chunk::Array{<:Real, 3})
 
-Plots a chunk of voxels centered at 0.
+Plots a chunk of voxels centered at 0. Optionally the placement and scaling of
+the chunk can be given as range-like x, y and z. (Only the extrema are
+considered here. Voxels are always uniformly sized.)
 
 Internally voxels are represented as 8 bit unsigned integer, with `0x00` always
 being an invisible "air" voxel. Passing a chunk with matching type will directly
 set those values. Note that color handling is specialized for the internal
 representation and may behave a bit differently than usual.
-
-Placement of the voxel chunk currently relies on transformations, i.e.
-`translate!(plot, Vec3f(...))`, `rotate!(plot, quarternion)` and
-`scale!(plot, Vec3f(...))`.
 
 ## Attributes
 

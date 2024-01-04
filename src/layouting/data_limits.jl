@@ -58,8 +58,8 @@ function data_limits(text::Text)
 end
 
 function point_iterator(plot::Voxel)
-    s = size(plot[1][])
-    r = Rect3f(Point3f(-0.5 .* s), Vec3f(s))
+    xyz = to_value.(plot.converted[1:3])
+    r = Rect3f(minimum.(xyz), maximum.(xyz) .- minimum.(xyz))
     return map(corners(r)) do p
         p4d = plot.model[] * Point4f(p[1], p[2], p[3], 1.0)
         return Point3f(p4d) / p4d[4]

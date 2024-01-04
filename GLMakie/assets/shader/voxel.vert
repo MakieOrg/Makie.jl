@@ -65,13 +65,10 @@ void main() {
     We draw the planes through instancing. So first we will need to map the
     instance id to a dimension (xy, xz or yz plane) and an offset (in z, y or
     x direction respectively).
-    Note that the render order of planes can make a significant impact on
-    performance. It may be worth it to adjust this based on eyeposition.
-
-    For now we alternate x, y, z planes and start from the center.
     */
 
     // TODO: might be better for transparent rendering to alternate xyz?
+    // How do we do this for non-cubic chunks?
     ivec3 size = textureSize(voxel_id, 0);
     int dim = 2, id = gl_InstanceID;
     if (gl_InstanceID > size.z + size.y + 1) {
@@ -88,21 +85,20 @@ void main() {
 
     // plane placement
     // Figure out which plane to start with
-    vec3 offset = 0.5 * vec3(size);
     vec3 normal = world_normalmatrix * unit_vecs[dim];
     int dir = int(sign(dot(view_direction, normal)));
     vec3 displacement;
     if (depthsorting) {
         // depthsorted should start far away from viewer so every plane draws
-        displacement = -dir * (id - offset[dim]) * unit_vecs[dim];
+        displacement = ((0.5 + 0.5 * dir) * size - dir * id) * unit_vecs[dim];
     } else {
         // no sorting should start at viewer and expand in view direction so
         // that depth test can quickly eliminate unnecessary fragments
-        vec4 origin = model * vec4(-offset, 1);
+        vec4 origin = model * vec4(0, 0, 0, 1);
         float dist = dot(eyeposition - origin.xyz / origin.w, normal) / dot(normal, normal);
         int start = clamp(int(dist), 0, size[dim]);
         // this should work better with integer modulo...
-        displacement = (mod(start + dir * id, size[dim] + 0.001) - offset[dim]) * unit_vecs[dim];
+        displacement = mod(start + dir * id, size[dim] + 0.001) * unit_vecs[dim];
     }
 
     // place plane vertices
@@ -133,12 +129,12 @@ void main() {
     // | 1 | 2 | 0 |   v
     // If we shift in +normal direction (towards viewer) the planes would sample
     // from the id closer to the viewer, drawing a backface.
-    o_uvw = (voxel_pos - 0.5 * o_normal) / size + 0.5;
+    o_uvw = (voxel_pos - 0.5 * o_normal) / size;
 
     // normal in: -x -y -z +x +y +z direction
     o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);
 
     // map voxel_pos (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
     // if the normal is negative invert range (w .. 0)
-    o_tex_uv = transpose(orientations[dim]) * (normal_dir * voxel_pos + offset);
+    o_tex_uv = transpose(orientations[dim]) * (normal_dir * voxel_pos);
 }

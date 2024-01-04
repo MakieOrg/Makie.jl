@@ -1,10 +1,20 @@
 # used_attributes(::Type{<:Plot}, args...) = (limits,)
 
-function convert_arguments(::Type{<:Voxel}, chunk::Array)
-    return (Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...),)
+function convert_arguments(T::Type{<:Voxel}, chunk::Array)
+    X, Y, Z = to_ndim(Vec3{Int}, size(chunk), 1)
+    return convert_arguments(T, -0.5X..0.5X, -0.5Y..0.5Y, -0.5Z..0.5Z, chunk)
 end
-function convert_arguments(::Type{<:Voxel}, chunk::Array{UInt8, 3})
-    return (chunk,)
+function convert_arguments(T::Type{<:Voxel}, xs, ys, zs, chunk::Array)
+    xi = Float32(minimum(xs))..Float32(maximum(xs))
+    yi = Float32(minimum(ys))..Float32(maximum(ys))
+    zi = Float32(minimum(zs))..Float32(maximum(zs))
+    return convert_arguments(T, xi, yi, zi, chunk)
+end
+function convert_arguments(::Type{<:Voxel}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array)
+    return (xs, ys, zs, Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...))
+end
+function convert_arguments(::Type{<:Voxel}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array{UInt8, 3})
+    return (xs, ys, zs, chunk)
 end
 
 function calculated_attributes!(::Type{<:Voxel}, plot)
@@ -77,10 +87,10 @@ function local_update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Inte
     to_range(r::UnitRange) = r
 
     mini, maxi = apply_scale(plot.colorscale[], plot._limits[])
-    input = plot.args[1][]
+    input = plot.args[end][]
     for k in ks, j in js, i in is
         idx = i + size(input, 1) * ((j-1) + size(input, 2) * (k-1))
-        _update_voxel(plot.converted[1].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
+        _update_voxel(plot.converted[end].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
     end
     plot._local_update[] = to_range.((is, js, ks))
     return nothing
@@ -117,12 +127,12 @@ function plot!(plot::Voxel)
     # Disconnect automatic mapping
     # I want to avoid recalculating limits every time the input is updated.
     # Maybe this can be done with conversion kwargs...?
-    off(plot.args[1], plot.args[1].listeners[1][2])
+    off(plot.args[end], plot.args[end].listeners[1][2])
 
     # If a UInt8 Array is passed we don't do any mapping between plot.args and
     # plot.converted. Instead we just set plot.converted = plot.args in
     # convert_arguments
-    if eltype(plot.args[1][]) == UInt8
+    if eltype(plot.args[end][]) == UInt8
         return
     end
 
@@ -130,8 +140,8 @@ function plot!(plot::Voxel)
     # Use new mapping that doesn't recalculate limits
     onany(plot, plot._limits, plot.is_air, plot.colorscale) do lims, is_air, scale
         # _limits always triggers after plot.args[1]
-        chunk = plot.args[1][]
-        output = plot.converted[1]
+        chunk = plot.args[end][]
+        output = plot.converted[end]
 
         # TODO: Julia doesn't allow this
         # maybe resize
@@ -153,7 +163,7 @@ function plot!(plot::Voxel)
     end
 
     # Initial limits
-    map!(plot, plot._limits, plot.args[1], plot.colorrange) do data, colorrange
+    map!(plot, plot._limits, plot.args[end], plot.colorrange) do data, colorrange
         if colorrange !== automatic
             return colorrange
         end

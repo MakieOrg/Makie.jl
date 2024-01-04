@@ -818,10 +818,11 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
     return cached_robj!(screen, scene, plot) do gl_attributes
-        @assert to_value(plot[1]) isa Array{UInt8, 3}
+        @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
 
         # voxel ids
-        tex = Texture(plot[1], minfilter = :nearest)
+        tex = Texture(plot.converted[end], minfilter = :nearest)
+
         # local update
         buffer = Vector{UInt8}(undef, 1)
         on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
@@ -831,11 +832,22 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
             end
             idx = 1
             for k in ks, j in js, i in is
-                buffer[idx] = plot.converted[1].val[i, j, k]
+                buffer[idx] = plot.converted[end].val[i, j, k]
                 idx += 1
             end
             GLAbstraction.texsubimage(tex, buffer, is, js, ks)
             return
+        end
+
+        # adjust model matrix according to x/y/z limits
+        gl_attributes[:model] = map(plot,
+                plot.converted...,  pop!(gl_attributes, :model)
+            ) do xs, ys, zs, chunk, model
+            mini = minimum.((xs, ys, zs))
+            width = maximum.((xs, ys, zs)) .- mini
+            return model *
+                Makie.scalematrix(Vec3f(width ./ size(chunk))) *
+                Makie.translationmatrix(Vec3f(mini))
         end
 
         # color attribute adjustments
