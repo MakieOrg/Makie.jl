@@ -1,7 +1,7 @@
 # used_attributes(::Type{<:Plot}, args...) = (limits,)
 
 function convert_arguments(::Type{<:Voxel}, chunk::Array)
-    return (Array{UInt8, 3}(undef, size(chunk)),)
+    return (Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...),)
 end
 function convert_arguments(::Type{<:Voxel}, chunk::Array{UInt8, 3})
     return (chunk,)
