@@ -80,8 +80,18 @@ function calculated_attributes!(::Type{<:Voxel}, plot)
     return nothing
 end
 
-# TODO: allow Colon()
-# TODO: document: update voxel id's and voxel id texture for the given indices or ranges
+"""
+    local_update(p::Voxel, i, j, k)
+
+Updates a section of the Voxel plot given by indices i, j, k (Integer, UnitRange
+or Colon()) according to the data present in `p.args[end]`.
+
+This is used to avoid updating the whole chunk with a pattern such as
+```
+p.args[end].val[20:30, 7:10, 8] = new_data
+local_update(plot, 20:30, 7:10, 8)
+```
+"""
 function local_update(plot::Voxel, is, js, ks)
     to_range(N, i::Integer) = i:i
     to_range(N, r::UnitRange) = r
