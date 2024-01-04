@@ -1,6 +1,6 @@
 # used_attributes(::Type{<:Plot}, args...) = (limits,)
 
-function convert_arguments(::Type{<:Voxel}, chunk::Array{<: Any, 3})
+function convert_arguments(::Type{<:Voxel}, chunk::Array)
     return (Array{UInt8, 3}(undef, size(chunk)),)
 end
 function convert_arguments(::Type{<:Voxel}, chunk::Array{UInt8, 3})
@@ -87,7 +87,7 @@ function local_update(plot::Voxel, is::Union{Integer, UnitRange}, js::Union{Inte
 end
 
 Base.@propagate_inbounds function _update_voxel(
-        output::Array{UInt8, 3}, input::Array{<: Any, 3}, i::Integer,
+        output::Array{UInt8, 3}, input::Array, i::Integer,
         is_air::Function, scale, mini::Real, maxi::Real
     )
 

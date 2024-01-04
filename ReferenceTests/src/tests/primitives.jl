@@ -489,7 +489,7 @@ end
 
     # Use same uvs/texture-sections for every side of one voxel id
     flat_uv_map = [
-        Vec4f(x, y, x+1/2, y+1/4)
+        Vec4f(x, x+1/2, y, y+1/4)
         for x in range(0.0, 1.0, length = 3)[1:end-1]
         for y in range(0.0, 1.0, length = 5)[1:end-1]
     ]
