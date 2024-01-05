@@ -2,6 +2,8 @@
 
 ## master
 
+- Add `voxels` [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527)
+
 ## 0.20.4
 
 - Changes for Bonito rename and WGLMakie docs improvements [#3477](https://github.com/MakieOrg/Makie.jl/pull/3477).
