@@ -155,7 +155,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Voxel)
     scales = Iterators.repeated(Makie.voxel_size(plot), n_instances)
 
     for (instance, position, scale) in zip(instances, positions, scales)
-        mat = Makie.transformationmatrix(position, scale, rotation)
+        mat = Makie.transformationmatrix(position, scale)
         transform!(instance, mat)
     end
 
