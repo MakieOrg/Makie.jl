@@ -148,6 +148,7 @@ function plot!(plot::Voxels)
     # plot.converted. Instead we just set plot.converted = plot.args in
     # convert_arguments
     if eltype(plot.args[end][]) == UInt8
+        plot._limits[] = (1, 255)
         return
     end
 
