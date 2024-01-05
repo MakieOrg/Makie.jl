@@ -17,7 +17,6 @@
 [![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/Makie&label=Downloads)](https://pkgs.genieframework.com?packages=Makie)
 
 [![JOSS][joss-img]][joss-url]
-[![Citation Badge](https://api.juleskreuer.eu/citation-badge.php?doi=10.21105/joss.03349)](https://juleskreuer.eu/projekte/citation-badge)
 
 [![Mastodon](https://img.shields.io/badge/-mastodon-%232B90D9?style=for-the-badge&logo=mastodon&logoColor=white)](https://julialang.social/@makie)
 
