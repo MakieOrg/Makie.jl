@@ -197,3 +197,36 @@ function plot!(plot::Voxel)
 
     return
 end
+
+function voxel_size(p::Voxel)
+    mini = minimum.(to_value.(p.converted[1:3]))
+    maxi = maximum.(to_value.(p.converted[1:3]))
+    _size = size(p.converted[4][])
+    return Vec3f((maxi .- mini) ./ _size)
+end
+
+function voxel_positions(p::Voxel)
+    mini = minimum.(to_value.(p.converted[1:3]))
+    maxi = maximum.(to_value.(p.converted[1:3]))
+    _size = size(p.converted[4][])
+    step = (maxi .- mini) ./ _size
+    return [
+        Point3f(mini .+ step .* (i-1, j-1, k-1))
+        for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
+    ]
+end
+
+function voxel_colors(p::Voxel)
+    voxel_id = p.converted[4][]
+    colormapping = p.calculated_colors[]
+    uv_map = p.uvmap[]
+    if !isnothing(uv_map)
+        @warn "Voxel textures are not implemented in this backend!"
+    elseif colormapping isa ColorMapping
+        color = colormapping.colormap[]
+    else
+        color = colormapping
+    end
+
+    return [color[id] for id in voxel_id]
+end
