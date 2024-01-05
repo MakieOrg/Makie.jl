@@ -1,6 +1,6 @@
-# voxel
+# voxels
 
-{{doc voxel}}
+{{doc voxels}}
 
 ### Examples
 
@@ -20,40 +20,17 @@ cube_with_holes = cube .* (cube .> 1.4)
 
 # To match the volume example with isovalue=1.7 and isorange=0.05 we map all
 # values outside the range (1.65..1.75) to invisible air blocks with is_air
-f, a, p = voxel(cube_with_holes, is_air = x -> !(1.65 <= x <= 1.75))
+f, a, p = voxels(-1..1, -1..1, -1..1, cube_with_holes, is_air = x -> !(1.65 <= x <= 1.75))
 ```
 \end{examplefigure}
-
-
-
-#### Colormaps
-
-Attributes related to colormaps work as usual, with the exception of `nan_color` which is not applicable:
-
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
-
-chunk = reshape(collect(1:512), 8, 8, 8)
-
-f, a, p = voxel(chunk,
-    colorrange = (65, 448), colorscale = log10,
-    lowclip = :red, highclip = :orange,
-    colormap = [:blue, :green]
-)
-```
-\end{examplefigure}
-
 
 
 #### Color and the internal representation
 
 Voxels are represented as an `Array{UInt8, 3}` of voxel ids internally.
 In this representation the voxel id `0x00` is defined as an invisible air block.
-All other ids (0x01 - 0xff or 1 - 255) are used to sample either the given `colormap`, a `color` vector or the `uvmap`.
-
-The `color` vector is indexing directly by the voxel id:
+All other ids (0x01 - 0xff or 1 - 255) are visible and derive their color from the various color attributes.
+For `plot.color` specifically the voxel id acts as an index into an array of colors:
 
 \begin{examplefigure}{}
 ```julia
@@ -65,23 +42,39 @@ chunk = UInt8[
     0 0 0; 0 0 0; 0 0 0;;;
     5 0 6; 0 0 0; 7 0 8;;;
 ]
-f, a, p = voxel(chunk, color = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta])
+f, a, p = voxels(chunk, color = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta])
 ```
 \end{examplefigure}
 
 
-Passing a chunk of type `Array{UInt8, 3}` will result in it being used directly, i.e. `p.converted[1][] === p.args[1][]`.
-It will also circumvent a bunch of processing related to colormaps, disabling `colorscale` and `colorrange`.
-(I.e. voxel ids 2..254 will be mapped directly to the `colormap`, 1 to `lowclip` and 255 to `highclip`.)
-Because of this it may be more useful to use `color` instead of `colormap` here.
-In general you should see slightly better performance and significantly lower memory usage when passing an `Array{UInt8, 3}`.
+#### Colormaps
 
+With non `UInt8` inputs, colormap attributes (colormap, colorrange, highclip, lowclip and colorscale) work as usual, with the exception of `nan_color` which is not applicable:
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+chunk = reshape(collect(1:512), 8, 8, 8)
+
+f, a, p = voxels(chunk,
+    colorrange = (65, 448), colorscale = log10,
+    lowclip = :red, highclip = :orange,
+    colormap = [:blue, :green]
+)
+```
+\end{examplefigure}
+
+When passing voxel ids directly (i.e. an `Array{UInt8, 3}`) they are used to index a vector `[lowclip; sampled_colormap; highclip]`.
+This means id 1 maps to lowclip, 2..254 to colors of the colormap and 255 to highclip.
+`colorrange` and `colorscale` are ignored in this case.
 
 
 #### Texturemaps
 
 You can also map a texture to voxels based on their id (and optionally the direction the face is facing).
-For this `plot.color` needs to be an image and `plot.uvmap` needs to be defined.
+For this `plot.color` needs to be an image (matrix of colors) and `plot.uvmap` needs to be defined.
 The `uvmap` can take two forms here.
 The first is a `Vector{Vec4f}` which maps voxel ids (starting at 1) to normalized uv coordinates, formatted left-right-bottom-top.
 
@@ -101,14 +94,14 @@ uv_map = [
 ]
 
 # Define which textures/uvs apply to which voxels (0 is invisible/air)
-voxels = UInt8[
+chunk = UInt8[
     1 0 2; 0 0 0; 3 0 4;;;
     0 0 0; 0 0 0; 0 0 0;;;
     5 0 6; 0 0 0; 7 0 9;;;
 ]
 
 # draw
-f, a, p = voxel(voxels, uvmap = uv_map, color = texture)
+f, a, p = voxels(chunk, uvmap = uv_map, color = texture)
 ```
 \end{examplefigure}
 
@@ -136,13 +129,13 @@ uv_map[2, :] = [uvs[11], uvs[11], uvs[10], uvs[11], uvs[11], uvs[10]] # 2 -> oak
 uv_map[3, :] = [uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[18]] # 3 -> crafting table
 uv_map[4, :] = [uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1]]  # 4 -> planks
 
-voxels = UInt8[
+chunk = UInt8[
     1 0 1; 0 0 0; 1 0 1;;;
     0 0 0; 0 0 0; 0 0 0;;;
     2 0 2; 0 0 0; 3 0 4;;;
 ]
 
-f, a, p = voxel(voxels, uvmap = uv_map, color = texture)
+f, a, p = voxels(chunk, uvmap = uv_map, color = texture)
 ```
 \end{examplefigure}
 
@@ -152,7 +145,7 @@ The textures used in these examples are from [Kenney's Voxel Pack](https://www.k
 
 #### Updating Voxels
 
-The `voxel` plot is a bit different from other plot types which affects how you can and should update its data.
+The voxel plot is a bit different from other plot types which affects how you can and should update its data.
 
 First you *can* pass your data as an `Observable` and update that observable as usual:
 
@@ -162,30 +155,30 @@ using GLMakie
 GLMakie.activate!() # hide
 
 chunk = Observable(ones(8,8,8))
-f, a, p = voxel(chunk, colorrange = (0, 1))
+f, a, p = voxels(chunk, colorrange = (0, 1))
 chunk[] = rand(8,8,8)
 f
 ```
 \end{examplefigure}
 
-Accessing your input data from the plot object directly does not work with `p[1]` though.
-This returns `p.converted[1]` which is the internal representation of the voxel data.
-Instead you need to use `p.args[1]`:
+You can also update the data contained in the plot object.
+For this you can't index into the plot though, since that will return the converted voxel id data.
+Instead you need to index into `p.args`.
 
 \begin{examplefigure}{}
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
 
-f, a, p = voxel(ones(8,8,8), colorrange = (0, 1))
+f, a, p = voxels(ones(8,8,8), colorrange = (0, 1))
 p.args[1][] = rand(8,8,8)
 f
 ```
 \end{examplefigure}
 
-Both of these solutions triggers a full replacement of the input matrix (i.e. `chunk`), the internal representation (`plot.converted[1]`) and the texture on gpu.
+Both of these solutions triggers a full replacement of the input array (i.e. `chunk`), the internal representation (`plot.converted[4]`) and the texture on gpu.
 This can be quite slow and wasteful if you only want to update a small section of a large chunk.
-In that case you should instead update your input data without triggering an update and then call `local_update(plot, is, js, ks)` to process the update:
+In that case you should instead update your input data without triggering an update (using `obs.val`) and then call `local_update(plot, is, js, ks)` to process the update:
 
 \begin{examplefigure}{}
 ```julia
@@ -193,48 +186,9 @@ using GLMakie
 GLMakie.activate!() # hide
 
 chunk = Observable(rand(64, 64, 64))
-f, a, p = voxel(chunk, colorrange = (0, 1))
+f, a, p = voxels(chunk, colorrange = (0, 1))
 chunk.val[30:34, :, :] .= NaN # or p.args[1].val
-Makie.local_update(p, 30:34, 1:64, 1:64)
+Makie.local_update(p, 30:34, :, :)
 f
-```
-\end{examplefigure}
-
-
-
-#### Transparency
-
-A Voxel plot has an extra argument that is relevant for transparency - `depthsorting`.
-The default `depthsorting = false` results in voxels (or technically planes) being rendered starting at the viewers position.
-This helps reduce overdraw, making rendering faster.
-However it also means that objects behind transparent voxels (planes) are not rendered unless `transparency = true`.
-To fix this voxels (planes) can be rendered back-to-front by setting `depthsorting = true`.
-
-
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
-
-fig = Figure()
-
-Label(fig[1, 2], "depthsorting = false", tellwidth = false)
-Label(fig[1, 3], "depthsorting = true",  tellwidth = false)
-Label(fig[2, 1], "transparency = false", tellheight = false, rotation = pi/2)
-Label(fig[3, 1], "transparency = true",  tellheight = false, rotation = pi/2)
-
-chunk = rand(8, 8, 8)
-for (j, depthsorting) in zip(2:3, (false, true))
-    for (i, transparency) in zip(2:3, (false, true))
-        ax = LScene(fig[i, j], show_axis = false)
-        mesh!(Sphere(Point3f(0), 1f0), color = :red)
-        voxel!(
-            ax, chunk, alpha = 0.2,
-            depthsorting = depthsorting, transparency = transparency
-        )
-    end
-end
-
-fig
 ```
 \end{examplefigure}
