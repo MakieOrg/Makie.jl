@@ -502,7 +502,7 @@ end
 
     fig = Figure(size = (800, 400))
     a1 = LScene(fig[1, 1], show_axis = false)
-    p1 = voxel!(a1, flat_voxels, uvmap = flat_uv_map, color = texture)
+    p1 = voxels!(a1, flat_voxels, uvmap = flat_uv_map, color = texture)
 
     # Use red for x, green for y, blue for z
     sided_uv_map = Matrix{Vec4f}(undef, 1, 6)
@@ -511,7 +511,7 @@ end
 
     sided_voxels = reshape(UInt8[1], 1, 1, 1)
     a2 = LScene(fig[1, 2], show_axis = false)
-    p2 = voxel!(a2, sided_voxels, uvmap = sided_uv_map, color = texture)
+    p2 = voxels!(a2, sided_voxels, uvmap = sided_uv_map, color = texture)
 
     fig
 end
@@ -525,8 +525,8 @@ end
         5 0 6; 0 0 0; 7 0 8;;;
     ]
     cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
-    voxel(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
-    a, p = voxel(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], axis=(show_axis = false,))
+    voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
+    a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
     fig
 end
 
@@ -534,8 +534,8 @@ end
     # test that lowclip and highclip are visible for values just outside the colorrange
     fig = Figure(size = (800, 400))
     chunk = reshape(collect(1:900), 30, 30, 1)
-    a1, _ = voxel(fig[1,1], chunk, lowclip = :red, highclip = :red, colorrange = (1.0, 900.0), shading = NoShading)
-    a2, _ = voxel(fig[1,2], chunk, lowclip = :red, highclip = :red, colorrange = (1.1, 899.9), shading = NoShading)
+    a1, _ = voxels(fig[1,1], chunk, lowclip = :red, highclip = :red, colorrange = (1.0, 900.0), shading = NoShading)
+    a2, _ = voxels(fig[1,2], chunk, lowclip = :red, highclip = :red, colorrange = (1.1, 899.9), shading = NoShading)
     foreach(a -> update_cam!(a.scene, Vec3f(0, 0, 40), Vec3f(0), Vec3f(0,1,0)), (a1, a2))
     fig
 end

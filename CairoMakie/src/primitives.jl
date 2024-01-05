@@ -1138,7 +1138,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxel))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)

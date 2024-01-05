@@ -499,8 +499,8 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 end
 
 """
-    voxel(x, y, z, chunk::Array{<:Real, 3})
-    voxel(chunk::Array{<:Real, 3})
+    voxels(x, y, z, chunk::Array{<:Real, 3})
+    voxels(chunk::Array{<:Real, 3})
 
 Plots a chunk of voxels centered at 0. Optionally the placement and scaling of
 the chunk can be given as range-like x, y and z. (Only the extrema are
@@ -546,7 +546,7 @@ $(Base.Docs.doc(shading_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Voxel, chunk) do scene
+@recipe(Voxels, chunk) do scene
     attr = Attributes(
         color = nothing,
         is_air = x -> isnothing(x) || ismissing(x) || isnan(x),

@@ -129,7 +129,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
 end
 
 
-function to_rpr_object(context, matsys, scene, plot::Makie.Voxel)
+function to_rpr_object(context, matsys, scene, plot::Makie.Voxels)
     # Potentially per instance attributes
     positions = Makie.voxel_positions(plot)
     m_mesh = normal_mesh(Rect3f(Point3f(0), Vec3f(1)))

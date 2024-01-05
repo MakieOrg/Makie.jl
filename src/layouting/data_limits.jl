@@ -57,7 +57,7 @@ function data_limits(text::Text)
     return data_limits(text.plots[1])
 end
 
-function point_iterator(plot::Voxel)
+function point_iterator(plot::Voxels)
     xyz = to_value.(plot.converted[1:3])
     r = Rect3f(minimum.(xyz), maximum.(xyz) .- minimum.(xyz))
     return map(corners(r)) do p

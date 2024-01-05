@@ -101,7 +101,7 @@ end
 
 const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
-    lines, surface, volume, heatmap, image, voxel
+    lines, surface, volume, heatmap, image, voxels
 )
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 

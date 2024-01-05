@@ -1,23 +1,23 @@
 # used_attributes(::Type{<:Plot}, args...) = (limits,)
 
-function convert_arguments(T::Type{<:Voxel}, chunk::Array)
+function convert_arguments(T::Type{<:Voxels}, chunk::Array)
     X, Y, Z = to_ndim(Vec3{Int}, size(chunk), 1)
     return convert_arguments(T, -0.5X..0.5X, -0.5Y..0.5Y, -0.5Z..0.5Z, chunk)
 end
-function convert_arguments(T::Type{<:Voxel}, xs, ys, zs, chunk::Array)
+function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array)
     xi = Float32(minimum(xs))..Float32(maximum(xs))
     yi = Float32(minimum(ys))..Float32(maximum(ys))
     zi = Float32(minimum(zs))..Float32(maximum(zs))
     return convert_arguments(T, xi, yi, zi, chunk)
 end
-function convert_arguments(::Type{<:Voxel}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array)
+function convert_arguments(::Type{<:Voxels}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array)
     return (xs, ys, zs, Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...))
 end
-function convert_arguments(::Type{<:Voxel}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array{UInt8, 3})
+function convert_arguments(::Type{<:Voxels}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array{UInt8, 3})
     return (xs, ys, zs, chunk)
 end
 
-function calculated_attributes!(::Type{<:Voxel}, plot)
+function calculated_attributes!(::Type{<:Voxels}, plot)
     if !isnothing(plot.color[])
         cc = lift(plot, plot.color, plot.alpha) do color, a
             if color isa AbstractVector
@@ -81,7 +81,7 @@ function calculated_attributes!(::Type{<:Voxel}, plot)
 end
 
 """
-    local_update(p::Voxel, i, j, k)
+    local_update(p::Voxels, i, j, k)
 
 Updates a section of the Voxel plot given by indices i, j, k (Integer, UnitRange
 or Colon()) according to the data present in `p.args[end]`.
@@ -92,7 +92,7 @@ p.args[end].val[20:30, 7:10, 8] = new_data
 local_update(plot, 20:30, 7:10, 8)
 ```
 """
-function local_update(plot::Voxel, is, js, ks)
+function local_update(plot::Voxels, is, js, ks)
     to_range(N, i::Integer) = i:i
     to_range(N, r::UnitRange) = r
     to_range(N, ::Colon) = 1:N
@@ -138,7 +138,7 @@ Base.@propagate_inbounds function _update_voxel(
     return nothing
 end
 
-function plot!(plot::Voxel)
+function plot!(plot::Voxels)
     # Disconnect automatic mapping
     # I want to avoid recalculating limits every time the input is updated.
     # Maybe this can be done with conversion kwargs...?
@@ -198,14 +198,14 @@ function plot!(plot::Voxel)
     return
 end
 
-function voxel_size(p::Voxel)
+function voxel_size(p::Voxels)
     mini = minimum.(to_value.(p.converted[1:3]))
     maxi = maximum.(to_value.(p.converted[1:3]))
     _size = size(p.converted[4][])
     return Vec3f((maxi .- mini) ./ _size)
 end
 
-function voxel_positions(p::Voxel)
+function voxel_positions(p::Voxels)
     mini = minimum.(to_value.(p.converted[1:3]))
     maxi = maximum.(to_value.(p.converted[1:3]))
     voxel_id = p.converted[4][]
@@ -218,7 +218,7 @@ function voxel_positions(p::Voxel)
     ]
 end
 
-function voxel_colors(p::Voxel)
+function voxel_colors(p::Voxels)
     voxel_id = p.converted[4][]
     colormapping = p.calculated_colors[]
     uv_map = p.uvmap[]

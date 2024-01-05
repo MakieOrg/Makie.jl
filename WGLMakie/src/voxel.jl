@@ -1,4 +1,4 @@
-function create_shader(scene::Scene, plot::Makie.Voxel)
+function create_shader(scene::Scene, plot::Makie.Voxels)
 
     uniform_dict = Dict{Symbol, Any}(
         :voxel_id => Sampler(plot.converted[end], minfilter = :nearest),

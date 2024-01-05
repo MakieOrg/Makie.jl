@@ -816,7 +816,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
+function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     return cached_robj!(screen, scene, plot) do gl_attributes
         @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
 
