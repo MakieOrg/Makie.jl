@@ -24,7 +24,7 @@ uniform mat3 world_normalmatrix;
 uniform mat4 projectionview;
 uniform vec3 eyeposition;
 uniform vec3 view_direction;
-uniform isampler3D voxel_id;
+uniform lowp usampler3D voxel_id;
 uniform float depth_shift;
 uniform bool depthsorting;
 

@@ -21,7 +21,7 @@ in vec2 o_tex_uv;
 flat in float plane_render_idx; // debug
 #endif
 
-uniform isampler3D voxel_id;
+uniform lowp usampler3D voxel_id;
 uniform uint objectid;
 
 {{uv_map_type}} uv_map;

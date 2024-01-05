@@ -840,8 +840,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
         end
 
         # adjust model matrix according to x/y/z limits
-        gl_attributes[:model] = map(plot,
-                plot.converted...,  pop!(gl_attributes, :model)
+        gl_attributes[:model] = map(
+                plot, plot.converted...,  pop!(gl_attributes, :model)
             ) do xs, ys, zs, chunk, model
             mini = minimum.((xs, ys, zs))
             width = maximum.((xs, ys, zs)) .- mini
@@ -876,10 +876,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxel)
             interp = interp ? :linear : :nearest
             color = gl_attributes[:color]
             gl_attributes[:color] = Texture(color, minfilter = interp)
-            @info gl_attributes[:color].texturetype
         elseif !isnothing(to_value(gl_attributes[:color]))
             gl_attributes[:color] = Texture(gl_attributes[:color], minfilter = :nearest)
-            @info gl_attributes[:color].texturetype
         end
 
         # for depthsorting
