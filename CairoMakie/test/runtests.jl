@@ -186,8 +186,6 @@ excludes = Set([
     "heatmaps & surface",
     "Textured meshscatter", # not yet implemented
     "Voxel - texture mapping", # not yet implemented
-    "Voxel - colors and colormap", # not yet implemented
-    "Voxel - lowclip and highclip", # not yet implemented
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
