@@ -81,6 +81,7 @@ three_format(::Type{<:RGBA}) = "RGBAFormat"
 three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
 three_type(::Type{N0f8}) = "UnsignedByteType"
+three_type(::Type{UInt8}) = "UnsignedByteType"
 
 function three_filter(sym::Symbol)
     sym === :linear && return "LinearFilter"
