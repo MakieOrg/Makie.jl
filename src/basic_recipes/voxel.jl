@@ -208,11 +208,13 @@ end
 function voxel_positions(p::Voxel)
     mini = minimum.(to_value.(p.converted[1:3]))
     maxi = maximum.(to_value.(p.converted[1:3]))
-    _size = size(p.converted[4][])
+    voxel_id = p.converted[4][]
+    _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
         Point3f(mini .+ step .* (i-1, j-1, k-1))
         for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
+        if voxel_id[i, j, k] !== 0x00
     ]
 end
 
@@ -228,5 +230,5 @@ function voxel_colors(p::Voxel)
         color = colormapping
     end
 
-    return [color[id] for id in voxel_id]
+    return [color[id] for id in voxel_id if id !== 0x00]
 end
