@@ -136,5 +136,5 @@ void main() {
 
     // map voxel_pos (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
     // if the normal is negative invert range (w .. 0)
-    o_tex_uv = transpose(orientations[dim]) * (normal_dir * voxel_pos);
+    o_tex_uv = transpose(orientations[dim]) * (vec3(-normal_dir, normal_dir, 1.0) * voxel_pos);
 }
