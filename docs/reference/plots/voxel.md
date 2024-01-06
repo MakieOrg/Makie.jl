@@ -171,7 +171,7 @@ using GLMakie
 GLMakie.activate!() # hide
 
 f, a, p = voxels(ones(8,8,8), colorrange = (0, 1))
-p.args[1][] = rand(8,8,8)
+p.args[end][] = rand(8,8,8)
 f
 ```
 \end{examplefigure}
@@ -187,7 +187,7 @@ GLMakie.activate!() # hide
 
 chunk = Observable(rand(64, 64, 64))
 f, a, p = voxels(chunk, colorrange = (0, 1))
-chunk.val[30:34, :, :] .= NaN # or p.args[1].val
+chunk.val[30:34, :, :] .= NaN # or p.args[end].val
 Makie.local_update(p, 30:34, :, :)
 f
 ```
