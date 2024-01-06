@@ -1,5 +1,3 @@
-# used_attributes(::Type{<:Plot}, args...) = (limits,)
-
 function convert_arguments(T::Type{<:Voxels}, chunk::Array)
     X, Y, Z = to_ndim(Vec3{Int}, size(chunk), 1)
     return convert_arguments(T, -0.5X..0.5X, -0.5Y..0.5Y, -0.5Z..0.5Z, chunk)
