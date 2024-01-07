@@ -79,6 +79,11 @@ three_format(::Type{<:Real}) = "RedFormat"
 three_format(::Type{<:RGB}) = "RGBFormat"
 three_format(::Type{<:RGBA}) = "RGBAFormat"
 
+three_format(::Type{<: Makie.VecTypes{1}}) = "RedFormat"
+three_format(::Type{<: Makie.VecTypes{2}}) = "RGFormat"
+three_format(::Type{<: Makie.VecTypes{3}}) = "RGBFormat"
+three_format(::Type{<: Makie.VecTypes{4}}) = "RGBAFormat"
+
 three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
 three_type(::Type{N0f8}) = "UnsignedByteType"
@@ -365,6 +370,10 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
 
     key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
+
+    @info keys(mesh)
+    @info mesh[:vertex_source]
+    @info mesh[:fragment_source]
 
     return mesh
 end

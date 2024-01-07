@@ -97,7 +97,7 @@ void main()
     }
 
     // otherwise we draw. For now just some color...
-    vec4 voxel_color = get_color(color, color_map, get_uv_map(), id);
+    vec4 voxel_color = get_color(color, color_map, uv_map, id);
 
 #ifdef DEBUG_RENDER_ORDER
     if (mod(o_side, 3) != DEBUG_RENDER_ORDER)
