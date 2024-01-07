@@ -213,7 +213,7 @@ function plot!(p::StreamPlot)
         rotations = map(x -> x[2], data)
     end
 
-    arrow_size = map(plot, p.arrow_size) do arrow_size
+    arrow_size = map(p, p.arrow_size) do arrow_size
         if arrow_size === automatic
             if N == 3
                 return 0.2 * minimum(p.limits[].widths) / minimum(p.gridsize[])
