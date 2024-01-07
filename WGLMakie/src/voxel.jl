@@ -1,7 +1,7 @@
 function create_shader(scene::Scene, plot::Makie.Voxels)
-
     uniform_dict = Dict{Symbol, Any}(
-        :voxel_id => Sampler(plot.converted[end], minfilter = :nearest),
+        # :voxel_id => Sampler(plot.converted[end], minfilter = :nearest),
+        :chunk_size => map(x -> Vec3{Int}(size(x)), plot.converted[end]),
         # for plane sorting
         :depthsorting => plot.depthsorting,
         :eyeposition => Vec3f(1),
@@ -89,8 +89,9 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     N_instances = sum(size(plot.converted[end][])) + 3
     dummy_data = [0f0 for _ in 1:N_instances]
 
-    instance = uv_mesh(Rect2(0f0, 0f0, 1f0, 1f0))
+    instance = GeometryBasics.mesh(Rect2(0f0, 0f0, 1f0, 1f0))
 
-    return InstancedProgram(WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
+    prog = InstancedProgram(WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
                         instance, VertexArray(dummy = dummy_data), uniform_dict)
+    return prog
 end

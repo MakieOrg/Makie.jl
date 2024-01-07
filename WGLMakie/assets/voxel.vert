@@ -1,7 +1,7 @@
 // debug FLAGS
 // #define DEBUG_RENDER_ORDER
 
-in vec2 vertices;
+// in vec2 vertices;
 
 flat out vec3 o_normal;
 out vec3 o_uvw;
@@ -31,6 +31,8 @@ const mat2x3 orientations[3] = mat2x3[](
 );
 
 void main() {
+    get_dummy(); // otherwise this doesn't render :)
+
     /* How this works:
     To simplify lets consider a 2d grid of pixel where the voxel surface would
     be the square outline of around a data point x.
@@ -64,7 +66,8 @@ void main() {
 
     // TODO: might be better for transparent rendering to alternate xyz?
     // How do we do this for non-cubic chunks?
-    ivec3 size = textureSize(voxel_id, 0);
+    // ivec3 size = textureSize(voxel_id, 0);
+    ivec3 size = get_chunk_size();
     int dim = 2, id = gl_InstanceID;
     if (gl_InstanceID > size.z + size.y + 1) {
         dim = 0;
@@ -97,7 +100,7 @@ void main() {
     }
 
     // place plane vertices
-    vec3 voxel_pos = vec3(size) * (orientations[dim] * vertices) + displacement;
+    vec3 voxel_pos = vec3(size) * (orientations[dim] * get_position()) + displacement;
     vec4 world_pos = get_model() * vec4(voxel_pos, 1.0f);
     gl_Position = projection * view * world_pos;
     gl_Position.z += gl_Position.w * get_depth_shift();
