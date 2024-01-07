@@ -1213,6 +1213,8 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linewidth = theme(scene, :linewidth)
         "The default line color used for LineElements"
         linecolor = theme(scene, :linecolor)
+        "The range of values depicted in the LineElements."
+        colorrange = nothing
         "The default line style used for LineElements"
         linestyle = :solid
         "The default marker color for MarkerElements"

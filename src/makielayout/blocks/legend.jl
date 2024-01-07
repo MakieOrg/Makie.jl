@@ -283,10 +283,14 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
 
     fracpoints = attrs.linepoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
-    lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
-        linestyle = attrs.linestyle, inspectable = false)
-
-    return [lin]
+    return [lines!(
+        scene, points;
+        linewidth = attrs.linewidth,
+        linestyle = attrs.linestyle,
+        color = attrs.linecolor,
+        colorrange = attrs.colorrange,
+        inspectable = false
+    )]
 end
 
 function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
@@ -404,9 +408,13 @@ function extract_color(@nospecialize(plot), color_default)
     return choose_scalar(color, color_default)
 end
 
+extract_colorrange(@nospecialize(plot)) =
+    haskey(plot, :colorrange) ? plot.colorrange : nothing
+
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
         color = extract_color(plot, legend.linecolor),
+        colorrange = extract_colorrange(plot),
         linestyle = choose_scalar(plot.linestyle, legend.linestyle),
         linewidth = choose_scalar(plot.linewidth, legend.linewidth))]
 end
@@ -414,6 +422,7 @@ end
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
         color = extract_color(plot, legend.markercolor),
+        colorrange = extract_colorrange(plot),
         marker = choose_scalar(plot.marker, legend.marker),
         markersize = choose_scalar(plot.markersize, legend.markersize),
         strokewidth = choose_scalar(plot.strokewidth, legend.markerstrokewidth),
@@ -425,6 +434,7 @@ function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, l
     color = extract_color(plot, legend.polycolor)
     LegendElement[PolyElement(
         color = color,
+        colorrange = extract_colorrange(plot),
         strokecolor = choose_scalar(plot.strokecolor, legend.polystrokecolor),
         strokewidth = choose_scalar(plot.strokewidth, legend.polystrokewidth),
     )]
@@ -432,7 +442,10 @@ end
 
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(polycolor = choose_scalar(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+    LegendElement[PolyElement(
+        polycolor = choose_scalar(plot.color, legend.polystrokecolor),
+        colorrange = extract_colorrange(plot),
+        polystrokecolor = :transparent, polystrokewidth = 0)]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack

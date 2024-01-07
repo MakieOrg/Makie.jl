@@ -133,6 +133,22 @@ end
     end
 end
 
+@reference_test "Legend colorrange" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    foreach(i -> lines!(ax, i:i+1; colorrange = (1, 8), color = i, label = string(i)), 1:8)
+    f[1, 2] = Legend(f, ax, "Legend")
+    f
+end
+
+@reference_test "Axislegend colorrange" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    foreach(i -> lines!(ax, i:i+1; colorrange = (1, 8), color = i, label = string(i)), 1:8)
+    axislegend(ax)
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
