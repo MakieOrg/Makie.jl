@@ -371,10 +371,6 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
 
-    @info keys(mesh)
-    @info mesh[:vertex_source]
-    @info mesh[:fragment_source]
-
     return mesh
 end
 

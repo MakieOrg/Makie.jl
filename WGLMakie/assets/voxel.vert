@@ -1,8 +1,6 @@
 // debug FLAGS
 // #define DEBUG_RENDER_ORDER
 
-// in vec2 vertices;
-
 flat out vec3 o_normal;
 out vec3 o_uvw;
 flat out int o_side;
@@ -86,7 +84,7 @@ void main() {
         // that depth test can quickly eliminate unnecessary fragments
         vec4 origin = get_model() * vec4(0, 0, 0, 1);
         float dist = dot(get_eyeposition() - origin.xyz / origin.w, normal) / dot(normal, normal);
-        float start = clamp(dist, 0.0, float(size[dim]));
+        float start = clamp(float(int(dist)), 0.0, float(size[dim]));
         // this should work better with integer modulo...
         displacement = mod(start + dir * float(id), float(size[dim]) + 0.001) * unit_vecs[dim];
     }
