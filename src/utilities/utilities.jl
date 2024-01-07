@@ -454,3 +454,19 @@ function corners(rect::Rect3{T}) where T
     T0 = zero(T)
     return Point{3,T}[o .+ Vec3{T}(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3])]
 end
+
+"""
+    available_plotting_methods()
+
+Returns an array of all available plotting functions.
+"""
+function available_plotting_methods()
+    meths = []
+    for m1 in methods(Makie.default_theme)
+        params = m1.sig.parameters
+        if length(params) == 3 && params[3] isa UnionAll
+            push!(meths, Makie.plotfunc(params[3].var.ub))
+        end
+    end
+    return meths
+end

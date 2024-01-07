@@ -50,11 +50,10 @@ jobs:
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: ReferenceImages_CairoMakie
-          path: ./CairoMakie/test/recorded_reference_images/
+          name: ReferenceImages_CairoMakie_${{ matrix.version }}
+          path: ./CairoMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
@@ -100,27 +99,11 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: ReferenceImages_GLMakie
+          name: ReferenceImages_GLMakie_${{ matrix.version }}
           path: |
-            ./GLMakie/test/recorded_reference_images/
-      - name: Save number of missing refimages to file
-        if: matrix.version == '1'
-        env:
-          N_MISSING: ${{ steps.referencetests.outputs.n_missing_refimages }}
-          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        run: |
-          mkdir -p ./n_missing
-          echo $N_MISSING > ./n_missing/n_missing_refimages
-          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
-      - name: Upload artifact with number of missing refimages
-        if: matrix.version == '1'
-        uses: actions/upload-artifact@v4
-        with:
-          name: n_missing_refimages
-          path: n_missing/
+            ./GLMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
@@ -163,11 +146,10 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: ReferenceImages_WGLMakie
-          path: ./WGLMakie/test/recorded_reference_images/
+          name: ReferenceImages_WGLMakie_${{ matrix.version }}
+          path: ./WGLMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
@@ -175,3 +157,65 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
           file: lcov.info
+
+  consolidation:
+    name: Merge artifacts
+    runs-on: ubuntu-20.04
+    if: ${{ always() }} # run even if any of the three backend test jobs failed
+    needs: [cairomakie, glmakie, wglmakie]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReferenceImages_WGLMakie_1
+          path: ./ReferenceImages/WGLMakie
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReferenceImages_CairoMakie_1
+          path: ./ReferenceImages/CairoMakie
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReferenceImages_GLMakie_1
+          path: ./ReferenceImages/GLMakie
+      - name: Consolidate reference image folders
+        run: |
+          baseDir="./ReferenceImages"
+          
+          # Create new top-level directory for combined files
+          mkdir -p "./ReferenceImagesCombined"
+          
+          # Copy the reference folder from GLMakie, it's the same for all backends
+          cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
+          
+          # Initialize empty files for concatenation
+          > "./ReferenceImagesCombined/scores.tsv"
+          > "./ReferenceImagesCombined/new_files.txt"
+          
+          # Loop through the directories and concatenate the files, and copy recorded folders
+          for dir in WGLMakie CairoMakie GLMakie; do
+              # Concatenate scores.tsv and new_files.txt
+              cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
+              cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
+          
+              # Copy recorded folder
+              mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
+              cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
+          done
+          
+          echo "Files and folders have been successfully combined into ReferenceImagesCombined."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReferenceImages
+          path: ./ReferenceImagesCombined/
+      - name: Save number of missing refimages to file
+        env:
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p ./n_missing
+          N_MISSING=$(wc -l < ./ReferenceImagesCombined/new_files.txt)
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v4
+        with:
+          name: n_missing_refimages
+          path: n_missing/
