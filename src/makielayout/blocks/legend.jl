@@ -269,12 +269,17 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
     attrs = element.attributes
     fracpoints = attrs.markerpoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
-    scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
+    return [scatter!(
+        scene, points;
+        colorrange = attrs.colorrange,
+        colormap = attrs.colormap,
+        color = attrs.markercolor,
+        marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = attrs.markerstrokecolor, inspectable = false)
-
-    return [scat]
+        strokecolor = attrs.markerstrokecolor,
+        inspectable = false
+    )]
 end
 
 function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
@@ -287,8 +292,9 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
         scene, points;
         linewidth = attrs.linewidth,
         linestyle = attrs.linestyle,
-        color = attrs.linecolor,
         colorrange = attrs.colorrange,
+        colormap = attrs.colormap,
+        color = attrs.linecolor,
         inspectable = false
     )]
 end
@@ -298,10 +304,15 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     attrs = element.attributes
     fracpoints = attrs.polypoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
-    pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
-        strokecolor = attrs.polystrokecolor, inspectable = false)
-
-    return [pol]
+    return [poly!(
+        scene, points;
+        strokewidth = attrs.polystrokewidth,
+        strokecolor = attrs.polystrokecolor,
+        colorrange = attrs.colorrange,
+        colormap = attrs.colormap,
+        color = attrs.polycolor,
+        inspectable = false
+    )]
 end
 
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
@@ -408,13 +419,11 @@ function extract_legend_color(@nospecialize(plot), color_default)
     return choose_scalar(color, color_default)
 end
 
-extract_legend_colorrange(plot) =
-    haskey(plot, :colorrange) ? plot.colorrange : nothing
-
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
         color = extract_legend_color(plot, legend.linecolor),
-        colorrange = extract_legend_colorrange(plot),
+        colorrange = plot.colorrange,
+        colormap = plot.colormap,
         linestyle = choose_scalar(plot.linestyle, legend.linestyle),
         linewidth = choose_scalar(plot.linewidth, legend.linewidth))]
 end
@@ -422,7 +431,8 @@ end
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
         color = extract_legend_color(plot, legend.markercolor),
-        colorrange = extract_legend_colorrange(plot),
+        colorrange = plot.colorrange,
+        colormap = plot.colormap,
         marker = choose_scalar(plot.marker, legend.marker),
         markersize = choose_scalar(plot.markersize, legend.markersize),
         strokewidth = choose_scalar(plot.strokewidth, legend.markerstrokewidth),
@@ -434,7 +444,8 @@ function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, l
     color = extract_legend_color(plot, legend.polycolor)
     LegendElement[PolyElement(
         color = color,
-        colorrange = extract_legend_colorrange(plot),
+        colorrange = plot.colorrange,
+        colormap = plot.colormap,
         strokecolor = choose_scalar(plot.strokecolor, legend.polystrokecolor),
         strokewidth = choose_scalar(plot.strokewidth, legend.polystrokewidth),
     )]
@@ -444,7 +455,8 @@ function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
     LegendElement[PolyElement(
         polycolor = choose_scalar(plot.color, legend.polystrokecolor),
-        colorrange = extract_legend_colorrange(plot),
+        colorrange = plot.colorrange,
+        colormap = plot.colormap,
         polystrokecolor = :transparent, polystrokewidth = 0)]
 end
 

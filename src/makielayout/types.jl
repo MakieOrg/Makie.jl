@@ -1215,6 +1215,8 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linecolor = theme(scene, :linecolor)
         "The range of values depicted in the LineElements."
         colorrange = nothing
+        "The colormap that the LineElements uses."
+        colormap = @inherit(:colormap, :viridis)
         "The default line style used for LineElements"
         linestyle = :solid
         "The default marker color for MarkerElements"

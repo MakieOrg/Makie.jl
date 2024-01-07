@@ -133,18 +133,34 @@ end
     end
 end
 
-@reference_test "Legend colorrange" begin
+@reference_test "Legend lines colorrange" begin
     f = Figure()
     ax = Axis(f[1, 1])
-    foreach(i -> lines!(ax, i:i+1; colorrange = (1, 8), color = i, label = string(i)), 1:8)
+    foreach(i -> lines!(ax, i:i+1; colorrange = (1, 8), colormap = :cividis, color = i, label = string(i)), 1:8)
     f[1, 2] = Legend(f, ax, "Legend")
     f
 end
 
-@reference_test "Axislegend colorrange" begin
+@reference_test "Axislegend lines colorrange" begin
     f = Figure()
     ax = Axis(f[1, 1])
-    foreach(i -> lines!(ax, i:i+1; colorrange = (1, 8), color = i, label = string(i)), 1:8)
+    foreach(i -> lines!(ax, i:i+1; colorrange = (1, 8), colormap = :cividis, color = i, label = string(i)), 1:8)
+    axislegend(ax)
+    f
+end
+
+@reference_test "Axislegend scatter colorrange" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    foreach(i -> scatter!(ax, i:i+1, i:i+1; colorrange = (1, 4), colormap = :cividis, color = i, label = string(i), marker = :hexagon), 1:4)
+    axislegend(ax)
+    f
+end
+
+@reference_test "Axislegend poly colorrange" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    foreach(i -> poly!(ax, Rect(i, i, 0.5, 0.25); colorrange = (1, 4), colormap = :cividis, color = i, label = string(i)), 1:4)
     axislegend(ax)
     f
 end
