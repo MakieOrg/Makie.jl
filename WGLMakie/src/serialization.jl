@@ -74,6 +74,7 @@ function serialize_three(p::Makie.AbstractPattern)
     return serialize_three(Makie.to_image(p))
 end
 
+three_format(::Type{<:Integer}) = "RedIntegerFormat"
 three_format(::Type{<:Real}) = "RedFormat"
 three_format(::Type{<:RGB}) = "RGBFormat"
 three_format(::Type{<:RGBA}) = "RGBAFormat"

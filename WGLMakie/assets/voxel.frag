@@ -12,13 +12,6 @@ in vec3 o_camdir;
 flat in float plane_render_idx; // debug
 #endif
 
-// uniform isampler3D voxel_id;
-// uniform uint objectid;
-
-// {{uv_map_type}} uv_map;
-// {{color_map_type}} color_map;
-// {{color_type}} color;
-
 vec4 debug_color(uint id) {
     return vec4(
         float((id & uint(225)) >> uint(5)) / 5.0,
@@ -96,8 +89,7 @@ vec4 pack_int(uint id, uint index) {
 void main()
 {
     // grab voxel id
-    // int id = int(texture(voxel_id, o_uvw).x);
-    int id = int(1);
+    int id = int(texture(voxel_id, o_uvw).x);
 
     // id is invisible so we simply discard
     if (id == 0) {
@@ -120,8 +112,7 @@ void main()
     }
 
     if (picking) {
-        // uvec3 size = uvec3(textureSize(voxel_id, 0).xyz);
-        uvec3 size = uvec3(get_chunk_size());
+        uvec3 size = uvec3(textureSize(voxel_id, 0).xyz);
         uvec3 idx = uvec3(o_uvw * vec3(size));
         uint lin = uint(1) + idx.x + size.x * (idx.y + size.y * idx.z);
         fragment_color = pack_int(object_id, lin);

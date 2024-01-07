@@ -16,13 +16,6 @@ out vec3 o_camdir;
 
 uniform mat4 projection, view;
 
-// uniform mat4 model;
-// uniform mat3 world_normalmatrix;
-// uniform vec3 eyeposition;
-// uniform vec3 view_direction;
-// uniform float depth_shift;
-// uniform bool depthsorting;
-
 const vec3 unit_vecs[3] = vec3[]( vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1) );
 const mat2x3 orientations[3] = mat2x3[](
     mat2x3(0, 1, 0, 0, 0, 1), // xy -> _yz (x normal)
@@ -66,8 +59,7 @@ void main() {
 
     // TODO: might be better for transparent rendering to alternate xyz?
     // How do we do this for non-cubic chunks?
-    // ivec3 size = textureSize(voxel_id, 0);
-    ivec3 size = get_chunk_size();
+    ivec3 size = textureSize(voxel_id, 0);
     int dim = 2, id = gl_InstanceID;
     if (gl_InstanceID > size.z + size.y + 1) {
         dim = 0;
