@@ -7,11 +7,11 @@ end
 
 using Observables
 using Observables: to_value
+using GeometryBasics
 using Base: RefValue
 # Needing REPL for Base.Docs.doc on julia
 # https://github.com/MakieOrg/Makie.jl/issues/3276
 using REPL
-
 
 include("LazyObservable.jl")
 include("types.jl")

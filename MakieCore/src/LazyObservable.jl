@@ -18,8 +18,8 @@ mutable struct LazyObservable{T}
     up_to_date::Observable{Bool}
     val::T
 
-    LazyObservable{T}(f::Function) = new{T}(f, Observable{Bool}(false))
-    LazyObservable(f::Function, init::T) = new{T}(f, Observable{Bool}(false), init)
+    LazyObservable{T}(f::Function) where T = new{T}(f, Observable{Bool}(false))
+    LazyObservable(f::Function, init::T) where T = new{T}(f, Observable{Bool}(false), init)
 end
 
 function update!(l::LazyObservable{T}) where T
@@ -30,19 +30,19 @@ function update!(l::LazyObservable{T}) where T
     return l.val
 end
 
-function notify(l::LazyObservable)
+function Observables.notify(l::LazyObservable)
     l.up_to_date[] = false
     return
 end
 
-getindex(l::LazyObservable) = update!(l)
-listeners(l::LazyObservable) = listeners(l.up_to_date)
+Base.getindex(l::LazyObservable) = update!(l)
+Observables.listeners(l::LazyObservable) = listeners(l.up_to_date)
 
-function on(@nospecialize(f), l::LazyObservable; kwargs...)
+function Observables.on(@nospecialize(f), l::LazyObservable; kwargs...)
     return on(l.up_to_date; kwargs...) do state
         state || f(l) # TODO: should this update? e.g. use l[]?
         return
     end
 end
 
-off(l::LazyObservable, @nospecialize(f)) = off(l.up_to_date, f)
+Observables.off(l::LazyObservable, @nospecialize(f)) = off(l.up_to_date, f)

@@ -50,7 +50,6 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
-
 # If a bounding box does not extend in a dimension it's bounding box is NaN in
 # that dimension. TODO: how does this combine with e.g. vlines?
 struct LazyBoundingBox

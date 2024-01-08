@@ -4,6 +4,7 @@ authors = ["Simon Danisch"]
 version = "0.7.2"
 
 [deps]
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
