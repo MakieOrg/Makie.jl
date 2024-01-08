@@ -50,6 +50,26 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
+
+# If a bounding box does not extend in a dimension it's bounding box is NaN in
+# that dimension. TODO: how does this combine with e.g. vlines?
+struct LazyBoundingBox
+    # parent::SceneLike TODO: probably unneccessary?
+    cache::Dict{Symbol, LazyObservable} # e.g. marker bounding box
+    # space => lazy bbox, only considering marker sizes if it's easy
+    fast_bbox::Dict{Symbol, LazyObservable{Rect3f}}
+    # space => lazy bbox, always considering marker sizes
+    full_bbox::Dict{Symbol, LazyObservable{Rect3f}}
+end
+
+function LazyBoundingBox()
+    return LazyBoundingBox(
+        Dict{Symbol, LazyObservable}(),
+        Dict{Symbol, LazyObservable{Rect3f}}(),
+        Dict{Symbol, LazyObservable{Rect3f}}()
+    )
+end
+
 """
     Plot{PlotFunc}(args::Tuple, kw::Dict{Symbol, Any})
 
@@ -65,6 +85,7 @@ Scatter((1:4,), Dict{Symbol, Any}(:color => :red))
 """
 mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     transformation::Union{Nothing, Transformable}
+    bbox::LazyBoundingBox
 
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
     kw::Dict{Symbol,Any}
@@ -79,8 +100,8 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     parent::Union{AbstractScene,Plot}
 
     function Plot{Typ,T}(kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable}) where {Typ,T,N}
-        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[],
-                   Observables.ObserverFunction[])
+        return new{Typ,T}(nothing, LazyBoundingBox(), kw, args, converted,
+                    Attributes(), Plot[], Observables.ObserverFunction[])
     end
 end
 

@@ -68,6 +68,8 @@ mutable struct Scene <: AbstractScene
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
+    bbox::LazyBoundingBox
+
     "The plots contained in the Scene."
     plots::Vector{AbstractPlot}
 
@@ -114,6 +116,7 @@ mutable struct Scene <: AbstractScene
             camera,
             camera_controls,
             transformation,
+            LazyBoundingBox(),
             plots,
             theme,
             children,

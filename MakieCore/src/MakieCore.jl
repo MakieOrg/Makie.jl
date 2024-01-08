@@ -13,6 +13,7 @@ using Base: RefValue
 using REPL
 
 
+include("LazyObservable.jl")
 include("types.jl")
 include("attributes.jl")
 include("recipes.jl")

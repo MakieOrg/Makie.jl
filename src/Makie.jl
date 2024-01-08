@@ -92,6 +92,7 @@ import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figure
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
+import MakieCore: LazyObservable, LazyBoundingBox
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
