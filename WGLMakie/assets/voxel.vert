@@ -8,6 +8,8 @@ out vec2 o_tex_uv;
 
 #ifdef DEBUG_RENDER_ORDER
 flat out float plane_render_idx;
+flat out int plane_dim;
+flat out int plane_front;
 #endif
 
 out vec3 o_camdir;
@@ -58,17 +60,39 @@ void main() {
     // TODO: might be better for transparent rendering to alternate xyz?
     // How do we do this for non-cubic chunks?
     ivec3 size = textureSize(voxel_id, 0);
-    int dim = 2, id = gl_InstanceID;
-    if (gl_InstanceID > size.z + size.y + 1) {
-        dim = 0;
-        id = gl_InstanceID - (size.z + size.y + 2);
-    } else if (gl_InstanceID > size.z) {
-        dim = 1;
-        id = gl_InstanceID - (size.z + 1);
+    int dim, id = gl_InstanceID;
+    float front = -1.0;
+    float gap = get_gap();
+    if (gap > 0.01) {
+        front = float(1 - 2 * int(gl_InstanceID & 1));
+        int temp_id = (id + 1) >> 1;
+        if (id < 2 * size.z) {
+            dim = 2;
+            id = temp_id;
+        } else if (id < 2 * (size.z + size.y)) {
+            dim = 1;
+            id = temp_id - size.z;
+        } else { // if (id > 2 * (size.z + size.y)) {
+            dim = 0;
+            id = temp_id - (size.z + size.y);
+        }
+    } else {
+        if (id < size.z) {
+            dim = 2;
+            id = id;
+        } else if (id < size.z + size.y) {
+            dim = 1;
+            id = id - size.z;
+        } else { // if (id > 2 * (size.z + size.y)) {
+            dim = 0;
+            id = id - (size.z + size.y);
+        }
     }
 
 #ifdef DEBUG_RENDER_ORDER
     plane_render_idx = float(id) / float(size[dim]-1);
+    plane_dim = dim;
+    plane_front = front;
 #endif
 
     // plane placement
@@ -78,7 +102,10 @@ void main() {
     vec3 displacement;
     if (depthsorting) {
         // depthsorted should start far away from viewer so every plane draws
-        displacement = ((0.5 + 0.5 * dir) * float(size[dim]) - dir * float(id)) * unit_vecs[dim];
+        displacement = (
+            (0.5 + 0.5 * dir) * float(size[dim]) -
+            dir * (float(id) - 0.5 * gap * front)
+        ) * unit_vecs[dim];
     } else {
         // no sorting should start at viewer and expand in view direction so
         // that depth test can quickly eliminate unnecessary fragments
@@ -86,7 +113,10 @@ void main() {
         float dist = dot(get_eyeposition() - origin.xyz / origin.w, normal) / dot(normal, normal);
         float start = clamp(float(int(dist)), 0.0, float(size[dim]));
         // this should work better with integer modulo...
-        displacement = mod(start + dir * float(id), float(size[dim]) + 0.001) * unit_vecs[dim];
+        displacement = mod(
+            start + dir * (float(id) - 0.5 * gap * front),
+            float(size[dim]) + 0.001
+        ) * unit_vecs[dim];
     }
 
     // place plane vertices
@@ -101,7 +131,7 @@ void main() {
     // If we assume the viewer to be outside of a voxel, the normal direction
     // should always be facing them. Thus:
     o_camdir = get_eyeposition() - world_pos.xyz / world_pos.w;
-    float normal_dir = sign(dot(o_camdir, normal));
+    float normal_dir = -front * sign(dot(o_camdir, normal));
     o_normal = normalize(normal_dir * normal);
 
     // The texture coordinate can also be derived. `voxel_pos` effectively gives
@@ -116,7 +146,7 @@ void main() {
     // | 1 | 2 | 0 |   v
     // If we shift in +normal direction (towards viewer) the planes would sample
     // from the id closer to the viewer, drawing a backface.
-    o_uvw = (voxel_pos - 0.5 * o_normal) / vec3(size);
+    o_uvw = (voxel_pos - 0.5 * (1.0 - gap) * o_normal) / vec3(size);
 
     // normal in: -x -y -z +x +y +z direction
     o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);

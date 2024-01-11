@@ -525,6 +525,7 @@ representation and may behave a bit differently than usual.
 - `uvmap = nothing` defines a map from voxel ids (and optionally sides) to uv coordinates. These uv coordinates are then
   used to sample a 2D texture passed through `color` for texture mapping.
 - `interpolate = false` controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated).
+- `gap = 0.0` sets the gap between voxels.
 - `_limits`: Internal attribute for keeping track of `extrema(chunk)`.
 - `_local_update`: Internal attribute for communicating updates to the backend.
 
@@ -553,6 +554,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         uvmap = nothing,
         interpolate = false, # texture
         depthsorting = false, # false = fast, true = correct transparency
+        gap = 0.0,
         # Internal:
         _limits = (0.0, 1.0),
         _local_update = (0:0, 0:0, 0:0),

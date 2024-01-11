@@ -1,30 +1,30 @@
 function create_shader(scene::Scene, plot::Makie.Voxels)
-    uniform_dict = Dict{Symbol, Any}(
-        :voxel_id => Sampler(plot.converted[end], minfilter = :nearest),
-        # for plane sorting
-        :depthsorting => plot.depthsorting,
-        :eyeposition => Vec3f(1),
-        :view_direction => camera(scene).view_direction,
-        # lighting
-        :diffuse => lift(x -> convert_attribute(x, Key{:diffuse}()), plot, plot.diffuse),
-        :specular => lift(x -> convert_attribute(x, Key{:specular}()), plot, plot.specular),
-        :shininess => lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess),
-        :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
-        :ambient => Vec3f(1),
-        # picking
-        :picking => false,
-        :object_id => UInt32(0),
-        # other
-        :normalmatrix => map(plot.model) do m
-            # should be fine to ignore placement matrix here because
-            # translation is ignored and scale shouldn't matter
-            i = Vec(1, 2, 3)
-            return transpose(inv(m[i, i]))
-        end,
-        :shading => to_value(get(plot, :shading, NoShading)) != NoShading,
-    )
+    uniform_dict = Dict{Symbol, Any}()
+    uniform_dict[:voxel_id] = Sampler(plot.converted[end], minfilter = :nearest)
+    # for plane sorting
+    uniform_dict[:depthsorting] = plot.depthsorting
+    uniform_dict[:eyeposition] = Vec3f(1)
+    uniform_dict[:view_direction] = camera(scene).view_direction
+    # lighting
+    uniform_dict[:diffuse] = lift(x -> convert_attribute(x, Key{:diffuse}()), plot, plot.diffuse)
+    uniform_dict[:specular] = lift(x -> convert_attribute(x, Key{:specular}()), plot, plot.specular)
+    uniform_dict[:shininess] = lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess)
+    uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0.0f0))
+    uniform_dict[:light_direction] = Vec3f(1)
+    uniform_dict[:light_color] = Vec3f(1)
+    uniform_dict[:ambient] = Vec3f(1)
+    # picking
+    uniform_dict[:picking] = false
+    uniform_dict[:object_id] = UInt32(0)
+    # other
+    uniform_dict[:normalmatrix] = map(plot.model) do m
+        # should be fine to ignore placement matrix here because
+        # translation is ignored and scale shouldn't matter
+        i = Vec(1, 2, 3)
+        return transpose(inv(m[i, i]))
+    end
+    uniform_dict[:shading] = to_value(get(plot, :shading, NoShading)) != NoShading
+    uniform_dict[:gap] = lift(x -> convert_attribute(x, Key{:gap}(), Key{:voxels}()), plot.gap)
 
     # TODO: localized update
     # buffer = Vector{UInt8}(undef, 1)
@@ -85,7 +85,7 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     end
 
     # TODO: this is a waste
-    N_instances = sum(size(plot.converted[end][])) + 3
+    N_instances = 2 * sum(size(plot.converted[end][]))
     dummy_data = [0f0 for _ in 1:N_instances]
 
     instance = GeometryBasics.mesh(Rect2(0f0, 0f0, 1f0, 1f0))

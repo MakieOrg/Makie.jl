@@ -10,6 +10,8 @@ in vec3 o_camdir;
 
 #ifdef DEBUG_RENDER_ORDER
 flat in float plane_render_idx; // debug
+flat in int plane_dim;
+flat in int plane_front;
 #endif
 
 vec4 debug_color(uint id) {
@@ -88,6 +90,11 @@ vec4 pack_int(uint id, uint index) {
 }
 void main()
 {
+    vec2 voxel_uv = mod(o_tex_uv, 1.0);
+    if (voxel_uv.x < 0.5 * gap || voxel_uv.x > 1.0 - 0.5 * gap ||
+        voxel_uv.y < 0.5 * gap || voxel_uv.y > 1.0 - 0.5 * gap)
+        discard;
+
     // grab voxel id
     int id = int(texture(voxel_id, o_uvw).x);
 
@@ -100,7 +107,7 @@ void main()
     vec4 voxel_color = get_color(color, color_map, uv_map, id);
 
 #ifdef DEBUG_RENDER_ORDER
-    if (mod(o_side, 3) != DEBUG_RENDER_ORDER)
+    if (plane_dim != DEBUG_RENDER_ORDER)
         discard;
     voxel_color = vec4(plane_render_idx, 0, 0, id == 0 ? 0.01 : 1.0);
 #endif

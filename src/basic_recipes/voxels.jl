@@ -201,7 +201,7 @@ function voxel_size(p::Voxels)
     mini = minimum.(to_value.(p.converted[1:3]))
     maxi = maximum.(to_value.(p.converted[1:3]))
     _size = size(p.converted[4][])
-    return Vec3f((maxi .- mini) ./ _size)
+    return Vec3f((maxi .- mini) ./ _size .- convert_attribute(p.gap[], key"gap"(), key"voxels"()))
 end
 
 function voxel_positions(p::Voxels)
@@ -211,7 +211,7 @@ function voxel_positions(p::Voxels)
     _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
-        Point3f(mini .+ step .* (i-1, j-1, k-1))
+        Point3f(mini .+ step .* (i-0.5, j-0.5, k-0.5))
         for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
         if voxel_id[i, j, k] !== 0x00
     ]

@@ -1142,7 +1142,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
-    marker = normal_mesh(Rect3f(Point3f(0), Vec3f(1)))
+    marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
 
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(primitive.model[])

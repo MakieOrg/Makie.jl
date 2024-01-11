@@ -3,7 +3,7 @@
 // {{GLSL_EXTENSIONS}}
 
 // debug FLAGS
-// #define DEBUG_RENDER_ORDER 2 // (0, 1, 2) - dimensions
+// #define DEBUG_RENDER_ORDER 0 // (0, 1, 2) - dimensions
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
@@ -19,10 +19,13 @@ in vec2 o_tex_uv;
 
 #ifdef DEBUG_RENDER_ORDER
 flat in float plane_render_idx; // debug
+flat in int plane_dim;
+flat in int plane_front;
 #endif
 
 uniform lowp usampler3D voxel_id;
 uniform uint objectid;
+uniform float gap;
 
 {{uv_map_type}} uv_map;
 {{color_map_type}} color_map;
@@ -87,6 +90,11 @@ vec3 illuminate(vec3 normal, vec3 base_color);
 
 void main()
 {
+    vec2 voxel_uv = mod(o_tex_uv, 1.0);
+    if (voxel_uv.x < 0.5 * gap || voxel_uv.x > 1.0 - 0.5 * gap ||
+        voxel_uv.y < 0.5 * gap || voxel_uv.y > 1.0 - 0.5 * gap)
+        discard;
+
     // grab voxel id
     int id = int(texture(voxel_id, o_uvw).x);
 
@@ -99,7 +107,7 @@ void main()
     vec4 voxel_color = get_color(color, color_map, id);
 
 #ifdef DEBUG_RENDER_ORDER
-    if (mod(o_side, 3) != DEBUG_RENDER_ORDER)
+    if (plane_dim != DEBUG_RENDER_ORDER)
         discard;
     voxel_color = vec4(plane_render_idx, 0, 0, id == 0 ? 0.01 : 1.0);
 #endif

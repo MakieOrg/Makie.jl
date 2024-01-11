@@ -5,13 +5,14 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
     shading = pop!(data, :shading, FastShading)
     @gen_defaults! data begin
         voxel_id = main => Texture
-        instances = const_lift(t -> sum(size(t)) + 3, voxel_id)
+        instances = const_lift(t -> 2 * sum(size(t)), voxel_id)
         model = Mat4f(I)
         transparency = false
         backlight = 0f0
         color = nothing => Texture
         color_map = nothing => Texture
         uv_map = nothing => Texture
+        gap = 0f0
         shader = GLVisualizeShader(
             screen,
             "voxel.vert",

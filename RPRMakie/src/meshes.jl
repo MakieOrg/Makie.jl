@@ -132,7 +132,7 @@ end
 function to_rpr_object(context, matsys, scene, plot::Makie.Voxels)
     # Potentially per instance attributes
     positions = Makie.voxel_positions(plot)
-    m_mesh = normal_mesh(Rect3f(Point3f(0), Vec3f(1)))
+    m_mesh = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
     marker = RPR.Shape(context, m_mesh)
     instances = [marker]
     n_instances = length(positions)
