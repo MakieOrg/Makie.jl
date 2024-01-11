@@ -525,7 +525,7 @@ representation and may behave a bit differently than usual.
 - `uvmap = nothing` defines a map from voxel ids (and optionally sides) to uv coordinates. These uv coordinates are then
   used to sample a 2D texture passed through `color` for texture mapping.
 - `interpolate = false` controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated).
-- `gap = 0.0` sets the gap between voxels.
+- `gap = 0.0` sets the gap between adjacent voxels in units of the voxel size. This needs to be larger than 0.01 to take effect.
 - `_limits`: Internal attribute for keeping track of `extrema(chunk)`.
 - `_local_update`: Internal attribute for communicating updates to the backend.
 

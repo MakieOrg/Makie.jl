@@ -25,6 +25,23 @@ f, a, p = voxels(-1..1, -1..1, -1..1, cube_with_holes, is_air = x -> !(1.65 <= x
 \end{examplefigure}
 
 
+#### Gap Attribute
+
+The `gap` attribute allows you to specify a gap size between adjacent voxels.
+It is given in units of the voxel size (at `gap = 0`) so that `gap = 0` creates no gaps and `gap = 1` reduces the voxel size to 0.
+Note that this attribute only takes effect at values `gap > 0.01`.
+
+\begin{examplefigure}{}
+```julia
+using GLMakie
+GLMakie.activate!() # hide
+
+chunk = reshape(collect(1:27), 3, 3, 3)
+voxels(chunk, gap = 0.33)
+```
+\end{examplefigure}
+
+
 #### Color and the internal representation
 
 Voxels are represented as an `Array{UInt8, 3}` of voxel ids internally.

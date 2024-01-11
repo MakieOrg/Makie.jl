@@ -27,7 +27,7 @@ end
     f, a, p = voxels(
         data,
         lowclip = RGBf(1, 0, 1), highclip = RGBf(0, 1, 0),
-        colormap = [RGBf(0, 0, 0), RGBf(1, 1, 1)]
+        colormap = [RGBf(0, 0, 0), RGBf(1, 1, 1)], gap = 0.1
     )
 
     # data conversion pipeline
@@ -53,8 +53,8 @@ end
     @test cc.colormap[][end] == RGBAf(0,1,0,1)
 
     # voxels-as-meshscatter helpers
-    @test Makie.voxel_size(p) ≈ Vec3f(1)
-    ps = [Point3f(x - 3, y - 2.5, z - 2) for z in 0:3 for y in 0:4 for x in 0:5]
+    @test Makie.voxel_size(p) ≈ Vec3f(0.9)
+    ps = [Point3f(x - 2.5, y - 2.0, z - 1.5) for z in 0:3 for y in 0:4 for x in 0:5]
     @test Makie.voxel_positions(p) ≈ ps
     @test Makie.voxel_colors(p) == cc.colormap[][p.converted[end][][:]]
 end

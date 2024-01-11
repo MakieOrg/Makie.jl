@@ -539,3 +539,8 @@ end
     foreach(a -> update_cam!(a.scene, Vec3f(0, 0, 40), Vec3f(0), Vec3f(0,1,0)), (a1, a2))
     fig
 end
+
+@reference_test "Voxel - gap attribute" begin
+    # test direct mapping of ids to colors & upsampling of vector colormap
+    voxels(rand(3,3,3), gap = 0.3)
+end
