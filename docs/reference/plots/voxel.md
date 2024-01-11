@@ -209,3 +209,12 @@ Makie.local_update(p, 30:34, :, :)
 f
 ```
 \end{examplefigure}
+
+
+
+#### Picking Voxels
+
+The `pick` function is able to pick individual voxels in a voxel plot.
+The returned index is a flat index into the array passed to `voxels`, i.e. `plt.args[end][][idx]` will return the relevant data.
+One important thing to note here is that the returned index is a `UInt32` internally and thus has limited range.
+Very large voxel plots (~4.3 billion voxels or 2048 x 2048 x 1024) can reach this limit and trigger an integer overflow.
