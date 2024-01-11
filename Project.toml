@@ -57,7 +57,6 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 TriplotBase = "981d1d27-644d-49a2-9326-4793e63143c3"
-UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
 Animations = "0.4"
@@ -112,5 +111,4 @@ StatsBase = "0.31, 0.32, 0.33, 0.34"
 StatsFuns = "0.9, 1.0"
 StructArrays = "0.3, 0.4, 0.5, 0.6"
 TriplotBase = "=0.1.0"
-UnicodeFun = "0.4"
 julia = "1.3"
