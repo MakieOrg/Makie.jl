@@ -290,7 +290,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
                 end / scale[j]
                 pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                 push!(
-                    textbuffer, to_latex(axisnames[i]), pos,
+                    textbuffer, UnicodeFun.to_latex(axisnames[i]), pos;
                     fontsize = axisnames_size[i], color = axisnames_color[i],
                     rotation = axisrotation[i], align = axisalign[i], font = axisnames_font[i]
                 )

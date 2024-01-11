@@ -46,6 +46,7 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 
+import UnicodeFun
 import RelocatableFolders
 import StatsBase
 import Distributions
