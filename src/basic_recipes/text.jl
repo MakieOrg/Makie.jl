@@ -384,6 +384,7 @@ function apply_lineheight!(lines, lh)
         for j in eachindex(line)
             l = line[j]
             ox, oy = l.origin
+            # TODO: Lineheight
             l = GlyphInfo(l; origin=Point2f(ox, oy - (i - 1) * 20))
             line[j] = l
         end
