@@ -319,6 +319,30 @@ struct GlyphInfo
     strokewidth::Float32
 end
 
+# Copy constructor, to overwrite a field
+function GlyphInfo(gi::GlyphInfo;
+        glyph=gi.glyph,
+        font=gi.font,
+        origin=gi.origin,
+        extent=gi.extent,
+        size=gi.size,
+        rotation=gi.rotation,
+        color=gi.color,
+        strokecolor=gi.strokecolor,
+        strokewidth=gi.strokewidth)
+
+    return GlyphInfo(glyph,
+                     font,
+                     origin,
+                     extent,
+                     size,
+                     rotation,
+                     color,
+                     strokecolor,
+                     strokewidth)
+end
+
+
 function GlyphCollection(v::Vector{GlyphInfo})
     GlyphCollection(
         [i.glyph for i in v],
@@ -359,7 +383,9 @@ function apply_lineheight!(lines, lh)
     for (i, line) in enumerate(lines)
         for j in eachindex(line)
             l = line[j]
-            l = Setfield.@set l.origin[2] -= (i-1) * 20 # TODO: Lineheight
+            ox, oy = l.origin
+            # TODO: Lineheight
+            l = GlyphInfo(l; origin=Point2f(ox, oy - (i - 1) * 20))
             line[j] = l
         end
     end
@@ -401,7 +427,8 @@ function apply_alignment_and_justification!(lines, ju, al)
         ju_offset = fju * (max_x - max_xs[i])
         for j in eachindex(line)
             l = line[j]
-            l = Setfield.@set l.origin -= Point2f(al_offset_x - ju_offset, al_offset_y)
+            o = l.origin
+            l = GlyphInfo(l; origin = o .- Point2f(al_offset_x - ju_offset, al_offset_y))
             line[j] = l
         end
     end
