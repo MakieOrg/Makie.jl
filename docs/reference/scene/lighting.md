@@ -34,6 +34,7 @@ The possible options for `shading` are:
 - `shading = NoShading` disables light calculations, resulting in the plain color of an object being shown.
 - `shading = FastShading` enables a simplified lighting model which only allows for one `AmbientLight` and one `DirectionalLight`.
 - `shading = MultiLightShading` is a GLMakie exclusive option which enables multiple light sources (as set in the `ScreenConfig`, default up to 64) as well as `PointLight` and `SpotLight`.
+- `shading = Makie.automatic` derive one of the above options based on the lights in `scene.lights`
 
 !!! note
     You can access the underlying scene of an `Axis3` with `ax.scene`.
