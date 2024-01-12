@@ -47,7 +47,10 @@ Defining a conversion for every plot type likely won't make sense, so one can re
 Makie.convert_arguments(P::Type{<:Scatter}, ::MyType) = convert_arguments(P, rand(10))
 ```
 
-Conversion traits make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc. Predefined are `NoConversion`, `PointBased`, `SurfaceLike` and `VolumeLike`.
+Conversion traits make it easier to define behavior for a group of plot types that share the same trait.
+`PointBased` for example applies to `Scatter`, `Lines`, etc.
+The predefined traits are `NoConversion`, `PointBased`, `CellGrid <: GridBased`, `VertexGrid <: GridBased`, `ImageLike`, `VolumeLike` and `SampleBased`.
+They all inherit from `ConversionTrait`, sometimes indirectly.
 
 ```julia
 Makie.convert_arguments(::PointBased, ::MyType) = ...
