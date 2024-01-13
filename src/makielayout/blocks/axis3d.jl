@@ -1,4 +1,4 @@
-struct OrthographicCamera <: AbstractCamera end
+struct Axis3Camera <: AbstractCamera end
 
 function initialize_block!(ax::Axis3)
 
@@ -16,7 +16,7 @@ function initialize_block!(ax::Axis3)
 
     scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
     ax.scene = scene
-    cam = OrthographicCamera()
+    cam = Axis3Camera()
     cameracontrols!(scene, cam)
 
     mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
