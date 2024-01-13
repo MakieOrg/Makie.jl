@@ -82,7 +82,7 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     left, bottom = minimum(tlims)
     width, height = widths(tlims)
 
-    eyeposition = Vec3f(left + 0.5 * width, bottom + 0.5 * height, nearclip)
+    eyeposition = Vec3f(left + 0.5 * width, bottom + 0.5 * height, -nearclip)
     view = Makie.translationmatrix(-eyeposition)
 
     half_width  = 0.5 * ifelse(xrev, -width, width)
@@ -91,7 +91,7 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
         Float32,
         -half_width, half_width,
         -half_height, half_height,
-        0, nearclip-farclip
+        0, farclip-nearclip
     )
 
     Makie.set_proj_view!(camera, projection, view)
