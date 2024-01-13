@@ -1035,12 +1035,13 @@ function attribute_examples(::Type{Axis3})
                     fig = Figure()
 
                     for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
+                        Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
+
                         for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
 
-                            Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
-
                             # show the extent of each cell using a box
-                            Box(fig[i, j], strokewidth = 0, color = :gray95)
+                            b = Box(fig[i, j], strokewidth = 0, color = :gray95)
+                            translate!(b.blockscene, Vec3f(0,0,-10_000)) # move behind Axis3
 
                             ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
                             hidedecorations!(ax)
@@ -1162,22 +1163,24 @@ function attribute_examples(::Type{Axis3})
             Example(
                 name = "Single protrusion",
                 code = """
-                    fig = Figure(backgroundcolor = :gray97)
-                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
-                    Axis3(fig[1, 1], protrusions = 100, viewmode = :stretch,
-                        title = "protrusions = 100")
-                    fig
+                fig = Figure(backgroundcolor = :gray97)
+                b = Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
+                translate!(b.blockscene, Vec3f(0,0,-10_000)) # move behind Axis3
+                Axis3(fig[1, 1], protrusions = 100, viewmode = :stretch,
+                    title = "protrusions = 100")
+                fig
                 """
             ),
             Example(
                 name = "Removing protrusions",
                 code = """
-                    fig = Figure(backgroundcolor = :gray97)
-                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
-                    ax = Axis3(fig[1, 1], protrusions = (0, 0, 0, 20), viewmode = :stretch,
-                        title = "protrusions = (0, 0, 0, 20)")
-                    hidedecorations!(ax)
-                    fig
+                fig = Figure(backgroundcolor = :gray97)
+                b = Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
+                translate!(b.blockscene, Vec3f(0,0,-10_000)) # move behind Axis3
+                ax = Axis3(fig[1, 1], protrusions = (0, 0, 0, 20), viewmode = :stretch,
+                    title = "protrusions = (0, 0, 0, 20)")
+                hidedecorations!(ax)
+                fig
                 """
             ),
         ]
