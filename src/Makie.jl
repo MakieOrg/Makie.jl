@@ -39,7 +39,6 @@ using StructArrays
 # Text related packages
 using FreeType
 using FreeTypeAbstraction
-using UnicodeFun
 using LinearAlgebra
 using Statistics
 using MakieCore
@@ -47,6 +46,7 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 
+import UnicodeFun
 import RelocatableFolders
 import StatsBase
 import Distributions
@@ -59,7 +59,6 @@ import FileIO
 import SparseArrays
 import TriplotBase
 import DelaunayTriangulation as DelTri
-import Setfield
 import REPL
 import MacroTools
 

@@ -618,27 +618,6 @@ end
 logit_10(x) = Makie.logit(x) / log(10)
 expit_10(x) = Makie.logistic(log(10) * x)
 
-# function get_ticks(l::LogitTicks, scale::typeof(Makie.logit), ::Automatic, vmin, vmax)
-
-#     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
-
-#     ticks = expit_10.(ticks_scaled)
-
-#     base_labels = get_ticklabels(automatic, ticks_scaled)
-
-#     labels = map(ticks_scaled, base_labels) do t, bl
-#         if t == 0
-#             "¹/₂"
-#         elseif t < 0
-#             "10" * Makie.UnicodeFun.to_superscript(bl)
-#         else
-#             "1-10" * Makie.UnicodeFun.to_superscript("-" * bl)
-#         end
-#     end
-
-#     (ticks, labels)
-# end
-
 """
     get_tickvalues(lt::LinearTicks, vmin, vmax)
 
