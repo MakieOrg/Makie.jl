@@ -60,7 +60,7 @@ Base.cos(θ::Degree) = cos(θ.θ * π/180)
     # inversion
     id = Quaternionf(0,0,0,1)
     for _ in 1:10
-        v1 = normalize(2 .* rand(Vec3f) .- Vec3f(1))
+        v1 = Makie.normalize(2 .* rand(Vec3f) .- Vec3f(1))
         q = Makie.rotation_between(v1, Vec3f(0,0,1))
         p = inv(q)
         maybe_id = q * p
