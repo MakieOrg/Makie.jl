@@ -50,7 +50,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     if primitive isa Lines && to_value(primitive.args[1]) isa BezierPath
-        return draw_bezierpath_lines(ctx, to_value(primitive.args[1]), scene, color, space, model, linewidth)
+        return draw_bezierpath_lines(ctx, to_value(primitive.args[1]), primitive, color, space, model, linewidth)
     end
 
     if color isa AbstractArray || linewidth isa AbstractArray
@@ -728,8 +728,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
     space = to_value(get(primitive, :space, :data))
-    xy = project_position(scene, space, Point2f(first.(imsize)), model)
-    xymax = project_position(scene, space, Point2f(last.(imsize)), model)
+    xy = project_position(primitive, space, Point2f(first.(imsize)), model)
+    xymax = project_position(primitive, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&

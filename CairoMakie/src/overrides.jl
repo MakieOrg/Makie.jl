@@ -78,7 +78,7 @@ draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_pol
 function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2,BezierPath}})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_shapes = project_shape.(Ref(scene), space, shapes, Ref(model))
+    projected_shapes = project_shape.(Ref(poly), space, shapes, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
 
