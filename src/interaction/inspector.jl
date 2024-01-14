@@ -1042,3 +1042,35 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
 
     return true
 end
+
+
+
+function show_data(inspector::DataInspector, plot::Union{HLines, VLines}, idx)
+    a = inspector.attributes
+    tt = inspector.plot
+    scene = parent_scene(plot)
+
+    lineplot = plot.plots[1]
+
+    # cast ray from cursor into screen, find closest point to line
+    pos = position_on_plot(lineplot, idx, apply_transform = true)
+    proj_pos = shift_project(scene, pos)
+    update_tooltip_alignment!(inspector, proj_pos)
+
+    tt.offset[] = ifelse(
+        a.apply_tooltip_offset[],
+        sv_getindex(lineplot.linewidth[], idx) + 2,
+        a.offset[]
+    )
+
+    pos = apply_transform(inverse_transform(transform_func(lineplot)), pos)
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, eltype(plot[1][])(pos))
+    else
+        tt.text[] = position2string(eltype(plot[1][])(pos))
+    end
+    tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
+
+    return true
+end
