@@ -2,6 +2,8 @@
 
 ## master
 
+- Use plot plot instead of scene transform functions in CairoMakie, fixing missplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
+
 ## 0.20.4
 
 - Changes for Bonito rename and WGLMakie docs improvements [#3477](https://github.com/MakieOrg/Makie.jl/pull/3477).
