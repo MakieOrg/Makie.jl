@@ -476,6 +476,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
                 output
             end
         end
+        @info data[:fast]
         return draw_lines(screen, positions, data)
     end
 end

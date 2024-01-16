@@ -135,7 +135,8 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         transparency        = false
         shader              = GLVisualizeShader(
             screen,
-            "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
+            "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom",
+            "line_segments.frag",
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
