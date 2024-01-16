@@ -6,22 +6,95 @@
 
 ### Two vectors and a matrix
 
+In this example, `x` and `y` specify the points around which the heatmap cells are placed.
+
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 
+f = Figure()
+ax = Axis(f[1, 1])
 
+centers_x = 1:5
+centers_y = 6:10
+data = reshape(1:25, 5, 5)
 
-xs = range(0, 10, length = 25)
-ys = range(0, 15, length = 25)
-zs = [cos(x) * sin(y) for x in xs, y in ys]
+heatmap!(ax, centers_x, centers_y, data)
 
-heatmap(xs, ys, zs)
+scatter!(ax, [(x, y) for x in centers_x for y in centers_y], color=:white, strokecolor=:black, strokewidth=1)
+
+f
 ```
 \end{examplefigure}
 
-### Two ranges and a function
+The same approach works for irregularly spaced cells.
+Note how the rectangles are not centered around the points, because the boundaries are between adjacent points like voronoi cells.
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure()
+ax = Axis(f[1, 1])
+
+centers_x = [1, 2, 4, 7, 11]
+centers_y = [6, 7, 9, 12, 16]
+data = reshape(1:25, 5, 5)
+
+heatmap!(ax, centers_x, centers_y, data)
+
+scatter!(ax, [(x, y) for x in centers_x for y in centers_y], color=:white, strokecolor=:black, strokewidth=1)
+f
+```
+\end{examplefigure}
+
+If we add one more element to `x` and `y`, they now specify the edges of the rectangular cells.
+Here's a regular grid:
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure()
+ax = Axis(f[1, 1])
+
+edges_x = 1:6
+edges_y = 7:12
+data = reshape(1:25, 5, 5)
+
+heatmap!(ax, edges_x, edges_y, data)
+
+scatter!(ax, [(x, y) for x in edges_x for y in edges_y], color=:white, strokecolor=:black, strokewidth=1)
+f
+```
+\end{examplefigure}
+
+We can do the same with an irregular grid as well:
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure()
+ax = Axis(f[1, 1])
+
+borders_x = [1, 2, 4, 7, 11, 16]
+borders_y = [6, 7, 9, 12, 16, 21]
+data = reshape(1:25, 5, 5)
+
+heatmap!(ax, borders_x, borders_y, data)
+scatter!(ax, [(x, y) for x in borders_x for y in borders_y], color=:white, strokecolor=:black, strokewidth=1)
+f
+```
+\end{examplefigure}
+
+### Using a `Function` instead of a `Matrix`
+
+When using a `Function` of the form `(i, j) -> v` as the `values` argument, it is evaluated over the grid spanned by `x` and `y`.
 
 \begin{examplefigure}{name = "mandelbrot_heatmap"}
 ```julia
