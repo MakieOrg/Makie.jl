@@ -7,9 +7,9 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 
 in vec4 f_color;
-in vec3 f_quad_sdf;
+in vec4 f_quad_sdf;
 in vec2 f_joint_cutoff;
-in float f_line_width;
+// in float f_line_width;
 in float f_cumulative_length;
 flat in uvec2 f_id;
 
@@ -72,7 +72,8 @@ void main(){
     float sdf = max(f_quad_sdf.x, f_quad_sdf.y);
 
     // smoothly cut out edges at +- 0.5 * line width
-    sdf = max(sdf, abs(f_quad_sdf.z) - f_line_width);
+    // sdf = max(sdf, abs(f_quad_sdf.z) - f_line_width);
+    sdf = max(sdf, max(f_quad_sdf.z, f_quad_sdf.w));
 
     // draw
     vec4 color = f_color;
@@ -132,7 +133,8 @@ void main(){
     vec4 color = vec4(1, 1, 1, 0.5);
 
     // show line smooth clipping from quad_sdf
-    float sdf_width = abs(f_quad_sdf.z) - f_line_width;
+    // float sdf_width = abs(f_quad_sdf.z) - f_line_width;
+    float sdf_width = max(f_quad_sdf.z, f_quad_sdf.w);
     color.r = 0.9 - 0.5 * aastep(0.0, sdf_width);
     color.b = 0.9 - 0.5 * aastep(0.0, f_quad_sdf.y);
     color.g = 0.9 - 0.5 * aastep(0.0, f_quad_sdf.x);

@@ -18,9 +18,9 @@ in int g_valid_vertex[];
 in float g_thickness[];
 
 out vec4 f_color;
-out vec3 f_quad_sdf; // smooth edges (along length and width)
+out vec4 f_quad_sdf; // smooth edges (along length and width)
 out vec2 f_joint_cutoff; // hard edges (joint)
-out float f_line_width;
+// out float f_line_width;
 out float f_cumulative_length;
 flat out uvec2 f_id;
 
@@ -64,6 +64,8 @@ void emit_vertex(vec3 origin, vec2 center, LineData line, int index, vec2 geom_o
 
     // sdf prototyping
 
+    // TODO Problem: this can cut the whole line even if the next segment does
+    //               fill that space (due to being short for example)
     // joint hard cutoff
     // if line start/end move hard cutoff out so smooth rect cutoff can act
     vec2 VP1 = position.xy - line.p1.xy;
@@ -115,21 +117,52 @@ void emit_vertex(vec3 origin, vec2 center, LineData line, int index, vec2 geom_o
     */
 
     // SDF in (v dir at P1, v dir at P2, n dir) (default is sharp joint)
-    f_quad_sdf = vec3(-1.0, -1.0, dot(position.xy - center, line.n));
+    // f_quad_sdf = vec3(-1.0, -1.0, dot(position.xy - center, line.n));
+    float temp = dot(position.xy - center, line.n);
+    // f_quad_sdf = vec4(-1.0, -1.0, temp - 0.5 * g_thickness[index], 0.5 * g_thickness[index] - temp);
+    f_quad_sdf = vec4(-1.0, -1.0, temp - 0.5 * g_thickness[index], -temp - 0.5 * g_thickness[index]);
+
+    bool is_a_truncated_joint = line.miter_offset_a < 0.5;
+    bool is_b_truncated_joint = line.miter_offset_b < 0.5;
 
     if (line.is_start) // flat line end
         f_quad_sdf.x = dot(VP1, -line.v.xy);
-    else if (line.miter_offset_a < 0.5) // truncated joint
+    else if (is_a_truncated_joint)
         f_quad_sdf.x = dot(VP1, line.miter_n_a) - 0.5 * g_thickness[1] * line.miter_offset_a;
 
     if (line.is_end) // flat line end
         f_quad_sdf.y = dot(VP2, line.v.xy);
-    else if (line.miter_offset_b < 0.5) // truncated joint
+    else if (is_b_truncated_joint)
         f_quad_sdf.y = dot(VP2, line.miter_n_b) - 0.5 * g_thickness[2] * line.miter_offset_b;
+
+    // if truncated or no join -> use lw at p
+    // else                    -> use lw at p + dot(miter_n, v) * sign(miter_n, offset dir)
+    // float line_length = line.segment_length;
+
+    // This mostly works
+    // TODO: integrate better
+    // TODO Problem: you can get concave shapes with very different linewidths + zooming
+    // we want to adjust v direction on respective side to dodge both edge normals...
+    // top
+    float offset_a = !is_a_truncated_joint && !line.is_start ? line.extrusion_a : 0.0;
+    float offset_b = !is_b_truncated_joint && !line.is_end   ? line.extrusion_b : 0.0;
+
+    vec2 corner1 = line.p1.xy + offset_a * line.v.xy + 0.5 * g_thickness[1] * line.n;
+    vec2 corner2 = line.p2.xy + offset_b * line.v.xy + 0.5 * g_thickness[2] * line.n;
+    vec2 edge_vector = normalize(corner2 - corner1);
+    vec2 edge_normal = vec2(-edge_vector.y, edge_vector.x);
+    f_quad_sdf.z = dot(position.xy - corner1, edge_normal);
+
+    // bottom
+    corner1 = line.p1.xy - offset_a * line.v.xy - 0.5 * g_thickness[1] * line.n;
+    corner2 = line.p2.xy - offset_b * line.v.xy - 0.5 * g_thickness[2] * line.n;
+    edge_vector = normalize(corner2 - corner1);
+    edge_normal = vec2(-edge_vector.y, edge_vector.x);
+    f_quad_sdf.w = dot(position.xy - corner1, -edge_normal);
 
 
     // f_line_length = 0.5 * line.segment_length;
-    f_line_width = 0.5 * g_thickness[index];
+    // f_line_width = 0.5 * g_thickness[index];
     f_color     = g_color[index];
     gl_Position = vec4((2.0 * position.xy / resolution) - 1.0, position.z, 1.0);
     f_id        = g_id[index];
@@ -141,10 +174,13 @@ void emit_vertex(vec3 origin, vec2 center, LineData line, int index, vec2 geom_o
 void emit_quad(LineData line) {
     vec2 center = 0.5 * (line.p1.xy + line.p2.xy);
     float geom_linewidth = 0.5 * max(g_thickness[1], g_thickness[2]) + AA_THICKNESS;
-    emit_vertex(line.p1, center, line, 1, vec2(- (line.extrusion_a + AA_THICKNESS), -geom_linewidth));
-    emit_vertex(line.p1, center, line, 1, vec2(- (line.extrusion_a + AA_THICKNESS), +geom_linewidth));
-    emit_vertex(line.p2, center, line, 2, vec2(+ (line.extrusion_b + AA_THICKNESS), -geom_linewidth));
-    emit_vertex(line.p2, center, line, 2, vec2(+ (line.extrusion_b + AA_THICKNESS), +geom_linewidth));
+
+    emit_vertex(line.p1, center, line, 1, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), -geom_linewidth));
+    emit_vertex(line.p1, center, line, 1, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), +geom_linewidth));
+    emit_vertex(line.p2, center, line, 2, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), -geom_linewidth));
+    emit_vertex(line.p2, center, line, 2, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), +geom_linewidth));
+
+    // -geom_linewidth means -n offset means -miter_n offset
 
     EndPrimitive();
 }
@@ -260,8 +296,8 @@ void main(void)
     float linewidth = 0.5 * max(g_thickness[1], g_thickness[2]);
     line.miter_offset_a = dot(line.miter_n_a, n1);
     line.miter_offset_b = dot(line.miter_n_b, n1);
-    line.extrusion_a = linewidth * abs(dot(line.miter_n_a, v1.xy)) / max(0.5, line.miter_offset_a);
-    line.extrusion_b = linewidth * abs(dot(line.miter_n_b, v1.xy)) / max(0.5, line.miter_offset_b);
+    line.extrusion_a = linewidth * dot(line.miter_n_a, v1.xy) / max(0.5, line.miter_offset_a);
+    line.extrusion_b = linewidth * dot(line.miter_n_b, v1.xy) / max(0.5, line.miter_offset_b);
 
     // For truncated joins we also need to know how far the edge of the joint
     // (between a and b) is from the center point which the line segments share
@@ -274,8 +310,10 @@ void main(void)
     //            /        /
     //
     // This distance is given by linewidth * dot(miter_n_a, n1)
-    line.miter_offset_a = isvalid[0] ? line.miter_offset_a : 1.0; // else this may create 2 edges
-    line.miter_offset_b = isvalid[3] ? line.miter_offset_b : 1.0; // else this may create 2 edges
+    // start/end case doesn't use this anymore
+    // line.miter_offset_a = isvalid[0] ? line.miter_offset_a : 1.0; // else this may create 2 edges
+    // line.miter_offset_b = isvalid[3] ? line.miter_offset_b : 1.0; // else this may create 2 edges
+
 
     // For the distance we also need the miter normals to consistently point
     // outwards (i.e. towards the a-b line). We can enforce this using the line
