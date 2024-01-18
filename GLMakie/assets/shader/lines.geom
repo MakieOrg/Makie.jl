@@ -311,11 +311,24 @@ void main(void)
     // or equivalently
     //   dot(miter_n_a, n1) < 0.5
     // giving use the limit:
-    float linewidth = 0.5 * max(g_thickness[1], g_thickness[2]);
     line.miter_offset_a = dot(line.miter_n_a, n1);
     line.miter_offset_b = dot(line.miter_n_b, n1);
-    line.extrusion_a = linewidth * dot(line.miter_n_a, v1.xy) / max(0.5, line.miter_offset_a);
-    line.extrusion_b = linewidth * dot(line.miter_n_b, v1.xy) / max(0.5, line.miter_offset_b);
+
+    // TODO: switch to this miter limit
+    // if (dot(v0, v1) < MITER_LIMIT) {
+    if (dot(line.miter_v_a, v1.xy) < 0.5) {
+        // need to extend segment to include previous segments corners for truncated join
+        line.extrusion_a = 0.5 * g_thickness[1] * dot(v1.xy, line.n0);
+    } else {
+        // shallow/spike join needs to include point where miter normal meets outer line edge
+        line.extrusion_a = 0.5 * g_thickness[1] * dot(line.miter_n_a, v1.xy) / line.miter_offset_a;
+    }
+    // if (dot(v1, v2) < MITER_LIMIT) {
+    if (dot(v1.xy, line.miter_v_b) < 0.5) {
+        line.extrusion_b = 0.5 * g_thickness[2] * dot(-v1.xy, line.n2);
+    } else {
+        line.extrusion_b = 0.5 * g_thickness[2] * dot(line.miter_n_b, v1.xy) / max(0.5, line.miter_offset_b);
+    }
 
     // For truncated joins we also need to know how far the edge of the joint
     // (between a and b) is from the center point which the line segments share
@@ -329,15 +342,6 @@ void main(void)
     //
     // This distance is given by linewidth * dot(miter_n_a, n1)
     // start/end case doesn't use this anymore
-    // line.miter_offset_a = isvalid[0] ? line.miter_offset_a : 1.0; // else this may create 2 edges
-    // line.miter_offset_b = isvalid[3] ? line.miter_offset_b : 1.0; // else this may create 2 edges
-
-
-    // For the distance we also need the miter normals to consistently point
-    // outwards (i.e. towards the a-b line). We can enforce this using the line
-    // directions
-    // line.miter_n_a *= (dot(line.miter_n_a, v1.xy) < 0.0 ? 1.0 : -1.0);
-    // line.miter_n_b *= (dot(line.miter_n_b, v1.xy) < 0.0 ? -1.0 : 1.0);
 
     emit_quad(line);
 
