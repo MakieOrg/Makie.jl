@@ -57,7 +57,7 @@ function ticks(points, resolution)
 
     scaled = ((resolution + 1) / resolution) .* points
     r = range(first(scaled), stop=last(scaled), length=resolution+1)[1:end-1]
-    return Float16[gappy(x, scaled) for x = r]
+    return Float16[-gappy(x, scaled) for x = r]
 end
 
 @nospecialize
