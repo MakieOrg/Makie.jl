@@ -468,10 +468,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
                             data[:resolution]) do f, ps, space, pvm, res
                 transformed = apply_transform(f, ps, space)
                 output = Vector{Point3f}(undef, length(transformed))
-                scale = Vec3f(res[1], res[2], 1f0)
+                scale = Vec3f(0.5 * res[1], 0.5 * res[2], 1f0)
+                offset = Vec3f(0.5 * res[1], 0.5 * res[2], 0)
                 for i in eachindex(transformed)
                     clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                    output[i] = scale .* Point3f(clip) ./ clip[4]
+                    output[i] = scale .* Point3f(clip) ./ clip[4] .+ offset
                 end
                 output
             end
