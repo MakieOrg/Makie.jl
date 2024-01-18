@@ -8,9 +8,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 
 in vec4 f_color;
 in vec4 f_quad_sdf;
-in vec2 f_joint_cutoff;
-// in float f_line_width;
-// in float f_cumulative_length;
+in vec4 f_joint_cutoff;
 in vec2 f_uv;
 flat in vec4 f_pattern_overwrite;
 flat in uvec2 f_id;
@@ -92,6 +90,10 @@ void main(){
     // sdf = max(sdf, abs(f_quad_sdf.z) - f_line_width);
     sdf = max(sdf, max(f_quad_sdf.z, f_quad_sdf.w));
 
+    // smoothly cut off corners of truncated miter joints
+    sdf = max(sdf, max(f_joint_cutoff.z, f_joint_cutoff.w));
+
+    // add pattern
     sdf = max(sdf, get_pattern_sdf(pattern));
 
     // draw

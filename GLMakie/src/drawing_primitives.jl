@@ -459,7 +459,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             linewidth = gl_attributes[:thickness]
             px_per_unit = data[:px_per_unit]
             data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
-                ppu * _mean(lw) .* ls
+                return ppu * _mean(lw) .* ls
             end
             data[:fast] = false
 
