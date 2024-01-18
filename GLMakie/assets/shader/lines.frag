@@ -10,7 +10,9 @@ in vec4 f_color;
 in vec4 f_quad_sdf;
 in vec2 f_joint_cutoff;
 // in float f_line_width;
-in float f_cumulative_length;
+// in float f_cumulative_length;
+in vec2 f_uv;
+flat in vec4 f_pattern_overwrite;
 flat in uvec2 f_id;
 
 // in vec2 f_rect_sdf;
@@ -19,11 +21,11 @@ flat in uvec2 f_id;
 // flat in float f_line_offset;
 
 {{pattern_type}} pattern;
-
 uniform float pattern_length;
 uniform bool fxaa;
 
 // Half width of antialiasing smoothstep
+#define AA_THICKNESS 4
 #define ANTIALIAS_RADIUS 0.8
 
 float aastep(float threshold1, float dist) {
@@ -31,24 +33,39 @@ float aastep(float threshold1, float dist) {
 }
 
 // Pattern sampling
-float get_pattern_sdf(sampler2D pattern, vec2 uv){
-    // make this texture repeating
-    // TODO
-    // vec2 uv2 = vec2((uv.x + f_line_offset) / pattern_length, 0.5 * uv.y / f_line_width);
-    return texture(pattern, uv).x;
+float get_pattern_sdf(sampler2D pattern){
+    return texture(pattern, f_uv).x;
 }
-float get_pattern_sdf(sampler1D pattern, vec2 uv){
-    // make this texture repeating
-    return texture(pattern, uv.x / pattern_length).x;
+float get_pattern_sdf(sampler1D pattern){
+    float sdf_offset, x;
+    if (f_uv.x <= f_pattern_overwrite.x) {
+        sdf_offset = max(f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_THICKNESS);
+        return f_pattern_overwrite.y * ( // +- pos ... 0
+            pattern_length * (f_pattern_overwrite.x - f_uv.x) + // pos ... 0
+            sdf_offset
+        );
+        // subtract at most AA_THICKNES
+        // if texture > -AA_THICKNESS start from there
+        // return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - f_uv.x) - AA_THICKNESS);
+    } else if (f_uv.x >= f_pattern_overwrite.z) {
+        sdf_offset = max(f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_THICKNESS);
+        return f_pattern_overwrite.w * ( // +- pos ... 0
+            pattern_length * (f_uv.x - f_pattern_overwrite.z) + // pos ... 0
+            sdf_offset
+        );
+        // return f_pattern_overwrite.w * (pattern_length * (f_uv.x - f_pattern_overwrite.z) - AA_THICKNESS);
+
+    } else
+        return texture(pattern, f_uv.x).x;
 }
-float get_pattern_sdf(Nothing _, vec2 uv){
+float get_pattern_sdf(Nothing _){
     return -10.0;
 }
 
 void write2framebuffer(vec4 color, uvec2 id);
 
 
-#define DEBUG
+// #define DEBUG
 
 void main(){
     // Metrics we need:
@@ -74,6 +91,8 @@ void main(){
     // smoothly cut out edges at +- 0.5 * line width
     // sdf = max(sdf, abs(f_quad_sdf.z) - f_line_width);
     sdf = max(sdf, max(f_quad_sdf.z, f_quad_sdf.w));
+
+    sdf = max(sdf, get_pattern_sdf(pattern));
 
     // draw
     vec4 color = f_color;
@@ -144,6 +163,10 @@ void main(){
         color.r += 0.3;
         color.gb -= vec2(0.3);
     }
+
+    // show pattern by reducing alpha heavily on off-parts
+    if (get_pattern_sdf(pattern) > 0)
+        color.a *= 0.2;
 #endif
 
 
