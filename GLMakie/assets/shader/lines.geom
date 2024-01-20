@@ -150,6 +150,10 @@ void emit_vertex(LineVertex vertex) {
     EmitVertex();
 }
 
+// TODO isn't this wrong?
+vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
+vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+
 void main(void)
 {
     // These need to be set but don't have reasonable values here
@@ -209,17 +213,17 @@ void main(void)
         v2 = (p3 - p2) / length(p3.xy - p2.xy);
 
     // determine the normal of each of the 3 segments (previous, current, next)
-    vec2 n0 = vec2(-v0.y, v0.x);
-    vec2 n1 = vec2(-v1.y, v1.x);
-    vec2 n2 = vec2(-v2.y, v2.x);
+    vec2 n0 = normal_vector(v0);
+    vec2 n1 = normal_vector(v1);
+    vec2 n2 = normal_vector(v2);
 
     // Miter normals (normal of truncated edge / vector to sharp corner)
     vec2 miter_n_a = normalize(n0 + n1);
     vec2 miter_n_b = normalize(n1 + n2);
 
     // miter vectors (line vector matching miter normal)
-    vec2 miter_v_a = vec2(miter_n_a.y, -miter_n_a.x);
-    vec2 miter_v_b = vec2(miter_n_b.y, -miter_n_b.x);
+    vec2 miter_v_a = -normal_vector(miter_n_a);
+    vec2 miter_v_b = -normal_vector(miter_n_b);
 
     // distance between p1/2 and respective sharp corner
     float miter_offset_a = dot(miter_n_a, n1);
