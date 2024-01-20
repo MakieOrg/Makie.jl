@@ -53,29 +53,40 @@ How it works:
     - adjust sdf to truncate join without AA
 */
 
-struct LineData {
-    vec3 p1, p2, v;
-    float segment_length, extrusion_a, extrusion_b;
-    vec2 n, n0, n2, miter_v_a, miter_n_a, miter_v_b, miter_n_b;
-    float miter_offset_a, miter_offset_b;
-    bool is_start, is_end;
+struct LineVertex {
+    vec3 position;
+    int index;
+    vec4 quad_sdf;
+    vec4 joint_cutoff;
+    vec2 uv;
 };
 
-void process_pattern(Nothing pattern, LineData line) {
+// Default constructor
+LineVertex LV(vec3 position, int index) {
+    LineVertex vertex;
+    vertex.position = position;        // p1 or p2, will be modified further
+    vertex.index = index;              // index will remain
+    vertex.quad_sdf = vec4(-10.0);     // defaults to always draw
+    vertex.joint_cutoff = vec4(-10.0); // defaults to always draw/never cut away
+    // vertex.uv                       // only relevant with uv
+    return vertex;
+}
+
+void process_pattern(Nothing pattern, bool[4] isvalid, float extrusion_a, float extrusion_b) {
     // do not adjust stuff
     f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
 }
-void process_pattern(sampler2D pattern, LineData line) {
+void process_pattern(sampler2D pattern, bool[4] isvalid, float extrusion_a, float extrusion_b) {
     // TODO
     // This is not a case that's used at all yet. Maybe consider it in the future...
     f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
 }
 
-void process_pattern(sampler1D pattern, LineData line) {
+void process_pattern(sampler1D pattern, bool[4] isvalid, float extrusion_a, float extrusion_b) {
     float pattern_sample;
 
     // line segment start
-    if (line.is_start) {
+    if (!isvalid[0]) {
         // get sample slightly further along
         pattern_sample = texture(pattern, (g_lastlen[1] + AA_THICKNESS) / pattern_length).x;
         // extend this value into the AA gap
@@ -85,120 +96,58 @@ void process_pattern(sampler1D pattern, LineData line) {
         // sample at "center" of corner/joint
         pattern_sample = texture(pattern, g_lastlen[1] / pattern_length).x;
         // overwrite until one AA gap past the corner/joint
-        f_pattern_overwrite.x = (g_lastlen[1] + abs(line.extrusion_a) + AA_THICKNESS) / pattern_length;
+        f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion_a) + AA_THICKNESS) / pattern_length;
         // using the sign of the sample to decide between drawing or not drawing
         f_pattern_overwrite.y = sign(pattern_sample);
     }
 
     // and again for the end of the segment
-    if (line.is_end) {
+    if (!isvalid[3]) {
         pattern_sample = texture(pattern, (g_lastlen[2] - AA_THICKNESS) / pattern_length).x;
         f_pattern_overwrite.z = (g_lastlen[2] - AA_THICKNESS) / pattern_length;
         f_pattern_overwrite.w = sign(pattern_sample);
     } else {
         pattern_sample = texture(pattern, g_lastlen[2] / pattern_length).x;
-        f_pattern_overwrite.z = (g_lastlen[2] - abs(line.extrusion_b) - AA_THICKNESS) / pattern_length;
+        f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion_b) - AA_THICKNESS) / pattern_length;
         f_pattern_overwrite.w = sign(pattern_sample);
     }
 }
 
-void emit_vertex(vec3 origin, vec2 center, LineData line, int index, vec2 geom_offset) {
-
-    vec3 position = origin + geom_offset.x * line.v + vec3(geom_offset.y * line.n, 0);
-
-    // sdf generation
-
-    bool is_a_truncated_joint = line.miter_offset_a < 0.5;
-    bool is_b_truncated_joint = line.miter_offset_b < 0.5;
-
-    vec2 VP1 = position.xy - line.p1.xy;
-    vec2 VP2 = position.xy - line.p2.xy;
-
-    // by default joint cutoffs do nothing
-    f_joint_cutoff = vec4(-10.0);
-
-    // sharp joints use sharp (pixelated) cut offs to avoid self-overlap
-    if (!line.is_start && !is_a_truncated_joint)
-        f_joint_cutoff.x = dot(VP1, -line.miter_v_a);
-    if (!line.is_end && !is_b_truncated_joint)
-        f_joint_cutoff.y = dot(VP2, line.miter_v_b);
-
-    // truncated joints use smooth cutoff for corners that are outside the other segment
-    // TODO: this slightly degrades AA quality due to two AA edges overlapping
-    if (is_a_truncated_joint)
-        f_joint_cutoff.z = dot(VP1, -sign(dot(line.v.xy, line.n0)) * line.n0) - 0.5 * g_thickness[1];
-    if (is_b_truncated_joint)
-        f_joint_cutoff.w = dot(VP2,  sign(dot(line.v.xy, line.n2)) * line.n2) - 0.5 * g_thickness[2];
-
-
-    // SDF of quad
-
-    // In line direction
-    if (line.is_start) // flat line end
-        f_quad_sdf.x = dot(VP1, -line.v.xy);
-    else if (is_a_truncated_joint)
-        f_quad_sdf.x = dot(VP1, line.miter_n_a) - 0.5 * g_thickness[1] * line.miter_offset_a;
-
-    if (line.is_end) // flat line end
-        f_quad_sdf.y = dot(VP2, line.v.xy);
-    else if (is_b_truncated_joint)
-        f_quad_sdf.y = dot(VP2, line.miter_n_b) - 0.5 * g_thickness[2] * line.miter_offset_b;
-
-
-    // In line normal direction (linewidth)
-    // This mostly works
-    // TODO: integrate better
-    // TODO Problem: you can get concave shapes with very different linewidths + zooming
-    // we want to adjust v direction on respective side to dodge both edge normals...
-
-    // start/end/truncated joint: use g_thickness[i] at point i
-    // sharp joint: use g_thickness[i] at point i +- joint offset to avoid different
-    //              linewidth between this and the previous/next segment
-    // TODO: can we calculate this more efficiently?
-    // top
-    float offset_a = !is_a_truncated_joint && !line.is_start ? line.extrusion_a : 0.0;
-    float offset_b = !is_b_truncated_joint && !line.is_end   ? line.extrusion_b : 0.0;
-
-    vec2 corner1 = line.p1.xy + offset_a * line.v.xy + 0.5 * g_thickness[1] * line.n;
-    vec2 corner2 = line.p2.xy + offset_b * line.v.xy + 0.5 * g_thickness[2] * line.n;
-    vec2 edge_vector = normalize(corner2 - corner1);
-    vec2 edge_normal = vec2(-edge_vector.y, edge_vector.x);
-    f_quad_sdf.z = dot(position.xy - corner1, edge_normal);
-
-    // bottom
-    corner1 = line.p1.xy - offset_a * line.v.xy - 0.5 * g_thickness[1] * line.n;
-    corner2 = line.p2.xy - offset_b * line.v.xy - 0.5 * g_thickness[2] * line.n;
-    edge_vector = normalize(corner2 - corner1);
-    edge_normal = vec2(-edge_vector.y, edge_vector.x);
-    f_quad_sdf.w = dot(position.xy - corner1, -edge_normal);
-
-    // And the simpler things...
-    f_color     = g_color[index];
-    gl_Position = vec4((2.0 * position.xy / resolution) - 1.0, position.z, 1.0);
-    f_id        = g_id[index];
-    // index into pattern
-    f_uv = vec2(
-        (g_lastlen[index] + geom_offset.x) / pattern_length,
-        0.5 + geom_offset.y / g_thickness[index]
+// If we don't have a pattern we don't need uv's
+void generate_uv(Nothing pattern, inout LineVertex vertex, int index, float extrusion, float linewidth) {}
+// If we have a 1D pattern we don't need uv.y
+void generate_uv(sampler1D pattern, inout LineVertex vertex, int index, float extrusion, float linewidth) {
+    vertex.uv = vec2((g_lastlen[index] + extrusion) / pattern_length, 0.0);
+}
+void generate_uv(sampler2D pattern, inout LineVertex vertex, int index, float extrusion, float linewidth) {
+    vertex.uv = vec2(
+        (g_lastlen[index] + extrusion) / pattern_length,
+        0.5 + linewidth / g_thickness[index]
     );
-    EmitVertex();
 }
 
-void emit_quad(LineData line) {
-    vec2 center = 0.5 * (line.p1.xy + line.p2.xy);
-    float geom_linewidth = 0.5 * max(g_thickness[1], g_thickness[2]) + AA_THICKNESS;
+void generate_uvs(inout LineVertex[4] vertices, float extrusion_a, float extrusion_b, float geom_linewidth) {
+    float extrusion, linewidth = geom_linewidth + AA_THICKNESS;
 
-    // set up pattern overwrites at joints
-    process_pattern(pattern, line);
+    // start of line segment
+    extrusion = - (abs(extrusion_a) + AA_THICKNESS);
+    generate_uv(pattern, vertices[0], 1, extrusion, -linewidth);
+    generate_uv(pattern, vertices[1], 1, extrusion, +linewidth);
 
-    emit_vertex(line.p1, center, line, 1, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), -geom_linewidth));
-    emit_vertex(line.p1, center, line, 1, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), +geom_linewidth));
-    emit_vertex(line.p2, center, line, 2, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), -geom_linewidth));
-    emit_vertex(line.p2, center, line, 2, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), +geom_linewidth));
+    // end of line segment
+    extrusion = abs(extrusion_b) + AA_THICKNESS;
+    generate_uv(pattern, vertices[2], 2, extrusion, -linewidth);
+    generate_uv(pattern, vertices[3], 2, extrusion, +linewidth);
+}
 
-    // -geom_linewidth means -n offset means -miter_n offset
-
-    EndPrimitive();
+void emit_vertex(LineVertex vertex) {
+    gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
+    f_color        = g_color[vertex.index];
+    f_quad_sdf     = vertex.quad_sdf;
+    f_joint_cutoff = vertex.joint_cutoff;
+    f_uv           = vertex.uv;
+    f_id           = g_id[vertex.index];
+    EmitVertex();
 }
 
 void main(void)
@@ -249,9 +198,9 @@ void main(void)
 #endif
 
     // determine the direction of each of the 3 segments (previous, current, next)
-    vec3 v1 = p2 - p1;
+    vec3 v1 = (p2 - p1);
     float segment_length = length(v1.xy);
-    v1 = v1 / segment_length;
+    v1 /= segment_length;
     vec3 v0 = v1;
     vec3 v2 = v1;
     if (p1 != p0 && isvalid[0])
@@ -264,7 +213,192 @@ void main(void)
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
 
+    // Miter normals (normal of truncated edge / vector to sharp corner)
+    vec2 miter_n_a = normalize(n0 + n1);
+    vec2 miter_n_b = normalize(n1 + n2);
+
+    // miter vectors (line vector matching miter normal)
+    vec2 miter_v_a = vec2(miter_n_a.y, -miter_n_a.x);
+    vec2 miter_v_b = vec2(miter_n_b.y, -miter_n_b.x);
+
+    // distance between p1/2 and respective sharp corner
+    float miter_offset_a = dot(miter_n_a, n1);
+    float miter_offset_b = dot(miter_n_b, n1);
+
+    // Are we truncating the joint?
+    bool is_a_truncated_joint = dot(v0, v1) < MITER_LIMIT;
+    bool is_b_truncated_joint = dot(v1, v2) < MITER_LIMIT;
+
+    // How far the line needs to extend to accomodate the joint
+    // Note that the sign flips between + and - depending on the orientation
+    // of the joint.
+    float extrusion_a, extrusion_b;
+
+    if (is_a_truncated_joint) {
+        // need to extend segment to include previous segments corners for truncated join
+        extrusion_a = 0.5 * g_thickness[1] * dot(v1.xy, n0);
+    } else {
+        // shallow/spike join needs to include point where miter normal meets outer line edge
+        extrusion_a = 0.5 * g_thickness[1] * dot(miter_n_a, v1.xy) / miter_offset_a;
+    }
+    if (is_b_truncated_joint) {
+        extrusion_b = 0.5 * g_thickness[2] * dot(-v1.xy, n2);
+    } else {
+        extrusion_b = 0.5 * g_thickness[2] * dot(miter_n_b, v1.xy) / max(0.5, miter_offset_b);
+    }
+
+    LineVertex[4] vertices = LineVertex[4](LV(p1, 1), LV(p1, 1), LV(p2, 2), LV(p2, 2));
+
+    // vertex positions
+
+    // Note: We cut off lines at g_thickness[1/2] so we never go beyond those values
+    float geom_linewidth = 0.5 * max(g_thickness[1], g_thickness[2]);
+
+    // Position
+    // TODO: Consider trapezoidal shapes (using AA-padded linewidths as is, not max)
+    //        SDF's should be fine, uv's not
+    vertices[0].position += (-(abs(extrusion_a) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
+    vertices[1].position += (-(abs(extrusion_a) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
+    vertices[2].position += (+(abs(extrusion_b) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
+    vertices[3].position += (+(abs(extrusion_b) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
+
+    // Set up pattern overwrites at joints if patterns are used
+    process_pattern(pattern, isvalid, extrusion_a, extrusion_b);
+
+    // Set up uvs if patterns are used
+    generate_uvs(vertices, extrusion_a, extrusion_b, geom_linewidth);
+
+    // ^ Clean
+    ////////////////////////////////////////
+    // v TODO
+
     // Compute variables for line joints
+
+    // Options:
+    // valid    truncated
+    // false -> false
+    // true     false
+    // true     true
+
+    // joint cutoff
+    // (f, f) -> do nothin
+    // (t, f) -> miter_v
+    // (t, t) -> v1, n0 or n2, index
+
+    // quad (v)
+    // (f, f) -> (+-) v1
+    // (t, f) -> nothing? TODO shouldn't this move cutoff out?
+    // (t, t) -> miter_n, index, miter_offset
+
+    // quad (n)
+    // always: extrusion_a + b, v1, n1
+    // (f, f) -> dot(VP1, +-n1) - linewidth[index]
+    // (t, f) -> use linewidth at translated corners
+    // (t, t) -> dot(VP1, +-n1) - linewidth[index]
+
+    // simpler var linewidth:
+    // the sdf tells us the linewidth at the vertices of the generated quad
+    // so we can do the following:
+    // 1. calculate linewidth at vertex
+    // 2. compute distance between vertex and p1 in normal direction.
+    //    This is unaffected by extrusion as extrusion \perp normal
+    // 3. modify like usual to get sdf (result - target)
+
+    // // normal case
+    // float linewidth_scale = (g_thickness[2] - g_thickness[1]) / segment_length;
+    // float linewidth_a = g_thickness[1] - linewidth_scale * (abs(extrusion_a) + AA_THICKNESS);
+    // float linewidth_b = g_thickness[2] + linewidth_scale * (abs(extrusion_b) + AA_THICKNESS);
+    // quad_sdf.z = dot(VP1, -n1) - 0.5 * linewidth_a; // or b if index == 2
+    // quad_sdf.w = dot(VP1, +n1) - 0.5 * linewidth_a; // or b if index == 2
+
+    // // special case - sharp join
+    // float linewidth_scale = (g_thickness[2] - g_thickness[1]) / (segment_length + abs(extrusion_a) + abs(extrusion_b));
+    // float linewidth_a = g_thickness[1] - linewidth_scale * AA_THICKNESS;
+    // float linewidth_b = g_thickness[2] + linewidth_scale * AA_THICKNESS;
+    // quad_sdf.z = dot(VP1, -n1) - 0.5 * linewidth_a; // or b if index == 2
+    // quad_sdf.w = dot(VP1, +n1) - 0.5 * linewidth_a; // or b if index == 2
+
+    // sdf generation
+
+    for (int i = 0; i < 4; i++) {
+        vec2 VP1 = vertices[i].position.xy - p1.xy;
+        vec2 VP2 = vertices[i].position.xy - p2.xy;
+
+        // joint cutoff
+        // (isvalid, is_truncated), miter_v
+        // (is_truncated), v1, n0 or n2, index
+
+        // sharp joints use sharp (pixelated) cut offs to avoid self-overlap
+        if (isvalid[0] && !is_a_truncated_joint)
+            vertices[i].joint_cutoff.x = dot(VP1, -miter_v_a);
+        if (isvalid[3] && !is_b_truncated_joint)
+            vertices[i].joint_cutoff.y = dot(VP2, +miter_v_b);
+
+        // truncated joints use smooth cutoff for corners that are outside the other segment
+        // TODO: this slightly degrades AA quality due to two AA edges overlapping
+        if (is_a_truncated_joint)
+            vertices[i].joint_cutoff.z = dot(VP1, -sign(dot(v1.xy, n0)) * n0) - 0.5 * g_thickness[1];
+        if (is_b_truncated_joint)
+            vertices[i].joint_cutoff.w = dot(VP2,  sign(dot(v1.xy, n2)) * n2) - 0.5 * g_thickness[2];
+
+        // main sdf
+
+        // SDF of quad
+        // !isvalid -> v1
+        // isvalid && truncated -> miter_n_a
+
+        // In line direction
+        if (!isvalid[0]) // flat line end
+            vertices[i].quad_sdf.x = dot(VP1, -v1.xy);
+        else if (is_a_truncated_joint)
+            vertices[i].quad_sdf.x = dot(VP1, miter_n_a) - 0.5 * g_thickness[1] * miter_offset_a;
+
+        if (!isvalid[3]) // flat line end
+            vertices[i].quad_sdf.y = dot(VP2, v1.xy);
+        else if (is_b_truncated_joint)
+            vertices[i].quad_sdf.y = dot(VP2, miter_n_b) - 0.5 * g_thickness[2] * miter_offset_b;
+
+
+        // In line normal direction (linewidth)
+        // This mostly works
+        // TODO: integrate better
+        // TODO Problem: you can get concave shapes with very different linewidths + zooming
+        // we want to adjust v direction on respective side to dodge both edge normals...
+
+        // start/end/truncated joint: use g_thickness[i] at point i
+        // sharp joint: use g_thickness[i] at point i +- joint offset to avoid different
+        //              linewidth between this and the previous/next segment
+        // TODO: can we calculate this more efficiently?
+        // top
+        float offset_a = !is_a_truncated_joint && isvalid[0] ? extrusion_a : 0.0;
+        float offset_b = !is_b_truncated_joint && isvalid[3] ? extrusion_b : 0.0;
+
+        vec2 corner1 = p1.xy + offset_a * v1.xy + 0.5 * g_thickness[1] * n1;
+        vec2 corner2 = p2.xy + offset_b * v1.xy + 0.5 * g_thickness[2] * n1;
+        vec2 edge_vector = normalize(corner2 - corner1);
+        vec2 edge_normal = vec2(-edge_vector.y, edge_vector.x);
+        vertices[i].quad_sdf.z = dot(vertices[i].position.xy - corner1, edge_normal);
+
+        // bottom
+        corner1 = p1.xy - offset_a * v1.xy - 0.5 * g_thickness[1] * n1;
+        corner2 = p2.xy - offset_b * v1.xy - 0.5 * g_thickness[2] * n1;
+        edge_vector = normalize(corner2 - corner1);
+        edge_normal = vec2(-edge_vector.y, edge_vector.x);
+        vertices[i].quad_sdf.w = dot(vertices[i].position.xy - corner1, -edge_normal);
+    }
+
+    for (int i = 0; i < 4; i++)
+        emit_vertex(vertices[i]);
+
+    EndPrimitive();
+
+    return;
+}
+
+
+/*
+
+   // Compute variables for line joints
     LineData line;
     line.p1 = p1;
     line.p2 = p2;
@@ -343,7 +477,27 @@ void main(void)
     // This distance is given by linewidth * dot(miter_n_a, n1)
     // start/end case doesn't use this anymore
 
-    emit_quad(line);
+    vec2 center = 0.5 * (line.p1.xy + line.p2.xy);
+    float geom_linewidth = 0.5 * max(g_thickness[1], g_thickness[2]) + AA_THICKNESS;
+
+    // set up pattern overwrites at joints
+    process_pattern(pattern, line);
+
+    LineVertex[4] vertices = LineVertex[4](LV(line.p1, 1), LV(line.p1, 1), LV(line.p2, 2), LV(line.p2, 2));
+
+    calc_vertex(vertices[0], center, line, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), -geom_linewidth));
+    calc_vertex(vertices[1], center, line, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), +geom_linewidth));
+    calc_vertex(vertices[2], center, line, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), -geom_linewidth));
+    calc_vertex(vertices[3], center, line, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), +geom_linewidth));
+
+    for (int i = 0; i < 4; i++)
+        emit_vertex(vertices[i]);
+
+    // -geom_linewidth means -n offset means -miter_n offset
+
+    EndPrimitive();
 
     return;
 }
+
+*/
