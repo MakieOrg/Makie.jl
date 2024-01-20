@@ -203,14 +203,21 @@ void main(void)
 
     // determine the direction of each of the 3 segments (previous, current, next)
     vec3 v1 = (p2 - p1);
-    float segment_length = length(v1.xy);
-    v1 /= segment_length;
+    float segment_length1 = length(v1.xy);
+    v1 /= segment_length1;
     vec3 v0 = v1;
     vec3 v2 = v1;
-    if (p1 != p0 && isvalid[0])
-        v0 = (p1 - p0) / length(p1.xy - p0.xy);
-    if (p3 != p2 && isvalid[3])
-        v2 = (p3 - p2) / length(p3.xy - p2.xy);
+    float segment_length0 = 0.0, segment_length2 = 0.0;
+    if (p1 != p0 && isvalid[0]) {
+        v0 = (p1 - p0);
+        segment_length0 = length(p1.xy - p0.xy);
+        v0 /= segment_length0;
+    }
+    if (p3 != p2 && isvalid[3]) {
+        v2 = (p3 - p2);
+        segment_length2 = length(p3.xy - p2.xy);
+        v2 /= segment_length2;
+    }
 
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = normal_vector(v0);
@@ -276,6 +283,14 @@ void main(void)
     ////////////////////////////////////////
     // v TODO
 
+    // Do linewidth sdfs interfere with edge cleanup due to strongly varying linewidths?
+    bool is_a_critical =
+        (max(segment_length0 - 2 * sqrt(0.7), 0.0) < -(g_thickness[1] - g_thickness[0]) * sqrt(0.7)) ||
+        (max(segment_length1 - 2 * sqrt(0.7), 0.0) < +(g_thickness[2] - g_thickness[1]) * sqrt(0.7));
+    bool is_b_critical =
+        (max(segment_length1 - 2 * sqrt(0.7), 0.0) < -(g_thickness[2] - g_thickness[1]) * sqrt(0.7)) ||
+        (max(segment_length2 - 2 * sqrt(0.7), 0.0) < +(g_thickness[3] - g_thickness[2]) * sqrt(0.7));
+
     // Compute variables for line joints
 
     // Options:
@@ -333,16 +348,16 @@ void main(void)
         // (is_truncated), v1, n0 or n2, index
 
         // sharp joints use sharp (pixelated) cut offs to avoid self-overlap
-        if (isvalid[0] && !is_a_truncated_joint)
+        if (isvalid[0] && !is_a_truncated_joint && !is_a_critical)
             vertices[i].joint_cutoff.x = dot(VP1, -miter_v_a);
-        if (isvalid[3] && !is_b_truncated_joint)
+        if (isvalid[3] && !is_b_truncated_joint && !is_b_critical)
             vertices[i].joint_cutoff.y = dot(VP2, +miter_v_b);
 
         // truncated joints use smooth cutoff for corners that are outside the other segment
         // TODO: this slightly degrades AA quality due to two AA edges overlapping
-        if (is_a_truncated_joint)
+        if (is_a_truncated_joint && !is_a_critical)
             vertices[i].joint_cutoff.z = dot(VP1, -sign(dot(v1.xy, n0)) * n0) - 0.5 * g_thickness[1];
-        if (is_b_truncated_joint)
+        if (is_b_truncated_joint && !is_b_critical)
             vertices[i].joint_cutoff.w = dot(VP2,  sign(dot(v1.xy, n2)) * n2) - 0.5 * g_thickness[2];
 
         // main sdf
@@ -374,8 +389,9 @@ void main(void)
         //              linewidth between this and the previous/next segment
         // TODO: can we calculate this more efficiently?
         // top
-        float offset_a = !is_a_truncated_joint && isvalid[0] ? extrusion_a : 0.0;
-        float offset_b = !is_b_truncated_joint && isvalid[3] ? extrusion_b : 0.0;
+        // TODO: a lot of this doesn't need to be in a loop
+        float offset_a = !is_a_critical && !is_a_truncated_joint && isvalid[0] ? extrusion_a : 0.0;
+        float offset_b = !is_b_critical && !is_b_truncated_joint && isvalid[3] ? extrusion_b : 0.0;
 
         vec2 corner1 = p1.xy + offset_a * v1.xy + 0.5 * g_thickness[1] * n1;
         vec2 corner2 = p2.xy + offset_b * v1.xy + 0.5 * g_thickness[2] * n1;
