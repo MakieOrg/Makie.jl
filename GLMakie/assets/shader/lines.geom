@@ -72,17 +72,17 @@ LineVertex LV(vec3 position, int index) {
     return vertex;
 }
 
-void process_pattern(Nothing pattern, bool[4] isvalid, float extrusion_a, float extrusion_b) {
+void process_pattern(Nothing pattern, bool[4] isvalid, float[2] extrusion) {
     // do not adjust stuff
     f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
 }
-void process_pattern(sampler2D pattern, bool[4] isvalid, float extrusion_a, float extrusion_b) {
+void process_pattern(sampler2D pattern, bool[4] isvalid, float[2] extrusion) {
     // TODO
     // This is not a case that's used at all yet. Maybe consider it in the future...
     f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
 }
 
-void process_pattern(sampler1D pattern, bool[4] isvalid, float extrusion_a, float extrusion_b) {
+void process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
     float pattern_sample;
 
     // line segment start
@@ -96,7 +96,7 @@ void process_pattern(sampler1D pattern, bool[4] isvalid, float extrusion_a, floa
         // sample at "center" of corner/joint
         pattern_sample = texture(pattern, g_lastlen[1] / pattern_length).x;
         // overwrite until one AA gap past the corner/joint
-        f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion_a) + AA_THICKNESS) / pattern_length;
+        f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_THICKNESS) / pattern_length;
         // using the sign of the sample to decide between drawing or not drawing
         f_pattern_overwrite.y = sign(pattern_sample);
     }
@@ -108,7 +108,7 @@ void process_pattern(sampler1D pattern, bool[4] isvalid, float extrusion_a, floa
         f_pattern_overwrite.w = sign(pattern_sample);
     } else {
         pattern_sample = texture(pattern, g_lastlen[2] / pattern_length).x;
-        f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion_b) - AA_THICKNESS) / pattern_length;
+        f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_THICKNESS) / pattern_length;
         f_pattern_overwrite.w = sign(pattern_sample);
     }
 }
@@ -126,18 +126,18 @@ void generate_uv(sampler2D pattern, inout LineVertex vertex, int index, float ex
     );
 }
 
-void generate_uvs(inout LineVertex[4] vertices, float extrusion_a, float extrusion_b, float geom_linewidth) {
-    float extrusion, linewidth = geom_linewidth + AA_THICKNESS;
+void generate_uvs(inout LineVertex[4] vertices, float[2] extrusion, float geom_linewidth) {
+    float _extrusion, linewidth = geom_linewidth + AA_THICKNESS;
 
     // start of line segment
-    extrusion = - (abs(extrusion_a) + AA_THICKNESS);
-    generate_uv(pattern, vertices[0], 1, extrusion, -linewidth);
-    generate_uv(pattern, vertices[1], 1, extrusion, +linewidth);
+    _extrusion = - (abs(extrusion[0]) + AA_THICKNESS);
+    generate_uv(pattern, vertices[0], 1, _extrusion, -linewidth);
+    generate_uv(pattern, vertices[1], 1, _extrusion, +linewidth);
 
     // end of line segment
-    extrusion = abs(extrusion_b) + AA_THICKNESS;
-    generate_uv(pattern, vertices[2], 2, extrusion, -linewidth);
-    generate_uv(pattern, vertices[3], 2, extrusion, +linewidth);
+    _extrusion = abs(extrusion[1]) + AA_THICKNESS;
+    generate_uv(pattern, vertices[2], 2, _extrusion, -linewidth);
+    generate_uv(pattern, vertices[3], 2, _extrusion, +linewidth);
 }
 
 void emit_vertex(LineVertex vertex) {
@@ -225,37 +225,40 @@ void main(void)
     vec2 n2 = normal_vector(v2);
 
     // Miter normals (normal of truncated edge / vector to sharp corner)
-    vec2 miter_n_a = normalize(n0 + n1);
-    vec2 miter_n_b = normalize(n1 + n2);
+    vec2 miter_n1 = normalize(n0 + n1);
+    vec2 miter_n2 = normalize(n1 + n2);
 
     // miter vectors (line vector matching miter normal)
-    vec2 miter_v_a = -normal_vector(miter_n_a);
-    vec2 miter_v_b = -normal_vector(miter_n_b);
+    vec2 miter_v1 = -normal_vector(miter_n1);
+    vec2 miter_v2 = -normal_vector(miter_n2);
 
     // distance between p1/2 and respective sharp corner
-    float miter_offset_a = dot(miter_n_a, n1);
-    float miter_offset_b = dot(miter_n_b, n1);
+    float miter_offset1 = dot(miter_n1, n1);
+    float miter_offset2 = dot(miter_n2, n1);
 
     // Are we truncating the joint?
-    bool is_a_truncated_joint = dot(v0, v1) < MITER_LIMIT;
-    bool is_b_truncated_joint = dot(v1, v2) < MITER_LIMIT;
+    // 1. Based on real miter limits?
+    bool[2] is_truncated = bool[2](
+        dot(v0.xy, v1.xy) < MITER_LIMIT,
+        dot(v1.xy, v2.xy) < MITER_LIMIT
+    );
 
     // How far the line needs to extend to accomodate the joint
     // Note that the sign flips between + and - depending on the orientation
     // of the joint.
-    float extrusion_a, extrusion_b;
+    float[2] extrusion;
 
-    if (is_a_truncated_joint) {
+    if (is_truncated[0]) {
         // need to extend segment to include previous segments corners for truncated join
-        extrusion_a = 0.5 * g_thickness[1] * dot(v1.xy, n0);
+        extrusion[0] = 0.5 * g_thickness[1] * dot(v1.xy, n0);
     } else {
         // shallow/spike join needs to include point where miter normal meets outer line edge
-        extrusion_a = 0.5 * g_thickness[1] * dot(miter_n_a, v1.xy) / miter_offset_a;
+        extrusion[0] = 0.5 * g_thickness[1] * dot(miter_n1, v1.xy) / miter_offset1;
     }
-    if (is_b_truncated_joint) {
-        extrusion_b = 0.5 * g_thickness[2] * dot(-v1.xy, n2);
+    if (is_truncated[1]) {
+        extrusion[1] = 0.5 * g_thickness[2] * dot(-v1.xy, n2);
     } else {
-        extrusion_b = 0.5 * g_thickness[2] * dot(miter_n_b, v1.xy) / max(0.5, miter_offset_b);
+        extrusion[1] = 0.5 * g_thickness[2] * dot(miter_n2, v1.xy) / miter_offset2;
     }
 
     LineVertex[4] vertices = LineVertex[4](LV(p1, 1), LV(p1, 1), LV(p2, 2), LV(p2, 2));
@@ -268,29 +271,28 @@ void main(void)
     // Position
     // TODO: Consider trapezoidal shapes (using AA-padded linewidths as is, not max)
     //        SDF's should be fine, uv's not
-    vertices[0].position += (-(abs(extrusion_a) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
-    vertices[1].position += (-(abs(extrusion_a) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
-    vertices[2].position += (+(abs(extrusion_b) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
-    vertices[3].position += (+(abs(extrusion_b) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
+    vertices[0].position += (-(abs(extrusion[0]) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
+    vertices[1].position += (-(abs(extrusion[0]) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
+    vertices[2].position += (+(abs(extrusion[1]) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
+    vertices[3].position += (+(abs(extrusion[1]) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
 
     // Set up pattern overwrites at joints if patterns are used
-    process_pattern(pattern, isvalid, extrusion_a, extrusion_b);
+    process_pattern(pattern, isvalid, extrusion);
 
     // Set up uvs if patterns are used
-    generate_uvs(vertices, extrusion_a, extrusion_b, geom_linewidth);
+    generate_uvs(vertices, extrusion, geom_linewidth);
 
     // ^ Clean
     ////////////////////////////////////////
     // v TODO
 
     // Do linewidth sdfs interfere with edge cleanup due to strongly varying linewidths?
-    bool is_a_critical =
+    bool[2] is_critical = bool[2](
         (max(segment_length0 - 2 * sqrt(0.7), 0.0) < -(g_thickness[1] - g_thickness[0]) * sqrt(0.7)) ||
-        (max(segment_length1 - 2 * sqrt(0.7), 0.0) < +(g_thickness[2] - g_thickness[1]) * sqrt(0.7));
-    bool is_b_critical =
+            (max(segment_length1 - 2 * sqrt(0.7), 0.0) < +(g_thickness[2] - g_thickness[1]) * sqrt(0.7)),
         (max(segment_length1 - 2 * sqrt(0.7), 0.0) < -(g_thickness[2] - g_thickness[1]) * sqrt(0.7)) ||
-        (max(segment_length2 - 2 * sqrt(0.7), 0.0) < +(g_thickness[3] - g_thickness[2]) * sqrt(0.7));
-
+            (max(segment_length2 - 2 * sqrt(0.7), 0.0) < +(g_thickness[3] - g_thickness[2]) * sqrt(0.7))
+    );
     // Compute variables for line joints
 
     // Options:
@@ -348,16 +350,16 @@ void main(void)
         // (is_truncated), v1, n0 or n2, index
 
         // sharp joints use sharp (pixelated) cut offs to avoid self-overlap
-        if (isvalid[0] && !is_a_truncated_joint && !is_a_critical)
-            vertices[i].joint_cutoff.x = dot(VP1, -miter_v_a);
-        if (isvalid[3] && !is_b_truncated_joint && !is_b_critical)
-            vertices[i].joint_cutoff.y = dot(VP2, +miter_v_b);
+        if (isvalid[0] && !is_truncated[0] && !is_critical[0])
+            vertices[i].joint_cutoff.x = dot(VP1, -miter_v1);
+        if (isvalid[3] && !is_truncated[1] && !is_critical[1])
+            vertices[i].joint_cutoff.y = dot(VP2, +miter_v2);
 
         // truncated joints use smooth cutoff for corners that are outside the other segment
         // TODO: this slightly degrades AA quality due to two AA edges overlapping
-        if (is_a_truncated_joint && !is_a_critical)
+        if (is_truncated[0] && !is_critical[0])
             vertices[i].joint_cutoff.z = dot(VP1, -sign(dot(v1.xy, n0)) * n0) - 0.5 * g_thickness[1];
-        if (is_b_truncated_joint && !is_b_critical)
+        if (is_truncated[1] && !is_critical[1])
             vertices[i].joint_cutoff.w = dot(VP2,  sign(dot(v1.xy, n2)) * n2) - 0.5 * g_thickness[2];
 
         // main sdf
@@ -369,13 +371,13 @@ void main(void)
         // In line direction
         if (!isvalid[0]) // flat line end
             vertices[i].quad_sdf.x = dot(VP1, -v1.xy);
-        else if (is_a_truncated_joint)
-            vertices[i].quad_sdf.x = dot(VP1, miter_n_a) - 0.5 * g_thickness[1] * miter_offset_a;
+        else if (is_truncated[0])
+            vertices[i].quad_sdf.x = dot(VP1, miter_n1) - 0.5 * g_thickness[1] * miter_offset1;
 
         if (!isvalid[3]) // flat line end
             vertices[i].quad_sdf.y = dot(VP2, v1.xy);
-        else if (is_b_truncated_joint)
-            vertices[i].quad_sdf.y = dot(VP2, miter_n_b) - 0.5 * g_thickness[2] * miter_offset_b;
+        else if (is_truncated[1])
+            vertices[i].quad_sdf.y = dot(VP2, miter_n2) - 0.5 * g_thickness[2] * miter_offset2;
 
 
         // In line normal direction (linewidth)
@@ -390,8 +392,8 @@ void main(void)
         // TODO: can we calculate this more efficiently?
         // top
         // TODO: a lot of this doesn't need to be in a loop
-        float offset_a = !is_a_critical && !is_a_truncated_joint && isvalid[0] ? extrusion_a : 0.0;
-        float offset_b = !is_b_critical && !is_b_truncated_joint && isvalid[3] ? extrusion_b : 0.0;
+        float offset_a = !is_critical[0] && !is_truncated[0] && isvalid[0] ? extrusion[0] : 0.0;
+        float offset_b = !is_critical[1] && !is_truncated[1] && isvalid[3] ? extrusion[1] : 0.0;
 
         vec2 corner1 = p1.xy + offset_a * v1.xy + 0.5 * g_thickness[1] * n1;
         vec2 corner2 = p2.xy + offset_b * v1.xy + 0.5 * g_thickness[2] * n1;
