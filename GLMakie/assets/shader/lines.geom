@@ -343,12 +343,14 @@ void main(void)
         if (!isvalid[0]) // flat line end
             vertices[i].quad_sdf.x = dot(VP1, -v1.xy);
         else if (is_truncated[0])
-            vertices[i].quad_sdf.x = dot(VP1, miter_n1) - 0.5 * g_thickness[1] * miter_offset1; // (1)
+            vertices[i].quad_sdf.x = dot(VP1, -sign(dot(v1.xy, miter_n1)) * miter_n1) -
+                0.5 * g_thickness[1] * miter_offset1; // (1)
 
         if (!isvalid[3]) // flat line end
             vertices[i].quad_sdf.y = dot(VP2, v1.xy);
         else if (is_truncated[1])
-            vertices[i].quad_sdf.y = dot(VP2, miter_n2) - 0.5 * g_thickness[2] * miter_offset2; // (1)
+            vertices[i].quad_sdf.y = dot(VP2,  sign(dot(v1.xy, miter_n2)) * miter_n2) -
+                0.5 * g_thickness[2] * miter_offset2; // (1)
 
         // In normal direction (width)
         vertices[i].quad_sdf.z = dot(vertices[i].position.xy - corners[0], +edge_normals[0]);
