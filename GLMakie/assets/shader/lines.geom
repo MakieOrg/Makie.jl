@@ -282,12 +282,6 @@ void main(void)
     // Set up uvs if patterns are used
     generate_uvs(vertices, extrusion, geom_linewidth);
 
-
-    // ^ Clean
-    ////////////////////////////////////////
-    // v TODO
-
-
     // Do linewidth sdfs interfere with edge cleanup due to strongly varying linewidths?
 
     bool[2] is_critical = bool[2](
@@ -302,19 +296,25 @@ void main(void)
     float offset_a = !is_critical[0] && !is_truncated[0] && isvalid[0] ? extrusion[0] : 0.0;
     float offset_b = !is_critical[1] && !is_truncated[1] && isvalid[3] ? extrusion[1] : 0.0;
 
-    // TODO: vertex position without AA_THICKNESS, reuse
     vec2[4] corners = vec2[4](
         p1.xy + offset_a * v1.xy + 0.5 * g_thickness[1] * n1,
         p2.xy + offset_b * v1.xy + 0.5 * g_thickness[2] * n1,
         p1.xy - offset_a * v1.xy - 0.5 * g_thickness[1] * n1,
         p2.xy - offset_b * v1.xy - 0.5 * g_thickness[2] * n1
     );
+
     vec2[2] edge_normals = vec2[2](
         normal_vector(normalize(corners[1] - corners[0])),
         normal_vector(normalize(corners[3] - corners[2]))
     );
 
     // sdf generation
+
+    // pre calc for efficiency
+    vec2 oriented_n0 = -sign(dot(v1.xy, n0)) * n0;
+    vec2 oriented_n2 =  sign(dot(v1.xy, n2)) * n2;
+    vec2 oriented_miter_n1 = -sign(dot(v1.xy, miter_n1)) * miter_n1;
+    vec2 oriented_miter_n2 =  sign(dot(v1.xy, miter_n2)) * miter_n2;
 
     for (int i = 0; i < 4; i++) {
         vec2 VP1 = vertices[i].position.xy - p1.xy;
@@ -333,9 +333,9 @@ void main(void)
         // TODO: we technically need edge_normals from previous and next line here, but not available
         // ... could also drop offset, cut at p1/p2 directly to avoid overlap in the first place (1)
         if (is_truncated[0] && !is_critical[0])
-            vertices[i].joint_cutoff.z = dot(VP1, -sign(dot(v1.xy, n0)) * n0) - 0.5 * g_thickness[1];
+            vertices[i].joint_cutoff.z = dot(VP1, oriented_n0) - 0.5 * g_thickness[1];
         if (is_truncated[1] && !is_critical[1])
-            vertices[i].joint_cutoff.w = dot(VP2,  sign(dot(v1.xy, n2)) * n2) - 0.5 * g_thickness[2];
+            vertices[i].joint_cutoff.w = dot(VP2, oriented_n2) - 0.5 * g_thickness[2];
 
         // main sdf
 
@@ -343,13 +343,13 @@ void main(void)
         if (!isvalid[0]) // flat line end
             vertices[i].quad_sdf.x = dot(VP1, -v1.xy);
         else if (is_truncated[0])
-            vertices[i].quad_sdf.x = dot(VP1, -sign(dot(v1.xy, miter_n1)) * miter_n1) -
+            vertices[i].quad_sdf.x = dot(VP1, oriented_miter_n1) -
                 0.5 * g_thickness[1] * miter_offset1; // (1)
 
         if (!isvalid[3]) // flat line end
             vertices[i].quad_sdf.y = dot(VP2, v1.xy);
         else if (is_truncated[1])
-            vertices[i].quad_sdf.y = dot(VP2,  sign(dot(v1.xy, miter_n2)) * miter_n2) -
+            vertices[i].quad_sdf.y = dot(VP2, oriented_miter_n2) -
                 0.5 * g_thickness[2] * miter_offset2; // (1)
 
         // In normal direction (width)
