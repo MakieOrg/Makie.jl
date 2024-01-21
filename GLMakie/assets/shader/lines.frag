@@ -61,14 +61,6 @@ void write2framebuffer(vec4 color, uvec2 id);
 #define DEBUG
 
 void main(){
-    // Metrics we need:
-    // line length for pattern
-    // line width sdf w/ AA
-    // line start/end/truncation sdf w/ AA
-    // hard join edge sdf
-
-
-    // New version
 
 #ifndef DEBUG
     // We effectively start with a rectangle that's fully drawn, i.e. sdf < 0

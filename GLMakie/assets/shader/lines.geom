@@ -282,62 +282,36 @@ void main(void)
     // Set up uvs if patterns are used
     generate_uvs(vertices, extrusion, geom_linewidth);
 
+
     // ^ Clean
     ////////////////////////////////////////
     // v TODO
 
+
     // Do linewidth sdfs interfere with edge cleanup due to strongly varying linewidths?
+
     bool[2] is_critical = bool[2](
         (max(segment_length0 - 2 * sqrt(0.7), 0.0) < -(g_thickness[1] - g_thickness[0]) * sqrt(0.7)) ||
             (max(segment_length1 - 2 * sqrt(0.7), 0.0) < +(g_thickness[2] - g_thickness[1]) * sqrt(0.7)),
         (max(segment_length1 - 2 * sqrt(0.7), 0.0) < -(g_thickness[2] - g_thickness[1]) * sqrt(0.7)) ||
             (max(segment_length2 - 2 * sqrt(0.7), 0.0) < +(g_thickness[3] - g_thickness[2]) * sqrt(0.7))
     );
-    // Compute variables for line joints
 
-    // Options:
-    // valid    truncated
-    // false -> false
-    // true     false
-    // true     true
+    // linewidth adjustments
+    float offset_a = !is_critical[0] && !is_truncated[0] && isvalid[0] ? extrusion[0] : 0.0;
+    float offset_b = !is_critical[1] && !is_truncated[1] && isvalid[3] ? extrusion[1] : 0.0;
 
-    // joint cutoff
-    // (f, f) -> do nothin
-    // (t, f) -> miter_v
-    // (t, t) -> v1, n0 or n2, index
-
-    // quad (v)
-    // (f, f) -> (+-) v1
-    // (t, f) -> nothing? TODO shouldn't this move cutoff out?
-    // (t, t) -> miter_n, index, miter_offset
-
-    // quad (n)
-    // always: extrusion_a + b, v1, n1
-    // (f, f) -> dot(VP1, +-n1) - linewidth[index]
-    // (t, f) -> use linewidth at translated corners
-    // (t, t) -> dot(VP1, +-n1) - linewidth[index]
-
-    // simpler var linewidth:
-    // the sdf tells us the linewidth at the vertices of the generated quad
-    // so we can do the following:
-    // 1. calculate linewidth at vertex
-    // 2. compute distance between vertex and p1 in normal direction.
-    //    This is unaffected by extrusion as extrusion \perp normal
-    // 3. modify like usual to get sdf (result - target)
-
-    // // normal case
-    // float linewidth_scale = (g_thickness[2] - g_thickness[1]) / segment_length;
-    // float linewidth_a = g_thickness[1] - linewidth_scale * (abs(extrusion_a) + AA_THICKNESS);
-    // float linewidth_b = g_thickness[2] + linewidth_scale * (abs(extrusion_b) + AA_THICKNESS);
-    // quad_sdf.z = dot(VP1, -n1) - 0.5 * linewidth_a; // or b if index == 2
-    // quad_sdf.w = dot(VP1, +n1) - 0.5 * linewidth_a; // or b if index == 2
-
-    // // special case - sharp join
-    // float linewidth_scale = (g_thickness[2] - g_thickness[1]) / (segment_length + abs(extrusion_a) + abs(extrusion_b));
-    // float linewidth_a = g_thickness[1] - linewidth_scale * AA_THICKNESS;
-    // float linewidth_b = g_thickness[2] + linewidth_scale * AA_THICKNESS;
-    // quad_sdf.z = dot(VP1, -n1) - 0.5 * linewidth_a; // or b if index == 2
-    // quad_sdf.w = dot(VP1, +n1) - 0.5 * linewidth_a; // or b if index == 2
+    // TODO: vertex position without AA_THICKNESS, reuse
+    vec2[4] corners = vec2[4](
+        p1.xy + offset_a * v1.xy + 0.5 * g_thickness[1] * n1,
+        p2.xy + offset_b * v1.xy + 0.5 * g_thickness[2] * n1,
+        p1.xy - offset_a * v1.xy - 0.5 * g_thickness[1] * n1,
+        p2.xy - offset_b * v1.xy - 0.5 * g_thickness[2] * n1
+    );
+    vec2[2] edge_normals = vec2[2](
+        normal_vector(normalize(corners[1] - corners[0])),
+        normal_vector(normalize(corners[3] - corners[2]))
+    );
 
     // sdf generation
 
@@ -346,8 +320,6 @@ void main(void)
         vec2 VP2 = vertices[i].position.xy - p2.xy;
 
         // joint cutoff
-        // (isvalid, is_truncated), miter_v
-        // (is_truncated), v1, n0 or n2, index
 
         // sharp joints use sharp (pixelated) cut offs to avoid self-overlap
         if (isvalid[0] && !is_truncated[0] && !is_critical[0])
@@ -364,11 +336,7 @@ void main(void)
 
         // main sdf
 
-        // SDF of quad
-        // !isvalid -> v1
-        // isvalid && truncated -> miter_n_a
-
-        // In line direction
+        // In line direction (length)
         if (!isvalid[0]) // flat line end
             vertices[i].quad_sdf.x = dot(VP1, -v1.xy);
         else if (is_truncated[0])
@@ -379,34 +347,9 @@ void main(void)
         else if (is_truncated[1])
             vertices[i].quad_sdf.y = dot(VP2, miter_n2) - 0.5 * g_thickness[2] * miter_offset2;
 
-
-        // In line normal direction (linewidth)
-        // This mostly works
-        // TODO: integrate better
-        // TODO Problem: you can get concave shapes with very different linewidths + zooming
-        // we want to adjust v direction on respective side to dodge both edge normals...
-
-        // start/end/truncated joint: use g_thickness[i] at point i
-        // sharp joint: use g_thickness[i] at point i +- joint offset to avoid different
-        //              linewidth between this and the previous/next segment
-        // TODO: can we calculate this more efficiently?
-        // top
-        // TODO: a lot of this doesn't need to be in a loop
-        float offset_a = !is_critical[0] && !is_truncated[0] && isvalid[0] ? extrusion[0] : 0.0;
-        float offset_b = !is_critical[1] && !is_truncated[1] && isvalid[3] ? extrusion[1] : 0.0;
-
-        vec2 corner1 = p1.xy + offset_a * v1.xy + 0.5 * g_thickness[1] * n1;
-        vec2 corner2 = p2.xy + offset_b * v1.xy + 0.5 * g_thickness[2] * n1;
-        vec2 edge_vector = normalize(corner2 - corner1);
-        vec2 edge_normal = vec2(-edge_vector.y, edge_vector.x);
-        vertices[i].quad_sdf.z = dot(vertices[i].position.xy - corner1, edge_normal);
-
-        // bottom
-        corner1 = p1.xy - offset_a * v1.xy - 0.5 * g_thickness[1] * n1;
-        corner2 = p2.xy - offset_b * v1.xy - 0.5 * g_thickness[2] * n1;
-        edge_vector = normalize(corner2 - corner1);
-        edge_normal = vec2(-edge_vector.y, edge_vector.x);
-        vertices[i].quad_sdf.w = dot(vertices[i].position.xy - corner1, -edge_normal);
+        // In normal direction (width)
+        vertices[i].quad_sdf.z = dot(vertices[i].position.xy - corners[0], +edge_normals[0]);
+        vertices[i].quad_sdf.w = dot(vertices[i].position.xy - corners[2], -edge_normals[1]);
     }
 
     for (int i = 0; i < 4; i++)
@@ -416,110 +359,3 @@ void main(void)
 
     return;
 }
-
-
-/*
-
-   // Compute variables for line joints
-    LineData line;
-    line.p1 = p1;
-    line.p2 = p2;
-    line.v = v1;
-    line.n = n1;
-    line.n0 = n0;
-    line.n2 = n2;
-    line.segment_length = segment_length;
-    line.is_start = !isvalid[0];
-    line.is_end = !isvalid[3];
-
-    // We create a second (imaginary line for each of the joins which averages the
-    // directions of the previous lines. For the corner at P1 this line has
-    // normal = miter_n_a = normalize(n0 + n1)
-    // direction = miter_v_a = normalize(v0 + v1) = vec2(normal.y, -normal.x)
-    line.miter_n_a = normalize(n0 + n1);
-    line.miter_n_b = normalize(n1 + n2);
-    line.miter_v_a = vec2(line.miter_n_a.y, -line.miter_n_a.x);
-    line.miter_v_b = vec2(line.miter_n_b.y, -line.miter_n_b.x);
-
-    // The normal of this new line defines the edge between two line segments
-    // with a sharp join:
-    //       _______________
-    //      |'.              ^
-    //    ^ |  '. miter_n_a  | n1
-    // v0 | |    '._________
-    //      |  n0 |      -->
-    //      | <-- |      v1
-    //      |     |
-    //
-    // From the triangle with unit vectors (miter_n_a, v1, n1) and the linewidth
-    // g_thickness[1] along n1 direction follows the necessary extrusion for
-    // sharp corners:
-    //   dot(length_a * miter_n_a, n1) = g_thickness[1]
-    //   extrusion = dot(length_a * miter_n_a, v1)
-    //             = g_thickness[1] * dot(miter_n_a, v1) / dot(miter_n_a, n1)
-    //
-    // For truncated corners the extrusion will always be <= that of the sharp
-    // corner, so we can just clamp the extrusion at the appropriate maximum
-    // value. Truncation happens when the angle between v0 and v1 exceeds some
-    // value, e.g. 120°, or half of that between miter_v_a and v1. We choose
-    // truncation if
-    //   dot(miter_v_a, v1) < 0.5   (120° between segments)
-    // or equivalently
-    //   dot(miter_n_a, n1) < 0.5
-    // giving use the limit:
-    line.miter_offset_a = dot(line.miter_n_a, n1);
-    line.miter_offset_b = dot(line.miter_n_b, n1);
-
-    // TODO: switch to this miter limit
-    // if (dot(v0, v1) < MITER_LIMIT) {
-    if (dot(line.miter_v_a, v1.xy) < 0.5) {
-        // need to extend segment to include previous segments corners for truncated join
-        line.extrusion_a = 0.5 * g_thickness[1] * dot(v1.xy, line.n0);
-    } else {
-        // shallow/spike join needs to include point where miter normal meets outer line edge
-        line.extrusion_a = 0.5 * g_thickness[1] * dot(line.miter_n_a, v1.xy) / line.miter_offset_a;
-    }
-    // if (dot(v1, v2) < MITER_LIMIT) {
-    if (dot(v1.xy, line.miter_v_b) < 0.5) {
-        line.extrusion_b = 0.5 * g_thickness[2] * dot(-v1.xy, line.n2);
-    } else {
-        line.extrusion_b = 0.5 * g_thickness[2] * dot(line.miter_n_b, v1.xy) / max(0.5, line.miter_offset_b);
-    }
-
-    // For truncated joins we also need to know how far the edge of the joint
-    // (between a and b) is from the center point which the line segments share
-    // (x).
-    //        ----------a.
-    //                  | '.
-    //                  x  '.
-    //        ------.    '--_b
-    //             /        /
-    //            /        /
-    //
-    // This distance is given by linewidth * dot(miter_n_a, n1)
-    // start/end case doesn't use this anymore
-
-    vec2 center = 0.5 * (line.p1.xy + line.p2.xy);
-    float geom_linewidth = 0.5 * max(g_thickness[1], g_thickness[2]) + AA_THICKNESS;
-
-    // set up pattern overwrites at joints
-    process_pattern(pattern, line);
-
-    LineVertex[4] vertices = LineVertex[4](LV(line.p1, 1), LV(line.p1, 1), LV(line.p2, 2), LV(line.p2, 2));
-
-    calc_vertex(vertices[0], center, line, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), -geom_linewidth));
-    calc_vertex(vertices[1], center, line, vec2(- (abs(line.extrusion_a) + AA_THICKNESS), +geom_linewidth));
-    calc_vertex(vertices[2], center, line, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), -geom_linewidth));
-    calc_vertex(vertices[3], center, line, vec2(+ (abs(line.extrusion_b) + AA_THICKNESS), +geom_linewidth));
-
-    for (int i = 0; i < 4; i++)
-        emit_vertex(vertices[i]);
-
-    // -geom_linewidth means -n offset means -miter_n offset
-
-    EndPrimitive();
-
-    return;
-}
-
-*/
