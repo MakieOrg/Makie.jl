@@ -250,13 +250,13 @@ void main(void)
 
     if (is_truncated[0]) {
         // need to extend segment to include previous segments corners for truncated join
-        extrusion[0] = 0.5 * g_thickness[1] * dot(v1.xy, n0);
+        extrusion[0] = 0.5 * g_thickness[1] * dot(n0, v1.xy);
     } else {
         // shallow/spike join needs to include point where miter normal meets outer line edge
         extrusion[0] = 0.5 * g_thickness[1] * dot(miter_n1, v1.xy) / miter_offset1;
     }
     if (is_truncated[1]) {
-        extrusion[1] = 0.5 * g_thickness[2] * dot(-v1.xy, n2);
+        extrusion[1] = 0.5 * g_thickness[2] * dot(n2, v1.xy);
     } else {
         extrusion[1] = 0.5 * g_thickness[2] * dot(miter_n2, v1.xy) / miter_offset2;
     }
@@ -292,9 +292,10 @@ void main(void)
 
     bool[2] is_critical = bool[2](
         (max(segment_length0 - 2 * sqrt(0.7), 0.0) < -(g_thickness[1] - g_thickness[0]) * sqrt(0.7)) ||
-            (max(segment_length1 - 2 * sqrt(0.7), 0.0) < +(g_thickness[2] - g_thickness[1]) * sqrt(0.7)),
+        (max(segment_length1 - 2 * sqrt(0.7), 0.0) < +(g_thickness[2] - g_thickness[1]) * sqrt(0.7)),
+
         (max(segment_length1 - 2 * sqrt(0.7), 0.0) < -(g_thickness[2] - g_thickness[1]) * sqrt(0.7)) ||
-            (max(segment_length2 - 2 * sqrt(0.7), 0.0) < +(g_thickness[3] - g_thickness[2]) * sqrt(0.7))
+        (max(segment_length2 - 2 * sqrt(0.7), 0.0) < +(g_thickness[3] - g_thickness[2]) * sqrt(0.7))
     );
 
     // linewidth adjustments
@@ -329,6 +330,8 @@ void main(void)
 
         // truncated joints use smooth cutoff for corners that are outside the other segment
         // TODO: this slightly degrades AA quality due to two AA edges overlapping
+        // TODO: we technically need edge_normals from previous and next line here, but not available
+        // ... could also drop offset, cut at p1/p2 directly to avoid overlap in the first place (1)
         if (is_truncated[0] && !is_critical[0])
             vertices[i].joint_cutoff.z = dot(VP1, -sign(dot(v1.xy, n0)) * n0) - 0.5 * g_thickness[1];
         if (is_truncated[1] && !is_critical[1])
@@ -340,12 +343,12 @@ void main(void)
         if (!isvalid[0]) // flat line end
             vertices[i].quad_sdf.x = dot(VP1, -v1.xy);
         else if (is_truncated[0])
-            vertices[i].quad_sdf.x = dot(VP1, miter_n1) - 0.5 * g_thickness[1] * miter_offset1;
+            vertices[i].quad_sdf.x = dot(VP1, miter_n1) - 0.5 * g_thickness[1] * miter_offset1; // (1)
 
         if (!isvalid[3]) // flat line end
             vertices[i].quad_sdf.y = dot(VP2, v1.xy);
         else if (is_truncated[1])
-            vertices[i].quad_sdf.y = dot(VP2, miter_n2) - 0.5 * g_thickness[2] * miter_offset2;
+            vertices[i].quad_sdf.y = dot(VP2, miter_n2) - 0.5 * g_thickness[2] * miter_offset2; // (1)
 
         // In normal direction (width)
         vertices[i].quad_sdf.z = dot(vertices[i].position.xy - corners[0], +edge_normals[0]);
