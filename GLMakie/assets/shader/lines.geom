@@ -299,8 +299,8 @@ void main(void)
     // this makes overlapping segments draw over each other rather than creating a gap
     // 1.5 is not an exact value, should technically be max length of 1 / dot(miter_n, n)
     f_linelength = vec2(
-        0.5 * min(min(segment_length0, segment_length1), 1.83 * g_thickness[1]),
-        0.5 * min(min(segment_length2, segment_length1), 1.83 * g_thickness[1])
+        is_truncated[0] ? 0.0 : 0.5 * min(min(segment_length0, segment_length1), 1.83 * g_thickness[1]),
+        is_truncated[1] ? 0.0 : 0.5 * min(min(segment_length2, segment_length1), 1.83 * g_thickness[1])
     );
     f_extrusion12 = vec2(abs(extrusion[0]), abs(extrusion[1])); // used to elongate sdf to include joints
     f_linewidth = 0.5 * g_thickness[1];                         // used to compute width sdf
