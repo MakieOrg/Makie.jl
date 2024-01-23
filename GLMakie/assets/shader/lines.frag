@@ -7,11 +7,17 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 
 in vec4 f_color;
-in vec4 f_quad_sdf;
-in vec4 f_joint_cutoff;
+in float f_quad_sdf0;
+in vec3 f_quad_sdf1;
+in float f_quad_sdf2;
+in vec2 f_truncation;
 in vec2 f_uv;
+
+flat in float f_linewidth;
 flat in vec4 f_pattern_overwrite;
 flat in uvec2 f_id;
+flat in vec2 f_extrusion12;
+flat in vec2 f_linelength;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;
@@ -57,30 +63,32 @@ float get_pattern_sdf(Nothing _){
 
 void write2framebuffer(vec4 color, uvec2 id);
 
-
 #define DEBUG
 
 void main(){
 
 #ifndef DEBUG
-    // We effectively start with a rectangle that's fully drawn, i.e. sdf < 0
-
-    // Remove overlap of rects at joint
-    // things that need to be cut have sdf >= 0
-    if (max(f_joint_cutoff.x, f_joint_cutoff.y) >= 0.0)
+    // discard fragments that are "more inside" the other segment to manage
+    // sharp line joints and overlap of truncated joints
+    // For truncated joints we avoid cutting off the whole line by limiting the
+    // inside distance to linelength
+    float dist_in_prev = max(f_quad_sdf0, -f_linelength.x);
+    float dist_in_next = max(f_quad_sdf2, -f_linelength.y);
+    if (dist_in_prev < f_quad_sdf1.x || dist_in_next <= f_quad_sdf1.y)
         discard;
 
-    // smoothly cut out line start, end and edge of truncated joint (if applicable)
-    float sdf = max(f_quad_sdf.x, f_quad_sdf.y);
+    // sdf for inside vs outside along the line direction. extrusion makes sure
+    // we include enough for a joint
+    float sdf = max(f_quad_sdf1.y - f_extrusion12.y, f_quad_sdf1.x - f_extrusion12.x);
 
-    // smoothly cut out edges at +- 0.5 * line width
-    // sdf = max(sdf, abs(f_quad_sdf.z) - f_line_width);
-    sdf = max(sdf, max(f_quad_sdf.z, f_quad_sdf.w));
+    // distance in linewidth direction
+    sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
 
-    // smoothly cut off corners of truncated miter joints
-    sdf = max(sdf, max(f_joint_cutoff.z, f_joint_cutoff.w));
+    // truncation of truncated joints
+    sdf = max(sdf, f_truncation.x);
+    sdf = max(sdf, f_truncation.y);
 
-    // add pattern
+    // pattern application
     sdf = max(sdf, get_pattern_sdf(pattern));
 
     // draw
@@ -92,34 +100,34 @@ void main(){
         color.a *= step(0.0, -sdf);
     }
 
-    // float aa = aastep(0.0, sdf);
-    // vec4 color = vec4(0.0, 0.7, 0.1, 1);
-    // color.rgb = mix(color.rgb, vec3(1,0,0), aa);
-
 #endif
 
 
 #ifdef DEBUG
-    // show geom in white
-    vec4 color = vec4(1, 1, 1, 0.5);
+    // base color
+    vec4 color = vec4(0.5, 0.5, 0.5, 0.2);
 
-    // show line smooth clipping from quad_sdf
-    // float sdf_width = abs(f_quad_sdf.z) - f_line_width;
-    float sdf_width = max(f_quad_sdf.z, f_quad_sdf.w);
-    // float sdf_width = max(f_quad_sdf.z, f_quad_sdf.w);
-    color.r = 0.9 - 0.5 * aastep(0.0, sdf_width);
-    color.b = 0.9 - 0.5 * aastep(0.0, f_quad_sdf.y);
-    color.g = 0.9 - 0.5 * aastep(0.0, f_quad_sdf.x);
+    // mark "outside" define by quad_sdf in black
+    float sdf = max(f_quad_sdf1.y - f_extrusion12.y, f_quad_sdf1.x - f_extrusion12.x);
+    sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
+    color.rgb -= vec3(0.5) * step(0.0, sdf);
 
-    // show how the joint overlap is cut off
-    if (max(f_joint_cutoff.x, f_joint_cutoff.y) > 0.0) {
-        color.r += 0.3;
-        color.gb -= vec2(0.3);
+    // Mark regions excluded via truncation in green
+    color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
+
+    // Mark discarded space in red/blue
+    float dist_in_prev = max(f_quad_sdf0, -f_linelength.x);
+    float dist_in_next = max(f_quad_sdf2, -f_linelength.y);
+    if (dist_in_prev < f_quad_sdf1.x)
+        color.r += 0.5;
+    if (dist_in_next <= f_quad_sdf1.y) {
+        color.b += 0.5;
     }
 
-    // show pattern by reducing alpha heavily on off-parts
-    if (get_pattern_sdf(pattern) > 0)
-        color.a *= 0.2;
+    // mark pattern in white
+    color.rgb += vec3(0.5) * step(0.0, get_pattern_sdf(pattern));
+
+
 #endif
 
     write2framebuffer(color, f_id);

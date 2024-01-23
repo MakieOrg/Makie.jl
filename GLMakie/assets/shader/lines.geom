@@ -18,11 +18,17 @@ in int g_valid_vertex[];
 in float g_thickness[];
 
 out vec4 f_color;
-out vec4 f_quad_sdf; // smooth edges (along length and width)
-out vec4 f_joint_cutoff; // xy = hard cutoff, zw = smooth cutoff
+out float f_quad_sdf0;
+out vec3 f_quad_sdf1;
+out float f_quad_sdf2;
+out vec2 f_truncation;
 out vec2 f_uv;
+
+flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
+flat out vec2 f_extrusion12;
+flat out vec2 f_linelength;
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -39,25 +45,15 @@ vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy + 0.5) * resolution, vertex.z) / vertex.w;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// new version
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-How it works:
-1. geom shader generates a large enough quad:
-    - width: max(linewidth) + AA pad
-    - length: line segment length + join pad + AA pad
-2. fragment shader generates SDF and takes care of AA, clean line joins
-    - generate rect sdf matching line segment w/o truncation but with join extension
-    - adjust sdf to truncate join without AA
-*/
-
 struct LineVertex {
     vec3 position;
     int index;
-    vec4 quad_sdf;
-    vec4 joint_cutoff;
+
+    float quad_sdf0;
+    vec3 quad_sdf1;
+    float quad_sdf2;
+    vec2 truncation;
+
     vec2 uv;
 };
 
@@ -66,11 +62,35 @@ LineVertex LV(vec3 position, int index) {
     LineVertex vertex;
     vertex.position = position;        // p1 or p2, will be modified further
     vertex.index = index;              // index will remain
-    vertex.quad_sdf = vec4(-10.0);     // defaults to always draw
-    vertex.joint_cutoff = vec4(-10.0); // defaults to always draw/never cut away
-    // vertex.uv                       // only relevant with uv
     return vertex;
 }
+
+void emit_vertex(LineVertex vertex) {
+    gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
+    f_color        = g_color[vertex.index];
+
+    f_quad_sdf0    = vertex.quad_sdf0;
+    f_quad_sdf1    = vertex.quad_sdf1;
+    f_quad_sdf2    = vertex.quad_sdf2;
+    f_truncation   = vertex.truncation;
+
+    f_uv           = vertex.uv;
+    f_id           = g_id[vertex.index];
+    EmitVertex();
+}
+
+vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
+vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                              Linestyle Support                             //
+////////////////////////////////////////////////////////////////////////////////
+
+
+bool has_pattern(Nothing pattern)   { return false; }
+bool has_pattern(sampler1D pattern) { return true; }
+bool has_pattern(sampler2D pattern) { return true; }
 
 void process_pattern(Nothing pattern, bool[4] isvalid, float[2] extrusion) {
     // do not adjust stuff
@@ -140,19 +160,11 @@ void generate_uvs(inout LineVertex[4] vertices, float[2] extrusion, float geom_l
     generate_uv(pattern, vertices[3], 2, _extrusion, +linewidth);
 }
 
-void emit_vertex(LineVertex vertex) {
-    gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
-    f_color        = g_color[vertex.index];
-    f_quad_sdf     = vertex.quad_sdf;
-    f_joint_cutoff = vertex.joint_cutoff;
-    f_uv           = vertex.uv;
-    f_id           = g_id[vertex.index];
-    EmitVertex();
-}
 
-// TODO isn't this wrong?
-vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
-vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+////////////////////////////////////////////////////////////////////////////////
+//                                    Main                                    //
+////////////////////////////////////////////////////////////////////////////////
+
 
 void main(void)
 {
@@ -250,13 +262,13 @@ void main(void)
 
     if (is_truncated[0]) {
         // need to extend segment to include previous segments corners for truncated join
-        extrusion[0] = 0.5 * g_thickness[1] * dot(n0, v1.xy);
+        extrusion[0] = -0.5 * g_thickness[1] * miter_offset1 / dot(miter_n1, v1.xy);
     } else {
         // shallow/spike join needs to include point where miter normal meets outer line edge
         extrusion[0] = 0.5 * g_thickness[1] * dot(miter_n1, v1.xy) / miter_offset1;
     }
     if (is_truncated[1]) {
-        extrusion[1] = 0.5 * g_thickness[2] * dot(n2, v1.xy);
+        extrusion[1] = -0.5 * g_thickness[2] * miter_offset2 / dot(miter_n2, v1.xy);
     } else {
         extrusion[1] = 0.5 * g_thickness[2] * dot(miter_n2, v1.xy) / miter_offset2;
     }
@@ -282,79 +294,35 @@ void main(void)
     // Set up uvs if patterns are used
     generate_uvs(vertices, extrusion, geom_linewidth);
 
-    // Do linewidth sdfs interfere with edge cleanup due to strongly varying linewidths?
-
-    bool[2] is_critical = bool[2](
-        (max(segment_length0 - 2 * sqrt(0.7), 0.0) < -(g_thickness[1] - g_thickness[0]) * sqrt(0.7)) ||
-        (max(segment_length1 - 2 * sqrt(0.7), 0.0) < +(g_thickness[2] - g_thickness[1]) * sqrt(0.7)),
-
-        (max(segment_length1 - 2 * sqrt(0.7), 0.0) < -(g_thickness[2] - g_thickness[1]) * sqrt(0.7)) ||
-        (max(segment_length2 - 2 * sqrt(0.7), 0.0) < +(g_thickness[3] - g_thickness[2]) * sqrt(0.7))
-    );
-
-    // linewidth adjustments
-    float offset_a = !is_critical[0] && !is_truncated[0] && isvalid[0] ? extrusion[0] : 0.0;
-    float offset_b = !is_critical[1] && !is_truncated[1] && isvalid[3] ? extrusion[1] : 0.0;
-
-    vec2[4] corners = vec2[4](
-        p1.xy + offset_a * v1.xy + 0.5 * g_thickness[1] * n1,
-        p2.xy + offset_b * v1.xy + 0.5 * g_thickness[2] * n1,
-        p1.xy - offset_a * v1.xy - 0.5 * g_thickness[1] * n1,
-        p2.xy - offset_b * v1.xy - 0.5 * g_thickness[2] * n1
-    );
-
-    vec2[2] edge_normals = vec2[2](
-        normal_vector(normalize(corners[1] - corners[0])),
-        normal_vector(normalize(corners[3] - corners[2]))
-    );
-
-    // sdf generation
-
-    // pre calc for efficiency
-    vec2 oriented_n0 = -sign(dot(v1.xy, n0)) * n0;
-    vec2 oriented_n2 =  sign(dot(v1.xy, n2)) * n2;
-    vec2 oriented_miter_n1 = -sign(dot(v1.xy, miter_n1)) * miter_n1;
-    vec2 oriented_miter_n2 =  sign(dot(v1.xy, miter_n2)) * miter_n2;
+    // generate sdf
+    f_linelength = vec2(segment_length0, segment_length2);      // used to limit crop for truncated joints
+    f_extrusion12 = vec2(abs(extrusion[0]), abs(extrusion[1])); // used to elongate sdf to include joints
+    f_linewidth = 0.5 * g_thickness[1];                         // used to compute width sdf
 
     for (int i = 0; i < 4; i++) {
+        // distance from quad vertex to line control points
         vec2 VP1 = vertices[i].position.xy - p1.xy;
         vec2 VP2 = vertices[i].position.xy - p2.xy;
 
-        // joint cutoff
+        // signed distance of previous segment at shared control point
+        // used for line joints
+        vertices[i].quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) : 2 * AA_THICKNESS;
 
-        // sharp joints use sharp (pixelated) cut offs to avoid self-overlap
-        if (isvalid[0] && !is_truncated[0] && !is_critical[0])
-            vertices[i].joint_cutoff.x = dot(VP1, -miter_v1);
-        if (isvalid[3] && !is_truncated[1] && !is_critical[1])
-            vertices[i].joint_cutoff.y = dot(VP2, +miter_v2);
+        // sdf of this segment
+        vertices[i].quad_sdf1.x = dot(VP1, -v1.xy);
+        vertices[i].quad_sdf1.y = dot(VP2,  v1.xy);
+        vertices[i].quad_sdf1.z = dot(VP1,  n1);
 
-        // truncated joints use smooth cutoff for corners that are outside the other segment
-        // TODO: this slightly degrades AA quality due to two AA edges overlapping
-        // TODO: we technically need edge_normals from previous and next line here, but not available
-        // ... could also drop offset, cut at p1/p2 directly to avoid overlap in the first place (1)
-        if (is_truncated[0] && !is_critical[0])
-            vertices[i].joint_cutoff.z = dot(VP1, oriented_n0) - 0.5 * g_thickness[1];
-        if (is_truncated[1] && !is_critical[1])
-            vertices[i].joint_cutoff.w = dot(VP2, oriented_n2) - 0.5 * g_thickness[2];
+        // sdf of next segment at shared control point
+        vertices[i].quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) : 2 * AA_THICKNESS;
 
-        // main sdf
-
-        // In line direction (length)
-        if (!isvalid[0]) // flat line end
-            vertices[i].quad_sdf.x = dot(VP1, -v1.xy);
-        else if (is_truncated[0])
-            vertices[i].quad_sdf.x = dot(VP1, oriented_miter_n1) -
-                0.5 * g_thickness[1] * miter_offset1; // (1)
-
-        if (!isvalid[3]) // flat line end
-            vertices[i].quad_sdf.y = dot(VP2, v1.xy);
-        else if (is_truncated[1])
-            vertices[i].quad_sdf.y = dot(VP2, oriented_miter_n2) -
-                0.5 * g_thickness[2] * miter_offset2; // (1)
-
-        // In normal direction (width)
-        vertices[i].quad_sdf.z = dot(vertices[i].position.xy - corners[0], +edge_normals[0]);
-        vertices[i].quad_sdf.w = dot(vertices[i].position.xy - corners[2], -edge_normals[1]);
+        // truncation edges
+        vertices[i].truncation.x = !is_truncated[0] ? -1.0 :
+            dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) -
+            0.5 * g_thickness[1] * abs(miter_offset1);
+        vertices[i].truncation.y = !is_truncated[1] ? -1.0 :
+            dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) -
+            0.5 * g_thickness[2] * abs(miter_offset2);
     }
 
     for (int i = 0; i < 4; i++)
