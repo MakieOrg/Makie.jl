@@ -103,6 +103,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         end => GLBuffer
         lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
+        debug = false
     end
     if to_value(pattern) !== nothing
         if !isa(pattern, Texture)

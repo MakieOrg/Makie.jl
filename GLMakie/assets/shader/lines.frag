@@ -63,17 +63,20 @@ float get_pattern_sdf(Nothing _){
 
 void write2framebuffer(vec4 color, uvec2 id);
 
-#define DEBUG
+uniform bool debug;
+// #define DEBUG
 
 void main(){
+    vec4 color;
 
-#ifndef DEBUG
-    // discard fragments that are "more inside" the other segment to manage
-    // sharp line joints and overlap of truncated joints
-    // For truncated joints we avoid cutting off the whole line by limiting the
-    // inside distance to linelength
-    float dist_in_prev = max(f_quad_sdf0, -f_linelength.x);
-    float dist_in_next = max(f_quad_sdf2, -f_linelength.y);
+// #ifndef DEBUG
+if (!debug) {
+    // discard fragments that are "more inside" the other segment to remove
+    // overlap between adjacent line segments.
+    // The transformation makes the distance be "less inside" once it reaches
+    // f_linelength. This limits how much one segment can cut from another
+    float dist_in_prev = abs(f_quad_sdf0 + f_linelength.x) - f_linelength.x;
+    float dist_in_next = abs(f_quad_sdf2 + f_linelength.y) - f_linelength.y;
     if (dist_in_prev < f_quad_sdf1.x || dist_in_next <= f_quad_sdf1.y)
         discard;
 
@@ -92,7 +95,7 @@ void main(){
     sdf = max(sdf, get_pattern_sdf(pattern));
 
     // draw
-    vec4 color = f_color;
+    color = f_color;
 
     if (!fxaa) {
         color.a *= aastep(0.0, -sdf);
@@ -100,12 +103,13 @@ void main(){
         color.a *= step(0.0, -sdf);
     }
 
-#endif
+// #endif
 
+} else {
 
-#ifdef DEBUG
+// #ifdef DEBUG
     // base color
-    vec4 color = vec4(0.5, 0.5, 0.5, 0.2);
+    color = vec4(0.5, 0.5, 0.5, 0.2);
 
     // mark "outside" define by quad_sdf in black
     float sdf = max(f_quad_sdf1.y - f_extrusion12.y, f_quad_sdf1.x - f_extrusion12.x);
@@ -116,8 +120,8 @@ void main(){
     color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
     // Mark discarded space in red/blue
-    float dist_in_prev = max(f_quad_sdf0, -f_linelength.x);
-    float dist_in_next = max(f_quad_sdf2, -f_linelength.y);
+    float dist_in_prev = abs(f_quad_sdf0 + f_linelength.x) - f_linelength.x;
+    float dist_in_next = abs(f_quad_sdf2 + f_linelength.y) - f_linelength.y;
     if (dist_in_prev < f_quad_sdf1.x)
         color.r += 0.5;
     if (dist_in_next <= f_quad_sdf1.y) {
@@ -126,9 +130,8 @@ void main(){
 
     // mark pattern in white
     color.rgb += vec3(0.5) * step(0.0, get_pattern_sdf(pattern));
+// #endif
 
-
-#endif
-
+}
     write2framebuffer(color, f_id);
 }

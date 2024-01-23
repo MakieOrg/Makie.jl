@@ -278,7 +278,7 @@ void main(void)
     // vertex positions
 
     // Note: We cut off lines at g_thickness[1/2] so we never go beyond those values
-    float geom_linewidth = 0.5 * max(g_thickness[1], g_thickness[2]);
+    float geom_linewidth = 0.5 * g_thickness[1];
 
     // Position
     // TODO: Consider trapezoidal shapes (using AA-padded linewidths as is, not max)
@@ -295,7 +295,13 @@ void main(void)
     generate_uvs(vertices, extrusion, geom_linewidth);
 
     // generate sdf
-    f_linelength = vec2(segment_length0, segment_length2);      // used to limit crop for truncated joints
+    // limit range of distance sampled in prev/next segment
+    // this makes overlapping segments draw over each other rather than creating a gap
+    // 1.5 is not an exact value, should technically be max length of 1 / dot(miter_n, n)
+    f_linelength = vec2(
+        0.5 * min(min(segment_length0, segment_length1), 1.83 * g_thickness[1]),
+        0.5 * min(min(segment_length2, segment_length1), 1.83 * g_thickness[1])
+    );
     f_extrusion12 = vec2(abs(extrusion[0]), abs(extrusion[1])); // used to elongate sdf to include joints
     f_linewidth = 0.5 * g_thickness[1];                         // used to compute width sdf
 
