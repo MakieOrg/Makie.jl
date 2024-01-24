@@ -38,23 +38,19 @@ float get_pattern_sdf(sampler2D pattern){
 float get_pattern_sdf(sampler1D pattern){
     float sdf_offset, x;
     if (f_uv.x <= f_pattern_overwrite.x) {
+        // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
+        // if overwrite.y (target sdf in joint) is
+        // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
+        // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
         sdf_offset = max(f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_THICKNESS);
-        return f_pattern_overwrite.y * ( // +- pos ... 0
-            pattern_length * (f_pattern_overwrite.x - f_uv.x) + // pos ... 0
-            sdf_offset
-        );
-        // subtract at most AA_THICKNES
-        // if texture > -AA_THICKNESS start from there
-        // return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - f_uv.x) - AA_THICKNESS);
+        return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - f_uv.x) + sdf_offset);
     } else if (f_uv.x >= f_pattern_overwrite.z) {
+        // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
+        // see above
         sdf_offset = max(f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_THICKNESS);
-        return f_pattern_overwrite.w * ( // +- pos ... 0
-            pattern_length * (f_uv.x - f_pattern_overwrite.z) + // pos ... 0
-            sdf_offset
-        );
-        // return f_pattern_overwrite.w * (pattern_length * (f_uv.x - f_pattern_overwrite.z) - AA_THICKNESS);
-
+        return f_pattern_overwrite.w * (pattern_length * (f_uv.x - f_pattern_overwrite.z) + sdf_offset);
     } else
+        // in allowed range
         return texture(pattern, f_uv.x).x;
 }
 float get_pattern_sdf(Nothing _){
