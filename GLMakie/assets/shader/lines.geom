@@ -57,14 +57,6 @@ struct LineVertex {
     vec2 uv;
 };
 
-// Default constructor
-LineVertex LV(vec3 position, int index) {
-    LineVertex vertex;
-    vertex.position = position;        // p1 or p2, will be modified further
-    vertex.index = index;              // index will remain
-    return vertex;
-}
-
 void emit_vertex(LineVertex vertex) {
     gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
     f_color        = g_color[vertex.index];
@@ -87,10 +79,6 @@ vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 //                              Linestyle Support                             //
 ////////////////////////////////////////////////////////////////////////////////
 
-
-bool has_pattern(Nothing pattern)   { return false; }
-bool has_pattern(sampler1D pattern) { return true; }
-bool has_pattern(sampler2D pattern) { return true; }
 
 void process_pattern(Nothing pattern, bool[4] isvalid, float[2] extrusion) {
     // do not adjust stuff
@@ -144,20 +132,6 @@ void generate_uv(sampler2D pattern, inout LineVertex vertex, int index, float ex
         (g_lastlen[index] + extrusion) / pattern_length,
         0.5 + linewidth / g_thickness[index]
     );
-}
-
-void generate_uvs(inout LineVertex[4] vertices, float[2] extrusion, float halfwidth) {
-    float _extrusion, linewidth = halfwidth + AA_THICKNESS;
-
-    // start of line segment
-    _extrusion = - (abs(extrusion[0]) + AA_THICKNESS);
-    generate_uv(pattern, vertices[0], 1, _extrusion, -linewidth);
-    generate_uv(pattern, vertices[1], 1, _extrusion, +linewidth);
-
-    // end of line segment
-    _extrusion = abs(extrusion[1]) + AA_THICKNESS;
-    generate_uv(pattern, vertices[2], 2, _extrusion, -linewidth);
-    generate_uv(pattern, vertices[3], 2, _extrusion, +linewidth);
 }
 
 
@@ -276,26 +250,12 @@ void main(void)
         extrusion[1] = halfwidth * dot(miter_n2, v1.xy) / miter_offset2;
     }
 
-    // Vertex Generation
-
-    // Create vertices with line vertex + index
-    LineVertex[4] vertices = LineVertex[4](LV(p1, 1), LV(p1, 1), LV(p2, 2), LV(p2, 2));
-
-    // Compelte vertex positions (add offsets from line vertex -> rect vertex)
-    vertices[0].position += -(abs(extrusion[0]) + AA_THICKNESS) * v1 - (halfwidth + AA_THICKNESS) * vec3(n1, 0);
-    vertices[1].position += -(abs(extrusion[0]) + AA_THICKNESS) * v1 + (halfwidth + AA_THICKNESS) * vec3(n1, 0);
-    vertices[2].position += +(abs(extrusion[1]) + AA_THICKNESS) * v1 - (halfwidth + AA_THICKNESS) * vec3(n1, 0);
-    vertices[3].position += +(abs(extrusion[1]) + AA_THICKNESS) * v1 + (halfwidth + AA_THICKNESS) * vec3(n1, 0);
+    // Generate static/flat outputs
 
     // Set up pattern overwrites at joints if patterns are used. This "freezes"
     // the pattern in either the on state (draw) or off state (no draw) to avoid
     // fragmenting it around a corner.
     process_pattern(pattern, isvalid, extrusion);
-
-    // Set up uvs if patterns are used
-    generate_uvs(vertices, extrusion, halfwidth);
-
-    // generate sdf
 
     // limit range of distance sampled in prev/next segment
     // this makes overlapping segments draw over each other when reaching the limit
@@ -309,31 +269,51 @@ void main(void)
     // used to compute width sdf
     f_linewidth = halfwidth;
 
-    for (int i = 0; i < 4; i++) {
-        // distance from quad vertex to line control points
-        vec2 VP1 = vertices[i].position.xy - p1.xy;
-        vec2 VP2 = vertices[i].position.xy - p2.xy;
+    // Generate interpolated/varying outputs:
 
-        // signed distance of previous segment at shared control point, in line
-        // direction. Used decide which segments renders which joint fragment
-        vertices[i].quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) : 2 * AA_THICKNESS;
+    LineVertex vertex;
 
-        // sdf of this segment
-        vertices[i].quad_sdf1.x = dot(VP1, -v1.xy);
-        vertices[i].quad_sdf1.y = dot(VP2,  v1.xy);
-        vertices[i].quad_sdf1.z = dot(VP1,  n1);
+    for (int x = 0; x < 2; x++) {
+        // Get offset in line direction
+        float v_offset = (2 * x - 1) * (abs(extrusion[x]) + AA_THICKNESS);
+        vertex.index = x+1;
 
-        // SDF for next segment, see quad_sdf0
-        vertices[i].quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) : 2 * AA_THICKNESS;
+        for (int y = 0; y < 2; y++) {
+            // Get offset in y direction & compute vertex position
+            float n_offset = (2 * y - 1) * (halfwidth + AA_THICKNESS);
+            vertex.position = vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0);
 
-        // sdf for creating a flat cap on truncated joints
-        vertices[i].truncation.x = !is_truncated[0] ? -1.0 :
-            dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1);
-        vertices[i].truncation.y = !is_truncated[1] ? -1.0 :
-            dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2);
+            // generate uv coordinate
+            generate_uv(pattern, vertex, vertex.index, v_offset, n_offset);
 
-        // finalize vertex
-        emit_vertex(vertices[i]);
+            // Generate SDF's
+
+            // distance from quad vertex to line control points
+            vec2 VP1 = vertex.position.xy - p1.xy;
+            vec2 VP2 = vertex.position.xy - p2.xy;
+
+            // signed distance of previous segment at shared control point, in line
+            // direction. Used decide which segments renders which joint fragment
+            vertex.quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) : 2 * AA_THICKNESS;
+
+            // sdf of this segment
+            vertex.quad_sdf1.x = dot(VP1, -v1.xy);
+            vertex.quad_sdf1.y = dot(VP2,  v1.xy);
+            vertex.quad_sdf1.z = n_offset;
+
+            // SDF for next segment, see quad_sdf0
+            vertex.quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) : 2 * AA_THICKNESS;
+
+            // sdf for creating a flat cap on truncated joints
+            // (sign(dot(...)) detects if line bends left or right)
+            vertex.truncation.x = !is_truncated[0] ? -1.0 :
+                dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1);
+            vertex.truncation.y = !is_truncated[1] ? -1.0 :
+                dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2);
+
+            // finalize vertex
+            emit_vertex(vertex);
+        }
     }
 
     // finalize primitive
