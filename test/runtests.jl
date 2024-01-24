@@ -11,7 +11,7 @@ using Makie: volume
 
 @testset "Unit tests" begin
     @testset "#659 Volume errors if data is not a cube" begin
-        fig, ax, vplot = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
+        fig, ax, vplot = volume(1..8, 1..8, 1..10, rand(8, 8, 10))
         lims = Makie.data_limits(vplot)
         lo, hi = extrema(lims)
         @test all(lo .<= 1)

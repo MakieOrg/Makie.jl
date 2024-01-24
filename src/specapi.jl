@@ -193,6 +193,8 @@ end
 
 GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
 
+apply_typed_convert(P, @nospecialize(args::Tuple)) = values(convert_arguments_typed(P, args...))
+
 """
 apply for return type PlotSpec
 """
@@ -203,7 +205,8 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec)
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return (plottype(plottype(x), P), (args...,))
+    NP = plottype(plottype(x), P)
+    return (NP, apply_typed_convert(NP, (args...,)))
 end
 
 function apply_convert!(P, ::Attributes, x::AbstractVector{PlotSpec})
@@ -214,7 +217,7 @@ end
 apply for return type
     (args...,)
 """
-apply_convert!(P, ::Attributes, x::Tuple) = (P, x)
+apply_convert!(P, ::Attributes, args::Tuple) = (P, apply_typed_convert(P, args))
 
 function MakieCore.argtypes(plot::PlotSpec)
     args_converted = convert_arguments(plottype(plot), plot.args...)

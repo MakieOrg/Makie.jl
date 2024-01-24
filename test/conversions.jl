@@ -177,7 +177,8 @@ end
 @testset "single conversions" begin
     myvector = MyVector(collect(1:10))
     mynestedvector = MyNestedVector(MyVector(collect(11:20)))
-    @test_throws ErrorException convert_arguments(Lines, myvector, mynestedvector)
+    @test convert_arguments(Lines, myvector, mynestedvector) ===
+                                (myvector, mynestedvector)
 
     Makie.convert_single_argument(v::MyNestedVector) = v.v
     Makie.convert_single_argument(v::MyVector) = v.v
@@ -333,8 +334,8 @@ end
         @test convert_arguments(Image, m3)         == (0f0..10f0, 0f0..6f0, o3)
         @test convert_arguments(Image, v1, r2, m3) == (1f0..10f0, 1f0..6f0, o3)
         @test convert_arguments(Image, i1, v2, m3) == (1f0..10f0, 1f0..6f0, o3)
-        @test_throws ErrorException convert_arguments(Image, m1, m2, m3)
-        @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
+        @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
+        @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end
 
     @testset "VertexGrid conversion" begin
@@ -356,8 +357,10 @@ end
         @test convert_arguments(Heatmap, r1, i2, m3) == (o1, o2, o3)
         @test convert_arguments(Heatmap, v1, r2, m3) == (o1, o2, o3)
         @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0f0:10f0), o2, o3)
-        @test_throws ErrorException convert_arguments(Heatmap, m1, m2, m3)
-        @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
+        # TODO, this throws ERROR: MethodError: no method matching adjust_axes(::CellGrid, ::Matrix{Int64}, ::Matrix{Int64}, ::Matrix{Float64})
+        # Is this what we want to test for?
+        @test_throws MethodError convert_arguments(Heatmap, m1, m2, m3) === (m1, m2, m3)
+        @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end
 end
 
