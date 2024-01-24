@@ -292,17 +292,21 @@ void main(void)
             vec2 VP1 = vertex.position.xy - p1.xy;
             vec2 VP2 = vertex.position.xy - p2.xy;
 
+            // Note: Adding an offset of -0.5 to all SDF's in v direction
+            // fixes most issues with picking which segment renders a fragment
+            // of a joint.
+
             // signed distance of previous segment at shared control point, in line
             // direction. Used decide which segments renders which joint fragment
-            vertex.quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) : 2 * AA_THICKNESS;
+            vertex.quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) - 0.5 : 2 * AA_THICKNESS;
 
             // sdf of this segment
-            vertex.quad_sdf1.x = dot(VP1, -v1.xy);
-            vertex.quad_sdf1.y = dot(VP2,  v1.xy);
+            vertex.quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
+            vertex.quad_sdf1.y = dot(VP2,  v1.xy) - 0.5;
             vertex.quad_sdf1.z = n_offset;
 
             // SDF for next segment, see quad_sdf0
-            vertex.quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) : 2 * AA_THICKNESS;
+            vertex.quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) - 0.5: 2 * AA_THICKNESS;
 
             // sdf for creating a flat cap on truncated joints
             // (sign(dot(...)) detects if line bends left or right)
