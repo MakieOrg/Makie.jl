@@ -146,8 +146,8 @@ void generate_uv(sampler2D pattern, inout LineVertex vertex, int index, float ex
     );
 }
 
-void generate_uvs(inout LineVertex[4] vertices, float[2] extrusion, float geom_linewidth) {
-    float _extrusion, linewidth = geom_linewidth + AA_THICKNESS;
+void generate_uvs(inout LineVertex[4] vertices, float[2] extrusion, float halfwidth) {
+    float _extrusion, linewidth = halfwidth + AA_THICKNESS;
 
     // start of line segment
     _extrusion = - (abs(extrusion[0]) + AA_THICKNESS);
@@ -231,6 +231,10 @@ void main(void)
         v2 /= segment_length2;
     }
 
+    // Since we are measuring from the center of the line we will need half
+    // the thickness/linewidth for most things.
+    float halfwidth = 0.5 * g_thickness[1];
+
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = normal_vector(v0);
     vec2 n1 = normal_vector(v1);
@@ -249,7 +253,6 @@ void main(void)
     float miter_offset2 = dot(miter_n2, n1);
 
     // Are we truncating the joint?
-    // 1. Based on real miter limits?
     bool[2] is_truncated = bool[2](
         dot(v0.xy, v1.xy) < MITER_LIMIT,
         dot(v1.xy, v2.xy) < MITER_LIMIT
@@ -262,56 +265,57 @@ void main(void)
 
     if (is_truncated[0]) {
         // need to extend segment to include previous segments corners for truncated join
-        extrusion[0] = -0.5 * g_thickness[1] * miter_offset1 / dot(miter_n1, v1.xy);
+        extrusion[0] = -halfwidth * miter_offset1 / dot(miter_n1, v1.xy);
     } else {
         // shallow/spike join needs to include point where miter normal meets outer line edge
-        extrusion[0] = 0.5 * g_thickness[1] * dot(miter_n1, v1.xy) / miter_offset1;
+        extrusion[0] = halfwidth * dot(miter_n1, v1.xy) / miter_offset1;
     }
     if (is_truncated[1]) {
-        extrusion[1] = -0.5 * g_thickness[2] * miter_offset2 / dot(miter_n2, v1.xy);
+        extrusion[1] = -halfwidth * miter_offset2 / dot(miter_n2, v1.xy);
     } else {
-        extrusion[1] = 0.5 * g_thickness[2] * dot(miter_n2, v1.xy) / miter_offset2;
+        extrusion[1] = halfwidth * dot(miter_n2, v1.xy) / miter_offset2;
     }
 
+    // Vertex Generation
+
+    // Create vertices with line vertex + index
     LineVertex[4] vertices = LineVertex[4](LV(p1, 1), LV(p1, 1), LV(p2, 2), LV(p2, 2));
 
-    // vertex positions
+    // Compelte vertex positions (add offsets from line vertex -> rect vertex)
+    vertices[0].position += -(abs(extrusion[0]) + AA_THICKNESS) * v1 - (halfwidth + AA_THICKNESS) * vec3(n1, 0);
+    vertices[1].position += -(abs(extrusion[0]) + AA_THICKNESS) * v1 + (halfwidth + AA_THICKNESS) * vec3(n1, 0);
+    vertices[2].position += +(abs(extrusion[1]) + AA_THICKNESS) * v1 - (halfwidth + AA_THICKNESS) * vec3(n1, 0);
+    vertices[3].position += +(abs(extrusion[1]) + AA_THICKNESS) * v1 + (halfwidth + AA_THICKNESS) * vec3(n1, 0);
 
-    // Note: We cut off lines at g_thickness[1/2] so we never go beyond those values
-    float geom_linewidth = 0.5 * g_thickness[1];
-
-    // Position
-    // TODO: Consider trapezoidal shapes (using AA-padded linewidths as is, not max)
-    //        SDF's should be fine, uv's not
-    vertices[0].position += (-(abs(extrusion[0]) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
-    vertices[1].position += (-(abs(extrusion[0]) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
-    vertices[2].position += (+(abs(extrusion[1]) + AA_THICKNESS)) * v1 + vec3(-(geom_linewidth + AA_THICKNESS) * n1, 0);
-    vertices[3].position += (+(abs(extrusion[1]) + AA_THICKNESS)) * v1 + vec3(+(geom_linewidth + AA_THICKNESS) * n1, 0);
-
-    // Set up pattern overwrites at joints if patterns are used
+    // Set up pattern overwrites at joints if patterns are used. This "freezes"
+    // the pattern in either the on state (draw) or off state (no draw) to avoid
+    // fragmenting it around a corner.
     process_pattern(pattern, isvalid, extrusion);
 
     // Set up uvs if patterns are used
-    generate_uvs(vertices, extrusion, geom_linewidth);
+    generate_uvs(vertices, extrusion, halfwidth);
 
     // generate sdf
+
     // limit range of distance sampled in prev/next segment
-    // this makes overlapping segments draw over each other rather than creating a gap
-    // 1.5 is not an exact value, should technically be max length of 1 / dot(miter_n, n)
-    f_linelength = vec2(
-        is_truncated[0] ? 0.0 : 0.5 * min(min(segment_length0, segment_length1), 1.83 * g_thickness[1]),
-        is_truncated[1] ? 0.0 : 0.5 * min(min(segment_length2, segment_length1), 1.83 * g_thickness[1])
-    );
-    f_extrusion12 = vec2(abs(extrusion[0]), abs(extrusion[1])); // used to elongate sdf to include joints
-    f_linewidth = 0.5 * g_thickness[1];                         // used to compute width sdf
+    // this makes overlapping segments draw over each other when reaching the limit
+    // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
+    // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
+    f_linelength = vec2(is_truncated[0] ? 0.0 : g_thickness[1], is_truncated[1] ? 0.0 : g_thickness[1]);
+
+    // used to elongate sdf to include joints
+    f_extrusion12 = vec2(abs(extrusion[0]), abs(extrusion[1]));
+
+    // used to compute width sdf
+    f_linewidth = halfwidth;
 
     for (int i = 0; i < 4; i++) {
         // distance from quad vertex to line control points
         vec2 VP1 = vertices[i].position.xy - p1.xy;
         vec2 VP2 = vertices[i].position.xy - p2.xy;
 
-        // signed distance of previous segment at shared control point
-        // used for line joints
+        // signed distance of previous segment at shared control point, in line
+        // direction. Used decide which segments renders which joint fragment
         vertices[i].quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) : 2 * AA_THICKNESS;
 
         // sdf of this segment
@@ -319,21 +323,20 @@ void main(void)
         vertices[i].quad_sdf1.y = dot(VP2,  v1.xy);
         vertices[i].quad_sdf1.z = dot(VP1,  n1);
 
-        // sdf of next segment at shared control point
+        // SDF for next segment, see quad_sdf0
         vertices[i].quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) : 2 * AA_THICKNESS;
 
-        // truncation edges
+        // sdf for creating a flat cap on truncated joints
         vertices[i].truncation.x = !is_truncated[0] ? -1.0 :
-            dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) -
-            0.5 * g_thickness[1] * abs(miter_offset1);
+            dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1);
         vertices[i].truncation.y = !is_truncated[1] ? -1.0 :
-            dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) -
-            0.5 * g_thickness[2] * abs(miter_offset2);
+            dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2);
+
+        // finalize vertex
+        emit_vertex(vertices[i]);
     }
 
-    for (int i = 0; i < 4; i++)
-        emit_vertex(vertices[i]);
-
+    // finalize primitive
     EndPrimitive();
 
     return;
