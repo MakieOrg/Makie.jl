@@ -2,6 +2,10 @@
 {{GLSL_EXTENSIONS}}
 {{SUPPORTED_EXTENSIONS}}
 
+// show the various regions of the rendered segment
+// (anti-aliased edges, joint truncation, overlap cutoff, patterns)
+// #define DEBUG
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -59,14 +63,10 @@ float get_pattern_sdf(Nothing _){
 
 void write2framebuffer(vec4 color, uvec2 id);
 
-uniform bool debug;
-// #define DEBUG
-
 void main(){
     vec4 color;
 
-// #ifndef DEBUG
-if (!debug) {
+#ifndef DEBUG
     // discard fragments that are "more inside" the other segment to remove
     // overlap between adjacent line segments.
     // The transformation makes the distance be "less inside" once it reaches
@@ -98,12 +98,10 @@ if (!debug) {
     } else {
         color.a *= step(0.0, -sdf);
     }
+#endif
 
-// #endif
 
-} else {
-
-// #ifdef DEBUG
+#ifdef DEBUG
     // base color
     color = vec4(0.5, 0.5, 0.5, 0.2);
 
@@ -126,8 +124,7 @@ if (!debug) {
 
     // mark pattern in white
     color.rgb += vec3(0.5) * step(0.0, get_pattern_sdf(pattern));
-// #endif
+#endif
 
-}
     write2framebuffer(color, f_id);
 }
