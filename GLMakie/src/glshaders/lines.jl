@@ -145,7 +145,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         )
         gl_primitive   = GL_LINES
         pattern_length = 1f0
-        debug = true
+        debug = false
     end
     if !isa(pattern, Texture) && to_value(pattern) !== nothing
         if !isa(to_value(pattern), Vector)

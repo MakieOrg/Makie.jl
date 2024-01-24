@@ -80,45 +80,85 @@ vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void process_pattern(Nothing pattern, bool[4] isvalid, float[2] extrusion) {
+vec2 process_pattern(Nothing pattern, bool[4] isvalid, float[2] extrusion) {
     // do not adjust stuff
     f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
+    return vec2(0);
 }
-void process_pattern(sampler2D pattern, bool[4] isvalid, float[2] extrusion) {
+vec2 process_pattern(sampler2D pattern, bool[4] isvalid, float[2] extrusion) {
     // TODO
     // This is not a case that's used at all yet. Maybe consider it in the future...
     f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
+    return vec2(0);
 }
 
-void process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
-    float pattern_sample;
+vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
+    // samples:
+    //   -ext1  p1 ext1    -ext2 p2 ext2
+    //      1   2   3        4   5   6
+    // prev | joint |  this  | joint | next
 
-    // line segment start
-    if (!isvalid[0]) {
-        // get sample slightly further along
-        pattern_sample = texture(pattern, (g_lastlen[1] + AA_THICKNESS) / pattern_length).x;
-        // extend this value into the AA gap
-        f_pattern_overwrite.x = (g_lastlen[1] + AA_THICKNESS) / pattern_length;
-        f_pattern_overwrite.y = sign(pattern_sample);
-    } else {
-        // sample at "center" of corner/joint
-        pattern_sample = texture(pattern, g_lastlen[1] / pattern_length).x;
-        // overwrite until one AA gap past the corner/joint
-        f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_THICKNESS) / pattern_length;
-        // using the sign of the sample to decide between drawing or not drawing
-        f_pattern_overwrite.y = sign(pattern_sample);
+    // default to no overwrite
+    f_pattern_overwrite.x = -1e12;
+    f_pattern_overwrite.z = +1e12;
+    vec2 adjust = vec2(0);
+    float left, center, right;
+
+    if (isvalid[0]) {
+        float offset = max(extrusion[0], 0.5 * g_thickness[1]);
+        left   = texture(pattern, (g_lastlen[1] - offset) / pattern_length).x;
+        center = texture(pattern, g_lastlen[1] / pattern_length).x;
+        right  = texture(pattern, (g_lastlen[1] + offset) / pattern_length).x;
+
+        // cases:
+        // ++-, +--, +-+ => elongate backwards
+        // -++, --+      => shrink forward
+        // +++, ---, -+- => freeze around joint
+
+        if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
+            // default/freeze
+            // overwrite until one AA gap past the corner/joint
+            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_THICKNESS) / pattern_length;
+            // using the sign of the center to decide between drawing or not drawing
+            f_pattern_overwrite.y = sign(center);
+        } else if (left > 0) {
+            // elongate backwards
+            adjust.x = -1.0;
+        } else if (right > 0) {
+            // shorten forward
+            adjust.x = 1.0;
+        } else {
+            // default - see above
+            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_THICKNESS) / pattern_length;
+            f_pattern_overwrite.y = sign(center);
+        }
+
+    } // else there is no left segment, no left join, so no overwrite
+
+    if (isvalid[3]) {
+        float offset = max(extrusion[1], 0.5 * g_thickness[2]);
+        left   = texture(pattern, (g_lastlen[2] - offset) / pattern_length).x;
+        center = texture(pattern, g_lastlen[2] / pattern_length).x;
+        right  = texture(pattern, (g_lastlen[2] + offset) / pattern_length).x;
+
+        if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
+            // default/freeze
+            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_THICKNESS) / pattern_length;
+            f_pattern_overwrite.w = sign(center);
+        } else if (left > 0) {
+            // shrink backwards
+            adjust.y = -1.0;
+        } else if (right > 0) {
+            // elongate forward
+            adjust.y = 1.0;
+        } else {
+            // default - see above
+            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_THICKNESS) / pattern_length;
+            f_pattern_overwrite.w = sign(center);
+        }
     }
 
-    // and again for the end of the segment
-    if (!isvalid[3]) {
-        pattern_sample = texture(pattern, (g_lastlen[2] - AA_THICKNESS) / pattern_length).x;
-        f_pattern_overwrite.z = (g_lastlen[2] - AA_THICKNESS) / pattern_length;
-        f_pattern_overwrite.w = sign(pattern_sample);
-    } else {
-        pattern_sample = texture(pattern, g_lastlen[2] / pattern_length).x;
-        f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_THICKNESS) / pattern_length;
-        f_pattern_overwrite.w = sign(pattern_sample);
-    }
+    return adjust;
 }
 
 // If we don't have a pattern we don't need uv's
@@ -255,16 +295,22 @@ void main(void)
     // Set up pattern overwrites at joints if patterns are used. This "freezes"
     // the pattern in either the on state (draw) or off state (no draw) to avoid
     // fragmenting it around a corner.
-    process_pattern(pattern, isvalid, extrusion);
+    vec2 adjustment = process_pattern(pattern, isvalid, extrusion);
 
     // limit range of distance sampled in prev/next segment
     // this makes overlapping segments draw over each other when reaching the limit
     // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
     // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
-    f_linelength = vec2(is_truncated[0] ? 0.0 : g_thickness[1], is_truncated[1] ? 0.0 : g_thickness[1]);
+    f_linelength = vec2(
+        is_truncated[0] ? 0.0 : g_thickness[1],
+        is_truncated[1] ? 0.0 : g_thickness[1]
+    );
 
     // used to elongate sdf to include joints
-    f_extrusion12 = vec2(abs(extrusion[0]), abs(extrusion[1]));
+    f_extrusion12 = vec2(
+        max(abs(extrusion[0]), abs(adjustment[0] * halfwidth)),
+        max(abs(extrusion[1]), abs(adjustment[1] * halfwidth))
+    );
 
     // used to compute width sdf
     f_linewidth = halfwidth;
@@ -275,7 +321,11 @@ void main(void)
 
     for (int x = 0; x < 2; x++) {
         // Get offset in line direction
-        float v_offset = (2 * x - 1) * (abs(extrusion[x]) + AA_THICKNESS);
+        float v_offset;
+        if (adjustment[x] == 0.0)
+            v_offset = (2 * x - 1) * (abs(extrusion[x]) + AA_THICKNESS);
+        else
+            v_offset = adjustment[x] * (max(abs(extrusion[x]), halfwidth) + AA_THICKNESS);
         vertex.index = x+1;
 
         for (int y = 0; y < 2; y++) {
@@ -296,9 +346,10 @@ void main(void)
             // fixes most issues with picking which segment renders a fragment
             // of a joint.
 
-            // signed distance of previous segment at shared control point, in line
-            // direction. Used decide which segments renders which joint fragment
-            vertex.quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) - 0.5 : 2 * AA_THICKNESS;
+            // signed distance of previous segment at shared control point in line
+            // direction. Used decide which segments renders which joint fragment.
+            // If the left joint is adjusted this sdf is disabled.
+            vertex.quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) - 0.5 + abs(adjustment[0]) * 1e12 : 2 * AA_THICKNESS;
 
             // sdf of this segment
             vertex.quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
@@ -306,14 +357,17 @@ void main(void)
             vertex.quad_sdf1.z = n_offset;
 
             // SDF for next segment, see quad_sdf0
-            vertex.quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) - 0.5: 2 * AA_THICKNESS;
+            vertex.quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) - 0.5 + abs(adjustment[1]) * 1e12 : 2 * AA_THICKNESS;
 
             // sdf for creating a flat cap on truncated joints
             // (sign(dot(...)) detects if line bends left or right)
+            // left/right adjustments disable
             vertex.truncation.x = !is_truncated[0] ? -1.0 :
-                dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1);
+                dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1)
+                - abs(adjustment[0]) * 1e12;
             vertex.truncation.y = !is_truncated[1] ? -1.0 :
-                dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2);
+                dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2)
+                - abs(adjustment[1]) * 1e12;
 
             // finalize vertex
             emit_vertex(vertex);
