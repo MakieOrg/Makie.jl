@@ -477,7 +477,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
                 output
             end
         end
-        @info data[:fast]
         return draw_lines(screen, positions, data)
     end
 end
@@ -490,13 +489,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = nothing
-            data[:fast] = true
         else
             linewidth = gl_attributes[:thickness]
             data[:pattern] = lift(plot, linestyle, linewidth, px_per_unit) do ls, lw, ppu
                 ppu * _mean(lw) .* ls
             end
-            data[:fast] = false
         end
         positions = handle_view(plot[1], data)
 

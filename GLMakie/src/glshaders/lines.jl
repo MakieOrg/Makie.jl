@@ -137,15 +137,15 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         shader              = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom",
-            "line_segments.frag",
+            "lines.frag",
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
-                "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : ""
             )
         )
         gl_primitive   = GL_LINES
         pattern_length = 1f0
+        debug = true
     end
     if !isa(pattern, Texture) && to_value(pattern) !== nothing
         if !isa(to_value(pattern), Vector)
