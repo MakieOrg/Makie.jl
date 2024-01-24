@@ -246,6 +246,9 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             on(plot, plot.model) do x
                 screen.requires_update = true
             end
+            on(plot, scene.camera.projectionview) do x
+                screen.requires_update = true
+            end
         end
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
@@ -311,7 +314,7 @@ end
 
 Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
 
-function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Combined))
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
@@ -568,6 +571,8 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = plot.visible
+        gl_attributes[:fxaa] = get(plot, :fxaa, Observable(false))
+        gl_attributes[:depthsorting] = get(plot, :depthsorting, false)
         cam = scene.camera
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
@@ -799,11 +804,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             )
             return convert(Mat4f, m) * m2
         end
+        interp = to_value(pop!(gl_attributes, :interpolate))
+        interp = interp ? :linear : :nearest
+        Tex(x) = Texture(x; minfilter=interp)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
-            return draw_volume(screen, intensity, gl_attributes)
+            return draw_volume(screen, Tex(intensity), gl_attributes)
         else
-            return draw_volume(screen, plot[4], gl_attributes)
+            return draw_volume(screen, Tex(plot[4]), gl_attributes)
         end
     end
 end

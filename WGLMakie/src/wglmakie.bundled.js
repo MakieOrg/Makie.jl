@@ -21016,7 +21016,7 @@ function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     camera.up = new A(...cam3d.upvector.value);
     camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
-    const use_orbit_cam = ()=>!(JSServe.can_send_to_julia && JSServe.can_send_to_julia());
+    const use_orbit_cam = ()=>!(Bonito.can_send_to_julia && Bonito.can_send_to_julia());
     const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e)=>in_scene(scene, e));
     controls.addEventListener("change", (e)=>{
         const view = camera.matrixWorldInverse;
@@ -21325,9 +21325,11 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
         ${attribute_decl}
         ${uniform_decl}
+        uniform int is_segments_multi;
 
         out vec2 f_uv;
         out ${color} f_color;
+        flat out uint frag_instance_id;
 
         vec2 get_resolution() {
             // 2 * px_per_unit doesn't make any sense, but works
@@ -21359,6 +21361,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
             vec2 point = pointA + xBasis * position.x + yBasis * width * position.y;
 
             gl_Position = vec4(point.xy / get_resolution(), position.x == 1.0 ? p_b.z : p_a.z, 1.0);
+            frag_instance_id = uint((gl_InstanceID * is_segments_multi) + int(position.x == 1.0));
         }
         `;
 }
@@ -21369,7 +21372,8 @@ function lines_fragment_shader(uniforms, attributes) {
         "colormap",
         "nan_color",
         "highclip",
-        "lowclip"
+        "lowclip",
+        "picking"
     ]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
     return `#extension GL_OES_standard_derivatives : enable
@@ -21430,23 +21434,45 @@ function lines_fragment_shader(uniforms, attributes) {
         return aastep(threshold1, dist) * aastep(threshold2, 1.0 - dist);
     }
 
+    flat in uint frag_instance_id;
+    uniform uint object_id;
+
+    vec4 pack_int(uint id, uint index) {
+        vec4 unpack;
+        unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
+        unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
+        unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
+        unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+        return unpack;
+    }
     void main(){
+
         float xalpha = aastep(0.0, 0.0, f_uv.x);
         float yalpha = aastep(0.0, 0.0, f_uv.y);
         vec4 color = get_color(f_color, colormap, colorrange);
+        if (picking) {
+            if (color.a > 0.1) {
+                fragment_color = pack_int(object_id, frag_instance_id);
+            }
+            return;
+        }
         fragment_color = vec4(color.rgb, color.a);
     }
     `;
 }
 function create_line_material(uniforms, attributes) {
     const uniforms_des = deserialize_uniforms(uniforms);
-    return new THREE.RawShaderMaterial({
+    const mat = new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
         glslVersion: THREE.GLSL3,
         vertexShader: linesegments_vertex_shader(uniforms_des, attributes),
         fragmentShader: lines_fragment_shader(uniforms_des, attributes),
         transparent: true
     });
+    mat.uniforms.object_id = {
+        value: 1
+    };
+    return mat;
 }
 function attach_interleaved_line_buffer(attr_name, geometry, points, ndim, is_segments) {
     const skip_elems = is_segments ? 2 * ndim : ndim;
@@ -21522,6 +21548,9 @@ function _create_line(line_data, is_segments) {
     const buffers = {};
     create_line_buffers(geometry, buffers, line_data.attributes, is_segments);
     const material = create_line_material(line_data.uniforms, geometry.attributes);
+    material.uniforms.is_segments_multi = {
+        value: is_segments ? 2 : 1
+    };
     const mesh = new THREE.Mesh(geometry, material);
     const offset = is_segments ? 0 : 1;
     const new_count = geometry.attributes.linepoint_start.count;
@@ -21883,7 +21912,7 @@ function deserialize_scene(data, screen) {
     scene.wgl_camera = camera;
     function update_cam(camera_matrices, force) {
         if (!force) {
-            if (!(JSServe.can_send_to_julia && JSServe.can_send_to_julia())) {
+            if (!(Bonito.can_send_to_julia && Bonito.can_send_to_julia())) {
                 return;
             }
         }
@@ -22054,7 +22083,7 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
     const vertexLog = gl.getShaderInfoLog(glVertexShader).trim();
     const fragmentLog = gl.getShaderInfoLog(glFragmentShader).trim();
     const err = "THREE.WebGLProgram: Shader Error " + wglerror(gl, gl.getError()) + " - " + "VALIDATE_STATUS " + gl.getProgramParameter(program, gl.VALIDATE_STATUS) + "\n\n" + "Program Info Log:\n" + programLog + "\n" + vertexErrors + "\n" + fragmentErrors + "\n" + "Fragment log:\n" + fragmentLog + "Vertex log:\n" + vertexLog;
-    JSServe.Connection.send_warning(err);
+    Bonito.Connection.send_warning(err);
 }
 function add_canvas_events(screen, comm, resize_to) {
     const { canvas , winscale  } = screen;

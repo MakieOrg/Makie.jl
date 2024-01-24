@@ -71,13 +71,13 @@ args_preferred_axis(::AbstractVector{<:Point2}) = Axis
 preferred_axis_type(::Volume) = LScene
 preferred_axis_type(::Union{Image,Heatmap}) = Axis
 
-function preferred_axis_type(p::Combined{F}) where F
+function preferred_axis_type(p::Plot{F}) where F
     # Otherwise, we check the arguments
     input_args = map(to_value, p.args)
-    result = args_preferred_axis(Combined{F}, input_args...)
+    result = args_preferred_axis(Plot{F}, input_args...)
     isnothing(result) || return result
     conv_args = map(to_value, p.converted)
-    result = args_preferred_axis(Combined{F}, conv_args...)
+    result = args_preferred_axis(Plot{F}, conv_args...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
 end
@@ -118,7 +118,7 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     end
 end
 
-MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Combined, Scene}) = s
+MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Plot, Scene}) = s
 
 function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ::Nothing)
     figure = current_figure()
@@ -205,24 +205,10 @@ function create_axis_like(@nospecialize(::AbstractPlot), ::Dict, ::Union{Scene,A
     return error("Plotting into an axis without !")
 end
 
-figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
-figurelike_return(ax::AbstractAxis, plot) = AxisPlot(ax, plot)
-figurelike_return!(::AbstractAxis, plot) = plot
-figurelike_return!(::Union{Combined, Scene}, plot) = plot
-
-plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
-
-function plot!(ax::AbstractAxis, plot::P) where {P <: AbstractPlot}
-    plot!(ax.scene, plot)
-    # some area-like plots basically always look better if they cover the whole plot area.
-    # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(ax)
-    if is_open_or_any_parent(ax.scene)
-        reset_limits!(ax)
-    end
-    return plot
-end
-
+figurelike_return(fa::FigureAxis, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.axis, plot)
+figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
+figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
+figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
 
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
 
@@ -233,16 +219,10 @@ function update_state_before_display!(f::Figure)
     return
 end
 
-Makie.can_be_current_axis(ax::AbstractAxis) = true
-
-function update_state_before_display!(ax::AbstractAxis)
-    reset_limits!(ax)
-    return
-end
 
 
 @inline plot_args(args...) = (nothing, args)
-@inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Combined,GridSubposition,GridPosition},
+@inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Plot,GridSubposition,GridPosition},
                            args...)
     return (a, args)
 end
@@ -257,11 +237,15 @@ function fig_keywords!(kws)
     return figkws
 end
 
+# Narrows down the default plotfunc early on, if `plot` is used
+default_plot_func(f::F, args) where {F} = f
+default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args)...))
+
 # Don't inline these, since they will get called from `scatter!(args...; kw...)` which gets specialized to all kw args
 @noinline function MakieCore._create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
-    plot = Combined{F}(pargs, attributes)
+    plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return(ax, plot)
@@ -270,14 +254,14 @@ end
 @noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
-    plot = Combined{F}(pargs, attributes)
+    plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like!(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return!(ax, plot)
 end
 
 @noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
-    plot = Combined{F}(args, attributes)
+    plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)
     return plot
 end
@@ -285,6 +269,43 @@ end
 # This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
 # Which skips axis creation
 # TODO, what to return for the dynamically created axes?
-figurelike_return(f::GridPosition, p::Combined) = p
-figurelike_return(f::Figure, p::Combined) = FigureAxisPlot(f, nothing, p)
-MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = fig
+const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
+
+figurelike_return(f::GridPosition, p::PlotSpecPlot) = p
+figurelike_return(f::Figure, p::PlotSpecPlot) = FigureAxisPlot(f, nothing, p)
+MakieCore.create_axis_like!(::PlotSpecPlot, attributes::Dict, fig::Figure) = fig
+MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = nothing
+
+# Axis interface
+
+Makie.can_be_current_axis(ax::AbstractAxis) = true
+
+function update_state_before_display!(ax::AbstractAxis)
+    reset_limits!(ax)
+    return
+end
+
+plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
+
+function plot!(ax::AbstractAxis, plot::AbstractPlot)
+    plot!(ax.scene, plot)
+    # some area-like plots basically always look better if they cover the whole plot area.
+    # adjust the limit margins in those cases automatically.
+    needs_tight_limits(plot) && tightlimits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
+    return plot
+end
+
+function Base.delete!(ax::AbstractAxis, plot::AbstractPlot)
+    delete!(ax.scene, plot)
+    return ax
+end
+
+function Base.empty!(ax::AbstractAxis)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
+    end
+    return ax
+end

@@ -489,3 +489,17 @@ end
         rethrow(e)
     end
 end
+
+@testset "Block attribute conversion observable cleanup" begin
+    limits = Observable((-1.0, 1.0, -1.0, 1.0))
+    for _ in 1:5
+        fig = Figure()
+        for i in 1:5
+            for j in 1:5
+                ax = Axis(fig[i, j]; limits)
+            end
+        end
+        empty!(fig)
+    end
+    @test isempty(limits.listeners)
+end

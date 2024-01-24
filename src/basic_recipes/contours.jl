@@ -22,26 +22,26 @@ To add contour labels, use `labels = true`, and pass additional label attributes
 $(ATTRIBUTES)
 """
 @recipe(Contour) do scene
-    default = default_theme(scene)
-    # pop!(default, :color)
-    Attributes(;
-        default...,
+    attr = Attributes(;
         color = nothing,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
         linestyle = nothing,
-        alpha = 1.0,
         enable_depth = true,
         transparency = false,
         labels = false,
+
         labelfont = theme(scene, :font),
         labelcolor = nothing,  # matches color by default
         labelformatter = contour_label_formatter,
         labelsize = 10,  # arbitrary
     )
+
+
+    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
+    MakieCore.generic_plot_attributes!(attr)
+
+    return attr
 end
 
 """
@@ -62,6 +62,7 @@ angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
 
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
+    # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
     (
         lev,
@@ -145,12 +146,14 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-    attr = Attributes(plot)
+    attr = copy(Attributes(plot))
+
     attr[:colorrange] = cliprange
     attr[:colormap] = cmap
     attr[:algorithm] = 7
     pop!(attr, :levels)
     pop!(attr, :alpha) # don't apply alpha 2 times
+
     # unused attributes
     pop!(attr, :labels)
     pop!(attr, :labelfont)
@@ -194,11 +197,9 @@ end
 function has_changed(old_args, new_args)
     length(old_args) === length(new_args) || return true
     for (old, new) in zip(old_args, new_args)
-        if old != new
-            return true
-        end
+        old != new && return true
     end
-    return false
+    false
 end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
@@ -228,8 +229,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         # We need to copy, since the values may get mutated in place
         if has_changed(old_values, args)
             old_values = map(copy, args)
-            _points, _colors, _lev_pos_col = contourlines(args..., T)
-            points[] = _points; colors[] = _colors; lev_pos_col[] = _lev_pos_col
+            points[], colors[], lev_pos_col[] = contourlines(args..., T)
             return
         end
     end
@@ -272,7 +272,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             push!(col, labelcolor === nothing ? color : to_color(labelcolor))
             push!(rot, rot_from_vert)
             push!(lbl, labelformatter(lev))
-            push!(pos, p1)
+            p = p2  # try to position label around center
+            isnan(p) && (p = p1)
+            isnan(p) && (p = p3)
+            push!(pos, p)
         end
         notify(texts.text)
         return
@@ -283,12 +286,16 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
             px_pos = project(scene, apply_transform(transform_func(plot), pt, space))
-            Rect2f(boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot)))
+            bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
+            isfinite_rect(bb) || return Rect2f()
+            Rect2f(bb)
         end
     end
 
     masked_lines = lift(labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
+        # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
+        count(isnan, segments) > length(segments) / 10 && return segments
         n = 1
         bb = bboxes[n]
         nlab = length(bboxes)
@@ -318,9 +325,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot, masked_lines;
         color = colors,
         linewidth = plot.linewidth,
-        inspectable = plot.inspectable,
-        transparency = plot.transparency,
-        linestyle = plot.linestyle
+        linestyle = plot.linestyle,
+        visible=plot.visible,
+        transparency=plot.transparency,
+        overdraw=plot.overdraw,
+        inspectable=plot.inspectable,
+        depth_shift=plot.depth_shift,
+        space=plot.space
     )
     plot
 end

@@ -1,4 +1,4 @@
-name: Makie CI
+name: Makie.jl
 on:
   pull_request:
     paths-ignore:
@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  makie:
     name: Julia ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
     strategy:

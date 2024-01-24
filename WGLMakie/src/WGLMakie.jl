@@ -1,7 +1,7 @@
 module WGLMakie
 
 using Hyperscript
-using JSServe
+using Bonito
 using Observables
 using Makie
 using Colors
@@ -11,9 +11,9 @@ using GeometryBasics
 using PNGFiles
 using FreeTypeAbstraction
 
-using JSServe: Session
-using JSServe: @js_str, onjs, App, ES6Module
-using JSServe.DOM
+using Bonito: Session
+using Bonito: @js_str, onjs, App, ES6Module
+using Bonito.DOM
 
 using RelocatableFolders: @path
 
@@ -60,8 +60,8 @@ function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config.
     LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
-    if !JSServe.has_html_display()
-        JSServe.browser_display()
+    if !Bonito.has_html_display()
+        Bonito.browser_display()
     end
     return
 end

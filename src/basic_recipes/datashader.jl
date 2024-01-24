@@ -468,15 +468,13 @@ end
 
 data_limits(p::DataShader) =  p._boundingbox[]
 
-used_attributes(::Type{<:Any}, ::Canvas) = (:operation, :local_operation)
+used_attributes(::Canvas) = (:operation, :local_operation)
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
                            operation=automatic, local_operation=identity)
     pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
-    xrange = range(xmin, stop = xmax, length = size(pixel, 1))
-    yrange = range(ymin, stop = ymax, length = size(pixel, 2))
-    return convert_arguments(P, xrange, yrange, pixel)
+    return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel)
 end
 
 # TODO improve color legend API, to not need a fake plot like this

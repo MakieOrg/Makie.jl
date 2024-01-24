@@ -74,7 +74,7 @@ end
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
     path = abspath(
-        first(Base.DEPOT_PATH), "makie",
+        makie_cache_dir,
         "$(SERIALIZATION_FORMAT_VERSION)_texture_atlas_$(resolution)_$(pix_per_glyph).bin"
     )
     if !ispath(dirname(path))
@@ -217,9 +217,8 @@ function alternativefonts()
 end
 
 function render_default_glyphs!(atlas)
-    font = defaultfont()
-    chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-']
-    fonts = to_font.(to_value.(values(Makie.MAKIE_DEFAULT_THEME.fonts)))
+    chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-', MINUS_SIGN]
+    fonts = map(x-> to_font(to_value(x)), values(MAKIE_DEFAULT_THEME.fonts))
     for font in fonts
         for c in chars
             insert_glyph!(atlas, c, font)

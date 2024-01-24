@@ -26,7 +26,7 @@ end
 end
 
 @reference_test "Figure with boxes" begin
-    fig = Figure(resolution = (900, 900))
+    fig = Figure(size = (900, 900))
     Box(fig[1,1], color = :red, strokewidth = 3, linestyle = :solid, strokecolor = :black)
     Box(fig[1,2], color = (:red, 0.5), strokewidth = 3, linestyle = :dash, strokecolor = :red)
     Box(fig[1,3], color = :white, strokewidth = 3, linestyle = :dot, strokecolor = (:black, 0.5))
@@ -209,6 +209,23 @@ end
     colgap!(f.layout, 5)
     rowgap!(f.layout, 5)
     f
+end
+
+@reference_test "PolarAxis radial shift and clip" begin
+    phis = range(pi/4, 9pi/4, length=201)
+    rs = 1.0 ./ sin.(range(pi/4, 3pi/4, length=51)[1:end-1])
+    rs = vcat(rs, rs, rs, rs, rs[1])
+
+    fig = Figure(size = (900, 300))
+    ax1 = PolarAxis(fig[1, 1], clip_r = false, radius_at_origin = -2)  # red square, black, blue bulging
+    ax2 = PolarAxis(fig[1, 2], clip_r = false, radius_at_origin = 0)   # red flower, black square, blue bulging
+    ax3 = PolarAxis(fig[1, 3], clip_r = false, radius_at_origin = 0.5) # red large flower, black star, blue square
+    for ax in (ax1, ax2, ax3)
+        lines!(ax, phis, rs .- 2, color = :red, linewidth = 4)
+        lines!(ax, phis, rs, color = :black, linewidth = 4)
+        lines!(ax, phis, rs .+ 0.5, color = :blue, linewidth = 4)
+    end
+    fig
 end
 
 @reference_test "Axis3 axis reversal" begin

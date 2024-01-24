@@ -106,6 +106,8 @@ end
         pl = meshscatter!(LScene(sub[1, 3]), rand(Point3f, 10))
         @test pl isa AbstractPlot
 
+        f = Figure()
+        @test_throws ErrorException lines!(f, [1, 2])
     end
 end
 
@@ -116,4 +118,32 @@ end
     @test pl.calculated_colors[] == cpalette[2]
     pl2 = lines!(ax, 1:4; color=Cycled(1))
     @test pl2.calculated_colors[] == cpalette[1]
+end
+
+function test_default(arg)
+    _, _, pl1 = plot(arg)
+
+    fig = Figure()
+    _, pl2 = plot(fig[1, 1], arg)
+
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    pl3 = plot!(ax, arg)
+    return [pl1, pl2, pl3]
+end
+
+@testset "plot defaults" begin
+    plots = test_default([10, 15, 20])
+    @test all(x-> x isa Scatter, plots)
+
+    plots = test_default(rand(4, 4))
+    @test all(x -> x isa Heatmap, plots)
+
+    poly = Polygon(decompose(Point, Circle(Point2f(0), 1.0f0)))
+
+    plots = test_default(poly)
+    @test all(x -> x isa Poly, plots)
+
+    plots = test_default(rand(4, 4, 4))
+    @test all(x -> x isa Volume, plots)
 end

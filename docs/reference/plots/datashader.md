@@ -21,7 +21,7 @@ fig, ax, ds = datashader(airports,
     # for documentation output we shouldn't calculate the image async,
     # since it won't wait for the render to finish and inline a blank image
     async = false,
-    figure = (; figurepadding=0, size=(360*3, 160*3))
+    figure = (; figurepadding=0, size=(360*2, 160*2))
 )
 Colorbar(fig[1, 2], ds, label="Number of airports")
 hidedecorations!(ax); hidespines!(ax)

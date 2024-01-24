@@ -3,12 +3,12 @@
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSourceContext)
+function Bonito.print_js_code(io::IO, plot::AbstractPlot, context::Bonito.JSSourceContext)
     uuids = js_uuid.(Makie.collect_atomic_plots(plot))
     # This is a bit more complicated then it has to be, since evaljs / on_document_load
     # isn't guaranteed to run after plot initialization in an App... So, if we don't find any plots,
     # we have to check again after inserting new plots
-    JSServe.print_js_code(io, js"""(new Promise(resolve => {
+    Bonito.print_js_code(io, js"""(new Promise(resolve => {
         $(WGL).then(WGL=> {
             const find = ()=> {
                 const plots = WGL.find_plots($(uuids))
@@ -23,8 +23,8 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSo
     }))""", context)
 end
 
-function JSServe.print_js_code(io::IO, scene::Scene, context::JSServe.JSSourceContext)
-    JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
+function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceContext)
+    Bonito.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
 end
 
 function three_display(screen::Screen, session::Session, scene::Scene)
@@ -38,7 +38,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
-    ta = JSServe.Retain(TEXTURE_ATLAS)
+    ta = Bonito.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
     $(WGL).then(WGL => {
         try {
@@ -53,7 +53,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
             }
             $(done_init).notify(true)
         } catch (e) {
-            JSServe.Connection.send_error("error initializing scene", e)
+            Bonito.Connection.send_error("error initializing scene", e)
             $(done_init).notify(false)
             return
         }
@@ -63,7 +63,5 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         window_open[] = true
     end
     connect_scene_events!(scene, comm)
-    three = ThreeDisplay(session)
-    return three, wrapper, done_init
+    return wrapper, done_init
 end
-|

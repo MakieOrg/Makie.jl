@@ -2,9 +2,9 @@
 function pick_native(screen::Screen, rect::Rect2i)
     (x, y) = minimum(rect)
     (w, h) = widths(rect)
-    session = get_three(screen; error="Can't do picking!").session
+    session = get_screen_session(screen; error="Can't do picking!")
     scene = screen.scene
-    picking_data = JSServe.evaljs_value(session, js"""
+    picking_data = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
     """)
     empty = Matrix{Tuple{Union{Nothing, AbstractPlot}, Int}}(undef, 0, 0)
@@ -36,8 +36,8 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     # isopen(screen) || return (nothing, 0)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
-    session = get_three(screen; error="Can't do picking!").session
-    selection = JSServe.evaljs_value(session, js"""
+    session = get_screen_session(screen; error="Can't do picking!")
+    selection = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_closest(scene, $(xy_vec), $(range)))
     """)
     lookup = plot_lookup(scene)
@@ -49,8 +49,8 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
 
-    session = get_three(screen; error="Can't do picking!").session
-    selection = JSServe.evaljs_value(session, js"""
+    session = get_screen_session(screen; error="Can't do picking!")
+    selection = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
     """)
     isnothing(selection) && return Tuple{Union{Nothing,AbstractPlot},Int}[]
@@ -69,7 +69,7 @@ end
 """
     ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
 
-Returns a JSServe DOM element, which creates a popup whenever you click on a plot element in `plots`.
+Returns a Bonito DOM element, which creates a popup whenever you click on a plot element in `plots`.
 The content of the popup is filled with the return value of js_callback, which can be a string or `HTMLNode`.
 
 Usage example:
@@ -101,7 +101,7 @@ end
 """
 struct ToolTip
     scene::Scene
-    callback::JSServe.JSCode
+    callback::Bonito.JSCode
     plot_uuids::Vector{String}
     function ToolTip(figlike, callback; plots=nothing)
         scene = Makie.get_scene(figlike)
@@ -113,17 +113,17 @@ struct ToolTip
     end
 end
 
-const POPUP_CSS = JSServe.Asset(joinpath(@__DIR__, "popup.css"))
+const POPUP_CSS = Bonito.Asset(joinpath(@__DIR__, "popup.css"))
 
-function JSServe.jsrender(session::Session, tt::ToolTip)
+function Bonito.jsrender(session::Session, tt::ToolTip)
     scene = tt.scene
     popup =  DOM.div("", class="popup")
-    JSServe.evaljs(session, js"""
+    Bonito.evaljs(session, js"""
         $(scene).then(scene => {
             const plots_to_pick = new Set($(tt.plot_uuids));
             const callback = $(tt.callback);
             WGL.register_popup($popup, scene, plots_to_pick, callback)
         })
     """)
-    return DOM.span(JSServe.jsrender(session, POPUP_CSS), popup)
+    return DOM.span(Bonito.jsrender(session, POPUP_CSS), popup)
 end

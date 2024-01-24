@@ -57,7 +57,7 @@ function cairo_draw(screen::Screen, scene::Scene)
 end
 
 """
-    is_cairomakie_atomic_plot(plot::Combined)::Bool
+    is_cairomakie_atomic_plot(plot::Plot)::Bool
 
 Returns whether the plot is considered atomic for the CairoMakie backend.
 This is overridden for `Poly`, `Band`, and `Tricontourf` so we can apply
@@ -66,14 +66,14 @@ CairoMakie can treat them as atomic plots and render them directly.
 Plots with children are by default recursed into.  This can be overridden
 by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
-is_cairomakie_atomic_plot(plot::Combined) = isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
+is_cairomakie_atomic_plot(plot::Plot) = isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
 
 """
-    check_parent_plots(f, plot::Combined)::Bool
+    check_parent_plots(f, plot::Plot)::Bool
 Returns whether the plot's parent tree satisfies the predicate `f`.
 `f` must return a `Bool` and take a plot as its only argument.
 """
-function check_parent_plots(f, plot::Combined)
+function check_parent_plots(f, plot::Plot)
     if f(plot)
         check_parent_plots(f, parent(plot))
     else
@@ -122,7 +122,7 @@ function draw_background(screen::Screen, scene::Scene)
     foreach(child_scene-> draw_background(screen, child_scene), scene.children)
 end
 
-function draw_plot(scene::Scene, screen::Screen, primitive::Combined)
+function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
     if to_value(get(primitive, :visible, true))
         if isempty(primitive.plots)
             Cairo.save(screen.context)
@@ -143,7 +143,7 @@ end
 #   instead of the whole Scene
 # - Recognize when a screen is an image surface, and set scale to render the plot
 #   at the scale of the device pixel
-function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Combined, scale::Number = 1)
+function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Plot, scale::Number = 1)
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
     # Extract scene width in device indepentent units

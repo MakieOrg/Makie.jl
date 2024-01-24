@@ -15,6 +15,23 @@ end
 
     fig, ax, p = bracket(ps...)
     @test data_limits(p) ≈ Rect3f(Point3f(0), Vec3f(1, 1, 0))
+
+    fig = Figure()
+    ax = Axis(fig[1, 1], yscale=log, xscale=log)
+    scatter!(ax, [0.5, 1, 2], [0.5, 1, 2])
+    p1 = vlines!(ax, [0.5])
+    p2 = hlines!(ax, [0.5])
+    p3 = vspan!(ax, [0.25], [0.75])
+    p4 = hspan!(ax, [0.25], [0.75])
+    Makie.reset_limits!(ax)
+
+    lims = ax.finallimits[]
+    x, y = minimum(lims); w, h = widths(lims)
+
+    @test data_limits(p1) ≈ Rect3f(Point3f(0.5, y, 0), Vec3f(0, h, 0))
+    @test data_limits(p2) ≈ Rect3f(Point3f(x, 0.5, 0), Vec3f(w, 0, 0))
+    @test data_limits(p3) ≈ Rect3f(Point3f(0.25, y, 0), Vec3f(0.5, h, 0))
+    @test data_limits(p4) ≈ Rect3f(Point3f(x, 0.25, 0), Vec3f(w, 0.5, 0))
 end
 
 @testset "boundingbox(plot)" begin
@@ -85,4 +102,13 @@ end
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(343.0, 345.0, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)
+end
+
+@testset "invalid contour bounding box" begin
+    a = b = 1:3
+    levels = collect(1:3)
+    c = [0 1 2; 1 2 3; 4 5 NaN]
+    contour(a, b, c; levels, labels = true)
+    c = [0 1 2; 1 2 3; 4 5 Inf]
+    contour(a, b, c; levels, labels = true)
 end

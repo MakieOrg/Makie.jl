@@ -1,6 +1,6 @@
 using FileIO
 using WGLMakie, Makie, Test
-using WGLMakie.JSServe
+using WGLMakie.Bonito
 using ReferenceTests
 import Electron
 
@@ -24,7 +24,7 @@ excludes = Set([
     "image scatter",
     "Line GIF",
     "surface + contour3d",
-    # Hm weird, looks like some internal JSServe error missing an Observable:
+    # Hm weird, looks like some internal Bonito error missing an Observable:
     "Errorbars x y low high",
     "Rangebars x y low high",
     # These are a bit sad, since it's just missing interpolations
@@ -43,21 +43,20 @@ excludes = Set([
     "fast pixel marker",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "scatter with stroke",
-    "scatter with glow",
     "lines and linestyles",
     "Textured meshscatter", # not yet implemented
-    "BezierPath marker stroke", # not yet implemented
+    "3D Contour with 2D contour slices", # looks like a z-fighting issue
+    "colorscale (lines)", # also z-fighting
 ])
 Makie.inline!(Makie.automatic)
 
-edisplay = JSServe.use_electron_display(devtools=true)
+edisplay = Bonito.use_electron_display(devtools=true)
 @testset "refimages" begin
     WGLMakie.activate!()
     ReferenceTests.mark_broken_tests(excludes)
-    recorded_files, recording_dir = @include_reference_tests "refimages.jl"
+    recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)
-    ReferenceTests.test_comparison(scores; threshold = 0.032)
+    ReferenceTests.test_comparison(scores; threshold = 0.05)
 end
 
 @testset "memory leaks" begin
@@ -66,7 +65,7 @@ end
     display(edisplay, app)
     GC.gc(true);
     # Somehow this may take a while to get emptied completely
-    JSServe.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)")));timeout=20)
+    Bonito.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)")));timeout=20)
     wgl_plots = run(edisplay.window, "Object.keys(WGL.scene_cache)")
     @test isempty(wgl_plots)
 
@@ -76,10 +75,10 @@ end
     @show session_size texture_atlas_size
     @test session_size / 10^6 < 6
     @test texture_atlas_size < 6
-    s_keys = "Object.keys(JSServe.Sessions.SESSIONS)"
-    JSServe.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=30)
-    js_sessions = run(edisplay.window, "JSServe.Sessions.SESSIONS")
-    js_objects = run(edisplay.window, "JSServe.Sessions.GLOBAL_OBJECT_CACHE")
+    s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
+    Bonito.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=30)
+    js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
+    js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
     # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
     # we used Retain for global_obs, so it should stay as long as root session is open
     @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])

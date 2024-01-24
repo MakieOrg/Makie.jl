@@ -5,7 +5,6 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     c = cam_controls
     l, u, p, fov = c.lookat[], c.upvector[], c.eyeposition[], c.fov[]
     far, near, res = c.far[], c.near[], cam.resolution[]
-    fov = 45f0 # The current camera ignores fov updates
     new_vals = (; l, u, p, fov, far, near, res)
     new_vals == oldvals && return oldvals
     wd = norm(l - p)
@@ -14,8 +13,8 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     lookat!(camera, p, l, u)
     RPR.rprCameraSetFarPlane(camera, far)
     RPR.rprCameraSetNearPlane(camera, near)
-    h = norm(res)
-    RPR.rprCameraSetFocalLength(camera, (30*h)/fov)
+    focal_length = res[2] / (2 * tand(fov / 2)) # fov is vertical
+    RPR.rprCameraSetFocalLength(camera, focal_length)
     # RPR_CAMERA_FSTOP
     # RPR_CAMERA_MODE
     return new_vals
@@ -26,7 +25,7 @@ function to_rpr_object(context, matsys, scene, plot)
     return nothing
 end
 
-function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecialize(plot::Combined))
+function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecialize(plot::Plot))
     if isempty(plot.plots) # if no plots inserted, this truly is an atomic
         object = to_rpr_object(context, matsys, mscene, plot)
         if !isnothing(object)

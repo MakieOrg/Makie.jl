@@ -350,7 +350,7 @@ function get_space(scene::Scene)
 end
 get_space(::AbstractCamera) = :data
 # TODO: Should this be less specialized? ScenePlot? AbstractPlot?
-get_space(plot::Combined) = to_value(get(plot, :space, :data))::Symbol
+get_space(plot::Plot) = to_value(get(plot, :space, :data))::Symbol
 
 is_space_compatible(a, b) = is_space_compatible(get_space(a), get_space(b))
 is_space_compatible(a::Symbol, b::Symbol) = a === b

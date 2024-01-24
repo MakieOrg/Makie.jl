@@ -107,7 +107,7 @@ function analyze(pr, master)
         end
     end
 
-    return @sprintf("%.2fx %s, %s, (%.2fd, %.2fp, %.2fstd)", speedup, result, mean_diff_str, d, p,
+    return @sprintf("%.2fx %s, %s (%.2fd, %.2fp, %.2fstd)", speedup, result, mean_diff_str, d, p,
                     std_p)
 end
 
@@ -214,7 +214,7 @@ ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 if Package == "WGLMakie"
-    Pkg.add([(; name="Electron"), (; name="JSServe", rev="master")])
+    Pkg.add([(; name="Electron")])
 end
 pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")

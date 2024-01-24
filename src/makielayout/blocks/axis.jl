@@ -255,7 +255,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
+    onany(update_axis_camera, blockscene, camera(scene), scene.transformation.transform_func, finallimits,
+          ax.xreversed, ax.yreversed; priority=-2)
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
@@ -720,7 +721,7 @@ function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler
         # otherwise there's no cycle in which to look up a value
         for k in manually_cycled_attributes
             if !any(x -> k in x, cycle_attrsyms)
-                error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $P.")
+                error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $(typeof(plot)).")
             end
         end
 
@@ -897,13 +898,20 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 end
 
 """
+    autolimits!()
     autolimits!(la::Axis)
 
 Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
+The argument `la` defaults to `current_axis()`.
 """
 function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
     return
+end
+function autolimits!()
+    curr_ax = current_axis()
+    isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
+    autolimits!(curr_ax)
 end
 
 function autolimits(ax::Axis, dim::Integer)
@@ -1070,7 +1078,8 @@ end
     hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
 
-Hide decorations of the x-axis: label, ticklabels, ticks and grid.
+Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
 """
 function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1098,7 +1107,8 @@ end
     hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
 
-Hide decorations of the y-axis: label, ticklabels, ticks and grid.
+Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
 """
 function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1123,9 +1133,13 @@ function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = tr
 end
 
 """
-    hidedecorations!(la::Axis)
+    hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true,
+                     grid = true, minorgrid = true, minorticks = true)
 
 Hide decorations of both x and y-axis: label, ticklabels, ticks and grid.
+Keyword arguments can be used to disable hiding of certain types of decorations.
+
+See also [`hidexdecorations!`], [`hideydecorations!`], [`hidezdecorations!`]
 """
 function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
@@ -1139,7 +1153,8 @@ end
     hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 
 Hide all specified axis spines. Hides all spines by default, otherwise choose
-with the symbols :l, :r, :b and :t.
+which sides to hide with the symbols :l (left), :r (right), :b (bottom) and
+:t (top).
 """
 function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     for s in spines
@@ -1158,9 +1173,9 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 end
 
 """
-    space = tight_xticklabel_spacing!(ax::Axis)
+    space = tight_yticklabel_spacing!(ax::Axis)
 
-Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
+Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_yticklabel_spacing!(ax::Axis)
     space = tight_ticklabel_spacing!(ax.yaxis)
@@ -1170,7 +1185,7 @@ end
 """
     space = tight_xticklabel_spacing!(ax::Axis)
 
-Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
+Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_xticklabel_spacing!(ax::Axis)
     space = tight_ticklabel_spacing!(ax.xaxis)
@@ -1178,7 +1193,7 @@ function tight_xticklabel_spacing!(ax::Axis)
 end
 
 """
-    tight_ticklabel_spacing(ax::Axis)
+    tight_ticklabel_spacing!(ax::Axis)
 
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
@@ -1359,18 +1374,6 @@ end
 
 function limits!(args...)
     limits!(current_axis(), args...)
-end
-
-function Base.delete!(ax::Axis, plot::AbstractPlot)
-    delete!(ax.scene, plot)
-    ax
-end
-
-function Base.empty!(ax::Axis)
-    while !isempty(ax.scene.plots)
-        delete!(ax, ax.scene.plots[end])
-    end
-    ax
 end
 
 Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)

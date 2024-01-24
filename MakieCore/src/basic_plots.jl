@@ -79,7 +79,7 @@ end
 """
 ### 3D shading attributes
 
-- `shading = automatic` sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie.
+- `shading = Makie.automatic` sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie.
 - `diffuse::Vec3f = Vec3f(1.0)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
 - `specular::Vec3f = Vec3f(0.4)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.
@@ -89,7 +89,7 @@ end
 function shading_attributes!(attr)
     attr[:shading] = automatic
     attr[:diffuse] = 1.0
-    attr[:specular] = 0.4
+    attr[:specular] = 0.2
     attr[:shininess] = 32.0f0
     attr[:backlight] = 0f0
     attr[:ssao] = false
@@ -144,11 +144,33 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 end
 
 """
-    heatmap(x, y, values)
-    heatmap(values)
+    heatmap(x, y, matrix)
+    heatmap(x, y, func)
+    heatmap(matrix)
+    heatmap(xvector, yvector, zvector)
 
-Plots a heatmap as a collection of rectangles centered at `x[i], y[j]` with
-colors derived from `values[i, j]`. (Defaults to `x, y = axes(values)`.)
+Plots a heatmap as a collection of rectangles.
+`x` and `y` can either be of length `i` and `j` where
+`(i, j)` is `size(matrix)`, in this case the rectangles will be placed
+around these grid points like voronoi cells. Note that
+for irregularly spaced `x` and `y`, the points specified by them
+are not centered within the resulting rectangles.
+
+`x` and `y` can also be of length `i+1` and `j+1`, in this case they
+are interpreted as the edges of the rectangles.
+
+Colors of the rectangles are derived from `matrix[i, j]`.
+The third argument may also be a `Function` (i, j) -> v which is then evaluated over the
+grid spanned by `x` and `y`.
+
+Another allowed form is using three vectors `xvector`, `yvector` and `zvector`.
+In this case it is assumed that no pair of elements `x` and `y` exists twice.
+Pairs that are missing from the resulting grid will be treated as if `zvector` had a `NaN`
+    element at that position.
+
+If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(matrix)`.
+
+Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
 
 ## Attributes
 
@@ -192,6 +214,7 @@ Available algorithms are:
 - `algorithm::Union{Symbol, RaymarchAlgorithm} = :mip` sets the volume algorithm that is used.
 - `isorange::Real = 0.05` sets the range of values picked up by the IsoValue algorithm.
 - `isovalue = 0.5` sets the target value for the IsoValue algorithm.
+- `interpolate::Bool = true` sets whether the volume data should be sampled with interpolation.
 
 $(Base.Docs.doc(shading_attributes!))
 
@@ -205,7 +228,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
         algorithm = :mip,
         isovalue = 0.5,
         isorange = 0.05,
-
+        interpolate = true,
         fxaa = true,
     )
     generic_plot_attributes!(attr)
@@ -466,7 +489,7 @@ Plots one or multiple texts passed via the `text` keyword.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
-- `word_wrap_with::Real = -1` specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
+- `word_wrap_width::Real = -1` specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
 - `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the glyph itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)
 
 $(Base.Docs.doc(colormap_attributes!))
@@ -573,16 +596,11 @@ end
         colorscale = identity,
 
         quality = 32,
-        inspectable = theme(scene, :inspectable),
         markerspace = :pixel,
-
-        diffuse=0.4,
-        specular=0.2,
-        shininess=32.0f0,
-        ssao = false
     )
 
     generic_plot_attributes!(attr)
+    shading_attributes!(attr)
     colormap_attributes!(attr, theme(scene, :colormap))
 
     attr[:fxaa] = automatic

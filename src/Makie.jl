@@ -34,11 +34,11 @@ using Packing
 using SignedDistanceFields
 using Markdown
 using DocStringExtensions # documentation
+using Scratch
 using StructArrays
 # Text related packages
 using FreeType
 using FreeTypeAbstraction
-using UnicodeFun
 using LinearAlgebra
 using Statistics
 using MakieCore
@@ -46,6 +46,7 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 
+import UnicodeFun
 import RelocatableFolders
 import StatsBase
 import Distributions
@@ -58,7 +59,6 @@ import FileIO
 import SparseArrays
 import TriplotBase
 import DelaunayTriangulation as DelTri
-import Setfield
 import REPL
 import MacroTools
 
@@ -78,7 +78,7 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
+using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
 using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
 using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
@@ -139,7 +139,6 @@ include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
 
 # basic recipes
-include("basic_recipes/specapi.jl")
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")
@@ -177,6 +176,10 @@ include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
 include("layouting/layouting.jl")
 include("layouting/boundingbox.jl")
+
+# Declaritive SpecApi
+include("specapi.jl")
+
 # more default recipes
 # statistical recipes
 include("stats/conversions.jl")
@@ -211,7 +214,7 @@ export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, MakieScreen
-export AbstractPlot, Combined, Atomic, OldAxis
+export AbstractPlot, Plot, Atomic, OldAxis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme, update_theme!
@@ -237,7 +240,6 @@ export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
 export broadcast_foreach, to_vector, replace_automatic!
-
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
 export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categorical_colors, resample_cmap
@@ -291,13 +293,16 @@ export PlotSpec
 export plot!, plot
 export abline! # until deprecation removal
 
-
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record, Record
 export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients
+
+# other "available" functions
+export available_plotting_methods, available_marker_symbols
+
 
 export Pattern
 export ReversibleScale
@@ -314,6 +319,9 @@ end
 function logo()
     FileIO.load(assetpath("logo.png"))
 end
+
+# populated by __init__()
+makie_cache_dir = ""
 
 function __init__()
     # Make GridLayoutBase default row and colgaps themeable when using Makie
@@ -332,6 +340,8 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
         "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+
+    global makie_cache_dir = @get_scratch!("makie")
 end
 
 include("figures.jl")

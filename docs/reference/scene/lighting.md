@@ -26,7 +26,7 @@ Currently the following material attributes are available:
     See the [RPRMakie page](https://docs.makie.org/stable/documentation/backends/rprmakie/) for examples.
 
 
-## Lighting alogrithm
+## Lighting algorithm
 
 Lights are controlled through the `lights` vector in a `scene` and by the `shading` attribute in a plot.
 Generally you will not need to set `shading` yourself, as it is derived based on the lights vector.
@@ -34,6 +34,7 @@ The possible options for `shading` are:
 - `shading = NoShading` disables light calculations, resulting in the plain color of an object being shown.
 - `shading = FastShading` enables a simplified lighting model which only allows for one `AmbientLight` and one `DirectionalLight`.
 - `shading = MultiLightShading` is a GLMakie exclusive option which enables multiple light sources (as set in the `ScreenConfig`, default up to 64) as well as `PointLight` and `SpotLight`.
+- `shading = Makie.automatic` derive one of the above options based on the lights in `scene.lights`
 
 !!! note
     You can access the underlying scene of an `Axis3` with `ax.scene`.
@@ -160,7 +161,7 @@ ps = [
     for theta in range(-20, 20, length = 21) for phi in range(60, 340, length=30)
 ]
 faces = [QuadFace(30j + i, 30j + mod1(i+1, 30), 30*(j+1) + mod1(i+1, 30), 30*(j+1) + i) for j in 0:19 for i in 1:29]
-m = GeometryBasics.Mesh(meta(ps, normals = ps), decompose(GLTriangleFace, faces))
+marker_mesh = GeometryBasics.Mesh(meta(ps, normals = ps), decompose(GLTriangleFace, faces))
 
 lights = [PointLight(RGBf(10, 4, 2), Point3f(0, 0, 0), 5)]
 
@@ -168,7 +169,7 @@ fig = Figure(size = (600, 600), backgroundcolor = :black)
 ax = LScene(fig[1, 1], scenekw = (lights = lights,), show_axis = false)
 update_cam!(ax.scene, ax.scene.camera_controls, Rect3f(Point3f(-2), Vec3f(4)))
 meshscatter!(
-    ax, [Point3f(0) for _ in 1:14], marker = m, markersize = 0.1:0.2:3.0,
+    ax, [Point3f(0) for _ in 1:14], marker = marker_mesh, markersize = 0.1:0.2:3.0,
     color = :white, backlight = 1, transparency = false)
 fig
 ```
@@ -249,8 +250,8 @@ scene = LScene(
 )
 
 # floor
-p = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
-translate!(p, 0, 0, -5)
+msh = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
+translate!(msh, 0, 0, -5)
 
 # Cat
 cat_mesh = FileIO.load(Makie.assetpath("cat.obj"))
@@ -263,8 +264,7 @@ scale!(p2, Vec3f(4))
 # Window/light source markers
 for l in lights
     if l isa RectLight
-        m = to_mesh(l)
-        mesh!(m, color = :white, backlight = 1)
+        mesh!(to_mesh(l), color = :white, backlight = 1)
     end
 end
 

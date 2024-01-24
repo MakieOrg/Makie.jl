@@ -211,7 +211,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
         # first is nan, do nothing
     end
 
-    for i in eachindex(positions)[2:end]
+    for i in eachindex(positions)[begin+1:end]
         this_position = positions[i]
         this_color = colors[i]
         this_nan = isnan(this_position)
@@ -442,7 +442,22 @@ function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, str
     Cairo.restore(ctx)
 end
 
-draw_path(ctx, bp::BezierPath) = foreach(x -> path_command(ctx, x), bp.commands)
+function draw_path(ctx, bp::BezierPath)
+    for i in eachindex(bp.commands)
+        @inbounds command = bp.commands[i]
+        if command isa MoveTo
+            path_command(ctx, command)
+        elseif command isa LineTo
+            path_command(ctx, command)
+        elseif command isa CurveTo
+            path_command(ctx, command)
+        elseif command isa ClosePath
+            path_command(ctx, command)
+        elseif command isa EllipticalArc
+            path_command(ctx, command)
+        end
+    end
+end
 path_command(ctx, c::MoveTo) = Cairo.move_to(ctx, c.p...)
 path_command(ctx, c::LineTo) = Cairo.line_to(ctx, c.p...)
 path_command(ctx, c::CurveTo) = Cairo.curve_to(ctx, c.c1..., c.c2..., c.p...)
@@ -509,7 +524,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
     nothing
 end
 
-
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
         model::Mat, space, markerspace, offset, transformation, transform_marker
@@ -571,6 +585,11 @@ function draw_glyph_collection(
 
         # offsets and scale apply in markerspace
         gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
+
+        if any(isnan, gp3)
+            Cairo.restore(ctx)
+            return
+        end
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
 
