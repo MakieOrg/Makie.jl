@@ -42,7 +42,7 @@ uniform vec2 resolution;
 #define AA_THICKNESS 4
 
 vec3 screen_space(vec4 vertex) {
-    return vec3((0.5 * vertex.xy + 0.5) * resolution, vertex.z) / vertex.w;
+    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
 }
 
 struct LineVertex {

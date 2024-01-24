@@ -32,7 +32,7 @@ flat out vec2 f_linelength;
 #define AA_THICKNESS 4.0
 
 vec3 screen_space(vec4 vertex) {
-    return vec3((0.5 * vertex.xy + 0.5) * resolution, vertex.z) / vertex.w;
+    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
 }
 
 vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
@@ -78,7 +78,7 @@ void main(void)
             // Get offset in y direction & compute vertex position
             float n_offset = (2 * y - 1) * (halfwidth + AA_THICKNESS);
             vec3 position = vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0);
-            gl_Position = vec4((2.0 * position.xy / resolution) - 1.0, position.z, 1.0);
+            gl_Position = vec4(2.0 * position.xy / resolution - 1.0, position.z, 1.0);
 
             // Generate SDF's
 
