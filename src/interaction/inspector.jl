@@ -658,7 +658,8 @@ function show_imagelike(inspector, plot, name, edge_based)
     end
 
     if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, (i, j), Point3f(pos[1], pos[2], z))
+        ins_p = z isa Colorant ? (pos[1], pos[2], z) : Point3f(pos[1], pos[2], z)
+        tt.text[] = plot[:inspector_label][](plot, (i, j), ins_p)
     else
         tt.text[] = color2text(name, x, y, z)
     end
