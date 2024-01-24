@@ -240,7 +240,7 @@ function default_shading!(plot, lights::Vector{<: AbstractLight})
         else
             shading = automatic
         end
-        @warn "`shading = $prev` is not valid. Use `automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
+        @warn "`shading = $prev` is not valid. Use `Makie.automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
     end
 
     # automatic conversion
