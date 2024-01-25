@@ -70,8 +70,8 @@ void main(){
     // overlap between adjacent line segments.
     // The transformation makes the distance be "less inside" once it reaches
     // f_linelength. This limits how much one segment can cut from another
-    float dist_in_prev = abs(f_quad_sdf0 + f_linelength.x) - f_linelength.x;
-    float dist_in_next = abs(f_quad_sdf2 + f_linelength.y) - f_linelength.y;
+    float dist_in_prev = max(f_quad_sdf0, - f_linelength.x);
+    float dist_in_next = max(f_quad_sdf2, - f_linelength.y);
     if (dist_in_prev < f_quad_sdf1.x || dist_in_next <= f_quad_sdf1.y)
         discard;
 
