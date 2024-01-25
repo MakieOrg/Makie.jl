@@ -163,13 +163,13 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
 }
 
 // If we don't have a pattern we don't need uv's
-void generate_uv(Nothing pattern, inout LineVertex vertex, int index, float extrusion, float linewidth) {}
+vec2 generate_uv(Nothing pattern, int index, float extrusion, float linewidth) { return vec2(0); }
 // If we have a 1D pattern we don't need uv.y
-void generate_uv(sampler1D pattern, inout LineVertex vertex, int index, float extrusion, float linewidth) {
-    vertex.uv = vec2((g_lastlen[index] + extrusion) / pattern_length, 0.0);
+vec2 generate_uv(sampler1D pattern, int index, float extrusion, float linewidth) {
+    return vec2((g_lastlen[index] + extrusion) / pattern_length, 0.0);
 }
-void generate_uv(sampler2D pattern, inout LineVertex vertex, int index, float extrusion, float linewidth) {
-    vertex.uv = vec2(
+vec2 generate_uv(sampler2D pattern, int index, float extrusion, float linewidth) {
+    return vec2(
         (g_lastlen[index] + extrusion) / pattern_length,
         0.5 + linewidth / g_thickness[index]
     );
@@ -335,7 +335,7 @@ void main(void)
             vertex.position = vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0);
 
             // generate uv coordinate
-            generate_uv(pattern, vertex, vertex.index, v_offset, n_offset);
+            vertex.uv = generate_uv(pattern, vertex.index, v_offset, n_offset);
 
             // Generate SDF's
 
