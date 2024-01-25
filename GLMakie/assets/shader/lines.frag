@@ -107,7 +107,7 @@ void main(){
     // mark "outside" define by quad_sdf in black
     float sdf = max(f_quad_sdf1.y - f_extrusion12.y, f_quad_sdf1.x - f_extrusion12.x);
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
-    color.rgb -= vec3(0.5) * step(0.0, sdf);
+    color.rgb -= vec3(0.4) * step(0.0, sdf);
 
     // Mark regions excluded via truncation in green
     color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
@@ -122,7 +122,7 @@ void main(){
     }
 
     // mark pattern in white
-    color.rgb += vec3(0.5) * step(0.0, get_pattern_sdf(pattern));
+    color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
 #endif
 
     write2framebuffer(color, f_id);
