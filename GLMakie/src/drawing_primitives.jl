@@ -743,8 +743,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         end
 
         space = plot.space
-
-        gl_attributes[:image] = img
+        interp = to_value(pop!(gl_attributes, :interpolate, true))
+        interp = interp ? :linear : :nearest
+        gl_attributes[:image] = Texture(img; minfilter=interp)
 
         @assert to_value(plot[3]) isa AbstractMatrix
         types = map(v -> typeof(to_value(v)), plot[1:2])
