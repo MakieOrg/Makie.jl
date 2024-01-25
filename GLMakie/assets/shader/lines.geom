@@ -38,8 +38,9 @@ uniform float pattern_length;
 uniform vec2 resolution;
 
 // Constants
-#define MITER_LIMIT -0.4
-#define AA_THICKNESS 4
+const float MITER_LIMIT = -0.4;
+const float AA_RADIUS = 0.8;
+const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
@@ -118,7 +119,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
         if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
             // default/freeze
             // overwrite until one AA gap past the corner/joint
-            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_THICKNESS) / pattern_length;
+            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_RADIUS) / pattern_length;
             // using the sign of the center to decide between drawing or not drawing
             f_pattern_overwrite.y = sign(center);
         } else if (left > 0) {
@@ -129,7 +130,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
             adjust.x = 1.0;
         } else {
             // default - see above
-            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_THICKNESS) / pattern_length;
+            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0]) + AA_RADIUS) / pattern_length;
             f_pattern_overwrite.y = sign(center);
         }
 
@@ -143,7 +144,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
 
         if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
             // default/freeze
-            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_THICKNESS) / pattern_length;
+            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_RADIUS) / pattern_length;
             f_pattern_overwrite.w = sign(center);
         } else if (left > 0) {
             // shrink backwards
@@ -153,7 +154,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
             adjust.y = 1.0;
         } else {
             // default - see above
-            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_THICKNESS) / pattern_length;
+            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1]) - AA_RADIUS) / pattern_length;
             f_pattern_overwrite.w = sign(center);
         }
     }

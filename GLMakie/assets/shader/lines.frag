@@ -28,11 +28,10 @@ uniform float pattern_length;
 uniform bool fxaa;
 
 // Half width of antialiasing smoothstep
-#define AA_THICKNESS 4
-#define ANTIALIAS_RADIUS 0.8
+const float AA_RADIUS = 0.8;
 
 float aastep(float threshold1, float dist) {
-    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
+    return smoothstep(threshold1-AA_RADIUS, threshold1+AA_RADIUS, dist);
 }
 
 // Pattern sampling
@@ -46,12 +45,12 @@ float get_pattern_sdf(sampler1D pattern){
         // if overwrite.y (target sdf in joint) is
         // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
         // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
-        sdf_offset = max(f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_THICKNESS);
+        sdf_offset = max(f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_RADIUS);
         return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - f_uv.x) + sdf_offset);
     } else if (f_uv.x >= f_pattern_overwrite.z) {
         // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
         // see above
-        sdf_offset = max(f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_THICKNESS);
+        sdf_offset = max(f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_RADIUS);
         return f_pattern_overwrite.w * (pattern_length * (f_uv.x - f_pattern_overwrite.z) + sdf_offset);
     } else
         // in allowed range
