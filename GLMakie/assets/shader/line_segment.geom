@@ -29,7 +29,8 @@ flat out uvec2 f_id;
 flat out vec2 f_extrusion12;
 flat out vec2 f_linelength;
 
-#define AA_THICKNESS 4.0
+const float AA_RADIUS = 0.8;
+const float AA_THICKNESS = 4.0 * AA_RADIUS;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
@@ -45,6 +46,11 @@ void main(void)
 {
     o_view_pos = vec3(0);
     o_view_normal = vec3(0);
+
+    // we generate very thin lines for linewidth 0, so we manually skip them:
+    if (g_thickness[0] == 0.0 && g_thickness[1] == 0.0) {
+        return;
+    }
 
     // get start and end point of line segment
     vec3 p1 = screen_space(gl_in[0].gl_Position);
