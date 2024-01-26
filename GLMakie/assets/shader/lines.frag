@@ -11,9 +11,9 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 
 in vec4 f_color;
-in float f_quad_sdf0;
-in vec3 f_quad_sdf1;
-in float f_quad_sdf2;
+in highp float f_quad_sdf0;
+in highp vec3 f_quad_sdf1;
+in highp float f_quad_sdf2;
 in vec2 f_truncation;
 in vec2 f_uv;
 
@@ -68,11 +68,12 @@ void main(){
 #ifndef DEBUG
     // discard fragments that are "more inside" the other segment to remove
     // overlap between adjacent line segments.
-    // The transformation makes the distance be "less inside" once it reaches
-    // f_linelength. This limits how much one segment can cut from another
-    float dist_in_prev = max(f_quad_sdf0, - f_linelength.x);
-    float dist_in_next = max(f_quad_sdf2, - f_linelength.y);
-    if (dist_in_prev < f_quad_sdf1.x || dist_in_next <= f_quad_sdf1.y)
+    // max limits how much of this line can be displaced by the others
+    // 0.0001 adds a bias towards drawing to avoid skipping pixels due to float
+    //   precision isuues from interpolation of sdfs
+    float dist_in_prev = max(f_quad_sdf0, - f_linelength.x) + 0.0001;
+    float dist_in_next = max(f_quad_sdf2, - f_linelength.y) + 0.0001;
+    if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
         discard;
 
     // sdf for inside vs outside along the line direction. extrusion makes sure

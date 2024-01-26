@@ -18,9 +18,9 @@ in int g_valid_vertex[];
 in float g_thickness[];
 
 out vec4 f_color;
-out float f_quad_sdf0;
-out vec3 f_quad_sdf1;
-out float f_quad_sdf2;
+out highp float f_quad_sdf0;
+out highp vec3 f_quad_sdf1;
+out highp float f_quad_sdf2;
 out vec2 f_truncation;
 out vec2 f_uv;
 
