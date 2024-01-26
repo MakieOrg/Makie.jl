@@ -104,9 +104,10 @@ void main(){
 #ifdef DEBUG
     // base color
     color = vec4(0.5, 0.5, 0.5, 0.2);
+    color.rgb += (2 * mod(f_id.y, 2) - 1) * 0.1;
 
     // mark "outside" define by quad_sdf in black
-    float sdf = max(f_quad_sdf1.y - f_extrusion12.y, f_quad_sdf1.x - f_extrusion12.x);
+    float sdf = max(f_quad_sdf1.x - f_extrusion12.x, f_quad_sdf1.y - f_extrusion12.y);
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
     color.rgb -= vec3(0.4) * step(0.0, sdf);
 
@@ -114,8 +115,8 @@ void main(){
     color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
     // Mark discarded space in red/blue
-    float dist_in_prev = abs(f_quad_sdf0 + f_linelength.x) - f_linelength.x;
-    float dist_in_next = abs(f_quad_sdf2 + f_linelength.y) - f_linelength.y;
+    float dist_in_prev = max(f_quad_sdf0, - f_linelength.x);
+    float dist_in_next = max(f_quad_sdf2, - f_linelength.y);
     if (dist_in_prev < f_quad_sdf1.x)
         color.r += 0.5;
     if (dist_in_next <= f_quad_sdf1.y) {
