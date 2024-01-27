@@ -10,18 +10,21 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
-in vec4 f_color;
 in highp float f_quad_sdf0;
 in highp vec3 f_quad_sdf1;
 in highp float f_quad_sdf2;
 in vec2 f_truncation;
 in vec2 f_uv;
+in float f_linestart;
+in float f_linelength;
 
 flat in float f_linewidth;
 flat in vec4 f_pattern_overwrite;
 flat in uvec2 f_id;
 flat in vec2 f_extrusion12;
-flat in vec2 f_linelength;
+flat in vec2 f_discard_limit;
+flat in vec4 f_color1;
+flat in vec4 f_color2;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;
@@ -29,6 +32,8 @@ uniform bool fxaa;
 
 // Half width of antialiasing smoothstep
 const float AA_RADIUS = 0.8;
+const float AA_THICKNESS = 2 * AA_RADIUS;
+const float epsilon = 1e-5;
 
 float aastep(float threshold1, float dist) {
     return smoothstep(threshold1-AA_RADIUS, threshold1+AA_RADIUS, dist);
@@ -71,8 +76,8 @@ void main(){
     // max limits how much of this line can be displaced by the others
     // 0.0001 adds a bias towards drawing to avoid skipping pixels due to float
     //   precision isuues from interpolation of sdfs
-    float dist_in_prev = max(f_quad_sdf0, - f_linelength.x) + 0.0001;
-    float dist_in_next = max(f_quad_sdf2, - f_linelength.y) + 0.0001;
+    float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x) + 0.0002;
+    float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y) + 0.0002;
     if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
         discard;
 
@@ -91,7 +96,20 @@ void main(){
     sdf = max(sdf, get_pattern_sdf(pattern));
 
     // draw
-    color = f_color;
+
+    //  v- edge
+    //   .---------------
+    //    '.
+    //      p1      v1
+    //        '.   --->
+    //          '----------
+    // -f_quad_sdf1.x is the distance from p1, positive in v1 direction
+    // f_linestart is the distance between p1 and the left edge along v1 direction
+    // f_start_length.y is the distance between the edges of this segment, in v1 direction
+    // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
+    float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
+    // color = vec4(factor, 0, 0, 1);
+    color = f_color1 + factor * (f_color2 - f_color1);
 
     if (!fxaa) {
         color.a *= aastep(0.0, -sdf);
@@ -115,8 +133,8 @@ void main(){
     color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
     // Mark discarded space in red/blue
-    float dist_in_prev = max(f_quad_sdf0, - f_linelength.x);
-    float dist_in_next = max(f_quad_sdf2, - f_linelength.y);
+    float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
+    float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
     if (dist_in_prev < f_quad_sdf1.x)
         color.r += 0.5;
     if (dist_in_next <= f_quad_sdf1.y) {

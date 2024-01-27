@@ -16,18 +16,21 @@ in vec4 g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
 
-out vec4 f_color;
 out float f_quad_sdf0;
 out vec3 f_quad_sdf1;
 out float f_quad_sdf2;
 out vec2 f_truncation;
 out vec2 f_uv;
+out float f_linestart;
+out float f_linelength;
 
 flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
 flat out vec2 f_extrusion12;
-flat out vec2 f_linelength;
+flat out vec2 f_discard_limit;
+flat out vec4 f_color1;
+flat out vec4 f_color2;
 
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 4.0 * AA_RADIUS;
@@ -57,16 +60,24 @@ void main(void)
     vec3 p2 = screen_space(gl_in[1].gl_Position);
 
     // get vector in line direction and vector in linewidth direction
-    vec3 v1 = (p2 - p1) / length(p2.xy - p1.xy);
+    vec3 v1 = (p2 - p1);
+    float segment_length = length(p2.xy - p1.xy);
+    v1 /= segment_length;
     vec2 n1 = normal_vector(v1);
 
     // Set invalid / ignored outputs
-    f_quad_sdf0 = 10.0;         // no joint to previous segment
-    f_quad_sdf2 = 10.0;         // not joint to next segment
-    f_truncation = vec2(-10.0); // no truncated joint
+    f_quad_sdf0 = 10.0;             // no joint to previous segment
+    f_quad_sdf2 = 10.0;             // not joint to next segment
+    f_truncation = vec2(-10.0);     // no truncated joint
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0); // no joints to overwrite
-    f_extrusion12 = vec2(0);    // no joints needing extrusion
-    f_linelength = vec2(10.0);  // no joints needing discards
+    f_extrusion12 = vec2(0);        // no joints needing extrusion
+    f_discard_limit = vec2(10.0);   // no joints needing discards
+
+    // constants
+    f_color1 = g_color[0];
+    f_color2 = g_color[1];
+    f_linestart = 0;                // no corners so no joint extrusion to consider
+    f_linelength = segment_length;  // and also no changes in line length
 
     // Generate vertices
 
@@ -78,7 +89,6 @@ void main(void)
         // TODO: if we just make this a varying output we probably get var linewidths here
         f_linewidth = halfwidth;
         f_id = g_id[x];
-        f_color = g_color[x];
 
         for (int y = 0; y < 2; y++) {
             // Get offset in y direction & compute vertex position

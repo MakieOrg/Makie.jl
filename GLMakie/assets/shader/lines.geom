@@ -17,18 +17,21 @@ in uvec2 g_id[];
 in int g_valid_vertex[];
 in float g_thickness[];
 
-out vec4 f_color;
 out highp float f_quad_sdf0;
 out highp vec3 f_quad_sdf1;
 out highp float f_quad_sdf2;
 out vec2 f_truncation;
 out vec2 f_uv;
+out float f_linestart;
+out float f_linelength;
 
 flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
 flat out vec2 f_extrusion12;
-flat out vec2 f_linelength;
+flat out vec2 f_discard_limit;
+flat out vec4 f_color1;
+flat out vec4 f_color2;
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -56,18 +59,19 @@ struct LineVertex {
     vec2 truncation;
 
     vec2 uv;
+    float linestart;
+    float linelength;
 };
 
 void emit_vertex(LineVertex vertex) {
     gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
-    f_color        = g_color[vertex.index];
-
     f_quad_sdf0    = vertex.quad_sdf0;
     f_quad_sdf1    = vertex.quad_sdf1;
     f_quad_sdf2    = vertex.quad_sdf2;
     f_truncation   = vertex.truncation;
-
     f_uv           = vertex.uv;
+    f_linestart    = vertex.linestart;
+    f_linelength   = vertex.linelength;
     f_id           = g_id[vertex.index];
     EmitVertex();
 }
@@ -106,7 +110,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
     float left, center, right;
 
     if (isvalid[0]) {
-        float offset = max(extrusion[0], 0.5 * g_thickness[1]);
+        float offset = max(abs(extrusion[0]), 0.5 * g_thickness[1]);
         left   = texture(pattern, (g_lastlen[1] - offset) / pattern_length).x;
         center = texture(pattern, g_lastlen[1] / pattern_length).x;
         right  = texture(pattern, (g_lastlen[1] + offset) / pattern_length).x;
@@ -137,7 +141,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
     } // else there is no left segment, no left join, so no overwrite
 
     if (isvalid[3]) {
-        float offset = max(extrusion[1], 0.5 * g_thickness[2]);
+        float offset = max(abs(extrusion[1]), 0.5 * g_thickness[2]);
         left   = texture(pattern, (g_lastlen[2] - offset) / pattern_length).x;
         center = texture(pattern, g_lastlen[2] / pattern_length).x;
         right  = texture(pattern, (g_lastlen[2] + offset) / pattern_length).x;
@@ -264,8 +268,8 @@ void main(void)
     vec2 miter_v2 = -normal_vector(miter_n2);
 
     // distance between p1/2 and respective sharp corner
-    float miter_offset1 = dot(miter_n1, n1);
-    float miter_offset2 = dot(miter_n2, n1);
+    float miter_offset1 = dot(miter_n1, n1); // = dot(miter_v1, v1)
+    float miter_offset2 = dot(miter_n2, n1); // = dot(miter_v2, v1)
 
     // Are we truncating the joint?
     bool[2] is_truncated = bool[2](
@@ -274,19 +278,21 @@ void main(void)
     );
 
     // How far the line needs to extend to accomodate the joint
-    // Note that the sign flips between + and - depending on the orientation
-    // of the joint.
+    // These are calulated in n1 direction, as prefactors of v1. I.e the rect
+    // uses:    p1 + extrusion[0] * v1  -----  p2 + extrusion[1] * v1
+    //                    |                             |
+    //          p1 - extrusion[0] * v1  -----  p2 - extrusion[1] * v1
     float[2] extrusion;
 
     if (is_truncated[0]) {
         // need to extend segment to include previous segments corners for truncated join
-        extrusion[0] = -halfwidth * miter_offset1 / dot(miter_n1, v1.xy);
+        extrusion[0] = -halfwidth * miter_offset1 / dot(miter_v1, n1);
     } else {
         // shallow/spike join needs to include point where miter normal meets outer line edge
-        extrusion[0] = halfwidth * dot(miter_n1, v1.xy) / miter_offset1;
+        extrusion[0] = -halfwidth * dot(miter_n1, v1.xy) / miter_offset1;
     }
     if (is_truncated[1]) {
-        extrusion[1] = -halfwidth * miter_offset2 / dot(miter_n2, v1.xy);
+        extrusion[1] = halfwidth * miter_offset2 / dot(miter_v2, n1);
     } else {
         extrusion[1] = halfwidth * dot(miter_n2, v1.xy) / miter_offset2;
     }
@@ -302,9 +308,15 @@ void main(void)
     // this makes overlapping segments draw over each other when reaching the limit
     // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
     // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
-    f_linelength = vec2(
+    f_discard_limit = vec2(
         is_truncated[0] ? 0.0 : g_thickness[1],
         is_truncated[1] ? 0.0 : g_thickness[1]
+    );
+
+    // color scaling to match colors where segments connect, not where vertices are
+    vec4[2] col_m = vec4[2](
+        (g_color[2] - g_color[1]) / max(0.01, segment_length1 - extrusion[0] + extrusion[1]),
+        (g_color[2] - g_color[1]) / max(0.01, segment_length1 + extrusion[0] - extrusion[1])
     );
 
     // used to elongate sdf to include joints
@@ -315,6 +327,10 @@ void main(void)
 
     // used to compute width sdf
     f_linewidth = halfwidth;
+
+    // for color sampling
+    f_color1 = g_color[1];
+    f_color2 = g_color[2];
 
     // Generate interpolated/varying outputs:
 
@@ -369,6 +385,15 @@ void main(void)
             vertex.truncation.y = !is_truncated[1] ? -1.0 :
                 dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2)
                 - abs(adjustment[1]) * 1e12;
+
+            // colors should be sampled based on the normalized distance from the
+            // extruded edge (varies with offset in n direction)
+            // - correcting for this with per-vertex colors results visible face border
+            // - calculating normalized distance here will cause div 0/negative
+            //   issues as (linelength +- (extrusion[0] + extrusion[1])) <= 0 is possible
+            // So defer color interpolation to fragment shader
+            vertex.linestart = (1 - 2 * y) * extrusion[0];
+            vertex.linelength = segment_length1 - (1 - 2 * y) * (extrusion[0] + extrusion[1]);
 
             // finalize vertex
             emit_vertex(vertex);
