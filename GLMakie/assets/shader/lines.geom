@@ -320,9 +320,12 @@ void main(void)
     );
 
     // used to elongate sdf to include joints
+    // if start/end don't elongate
+    // if joint skipped elongate to new length
+    // if joint elongate a lot to let discard/truncation handle joint
     f_extrusion12 = vec2(
-        max(abs(extrusion[0]), abs(adjustment[0] * halfwidth)),
-        max(abs(extrusion[1]), abs(adjustment[1] * halfwidth))
+        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : max(abs(extrusion[0]), halfwidth)),
+        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : max(abs(extrusion[1]), halfwidth))
     );
 
     // used to compute width sdf
