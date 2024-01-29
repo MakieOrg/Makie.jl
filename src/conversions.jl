@@ -63,23 +63,30 @@ function got_converted(@nospecialize(result), @nospecialize(args))
     end
 end
 
-convert_arguments(T::Type{<: AbstractPlot}, args...; kw...) = recursive_convert_arguments(1, T, args...; kw...)
+convert_arguments(T::Type{<: AbstractPlot}, args...; kw...) = recursive_convert_arguments(T, args...; kw...)
 
-convert_arguments(::ConversionTrait, args...) = NoConversion()
+convert_arguments(::ConversionTrait, args...) = args
+
+function recursive_convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
+    return recursive_convert_arguments(0, T, args...; kw...)
+end
 
 function recursive_convert_arguments(iterations, T::Type{<:AbstractPlot}, args...; kw...)
-    iterations == 3 && return args # we only want to recurse once
-    # First, try conversion trait
+    iterations == 2 && return args # we only want to recurse up to 2 times
+
     CT = conversion_trait(T, args...)
-    trait_converted = convert_arguments(CT, args...; kw...)
-    got_converted(trait_converted, args) && return trait_converted
+    # First, try conversion trait, but only in first recursion, since we apply trait conversion manually from here on
+    if iterations == 0
+        trait_converted = convert_arguments(CT, args...; kw...)
+        got_converted(trait_converted, args) && return trait_converted
+    end
 
     # Try single argument convert
     arguments_converted = map(convert_single_argument, args)
     if arguments_converted === args
         # Single convert didn't change anything,
         # So next we try convert arguments without trait
-        return recursive_convert_arguments(iterations + 1, T, args...; kw...) # left args untouched, so no conversion.
+        return recursive_convert_arguments(iterations + 1, T, args...; kw...)
     else
         # We could recurse since we need to apply the steps above one more time, but we want to
         # Execute this exactly once, so we just repeat the calls here

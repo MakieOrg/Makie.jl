@@ -247,7 +247,7 @@ end
     values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
 
     # TO not make this fail in CairoMakie, we dont actually plot the volume
-    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    _f, ax, cp = contour(-1..1, -1..1, -1..1, values; levels=10, colormap=:viridis)
     Colorbar(fig[2, 1], cp; size=300)
 
     _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)

@@ -17,7 +17,7 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(plot::VolumeSlices)
+function Makie.plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
     replace_automatic!(plot, :colorrange) do
         map(extrema, volume)
