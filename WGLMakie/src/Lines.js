@@ -37,44 +37,107 @@ function linesegments_vertex_shader(uniforms, attributes) {
         precision highp float;
 
         ${attribute_decl}
-        ${uniform_decl}
-        uniform int is_segments_multi;
 
         out vec2 f_uv;
         out ${color} f_color;
         flat out uint frag_instance_id;
 
-        vec2 get_resolution() {
-            // 2 * px_per_unit doesn't make any sense, but works
-            // TODO, figure out what's going on!
-            return resolution / 2.0 * px_per_unit;
-        }
+        ${uniform_decl}
+        uniform int is_segments_multi;
+
+        // Constants
+        const float MITER_LIMIT = -0.4;
+        const float AA_RADIUS = 0.8;
+        const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
         vec3 screen_space(vec3 point) {
             vec4 vertex = projectionview * model * vec4(point, 1);
-            return vec3(vertex.xy * get_resolution(), vertex.z + vertex.w * depth_shift) / vertex.w;
+            return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w + depth_shift);
         }
 
         vec3 screen_space(vec2 point) {
             return screen_space(vec3(point, 0));
         }
 
+        vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
+        vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+
+        // TODO: Split this into two files or a two define blocks?
+
         void main() {
-            vec3 p_a = screen_space(linepoint_start);
-            vec3 p_b = screen_space(linepoint_end);
-            float width = (px_per_unit * (position.x == 1.0 ? linewidth_end : linewidth_start));
-            f_color = position.x == 1.0 ? color_end : color_start;
+            bool is_end = position.x == 1.0;
+
+            vec3 p0 = screen_space(linepoint_prev);
+            vec3 p1 = screen_space(linepoint_start);
+            vec3 p2 = screen_space(linepoint_end);
+            vec3 p3 = screen_space(linepoint_next);
+
+            bool[4] isvalid = bool[4](p0 != p1, true, true, p2 != p3);
+
+            float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
+            f_color = is_end ? color_end : color_start;
             f_uv = vec2(position.x, position.y + 0.5);
 
-            vec2 pointA = p_a.xy;
-            vec2 pointB = p_b.xy;
+            // line vectors (xy-normalized vectors in line direction)
+            // Need z component for correct depth order
+            vec3 v1 = p2 - p1;
+            float segment_length = length(v1);
+            v1 /= segment_length;
 
-            vec2 xBasis = pointB - pointA;
-            vec2 yBasis = normalize(vec2(-xBasis.y, xBasis.x));
-            vec2 point = pointA + xBasis * position.x + yBasis * width * position.y;
+            // We don't need the z component for these
+            vec2 v0 = v1.xy, v2 = v1.xy;
+            if (isvalid[0])
+                v0 = normalize(p1.xy - p0.xy);
+            if (isvalid[3])
+                v2 = normalize(p3.xy - p2.xy);
 
-            gl_Position = vec4(point.xy / get_resolution(), position.x == 1.0 ? p_b.z : p_a.z, 1.0);
-            frag_instance_id = uint((gl_InstanceID * is_segments_multi) + int(position.x == 1.0));
+            // line normals (i.e. in linewidth direction)
+            vec2 n0 = normal_vector(v0);
+            vec2 n1 = normal_vector(v1);
+            vec2 n2 = normal_vector(v2);
+
+            // joint information
+            // Miter normals (normal of truncated edge / vector to sharp corner)
+            vec2 miter_n1 = normalize(n0 + n1);
+            vec2 miter_n2 = normalize(n1 + n2);
+
+            // miter vectors (line vector matching miter normal)
+            vec2 miter_v1 = -normal_vector(miter_n1);
+            vec2 miter_v2 = -normal_vector(miter_n2);
+
+            // distance between p1/2 and respective sharp corner
+            float miter_offset1 = dot(miter_n1, n1); // = dot(miter_v1, v1)
+            float miter_offset2 = dot(miter_n2, n1); // = dot(miter_v2, v1)
+
+            // Are we truncating the joint?
+            bool[2] is_truncated = bool[2](
+                dot(v0.xy, v1.xy) < MITER_LIMIT,
+                dot(v1.xy, v2.xy) < MITER_LIMIT
+            );
+
+            float[2] extrusion;
+            float halfwidth = 0.5 * width;
+
+            if (is_truncated[0]) {
+                // need to extend segment to include previous segments corners for truncated join
+                extrusion[0] = -halfwidth * miter_offset1 / dot(miter_v1, n1);
+            } else {
+                // shallow/spike join needs to include point where miter normal meets outer line edge
+                extrusion[0] = -halfwidth * dot(miter_n1, v1.xy) / miter_offset1;
+            }
+            if (is_truncated[1]) {
+                extrusion[1] = halfwidth * miter_offset2 / dot(miter_v2, n1);
+            } else {
+                extrusion[1] = halfwidth * dot(miter_n2, v1.xy) / miter_offset2;
+            }
+
+            // TODO:
+            vec3 point = 0.5 * (p1 + p2)
+                + (0.5 * segment_length + abs(extrusion[int(is_end)])) * position.x * v1
+                + halfwidth * position.y * vec3(n1, 0);
+
+            gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
+            frag_instance_id = uint((gl_InstanceID * is_segments_multi) + int(is_end));
         }
         `;
 }
@@ -191,26 +254,42 @@ function create_line_material(uniforms, attributes) {
     return mat;
 }
 
-function attach_interleaved_line_buffer(attr_name, geometry, points, ndim, is_segments) {
+function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments) {
     const skip_elems = is_segments ? 2 * ndim : ndim;
-    const buffer = new THREE.InstancedInterleavedBuffer(points, skip_elems, 1);
+    const buffer = new THREE.InstancedInterleavedBuffer(data, ndim, 1);
+    buffer.count = buffer.count - 2; // TODO: -2?
+    geometry.setAttribute(
+        attr_name + "_prev",
+        new THREE.InterleavedBufferAttribute(buffer, ndim, 0)
+    ); // xyz0
     geometry.setAttribute(
         attr_name + "_start",
-        new THREE.InterleavedBufferAttribute(buffer, ndim, 0)
+        new THREE.InterleavedBufferAttribute(buffer, ndim, ndim)
     ); // xyz1
     geometry.setAttribute(
         attr_name + "_end",
-        new THREE.InterleavedBufferAttribute(buffer, ndim, ndim)
-    ); // xyz1
+        new THREE.InterleavedBufferAttribute(buffer, ndim, 2 * ndim)
+    ); // xyz2
+    geometry.setAttribute(
+        attr_name + "_next",
+        new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim)
+    ); // xyz3
+    console.log(buffer);
     return buffer;
 }
 
 function create_line_instance_geometry() {
     const geometry = new THREE.InstancedBufferGeometry();
-    const instance_positions = [
-        0, -0.5, 1, -0.5, 1, 0.5,
+    // TODO: quad geometry may be more useful as -1, -1 .. 1, 1
+    // const instance_positions = [
+    //     0, -0.5, 1, -0.5, 1, 0.5,
 
-        0, -0.5, 1, 0.5, 0, 0.5,
+    //     0, -0.5, 1, 0.5, 0, 0.5,
+    // ];
+    const instance_positions = [
+        -1, -1, 1, -1, 1, 1,
+
+        -1, -1, 1, 1, -1, 1
     ];
     geometry.setAttribute(
         "position",
@@ -253,7 +332,7 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
             const ndims = new_points.type_length;
             const new_line_points = new_points.flat;
             const old_count = buff.array.length;
-            const new_count = new_line_points.length / ndims;
+            const new_count = new_line_points.length / ndims - 2; // TODO -2?
             if (old_count < new_line_points.length) {
                 mesh.geometry.dispose();
                 geometry = create_line_instance_geometry();
@@ -279,7 +358,7 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
 }
 
 export function _create_line(line_data, is_segments) {
-    const geometry = create_line_instance_geometry();
+    const geometry = create_line_instance_geometry(); // generate quad for segment
     const buffers = {};
     create_line_buffers(
         geometry,
@@ -291,6 +370,11 @@ export function _create_line(line_data, is_segments) {
         line_data.uniforms,
         geometry.attributes
     );
+    console.log(geometry);
+
+    //                 for id
+    // linesegments: multi = 2, offset = 0, instance_count = N - 0
+    // lines:        multi = 1, offset = 1, instance_count = N - 1
 
     material.uniforms.is_segments_multi = {value: is_segments ? 2 : 1};
     const mesh = new THREE.Mesh(geometry, material);
@@ -301,6 +385,7 @@ export function _create_line(line_data, is_segments) {
     return mesh;
 }
 
+// entrypoints
 export function create_line(line_data) {
     return _create_line(line_data, false)
 }

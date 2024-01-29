@@ -19,7 +19,13 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             uniforms[name] = RGBAf(0, 0, 0, 0)
         end
     end
-    points_transformed = lift(apply_transform, plot, transform_func_obs(plot),  plot[1], plot.space)
+    points_transformed = lift(plot, transform_func_obs(plot), plot[1], plot.space) do tf, ps, space
+        output = apply_transform(tf, ps, space)
+        # TODO: Do this in javascript?
+        pushfirst!(output, output[1])
+        push!(output, output[end])
+        return output
+    end
     positions = lift(serialize_buffer_attribute, plot, points_transformed)
     attributes = Dict{Symbol, Any}(:linepoint => positions)
     for (name, attr) in [:color => color, :linewidth => linewidth]
@@ -27,9 +33,16 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             uniforms[Symbol("$(name)_start")] = attr
             uniforms[Symbol("$(name)_end")] = attr
         else
-            attributes[name] = lift(serialize_buffer_attribute, plot, attr)
+            attributes[name] = lift(plot, attr) do vals
+                # TODO: in js?
+                serialize_buffer_attribute([first(vals); vals; last(vals)])
+            end
         end
     end
+
+    @info typeof(plot)
+    @info attributes
+
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
         :visible => plot.visible,
