@@ -38,7 +38,6 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
         ${attribute_decl}
 
-
         out highp float f_quad_sdf0;
         out highp vec3 f_quad_sdf1;
         out highp float f_quad_sdf2;
@@ -49,19 +48,24 @@ function linesegments_vertex_shader(uniforms, attributes) {
         flat out vec2 f_extrusion;
         flat out float f_linewidth;
         flat out vec2 f_discard_limit;
-        flat out uint frag_instance_id;
+        flat out uint f_instance_id;
         flat out vec4 f_color1;
         flat out vec4 f_color2;
 
         ${uniform_decl}
-        uniform int is_segments_multi;
+        uniform bool is_linesegments;
 
         // Constants
         const float MITER_LIMIT = -0.4;
         const float AA_RADIUS = 0.8;
         const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
+
+        ////////////////////////////////////////////////////////////////////////
         // Color handling
+        ////////////////////////////////////////////////////////////////////////
+
+
         vec4 get_color_from_cmap(float value, sampler2D colormap, vec2 colorrange) {
             float cmin = colorrange.x;
             float cmax = colorrange.y;
@@ -95,7 +99,11 @@ function linesegments_vertex_shader(uniforms, attributes) {
             return vec4(color, 1.0);
         }
 
+
+        ////////////////////////////////////////////////////////////////////////
         // Geometry/Position handling
+        ////////////////////////////////////////////////////////////////////////
+
 
         vec3 screen_space(vec3 point) {
             vec4 vertex = projectionview * model * vec4(point, 1);
@@ -114,19 +122,21 @@ function linesegments_vertex_shader(uniforms, attributes) {
         void main() {
             bool is_end = position.x == 1.0;
 
+
+            ////////////////////////////////////////////////////////////////////
+            // Handle line geometry (position, directions)
+            ////////////////////////////////////////////////////////////////////
+
+
+            float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
+            float halfwidth = 0.5 * width;
+
             vec3 p0 = screen_space(linepoint_prev);
             vec3 p1 = screen_space(linepoint_start);
             vec3 p2 = screen_space(linepoint_end);
             vec3 p3 = screen_space(linepoint_next);
 
             bool[4] isvalid = bool[4](p0 != p1, true, true, p2 != p3);
-
-            float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
-            // f_color = is_end ? color_end : color_start;
-
-            // for color sampling
-            f_color1 = get_color(color_start, colormap, colorrange);
-            f_color2 = get_color(color_end,   colormap, colorrange);
 
             // line vectors (xy-normalized vectors in line direction)
             // Need z component for correct depth order
@@ -145,6 +155,12 @@ function linesegments_vertex_shader(uniforms, attributes) {
             vec2 n0 = normal_vector(v0);
             vec2 n1 = normal_vector(v1);
             vec2 n2 = normal_vector(v2);
+
+
+            ////////////////////////////////////////////////////////////////////
+            // Handle joint geometry
+            ////////////////////////////////////////////////////////////////////
+
 
             // joint information
             // Miter normals (normal of truncated edge / vector to sharp corner)
@@ -166,7 +182,6 @@ function linesegments_vertex_shader(uniforms, attributes) {
             );
 
             float[2] extrusion;
-            float halfwidth = 0.5 * width;
 
             if (is_truncated[0]) {
                 // need to extend segment to include previous segments corners for truncated join
@@ -181,13 +196,11 @@ function linesegments_vertex_shader(uniforms, attributes) {
                 extrusion[1] = halfwidth * dot(miter_n2, v1.xy) / miter_offset2;
             }
 
-            // TODO:
-            vec3 point = 0.5 * (p1 + p2)
-                + (0.5 * segment_length + abs(extrusion[int(is_end)]) + AA_THICKNESS) * position.x * v1
-                + (halfwidth + AA_THICKNESS)* position.y * vec3(n1, 0);
 
+            ////////////////////////////////////////////////////////////////////
+            // Static vertex data
+            ////////////////////////////////////////////////////////////////////
 
-            // SDF util
 
             // limit range of distance sampled in prev/next segment
             // this makes overlapping segments draw over each other when reaching the limit
@@ -209,6 +222,19 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
             // used to compute width sdf
             f_linewidth = halfwidth;
+
+            f_instance_id = uint(gl_InstanceID * (is_segments ? 2 : 1));
+
+            ////////////////////////////////////////////////////////////////////
+            // Varying vertex data
+            ////////////////////////////////////////////////////////////////////
+
+
+            // Vertex position (padded for joint & anti-aliasing)
+            vec3 point = 0.5 * (p1 + p2)
+                + (0.5 * segment_length + abs(extrusion[int(is_end)]) + AA_THICKNESS) * position.x * v1
+                + (halfwidth + AA_THICKNESS)* position.y * vec3(n1, 0);
+
 
             // SDF's
             vec2 VP1 = point.xy - p1.xy;
@@ -244,25 +270,18 @@ function linesegments_vertex_shader(uniforms, attributes) {
             f_linestart = position.y * extrusion[0];
             f_linelength = segment_length - position.y * (extrusion[0] + extrusion[1]);
 
+            // for color sampling
+            f_color1 = get_color(color_start, colormap, colorrange);
+            f_color2 = get_color(color_end,   colormap, colorrange);
 
+            // clip space position
             gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
-            frag_instance_id = uint((gl_InstanceID * is_segments_multi));
         }
         `;
 }
 
 function lines_fragment_shader(uniforms, attributes) {
-    // const color =
-    //     attribute_type(attributes.color_start) ||
-    //     uniform_type(uniforms.color_start);
-    const color_uniforms = filter_by_key(uniforms, [
-        // "colorrange",
-        // "colormap",
-        // "nan_color",
-        // "highclip",
-        // "lowclip",
-        "picking",
-    ]);
+    const color_uniforms = filter_by_key(uniforms, ["picking"]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
 
     return `#extension GL_OES_standard_derivatives : enable
@@ -282,7 +301,7 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in vec2 f_extrusion;
     flat in float f_linewidth;
     flat in vec2 f_discard_limit;
-    flat in uint frag_instance_id;
+    flat in uint f_instance_id;
     flat in vec4 f_color1;
     flat in vec4 f_color2;
 
@@ -329,7 +348,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         if (picking) {
             if (color.a > 0.1) {
-                fragment_color = pack_int(object_id, frag_instance_id);
+                fragment_color = pack_int(object_id, f_instance_id);
             }
             return;
         }
@@ -376,7 +395,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         if (picking) {
             if (color.a > 0.1) {
-                fragment_color = pack_int(object_id, frag_instance_id);
+                fragment_color = pack_int(object_id, f_instance_id);
             }
             return;
         }
@@ -399,8 +418,9 @@ function create_line_material(uniforms, attributes) {
 }
 
 function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments) {
-    const skip_elems = is_segments ? 2 * ndim : ndim;
+    // const skip_elems = is_segments ? 2 * ndim : ndim;
     const buffer = new THREE.InstancedInterleavedBuffer(data, ndim, 1);
+    buffer.stride = is_segments ? 2 * ndim : ndim;
     buffer.count = buffer.count - 2; // TODO: -2?
     geometry.setAttribute(
         attr_name + "_prev",
@@ -516,14 +536,10 @@ export function _create_line(line_data, is_segments) {
     );
     console.log(geometry);
 
-    //                 for id
-    // linesegments: multi = 2, offset = 0, instance_count = N - 0
-    // lines:        multi = 1, offset = 1, instance_count = N - 1
-
-    material.uniforms.is_segments_multi = {value: is_segments ? 2 : 1};
+    material.uniforms.is_linesegments = {value: is_segments};
     const mesh = new THREE.Mesh(geometry, material);
     const offset = is_segments ? 0 : 1;
-    const new_count = geometry.attributes.linepoint_start.count;
+    const new_count = geometry.attributes.linepoint_start.count - 2;
     mesh.geometry.instanceCount = Math.max(0, new_count - offset);
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
