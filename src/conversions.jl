@@ -15,8 +15,8 @@ end
 @convert_target struct Heatmap
     # Heatmap needs to have x/y on a grid.
     # Also intervals get converted, since we need for every bin an exact location
-    x::AbstractVector{<:Number}
-    y::AbstractVector{<:Number}
+    x::RealVector
+    y::RealVector
     data::AbstractMatrix{<:Union{Colorant,Number}}
 end
 
@@ -130,11 +130,11 @@ function convert_arguments(::PointBased, x::AbstractArray{<: Real}, y::AbstractV
     (vec(Point3f.(x, y', z)),)
 end
 
-function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix{<:Real})
+function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::RealMatrix)
     return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
-function convert_arguments(::PointBased, x::AbstractArray{<:Real}, y::AbstractMatrix{<:Real},
+function convert_arguments(::PointBased, x::AbstractArray{<:Real}, y::RealMatrix,
                            z::AbstractArray{<:Real})
     (vec(Point3f.(x, y, z)),)
 end
@@ -157,7 +157,7 @@ Takes an input GeometryPrimitive `x` and decomposes it to points.
 """
 convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
 
-function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
+function convert_arguments(::PointBased, pos::RealMatrix)
     (to_vertices(pos),)
 end
 
@@ -344,7 +344,7 @@ function edges(v::AbstractVector)
     end
 end
 
-function adjust_axes(::CellGrid, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractMatrix)
+function adjust_axes(::CellGrid, x::RealVector, y::RealVector, z::AbstractMatrix)
     x̂, ŷ = map((x, y), size(z)) do v, sz
         return length(v) == sz ? edges(v) : v
     end
@@ -364,11 +364,8 @@ outputs as a `Tuple`.
 function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<: Real}, y::AbstractVecOrMat{<: Real}, z::AbstractMatrix{<: Union{Real, Colorant}})
     return map(el32convert, adjust_axes(ct, x, y, z))
 end
-function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<: Real}, y::AbstractVecOrMat{<: Real}, z::AbstractMatrix{<:Real})
-    return map(el32convert, adjust_axes(ct, x, y, z))
-end
 
-convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
+convert_arguments(ct::VertexGrid, x::RealMatrix, y::RealMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x::RangeLike, y::RangeLike, z::AbstractMatrix)
@@ -376,7 +373,8 @@ convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = conver
 Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
-function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix)
+function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
@@ -403,24 +401,25 @@ end
 
 Generates `ClosedInterval`s of size `0 .. size(mat, 1/2)` as x and y values.
 """
-function convert_arguments(::ImageLike, data::AbstractMatrix)
+function convert_arguments(::ImageLike, data::AbstractMatrix{<: Union{Real, Colorant}})
     n, m = Float32.(size(data))
     return (0f0 .. n, 0f0 .. m, el32convert(data))
 end
 
 
-function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike, data::AbstractMatrix)
+function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
+                           data::AbstractMatrix{<:Union{Real,Colorant}})
     x = to_interval(xs, "x")
     y = to_interval(ys, "y")
     return (x, y, el32convert(data))
 end
 
-function convert_arguments(ct::GridBased, data::AbstractMatrix)
+function convert_arguments(ct::GridBased, data::AbstractMatrix{<:Union{Real,Colorant}})
     n, m = Float32.(size(data))
     convert_arguments(ct, 1f0 .. n, 1f0 .. m, el32convert(data))
 end
 
-function convert_arguments(ct::GridBased, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
+function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealVector)
     if !(length(x) == length(y) == length(z))
         error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
     end
@@ -453,9 +452,10 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(ct::Union{GridBased, ImageLike}, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+function convert_arguments(ct::Union{GridBased,ImageLike}, x::RealVector, y::RealVector,
+                           f::Function)
     if !applicable(f, x[1], y[1])
-        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
+        error("You need to pass a function with signature f(x::$(eltype(x)) y::$(eltype(y))). Found: $f")
     end
     T = typeof(f(x[1], y[1]))
     z = similar(x, T, (length(x), length(y)))
@@ -490,7 +490,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{<: Real, 3})
+function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::AbstractArray{<: Real, 3})
     (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(i))
 end
 
@@ -512,7 +512,10 @@ end
 Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
 """
-function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where E <: Union{Pair{A, A}, Tuple{A, A}} where A <: VecTypes{N, T} where {N, T}
+function convert_arguments(::Type{<:LineSegments},
+                           positions::AbstractVector{E}) where {E<:Union{Pair{A,A},Tuple{A,A}}} where {A<:VecTypes{N,
+                                                                                                                   T}} where {N,
+                                                                                                                              T<:Real}
     (elconvert(Point{N, Float32}, reinterpret(Point{N, T}, positions)),)
 end
 
@@ -521,18 +524,6 @@ function convert_arguments(::Type{<: LineSegments}, x::Rect2)
     points = decompose(Point2f, x)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
 end
-
-################################################################################
-#                                    <:Text                                    #
-################################################################################
-
-"""
-    convert_arguments(x)::(String)
-
-Takes an input `AbstractString` `x` and converts it to a string.
-"""
-# convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
-
 
 ################################################################################
 #                                    <:Mesh                                    #
@@ -592,7 +583,7 @@ end
 
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
+        xyz::Union{AbstractPolygon, AbstractVector{<: Point2}}
     )
     return convert_arguments(MT, triangle_mesh(xyz))
 end
@@ -649,13 +640,13 @@ end
 # Allow the user to pass a function to `arrows` which determines the direction
 # and magnitude of the arrows.  The function must accept `Point2f` as input.
 # and return Point2f or Vec2f or some array like structure as output.
-function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, f::Function)
     points = Point2f.(x, y')
     f_out = Vec2f.(f.(points))
     return (vec(points), vec(f_out))
 end
 
-function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector,
+function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::RealVector,
                            f::Function)
     points = [Point3f(x, y, z) for x in x, y in y, z in z]
     f_out = Vec3f.(f.(points))
@@ -670,7 +661,7 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(VL::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
@@ -682,7 +673,7 @@ function convert_arguments(VL::VolumeLike, x::AbstractVector, y::AbstractVector,
     return (map(to_interval, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
+function convert_arguments(P::PlotFunc, r::RealVector, f::Function)
     return convert_arguments(P, r, map(f, r))
 end
 
@@ -806,7 +797,7 @@ function to_vertices(verts::AbstractVector{<: VecTypes{N}}) where {N}
     return map(Point{N, Float32}, verts)
 end
 
-function to_vertices(verts::AbstractMatrix{<: Number})
+function to_vertices(verts::AbstractMatrix{<: Real})
     if size(verts, 1) in (2, 3)
         to_vertices(verts, Val(1))
     elseif size(verts, 2) in (2, 3)
@@ -816,7 +807,7 @@ function to_vertices(verts::AbstractMatrix{<: Number})
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
+function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Real
     N = size(verts, 1)
     if T == Float32 && N == 3
         reinterpret(Point{N, T}, elconvert(T, vec(verts)))
@@ -829,7 +820,7 @@ function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
+function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Real
     let N = Val(size(verts, 2)), lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
             Point(ntuple(i-> Float32(verts[vidx, i]), n))

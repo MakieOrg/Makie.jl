@@ -98,7 +98,8 @@ export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGri
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
-const RealVector{T} = AbstractVector{T} where T <: Real
+const RealVector{T} = AbstractVector{T} where {T<:Real}
+const RealMatrix{T} = AbstractMatrix{T} where {T<:Real}
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
