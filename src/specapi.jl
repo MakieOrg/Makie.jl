@@ -193,7 +193,17 @@ end
 
 GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
 
-apply_typed_convert(P, @nospecialize(args::Tuple)) = values(convert_arguments_typed(P, args...))
+function apply_typed_convert(P, @nospecialize(args::Tuple))
+    converted = convert_arguments_typed(P, args...)
+    if converted isa NoConversion
+        return args
+    elseif converted isa NamedTuple
+        return values(converted)
+    else
+        @assert args === converted
+        return converted
+    end
+end
 
 """
 apply for return type PlotSpec
@@ -206,7 +216,8 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec)
         attributes[k] = v
     end
     NP = plottype(plottype(x), P)
-    return (NP, apply_typed_convert(NP, (args...,)))
+    converted = apply_typed_convert(NP, (args...,))
+    return (NP, converted)
 end
 
 function apply_convert!(P, ::Attributes, x::AbstractVector{PlotSpec})
@@ -220,7 +231,7 @@ apply for return type
 apply_convert!(P, ::Attributes, args::Tuple) = (P, apply_typed_convert(P, args))
 
 function MakieCore.argtypes(plot::PlotSpec)
-    args_converted = convert_arguments(plottype(plot), plot.args...)
+    args_converted = recursive_convert_arguments(plottype(plot), plot.args...)
     return MakieCore.argtypes(args_converted)
 end
 

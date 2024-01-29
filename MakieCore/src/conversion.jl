@@ -1,5 +1,4 @@
 
-function convert_arguments end
 
 """
     convert_attribute(value, attribute::Key[, plottype::Key])
@@ -30,8 +29,6 @@ struct NoConversion <: ConversionTrait end
 # No conversion by default
 conversion_trait(::Type) = NoConversion()
 conversion_trait(T::Type, args...) = conversion_trait(T)
-
-convert_arguments(::NoConversion, args...) = args
 
 """
     PointBased() <: ConversionTrait
@@ -101,11 +98,20 @@ conversion_trait(::Type{<: Image}) = ImageLike()
 struct VolumeLike <: ConversionTrait end
 conversion_trait(::Type{<: Volume}) = VolumeLike()
 
+function convert_arguments end
+
+convert_arguments(::NoConversion, args...; kw...) = args
+
 """
     convert_arguments_typed(::Type{<: AbstractPlot}, args...)::NamedTuple
 
 Converts the arguments to their correct type for the Plot type.
 Throws appropriate errors if it can't convert.
+Returns:
+
+* `NoConversion()` if no conversion is defined for the plot type.
+* `args` untouched, if no conversion is requested via the `NoConversion` trait.
+* `NamedTuple` of the converted arguments, if a conversion is defined.
 """
 function convert_arguments_typed end
 
@@ -113,14 +119,16 @@ function convert_arguments_typed(P::Type{<:AbstractPlot}, @nospecialize(args...)
     return convert_arguments_typed(typeof(conversion_trait(P, args...)), args...)
 end
 
-function convert_arguments_typed(ct::Type{<:ConversionTrait}, @nospecialize(args...))
+function convert_arguments_typed(::Type{<:ConversionTrait}, @nospecialize(args...))
     # We currently just fall back to not doing anything if there isn't a convert_arguments_typed defined for certain plot types.
     # This makes `@convert_target` an optional feature right now.
     # It will require a bit more work to error here and request an overload for every plot type.
     # We will have to think more about how to integrate it with user recipes, because otherwise all user defined recipes would error by default without a convert target.
-    return args
+    # we return NoConversion to indicate, that no conversion is defined, while a conversion was requested, which is different from the below case where no conversion was requested.
+    return NoConversion()
 end
 
+# Explicitely requested no conversion (default for recipes)
 convert_arguments_typed(::NoConversion, args...) = args
 
 """

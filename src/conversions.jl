@@ -7,8 +7,8 @@ const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Any,Any}}
 @convert_target struct Surface{N}
     # Surfaces allow unstructured grids via matrices for x/y
     # But also allow vectors or ClosedInterval for just ranges.
-    x::Union{ClosedInterval, AbstractArray{Float32,N}}
-    y::Union{ClosedInterval, AbstractArray{Float32,N}}
+    x::AbstractArray{Float32,N}
+    y::AbstractArray{Float32,N}
     z::AbstractMatrix{Float32}
 end
 
@@ -17,7 +17,7 @@ end
     # Also intervals get converted, since we need for every bin an exact location
     x::RealVector
     y::RealVector
-    data::AbstractMatrix{<:Union{Colorant,Number}}
+    data::AbstractMatrix{<:Union{Float32,Colorant}}
 end
 
 @convert_target struct Image
@@ -25,7 +25,7 @@ end
     # Heatmap/Surface should be used for irregularly gridded images
     x::ClosedInterval{Float32}
     y::ClosedInterval{Float32}
-    image::AbstractMatrix{<:Union{Number,Colorant}}
+    image::AbstractMatrix{<:Union{Float32,Colorant}}
 end
 
 @convert_target struct PointBased{N} # We can use the traits as well for conversion targers
@@ -52,22 +52,42 @@ end
     glyphs::Any
 end
 
-convert_arguments(::ConversionTrait, args...; kw...) = args
 
-function convert_arguments(T::PlotFunc, args...; kw...)
-    # Try conversion trait
-    ct = conversion_trait(T, args...)
-    converted1 = convert_arguments(ct, args...; kw...)
-    converted1 === args || return converted1
+function got_converted(@nospecialize(result), @nospecialize(args))
+    if result === args
+        return false
+    elseif result isa NoConversion
+        return false
+    else
+        return true
+    end
+end
+
+convert_arguments(T::Type{<: AbstractPlot}, args...; kw...) = recursive_convert_arguments(1, T, args...; kw...)
+
+convert_arguments(::ConversionTrait, args...) = NoConversion()
+
+function recursive_convert_arguments(iterations, T::Type{<:AbstractPlot}, args...; kw...)
+    iterations == 3 && return args # we only want to recurse once
+    # First, try conversion trait
+    CT = conversion_trait(T, args...)
+    trait_converted = convert_arguments(CT, args...; kw...)
+    got_converted(trait_converted, args) && return trait_converted
 
     # Try single argument convert
-    converted2 = map(convert_single_argument, args)
-    if converted2 === args
-        return args # can't convert
+    arguments_converted = map(convert_single_argument, args)
+    if arguments_converted === args
+        # Single convert didn't change anything,
+        # So next we try convert arguments without trait
+        return recursive_convert_arguments(iterations + 1, T, args...; kw...) # left args untouched, so no conversion.
     else
-        # if we converted to something, we need to recurse,
-        # since convert_single_argument doesn't do a complete conversion
-        return convert_arguments(T, converted2...; kw...)
+        # We could recurse since we need to apply the steps above one more time, but we want to
+        # Execute this exactly once, so we just repeat the calls here
+        #return recursive_convert_arguments(T, converted2; kw...)
+        trait_converted = convert_arguments(CT, arguments_converted...; kw...)
+        got_converted(trait_converted, arguments_converted) && return trait_converted
+        # Finally we just try the non-trait conversion directly
+        return recursive_convert_arguments(iterations + 1, T, arguments_converted...; kw...)
     end
 end
 
@@ -673,11 +693,11 @@ function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::Real
     return (map(to_interval, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
-function convert_arguments(P::PlotFunc, r::RealVector, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
     return convert_arguments(P, r, map(f, r))
 end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
 end

@@ -220,7 +220,7 @@ plottype(::MultiPolygon) = Lines
 
 
 # all the plotting functions that get a plot type
-const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
+const PlotFunc = Type{<:AbstractPlot}
 
 function plot!(::Plot{F}) where {F}
     if !(F in atomic_functions)

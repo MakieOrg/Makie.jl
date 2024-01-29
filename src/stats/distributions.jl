@@ -16,9 +16,9 @@ isdiscrete(::Distribution{<:VariateForm,<:Discrete}) = true
 support(dist::Distribution) = default_range(dist)
 support(dist::Distribution{<:VariateForm,<:Discrete}) = UnitRange(endpoints(default_range(dist))...)
 
-convert_arguments(P::PlotFunc, dist::Distribution) = convert_arguments(P, support(dist), dist)
+convert_arguments(P::Type{<:AbstractPlot}, dist::Distribution) = convert_arguments(P, support(dist), dist)
 
-function convert_arguments(P::PlotFunc, x::Union{Interval,AbstractVector}, dist::Distribution)
+function convert_arguments(P::Type{<:AbstractPlot}, x::Union{Interval,AbstractVector}, dist::Distribution)
     default_ptype = isdiscrete(dist) ? ScatterLines : Lines
     ptype = plottype(P, default_ptype)
     to_plotspec(ptype, convert_arguments(ptype, x, x -> pdf(dist, x)))
