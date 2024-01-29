@@ -38,9 +38,15 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
         ${attribute_decl}
 
+
+        out highp float f_quad_sdf0;
         out highp vec3 f_quad_sdf1;
+        out highp float f_quad_sdf2;
+        out vec2 f_truncation;
+
         flat out vec2 f_extrusion;
         flat out float f_linewidth;
+        flat out vec2 f_discard_limit;
         flat out uint frag_instance_id;
 
 
@@ -142,6 +148,15 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
             // SDF util
 
+            // limit range of distance sampled in prev/next segment
+            // this makes overlapping segments draw over each other when reaching the limit
+            // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
+            // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
+            f_discard_limit = vec2(
+                is_truncated[0] ? 0.0 : 2.0 * halfwidth,
+                is_truncated[1] ? 0.0 : 2.0 * halfwidth
+            );
+
             // used to elongate sdf to include joints
             // if start/end don't elongate
             // if joint skipped elongate to new length
@@ -158,9 +173,26 @@ function linesegments_vertex_shader(uniforms, attributes) {
             vec2 VP1 = point.xy - p1.xy;
             vec2 VP2 = point.xy - p2.xy;
 
+            // signed distance of previous segment at shared control point in line
+            // direction. Used decide which segments renders which joint fragment.
+            // If the left joint is adjusted this sdf is disabled.
+            f_quad_sdf0 = isvalid[0] ? dot(VP1, v0) - 0.5 : 1e12;
+
+            // sdf of this segment
             f_quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
             f_quad_sdf1.y = dot(VP2,  v1.xy) - 0.5;
             f_quad_sdf1.z = dot(VP1,  n1);
+
+            // SDF for next segment, see quad_sdf0
+            f_quad_sdf2 = isvalid[3] ? dot(VP2, -v2) - 0.5 : 1e12;
+
+            // sdf for creating a flat cap on truncated joints
+            // (sign(dot(...)) detects if line bends left or right)
+            // left/right adjustments disable
+            f_truncation.x = !is_truncated[0] ? -1.0 :
+                dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1);
+            f_truncation.y = !is_truncated[1] ? -1.0 :
+                dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2);
 
             gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
             frag_instance_id = uint((gl_InstanceID * is_segments_multi));
@@ -189,10 +221,14 @@ function lines_fragment_shader(uniforms, attributes) {
     precision mediump sampler2D;
     precision mediump sampler3D;
 
+    in highp float f_quad_sdf0;
     in highp vec3 f_quad_sdf1;
+    in highp float f_quad_sdf2;
+    in vec2 f_truncation;
 
     flat in vec2 f_extrusion;
     flat in float f_linewidth;
+    flat in vec2 f_discard_limit;
     flat in uint frag_instance_id;
 
     in ${color} f_color;
@@ -288,17 +324,17 @@ function lines_fragment_shader(uniforms, attributes) {
         sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
         color.rgb -= vec3(0.4) * step(0.0, sdf);
 
-        // // Mark regions excluded via truncation in green
-        // color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
+        // Mark regions excluded via truncation in green
+        color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
-        // // Mark discarded space in red/blue
-        // float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
-        // float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
-        // if (dist_in_prev < f_quad_sdf1.x)
-        //     color.r += 0.5;
-        // if (dist_in_next <= f_quad_sdf1.y) {
-        //     color.b += 0.5;
-        // }
+        // Mark discarded space in red/blue
+        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
+        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
+        if (dist_in_prev < f_quad_sdf1.x)
+            color.r += 0.5;
+        if (dist_in_next <= f_quad_sdf1.y) {
+            color.b += 0.5;
+        }
 
         // // mark pattern in white
         // color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
