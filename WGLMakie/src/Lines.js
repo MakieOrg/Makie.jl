@@ -43,14 +43,15 @@ function linesegments_vertex_shader(uniforms, attributes) {
         out highp vec3 f_quad_sdf1;
         out highp float f_quad_sdf2;
         out vec2 f_truncation;
+        out float f_linestart;
+        out float f_linelength;
 
         flat out vec2 f_extrusion;
         flat out float f_linewidth;
         flat out vec2 f_discard_limit;
         flat out uint frag_instance_id;
-
-
-        out ${color} f_color;
+        flat out vec4 f_color1;
+        flat out vec4 f_color2;
 
         ${uniform_decl}
         uniform int is_segments_multi;
@@ -59,6 +60,42 @@ function linesegments_vertex_shader(uniforms, attributes) {
         const float MITER_LIMIT = -0.4;
         const float AA_RADIUS = 0.8;
         const float AA_THICKNESS = 2.0 * AA_RADIUS;
+
+        // Color handling
+        vec4 get_color_from_cmap(float value, sampler2D colormap, vec2 colorrange) {
+            float cmin = colorrange.x;
+            float cmax = colorrange.y;
+            if (value <= cmax && value >= cmin) {
+                // in value range, continue!
+            } else if (value < cmin) {
+                return lowclip;
+            } else if (value > cmax) {
+                return highclip;
+            } else {
+                // isnan CAN be broken (of course) -.-
+                // so if outside value range and not smaller/bigger min/max we assume NaN
+                return nan_color;
+            }
+            float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+            // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+            // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+            float stepsize = 1.0 / float(textureSize(colormap, 0));
+            i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+            return texture(colormap, vec2(i01, 0.0));
+        }
+
+        vec4 get_color(float color, sampler2D colormap, vec2 colorrange) {
+            return get_color_from_cmap(color, colormap, colorrange);
+        }
+
+        vec4 get_color(vec4 color, bool colormap, bool colorrange) {
+            return color;
+        }
+        vec4 get_color(vec3 color, bool colormap, bool colorrange) {
+            return vec4(color, 1.0);
+        }
+
+        // Geometry/Position handling
 
         vec3 screen_space(vec3 point) {
             vec4 vertex = projectionview * model * vec4(point, 1);
@@ -85,7 +122,11 @@ function linesegments_vertex_shader(uniforms, attributes) {
             bool[4] isvalid = bool[4](p0 != p1, true, true, p2 != p3);
 
             float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
-            f_color = is_end ? color_end : color_start;
+            // f_color = is_end ? color_end : color_start;
+
+            // for color sampling
+            f_color1 = get_color(color_start, colormap, colorrange);
+            f_color2 = get_color(color_end,   colormap, colorrange);
 
             // line vectors (xy-normalized vectors in line direction)
             // Need z component for correct depth order
@@ -194,6 +235,16 @@ function linesegments_vertex_shader(uniforms, attributes) {
             f_truncation.y = !is_truncated[1] ? -1.0 :
                 dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2);
 
+            // colors should be sampled based on the normalized distance from the
+            // extruded edge (varies with offset in n direction)
+            // - correcting for this with per-vertex colors results visible face border
+            // - calculating normalized distance here will cause div 0/negative
+            //   issues as (linelength +- (extrusion[0] + extrusion[1])) <= 0 is possible
+            // So defer color interpolation to fragment shader
+            f_linestart = position.y * extrusion[0];
+            f_linelength = segment_length - position.y * (extrusion[0] + extrusion[1]);
+
+
             gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
             frag_instance_id = uint((gl_InstanceID * is_segments_multi));
         }
@@ -201,15 +252,15 @@ function linesegments_vertex_shader(uniforms, attributes) {
 }
 
 function lines_fragment_shader(uniforms, attributes) {
-    const color =
-        attribute_type(attributes.color_start) ||
-        uniform_type(uniforms.color_start);
+    // const color =
+    //     attribute_type(attributes.color_start) ||
+    //     uniform_type(uniforms.color_start);
     const color_uniforms = filter_by_key(uniforms, [
-        "colorrange",
-        "colormap",
-        "nan_color",
-        "highclip",
-        "lowclip",
+        // "colorrange",
+        // "colormap",
+        // "nan_color",
+        // "highclip",
+        // "lowclip",
         "picking",
     ]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
@@ -225,13 +276,15 @@ function lines_fragment_shader(uniforms, attributes) {
     in highp vec3 f_quad_sdf1;
     in highp float f_quad_sdf2;
     in vec2 f_truncation;
+    in float f_linestart;
+    in float f_linelength;
 
     flat in vec2 f_extrusion;
     flat in float f_linewidth;
     flat in vec2 f_discard_limit;
     flat in uint frag_instance_id;
-
-    in ${color} f_color;
+    flat in vec4 f_color1;
+    flat in vec4 f_color2;
 
     uniform uint object_id;
     ${uniform_decl}
@@ -240,39 +293,6 @@ function lines_fragment_shader(uniforms, attributes) {
 
     // Half width of antialiasing smoothstep
     #define ANTIALIAS_RADIUS 0.7071067811865476
-
-    vec4 get_color_from_cmap(float value, sampler2D colormap, vec2 colorrange) {
-        float cmin = colorrange.x;
-        float cmax = colorrange.y;
-        if (value <= cmax && value >= cmin) {
-            // in value range, continue!
-        } else if (value < cmin) {
-            return lowclip;
-        } else if (value > cmax) {
-            return highclip;
-        } else {
-            // isnan CAN be broken (of course) -.-
-            // so if outside value range and not smaller/bigger min/max we assume NaN
-            return nan_color;
-        }
-        float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
-        // 1/0 corresponds to the corner of the colormap, so to properly interpolate
-        // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
-        float stepsize = 1.0 / float(textureSize(colormap, 0));
-        i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
-        return texture(colormap, vec2(i01, 0.0));
-    }
-
-    vec4 get_color(float color, sampler2D colormap, vec2 colorrange) {
-        return get_color_from_cmap(color, colormap, colorrange);
-    }
-
-    vec4 get_color(vec4 color, bool colormap, bool colorrange) {
-        return color;
-    }
-    vec4 get_color(vec3 color, bool colormap, bool colorrange) {
-        return vec4(color, 1.0);
-    }
 
     float aastep(float threshold, float value) {
         float afwidth = length(vec2(dFdx(value), dFdy(value))) * ANTIALIAS_RADIUS;
@@ -295,6 +315,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
     void main(){
         /*
+        // TODO:
         // sdf for inside vs outside along the line direction. extrusion makes sure
         // we include enough for a joint
         float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
@@ -317,7 +338,21 @@ function lines_fragment_shader(uniforms, attributes) {
 
         // base color
         vec4 color = vec4(0.5, 0.5, 0.5, 0.2);
-        color.rgb += (2.0 * mod(float(frag_instance_id), 2.0) - 1.0) * 0.1;
+
+
+        //  v- edge
+        //   .---------------
+        //    '.
+        //      p1      v1
+        //        '.   --->
+        //          '----------
+        // -f_quad_sdf1.x is the distance from p1, positive in v1 direction
+        // f_linestart is the distance between p1 and the left edge along v1 direction
+        // f_start_length.y is the distance between the edges of this segment, in v1 direction
+        // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
+        float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
+        color.rgb += (2.0 * factor - 1.0) * 0.2;
+        // color = f_color1 + factor * (f_color2 - f_color1); // TODO: for reference
 
         // mark "outside" define by quad_sdf in black
         float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);

@@ -18,6 +18,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         for name in [:nan_color, :highclip, :lowclip]
             uniforms[name] = RGBAf(0, 0, 0, 0)
         end
+        get!(uniforms, :colormap, false)
+        get!(uniforms, :colorrange, false)
     end
     points_transformed = lift(plot, transform_func_obs(plot), plot[1], plot.space) do tf, ps, space
         output = apply_transform(tf, ps, space)
