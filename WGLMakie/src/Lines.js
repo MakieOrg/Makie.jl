@@ -38,9 +38,13 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
         ${attribute_decl}
 
-        out vec2 f_uv;
-        out ${color} f_color;
+        out highp vec3 f_quad_sdf1;
+        flat out vec2 f_extrusion;
+        flat out float f_linewidth;
         flat out uint frag_instance_id;
+
+
+        out ${color} f_color;
 
         ${uniform_decl}
         uniform int is_segments_multi;
@@ -76,7 +80,6 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
             float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
             f_color = is_end ? color_end : color_start;
-            f_uv = vec2(position.x, position.y + 0.5);
 
             // line vectors (xy-normalized vectors in line direction)
             // Need z component for correct depth order
@@ -133,11 +136,34 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
             // TODO:
             vec3 point = 0.5 * (p1 + p2)
-                + (0.5 * segment_length + abs(extrusion[int(is_end)])) * position.x * v1
-                + halfwidth * position.y * vec3(n1, 0);
+                + (0.5 * segment_length + abs(extrusion[int(is_end)]) + AA_THICKNESS) * position.x * v1
+                + (halfwidth + AA_THICKNESS)* position.y * vec3(n1, 0);
+
+
+            // SDF util
+
+            // used to elongate sdf to include joints
+            // if start/end don't elongate
+            // if joint skipped elongate to new length
+            // if joint elongate a lot to let discard/truncation handle joint
+            f_extrusion = vec2(
+                !isvalid[0] ? 0.0 : 1e12,
+                !isvalid[3] ? 0.0 : 1e12
+            );
+
+            // used to compute width sdf
+            f_linewidth = halfwidth;
+
+            // SDF's
+            vec2 VP1 = point.xy - p1.xy;
+            vec2 VP2 = point.xy - p2.xy;
+
+            f_quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
+            f_quad_sdf1.y = dot(VP2,  v1.xy) - 0.5;
+            f_quad_sdf1.z = dot(VP1,  n1);
 
             gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
-            frag_instance_id = uint((gl_InstanceID * is_segments_multi) + int(is_end));
+            frag_instance_id = uint((gl_InstanceID * is_segments_multi));
         }
         `;
 }
@@ -163,8 +189,15 @@ function lines_fragment_shader(uniforms, attributes) {
     precision mediump sampler2D;
     precision mediump sampler3D;
 
-    in vec2 f_uv;
+    in highp vec3 f_quad_sdf1;
+
+    flat in vec2 f_extrusion;
+    flat in float f_linewidth;
+    flat in uint frag_instance_id;
+
     in ${color} f_color;
+
+    uniform uint object_id;
     ${uniform_decl}
 
     out vec4 fragment_color;
@@ -214,9 +247,6 @@ function lines_fragment_shader(uniforms, attributes) {
         return aastep(threshold1, dist) * aastep(threshold2, 1.0 - dist);
     }
 
-    flat in uint frag_instance_id;
-    uniform uint object_id;
-
     vec4 pack_int(uint id, uint index) {
         vec4 unpack;
         unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
@@ -225,11 +255,54 @@ function lines_fragment_shader(uniforms, attributes) {
         unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
         return unpack;
     }
-    void main(){
 
-        float xalpha = aastep(0.0, 0.0, f_uv.x);
-        float yalpha = aastep(0.0, 0.0, f_uv.y);
+
+    void main(){
+        /*
+        // sdf for inside vs outside along the line direction. extrusion makes sure
+        // we include enough for a joint
+        float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
+
+        // distance in linewidth direction
+        sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
+
         vec4 color = get_color(f_color, colormap, colorrange);
+
+        color.a *= aastep(0.0, -sdf);
+
+        if (picking) {
+            if (color.a > 0.1) {
+                fragment_color = pack_int(object_id, frag_instance_id);
+            }
+            return;
+        }
+        fragment_color = vec4(color.rgb, color.a);
+        */
+
+        // base color
+        vec4 color = vec4(0.5, 0.5, 0.5, 0.2);
+        color.rgb += (2.0 * mod(float(frag_instance_id), 2.0) - 1.0) * 0.1;
+
+        // mark "outside" define by quad_sdf in black
+        float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
+        sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
+        color.rgb -= vec3(0.4) * step(0.0, sdf);
+
+        // // Mark regions excluded via truncation in green
+        // color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
+
+        // // Mark discarded space in red/blue
+        // float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
+        // float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
+        // if (dist_in_prev < f_quad_sdf1.x)
+        //     color.r += 0.5;
+        // if (dist_in_next <= f_quad_sdf1.y) {
+        //     color.b += 0.5;
+        // }
+
+        // // mark pattern in white
+        // color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
+
         if (picking) {
             if (color.a > 0.1) {
                 fragment_color = pack_int(object_id, frag_instance_id);
