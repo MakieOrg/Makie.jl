@@ -223,7 +223,8 @@ function linesegments_vertex_shader(uniforms, attributes) {
             // used to compute width sdf
             f_linewidth = halfwidth;
 
-            f_instance_id = uint(gl_InstanceID * (is_segments ? 2 : 1));
+            f_instance_id = uint(gl_InstanceID * (is_linesegments ? 2 : 1));
+
 
             ////////////////////////////////////////////////////////////////////
             // Varying vertex data
@@ -515,6 +516,12 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
             const ls_factor = is_segments ? 2 : 1;
             const offset = is_segments ? 0 : 1;
             mesh.geometry.instanceCount = Math.max(0, (new_count / ls_factor) - offset);
+            console.log("instance info:");
+            console.log(new_line_points.length);
+            console.log(ndims);
+            console.log(ls_factor);
+            console.log(offset);
+
             buff.needsUpdate = true;
             mesh.needsUpdate = true;
         });
@@ -538,9 +545,14 @@ export function _create_line(line_data, is_segments) {
 
     material.uniforms.is_linesegments = {value: is_segments};
     const mesh = new THREE.Mesh(geometry, material);
-    const offset = is_segments ? 0 : 1;
-    const new_count = geometry.attributes.linepoint_start.count - 2;
-    mesh.geometry.instanceCount = Math.max(0, new_count - offset);
+    // const offset = is_segments ? 0 : 1;
+    const new_count = geometry.attributes.linepoint_start.count;
+    mesh.geometry.instanceCount = Math.max(0, is_segments ? new_count / 2 : new_count - 1);
+    console.log("init:");
+    console.log(geometry.attributes.linepoint_start.count);
+    console.log(new_count);
+    console.log(mesh.geometry.instanceCount);
+    // console.log(offset);
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
