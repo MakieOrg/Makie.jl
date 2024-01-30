@@ -470,3 +470,22 @@ function available_plotting_methods()
     end
     return meths
 end
+
+function extract_method_arguments(m::Method)
+    tv, decls, file, line = Base.arg_decl_parts(m)
+    tnames = map(decls[3:end]) do (n, t)
+        return string(n, "::", t)
+    end
+    return join(tnames, ", ")
+end
+
+function available_conversions(PlotType)
+    result = []
+    for m in methods(convert_arguments, (PlotType, Vararg{Any}))
+        push!(result, extract_method_arguments(m))
+    end
+    for m in methods(convert_arguments, (typeof(Makie.conversion_trait(PlotType)), Vararg{Any}))
+        push!(result, extract_method_arguments(m))
+    end
+    return result
+end

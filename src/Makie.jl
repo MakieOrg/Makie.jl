@@ -90,14 +90,16 @@ import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, cal
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
-import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
+import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait, @convert_target,
+                  convert_arguments_typed
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
-const RealVector{T} = AbstractVector{T} where T <: Number
+const RealVector{T} = AbstractVector{T} where {T<:Real}
+const RealMatrix{T} = AbstractMatrix{T} where {T<:Real}
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
