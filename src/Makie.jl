@@ -39,7 +39,6 @@ using StructArrays
 # Text related packages
 using FreeType
 using FreeTypeAbstraction
-using UnicodeFun
 using LinearAlgebra
 using Statistics
 using MakieCore
@@ -47,6 +46,7 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 
+import UnicodeFun
 import RelocatableFolders
 import StatsBase
 import Distributions
@@ -59,7 +59,6 @@ import FileIO
 import SparseArrays
 import TriplotBase
 import DelaunayTriangulation as DelTri
-import Setfield
 import REPL
 import MacroTools
 
@@ -241,7 +240,6 @@ export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
 export broadcast_foreach, to_vector, replace_automatic!
-
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
 export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categorical_colors, resample_cmap
@@ -295,13 +293,16 @@ export PlotSpec
 export plot!, plot
 export abline! # until deprecation removal
 
-
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record, Record
 export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients
+
+# other "available" functions
+export available_plotting_methods, available_marker_symbols
+
 
 export Pattern
 export ReversibleScale

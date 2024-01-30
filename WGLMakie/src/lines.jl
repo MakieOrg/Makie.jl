@@ -2,7 +2,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     Makie.@converted_attribute plot (linewidth,)
     uniforms = Dict(
         :model => plot.model,
-        :object_id => 1,
         :depth_shift => plot.depth_shift,
         :picking => false,
     )

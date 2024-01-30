@@ -2,7 +2,21 @@
 
 ## master
 
+## 0.20.5
+
+- Use plot plot instead of scene transform functions in CairoMakie, fixing missplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
+- Fix error printing on shader error [#3530](https://github.com/MakieOrg/Makie.jl/pull/3530).
+- Update pagefind to 1.0.4 for better headline search [#3534](https://github.com/MakieOrg/Makie.jl/pull/3534).
+- Remove unecessary deps, e.g. Setfield [3546](https://github.com/MakieOrg/Makie.jl/pull/3546).
+- Don't clear args, rely on delete deregister_callbacks [#3543](https://github.com/MakieOrg/Makie.jl/pull/3543).
+- Add interpolate keyword for Surface [#3541](https://github.com/MakieOrg/Makie.jl/pull/3541).
+- Fix a DataInspector bug if inspector_label is used with RGB images [#3468](https://github.com/MakieOrg/Makie.jl/pull/3468).
+
+## 0.20.4
+
 - Changes for Bonito rename and WGLMakie docs improvements [#3477](https://github.com/MakieOrg/Makie.jl/pull/3477).
+- Add stroke and glow support to scatter and text in WGLMakie [#3518](https://github.com/MakieOrg/Makie.jl/pull/3518).
+- Fix clipping issues with Camera3D when zooming in [#3529](https://github.com/MakieOrg/Makie.jl/pull/3529)
 
 ## 0.20.3
 

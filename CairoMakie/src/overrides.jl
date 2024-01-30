@@ -45,7 +45,7 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
-    points = project_position.(Ref(scene), space, points, Ref(model))
+    points = project_position.(Ref(poly), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
@@ -78,7 +78,7 @@ draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_pol
 function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2,BezierPath}})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_shapes = project_shape.(Ref(scene), space, shapes, Ref(model))
+    projected_shapes = project_shape.(Ref(poly), space, shapes, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
 
@@ -175,7 +175,7 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = project_multipolygon.(Ref(poly), space, polygons, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -211,7 +211,7 @@ function draw_plot(scene::Scene, screen::Screen,
         points = vcat(lowerpoints, reverse(upperpoints))
         model = band.model[]
         space = to_value(get(band, :space, :data))
-        points = project_position.(Ref(scene), space, points, Ref(model))
+        points = project_position.(Ref(band), space, points, Ref(model))
         Cairo.move_to(screen.context, points[1]...)
         for p in points[2:end]
             Cairo.line_to(screen.context, p...)
@@ -249,7 +249,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     polygons = pol[1][]
     model = pol.model[]
     space = to_value(get(pol, :space, :data))
-    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(model))
 
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
