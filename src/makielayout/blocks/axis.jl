@@ -1372,8 +1372,10 @@ function limits!(ax::Axis, rect::Rect2)
     Makie.ylims!(ax, ymin, ymax)
 end
 
-function limits!(args...)
-    limits!(current_axis(), args...)
+function limits!(args::Union{Nothing, Real, HyperRectangle}...)
+    axis = current_axis()
+    axis isa Nothing && error("There is no currently active axis!")
+    limits!(axis, args...)
 end
 
 Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
