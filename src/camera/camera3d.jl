@@ -265,7 +265,10 @@ function Camera3D(scene::Scene; kwargs...)
             # center keeps the rotation of the camera so we reset that here
             # might make sense to keep user set lookat, upvector, eyeposition
             # around somewhere for this?
+            old_center = cam.settings.center[]
+            cam.settings.center[] = true
             center!(scene)
+            cam.settings.center[] = old_center
             return Consume(true)
         end
         return Consume(false)
