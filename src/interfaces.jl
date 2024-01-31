@@ -129,6 +129,7 @@ function convert_arguments!(plot::Plot{F}) where {F}
 end
 
 function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
+    # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(args) && first(args) isa Attributes
         merge!(plot_attributes, attributes(first(args)))
         return Plot{Func}(Base.tail(args), plot_attributes)

@@ -293,14 +293,35 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
     return figurelike_return(ax, plot)
 end
 
+set_axis_attributes!(attributes::Dict, any) = nothing
+function set_axis_attributes!(attributes::Dict, ax::AbstractAxis)
+    for dim in [:x, :y, :z]
+        key = Symbol(dim, :_dim_convert)
+        if hasproperty(ax, key)
+            attributes[key] = getproperty(ax, key)
+        end
+    end
+    return
+end
+
+# This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
+# Which skips axis creation
+# TODO, what to return for the dynamically created axes?
+const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
+
 @noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
     # we need to see if we plot into an existing axis before creating the plot
     # For axis specific converts.
-    # If this is a plotting function which newly creates an axis, we can skip this and it will return nothing
     ax = create_axis_like!(figkws, figarg)
+
+    # inserts global state from axis into attributes if they exist
+    set_axis_attributes!(attributes, ax)
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
+    if ax isa Figure && !(plot isa PlotSpecPlot)
+        error("You cannot plot into a figure without an axis. Use `plot(fig[1, 1], ...)` instead.")
+    end
     plot!(ax, plot)
     return figurelike_return!(ax, plot)
 end
@@ -311,16 +332,8 @@ end
     return plot
 end
 
-# This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
-# Which skips axis creation
-# TODO, what to return for the dynamically created axes?
-const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
-
 figurelike_return(f::GridPosition, p::PlotSpecPlot) = p
 figurelike_return(f::Figure, p::PlotSpecPlot) = FigureAxisPlot(f, nothing, p)
-
-
-
 
 # Axis interface
 
