@@ -126,7 +126,7 @@ end
 
 # single arguments gets ignored for now
 # TODO: add similar overloads as convert_arguments for the most common ones that work with units
-axis_convert(::Dict, x::Observable) = Any[x]
+axis_convert(::Dict, args::Observable...) = Any[args...]
 # we leave Z + n alone for now!
 function axis_convert(attr::Dict, x::Observable, y::Observable, z::Observable, args...)
     return Any[axis_convert(attr, x, y)..., z, args...]

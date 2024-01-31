@@ -4,7 +4,7 @@
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie, Unitful, Dates
+using CairoMakie, Makie.Unitful, Makie.Dates
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
