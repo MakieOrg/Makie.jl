@@ -46,8 +46,8 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 using Dates
-using Unitful
 
+import Unitful
 import UnicodeFun
 import RelocatableFolders
 import StatsBase
@@ -126,9 +126,6 @@ include("scenes.jl")
 include("interfaces.jl")
 include("conversions.jl")
 include("units.jl")
-include("makielayout/blocks/categorical-integration.jl")
-include("makielayout/blocks/dates-integration.jl")
-include("makielayout/blocks/unitful-integration.jl")
 include("shorthands.jl")
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
@@ -357,10 +354,14 @@ export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
+include("makielayout/blocks/unitful-integration.jl")
+include("makielayout/blocks/categorical-integration.jl")
+include("makielayout/blocks/dates-integration.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
+
 
 export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe
 export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe

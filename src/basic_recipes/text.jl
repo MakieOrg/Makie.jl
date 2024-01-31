@@ -13,6 +13,9 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[]; ignore_equal_values=true)
     linecolors = Observable(RGBAf[]; ignore_equal_values=true)
     lineindices = Ref(Int[])
+    if !haskey(plot, :text)
+        plot.text = plot[2]
+    end
 
     onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,

@@ -1,6 +1,6 @@
 using Dates, Observables
 import Unitful
-using Unitful: Quantity, @u_str
+using Unitful: Quantity, @u_str, uconvert, ustrip, upreferred
 
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 

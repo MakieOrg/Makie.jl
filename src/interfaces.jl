@@ -106,8 +106,6 @@ const atomic_functions = (
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
 
-
-
 get_element_type(::T) where {T} = T
 function get_element_type(arr::AbstractArray{T}) where {T}
     if T == Any
@@ -140,7 +138,7 @@ function axis_convert(attributes::Dict, x::Observable, y::Observable)
     xconvert = to_value(get(attributes, :x_dim_convert, automatic))
     xconvert_new = convert_from_args(xconvert, x[])
     attributes[:x_dim_convert] = xconvert_new
-    xconv = Base.invokelatest(convert_axis_dim, xconvert_new, x)
+    xconv = convert_axis_dim(xconvert_new, x)
 
     yconvert = to_value(get(attributes, :y_dim_convert, automatic))
 
@@ -182,7 +180,10 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     end
     P = Plot{Func}
     args_obs = Any[convert(Observable, x) for x in args]
-    args_obs = axis_convert(plot_attributes, args_obs...)
+    # Temporarily work around not having a clear definition for when the conversion should get applied
+    if Func !== text && Func !== annotations && (Func in atomic_functions || Func === barplot)
+        args_obs = axis_convert(plot_attributes, args_obs...)
+    end
     args_no_obs = map(to_value, args_obs)
     used_attrs = used_attributes(P, args_no_obs...)
     if used_attrs === ()

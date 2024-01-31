@@ -371,8 +371,9 @@ function initialize_block!(cb::Colorbar)
                     limits=lims, ticklabelalign=cb.ticklabelalign, label=cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
-                    labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont, ticks=ticks,
-                    tickformat=cb.tickformat,
+        labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont,
+        dim_convert=automatic, # TODO, we should also have a dim convert for Colorbar
+        ticks=ticks, tickformat=cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
         ticklabelrotation = cb.ticklabelrotation,

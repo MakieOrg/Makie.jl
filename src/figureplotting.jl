@@ -358,6 +358,13 @@ end
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
+    if haskey(plot.kw, :x_dim_convert) && hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] != to_value(plot.kw[:x_dim_convert])
+        ax.x_dim_convert[] = to_value(plot.kw[:x_dim_convert])
+    end
+
+    if haskey(plot.kw, :y_dim_convert) && hasproperty(ax, :y_dim_convert) && ax.y_dim_convert[] != to_value(plot.kw[:y_dim_convert])
+        ax.y_dim_convert[] = to_value(plot.kw[:y_dim_convert])
+    end
     plot!(ax.scene, plot)
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.

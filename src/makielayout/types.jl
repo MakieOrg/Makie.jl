@@ -1262,6 +1262,19 @@ end
 @Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        x_dim_convert = automatic
+        """
+        Global state for the y dimension conversion.
+        """
+        y_dim_convert = automatic
+        """
+        Global state for the z dimension conversion.
+        """
+        z_dim_convert = automatic
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1360,6 +1373,18 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        x_dim_convert = automatic
+        """
+        Global state for the y dimension conversion.
+        """
+        y_dim_convert = automatic
+        """
+        Global state for the z dimension conversion.
+        """
+        z_dim_convert = automatic
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1648,6 +1673,15 @@ end
     target_r0::Observable{Float32}
     @attributes begin
         # Generic
+        """
+        Global state for the x dimension conversion.
+        """
+        x_dim_convert = automatic
+        """
+        Global state for the y dimension conversion.
+        """
+        y_dim_convert = automatic
+
 
         "The height setting of the scene."
         height = nothing
