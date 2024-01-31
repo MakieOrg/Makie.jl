@@ -45,7 +45,7 @@ Settings include anything that isn't a mouse or keyboard button.
     - `:adaptive` scales `near` by `norm(eyeposition - lookat)` and passes `far` as is
     - `:view_relative` scales `near` and `far` by `norm(eyeposition - lookat)`
     - `:bbox_relative` scales `near` and `far` to the scene bounding box as passed to the camera with `update_cam!(..., bbox)`. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
-- `center = true`: Controls whether the camera placement gets reset when calling `update_cam!(scene[, cam], bbox)`, which is called when a new plot is added. This is automatically set to `false` after calling `update_cam!(scene[, cam], eyepos, lookat[, up])`.
+- `center = true`: Controls whether the camera placement gets reset when calling `center!(scene)`, which is called when a new plot is added.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
 - `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
@@ -785,7 +785,6 @@ end
 
 # Update camera position via camera Position & Orientation
 function update_cam!(scene::Scene, camera::Camera3D, eyeposition::VecTypes, lookat::VecTypes, up::VecTypes = camera.upvector[])
-    camera.settings.center[] = false
     camera.lookat[]      = Vec3f(lookat)
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[]    = Vec3f(up)
@@ -806,7 +805,6 @@ function update_cam!(
         radius::Real = norm(camera.eyeposition[] - camera.lookat[]),
         center = camera.lookat[]
     )
-    camera.settings.center[] = false
     st, ct = sincos(theta)
     sp, cp = sincos(phi)
     v = Vec3f(ct * cp, ct * sp, st)
