@@ -1029,6 +1029,14 @@ end
         fontsize = range(12, 24, length = 5),
     )
 
+    # https://github.com/MakieOrg/Makie.jl/issues/3569
+    b = bracket!(ax,
+        [5, 6],
+        [1, 2],
+        [6, 7],
+        [1, 2],
+    )
+
     f
 end
 
