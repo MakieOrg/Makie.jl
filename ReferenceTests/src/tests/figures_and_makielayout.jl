@@ -119,6 +119,20 @@ end
     f
 end
 
+# https://github.com/MakieOrg/Makie.jl/issues/3579
+@reference_test "Axis yticksmirrored" begin
+    f = Figure(size = (200, 200))
+    Axis(f[1, 1], yticksmirrored = true, yticksize = 10, ytickwidth = 4)
+    Colorbar(f[1, 2])
+    f
+end
+@reference_test "Axis xticksmirrored" begin
+    f = Figure(size = (200, 200))
+    Axis(f[1, 1], xticksmirrored = true, xticksize = 10, xtickwidth = 4)
+    Colorbar(f[0, 1], vertical = false)
+    f
+end
+
 @reference_test "Legend draw order" begin
     with_theme(Lines = (linewidth = 10,)) do
         f = Figure()
