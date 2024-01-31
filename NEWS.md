@@ -2,6 +2,8 @@
 
 ## master
 
+- Fix issues with Camera3D not centering [#3582](https://github.com/MakieOrg/Makie.jl/pull/3582)
+
 ## 0.20.5
 
 - Use plot plot instead of scene transform functions in CairoMakie, fixing missplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
