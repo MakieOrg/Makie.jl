@@ -6,6 +6,7 @@ import {
 } from "./Shaders.js";
 
 import { deserialize_uniforms } from "./Serialization.js";
+import { IntType } from "./THREE.js";
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -44,21 +45,113 @@ function linesegments_vertex_shader(uniforms, attributes) {
         out vec2 f_truncation;
         out float f_linestart;
         out float f_linelength;
+        out vec2 f_uv;
 
         flat out vec2 f_extrusion;
         flat out float f_linewidth;
+        flat out vec4 f_pattern_overwrite;
         flat out vec2 f_discard_limit;
         flat out uint f_instance_id;
         flat out vec4 f_color1;
         flat out vec4 f_color2;
 
         ${uniform_decl}
-        uniform bool is_linesegments;
+        uniform bool is_linesegments; // TODO: define?
 
         // Constants
         const float MITER_LIMIT = -0.4;
         const float AA_RADIUS = 0.8;
         const float AA_THICKNESS = 2.0 * AA_RADIUS;
+
+
+        ////////////////////////////////////////////////////////////////////////
+        // Pattern handling
+        ////////////////////////////////////////////////////////////////////////
+
+
+        vec2 process_pattern(bool pattern, bool[4] isvalid, float[2] extrusion, float halfwidth) {
+            // do not adjust stuff
+            f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
+            return vec2(0);
+        }
+
+        vec2 process_pattern(sampler2D pattern, bool[4] isvalid, float[2] extrusion, float halfwidth) {
+            // samples:
+            //   -ext1  p1 ext1    -ext2 p2 ext2
+            //      1   2   3        4   5   6
+            // prev | joint |  this  | joint | next
+
+            // default to no overwrite
+            f_pattern_overwrite.x = -1e12;
+            f_pattern_overwrite.z = +1e12;
+            vec2 adjust = vec2(0);
+            float left, center, right;
+
+            if (isvalid[0]) {
+                float offset = max(abs(extrusion[0]), halfwidth);
+                left   = texture(pattern, vec2((lastlen_start - offset) / pattern_length, 0.0)).x;
+                center = texture(pattern, vec2(lastlen_start / pattern_length           , 0.0)).x;
+                right  = texture(pattern, vec2((lastlen_start + offset) / pattern_length, 0.0)).x;
+
+                // cases:
+                // ++-, +--, +-+ => elongate backwards
+                // -++, --+      => shrink forward
+                // +++, ---, -+- => freeze around joint
+
+                if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
+                    // default/freeze
+                    // overwrite until one AA gap past the corner/joint
+                    f_pattern_overwrite.x = (lastlen_start + abs(extrusion[0]) + AA_RADIUS) / pattern_length;
+                    // using the sign of the center to decide between drawing or not drawing
+                    f_pattern_overwrite.y = sign(center);
+                } else if (left > 0.0) {
+                    // elongate backwards
+                    adjust.x = -1.0;
+                } else if (right > 0.0) {
+                    // shorten forward
+                    adjust.x = 1.0;
+                } else {
+                    // default - see above
+                    f_pattern_overwrite.x = (lastlen_start + abs(extrusion[0]) + AA_RADIUS) / pattern_length;
+                    f_pattern_overwrite.y = sign(center);
+                }
+
+            } // else there is no left segment, no left join, so no overwrite
+
+            if (isvalid[3]) {
+                float offset = max(abs(extrusion[1]), halfwidth);
+                left   = texture(pattern, vec2((lastlen_end - offset) / pattern_length, 0.0)).x;
+                center = texture(pattern, vec2(lastlen_end / pattern_length           , 0.0)).x;
+                right  = texture(pattern, vec2((lastlen_end + offset) / pattern_length, 0.0)).x;
+
+                if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
+                    // default/freeze
+                    f_pattern_overwrite.z = (lastlen_end - abs(extrusion[1]) - AA_RADIUS) / pattern_length;
+                    f_pattern_overwrite.w = sign(center);
+                } else if (left > 0.0) {
+                    // shrink backwards
+                    adjust.y = -1.0;
+                } else if (right > 0.0) {
+                    // elongate forward
+                    adjust.y = 1.0;
+                } else {
+                    // default - see above
+                    f_pattern_overwrite.z = (lastlen_end - abs(extrusion[1]) - AA_RADIUS) / pattern_length;
+                    f_pattern_overwrite.w = sign(center);
+                }
+            }
+
+            return adjust;
+        }
+
+        // If we don't have a pattern we don't need uv's
+        vec2 generate_uv(bool pattern, float extrusion, float linewidth) { return vec2(0); }
+        vec2 generate_uv(sampler2D pattern, float extrusion, float linewidth) {
+            return vec2(
+                (0.5 * (lastlen_start + lastlen_end) + extrusion) / pattern_length,
+                0.0 // 0.5 + 0.5 * linewidth / abs(linewidth)
+            );
+        }
 
 
         ////////////////////////////////////////////////////////////////////////
@@ -101,7 +194,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
 
 
         ////////////////////////////////////////////////////////////////////////
-        // Geometry/Position handling
+        // Geometry/Position Utils
         ////////////////////////////////////////////////////////////////////////
 
 
@@ -117,7 +210,11 @@ function linesegments_vertex_shader(uniforms, attributes) {
         vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
         vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
-        // TODO: Split this into two files or a two define blocks?
+
+        ////////////////////////////////////////////////////////////////////////
+        // Main
+        ////////////////////////////////////////////////////////////////////////
+
 
         void main() {
             bool is_end = position.x == 1.0;
@@ -202,6 +299,11 @@ function linesegments_vertex_shader(uniforms, attributes) {
             ////////////////////////////////////////////////////////////////////
 
 
+            // Set up pattern overwrites at joints if patterns are used. This "freezes"
+            // the pattern in either the on state (draw) or off state (no draw) to avoid
+            // fragmenting it around a corner.
+            vec2 adjustment = process_pattern(pattern, isvalid, extrusion, halfwidth);
+
             // limit range of distance sampled in prev/next segment
             // this makes overlapping segments draw over each other when reaching the limit
             // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
@@ -231,10 +333,20 @@ function linesegments_vertex_shader(uniforms, attributes) {
             ////////////////////////////////////////////////////////////////////
 
 
-            // Vertex position (padded for joint & anti-aliasing)
-            vec3 point = 0.5 * (p1 + p2)
-                + (0.5 * segment_length + abs(extrusion[int(is_end)]) + AA_THICKNESS) * position.x * v1
-                + (halfwidth + AA_THICKNESS)* position.y * vec3(n1, 0);
+            // Vertex position & uv (padded for joint & anti-aliasing)
+            float v_offset, n_offset;
+            if (adjustment[int(is_end)] == 0.0) {
+                v_offset = position.x * (0.5 * segment_length + abs(extrusion[int(is_end)]) + AA_THICKNESS);
+            } else {
+                v_offset = position.x * 0.5 * segment_length + adjustment[int(is_end)] * (
+                    max(abs(extrusion[int(is_end)]), halfwidth) +
+                    AA_THICKNESS
+                );
+            }
+            n_offset = (halfwidth + AA_THICKNESS) * position.y;
+
+            vec3 point = 0.5 * (p1 + p2) + v_offset * v1 + n_offset * vec3(n1, 0);
+            f_uv = generate_uv(pattern, v_offset, n_offset);
 
 
             // SDF's
@@ -244,7 +356,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
             // signed distance of previous segment at shared control point in line
             // direction. Used decide which segments renders which joint fragment.
             // If the left joint is adjusted this sdf is disabled.
-            f_quad_sdf0 = isvalid[0] ? dot(VP1, v0) - 0.5 : 1e12;
+            f_quad_sdf0 = isvalid[0] && (adjustment[0] == 0.0) ? dot(VP1, v0) - 0.5 : 1e12;
 
             // sdf of this segment
             f_quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
@@ -252,15 +364,17 @@ function linesegments_vertex_shader(uniforms, attributes) {
             f_quad_sdf1.z = dot(VP1,  n1);
 
             // SDF for next segment, see quad_sdf0
-            f_quad_sdf2 = isvalid[3] ? dot(VP2, -v2) - 0.5 : 1e12;
+            f_quad_sdf2 = isvalid[3] && (adjustment[1] == 0.0) ? dot(VP2, -v2) - 0.5 : 1e12;
 
             // sdf for creating a flat cap on truncated joints
             // (sign(dot(...)) detects if line bends left or right)
             // left/right adjustments disable
             f_truncation.x = !is_truncated[0] ? -1.0 :
-                dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1);
+                dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1)
+                - abs(adjustment[0]) * 1e12;
             f_truncation.y = !is_truncated[1] ? -1.0 :
-                dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2);
+                dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2)
+                - abs(adjustment[1]) * 1e12;
 
             // colors should be sampled based on the normalized distance from the
             // extruded edge (varies with offset in n direction)
@@ -282,7 +396,7 @@ function linesegments_vertex_shader(uniforms, attributes) {
 }
 
 function lines_fragment_shader(uniforms, attributes) {
-    const color_uniforms = filter_by_key(uniforms, ["picking"]);
+    const color_uniforms = filter_by_key(uniforms, ["picking", "pattern", "pattern_length"]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
 
     return `#extension GL_OES_standard_derivatives : enable
@@ -296,15 +410,17 @@ function lines_fragment_shader(uniforms, attributes) {
     in highp vec3 f_quad_sdf1;
     in highp float f_quad_sdf2;
     in vec2 f_truncation;
+    in vec2 f_uv;
     in float f_linestart;
     in float f_linelength;
 
-    flat in vec2 f_extrusion;
     flat in float f_linewidth;
+    flat in vec4 f_pattern_overwrite;
+    flat in vec2 f_extrusion;
     flat in vec2 f_discard_limit;
-    flat in uint f_instance_id;
     flat in vec4 f_color1;
     flat in vec4 f_color2;
+    flat in uint f_instance_id;
 
     uniform uint object_id;
     ${uniform_decl}
@@ -312,15 +428,38 @@ function lines_fragment_shader(uniforms, attributes) {
     out vec4 fragment_color;
 
     // Half width of antialiasing smoothstep
-    #define ANTIALIAS_RADIUS 0.7071067811865476
+    const float AA_RADIUS = 0.7071067811865476;
+    // space allocated for AA
+    const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
     float aastep(float threshold, float value) {
-        float afwidth = length(vec2(dFdx(value), dFdy(value))) * ANTIALIAS_RADIUS;
+        float afwidth = length(vec2(dFdx(value), dFdy(value))) * AA_RADIUS;
         return smoothstep(threshold-afwidth, threshold+afwidth, value);
     }
 
-    float aastep(float threshold1, float threshold2, float dist) {
-        return aastep(threshold1, dist) * aastep(threshold2, 1.0 - dist);
+    // Pattern sampling
+    float get_pattern_sdf(sampler2D pattern){
+        float sdf_offset, x;
+        if (f_uv.x <= f_pattern_overwrite.x) {
+            // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
+            // if overwrite.y (target sdf in joint) is
+            // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
+            // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
+            sdf_offset = max(f_pattern_overwrite.y * texture(pattern, vec2(f_pattern_overwrite.x, 0.0)).x, -AA_RADIUS);
+            return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - f_uv.x) + sdf_offset);
+        } else if (f_uv.x >= f_pattern_overwrite.z) {
+            // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
+            // see above
+            sdf_offset = max(f_pattern_overwrite.w * texture(pattern, vec2(f_pattern_overwrite.z, 0.0)).x, -AA_RADIUS);
+            return f_pattern_overwrite.w * (pattern_length * (f_uv.x - f_pattern_overwrite.z) + sdf_offset);
+        } else {
+            // in allowed range
+            return texture(pattern, f_uv).x;
+        }
+    }
+
+    float get_pattern_sdf(bool _){
+        return -10.0;
     }
 
     vec4 pack_int(uint id, uint index) {
@@ -391,8 +530,8 @@ function lines_fragment_shader(uniforms, attributes) {
             color.b += 0.5;
         }
 
-        // // mark pattern in white
-        // color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
+        // mark pattern in white
+        color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
 
         if (picking) {
             if (color.a > 0.1) {
@@ -545,14 +684,15 @@ export function _create_line(line_data, is_segments) {
 
     material.uniforms.is_linesegments = {value: is_segments};
     const mesh = new THREE.Mesh(geometry, material);
-    // const offset = is_segments ? 0 : 1;
     const new_count = geometry.attributes.linepoint_start.count;
     mesh.geometry.instanceCount = Math.max(0, is_segments ? new_count / 2 : new_count - 1);
+
     console.log("init:");
     console.log(geometry.attributes.linepoint_start.count);
     console.log(new_count);
     console.log(mesh.geometry.instanceCount);
     // console.log(offset);
+
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
