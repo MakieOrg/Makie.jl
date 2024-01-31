@@ -547,15 +547,15 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // signed distance of previous segment at shared control point in line
                 // direction. Used decide which segments renders which joint fragment.
                 // If the left joint is adjusted this sdf is disabled.
-                f_quad_sdf0 = isvalid[0] && (adjustment[0] == 0.0) ? dot(VP1, v0) - 0.5 : 1e12;
+                f_quad_sdf0 = isvalid[0] && (adjustment[0] == 0.0) ? dot(VP1, v0) : 1e12;
 
                 // sdf of this segment
-                f_quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
-                f_quad_sdf1.y = dot(VP2,  v1.xy) - 0.5;
+                f_quad_sdf1.x = dot(VP1, -v1.xy);
+                f_quad_sdf1.y = dot(VP2,  v1.xy);
                 f_quad_sdf1.z = dot(VP1,  n1);
 
                 // SDF for next segment, see quad_sdf0
-                f_quad_sdf2 = isvalid[3] && (adjustment[1] == 0.0) ? dot(VP2, -v2) - 0.5 : 1e12;
+                f_quad_sdf2 = isvalid[3] && (adjustment[1] == 0.0) ? dot(VP2, -v2) : 1e12;
 
                 // sdf for creating a flat cap on truncated joints
                 // (sign(dot(...)) detects if line bends left or right)
@@ -592,6 +592,9 @@ function lines_fragment_shader(uniforms, attributes) {
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
 
     return `#extension GL_OES_standard_derivatives : enable
+
+    // uncomment for debug rendering
+    // #define DEBUG
 
     precision mediump int;
     precision highp float;
@@ -665,8 +668,19 @@ function lines_fragment_shader(uniforms, attributes) {
 
 
     void main(){
-        /*
-        // TODO:
+        vec4 color;
+
+    #ifndef DEBUG
+        // discard fragments that are "more inside" the other segment to remove
+        // overlap between adjacent line segments.
+        // max limits how much of this line can be displaced by the others
+        // 0.0001 adds a bias towards drawing to avoid skipping pixels due to float
+        //   precision isuues from interpolation of sdfs
+        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x) + 0.0002;
+        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y) + 0.0002;
+        if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
+            discard;
+
         // sdf for inside vs outside along the line direction. extrusion makes sure
         // we include enough for a joint
         float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
@@ -674,22 +688,14 @@ function lines_fragment_shader(uniforms, attributes) {
         // distance in linewidth direction
         sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
 
-        vec4 color = get_color(f_color, colormap, colorrange);
+        // truncation of truncated joints
+        sdf = max(sdf, f_truncation.x);
+        sdf = max(sdf, f_truncation.y);
 
-        color.a *= aastep(0.0, -sdf);
+        // pattern application
+        sdf = max(sdf, get_pattern_sdf(pattern));
 
-        if (picking) {
-            if (color.a > 0.1) {
-                fragment_color = pack_int(object_id, f_instance_id);
-            }
-            return;
-        }
-        fragment_color = vec4(color.rgb, color.a);
-        */
-
-        // base color
-        vec4 color = vec4(0.5, 0.5, 0.5, 0.2);
-
+        // draw
 
         //  v- edge
         //   .---------------
@@ -702,8 +708,19 @@ function lines_fragment_shader(uniforms, attributes) {
         // f_start_length.y is the distance between the edges of this segment, in v1 direction
         // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
         float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
+        // color = vec4(factor, 0, 0, 1);
+        color = f_color1 + factor * (f_color2 - f_color1);
+
+        color.a *= aastep(0.0, -sdf);
+    #endif
+
+    #ifdef DEBUG
+        // base color
+        color = vec4(0.5, 0.5, 0.5, 0.2);
+
+        // show color interpolation as brightness gradient
+        float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
         color.rgb += (2.0 * factor - 1.0) * 0.2;
-        // color = f_color1 + factor * (f_color2 - f_color1); // TODO: for reference
 
         // mark "outside" define by quad_sdf in black
         float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
@@ -724,6 +741,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         // mark pattern in white
         color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
+    #endif
 
         if (picking) {
             if (color.a > 0.1) {
