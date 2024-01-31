@@ -259,8 +259,9 @@ function Camera3D(scene::Scene; kwargs...)
     end
 
     # reset
-    on(camera(scene), events(scene).keyboardbutton) do event
-        if cam.selected[] && ispressed(scene, controls[:reset][])
+    on(camera(scene), events(scene).keyboardbutton, events(scene).mousebutton, priority = 1) do ke, me
+        if cam.selected[] && ispressed(scene, controls[:reset][]) &&
+            (ke.action == Keyboard.press || me.action == Mouse.press)
             # center keeps the rotation of the camera so we reset that here
             # might make sense to keep user set lookat, upvector, eyeposition
             # around somewhere for this?
@@ -269,7 +270,9 @@ function Camera3D(scene::Scene; kwargs...)
         end
         return Consume(false)
     end
+
     update_cam!(scene, cam)
+
     cam
 end
 
