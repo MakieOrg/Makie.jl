@@ -225,7 +225,7 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
                         :lightposition, :material, :axis_cycler,
                         :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
-                        :calculated_colors, :space, :markerspace, :model])
+                        :calculated_colors, :space, :markerspace, :model, :x_dim_convert, :y_dim_convert, :z_dim_convert])
 
 
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)

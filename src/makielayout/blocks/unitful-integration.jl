@@ -1,4 +1,3 @@
-
 using Dates, Observables
 import Unitful
 using Unitful: Quantity, @u_str
@@ -128,7 +127,7 @@ convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value
 # Overload conversion functions for Axis, to properly display units
 
 """
-    UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, ticks=Makie.automatic)
+    UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
 
 Allows to plot arrays of unitful objects into an axis.
 
@@ -136,8 +135,8 @@ Allows to plot arrays of unitful objects into an axis.
 
 - `unit=automatic`: sets the unit as conversion target. If left at automatic, the best unit will be chosen for all plots + values plotted to the axis (e.g. years for long periods, or km for long distances, or nanoseconds for short times).
 - `units_in_label=false`: controls, whether plots are shown in the label_prefix of the axis labels, or in the tick labels
-- `short_label=false`: uses short or long label in axis label (when appended to ticks, short form is always used)
-- `ticks=automatic`: per default, Makie.automatic ticks are used (Which fallback to [`WilkinsonTicks`](@ref)). One can pass Another algorithm here explicitely (e.g. `WilkinsonTicks(3; k_min=2)`, [`LinearTicks`](@ref) etc)
+- `short_label=false`: uses short or long label in axis label (when appended to conversion, short form is always used)
+- `conversion=automatic`: per default, Makie.automatic conversion are used (Which fallback to [`WilkinsonTicks`](@ref)). One can pass Another algorithm here explicitely (e.g. `WilkinsonTicks(3; k_min=2)`, [`LinearTicks`](@ref) etc)
 
 # Examples
 
@@ -153,7 +152,6 @@ scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(yticks=yticks,)
 ```
 """
 struct UnitfulTicks
-    parent::Base.RefValue{Axis}
     unit::Observable{Any}
     automatic_units::Bool
     tickformatter
@@ -161,33 +159,33 @@ struct UnitfulTicks
     short_label::Observable{Bool}
 end
 
-function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, ticks=Makie.automatic)
-    return UnitfulTicks(Base.RefValue{Axis}(), unit, unit isa Automatic, ticks, units_in_label, short_label)
+function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
+    return UnitfulTicks(unit, unit isa Automatic, conversion, units_in_label, short_label)
 end
 
-function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::UnitfulTicks, dim)
-    if isassigned(ticks.parent)
+function Observables.connect!(ax::Axis, ticks_obs::Observable, conversion::UnitfulTicks, dim)
+    if isassigned(conversion.parent)
         @warn("Connecting tick object to multiple axes results in shared state! If not desired, use a distinct object for each axis")
     end
-    ticks.parent[] = ax
-    if ticks.automatic_units
+    conversion.parent[] = ax
+    if conversion.automatic_units
         on(ax.finallimits) do limits
-            unit = ticks.unit[]
+            unit = conversion.unit[]
             # Only time & length units are tested/supported right now
             if !(unit isa Automatic) && Unitful.dimension(unit) in (Unitful.𝐓, Unitful.𝐋)
                 mini, maxi = getindex.(extrema(limits), dim)
                 t(v) = upreferred(to_free_unit(unit)) * v
                 new_unit = best_unit(t(mini), t(maxi))
-                ticks.unit[] = new_unit
-                # Make sure ticks get rerendered
+                conversion.unit[] = new_unit
+                # Make sure conversion get rerendered
                 notify(ticks_obs)
             end
         end
     end
 end
 
-function label_postfix(ticks::UnitfulTicks)
-    return map(ticks.unit, ticks.units_in_label, ticks.short_label) do unit, in_label, short
+function label_postfix(conversion::UnitfulTicks)
+    return map(conversion.unit, conversion.units_in_label, conversion.short_label) do unit, in_label, short
         in_label || return ""
         unit isa Automatic && return ""
         unit_str = short ? unit_string(unit) : unit_string_long(unit)
@@ -195,29 +193,29 @@ function label_postfix(ticks::UnitfulTicks)
     end
 end
 
-function get_ticks(ticks::UnitfulTicks, scale, formatter, vmin, vmax)
-    unit = ticks.unit[]
+function get_ticks(conversion::UnitfulTicks, ticks, scale, formatter, vmin, vmax)
+    unit = conversion.unit[]
     unit isa Automatic && return [], []
 
     vmin_tu = convert_from_preferred_striped(unit, vmin)
     vmax_tu = convert_from_preferred_striped(unit, vmax)
     unit_str = unit_string(unit)
-    tick_vals = get_tickvalues(ticks.tickformatter, scale, vmin_tu, vmax_tu)
+    tick_vals = get_tickvalues(conversion.tickformatter, scale, vmin_tu, vmax_tu)
     tick_vals_preferred = convert_to_preferred.((unit,), tick_vals)
 
     labels = get_ticklabels(formatter, tick_vals)
-    if !ticks.units_in_label[]
+    if !conversion.units_in_label[]
         labels = labels .* unit_str
     end
     return tick_vals_preferred, labels
 end
 
-ticks_from_type(::Type{<: Union{Period, Unitful.Quantity, Unitful.Units}}) = UnitfulTicks()
+dim_conversion_type(::Type{<: Union{Period, Unitful.Quantity, Unitful.Units}}) = UnitfulTicks()
 
-function convert_axis_dim(ticks::UnitfulTicks, values::Observable)
-    if ticks.unit[] isa Automatic
-        unit = new_unit(ticks.unit[], values[])
-        ticks.unit[] = unit
+function convert_axis_dim(conversion::UnitfulTicks, values::Observable)
+    if conversion.unit[] isa Automatic
+        unit = new_unit(conversion.unit[], values[])
+        conversion.unit[] = unit
     end
-    return map(unit_convert, ticks.unit, values)
+    return map(unit_convert, conversion.unit, values)
 end

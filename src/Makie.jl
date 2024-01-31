@@ -45,6 +45,8 @@ using MakieCore
 using OffsetArrays
 using Downloads
 using ShaderAbstractions
+using Dates
+using Unitful
 
 import UnicodeFun
 import RelocatableFolders
@@ -124,6 +126,9 @@ include("scenes.jl")
 include("interfaces.jl")
 include("conversions.jl")
 include("units.jl")
+include("makielayout/blocks/categorical-integration.jl")
+include("makielayout/blocks/dates-integration.jl")
+include("makielayout/blocks/unitful-integration.jl")
 include("shorthands.jl")
 include("theming.jl")
 include("themes/theme_ggplot2.jl")

@@ -213,6 +213,15 @@ end
     elements::Dict{Symbol, Any}
     @attributes begin
         """
+        Global state for the x dimension conversion.
+        """
+        x_dim_convert = automatic
+        """
+        Global state for the y dimension conversion.
+        """
+        y_dim_convert = automatic
+
+        """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
         """

@@ -20,11 +20,11 @@ end
 
 
 """
-    DateTimeTicks(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
+    DateTimeConversion(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
 
-Creates ticks & conversions for Date, DateTime and Time. For other time units one should use `UnitfulTicks`, which work with e.g. Seconds.
+Creates conversion & conversions for Date, DateTime and Time. For other time units one should use `UnitfulTicks`, which work with e.g. Seconds.
 
-For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the ticks, otherwise `WilkinsonTicks` are used on the integer representation of the date.
+For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conversion, otherwise `WilkinsonTicks` are used on the integer representation of the date.
 
 # Arguments
 
@@ -41,76 +41,76 @@ date_time_range = range(date_time, step=Week(5), length=10)
 # Automatically chose xticks as DateTeimeTicks:
 scatter(date_time_range, 1:10)
 
-# explicitely chose DateTimeTicks and use it to plot unitful values into it and display in the `Time` format:
+# explicitely chose DateTimeConversion and use it to plot unitful values into it and display in the `Time` format:
 using Unitful
-yticks = DateTimeTicks(Time)
+yticks = DateTimeConversion(Time)
 scatter(1:4, (1:4) .* u"s", axis=(yticks=yticks,))
 ```
 """
-struct DateTimeTicks
-    parent::Base.RefValue{Axis}
+struct DateTimeConversion
     # first element in tuple is the time type we converted from, which can be:
     # Time, Date, DateTime
     # Second entry in tuple is a value we use to normalize the number range,
     # so that they fit into float32
-    type::Observable{Tuple{<: Type{<: Union{Time, Date, DateTime, Automatic}}, Int64}}
+    type::Observable{Tuple{DataType, Int64}}
     k_min::Union{Automatic, Int}
     k_max::Union{Automatic, Int}
     k_ideal::Union{Automatic, Int}
-    function DateTimeTicks(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
-        obs = Observable{Tuple{Any, Float64}}((type, 0))
-        return new(Base.RefValue{Axis}(), obs, k_min, k_max, k_ideal)
+    function DateTimeConversion(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
+        obs = Observable{Tuple{DataType,Int64}}((type, 0))
+        return new(obs, k_min, k_max, k_ideal)
     end
 end
 
-ticks_from_type(::Type{<: Dates.TimeType}) = DateTimeTicks()
+dim_conversion_type(::Type{<: Dates.TimeType}) = DateTimeConversion()
 
-function convert_axis_dim(ticks::DateTimeTicks, values::Observable)
+function convert_axis_dim(conversion::DateTimeConversion, values::Observable)
     eltype = get_element_type(values[])
-    T, mini = ticks.type[]
+    T, mini = conversion.type[]
     if T <: Automatic
         new_type = eltype
         init_vals = date_to_number.(T, values[])
         # TODO update minimum in connect! on limit change!
-        ticks.type[] = (new_type, Makie.nan_extrema(init_vals)[1])
+        conversion.type[] = (new_type, Makie.nan_extrema(init_vals)[1])
     elseif T != eltype
         if !(T <: Time && eltype <: Unitful.Quantity)
             error("Plotting unit $(eltype) into axis with type $(T) not supported.")
         end
     end
 
-    return map(values, ticks.type) do vals, (T, mini)
+    return map(values, conversion.type) do vals, (T, mini)
         return date_to_number.(T, vals) .- mini
     end
 end
 
-function get_ticks(ticks::DateTimeTicks, scale, formatter, vmin, vmax)
+function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
     if !(formatter isa Automatic)
-        error("You can't use a formatter with DateTime ticks")
-    end
-    if scale != identity
-        error("$(scale) scale not supported for DateTimeTicks")
+        error("You can't use a formatter with DateTime conversion")
     end
 
-    T, mini = ticks.type[]
+    if scale != identity
+        error("$(scale) scale not supported for DateTimeConversion")
+    end
+
+    T, mini = conversion.type[]
 
     # When automatic, we haven't actually plotted anything yet, so no unit chosen
-    # in that case, we can't really have any ticks
+    # in that case, we can't really have any conversion
     T <: Automatic && return [], []
 
     if T <: DateTime
-        k_min = ticks.k_min isa Automatic ? 2 : ticks.k_min
-        k_max = ticks.k_max isa Automatic ? 3 : ticks.k_max
-        ticks, dates = PlotUtils.optimize_datetime_ticks(
+        k_min = conversion.k_min isa Automatic ? 2 : conversion.k_min
+        k_max = conversion.k_max isa Automatic ? 3 : conversion.k_max
+        conversion, dates = PlotUtils.optimize_datetime_ticks(
                 Float64(vmin) + mini,
                 Float64(vmax) + mini;
                 k_min=k_min, k_max=k_max)
-        return ticks .- mini, dates
+        return conversion .- mini, dates
     else
-        # TODO implement proper ticks for Time Date
-        k_min = ticks.k_min isa Automatic ? 3 : ticks.k_min
-        k_max = ticks.k_max isa Automatic ? 6 : ticks.k_max
-        k_ideal = ticks.k_ideal isa Automatic ? 6 : ticks.k_ideal
+        # TODO implement proper conversion for Time Date
+        k_min = conversion.k_min isa Automatic ? 3 : conversion.k_min
+        k_max = conversion.k_max isa Automatic ? 6 : conversion.k_max
+        k_ideal = conversion.k_ideal isa Automatic ? 6 : conversion.k_ideal
         formatter = WilkinsonTicks(k_ideal; k_min=k_min, k_max=k_max)
         tickvalues = get_tickvalues(formatter, scale, vmin, vmax)
         dates = number_to_date.(T, round.(Int64, tickvalues .+ mini))

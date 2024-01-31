@@ -103,6 +103,7 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
         return nothing
     end
     bbox = pop!(axis_kw, :bbox, nothing)
+    set_axis_attributes!(axis_kw, plot)
     return _block(AxType, figure, [], axis_kw, bbox)
 end
 
@@ -286,7 +287,6 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
 @noinline function MakieCore._create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
-
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
@@ -303,6 +303,17 @@ function set_axis_attributes!(attributes::Dict, ax::AbstractAxis)
     end
     return
 end
+
+function set_axis_attributes!(attributes::Dict, plot::Plot)
+    for dim in [:x, :y, :z]
+        key = Symbol(dim, :_dim_convert)
+        if haskey(plot.kw, key)
+            attributes[key] = plot.kw[key]
+        end
+    end
+    return
+end
+
 
 # This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
 # Which skips axis creation
