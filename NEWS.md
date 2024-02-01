@@ -2,6 +2,8 @@
 
 ## master
 
+- Allowed creating legend entries from plot objects with scalar numbers as colors [#3587](https://github.com/MakieOrg/Makie.jl/pull/3587).
+
 ## 0.20.5
 
 - Use plot plot instead of scene transform functions in CairoMakie, fixing missplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
