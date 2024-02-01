@@ -33,7 +33,7 @@ flat out vec4 f_color1;
 flat out vec4 f_color2;
 
 const float AA_RADIUS = 0.8;
-const float AA_THICKNESS = 4.0 * AA_RADIUS;
+const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);

@@ -43,7 +43,7 @@ uniform vec2 resolution;
 // Constants
 const float MITER_LIMIT = -0.4;
 const float AA_RADIUS = 0.8;
-const float AA_THICKNESS = 2.0 * AA_RADIUS;
+const float AA_THICKNESS = 2.0 * AA_RADIUS + 2.0;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
@@ -252,7 +252,15 @@ void main(void)
 
     // Since we are measuring from the center of the line we will need half
     // the thickness/linewidth for most things.
-    float halfwidth = 0.5 * g_thickness[1];
+    float halfwidth = 0.5 * min(min(
+        g_thickness[1],
+        2 * AA_RADIUS * (g_thickness[1] - 0.5 * AA_RADIUS)),
+        4 * AA_RADIUS * (g_thickness[1] - 0.5 * AA_RADIUS)
+    );
+    // reduce linewidth further near 0 to so that AA is removed as well
+    // halfwidth = halfwidth - AA_RADIUS * 0.2 / (halfwidth + 0.2);
+    // halfwidth = halfwidth - 0.3;
+    // halfwidth = halfwidth - 0.3;
 
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = normal_vector(v0);
@@ -345,7 +353,12 @@ void main(void)
         for (int y = 0; y < 2; y++) {
             // Get offset in y direction & compute vertex position
             float n_offset = (2 * y - 1) * (halfwidth + AA_THICKNESS);
-            vertex.position = vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0);
+
+            // round(f * offset) / f together with offsetting sdf's bei 0.5 seems to fix
+            // float precision issues with joint discards. (I.e. what makes this segment discards
+            // pixels drawn by the previous/next segment.) Higher values reduce jitter but probably
+            // increase risk of creating overlap/gaps
+            vertex.position = vec3[2](p1, p2)[x] + 0.0078125 * round(128.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
 
             // generate uv coordinate
             vertex.uv = generate_uv(pattern, vertex.index, v_offset, n_offset);
@@ -363,15 +376,15 @@ void main(void)
             // signed distance of previous segment at shared control point in line
             // direction. Used decide which segments renders which joint fragment.
             // If the left joint is adjusted this sdf is disabled.
-            vertex.quad_sdf0 = isvalid[0] ? dot(VP1, v0.xy) - 0.5 + abs(adjustment[0]) * 1e12 : 2 * AA_THICKNESS;
+            vertex.quad_sdf0 = isvalid[0] && (abs(adjustment[0]) == 0.0) ? dot(VP1, v0.xy) + 0.5 : 1e12;
 
             // sdf of this segment
-            vertex.quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
-            vertex.quad_sdf1.y = dot(VP2,  v1.xy) - 0.5;
+            vertex.quad_sdf1.x = dot(VP1, -v1.xy) + 0.5;
+            vertex.quad_sdf1.y = dot(VP2,  v1.xy) + 0.5;
             vertex.quad_sdf1.z = n_offset;
 
             // SDF for next segment, see quad_sdf0
-            vertex.quad_sdf2 = isvalid[3] ? dot(VP2, -v2.xy) - 0.5 + abs(adjustment[1]) * 1e12 : 2 * AA_THICKNESS;
+            vertex.quad_sdf2 = isvalid[3] && (abs(adjustment[1]) == 0.0) ? dot(VP2, -v2.xy) + 0.5 : 1e12;
 
             // sdf for creating a flat cap on truncated joints
             // (sign(dot(...)) detects if line bends left or right)

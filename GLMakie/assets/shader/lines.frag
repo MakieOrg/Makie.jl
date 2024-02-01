@@ -73,11 +73,8 @@ void main(){
 #ifndef DEBUG
     // discard fragments that are "more inside" the other segment to remove
     // overlap between adjacent line segments.
-    // max limits how much of this line can be displaced by the others
-    // 0.0001 adds a bias towards drawing to avoid skipping pixels due to float
-    //   precision isuues from interpolation of sdfs
-    float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x) + 0.0002;
-    float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y) + 0.0002;
+    float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
+    float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
     if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
         discard;
 

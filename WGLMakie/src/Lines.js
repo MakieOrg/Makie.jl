@@ -252,7 +252,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Constants
             const float MITER_LIMIT = -0.4;
             const float AA_RADIUS = 0.8;
-            const float AA_THICKNESS = 2.0 * AA_RADIUS;
+            const float AA_THICKNESS = 2.0 * AA_RADIUS + 2.0;
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -536,7 +536,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 }
                 n_offset = (halfwidth + AA_THICKNESS) * position.y;
 
-                vec3 point = 0.5 * (p1 + p2) + v_offset * v1 + n_offset * vec3(n1, 0);
+                // round(f * offset) / f together with offsetting sdf's bei 0.5 seems to fix
+                // float precision issues with joint discards. (I.e. what makes this segment discards
+                // pixels drawn by the previous/next segment.) Higher values reduce jitter but probably
+                // increase risk of creating overlap/gaps
+                vec3 point = 0.5 * (p1 + p2) + 0.0078125 * round(128.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
                 f_uv = generate_uv(pattern, v_offset, n_offset);
 
 
@@ -547,15 +551,15 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // signed distance of previous segment at shared control point in line
                 // direction. Used decide which segments renders which joint fragment.
                 // If the left joint is adjusted this sdf is disabled.
-                f_quad_sdf0 = isvalid[0] && (adjustment[0] == 0.0) ? dot(VP1, v0) : 1e12;
+                f_quad_sdf0 = isvalid[0] && (adjustment[0] == 0.0) ? dot(VP1, v0) + 0.5 : 1e12;
 
                 // sdf of this segment
-                f_quad_sdf1.x = dot(VP1, -v1.xy);
-                f_quad_sdf1.y = dot(VP2,  v1.xy);
+                f_quad_sdf1.x = dot(VP1, -v1.xy) + 0.5;
+                f_quad_sdf1.y = dot(VP2,  v1.xy) + 0.5;
                 f_quad_sdf1.z = dot(VP1,  n1);
 
                 // SDF for next segment, see quad_sdf0
-                f_quad_sdf2 = isvalid[3] && (adjustment[1] == 0.0) ? dot(VP2, -v2) : 1e12;
+                f_quad_sdf2 = isvalid[3] && (adjustment[1] == 0.0) ? dot(VP2, -v2) + 0.5 : 1e12;
 
                 // sdf for creating a flat cap on truncated joints
                 // (sign(dot(...)) detects if line bends left or right)
@@ -673,11 +677,8 @@ function lines_fragment_shader(uniforms, attributes) {
     #ifndef DEBUG
         // discard fragments that are "more inside" the other segment to remove
         // overlap between adjacent line segments.
-        // max limits how much of this line can be displaced by the others
-        // 0.0001 adds a bias towards drawing to avoid skipping pixels due to float
-        //   precision isuues from interpolation of sdfs
-        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x) + 0.0002;
-        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y) + 0.0002;
+        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
+        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
         if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
             discard;
 
