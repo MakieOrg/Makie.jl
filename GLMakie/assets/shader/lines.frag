@@ -20,11 +20,11 @@ in float f_linelength;
 
 flat in float f_linewidth;
 flat in vec4 f_pattern_overwrite;
-flat in uvec2 f_id;
 flat in vec2 f_extrusion12;
 flat in vec2 f_discard_limit;
 flat in vec4 f_color1;
 flat in vec4 f_color2;
+flat in uvec2 f_id;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;

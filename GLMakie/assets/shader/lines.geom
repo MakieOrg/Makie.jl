@@ -272,7 +272,7 @@ void main(void)
     float miter_offset2 = dot(miter_n2, n1); // = dot(miter_v2, v1)
 
     // Are we truncating the joint?
-    bool[2] is_truncated = bool[2](
+    bvec2 is_truncated = bvec2(
         dot(v0.xy, v1.xy) < MITER_LIMIT,
         dot(v1.xy, v2.xy) < MITER_LIMIT
     );
@@ -309,14 +309,8 @@ void main(void)
     // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
     // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
     f_discard_limit = vec2(
-        is_truncated[0] ? 0.0 : g_thickness[1],
-        is_truncated[1] ? 0.0 : g_thickness[1]
-    );
-
-    // color scaling to match colors where segments connect, not where vertices are
-    vec4[2] col_m = vec4[2](
-        (g_color[2] - g_color[1]) / max(0.01, segment_length1 - extrusion[0] + extrusion[1]),
-        (g_color[2] - g_color[1]) / max(0.01, segment_length1 + extrusion[0] - extrusion[1])
+        is_truncated[0] ? 0.0 : 1e12,
+        is_truncated[1] ? 0.0 : 1e12
     );
 
     // used to elongate sdf to include joints
