@@ -48,3 +48,28 @@ end
 #     linesegments!(Makie.data_limits(ax.scene), color=:red)
 #     display(fig)
 # end
+
+
+# https://github.com/MakieOrg/Makie.jl/issues/3551
+@testset "scalar color for scatterlines" begin
+    colorrange = (1, 5)
+    colormap = :Blues
+    f, ax, sl = scatterlines(1:10,1:10,color=3,colormap=colormap,colorrange=colorrange)
+    l = sl.plots[1]::Lines
+    sc = sl.plots[2]::Scatter
+    @test l.color[] == 3
+    @test l.colorrange[] == colorrange
+    @test l.colormap[] == colormap
+    @test sc.color[] == 3
+    @test sc.colorrange[] == colorrange
+    @test sc.colormap[] == colormap
+    sl.markercolor = 4
+    sl.markercolormap = :jet
+    sl.markercolorrange = (2, 7)
+    @test l.color[] == 3
+    @test l.colorrange[] == colorrange
+    @test l.colormap[] == colormap
+    @test sc.color[] == 4
+    @test sc.colorrange[] == (2, 7)
+    @test sc.colormap[] == :jet
+end
