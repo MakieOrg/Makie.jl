@@ -536,11 +536,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 }
                 n_offset = (halfwidth + AA_THICKNESS) * position.y;
 
-                // round(f * offset) / f together with offsetting sdf's bei 0.5 seems to fix
-                // float precision issues with joint discards. (I.e. what makes this segment discards
-                // pixels drawn by the previous/next segment.) Higher values reduce jitter but probably
-                // increase risk of creating overlap/gaps
-                vec3 point = 0.5 * (p1 + p2) + 0.0078125 * round(128.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
+                // round seems to fix overdraw/underdraw but introduce slightly jitter
+                vec3 point = 0.5 * (p1 + p2) + round(v_offset * v1 + n_offset * vec3(n1, 0));
                 f_uv = generate_uv(pattern, v_offset, n_offset);
 
 
