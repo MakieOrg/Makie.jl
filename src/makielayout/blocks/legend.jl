@@ -272,7 +272,10 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
     scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = attrs.markerstrokecolor, inspectable = false)
+        strokecolor = attrs.markerstrokecolor, inspectable = false,
+        colormap = attrs.markercolormap,
+        colorrange = attrs.markercolorrange,
+    )
 
     return [scat]
 end
@@ -284,6 +287,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     fracpoints = attrs.linepoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
+        colormap = attrs.linecolormap, colorrange = attrs.linecolorrange,
         linestyle = attrs.linestyle, inspectable = false)
 
     return [lin]
@@ -295,7 +299,8 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     fracpoints = attrs.polypoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
-        strokecolor = attrs.polystrokecolor, inspectable = false)
+        strokecolor = attrs.polystrokecolor, inspectable = false,
+        colormap = attrs.polycolormap, colorrange = attrs.polycolorrange)
 
     return [pol]
 end
@@ -368,18 +373,24 @@ end
 _renaming_mapping(::Type{LineElement}) = Dict(
     :points => :linepoints,
     :color => :linecolor,
+    :colormap => :linecolormap,
+    :colorrange => :linecolorrange,
 )
 _renaming_mapping(::Type{MarkerElement}) = Dict(
     :points => :markerpoints,
     :color => :markercolor,
     :strokewidth => :markerstrokewidth,
     :strokecolor => :markerstrokecolor,
+    :colormap => :markercolormap,
+    :colorrange => :markercolorrange,
 )
 _renaming_mapping(::Type{PolyElement}) = Dict(
     :points => :polypoints,
     :color => :polycolor,
     :strokewidth => :polystrokewidth,
     :strokecolor => :polystrokecolor,
+    :colormap => :polycolormap,
+    :colorrange => :polycolorrange,
 )
 
 function _rename_attributes!(T, a)
@@ -408,7 +419,10 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
         color = extract_color(plot, legend.linecolor),
         linestyle = choose_scalar(plot.linestyle, legend.linestyle),
-        linewidth = choose_scalar(plot.linewidth, legend.linewidth))]
+        linewidth = choose_scalar(plot.linewidth, legend.linewidth),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+    )]
 end
 
 function legendelements(plot::Scatter, legend)
@@ -418,6 +432,8 @@ function legendelements(plot::Scatter, legend)
         markersize = choose_scalar(plot.markersize, legend.markersize),
         strokewidth = choose_scalar(plot.strokewidth, legend.markerstrokewidth),
         strokecolor = choose_scalar(plot.strokecolor, legend.markerstrokecolor),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
     )]
 end
 
@@ -427,12 +443,23 @@ function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, l
         color = color,
         strokecolor = choose_scalar(plot.strokecolor, legend.polystrokecolor),
         strokewidth = choose_scalar(plot.strokewidth, legend.polystrokewidth),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
     )]
 end
 
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(polycolor = choose_scalar(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+    return LegendElement[PolyElement(;
+        polycolor = choose_scalar(
+            plot.color,
+            legend.polystrokecolor
+        ),
+        polystrokecolor = :transparent,
+        polystrokewidth = 0,
+        polycolormap = plot.colormap,
+        polycolorrange = plot.colorrange,
+    )]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack
