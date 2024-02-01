@@ -500,8 +500,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
                 // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
                 f_discard_limit = vec2(
-                    is_truncated[0] ? 0.0 : 2.0 * halfwidth,
-                    is_truncated[1] ? 0.0 : 2.0 * halfwidth
+                    is_truncated[0] ? 0.0 : 1e12,
+                    is_truncated[1] ? 0.0 : 1e12
                 );
 
                 // used to elongate sdf to include joints
@@ -690,6 +690,15 @@ function lines_fragment_shader(uniforms, attributes) {
         sdf = max(sdf, f_truncation.x);
         sdf = max(sdf, f_truncation.y);
 
+        // inner truncation (AA for overlapping parts)
+        // min(a, b) keeps what is inside a and b
+        // where a is the smoothly cut of part just before discard triggers (i.e. visible)
+        // and b is the (smoothly) cut of part where the discard triggers
+        // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
+        // WebGL likes to be unprecise so we need more padding than GLMakie here
+        sdf = max(sdf, min(f_quad_sdf1.x + 1.4, 100.0 * (f_quad_sdf1.x - f_quad_sdf0 - 2.0)));
+        sdf = max(sdf, min(f_quad_sdf1.y + 1.4, 100.0 * (f_quad_sdf1.y - f_quad_sdf2 - 2.0)));
+
         // pattern application
         sdf = max(sdf, get_pattern_sdf(pattern));
 
@@ -736,6 +745,18 @@ function lines_fragment_shader(uniforms, attributes) {
         if (dist_in_next <= f_quad_sdf1.y) {
             color.b += 0.5;
         }
+
+        // inner truncation - show second part as softer red/blue
+        if (f_quad_sdf1.x - f_quad_sdf0 - 1.0 > 0.0)
+            color.r += 0.2;
+        if (f_quad_sdf1.y - f_quad_sdf2 - 1.0 > 0.0)
+            color.b += 0.2;
+
+        // and smooth inner truncation as soft green?
+        if (f_quad_sdf1.x > 0.0)
+            color.g += 0.2;
+        if (f_quad_sdf1.y > 0.0)
+            color.g += 0.2;
 
         // mark pattern in white
         color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));

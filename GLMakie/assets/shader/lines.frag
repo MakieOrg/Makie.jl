@@ -85,9 +85,17 @@ void main(){
     // distance in linewidth direction
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
 
-    // truncation of truncated joints
+    // outer truncation of truncated joints (smooth outside edge)
     sdf = max(sdf, f_truncation.x);
     sdf = max(sdf, f_truncation.y);
+
+    // inner truncation (AA for overlapping parts)
+    // min(a, b) keeps what is inside a and b
+    // where a is the smoothly cut of part just before discard triggers (i.e. visible)
+    // and b is the (smoothly) cut of part just after discard triggers (i.e not visible)
+    // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
+    sdf = max(sdf, min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0));
+    sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
 
     // pattern application
     sdf = max(sdf, get_pattern_sdf(pattern));
@@ -137,6 +145,18 @@ void main(){
     if (dist_in_next <= f_quad_sdf1.y) {
         color.b += 0.5;
     }
+
+    // inner truncation - show second part as softer red/blue
+    if (f_quad_sdf1.x - f_quad_sdf0 - 1.0 > 0.0)
+        color.r += 0.2;
+    if (f_quad_sdf1.y - f_quad_sdf2 - 1.0 > 0.0)
+        color.b += 0.2;
+
+    // and smooth inner truncation as soft green?
+    if (f_quad_sdf1.x > 0.0)
+        color.g += 0.2;
+    if (f_quad_sdf1.y > 0.0)
+        color.g += 0.2;
 
     // mark pattern in white
     color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
