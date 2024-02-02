@@ -2,6 +2,7 @@
 
 ## master
 
+- Fix issues with Camera3D not centering [#3582](https://github.com/MakieOrg/Makie.jl/pull/3582)
 - Allowed creating legend entries from plot objects with scalar numbers as colors [#3587](https://github.com/MakieOrg/Makie.jl/pull/3587).
 
 ## 0.20.5
