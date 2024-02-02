@@ -48,3 +48,7 @@ end
 #     linesegments!(Makie.data_limits(ax.scene), color=:red)
 #     display(fig)
 # end
+
+@testset "barplot errors for three args" begin
+    @test_throws ErrorException barplot(1:10, 1:10, 1:10)
+end
