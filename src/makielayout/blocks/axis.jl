@@ -377,22 +377,22 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xticksmirrored = lift(mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-                          Ref(scene.viewport), :x, ax.xaxisposition[])
+                          scene.viewport, :x, ax.xaxisposition[])
     xticksmirrored_lines = linesegments!(blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-                          Ref(scene.viewport), :y, ax.yaxisposition[])
+                          scene.viewport, :y, ax.yaxisposition[])
     yticksmirrored_lines = linesegments!(blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-                               ax.xminortickalign, Ref(scene.viewport), :x, ax.xaxisposition[])
+                               ax.xminortickalign, scene.viewport, :x, ax.xaxisposition[])
     xminorticksmirrored_lines = linesegments!(blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-                               ax.yminortickalign, Ref(scene.viewport), :y, ax.yaxisposition[])
+                               ax.yminortickalign, scene.viewport, :y, ax.yaxisposition[])
     yminorticksmirrored_lines = linesegments!(blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
     translate!(yminorticksmirrored_lines, 0, 0, 10)
@@ -522,7 +522,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 end
 
 function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition)
-    a = viewport[][]
+    a = viewport
     if side === :x
         opp = axisposition === :bottom ? top(a) : bottom(a)
         sign =  axisposition === :bottom ? 1 : -1
