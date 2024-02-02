@@ -122,9 +122,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         end
     end
 
-    # @info typeof(plot)
-    # @info attributes
-
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
         :visible => plot.visible,

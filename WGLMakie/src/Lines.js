@@ -138,7 +138,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
 
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
-                float halfwidth = 0.5 * width;
+                float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 vec3 p1 = screen_space(linepoint_start);
                 vec3 p2 = screen_space(linepoint_end);
@@ -215,6 +215,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // for color sampling
                 f_color1 = get_color(color_start, colormap, colorrange);
                 f_color2 = get_color(color_end,   colormap, colorrange);
+                f_color1.a *= min(1.0, width / AA_RADIUS);
+                f_color2.a *= min(1.0, width / AA_RADIUS);
 
                 // clip space position
                 gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
@@ -417,7 +419,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
 
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
-                float halfwidth = 0.5 * width;
+                float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 vec3 p0 = screen_space(linepoint_prev);
                 vec3 p1 = screen_space(linepoint_start);
@@ -581,6 +583,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // for color sampling
                 f_color1 = get_color(color_start, colormap, colorrange);
                 f_color2 = get_color(color_end,   colormap, colorrange);
+                f_color1.a *= min(1.0, width / AA_RADIUS);
+                f_color2.a *= min(1.0, width / AA_RADIUS);
 
                 // clip space position
                 gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);

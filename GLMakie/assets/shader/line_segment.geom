@@ -76,6 +76,8 @@ void main(void)
     // constants
     f_color1 = g_color[0];
     f_color2 = g_color[1];
+    f_color1.a *= min(1.0, g_thickness[0] / AA_RADIUS);
+    f_color2.a *= min(1.0, g_thickness[0] / AA_RADIUS);
     f_linestart = 0;                // no corners so no joint extrusion to consider
     f_linelength = segment_length;  // and also no changes in line length
 
@@ -85,7 +87,7 @@ void main(void)
         // Get offset in line direction
         float v_offset = (2 * x - 1) * AA_THICKNESS;
         // pass on linewidth and id (picking) for the current line vertex
-        float halfwidth = 0.5 * g_thickness[x];
+        float halfwidth = 0.5 * max(AA_RADIUS, g_thickness[x]);
         // TODO: if we just make this a varying output we probably get var linewidths here
         f_linewidth = halfwidth;
         f_id = g_id[x];
