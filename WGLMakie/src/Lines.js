@@ -536,8 +536,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 }
                 n_offset = (halfwidth + AA_THICKNESS) * position.y;
 
-                // round seems to fix overdraw/underdraw but introduce slightly jitter
-                vec3 point = 0.5 * (p1 + p2) + round(v_offset * v1 + n_offset * vec3(n1, 0));
+                // round seems to fix overdraw/underdraw but introduces slight jitter
+                // round(f * ...) / f reduces jitter but may reintroduce over/underdraw
+                vec3 point = 0.5 * (p1 + p2) + 0.125 * round(8.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
                 f_uv = generate_uv(pattern, v_offset, n_offset);
 
 
@@ -592,8 +593,7 @@ function lines_fragment_shader(uniforms, attributes) {
     const color_uniforms = filter_by_key(uniforms, ["picking", "pattern", "pattern_length"]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
 
-    return `#extension GL_OES_standard_derivatives : enable
-
+    return `
     // uncomment for debug rendering
     // #define DEBUG
 
@@ -629,8 +629,7 @@ function lines_fragment_shader(uniforms, attributes) {
     const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
     float aastep(float threshold, float value) {
-        float afwidth = length(vec2(dFdx(value), dFdy(value))) * AA_RADIUS;
-        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+        return smoothstep(threshold-AA_RADIUS, threshold+AA_RADIUS, value);
     }
 
     // Pattern sampling
@@ -671,6 +670,9 @@ function lines_fragment_shader(uniforms, attributes) {
     void main(){
         vec4 color;
 
+        // if (f_instance_id % uint(2) == uint(0))
+        //     discard;
+
     #ifndef DEBUG
         // discard fragments that are "more inside" the other segment to remove
         // overlap between adjacent line segments.
@@ -695,9 +697,8 @@ function lines_fragment_shader(uniforms, attributes) {
         // where a is the smoothly cut of part just before discard triggers (i.e. visible)
         // and b is the (smoothly) cut of part where the discard triggers
         // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
-        // WebGL likes to be unprecise so we need more padding than GLMakie here
-        sdf = max(sdf, min(f_quad_sdf1.x + 1.4, 100.0 * (f_quad_sdf1.x - f_quad_sdf0 - 2.0)));
-        sdf = max(sdf, min(f_quad_sdf1.y + 1.4, 100.0 * (f_quad_sdf1.y - f_quad_sdf2 - 2.0)));
+        sdf = max(sdf, min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0));
+        sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
 
         // pattern application
         sdf = max(sdf, get_pattern_sdf(pattern));
