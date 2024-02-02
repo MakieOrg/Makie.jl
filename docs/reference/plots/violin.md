@@ -94,3 +94,33 @@ violin(fig[1,2], x, y, weights = w)
 fig
 ```
 \end{examplefigure}
+
+#### Horizontal axis
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+fig = Figure()
+
+xs = rand(1:3, 1000)
+ys = randn(1000)
+
+ax_vert = Axis(fig[1,1];
+    xlabel = "xs",
+    ylabel = "ys",
+    xticks = (1:3, ["one", "two", "three"])
+)
+ax_horiz = Axis(fig[1,2];
+    xlabel="ys",
+    ylabel="xs",
+    yticks=(1:3, ["one", "two", "three"])
+)
+
+violin!(ax_vert, xs, ys) # `orientation=:vertical` is default
+violin!(ax_horiz, xs, ys; orientation=:horizontal)
+
+fig
+```
+\end{examplefigure}
