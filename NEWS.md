@@ -1,6 +1,6 @@
 # News
 
-## master
+## 0.20.6
 
 - Allowed creating legend entries from plot objects with scalar numbers as colors [#3587](https://github.com/MakieOrg/Makie.jl/pull/3587).
 
