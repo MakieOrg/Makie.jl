@@ -147,6 +147,25 @@ end
     end
 end
 
+@reference_test "Legend with scalar colors" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    for i in 1:3
+        lines!(ax, (1:3) .+ i, color = i, colorrange = (0, 4), colormap = :Blues, label = "Line $i", linewidth = 3)
+    end
+    for i in 1:3
+        scatter!(ax, (1:3) .+ i .+ 3, color = i, colorrange = (0, 4), colormap = :plasma, label = "Scatter $i", markersize = 15)
+    end
+    for i in 1:3
+        barplot!(ax, (1:3) .+ i .+ 8, fillto = (1:3) .+ i .+ 7.5, color = i, colorrange = (0, 4), colormap = :tab10, label = "Barplot $i")
+    end
+    for i in 1:3
+        poly!(ax, [Rect2f((j, i .+ 12 + j), (0.5, 0.5)) for j in 1:3], color = i, colorrange = (0, 4), colormap = :heat, label = "Poly $i")
+    end
+    Legend(f[1, 2], ax)
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
@@ -204,6 +223,7 @@ end
         rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
+        thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
     )
     f
 end
@@ -305,3 +325,4 @@ end
     axislegend(ax)
     fig
 end
+
