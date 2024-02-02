@@ -172,6 +172,20 @@ function convert_arguments!(plot::Plot{F}) where {F}
     return
 end
 
+function simple_conversion(P, args, kw)
+    converted = convert_arguments(P, args...; kw...)
+    typed = convert_arguments_typed(P, converted)
+    if typed isa NamedTuple
+        return values(typed), :done
+    elseif typed isa Tuple
+        return typed, :no_conversion_wanted
+    elseif typed isa NoConversion
+        return converted, :no_conversion
+    else
+        error("convert_arguments_typed returned an invalid type: $(typed)")
+    end
+end
+
 function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(args) && first(args) isa Attributes
@@ -180,11 +194,15 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     end
     P = Plot{Func}
     args_obs = Any[convert(Observable, x) for x in args]
+    args_no_obs = map(to_value, args_obs)
+
+    converted = convert_arguments(P, args_no_obs...; plot_attributes...)
+
+
     # Temporarily work around not having a clear definition for when the conversion should get applied
     if Func !== text && Func !== annotations && (Func in atomic_functions || Func === barplot)
         args_obs = axis_convert(plot_attributes, args_obs...)
     end
-    args_no_obs = map(to_value, args_obs)
     used_attrs = used_attributes(P, args_no_obs...)
     if used_attrs === ()
         args_converted = convert_arguments(P, args_no_obs...)
@@ -192,8 +210,8 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
         kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
         args_converted = convert_arguments(P, args_no_obs...; kw...)
     end
-    PNew, converted = apply_convert!(P, Attributes(), args_converted)
 
+    PNew, converted = apply_convert!(P, Attributes(), args_converted)
 
     ArgTyp = MakieCore.argtypes(converted)
     converted_obs = map(Observable, converted)
@@ -226,7 +244,6 @@ Usage:
 used_attributes(::Type{<:Plot}, args...) = used_attributes(args...)
 used_attributes(args...) = ()
 
-
 ## generic definitions
 # Chose the more specific plot type from arguments or input type
 # Note the plottype(Scatter, Plot{plot}) will return Scatter
@@ -235,6 +252,7 @@ plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argva
 plottype(P::Type{<:Plot{T}}) where {T} = P
 plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
 plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
+
 """
     plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
 

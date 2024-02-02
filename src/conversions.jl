@@ -471,7 +471,6 @@ function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealV
     convert_arguments(ct, x_centers, y_centers, zs)
 end
 
-
 """
     convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
 
