@@ -49,6 +49,9 @@ end
 #     display(fig)
 # end
 
+@testset "barplot errors for three args" begin
+    @test_throws ErrorException barplot(1:10, 1:10, 1:10)
+end
 
 # https://github.com/MakieOrg/Makie.jl/issues/3551
 @testset "scalar color for scatterlines" begin
