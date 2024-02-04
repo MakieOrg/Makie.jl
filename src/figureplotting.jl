@@ -259,15 +259,9 @@ end
 
             The `FigureAxisPlot` object is returned by plotting functions not ending in `!` like `lines(...)` or `scatter(...)`.
             
-            It contains the new `Figure`, the new axis object, for example an \
-            `Axis`, `LScene` or `Axis3`, and the new plot object. It exists \
-            just as a convenience because returning it displays the contained figure. For all \
-            further operations, you should split it into its parts instead. This way, it is clear \
-            which of its components you are targeting.
+            It contains the new `Figure`, the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. It exists just as a convenience because returning it displays the contained figure. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
             
-            You can do this with the \
-            destructuring syntax `fig, ax, plt = some_plot(...)` and then continue, for example \
-            with `$(F)!(ax, ...)`.
+            You can do this with the destructuring syntax `fig, ax, plt = some_plot(...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
         if args[1] isa AxisPlot
@@ -277,14 +271,9 @@ end
             The `AxisPlot` object is returned by plotting functions not ending in `!` with
             a `GridPosition` as the first argument, like `lines(fig[1, 2], ...)` or `scatter(fig[1, 2], ...)`.
             
-            It contains the new axis object, for example an \
-            `Axis`, `LScene` or `Axis3`, and the new plot object. For all \
-            further operations, you should split it into its parts instead. This way, it is clear \
-            which of its components you are targeting.
+            It contains the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
             
-            You can do this with the \
-            destructuring syntax `ax, plt = some_plot(fig[1, 2], ...)` and then continue, for example \
-            with `$(F)!(ax, ...)`.
+            You can do this with the destructuring syntax `ax, plt = some_plot(fig[1, 2], ...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
     end
