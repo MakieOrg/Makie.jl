@@ -85,8 +85,16 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     end
 
     # TODO: this is a waste
-    N_instances = 2 * sum(size(plot.converted[end][]))
-    dummy_data = [0f0 for _ in 1:N_instances]
+    dummy_data = Observable(Float32[])
+    onany(plot, plot.gap, plot.converted[end]) do gap, chunk
+        N = sum(size(chunk))
+        N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
+        if N_instances != length(dummy_data[]) # avoid updating unneccesarily
+            dummy_data[] = [0f0 for _ in 1:N_instances]
+        end
+        return
+    end
+    notify(plot.gap)
 
     instance = GeometryBasics.mesh(Rect2(0f0, 0f0, 1f0, 1f0))
 

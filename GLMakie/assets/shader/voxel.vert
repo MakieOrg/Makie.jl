@@ -88,15 +88,15 @@ void main() {
             id = temp_id - (size.z + size.y);
         }
     } else {
-        if (id < size.z) {
+        if (id < size.z + 1) {
             dim = 2;
             id = id;
-        } else if (id < size.z + size.y) {
+        } else if (id < size.z + size.y + 2) {
             dim = 1;
-            id = id - size.z;
-        } else { // if (id > 2 * (size.z + size.y)) {
+            id = id - (size.z + 1);
+        } else {
             dim = 0;
-            id = id - (size.z + size.y);
+            id = id - (size.z + size.y + 2);
         }
     }
 
