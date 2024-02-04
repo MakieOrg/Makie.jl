@@ -113,6 +113,7 @@ end
     @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
+    @test_throws MethodError limits!(f[1,1], -1, 1, -1, 1)
 end
 
 # issue 3240

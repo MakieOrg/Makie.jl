@@ -76,9 +76,9 @@ end
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
-        :linepoints, :linewidth, :linecolor, :linestyle,
-        :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor,
-        :polypoints, :polystrokewidth, :polycolor, :polystrokecolor)
+        :linepoints, :linewidth, :linecolor, :linestyle, :linecolorrange, :linecolormap,
+        :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor, :markercolorrange, :markercolormap,
+        :polypoints, :polystrokewidth, :polycolor, :polystrokecolor, :polycolorrange, :polycolormap)
 end
 
 function extractattributes(attributes::Attributes, typ::Type)
