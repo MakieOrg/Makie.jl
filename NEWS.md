@@ -1,5 +1,14 @@
 # News
 
+## 0.20.7
+
+- Equalized alignment point of mirrored ticks to that of normal ticks [#3598](https://github.com/MakieOrg/Makie.jl/pull/3598).
+- Fixed stack overflow error on conversion of gridlike data with missings [#3597](https://github.com/MakieOrg/Makie.jl/pull/3597).
+- Fixed mutation of CairoMakie src dir when displaying png files [#3588](https://github.com/MakieOrg/Makie.jl/pull/3588).
+- Added better error messages for plotting into `FigureAxisPlot` and `AxisPlot` as Plots.jl users are likely to do [#3596](https://github.com/MakieOrg/Makie.jl/pull/3596).
+- Added compat bounds for IntervalArithmetic.jl due to bug with DelaunayTriangulation.jl [#3595](https://github.com/MakieOrg/Makie.jl/pull/3595).
+- Removed possibility of three-argument `barplot` [#3574](https://github.com/MakieOrg/Makie.jl/pull/3574).
+
 ## 0.20.6
 
 - Fix issues with Camera3D not centering [#3582](https://github.com/MakieOrg/Makie.jl/pull/3582)
