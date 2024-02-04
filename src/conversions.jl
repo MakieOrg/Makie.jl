@@ -360,7 +360,7 @@ convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = conver
 Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
-function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix)
+function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<:Number})
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
