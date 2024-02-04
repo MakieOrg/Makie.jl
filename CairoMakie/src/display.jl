@@ -31,13 +31,6 @@ function openurl(url::String)
     @warn("Can't find a way to open a browser, open $(url) manually!")
 end
 
-function display_path(type::String)
-    if !(type in ("svg", "png", "pdf", "eps"))
-        error("Only \"svg\", \"png\", \"eps\" and \"pdf\" are allowed for `type`. Found: $(type)")
-    end
-    return abspath(joinpath(@__DIR__, "display." * type))
-end
-
 function Base.display(screen::Screen, scene::Scene; connect=false)
     # Nothing to do, since drawing is done in the other functions
     # TODO write to file and implement upenurl
@@ -45,7 +38,7 @@ function Base.display(screen::Screen, scene::Scene; connect=false)
 end
 
 function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
-    path = display_path("png")
+    path = joinpath(mktempdir(), "display.png")
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, path)
