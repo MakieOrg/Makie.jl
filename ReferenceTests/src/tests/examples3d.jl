@@ -3,6 +3,7 @@
     moon = loadasset("moon.png")
     fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=NoShading, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
+    cameracontrols(ax).settings.center[] = false # avoid recenter on display
     fig
 end
 
@@ -585,6 +586,7 @@ end
     cam = cameracontrols(ax.scene)
     cam.fov[] = 22f0
     update_cam!(ax.scene, cam, Vec3f(0.625, 0, 3.5), Vec3f(0.625, 0, 0), Vec3f(0, 1, 0))
+    cameracontrols(ax).settings.center[] = false # avoid recenter on display
     fig
 end
 

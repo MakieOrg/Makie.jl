@@ -630,7 +630,7 @@ function draw_axis!(po::PolarAxis)
     end
 
 
-    thetatick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
+    thetatick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
     thetatick_align = Observable(Point2f[])
     thetatick_offset = Observable(Point2f[])
     thetagridpoints = Observable{Vector{Point2f}}()
