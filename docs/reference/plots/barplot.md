@@ -13,11 +13,11 @@ CairoMakie.activate!() # hide
 f = Figure()
 Axis(f[1, 1])
 
-xs = 1:0.2:10
-ys = 0.5 .* sin.(xs)
+categories = 1:0.2:10
+values = 0.5 .* sin.(categories)
 
-barplot!(xs, ys, color = :red, strokecolor = :black, strokewidth = 1)
-barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
+barplot!(categories, values, color = :red, strokecolor = :black, strokewidth = 1)
+barplot!(categories, values .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
 
 f
 ```
@@ -29,10 +29,10 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-xs = 1:0.2:10
-ys = 0.5 .* sin.(xs)
+categories = 1:0.2:10
+values = 0.5 .* sin.(categories)
 
-barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
+barplot(categories, values, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 \end{examplefigure}
 
@@ -42,14 +42,14 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-tbl = (x = [1, 1, 1, 2, 2, 2, 3, 3, 3],
+tbl = (cat = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        height = 0.1:0.1:0.9,
        grp = [1, 2, 3, 1, 2, 3, 1, 2, 3],
        grp1 = [1, 2, 2, 1, 1, 2, 1, 1, 2],
        grp2 = [1, 1, 2, 1, 2, 1, 1, 2, 1]
        )
 
-barplot(tbl.x, tbl.height,
+barplot(tbl.cat, tbl.height,
         stack = tbl.grp,
         color = tbl.grp,
         axis = (xticks = (1:3, ["left", "middle", "right"]),
@@ -60,7 +60,7 @@ barplot(tbl.x, tbl.height,
 
 \begin{examplefigure}{}
 ```julia
-barplot(tbl.x, tbl.height,
+barplot(tbl.cat, tbl.height,
         dodge = tbl.grp,
         color = tbl.grp,
         axis = (xticks = (1:3, ["left", "middle", "right"]),
@@ -71,7 +71,7 @@ barplot(tbl.x, tbl.height,
 
 \begin{examplefigure}{}
 ```julia
-barplot(tbl.x, tbl.height,
+barplot(tbl.cat, tbl.height,
         dodge = tbl.grp1,
         stack = tbl.grp2,
         color = tbl.grp,
@@ -91,7 +91,7 @@ ax = Axis(fig[1,1], xticks = (1:3, ["left", "middle", "right"]),
         title = "Dodged bars with legend")
 
 # Plot
-barplot!(ax, tbl.x, tbl.height,
+barplot!(ax, tbl.cat, tbl.height,
         dodge = tbl.grp,
         color = colors[tbl.grp])
 
@@ -109,7 +109,7 @@ fig
 \begin{examplefigure}{}
 ```julia
 barplot(
-    tbl.x, tbl.height,
+    tbl.cat, tbl.height,
     dodge = tbl.grp,
     color = tbl.grp,
     bar_labels = :y,
