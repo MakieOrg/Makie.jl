@@ -792,10 +792,9 @@ function create_line_material(uniforms, attributes, is_linesegments) {
 }
 
 function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments) {
-    // const skip_elems = is_segments ? 2 * ndim : ndim;
-    const buffer = new THREE.InstancedInterleavedBuffer(data, ndim, 1);
-    buffer.stride = is_segments ? 2 * ndim : ndim;
-    buffer.count = buffer.count - 2; // TODO: -2?
+    const skip_elems = is_segments ? 2 * ndim : ndim;
+    const buffer = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
+    buffer.count = is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3;
     geometry.setAttribute(
         attr_name + "_prev",
         new THREE.InterleavedBufferAttribute(buffer, ndim, 0)
@@ -818,17 +817,8 @@ function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segm
 
 function create_line_instance_geometry() {
     const geometry = new THREE.InstancedBufferGeometry();
-    // TODO: quad geometry may be more useful as -1, -1 .. 1, 1
-    // const instance_positions = [
-    //     0, -0.5, 1, -0.5, 1, 0.5,
-
-    //     0, -0.5, 1, 0.5, 0, 0.5,
-    // ];
-    const instance_positions = [
-        -1, -1, 1, -1, 1, 1,
-
-        -1, -1, 1, 1, -1, 1
-    ];
+    // (-1, -1) to (+1, +1) quad
+    const instance_positions = [-1,-1, 1,-1, 1,1,   -1,-1, 1,1, -1,1];
     geometry.setAttribute(
         "position",
         new THREE.Float32BufferAttribute(instance_positions, 2)
@@ -841,6 +831,7 @@ function create_line_instance_geometry() {
 }
 
 function create_line_buffer(geometry, buffers, name, attr, is_segments) {
+    console.log(name);
     const flat_buffer = attr.value.flat;
     const ndims = attr.value.type_length;
     const linebuffer = attach_interleaved_line_buffer(
@@ -915,12 +906,15 @@ export function _create_line(line_data, is_segments) {
         geometry.attributes,
         is_segments
     );
+    console.log("Geometry:")
     console.log(geometry);
 
     material.uniforms.is_linesegments = {value: is_segments};
     const mesh = new THREE.Mesh(geometry, material);
     const new_count = geometry.attributes.linepoint_start.count;
-    mesh.geometry.instanceCount = Math.max(0, is_segments ? new_count / 2 : new_count - 1);
+    // mesh.geometry.instanceCount = Math.max(0, is_segments ? new_count / 2 : new_count - 1);
+    // mesh.geometry.instanceCount = Math.max(0, is_segments ? new_count / 2 : new_count);
+    mesh.geometry.instanceCount = new_count;
 
     console.log("init:");
     console.log(geometry.attributes.linepoint_start.count);
