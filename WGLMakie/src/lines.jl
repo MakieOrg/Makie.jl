@@ -78,20 +78,23 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         cam = Makie.parent_scene(plot).camera
         pvm = lift(*, plot, cam.projectionview, uniforms[:model])
         attributes[:lastlen] = map(plot, points_transformed, pvm, cam.resolution) do ps, pvm, res
-            # clip -> pixel, but we can skip offset
-            scale = Vec2f(0.5 * res[1], 0.5 * res[2])
-            # Initial position
-            clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[1], 0f0), 1f0)
-            prev = scale .* Point2f(clip) ./ clip[4]
-
-            # calculate cumulative pixel scale length
             output = Vector{Float32}(undef, length(ps))
-            output[1] = 0f0
-            for i in 2:length(ps)
-                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
-                current = scale .* Point2f(clip) ./ clip[4]
-                output[i] = output[i-1] + norm(current - prev)
-                prev = current
+
+            if !isempty(ps)
+                # clip -> pixel, but we can skip offset
+                scale = Vec2f(0.5 * res[1], 0.5 * res[2])
+                # Initial position
+                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[1], 0f0), 1f0)
+                prev = scale .* Point2f(clip) ./ clip[4]
+
+                # calculate cumulative pixel scale length
+                output[1] = 0f0
+                for i in 2:length(ps)
+                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
+                    current = scale .* Point2f(clip) ./ clip[4]
+                    output[i] = output[i-1] + norm(current - prev)
+                    prev = current
+                end
             end
 
             return serialize_buffer_attribute(output)
