@@ -13,11 +13,11 @@ CairoMakie.activate!() # hide
 f = Figure()
 Axis(f[1, 1])
 
-categories = 1:0.2:10
-values = 0.5 .* sin.(categories)
+xs = 1:0.2:10
+ys = 0.5 .* sin.(xs)
 
-barplot!(categories, values, color = :red, strokecolor = :black, strokewidth = 1)
-barplot!(categories, values .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
+barplot!(xs, ys, color = :red, strokecolor = :black, strokewidth = 1)
+barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
 
 f
 ```
@@ -29,10 +29,10 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-categories = 1:0.2:10
-values = 0.5 .* sin.(categories)
+xs = 1:0.2:10
+ys = 0.5 .* sin.(xs)
 
-barplot(categories, values, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
+barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 \end{examplefigure}
 
