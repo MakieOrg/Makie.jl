@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- Gave the `scatterlines` recipe a `PointBased` conversion trait (previously not defined) [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603)
+
 ## 0.20.7
 
 - Equalized alignment point of mirrored ticks to that of normal ticks [#3598](https://github.com/MakieOrg/Makie.jl/pull/3598).
