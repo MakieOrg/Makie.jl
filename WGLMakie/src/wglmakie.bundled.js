@@ -21702,21 +21702,20 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // We don't need the z component for these
                 vec2 v0 = v1.xy, v2 = v1.xy;
+                bool[2] skip_joint;
                 if (isvalid[0]) {
                     v0 = p1.xy - p0.xy;
                     float l = length(v0);
                     v0 /= l;
                     // Skip joints as a workaround to avoid dissipation of tiny line segments.
                     // TODO: replace this with skipping points
-                    if (l < 1.0 && segment_length < 1.0)
-                        isvalid[0] = false;
+                    skip_joint[0] = (l < 1.0 && segment_length < 1.0);
                 }
                 if (isvalid[3]) {
                     v2 = (p3.xy - p2.xy);
                     float l = length(v2);
                     v2 /= l;
-                    if (l < 1.0 && segment_length < 1.0)
-                        isvalid[3] = false;
+                    skip_joint[1] = (l < 1.0 && segment_length < 1.0);
                 }
 
                 // line normals (i.e. in linewidth direction)
@@ -21774,6 +21773,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // the pattern in either the on state (draw) or off state (no draw) to avoid
                 // fragmenting it around a corner.
                 vec2 adjustment = process_pattern(pattern, isvalid, extrusion, halfwidth);
+
+                // patterns need to be processed with joints to avoid artifacts
+                // even if we skip the joint for the line segments
+                isvalid[0] = !skip_joint[0];
+                isvalid[3] = !skip_joint[1];
 
                 // limit range of distance sampled in prev/next segment
                 // this makes overlapping segments draw over each other when reaching the limit
