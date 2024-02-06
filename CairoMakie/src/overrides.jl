@@ -8,29 +8,36 @@ complex and slower to draw than standard paths with single color.
 """
 function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # dispatch on input arguments to poly to use smarter drawing methods than
-    # meshes if possible
-    return draw_poly(scene, screen, poly, to_value.(poly.args)...)
+    # meshes if possible.
+    # however, since recipes exist, we can't explicitly handle all cases here
+    # so, we should also take a look at converted 
+    # First, we check whether a `draw_poly` method exists for the input arguments
+    # before conversion:
+    return if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.args))...})
+        draw_poly(scene, screen, poly, to_value.(poly.args)...)
+    # If not, we check whether a `draw_poly` method exists for the arguments after conversion
+    # (`plot.converted`).  This allows anything which decomposes to be checked for.
+    elseif Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.converted))...})
+        draw_poly(scene, screen, poly, to_value.(poly.converted)...)
+    # In the worst case, we return to drawing the polygon as a mesh + lines.
+    else
+        draw_poly_as_mesh(scene, screen, poly)
+    end
 end
 
 # Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
 is_cairomakie_atomic_plot(plot::Poly) = true
 
-"""
-Fallback method for args without special treatment.
-"""
-function draw_poly(scene::Scene, screen::Screen, poly, args...)
-    draw_poly_as_mesh(scene, screen, poly)
-end
 
 function draw_poly_as_mesh(scene, screen, poly)
     draw_plot(scene, screen, poly.plots[1])
     draw_plot(scene, screen, poly.plots[2])
 end
 
-
-# in the rare case of per-vertex colors redirect to mesh drawing
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::AbstractArray, model, strokecolor, strokewidth)
+# As a general fallback, draw all polys as meshes.
+# This also applies for e.g. per-vertex color.
+function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     draw_poly_as_mesh(scene, screen, poly)
 end
 
@@ -150,6 +157,7 @@ function polypath(ctx, polygon)
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
+draw_poly(scene::Scene, screen::Screen, poly, multipolygon::MultiPolygon) = draw_poly(scene, screen, poly, multipolygon.polygons)
 draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})

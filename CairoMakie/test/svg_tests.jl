@@ -30,6 +30,21 @@ end
     @test svg_isnt_rasterized(poly(BezierPath([
         MoveTo(0.0, 0.0), LineTo(1.0, 0.0), LineTo(1.0, 1.0), CurveTo(1.0, 1.0, 0.5, 1.0, 0.5, 0.5), ClosePath()
     ])))
+    @test !svg_isnt_rasterized(poly(rand(Point2f, 10); color = rand(RGBA, 10)))
+
+    poly1 = Makie.GeometryBasics.Polygon(rand(Point2f, 10))
+    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1])))
+    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = :red))
+    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = [:red, :blue]))
+
+    @testset "GeoInterface polygons" begin
+        using GeoInterface, GeoInterfaceMakie
+        poly2 = GeoInterface.convert(GeoInterface.Wrappers, poly1)
+        @test svg_isnt_rasterized(poly(poly2))
+        @test svg_isnt_rasterized(poly(poly2, color = :red))
+        @test svg_isnt_rasterized(poly(GeoInterface.Wrappers.MultiPolygon([poly2, poly2]), color = [:red, :blue]))
+    end
+
 end
 
 @testset "reproducable svg ids" begin
