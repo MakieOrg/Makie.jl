@@ -50,7 +50,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             out vec2 f_truncation;          // invalid / not needed
             out float f_linestart;          // constant
             out float f_linelength;
-            out vec2 f_uv;
 
             flat out vec2 f_extrusion;          // invalid / not needed
             flat out float f_linewidth;
@@ -59,6 +58,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out uint f_instance_id;
             flat out vec4 f_color1;
             flat out vec4 f_color2;
+            flat out float f_cumulative_length;
 
             ${uniform_decl}
 
@@ -173,23 +173,19 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 f_instance_id = uint(2 * gl_InstanceID);
 
+                // we restart patterns for each segment
+                f_cumulative_length = 0.0;
+
 
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
 
 
-                // Vertex position & uv (padded for joint & anti-aliasing)
+                // Vertex position (padded for joint & anti-aliasing)
                 float v_offset = position.x * (0.5 * segment_length + AA_THICKNESS);
                 float n_offset = (halfwidth + AA_THICKNESS) * position.y;
                 vec3 point = 0.5 * (p1 + p2) + v_offset * v1 + n_offset * vec3(n1, 0);
-
-                // we don't generate lastlen for segments so we use
-                // 0.5 * segment_length instead of the average lastlen here
-                f_uv = vec2(
-                    (0.5 * segment_length + v_offset) / pattern_length,
-                    0.0
-                );
 
                 // SDF's
                 vec2 VP1 = point.xy - p1.xy;
@@ -240,7 +236,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             out vec2 f_truncation;
             out float f_linestart;
             out float f_linelength;
-            out vec2 f_uv;
 
             flat out vec2 f_extrusion;
             flat out float f_linewidth;
@@ -249,6 +244,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out uint f_instance_id;
             flat out vec4 f_color1;
             flat out vec4 f_color2;
+            flat out float f_cumulative_length;
 
             ${uniform_decl}
 
@@ -336,15 +332,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 }
 
                 return adjust;
-            }
-
-            // If we don't have a pattern we don't need uv's
-            vec2 generate_uv(bool pattern, float extrusion, float linewidth) { return vec2(0); }
-            vec2 generate_uv(sampler2D pattern, float extrusion, float linewidth) {
-                return vec2(
-                    (0.5 * (lastlen_start + lastlen_end) + extrusion) / pattern_length,
-                    0.0 // 0.5 + 0.5 * linewidth / abs(linewidth)
-                );
             }
 
 
@@ -449,7 +436,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 if (isvalid[3]) {
                     v2 = (p3.xy - p2.xy);
                     float l = length(v2);
-                    v2 /= l
+                    v2 /= l;
                     if (l < 1.0 && segment_length < 1.0)
                         isvalid[3] = false;
                 }
@@ -533,13 +520,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 f_instance_id = uint(gl_InstanceID);
 
+                f_cumulative_length = lastlen_start;
 
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
 
 
-                // Vertex position & uv (padded for joint & anti-aliasing)
+                // Vertex position (padded for joint & anti-aliasing)
                 float v_offset, n_offset;
                 if (adjustment[int(is_end)] == 0.0) {
                     v_offset = position.x * (0.5 * segment_length + abs(extrusion[int(is_end)]) + AA_THICKNESS);
@@ -554,7 +542,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // round seems to fix overdraw/underdraw but introduces slight jitter
                 // round(f * ...) / f reduces jitter but may reintroduce over/underdraw
                 vec3 point = 0.5 * (p1 + p2) + 0.125 * round(8.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
-                f_uv = generate_uv(pattern, v_offset, n_offset);
 
 
                 // SDF's
@@ -623,7 +610,6 @@ function lines_fragment_shader(uniforms, attributes) {
     in highp vec3 f_quad_sdf1;
     in highp float f_quad_sdf2;
     in vec2 f_truncation;
-    in vec2 f_uv;
     in float f_linestart;
     in float f_linelength;
 
@@ -634,6 +620,7 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in vec4 f_color1;
     flat in vec4 f_color2;
     flat in uint f_instance_id;
+    flat in float f_cumulative_length;
 
     uniform uint object_id;
     ${uniform_decl}
@@ -650,27 +637,27 @@ function lines_fragment_shader(uniforms, attributes) {
     }
 
     // Pattern sampling
-    float get_pattern_sdf(sampler2D pattern){
+    float get_pattern_sdf(sampler2D pattern, vec2 uv){
         float sdf_offset, x;
-        if (f_uv.x <= f_pattern_overwrite.x) {
+        if (uv.x <= f_pattern_overwrite.x) {
             // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
             // if overwrite.y (target sdf in joint) is
             // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
             // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
             sdf_offset = max(f_pattern_overwrite.y * texture(pattern, vec2(f_pattern_overwrite.x, 0.0)).x, -AA_RADIUS);
-            return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - f_uv.x) + sdf_offset);
-        } else if (f_uv.x >= f_pattern_overwrite.z) {
+            return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
+        } else if (uv.x >= f_pattern_overwrite.z) {
             // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
             // see above
             sdf_offset = max(f_pattern_overwrite.w * texture(pattern, vec2(f_pattern_overwrite.z, 0.0)).x, -AA_RADIUS);
-            return f_pattern_overwrite.w * (pattern_length * (f_uv.x - f_pattern_overwrite.z) + sdf_offset);
+            return f_pattern_overwrite.w * (pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
         } else {
             // in allowed range
-            return texture(pattern, f_uv).x;
+            return texture(pattern, uv).x;
         }
     }
 
-    float get_pattern_sdf(bool _){
+    float get_pattern_sdf(bool _, vec2 uv){
         return -10.0;
     }
 
@@ -686,6 +673,13 @@ function lines_fragment_shader(uniforms, attributes) {
 
     void main(){
         vec4 color;
+
+        // f_quad_sdf1.x is the distance from p1, negative in v1 direction.
+        vec2 uv = vec2(
+            (f_cumulative_length - f_quad_sdf1.x) / pattern_length,
+            0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
+        );
+
 
         // if (f_instance_id % uint(2) == uint(0))
         //     discard;
@@ -718,7 +712,7 @@ function lines_fragment_shader(uniforms, attributes) {
         sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
 
         // pattern application
-        sdf = max(sdf, get_pattern_sdf(pattern));
+        sdf = max(sdf, get_pattern_sdf(pattern, uv));
 
         // draw
 
@@ -777,7 +771,7 @@ function lines_fragment_shader(uniforms, attributes) {
             color.g += 0.2;
 
         // mark pattern in white
-        color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
+        color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
     #endif
 
         if (picking) {
@@ -808,6 +802,12 @@ function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segm
     const skip_elems = is_segments ? 2 * ndim : ndim;
     const buffer = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
     buffer.count = is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3;
+    // TODO:
+    // We don't need this much for every vertex attribute!
+    // positions:   all 4
+    // color:       start, end
+    // lastlen:     start
+    // linewidth:   start, end
     geometry.setAttribute(
         attr_name + "_prev",
         new THREE.InterleavedBufferAttribute(buffer, ndim, 0)

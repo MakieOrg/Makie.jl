@@ -20,7 +20,6 @@ out float f_quad_sdf0;
 out vec3 f_quad_sdf1;
 out float f_quad_sdf2;
 out vec2 f_truncation;
-out vec2 f_uv;
 out float f_linestart;
 out float f_linelength;
 
@@ -31,6 +30,7 @@ flat out vec2 f_extrusion12;
 flat out vec2 f_discard_limit;
 flat out vec4 f_color1;
 flat out vec4 f_color2;
+flat out float f_cumulative_length;
 
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 2.0 * AA_RADIUS;
@@ -80,6 +80,7 @@ void main(void)
     f_color2.a *= min(1.0, g_thickness[0] / AA_RADIUS);
     f_linestart = 0;                // no corners so no joint extrusion to consider
     f_linelength = segment_length;  // and also no changes in line length
+    f_cumulative_length = 0.0;      // resets for each new segment
 
     // Generate vertices
 
@@ -108,12 +109,6 @@ void main(void)
             f_quad_sdf1.x = dot(VP1, -v1.xy);
             f_quad_sdf1.y = dot(VP2,  v1.xy);
             f_quad_sdf1.z = n_offset;
-
-            // generate uv coordinate
-            f_uv = vec2(
-                -f_quad_sdf1.x / pattern_length,
-                0.5 + halfwidth / g_thickness[x]
-            );
 
             // finalize vertex
             EmitVertex();

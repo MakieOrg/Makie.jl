@@ -21,7 +21,6 @@ out highp float f_quad_sdf0;
 out highp vec3 f_quad_sdf1;
 out highp float f_quad_sdf2;
 out vec2 f_truncation;
-out vec2 f_uv;
 out float f_linestart;
 out float f_linelength;
 
@@ -32,6 +31,7 @@ flat out vec2 f_extrusion12;
 flat out vec2 f_discard_limit;
 flat out vec4 f_color1;
 flat out vec4 f_color2;
+flat out float f_cumulative_length;
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -58,7 +58,6 @@ struct LineVertex {
     float quad_sdf2;
     vec2 truncation;
 
-    vec2 uv;
     float linestart;
     float linelength;
 };
@@ -69,7 +68,6 @@ void emit_vertex(LineVertex vertex) {
     f_quad_sdf1    = vertex.quad_sdf1;
     f_quad_sdf2    = vertex.quad_sdf2;
     f_truncation   = vertex.truncation;
-    f_uv           = vertex.uv;
     f_linestart    = vertex.linestart;
     f_linelength   = vertex.linelength;
     f_id           = g_id[vertex.index];
@@ -87,13 +85,13 @@ vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
 vec2 process_pattern(Nothing pattern, bool[4] isvalid, float[2] extrusion) {
     // do not adjust stuff
-    f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
+    f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
     return vec2(0);
 }
 vec2 process_pattern(sampler2D pattern, bool[4] isvalid, float[2] extrusion) {
     // TODO
     // This is not a case that's used at all yet. Maybe consider it in the future...
-    f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
+    f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
     return vec2(0);
 }
 
@@ -164,19 +162,6 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
     }
 
     return adjust;
-}
-
-// If we don't have a pattern we don't need uv's
-vec2 generate_uv(Nothing pattern, int index, float extrusion, float linewidth) { return vec2(0); }
-// If we have a 1D pattern we don't need uv.y
-vec2 generate_uv(sampler1D pattern, int index, float extrusion, float linewidth) {
-    return vec2((g_lastlen[index] + extrusion) / pattern_length, 0.0);
-}
-vec2 generate_uv(sampler2D pattern, int index, float extrusion, float linewidth) {
-    return vec2(
-        (g_lastlen[index] + extrusion) / pattern_length,
-        0.5 + linewidth / g_thickness[index]
-    );
 }
 
 
@@ -336,6 +321,9 @@ void main(void)
     f_color1.a *= min(1.0, g_thickness[1] / AA_RADIUS);
     f_color2.a *= min(1.0, g_thickness[1] / AA_RADIUS);
 
+    // for uv's
+    f_cumulative_length = g_lastlen[1];
+
     // Generate interpolated/varying outputs:
 
     LineVertex vertex;
@@ -358,9 +346,6 @@ void main(void)
             // pixels drawn by the previous/next segment.) Higher values reduce jitter but probably
             // increase risk of creating overlap/gaps
             vertex.position = vec3[2](p1, p2)[x] + 0.0078125 * round(128.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
-
-            // generate uv coordinate
-            vertex.uv = generate_uv(pattern, vertex.index, v_offset, n_offset);
 
             // Generate SDF's
 

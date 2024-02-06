@@ -14,7 +14,6 @@ in highp float f_quad_sdf0;
 in highp vec3 f_quad_sdf1;
 in highp float f_quad_sdf2;
 in vec2 f_truncation;
-in vec2 f_uv;
 in float f_linestart;
 in float f_linelength;
 
@@ -25,6 +24,7 @@ flat in vec2 f_discard_limit;
 flat in vec4 f_color1;
 flat in vec4 f_color2;
 flat in uvec2 f_id;
+flat in float f_cumulative_length;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;
@@ -32,36 +32,34 @@ uniform bool fxaa;
 
 // Half width of antialiasing smoothstep
 const float AA_RADIUS = 0.8;
-const float AA_THICKNESS = 2 * AA_RADIUS;
-const float epsilon = 1e-5;
 
 float aastep(float threshold1, float dist) {
     return smoothstep(threshold1-AA_RADIUS, threshold1+AA_RADIUS, dist);
 }
 
 // Pattern sampling
-float get_pattern_sdf(sampler2D pattern){
-    return texture(pattern, f_uv).x;
+float get_pattern_sdf(sampler2D pattern, vec2 uv){
+    return texture(pattern, uv).x;
 }
-float get_pattern_sdf(sampler1D pattern){
+float get_pattern_sdf(sampler1D pattern, vec2 uv){
     float sdf_offset, x;
-    if (f_uv.x <= f_pattern_overwrite.x) {
+    if (uv.x <= f_pattern_overwrite.x) {
         // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
         // if overwrite.y (target sdf in joint) is
         // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
         // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
         sdf_offset = max(f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_RADIUS);
-        return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - f_uv.x) + sdf_offset);
-    } else if (f_uv.x >= f_pattern_overwrite.z) {
+        return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
+    } else if (uv.x >= f_pattern_overwrite.z) {
         // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
         // see above
         sdf_offset = max(f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_RADIUS);
-        return f_pattern_overwrite.w * (pattern_length * (f_uv.x - f_pattern_overwrite.z) + sdf_offset);
+        return f_pattern_overwrite.w * (pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
     } else
         // in allowed range
-        return texture(pattern, f_uv.x).x;
+        return texture(pattern, uv.x).x;
 }
-float get_pattern_sdf(Nothing _){
+float get_pattern_sdf(Nothing _, vec2 uv){
     return -10.0;
 }
 
@@ -70,7 +68,12 @@ void write2framebuffer(vec4 color, uvec2 id);
 void main(){
     vec4 color;
 
-#ifndef DEBUG
+    // f_quad_sdf1.x is the negative distance from p1 in v1 direction
+    // (where f_cumulative_length applies) so we need to subtract here
+    vec2 uv = vec2(
+        (f_cumulative_length - f_quad_sdf1.x) / pattern_length,
+        0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
+    );
     // discard fragments that are "more inside" the other segment to remove
     // overlap between adjacent line segments.
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
@@ -98,7 +101,7 @@ void main(){
     sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
 
     // pattern application
-    sdf = max(sdf, get_pattern_sdf(pattern));
+    sdf = max(sdf, get_pattern_sdf(pattern, uv));
 
     // draw
 
@@ -159,8 +162,7 @@ void main(){
         color.g += 0.2;
 
     // mark pattern in white
-    color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern));
-#endif
+    color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
 
     write2framebuffer(color, f_id);
 }
