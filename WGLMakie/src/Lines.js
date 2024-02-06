@@ -874,35 +874,27 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
     let geometry = mesh.geometry;
     for (let name in attributes) {
         const attr = attributes[name];
-        const is_position = (name == "linepoint");
         attr.on((new_vertex_data) => {
             let buff = buffers[name];
-            const ndims = new_vertex_data.type_length;
             const new_flat_data = new_vertex_data.flat;
             const old_length = buff.array.length;
-            if (old_length < new_flat_data.length) {
+            if (old_length != new_flat_data.length) {
                 console.log("Remake buffer ", name);
                 mesh.geometry.dispose();
                 geometry = create_line_instance_geometry();
-                buff = attach_interleaved_line_buffer(
-                    name,
-                    geometry,
-                    new_flat_data,
-                    ndims,
-                    is_segments,
-                    is_position
-                );
+                create_line_buffers(geometry, buffers, attributes, is_segments);
+                const new_count = geometry.attributes.linepoint_start.count;
 
-                const new_count = buff.count;
-                console.log(old_length, " => ", new_flat_data.length);
-                console.log(mesh.geometry.instanceCount, " => ", new_count);
+                // console.log(old_length, " => ", new_flat_data.length);
+                // console.log(mesh.geometry.instanceCount, " => ", new_count);
 
                 mesh.geometry = geometry;
-                buffers[name] = buff;
                 mesh.geometry.instanceCount = new_count;
+
+                // console.log(mesh.geometry);
             } else {
                 buff.set(new_flat_data);
-                console.log("Update buffer ", name, " ", mesh.geometry.instanceCount);
+                // console.log("Update buffer ", name, " ", mesh.geometry.instanceCount);
             }
             buff.needsUpdate = true;
             mesh.needsUpdate = true;
