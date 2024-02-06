@@ -30,7 +30,7 @@ end
     @test svg_isnt_rasterized(poly(BezierPath([
         MoveTo(0.0, 0.0), LineTo(1.0, 0.0), LineTo(1.0, 1.0), CurveTo(1.0, 1.0, 0.5, 1.0, 0.5, 0.5), ClosePath()
     ])))
-    @test !svg_isnt_rasterized(poly(rand(Point2f, 10); color = rand(RGBA, 10)))
+    @test !svg_isnt_rasterized(poly(rand(Point2f, 10); color = rand(RGBAf, 10)))
 
     poly1 = Makie.GeometryBasics.Polygon(rand(Point2f, 10))
     @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1])))
