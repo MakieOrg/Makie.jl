@@ -1,4 +1,4 @@
-# News
+# Changelog
 
 ## 0.20.7
 
