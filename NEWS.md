@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- Gave the `scatterlines` recipe a `PointBased` conversion trait (previously not defined) [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603)
+
 ## 0.20.7
 
 - Fixed an issue where CairoMakie would unnecessarily rasterize polygons [#3605](https://github.com/MakieOrg/Makie.jl/pull/3605).
