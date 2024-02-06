@@ -33,7 +33,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         uniforms[:pattern_length] = 1f0
     else
         # TODO: pixel per unit
-        pattern = map((ls, lw) -> lw .* ls, plot, linestyle, linewidth)
+        pattern = map((ls, lw) -> sum(lw) / length(lw) .* ls, plot, linestyle, linewidth)
         uniforms[:pattern] = Sampler(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
         uniforms[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
     end

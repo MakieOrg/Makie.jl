@@ -798,20 +798,17 @@ function create_line_material(uniforms, attributes, is_linesegments) {
     return mat;
 }
 
-function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments) {
+function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments, is_position) {
     const skip_elems = is_segments ? 2 * ndim : ndim;
     const buffer = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
-    buffer.count = is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3;
+    buffer.count = Math.max(0, is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3);
     // TODO:
     // We don't need this much for every vertex attribute!
     // positions:   all 4
     // color:       start, end
     // lastlen:     start
     // linewidth:   start, end
-    geometry.setAttribute(
-        attr_name + "_prev",
-        new THREE.InterleavedBufferAttribute(buffer, ndim, 0)
-    ); // xyz0
+
     geometry.setAttribute(
         attr_name + "_start",
         new THREE.InterleavedBufferAttribute(buffer, ndim, ndim)
@@ -820,10 +817,17 @@ function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segm
         attr_name + "_end",
         new THREE.InterleavedBufferAttribute(buffer, ndim, 2 * ndim)
     ); // xyz2
-    geometry.setAttribute(
-        attr_name + "_next",
-        new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim)
-    ); // xyz3
+
+    if (is_position) {
+        geometry.setAttribute(
+            attr_name + "_prev",
+            new THREE.InterleavedBufferAttribute(buffer, ndim, 0)
+        ); // xyz0
+        geometry.setAttribute(
+            attr_name + "_next",
+            new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim)
+        ); // xyz3
+    }
     console.log(buffer);
     return buffer;
 }
@@ -843,7 +847,7 @@ function create_line_instance_geometry() {
     return geometry;
 }
 
-function create_line_buffer(geometry, buffers, name, attr, is_segments) {
+function create_line_buffer(geometry, buffers, name, attr, is_segments, is_position) {
     console.log(name);
     const flat_buffer = attr.value.flat;
     const ndims = attr.value.type_length;
@@ -852,7 +856,8 @@ function create_line_buffer(geometry, buffers, name, attr, is_segments) {
         geometry,
         flat_buffer,
         ndims,
-        is_segments
+        is_segments,
+        is_position
     );
     buffers[name] = linebuffer;
     return flat_buffer;
@@ -861,7 +866,7 @@ function create_line_buffer(geometry, buffers, name, attr, is_segments) {
 function create_line_buffers(geometry, buffers, attributes, is_segments) {
     for (let name in attributes) {
         const attr = attributes[name];
-        create_line_buffer(geometry, buffers, name, attr, is_segments);
+        create_line_buffer(geometry, buffers, name, attr, is_segments, name == "linepoint");
     }
 }
 
@@ -869,36 +874,36 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
     let geometry = mesh.geometry;
     for (let name in attributes) {
         const attr = attributes[name];
-        attr.on((new_points) => {
+        const is_position = (name == "linepoint");
+        attr.on((new_vertex_data) => {
             let buff = buffers[name];
-            const ndims = new_points.type_length;
-            const new_line_points = new_points.flat;
-            const old_count = buff.array.length;
-            const new_count = new_line_points.length / ndims - 2; // TODO -2?
-            if (old_count < new_line_points.length) {
+            const ndims = new_vertex_data.type_length;
+            const new_flat_data = new_vertex_data.flat;
+            const old_length = buff.array.length;
+            if (old_length < new_flat_data.length) {
+                console.log("Remake buffer ", name);
                 mesh.geometry.dispose();
                 geometry = create_line_instance_geometry();
                 buff = attach_interleaved_line_buffer(
                     name,
                     geometry,
-                    new_line_points,
+                    new_flat_data,
                     ndims,
-                    is_segments
+                    is_segments,
+                    is_position
                 );
+
+                const new_count = buff.count;
+                console.log(old_length, " => ", new_flat_data.length);
+                console.log(mesh.geometry.instanceCount, " => ", new_count);
+
                 mesh.geometry = geometry;
                 buffers[name] = buff;
+                mesh.geometry.instanceCount = new_count;
             } else {
-                buff.set(new_line_points);
+                buff.set(new_flat_data);
+                console.log("Update buffer ", name, " ", mesh.geometry.instanceCount);
             }
-            const ls_factor = is_segments ? 2 : 1;
-            const offset = is_segments ? 0 : 1;
-            mesh.geometry.instanceCount = Math.max(0, (new_count / ls_factor) - offset);
-            console.log("instance info:");
-            console.log(new_line_points.length);
-            console.log(ndims);
-            console.log(ls_factor);
-            console.log(offset);
-
             buff.needsUpdate = true;
             mesh.needsUpdate = true;
         });
@@ -924,16 +929,10 @@ export function _create_line(line_data, is_segments) {
 
     material.uniforms.is_linesegments = {value: is_segments};
     const mesh = new THREE.Mesh(geometry, material);
-    const new_count = geometry.attributes.linepoint_start.count;
-    // mesh.geometry.instanceCount = Math.max(0, is_segments ? new_count / 2 : new_count - 1);
-    // mesh.geometry.instanceCount = Math.max(0, is_segments ? new_count / 2 : new_count);
-    mesh.geometry.instanceCount = new_count;
+    mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
 
     console.log("init:");
-    console.log(geometry.attributes.linepoint_start.count);
-    console.log(new_count);
-    console.log(mesh.geometry.instanceCount);
-    // console.log(offset);
+    console.log("instances/segments: ", mesh.geometry.instanceCount);
 
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
