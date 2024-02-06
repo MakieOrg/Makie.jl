@@ -74,6 +74,7 @@ void main(){
         (f_cumulative_length - f_quad_sdf1.x) / pattern_length,
         0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
     );
+#ifndef DEBUG
     // discard fragments that are "more inside" the other segment to remove
     // overlap between adjacent line segments.
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
@@ -163,6 +164,7 @@ void main(){
 
     // mark pattern in white
     color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
+#endif
 
     write2framebuffer(color, f_id);
 }
