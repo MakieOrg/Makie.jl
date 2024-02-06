@@ -54,7 +54,7 @@
 - Fixed bug regarding inline display in VSCode Jupyter notebooks and other similar environments [#3403](https://github.com/MakieOrg/Makie.jl/pull/3403).
 - Fixed issue with `plottype`, allowed `onany(...; update = true)` and fixed `Block` macro use outside Makie [#3401](https://github.com/MakieOrg/Makie.jl/pull/3401).
 
-## [0.20] - 2023-11-21
+## [0.20.0] - 2023-11-21
 
 - GLMakie has gained support for HiDPI (aka Retina) screens. This also enables saving images with higher resolution than screen pixel dimensions [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544).
 - Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598).
@@ -420,3 +420,48 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Added an option to set a custom callback function for the `RectangleZoom` axis interaction to enable other use cases than zooming [#1104](https://github.com/MakieOrg/Makie.jl/pull/1104).
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
+
+[Unreleased] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.7...HEAD
+[0.20.7] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.6...v0.20.7
+[0.20.6] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.5...v0.20.6
+[0.20.5] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.4...v0.20.5
+[0.20.4] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.3...v0.20.4
+[0.20.3] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.2...v0.20.3
+[0.20.2] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.1...v0.20.2
+[0.20.1] : https://github.com/MakieOrg/Makie.jl/compare/v0.20.0...v0.20.1
+[0.20.0] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.12...v0.20.0
+[0.19.12] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.11...v0.19.12
+[0.19.11] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.10...v0.19.11
+[0.19.10] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.9...v0.19.10
+[0.19.9] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.8...v0.19.9
+[0.19.8] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.7...v0.19.8
+[0.19.7] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.6...v0.19.7
+[0.19.6] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.5...v0.19.6
+[0.19.5] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.4...v0.19.5
+[0.19.4] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.3...v0.19.4
+[0.19.3] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.1...v0.19.3
+[0.19.1] : https://github.com/MakieOrg/Makie.jl/compare/v0.19.0...v0.19.1
+[0.19.0] : https://github.com/MakieOrg/Makie.jl/compare/v0.18.4...v0.19.0
+[0.18.4] : https://github.com/MakieOrg/Makie.jl/compare/v0.18.3...v0.18.4
+[0.18.3] : https://github.com/MakieOrg/Makie.jl/compare/v0.18.2...v0.18.3
+[0.18.2] : https://github.com/MakieOrg/Makie.jl/compare/v0.18.1...v0.18.2
+[0.18.1] : https://github.com/MakieOrg/Makie.jl/compare/v0.18.0...v0.18.1
+[0.18.0] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.13...v0.18.0
+[0.17.13] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.12...v0.17.13
+[0.17.12] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.11...v0.17.12
+[0.17.11] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.10...v0.17.11
+[0.17.10] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.9...v0.17.10
+[0.17.9] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.7...v0.17.9
+[0.17.7] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.6...v0.17.7
+[0.17.6] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.5...v0.17.6
+[0.17.5] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.4...v0.17.5
+[0.17.4] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.3...v0.17.4
+[0.17.3] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.2...v0.17.3
+[0.17.2] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.1...v0.17.2
+[0.17.1] : https://github.com/MakieOrg/Makie.jl/compare/v0.17.0...v0.17.1
+[0.17.0] : https://github.com/MakieOrg/Makie.jl/compare/v0.16.4...v0.17.0
+[0.16.4] : https://github.com/MakieOrg/Makie.jl/compare/v0.16.0...v0.16.4
+[0.16.0] : https://github.com/MakieOrg/Makie.jl/compare/v0.15.3...v0.16.0
+[0.15.3] : https://github.com/MakieOrg/Makie.jl/compare/v0.15.2...v0.15.3
+[0.15.2] : https://github.com/MakieOrg/Makie.jl/compare/v0.15.1...v0.15.2
+[0.15.1] : https://github.com/MakieOrg/Makie.jl/compare/v0.15.0...v0.15.1
