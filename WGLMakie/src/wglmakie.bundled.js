@@ -21780,8 +21780,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // patterns need to be processed with joints to avoid artifacts
                 // even if we skip the joint for the line segments
-                isvalid[0] = !skip_joint[0];
-                isvalid[3] = !skip_joint[1];
+                isvalid[0] = isvalid[0] && !skip_joint[0];
+                isvalid[3] = isvalid[3] && !skip_joint[1];
 
                 // limit range of distance sampled in prev/next segment
                 // this makes overlapping segments draw over each other when reaching the limit
