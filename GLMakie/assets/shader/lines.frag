@@ -39,25 +39,25 @@ float aastep(float threshold1, float dist) {
 
 // Pattern sampling
 float get_pattern_sdf(sampler2D pattern, vec2 uv){
-    return texture(pattern, uv).x;
+    return 2.0 * f_linewidth * texture(pattern, uv).x;
 }
 float get_pattern_sdf(sampler1D pattern, vec2 uv){
-    float sdf_offset, x;
+    float sdf_offset, x, w = 2.0 * f_linewidth;
     if (uv.x <= f_pattern_overwrite.x) {
         // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
         // if overwrite.y (target sdf in joint) is
         // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
         // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
-        sdf_offset = max(f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_RADIUS);
-        return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
+        sdf_offset = max(w * f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_RADIUS);
+        return f_pattern_overwrite.y * (w * pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
     } else if (uv.x >= f_pattern_overwrite.z) {
         // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
         // see above
-        sdf_offset = max(f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_RADIUS);
-        return f_pattern_overwrite.w * (pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
+        sdf_offset = max(w * f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_RADIUS);
+        return f_pattern_overwrite.w * (w * pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
     } else
         // in allowed range
-        return texture(pattern, uv.x).x;
+        return w * texture(pattern, uv.x).x;
 }
 float get_pattern_sdf(Nothing _, vec2 uv){
     return -10.0;
@@ -71,7 +71,7 @@ void main(){
     // f_quad_sdf1.x is the negative distance from p1 in v1 direction
     // (where f_cumulative_length applies) so we need to subtract here
     vec2 uv = vec2(
-        (f_cumulative_length - f_quad_sdf1.x) / pattern_length,
+        (f_cumulative_length - f_quad_sdf1.x) / (2.0 * f_linewidth * pattern_length),
         0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
     );
 #ifndef DEBUG

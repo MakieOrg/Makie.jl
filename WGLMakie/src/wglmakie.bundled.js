@@ -21557,9 +21557,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 if (isvalid[0]) {
                     float offset = max(abs(extrusion[0]), halfwidth);
-                    left   = texture(pattern, vec2((lastlen_start - offset) / pattern_length, 0.0)).x;
-                    center = texture(pattern, vec2(lastlen_start / pattern_length           , 0.0)).x;
-                    right  = texture(pattern, vec2((lastlen_start + offset) / pattern_length, 0.0)).x;
+                    left   = linewidth_start * texture(pattern, vec2((lastlen_start - offset) / (linewidth_start * pattern_length), 0.0)).x;
+                    center = linewidth_start * texture(pattern, vec2( lastlen_start           / (linewidth_start * pattern_length), 0.0)).x;
+                    right  = linewidth_start * texture(pattern, vec2((lastlen_start + offset) / (linewidth_start * pattern_length), 0.0)).x;
 
                     // cases:
                     // ++-, +--, +-+ => elongate backwards
@@ -21569,7 +21569,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
                         // overwrite until one AA gap past the corner/joint
-                        f_pattern_overwrite.x = (lastlen_start + abs(extrusion[0]) + AA_RADIUS) / pattern_length;
+                        f_pattern_overwrite.x = (lastlen_start + abs(extrusion[0]) + AA_RADIUS) /
+                            (linewidth_start * pattern_length);
                         // using the sign of the center to decide between drawing or not drawing
                         f_pattern_overwrite.y = sign(center);
                     } else if (left > 0.0) {
@@ -21580,7 +21581,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.x = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.x = (lastlen_start + abs(extrusion[0]) + AA_RADIUS) / pattern_length;
+                        f_pattern_overwrite.x = (lastlen_start + abs(extrusion[0]) + AA_RADIUS) /
+                            (linewidth_start * pattern_length);
                         f_pattern_overwrite.y = sign(center);
                     }
 
@@ -21588,13 +21590,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 if (isvalid[3]) {
                     float offset = max(abs(extrusion[1]), halfwidth);
-                    left   = texture(pattern, vec2((lastlen_end - offset) / pattern_length, 0.0)).x;
-                    center = texture(pattern, vec2(lastlen_end / pattern_length           , 0.0)).x;
-                    right  = texture(pattern, vec2((lastlen_end + offset) / pattern_length, 0.0)).x;
+                    left   = linewidth_end * texture(pattern, vec2((lastlen_end - offset) / (linewidth_end * pattern_length), 0.0)).x;
+                    center = linewidth_end * texture(pattern, vec2( lastlen_end           / (linewidth_end * pattern_length), 0.0)).x;
+                    right  = linewidth_end * texture(pattern, vec2((lastlen_end + offset) / (linewidth_end * pattern_length), 0.0)).x;
 
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
-                        f_pattern_overwrite.z = (lastlen_end - abs(extrusion[1]) - AA_RADIUS) / pattern_length;
+                        f_pattern_overwrite.z = (lastlen_end - abs(extrusion[1]) - AA_RADIUS) /
+                            (linewidth_end * pattern_length);
                         f_pattern_overwrite.w = sign(center);
                     } else if (left > 0.0) {
                         // shrink backwards
@@ -21604,7 +21607,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.y = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.z = (lastlen_end - abs(extrusion[1]) - AA_RADIUS) / pattern_length;
+                        f_pattern_overwrite.z = (lastlen_end - abs(extrusion[1]) - AA_RADIUS) /
+                            (linewidth_end * pattern_length);
                         f_pattern_overwrite.w = sign(center);
                     }
                 }
@@ -21922,22 +21926,22 @@ function lines_fragment_shader(uniforms, attributes) {
 
     // Pattern sampling
     float get_pattern_sdf(sampler2D pattern, vec2 uv){
-        float sdf_offset, x;
+        float sdf_offset, x, w = 2.0 * f_linewidth;
         if (uv.x <= f_pattern_overwrite.x) {
             // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
             // if overwrite.y (target sdf in joint) is
             // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
             // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
-            sdf_offset = max(f_pattern_overwrite.y * texture(pattern, vec2(f_pattern_overwrite.x, 0.0)).x, -AA_RADIUS);
-            return f_pattern_overwrite.y * (pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
+            sdf_offset = max(w * f_pattern_overwrite.y * texture(pattern, vec2(f_pattern_overwrite.x, 0.0)).x, -AA_RADIUS);
+            return f_pattern_overwrite.y * (w * pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
         } else if (uv.x >= f_pattern_overwrite.z) {
             // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
             // see above
-            sdf_offset = max(f_pattern_overwrite.w * texture(pattern, vec2(f_pattern_overwrite.z, 0.0)).x, -AA_RADIUS);
-            return f_pattern_overwrite.w * (pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
+            sdf_offset = max(w * f_pattern_overwrite.w * texture(pattern, vec2(f_pattern_overwrite.z, 0.0)).x, -AA_RADIUS);
+            return f_pattern_overwrite.w * (w * pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
         } else {
             // in allowed range
-            return texture(pattern, uv).x;
+            return w * texture(pattern, uv).x;
         }
     }
 
@@ -21960,7 +21964,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         // f_quad_sdf1.x is the distance from p1, negative in v1 direction.
         vec2 uv = vec2(
-            (f_cumulative_length - f_quad_sdf1.x) / pattern_length,
+            (f_cumulative_length - f_quad_sdf1.x) / (2.0 * f_linewidth * pattern_length),
             0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
         );
 
