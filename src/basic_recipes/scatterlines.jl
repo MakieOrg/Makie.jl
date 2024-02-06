@@ -28,6 +28,8 @@ $(ATTRIBUTES)
     )
 end
 
+conversion_trait(::Type{<: ScatterLines}) = PointBased()
+
 
 function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
 
