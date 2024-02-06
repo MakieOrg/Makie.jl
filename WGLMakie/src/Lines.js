@@ -43,6 +43,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
+
             out highp float f_quad_sdf0;    // invalid / not needed
             out highp vec3 f_quad_sdf1;
             out highp float f_quad_sdf2;    // invalid / not needed
@@ -436,10 +437,22 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // We don't need the z component for these
                 vec2 v0 = v1.xy, v2 = v1.xy;
-                if (isvalid[0])
-                    v0 = normalize(p1.xy - p0.xy);
-                if (isvalid[3])
-                    v2 = normalize(p3.xy - p2.xy);
+                if (isvalid[0]) {
+                    v0 = p1.xy - p0.xy;
+                    float l = length(v0);
+                    v0 /= l;
+                    // Skip joints as a workaround to avoid dissipation of tiny line segments.
+                    // TODO: replace this with skipping points
+                    if (l < 1.0 && segment_length < 1.0)
+                        isvalid[0] = false;
+                }
+                if (isvalid[3]) {
+                    v2 = (p3.xy - p2.xy);
+                    float l = length(v2);
+                    v2 /= l
+                    if (l < 1.0 && segment_length < 1.0)
+                        isvalid[3] = false;
+                }
 
                 // line normals (i.e. in linewidth direction)
                 vec2 n0 = normal_vector(v0);
