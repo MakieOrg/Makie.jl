@@ -27,9 +27,9 @@ pagefind = let
 end
 success(`$pagefind`)
 
-# copy NEWS file over to documentation
+# copy CHANGELOG file over to documentation
 cp(
-    joinpath(@__DIR__, "..", "NEWS.md"),
+    joinpath(@__DIR__, "..", "CHANGELOG.md"),
     joinpath(@__DIR__, "news.md"),
     force = true)
 
