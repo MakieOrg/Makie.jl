@@ -19,7 +19,7 @@ in float f_linelength;
 
 flat in float f_linewidth;
 flat in vec4 f_pattern_overwrite;
-flat in vec2 f_extrusion12;
+flat in vec2 f_extrusion;
 flat in vec2 f_discard_limit;
 flat in vec4 f_color1;
 flat in vec4 f_color2;
@@ -84,7 +84,7 @@ void main(){
 
     // sdf for inside vs outside along the line direction. extrusion makes sure
     // we include enough for a joint
-    float sdf = max(f_quad_sdf1.y - f_extrusion12.y, f_quad_sdf1.x - f_extrusion12.x);
+    float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
 
     // distance in linewidth direction
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
@@ -134,7 +134,7 @@ void main(){
     color.rgb += (2 * mod(f_id.y, 2) - 1) * 0.1;
 
     // mark "outside" define by quad_sdf in black
-    float sdf = max(f_quad_sdf1.x - f_extrusion12.x, f_quad_sdf1.y - f_extrusion12.y);
+    float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
     color.rgb -= vec3(0.4) * step(0.0, sdf);
 

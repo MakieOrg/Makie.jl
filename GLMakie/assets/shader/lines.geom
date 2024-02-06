@@ -27,7 +27,7 @@ out float f_linelength;
 flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
-flat out vec2 f_extrusion12;
+flat out vec2 f_extrusion;
 flat out vec2 f_discard_limit;
 flat out vec4 f_color1;
 flat out vec4 f_color2;
@@ -221,19 +221,14 @@ void main(void)
     vec3 v1 = (p2 - p1);
     float segment_length1 = length(v1.xy);
     v1 /= segment_length1;
-    vec3 v0 = v1;
-    vec3 v2 = v1;
-    float segment_length0 = 0.0, segment_length2 = 0.0;
-    if (p1 != p0 && isvalid[0]) {
-        v0 = (p1 - p0);
-        segment_length0 = length(p1.xy - p0.xy);
-        v0 /= segment_length0;
-    }
-    if (p3 != p2 && isvalid[3]) {
-        v2 = (p3 - p2);
-        segment_length2 = length(p3.xy - p2.xy);
-        v2 /= segment_length2;
-    }
+
+    // depth is irrelevant for these
+    vec2 v0 = v1.xy;
+    vec2 v2 = v1.xy;
+    if (p1 != p0 && isvalid[0])
+        v0 = normalize(p1.xy - p0.xy);
+    if (p3 != p2 && isvalid[3])
+        v2 = normalize(p3.xy - p2.xy);
 
     // Since we are measuring from the center of the line we will need half
     // the thickness/linewidth for most things.
@@ -263,8 +258,8 @@ void main(void)
 
     // Are we truncating the joint?
     bvec2 is_truncated = bvec2(
-        dot(v0.xy, v1.xy) < MITER_LIMIT,
-        dot(v1.xy, v2.xy) < MITER_LIMIT
+        dot(v0, v1.xy) < MITER_LIMIT,
+        dot(v1.xy, v2) < MITER_LIMIT
     );
 
     // How far the line needs to extend to accomodate the joint
@@ -307,7 +302,7 @@ void main(void)
     // if start/end don't elongate
     // if joint skipped elongate to new length
     // if joint elongate a lot to let discard/truncation handle joint
-    f_extrusion12 = vec2(
+    f_extrusion = vec2(
         !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : max(abs(extrusion[0]), halfwidth)),
         !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : max(abs(extrusion[1]), halfwidth))
     );
@@ -360,7 +355,7 @@ void main(void)
             // signed distance of previous segment at shared control point in line
             // direction. Used decide which segments renders which joint fragment.
             // If the left joint is adjusted this sdf is disabled.
-            vertex.quad_sdf0 = isvalid[0] && (abs(adjustment[0]) == 0.0) ? dot(VP1, v0.xy) + 0.5 : 1e12;
+            vertex.quad_sdf0 = isvalid[0] && (abs(adjustment[0]) == 0.0) ? dot(VP1, v0) + 0.5 : 1e12;
 
             // sdf of this segment
             vertex.quad_sdf1.x = dot(VP1, -v1.xy) + 0.5;
@@ -368,7 +363,7 @@ void main(void)
             vertex.quad_sdf1.z = n_offset;
 
             // SDF for next segment, see quad_sdf0
-            vertex.quad_sdf2 = isvalid[3] && (abs(adjustment[1]) == 0.0) ? dot(VP2, -v2.xy) + 0.5 : 1e12;
+            vertex.quad_sdf2 = isvalid[3] && (abs(adjustment[1]) == 0.0) ? dot(VP2, -v2) + 0.5 : 1e12;
 
             // sdf for creating a flat cap on truncated joints
             // (sign(dot(...)) detects if line bends left or right)
