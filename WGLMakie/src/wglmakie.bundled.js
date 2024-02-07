@@ -22062,6 +22062,9 @@ function lines_fragment_shader(uniforms, attributes) {
         color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
     #endif
 
+        if (color.a <= 0.0)
+            discard;
+
         if (picking) {
             if (color.a > 0.1) {
                 fragment_color = pack_int(object_id, f_instance_id);
