@@ -89,7 +89,7 @@ w = pdf.(Normal(), categories .- values)
 fig = Figure()
 
 violin(fig[1,1], categories, values)
-violin(FIg[1,2], categories, values, weights = w)
+violin(fig[1,2], categories, values, weights = w)
 
 fig
 ```
