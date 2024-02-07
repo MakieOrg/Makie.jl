@@ -59,3 +59,16 @@ end
         molecule_plot[:advance] = i
     end
 end
+
+@reference_test "PlotList support" begin
+    struct PlotlistTestType end
+    Makie.plottype(::PlotlistTestType) = Makie.Lines
+    function Makie.convert_arguments(::Type{<: Makie.Lines}, obj::PlotlistTestType)
+        return [
+            Makie.SpecApi.Lines([0, 1], [0, 1]),
+            Makie.SpecApi.Scatter([0.5], [0.5]),
+        ]
+    end
+    plot(PlotlistTestType())
+end
+end
