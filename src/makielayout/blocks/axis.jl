@@ -697,6 +697,10 @@ function to_color(scene::Scene, attribute_name, cycled::Cycled)
     return attr_palette[mod1(index, length(attr_palette))]
 end
 
+function to_color(scene::Scene, attribute_name, cycled::Tuple{<: Cycled, <: Real})
+    return Colors.alphacolor(to_color(scene, attribute_name, cycled[1]), cycled[2])
+end
+
 function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler, palette::Attributes)
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler
