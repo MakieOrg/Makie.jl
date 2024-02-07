@@ -70,7 +70,7 @@ void main(void)
     f_quad_sdf2 = 10.0;             // not joint to next segment
     f_truncation = vec2(-10.0);     // no truncated joint
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0); // no joints to overwrite
-    f_extrusion = vec2(0);        // no joints needing extrusion
+    f_extrusion = vec2(0.5);        // no joints needing extrusion
     f_discard_limit = vec2(10.0);   // no joints needing discards
 
     // constants

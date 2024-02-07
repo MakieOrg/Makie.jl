@@ -21797,8 +21797,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // if joint skipped elongate to new length
                 // if joint elongate a lot to let discard/truncation handle joint
                 f_extrusion = vec2(
-                    !isvalid[0] ? 0.0 : 1e12,
-                    !isvalid[3] ? 0.0 : 1e12
+                    !isvalid[0] ? 0.5 : 1e12,
+                    !isvalid[3] ? 0.5 : 1e12
                 );
 
                 // used to compute width sdf
@@ -21828,6 +21828,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // round seems to fix overdraw/underdraw but introduces slight jitter
                 // round(f * ...) / f reduces jitter but may reintroduce over/underdraw
                 vec3 point = 0.5 * (p1 + p2) + 0.125 * round(8.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
+                // vec3 point = 0.5 * (p1 + p2) + round((v_offset * v1 + n_offset * vec3(n1, 0)));
 
 
                 // SDF's

@@ -307,8 +307,8 @@ void main(void)
     // if joint skipped elongate to new length
     // if joint elongate a lot to let discard/truncation handle joint
     f_extrusion = vec2(
-        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : max(abs(extrusion[0]), halfwidth)),
-        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : max(abs(extrusion[1]), halfwidth))
+        !isvalid[0] ? 0.5 : 1e12,
+        !isvalid[3] ? 0.5 : 1e12
     );
 
     // used to compute width sdf
