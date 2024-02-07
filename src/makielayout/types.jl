@@ -8,14 +8,6 @@ end
 
 struct DataAspect end
 
-
-struct Cycler
-    counters::IdDict{Type, Int}
-end
-
-Cycler() = Cycler(IdDict{Type, Int}())
-
-
 struct Cycle
     cycle::Vector{Pair{Vector{Symbol}, Symbol}}
     covary::Bool
@@ -81,6 +73,26 @@ struct MultiplesTicks
     multiple::Float64
     suffix::String
 end
+
+"""
+    AngularTicks(label_factor, suffix[, n_ideal::Vector{Vec2f}])
+
+Sets up AngularTicks with a predetermined amount of ticks. `label_factor` can be
+used to transform the tick labels from radians to degree. `suffix` is added to
+the end of the generated label strings. `n_ideal` can be used to affect the ideal
+number of ticks. It represents a set of linear function which are combined using
+`mapreduce(v -> v[1] * delta + v[2], min, m.n_ideal)` where
+`delta = maximum(limits) - minimum(limits)`.
+"""
+struct AngularTicks
+    label_factor::Float64
+    suffix::String
+    n_ideal::Vector{Vec2f}
+    function AngularTicks(label_factor, suffix, n_ideal = [Vec2f(0, 9), Vec2f(3.8, 4)])
+        return new(label_factor, suffix, n_ideal)
+    end
+end
+
 
 
 # """
@@ -185,14 +197,12 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
-@Block Axis begin
+@Block Axis <: AbstractAxis begin
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
     targetlimits::Observable{Rect2f}
     finallimits::Observable{Rect2f}
-    cycler::Cycler
-    palette::Attributes
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -310,9 +320,9 @@ end
         "The horizontal and vertical alignment of the yticklabels."
         yticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The size of the xtick marks."
-        xticksize::Float64 = 6f0
+        xticksize::Float64 = 5f0
         "The size of the ytick marks."
-        yticksize::Float64 = 6f0
+        yticksize::Float64 = 5f0
         "Controls if the xtick marks are visible."
         xticksvisible::Bool = true
         "Controls if the ytick marks are visible."
@@ -411,7 +421,7 @@ end
         so that the axis aspect ratio width/height matches `ratio`.
 
         Note that both `DataAspect` and `AxisAspect` can result in excess whitespace around the axis.
-        To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting. 
+        To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting.
         """
         aspect = nothing
         "The vertical alignment of the axis within its suggested bounding box."
@@ -451,12 +461,12 @@ end
         xticks = Makie.automatic
         """
         The formatter for the ticks on the x axis.
-        
+
         Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
         `Makie.get_ticklabels(xtickformat, xtickvalues)` is called. If there is a special method defined,
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `xticks` for more information.
-        
+
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
@@ -485,12 +495,12 @@ end
         yticks = Makie.automatic
         """
         The formatter for the ticks on the y axis.
-        
+
         Usually, the tick values are determined first using `Makie.get_tickvalues`, after which
         `Makie.get_ticklabels(ytickformat, ytickvalues)` is called. If there is a special method defined,
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `yticks` for more information.
-        
+
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
@@ -546,14 +556,14 @@ end
 
         The function `autolimits!` resets the value of `limits` to `(nothing, nothing)` and adjusts the axis limits according
         to the extents of the plots added to the axis.
-        
-        The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, high)` where each value
+
+        The value of `limits` can be a four-element tuple `(xlow, xhigh, ylow, yhigh)` where each value
         can be a real number or `nothing`.
         It can also be a tuple `(x, y)` where `x` and `y` can be `nothing` or a tuple `(low, high)`.
         In all cases, `nothing` means that the respective limit values will be automatically determined.
 
         Automatically determined limits are also influenced by `xautolimitmargin` and `yautolimitmargin`.
-        
+
         The convenience functions `xlims!` and `ylims!` allow to set only the x or y part of `limits`.
         The function `limits!` is another option to set both x and y simultaneously.
         """
@@ -569,7 +579,7 @@ end
         "The alignment of x minor ticks on the axis spine"
         xminortickalign::Float64 = 0f0
         "The tick size of x minor ticks"
-        xminorticksize::Float64 = 4f0
+        xminorticksize::Float64 = 3f0
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
@@ -588,7 +598,7 @@ end
         "The alignment of y minor ticks on the axis spine"
         yminortickalign::Float64 = 0f0
         "The tick size of y minor ticks"
-        yminorticksize::Float64 = 4f0
+        yminorticksize::Float64 = 3f0
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
@@ -609,14 +619,14 @@ end
         `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
-        
+
         If the scaling function is only defined over a limited interval,
         no plot object may have a source datum that lies outside of that range.
         For example, there may be no x value lower than or equal to 0 when `log`
         is selected for `xscale`. What matters are the source data, not the user-selected
         limits, because all data have to be transformed, irrespective of whether they
         lie inside or outside of the current limits.
-        
+
         The axis scale may affect tick finding and formatting, depending
         on the values of `xticks` and `xtickformat`.
         """
@@ -628,14 +638,14 @@ end
         `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
-        
+
         If the scaling function is only defined over a limited interval,
         no plot object may have a source datum that lies outside of that range.
         For example, there may be no y value lower than or equal to 0 when `log`
         is selected for `yscale`. What matters are the source data, not the user-selected
         limits, because all data have to be transformed, irrespective of whether they
         lie inside or outside of the current limits.
-        
+
         The axis scale may affect tick finding and formatting, depending
         on the values of `yticks` and `ytickformat`.
         """
@@ -651,7 +661,7 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = false,
+    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = NoShading,
                  inspectable = false, visible=r.active, transparency=true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
@@ -693,7 +703,7 @@ end
         "The color of the tick labels."
         ticklabelcolor = @inherit(:textcolor, :black)
         "The size of the tick marks."
-        ticksize = 6f0
+        ticksize = 5f0
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
@@ -750,36 +760,40 @@ end
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
+
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
         "The range of values depicted in the colorbar."
         limits = nothing
         "The range of values depicted in the colorbar."
         colorrange = nothing
-        "The align mode of the colorbar in its parent GridLayout."
-        alignmode = Inside()
-        "The number of steps in the heatmap underlying the colorbar gradient."
-        nsteps = 100
         "The color of the high clip triangle."
         highclip = nothing
         "The color of the low clip triangle."
         lowclip = nothing
+        "The axis scale"
+        scale = identity
+
+
+        "The align mode of the colorbar in its parent GridLayout."
+        alignmode = Inside()
+        "The number of steps in the heatmap underlying the colorbar gradient."
+        nsteps = 100
+
         "Controls if minor ticks are visible"
         minorticksvisible = false
         "The alignment of minor ticks on the axis spine"
         minortickalign = 0f0
         "The tick size of minor ticks"
-        minorticksize = 4f0
+        minorticksize = 3f0
         "The tick width of minor ticks"
         minortickwidth = 1f0
         "The tick color of minor ticks"
         minortickcolor = :black
         "The tick locator for the minor ticks"
         minorticks = IntervalsBetween(5)
-        "The axis scale"
-        scale = identity
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
-        size = 16
+        size = 12
     end
 end
 
@@ -832,14 +846,16 @@ end
         valign = :center
         "The horizontal alignment of the rectangle in its suggested boundingbox"
         halign = :center
-        "The extra space added to the sides of the rectangle boundingbox."
-        padding = (0f0, 0f0, 0f0, 0f0)
         "The line width of the rectangle's border."
         strokewidth = 1f0
         "Controls if the border of the rectangle is visible."
         strokevisible = true
         "The color of the border."
         strokecolor = RGBf(0, 0, 0)
+        "The linestyle of the rectangle border"
+        linestyle = nothing
+        "The radius of the rounded corner. One number is for all four corners, four numbers for going clockwise from top-right."
+        cornerradius = 0.0
         "The width setting of the rectangle."
         width = nothing
         "The height setting of the rectangle."
@@ -875,7 +891,7 @@ end
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
         value = 0
         "The width of the slider line"
-        linewidth::Float32 = 15
+        linewidth::Float32 = 10
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."
@@ -939,7 +955,7 @@ end
         "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
         interval = (0, 0)
         "The width of the slider line"
-        linewidth::Float64 = 15.0
+        linewidth::Float64 = 10.0
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."
@@ -962,7 +978,7 @@ end
         "The vertical alignment of the button in its suggested boundingbox"
         valign = :center
         "The extra space added to the sides of the button label's boundingbox."
-        padding = (10f0, 10f0, 10f0, 10f0)
+        padding = (8f0, 8f0, 8f0, 8f0)
         "The font size of the button label."
         fontsize = @inherit(:fontsize, 16f0)
         "The text of the button label."
@@ -1011,9 +1027,9 @@ end
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
         "The width of the toggle."
-        width = 60
+        width = 32
         "The height of the toggle."
-        height = 28
+        height = 18
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -1075,13 +1091,13 @@ end
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
-        dropdown_arrow_size = 20
+        dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
         fontsize = @inherit(:fontsize, 16f0)
         "Padding of entry texts"
-        textpadding = (10, 10, 10, 10)
+        textpadding = (8, 10, 8, 8)
         "Color of entry texts"
         textcolor = :black
         "The opening direction of the menu (:up or :down)"
@@ -1160,11 +1176,13 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "The vertical alignment of the entry labels."
         labelvalign = :center
         "The additional space between the legend content and the border."
-        padding = (10f0, 10f0, 8f0, 8f0)
+        padding = (6f0, 6f0, 6f0, 6f0)
         "The additional space between the legend and its suggested boundingbox."
         margin = (0f0, 0f0, 0f0, 0f0)
+        "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
+        bgcolor = nothing
         "The background color of the legend."
-        bgcolor = :white
+        backgroundcolor = :white
         "The color of the legend border."
         framecolor = :black
         "The line width of the legend border."
@@ -1195,10 +1213,18 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linewidth = theme(scene, :linewidth)
         "The default line color used for LineElements"
         linecolor = theme(scene, :linecolor)
+        "The default colormap for LineElements"
+        linecolormap = theme(scene, :colormap)
+        "The default colorrange for LineElements"
+        linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
+        "The default marker colormap for MarkerElements"
+        markercolormap = theme(scene, :colormap)
+        "The default marker colorrange for MarkerElements"
+        markercolorrange = automatic
         "The default marker for MarkerElements"
         marker = theme(scene, :marker)
         "The default marker points used for MarkerElements in normalized coordinates relative to each label patch."
@@ -1217,6 +1243,10 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolor = theme(scene, :patchcolor)
         "The default poly stroke color used for PolyElements."
         polystrokecolor = theme(scene, :patchstrokecolor)
+        "The default colormap for PolyElements"
+        polycolormap = theme(scene, :colormap)
+        "The default colorrange for PolyElements"
+        polycolorrange = automatic
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."
@@ -1232,7 +1262,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
     end
 end
 
-@Block LScene begin
+@Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
         "The height setting of the scene."
@@ -1307,13 +1337,13 @@ end
         "Color of the box border when focused and invalid."
         bordercolor_focused_invalid = RGBf(1, 0, 0)
         "Width of the box border."
-        borderwidth = 2f0
+        borderwidth = 1f0
         "Padding of the text against the box."
-        textpadding = (10, 10, 10, 10)
+        textpadding = (8, 8, 8, 8)
         "If the textbox is focused and receives text input."
         focused = false
         "Corner radius of text box."
-        cornerradius = 8
+        cornerradius = 5
         "Corner segments of one rounded corner."
         cornersegments = 20
         "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."
@@ -1325,15 +1355,13 @@ end
     end
 end
 
-@Block Axis3 begin
+@Block Axis3 <: AbstractAxis begin
     scene::Scene
     finallimits::Observable{Rect3f}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
-    cycler::Cycler
-    palette::Attributes
     @attributes begin
         "The height setting of the scene."
         height = nothing
@@ -1501,6 +1529,12 @@ end
         ytickwidth = 1
         "The z tick width"
         ztickwidth = 1
+        "The size of the xtick marks."
+        xticksize::Float64 = 6
+        "The size of the ytick marks."
+        yticksize::Float64 = 6
+        "The size of the ztick marks."
+        zticksize::Float64 = 6
         "The color of x spine 1 where the ticks are displayed"
         xspinecolor_1 = :black
         "The color of y spine 1 where the ticks are displayed"
@@ -1537,7 +1571,19 @@ end
         ygridvisible = true
         "Controls if the z grid is visible"
         zgridvisible = true
-        "The protrusions on the sides of the axis, how much gap space is reserved for labels etc."
+        """
+        The protrusions control how much gap space is reserved for labels etc. on the sides of the `Axis3`.
+        Unlike `Axis`, `Axis3` currently does not set these values automatically depending on the properties
+        of ticks and labels. This is because the effective protrusions also depend on the rotation and scaling
+        of the axis cuboid, which changes whenever the `Axis3` shifts in the layout. Therefore, auto-updating
+        protrusions could lead to an endless layout update cycle.
+
+        The default value of `30` for all sides is just a heuristic and might lead to collisions of axis
+        decorations with the `Figure` boundary or other plot elements. If that's the case, you can try increasing
+        the value(s).
+
+        The `protrusions` attribute accepts a single number for all sides, or a tuple of `(left, right, bottom, top)`.
+        """
         protrusions = 30
         "The x ticks"
         xticks = WilkinsonTicks(5; k_min = 3)
@@ -1587,5 +1633,228 @@ end
         yautolimitmargin = (0.05, 0.05)
         "The relative margins added to the autolimits in z direction."
         zautolimitmargin = (0.05, 0.05)
+        "Controls if the x axis goes rightwards (false) or leftwards (true) in default camera orientation."
+        xreversed::Bool = false
+        "Controls if the y axis goes leftwards (false) or rightwards (true) in default camera orientation."
+        yreversed::Bool = false
+        "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
+        zreversed::Bool = false
+    end
+end
+
+@Block PolarAxis <: AbstractAxis begin
+    scene::Scene
+    overlay::Scene
+    target_rlims::Observable{Tuple{Float64, Float64}}
+    target_thetalims::Observable{Tuple{Float64, Float64}}
+    target_theta_0::Observable{Float32}
+    target_r0::Observable{Float32}
+    @attributes begin
+        # Generic
+
+        "The height setting of the scene."
+        height = nothing
+        "The width setting of the scene."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight::Bool = true
+        "The horizontal alignment of the scene in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the scene in its suggested bounding box."
+        valign = :center
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
+
+        # Background / clip settings
+
+        "The background color of the axis."
+        backgroundcolor = inherit(scene, :backgroundcolor, :white)
+        "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
+        sample_density::Int = 120
+        "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
+        clip::Bool = true
+        "Sets the color of the clip polygon. Mainly for debug purposes."
+        clipcolor = automatic
+
+        # Limits & transformation settings
+
+        "The radial limits of the PolarAxis. "
+        rlimits = (:origin, nothing)
+        "The angle limits of the PolarAxis. (0.0, 2pi) results a full circle. (nothing, nothing) results in limits picked based on plot limits."
+        thetalimits = (0.0, 2pi)
+        "The direction of rotation. Can be -1 (clockwise) or 1 (counterclockwise)."
+        direction::Int = 1
+        "The angular offset for (1, 0) in the PolarAxis. This rotates the axis."
+        theta_0::Float32 = 0f0
+        "Sets the radius at the origin of the PolarAxis such that `r_out = r_in - radius_at_origin`. Can be set to `automatic` to match rmin. Note that this will affect the shape of plotted objects."
+        radius_at_origin = automatic
+        "Controls the argument order of the Polar transform. If `theta_as_x = true` it is (θ, r), otherwise (r, θ)."
+        theta_as_x::Bool = true
+        "Controls whether `r < 0` (after applying `radius_at_origin`) gets clipped (true) or not (false)."
+        clip_r::Bool = true
+        "The relative margins added to the autolimits in r direction."
+        rautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
+        "The relative margins added to the autolimits in theta direction."
+        thetaautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
+
+        # Spine
+
+        "The width of the spine."
+        spinewidth::Float32 = 2
+        "The color of the spine."
+        spinecolor = :black
+        "Controls whether the spine is visible."
+        spinevisible::Bool = true
+        "The linestyle of the spine."
+        spinestyle = nothing
+
+        # r ticks
+
+        "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis."
+        rticks = LinearTicks(4)
+        "The specifier for the minor `r` ticks."
+        rminorticks = IntervalsBetween(2)
+        "The formatter for the `r` ticks"
+        rtickformat = Makie.automatic
+        "The fontsize of the `r` tick labels."
+        rticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), 16)
+        "The font of the `r` tick labels."
+        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the `r` tick labels."
+        rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
+        "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
+        rticklabelstrokewidth::Float32 = 0.0
+        "The color of the outline of `r` ticks. By default this uses the background color."
+        rticklabelstrokecolor = automatic
+        "Padding of the `r` ticks label."
+        rticklabelpad::Float32 = 4f0
+        "Controls if the `r` ticks are visible."
+        rticklabelsvisible::Bool = inherit(scene, (:Axis, :xticklabelsvisible), true)
+        "The angle in radians along which the `r` ticks are printed."
+        rtickangle = automatic
+        """
+        Sets the rotation of `r` tick labels.
+
+        Options:
+        - `:radial` rotates labels based on the angle they appear at
+        - `:horizontal` keeps labels at a horizontal orientation
+        - `:aligned` rotates labels based on the angle they appear at but keeps them up-right and close to horizontal
+        - `automatic` uses `:horizontal` when theta limits span >1.9pi and `:aligned` otherwise
+        - `::Real` sets the label rotation to a specific value
+        """
+        rticklabelrotation = automatic
+
+        # Theta ticks
+
+        "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
+        thetaticks = AngularTicks(180/pi, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        "The specifier for the minor `theta` ticks."
+        thetaminorticks = IntervalsBetween(2)
+        "The formatter for the `theta` ticks."
+        thetatickformat = Makie.automatic
+        "The fontsize of the `theta` tick labels."
+        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), 16)
+        "The font of the `theta` tick labels."
+        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the `theta` tick labels."
+        thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
+        "Padding of the `theta` ticks label."
+        thetaticklabelpad::Float32 = 4f0
+        "The width of the outline of `theta` ticks. Setting this to 0 will remove the outline."
+        thetaticklabelstrokewidth::Float32 = 0.0
+        "The color of the outline of `theta` ticks. By default this uses the background color."
+        thetaticklabelstrokecolor = automatic
+        "Controls if the `theta` ticks are visible."
+        thetaticklabelsvisible::Bool = inherit(scene, (:Axis, :yticklabelsvisible), true)
+        "Sets whether shown theta ticks get normalized to a -2pi to 2pi range. If not, the limits such as (2pi, 4pi) will be shown as that range."
+        normalize_theta_ticks::Bool = true
+
+        # r minor and major grid
+
+        "Sets the z value of grid lines. To place the grid above plots set this to a value between 1 and 8999."
+        gridz::Float32 = -100
+
+        "The color of the `r` grid."
+        rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
+        "The linewidth of the `r` grid."
+        rgridwidth::Float32 = inherit(scene, (:Axis, :xgridwidth), 1)
+        "The linestyle of the `r` grid."
+        rgridstyle = inherit(scene, (:Axis, :xgridstyle), nothing)
+        "Controls if the `r` grid is visible."
+        rgridvisible::Bool = inherit(scene, (:Axis, :xgridvisible), true)
+
+        "The color of the `r` minor grid."
+        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
+        "The linewidth of the `r` minor grid."
+        rminorgridwidth::Float32 = inherit(scene, (:Axis, :xminorgridwidth), 1)
+        "The linestyle of the `r` minor grid."
+        rminorgridstyle = inherit(scene, (:Axis, :xminorgridstyle), nothing)
+        "Controls if the `r` minor grid is visible."
+        rminorgridvisible::Bool = inherit(scene, (:Axis, :xminorgridvisible), false)
+
+        # Theta minor and major grid
+
+        "The color of the `theta` grid."
+        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
+        "The linewidth of the `theta` grid."
+        thetagridwidth::Float32 = inherit(scene, (:Axis, :ygridwidth), 1)
+        "The linestyle of the `theta` grid."
+        thetagridstyle = inherit(scene, (:Axis, :ygridstyle), nothing)
+        "Controls if the `theta` grid is visible."
+        thetagridvisible::Bool = inherit(scene, (:Axis, :ygridvisible), true)
+
+
+        "The color of the `theta` minor grid."
+        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        "The linewidth of the `theta` minor grid."
+        thetaminorgridwidth::Float32 = inherit(scene, (:Axis, :yminorgridwidth), 1)
+        "The linestyle of the `theta` minor grid."
+        thetaminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
+        "Controls if the `theta` minor grid is visible."
+        thetaminorgridvisible::Bool = inherit(scene, (:Axis, :yminorgridvisible), false)
+
+        # Title
+
+        "The title of the plot"
+        title = ""
+        "The gap between the title and the top of the axis"
+        titlegap::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
+        "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
+        titlealign = :center
+        "The fontsize of the title."
+        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
+        "The font of the title."
+        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the title."
+        titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
+        "Controls if the title is visible."
+        titlevisible::Bool = inherit(scene, (:Axis, :titlevisible), true)
+
+        # Interactive Controls
+
+        "Sets the speed of scroll based zooming. Setting this to 0 effectively disables zooming."
+        zoomspeed::Float32 = 0.1
+        "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
+        rzoomkey = Keyboard.r
+        "Sets the key used to restrict zooming to the theta-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
+        thetazoomkey = Keyboard.t
+        "Controls whether rmin remains fixed during zooming and translation. (The latter will be turned off by setting this to true.)"
+        fixrmin::Bool = true
+        "Controls whether adjusting the rlimits through interactive zooming is blocked."
+        rzoomlock::Bool = false
+        "Controls whether adjusting the thetalimits through interactive zooming is blocked."
+        thetazoomlock::Bool = true
+        "Sets the mouse button for translating the plot in r-direction."
+        r_translation_button = Mouse.right
+        "Sets the mouse button for translating the plot in theta-direction. Note that this can be the same as `radial_translation_button`."
+        theta_translation_button = Mouse.right
+        "Sets the button for rotating the PolarAxis as a whole. This replaces theta translation when triggered and must include a mouse button."
+        axis_rotation_button = Keyboard.left_control & Mouse.right
+        "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
+        reset_button = Keyboard.left_control & Mouse.left
+        "Sets whether the axis orientation (changed with the axis_rotation_button) gets reset when resetting the axis. If set to false only the limits will reset."
+        reset_axis_orientation::Bool = false
     end
 end

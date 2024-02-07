@@ -20,7 +20,10 @@ end
 using Makie
 
 function html_docstring(fname)
-    doc = Base.doc(getfield(Makie, Symbol(fname)))
+    fname == :SpecApi && return ""
+    obj = getfield(Makie, Symbol(fname))
+    obj isa Module && return "" # modules usually don't have docstrings and have READMEs copied in otherwise, which is messy
+    doc = Base.doc(obj)
     body = Markdown.html(doc)
 
     # body = fd2html(replace(txt, raw"$" => raw"\$"), internal = true)
@@ -43,6 +46,7 @@ function env_showhtml(com, _)
     name = "example_$(hash(code))"
     str = """
     ```julia:$name
+    using Makie.LaTeXStrings: @L_str # hide
     __result = begin # hide
         $code
     end # hide
@@ -65,7 +69,8 @@ function env_examplefigure(com, _)
 
     kwargs = eval(Meta.parse("Dict(pairs((;" * Franklin.content(com.braces[1]) * ")))"))
 
-    name = pop!(kwargs, :name, "example_" * string(hash(content)))
+    hash_8 = repr(hash(content))[3:10]
+    name = pop!(kwargs, :name, "example_" * hash_8)
     svg = pop!(kwargs, :svg, false)
 
     rest_kwargs_str = join(("$key = $(repr(val))" for (key, val) in kwargs), ", ")
@@ -80,23 +85,55 @@ function env_examplefigure(com, _)
     push!(pngsvec, pngfile)
 
     str = """
-    ```julia:example_figure
-    __result = begin # hide
+    ```julia:$name
+    using Makie.LaTeXStrings: @L_str                       # hide
+    __result = begin                                       # hide
         $code
-    end # hide
-    save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide
-    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str) # hide" : "")
+    end                                                    # hide
+    sz = size(Makie.parent_scene(__result))                # hide
+    open(joinpath(@OUTPUT, "$(name)_size.txt"), "w") do io # hide
+        print(io, sz[1], " ", sz[2])                       # hide
+    end                                                    # hide
+    save(joinpath(@OUTPUT, "$pngfile"), __result; px_per_unit = 2, pt_per_unit = 0.75, $rest_kwargs_str) # hide
+    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; px_per_unit = 2, pt_per_unit = 0.75, $rest_kwargs_str)" : "") # hide
     nothing # hide
     ```
     ~~~
     <a id="$name">
     ~~~
-    \\fig{$name.$(svg ? "svg" : "png")}
+    {{examplefig $name.$(svg ? "svg" : "png")}}
     ~~~
     </a>
     ~~~
     """
     return str
+end
+
+# this function inserts an image generated within `env_examplefigure` and annotates
+# the img tag with the size of the source figure, which it reads from a text file that
+# `env_examplefigure` writes into the output folder when running the code.
+# this is a bit convoluted but we don't have direct access to Franklin's code running mechanism.
+# Maybe in the future, it wouldn't be too hard to just run the code ourselves from within `env_examplefigure`
+# and then we could use the resulting size directly
+@delay function hfun_examplefig(params)
+    if length(params) != 1
+        error("\\examplefig needs exactly one argument, got $params")
+    end
+    filename = only(params)
+    name, ext = splitext(filename)
+
+    file_location = locvar("fd_rpath")
+    pathparts = split(file_location, r"\\|/")
+    relative_site_path, _ = splitext(joinpath(pathparts))
+    relative_asset_path = joinpath("assets", relative_site_path, "code", "output")
+    asset_path = joinpath(Franklin.path(:site), relative_asset_path)
+    size_file = joinpath(asset_path, name * "_size.txt")
+    width, height = parse.(Int, split(read(size_file, String)))
+    relative_figure_path = joinpath(relative_asset_path, filename)
+    
+    """
+    <img width="$width" height="$height" src="/$relative_figure_path">
+    """
 end
 
 # \video{name [, autoplay = false, loop = true, controls = true]}
@@ -396,10 +433,6 @@ end
 
             print(io, "</div>")
 
-            if active
-                print(io, contenttable())
-            end
-
             printlist(io, naventry.children, this_level)
             print(io, "</li>\n")
         end
@@ -410,16 +443,24 @@ end
 end
 
 
-function contenttable()
-    isempty(Franklin.PAGE_HEADERS) && return ""
+function hfun_contenttable()
+
+    headers = collect(Franklin.PAGE_HEADERS)
+
+    # remove first heading 1
+    if !isempty(headers) && headers[1][2][3] == 1
+        headers = headers[2:end]
+    end
+
+    isempty(headers) && return ""
 
     return sprint() do io
 
         println(io, """<ul class="page-content">""")
 
-        order_stack = [first(Franklin.PAGE_HEADERS)[2][3]]
+        order_stack = [first(headers)[2][3]]
 
-        for (key, val) in Franklin.PAGE_HEADERS
+        for (key, val) in headers
             order = val[3]
 
             n_steps_up = count(>=(order), order_stack)
@@ -463,7 +504,7 @@ function lx_attrdocs(lxc, _)
         println(io)
         println(io, "Defaults to `$default_str`")
         println(io)
-        
+
         if docs === nothing
             println(io, "No docstring defined for attribute `$attrkey`.")
         else
@@ -485,10 +526,9 @@ function lx_attrdocs(lxc, _)
             println(io, "\\end{examplefigure}")
             println(io)
         end
-        
+
         println(io)
     end
 
     return String(take!(io))
 end
-

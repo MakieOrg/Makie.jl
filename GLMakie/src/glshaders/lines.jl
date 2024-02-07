@@ -72,9 +72,9 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         total_length::Int32 = const_lift(x-> Int32(length(x)), position)
         vertex              = p_vec => GLBuffer
         intensity           = nothing
+        color               = nothing => GLBuffer
         color_map           = nothing => Texture
         color_norm          = nothing
-        color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
         thickness           = 2f0 => GLBuffer
         pattern             = nothing
         pattern_sections    = pattern => Texture
@@ -132,7 +132,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         fast                = false
         indices             = const_lift(length, positions) => to_index_buffer
         # TODO update boundingbox
-        transparency = false
+        transparency        = false
         shader              = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
@@ -145,14 +145,15 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         gl_primitive   = GL_LINES
         pattern_length = 1f0
     end
-    if !isa(pattern, Texture) && pattern !== nothing
-        if !isa(pattern, Vector)
-            error("Pattern needs to be a Vector of floats")
+    if !isa(pattern, Texture) && to_value(pattern) !== nothing
+        if !isa(to_value(pattern), Vector)
+            error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
         end
-        tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
+        tex = GLAbstraction.Texture(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
         data[:pattern] = tex
-        data[:pattern_length] = Float32((last(pattern) - first(pattern)))
+        data[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
     end
-    return assemble_shader(data)
+    robj = assemble_shader(data)
+    return robj
 end
 @specialize

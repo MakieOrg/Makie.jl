@@ -31,7 +31,9 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Lines)
 end
 
 function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
-    points = decompose(Point3f, to_value(plot[1]))
+    arg1 = to_value(plot[1])
+    isempty(arg1) && return nothing
+    points = decompose(Point3f, arg1)
     segments = TupleView{2,2}(RPR.rpr_int(0):RPR.rpr_int(length(points) - 1))
     indices = RPR.rpr_int[]
 

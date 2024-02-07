@@ -26,21 +26,42 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
+get_scene(gp::GridLayoutBase.GridPosition) = get_scene(get_figure(gp))
+get_scene(gp::GridLayoutBase.GridSubposition) = get_scene(get_figure(gp))
+
+
 
 const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
-Base.@deprecate_binding _current_figure CURRENT_FIGURE
-
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 
-"Returns the current active figure (or the last figure that got created)"
+"""
+    current_figure()
+
+Returns the current active figure (or the last figure created).
+Returns `nothing` if there is no current active figure.
+"""
 current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
-"Set `fig` as the current active scene"
+
+"""
+    current_figure!(fig)
+
+Set `fig` as the current active figure.
+"""
 current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
 
-"Returns the current active axis (or the last axis that got created)"
+"""
+    current_axis()
+
+Returns the current active axis (or the last axis created). Returns `nothing` if there is no current active axis.
+"""
 current_axis() = current_axis(current_figure())
+current_axis(::Nothing) = nothing
 current_axis(fig::Figure) = fig.current_axis[]
-"Set `ax` as the current active axis in `fig`"
+"""
+    current_axis!(fig::Figure, ax)
+
+Set `ax` as the current active axis in `fig`.
+"""
 function current_axis!(fig::Figure, ax)
     if ax.parent !== fig
         error("This axis' parent is not the given figure")
@@ -53,6 +74,11 @@ function current_axis!(fig::Figure, ::Nothing)
     fig.current_axis[] = nothing
 end
 
+"""
+    current_axis!(ax)
+
+Set an axis `ax`, which must be part of a figure, as the figure's current active axis.
+"""
 function current_axis!(ax)
     fig = ax.parent
     if !(fig isa Figure)
@@ -73,13 +99,13 @@ function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
-    scene = Scene(; camera=campixel!, kwargs_dict...)
+    scene = Scene(; camera=campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
-    alignmode = lift(Outside ∘ to_rectsides, scene, padding)
+    alignmode = lift(Outside ∘ to_rectsides, padding)
 
     layout = GridLayout(scene)
 
-    on(scene, alignmode) do al
+    on(alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end
@@ -158,10 +184,7 @@ function resize_to_layout!(fig::Figure)
 end
 
 function Base.empty!(fig::Figure)
-    screens = copy(fig.scene.current_screens)
     empty!(fig.scene)
-    # The empty! api doesn't gracefully handle screens for e.g. the figure scene which is supposed to be still used!
-    append!(fig.scene.current_screens, screens)
     empty!(fig.scene.events)
     foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
     trim!(fig.layout)
@@ -174,7 +197,7 @@ end
 # Layouts are already hooked up to this, so it's very simple.
 """
     resize!(fig::Figure, width, height)
-Resizes the given `Figure` to the resolution given by `width` and `height`.
+Resizes the given `Figure` to the size given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
-Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)
+Makie.resize!(figure::Figure, width::Integer, height::Integer) = resize!(figure.scene, width, height)

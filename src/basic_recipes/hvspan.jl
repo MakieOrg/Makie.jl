@@ -48,9 +48,8 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     mi = p isa HSpan ? p.xmin : p.ymin
     ma = p isa HSpan ? p.xmax : p.ymax
-    
+
     onany(limits, p[1], p[2], mi, ma, transf) do lims, lows, highs, mi, ma, transf
-        inv = inverse_transform(transf)
         empty!(rects[])
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)
@@ -58,14 +57,14 @@ function Makie.plot!(p::Union{HSpan, VSpan})
             if p isa HSpan
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
-                x_mi = _apply_x_transform(inv, x_mi)
-                x_ma = _apply_x_transform(inv, x_ma)
+                low  = _apply_y_transform(transf, low)
+                high = _apply_y_transform(transf, high)
                 push!(rects[], Rect2f(Point2f(x_mi, low), Vec2f(x_ma - x_mi, high - low)))
             elseif p isa VSpan
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
-                y_mi = _apply_y_transform(inv, y_mi)
-                y_ma = _apply_y_transform(inv, y_ma)
+                low  = _apply_x_transform(transf, low)
+                high = _apply_x_transform(transf, high)
                 push!(rects[], Rect2f(Point2f(low, y_mi), Vec2f(high - low, y_ma - y_mi)))
             end
         end
@@ -74,7 +73,12 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     notify(p[1])
 
-    poly!(p, rects; p.attributes...)
+    poly_attributes = copy(p.attributes)
+    foreach(x-> delete!(poly_attributes, x), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
+
+    # we handle transform_func manually
+    poly_attributes[:transformation] = Transformation(p, transform_func = identity)
+    poly!(p, poly_attributes, rects)
     p
 end
 
@@ -84,3 +88,24 @@ _apply_x_transform(other, v) = error("x transform not defined for transform func
 _apply_y_transform(t::Tuple, v) = apply_transform(t[2], v)
 _apply_y_transform(other, v) = error("y transform not defined for transform function $(typeof(other))")
 _apply_y_transform(::typeof(identity), v) = v
+
+
+function data_limits(p::HSpan)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
+    ymin = minimum(p[1][])
+    ymax = maximum(p[2][])
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+end
+
+function data_limits(p::VSpan)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin = minimum(p[1][])
+    xmax = maximum(p[2][])
+    ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+end

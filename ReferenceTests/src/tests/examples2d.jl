@@ -13,7 +13,7 @@ end
 end
 
 @reference_test "heatmap_interpolation" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
     data = RNG.rand(32, 32)
     # the grayscale heatmap hides the problem that interpolation based on values
     # in GLMakie looks different than interpolation based on colors in CairoMakie
@@ -47,7 +47,7 @@ end
 
 @reference_test "Arrows on hemisphere" begin
     s = Sphere(Point3f(0), 0.9f0)
-    fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
+    fig, ax, meshplot = mesh(s)
     pos = decompose(Point3f, s)
     dirs = decompose_normals(s)
     arrows!(ax, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
@@ -110,7 +110,7 @@ end
         5 8 9;
     ]
     color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=false)
+    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=NoShading)
     wireframe!(ax, meshplot[1], color=(:black, 0.6), linewidth=3)
     fig
 end
@@ -118,7 +118,7 @@ end
 @reference_test "colored triangle" begin
     mesh(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color=[:red, :green, :blue],
-        shading=false
+        shading=NoShading
     )
 end
 
@@ -197,7 +197,7 @@ end
 
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
-    sf = Observable(Base.Fix2(v, 0e0))
+    sf = Observable(Base.Fix2(v, 0.0))
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2, colormap=:magma, axis=(;title=title_str))
@@ -360,7 +360,7 @@ end
 
 
 @reference_test "Simple pie chart" begin
-    fig = Figure(resolution=(800, 800))
+    fig = Figure(size=(800, 800))
     pie(fig[1, 1], 1:5, color=collect(1:5), axis=(;aspect=DataAspect()))
     fig
 end
@@ -420,7 +420,7 @@ end
 @reference_test "space 2D" begin
     # This should generate a regular grid with text in a circle in a box. All
     # sizes and positions are scaled to be equal across all options.
-    fig = Figure(resolution = (700, 700))
+    fig = Figure(size = (700, 700))
     ax = Axis(fig[1, 1], width = 600, height = 600)
     spaces = (:data, :pixel, :relative, :clip)
     xs = [
@@ -435,7 +435,7 @@ end
             s = 1.5scales[i]
             mesh!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space,
-                shading = false, color = :blue)
+                shading = NoShading, color = :blue)
             lines!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
@@ -462,7 +462,7 @@ end
     # - (x -> data) row should have stretched circle and text ain x direction
     # - (not data -> data) should keep aspect ratio for mesh and lines
     # - (data -> x) should be slightly missaligned with (not data -> x)
-    fig = Figure(resolution = (700, 700))
+    fig = Figure(size = (700, 700))
     ax = Axis(fig[1, 1], width = 600, height = 600)
     spaces = (:data, :pixel, :relative, :clip)
     xs = [
@@ -477,7 +477,7 @@ end
             s = 1.5scales[i]
             mesh!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space,
-                shading = false, color = :blue)
+                shading = NoShading, color = :blue)
             lines!(
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
@@ -496,7 +496,7 @@ end
 @reference_test "Scatter & Text transformations" begin
     # Check that transformations apply in `space = :data`
     fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
-    t = text!(Point2f(100, 0.5), text = "Test", fontsize = 50)
+    t = text!(Point2f(100, 0.5), text = "Test", fontsize = 50, transform_marker=true)
     translate!(p, -100, 0, 0)
     translate!(t, -100, 0, 0)
 
@@ -506,7 +506,7 @@ end
     scale!(p2, 0.5, 0.5, 1)
 
     # but do act on glyphs of text
-    t2 = text!(ax, 1, 0, text = "Test", fontsize = 50)
+    t2 = text!(ax, 1, 0, text = "Test", fontsize = 50, transform_marker=true)
     Makie.rotate!(t2, pi/4)
     scale!(t2, 0.5, 0.5, 1)
 
@@ -530,11 +530,11 @@ end
 end
 
 @reference_test "2D surface with explicit color" begin
-    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = NoShading)
 end
 
 @reference_test "heatmap and image colormap interpolation" begin
-    f = Figure(resolution=(500, 500))
+    f = Figure(size=(500, 500))
     crange = LinRange(0, 255, 10)
     len = length(crange)
     img = zeros(Float32, len, len + 2)
@@ -561,7 +561,7 @@ end
     n = 100
     categorical = [false, true]
     scales = [exp, identity, log, log10]
-    fig = Figure(resolution = (500, 250))
+    fig = Figure(size = (500, 250))
     ax = Axis(fig[1, 1])
     for (i, cat) in enumerate(categorical)
         for (j, scale) in enumerate(scales)
@@ -580,12 +580,49 @@ end
 
 @reference_test "colormap with specific values" begin
     cmap = cgrad([:black,:white,:orange],[0,0.2,1])
-    fig = Figure(resolution=(400,200))
+    fig = Figure(size=(400,200))
     ax = Axis(fig[1,1])
     x = range(0,1,length=50)
     scatter!(fig[1,1],Point2.(x,fill(0.,50)),color=x,colormap=cmap)
     hidedecorations!(ax)
     Colorbar(fig[2,1],vertical=false,colormap=cmap)
+    fig
+end
+
+@reference_test "colorscale (heatmap)" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    fig, ax, hm = heatmap(x, y, (x, y) -> x; axis = (; xscale = log10), colorscale = log10)
+    Colorbar(fig[1, 2], hm)
+    fig
+end
+
+@reference_test "colorscale (lines)" begin
+    xs = 0:0.01:10
+    ys = 2 .* (1 .+ sin.(xs))
+    fig = Figure()
+    lines(fig[1, 1], xs, ys; linewidth=50, color=ys, colorscale=identity)
+    lines(fig[2, 1], xs, ys; linewidth=50, color=ys, colorscale=sqrt)
+    fig
+end
+
+@reference_test "colorscale (scatter)" begin
+    xs = range(0, 10; length = 30)
+    ys = 0.5 .* sin.(xs)
+    color = (1:30) .^ 2
+    markersize = 100
+    fig = Figure()
+    scatter(fig[1, 1], xs, ys; markersize, color, colorscale = identity)
+    scatter(fig[2, 1], xs, ys; markersize, color, colorscale = log10)
+    fig
+end
+
+@reference_test "colorscale (hexbin)" begin
+    x = RNG.randn(10_000)
+    y = RNG.randn(10_000)
+    fig = Figure()
+    hexbin(fig[1, 1], x, y; bins = 40, colorscale = identity)
+    hexbin(fig[1, 2], x, y; bins = 40, colorscale = log10)
     fig
 end
 
@@ -596,7 +633,7 @@ end
 
 @reference_test "minor grid & scales" begin
     data = LinRange(0.01, 0.99, 200)
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
     for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
         row, col = fldmod1(i, 2)
         Axis(f[row, col], yscale = scale, title = string(scale),
@@ -692,10 +729,10 @@ end
     y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
     z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.* RNG.randn.()
 
-    inner = [n:-1:1; n] # clockwise inner 
+    inner = [n:-1:1; n] # clockwise inner
     outer = [(n+1):(2n); n+1] # counter-clockwise outer
     boundary_nodes = [[outer], [inner]]
-    tri = DelaunayTriangulation.triangulate([x'; y'], boundary_nodes = boundary_nodes)
+    tri = triangulate([x'; y'], boundary_nodes = boundary_nodes)
     f, ax, _ = tricontourf(tri, z)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
     f
@@ -707,16 +744,16 @@ end
     [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
     [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
     [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
-    ]  
+    ]
     curve_2 = [
         [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
         [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
         [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
-    ] 
+    ]
     curve_3 = [
         [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
         (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
-    ] 
+    ]
     curves = [curve_1, curve_2, curve_3]
     points = [
         (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
@@ -770,6 +807,16 @@ end
     fig
 end
 
+@reference_test "contour labels with transform_func" begin
+    f = Figure(size = (400, 400))
+    a = Axis(f[1, 1], xscale = log10)
+    xs = 10 .^ range(0, 3, length=101)
+    ys = range(1, 4, length=101)
+    zs = [sqrt(x*x + y*y) for x in -50:50, y in -50:50]
+    contour!(a, xs, ys, zs, labels = true, labelsize = 20)
+    f
+end
+
 @reference_test "contour labels 3D" begin
     fig = Figure()
     Axis3(fig[1, 1])
@@ -793,7 +840,7 @@ end
 
 @reference_test "trimspine" begin
     with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
-        f = Figure(resolution = (800, 800))
+        f = Figure(size = (800, 800))
 
         for (i, ts) in enumerate([(true, true), (true, false), (false, true), (false, false)])
             Label(f[0, i], string(ts), tellwidth = false)
@@ -812,7 +859,7 @@ end
 end
 
 @reference_test "hexbin bin int" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -828,7 +875,7 @@ end
 end
 
 @reference_test "hexbin bin tuple" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -846,7 +893,7 @@ end
 
 
 @reference_test "hexbin two cellsizes" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -862,7 +909,7 @@ end
 end
 
 @reference_test "hexbin one cellsize" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
@@ -878,7 +925,7 @@ end
 end
 
 @reference_test "hexbin threshold" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
 
     x = RNG.randn(100000)
     y = RNG.randn(100000)
@@ -897,26 +944,26 @@ end
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
         axis = (aspect = DataAspect(), title = "scale = identity"))
-    hexbin(f[1, 2], x, y, bins = 40, scale=log10,
+    hexbin(f[1, 2], x, y, bins = 40, colorscale=log10,
         axis = (aspect = DataAspect(), title = "scale = log10"))
     f
 end
 
 # Scatter needs working highclip/lowclip first
-# @reference_test "hexbin colorrange highclip lowclip" begin
-#     x = RNG.randn(100000)
-#     y = RNG.randn(100000)
+@reference_test "hexbin colorrange highclip lowclip" begin
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
 
-#     hexbin(x, y,
-#         bins = 40,
-#         axis = (aspect = DataAspect(),),
-#         colorrange = (10, 300),
-#         highclip = :red,
-#         lowclip = :pink,
-#         strokewidth = 1,
-#         strokecolor = :gray30
-#     )
-# end
+    f, ax, pl = hexbin(x, y,
+        bins = 40,
+        axis = (aspect = DataAspect(),),
+        colorrange = (10, 300),
+        highclip = :red,
+        lowclip = :pink,
+        strokewidth = 1,
+        strokecolor = :gray30
+    )
+end
 
 @reference_test "Latex labels after the fact" begin
     f = Figure(fontsize = 50)
@@ -927,7 +974,7 @@ end
 end
 
 @reference_test "Rich text" begin
-    f = Figure(fontsize = 30, resolution = (800, 600))
+    f = Figure(fontsize = 30, size = (800, 600))
     ax = Axis(f[1, 1],
         limits = (1, 100, 0.001, 1),
         xscale = log10,
@@ -982,6 +1029,14 @@ end
         fontsize = range(12, 24, length = 5),
     )
 
+    # https://github.com/MakieOrg/Makie.jl/issues/3569
+    b = bracket!(ax,
+        [5, 6],
+        [1, 2],
+        [6, 7],
+        [1, 2],
+    )
+
     f
 end
 
@@ -989,24 +1044,24 @@ end
     f = Figure()
     hist(
         f[1, 1],
-        RNG.randn(10^6); 
+        RNG.randn(10^6);
         axis=(; yscale=log2)
     )
     hist(
         f[1, 2],
-        RNG.randn(10^6); 
+        RNG.randn(10^6);
         axis=(; xscale=log2),
         direction = :x
     )
     # make a gap in histogram as edge case
     hist(
         f[2, 1],
-        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6)); 
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
         axis=(; yscale=log10)
     )
     hist(
         f[2, 2],
-        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6)); 
+        filter!(x-> x<0 || x > 1.5, RNG.randn(10^6));
         axis=(; xscale=log10),
         direction = :x
     )
@@ -1019,10 +1074,10 @@ end
 end
 
 @reference_test "LaTeXStrings linesegment offsets" begin
-    s = Scene(camera = campixel!, resolution = (600, 600))
+    s = Scene(camera = campixel!, size = (600, 600))
     for (i, (offx, offy)) in enumerate(zip([0, 20, 50], [0, 10, 30]))
         for (j, rot) in enumerate([0, pi/4, pi/2])
-            scatter!(s, 150i, 150j)
+            scatter!(s, 150i, 150j, color=:black)
             text!(s, 150i, 150j, text = L"\sqrt{x+y}", offset = (offx, offy),
                 rotation = rot, fontsize = 30)
         end
@@ -1031,7 +1086,7 @@ end
 end
 
 @reference_test "Scalar colors from colormaps" begin
-    f = Figure(resolution = (600, 600))
+    f = Figure(size = (600, 600))
     ax = Axis(f[1, 1])
     hidedecorations!(ax)
     hidespines!(ax)
@@ -1049,18 +1104,18 @@ end
 end
 
 @reference_test "Z-translation within a recipe" begin
-    # This is testing whether backends respect the 
+    # This is testing whether backends respect the
     # z-level of plots within recipes in 2d.
     # Ideally, the output of this test
     # would be a blue line with red scatter markers.
     # However, if a backend does not correctly pick up on translations,
     # then this will be drawn in the drawing order, and blue
     # will completely obscure red.
-    
+
     # It seems like we can't define recipes in `@reference_test` yet,
     # so we'll have to fake a recipe's structure.
-    
-    fig = Figure(resolution = (600, 600))
+
+    fig = Figure(size = (600, 600))
     # Create a recipe plot
     ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
     # Plot some recipes at the level below the contour
@@ -1070,5 +1125,270 @@ end
     translate!(scatterlineplot_1.plots[2], 0, 0, 1)
     translate!(scatterlineplot_2.plots[2], 0, 0, -1)
     # Display
+    fig
+end
+
+@reference_test "Plotting empty polygons" begin
+    p = Makie.Polygon(Point2f[])
+    q = Makie.Polygon(Point2f[(-1.0, 0.0), (1.0, 0.0), (0.0, 1.0)])
+    fig, ax, sc = poly([p, q])
+    poly!(Axis(fig[1,2]), p, color = :black)
+    poly!(Axis(fig[2,1]), [p, q], color = [:red, :blue])
+    poly!(Axis(fig[2,2]), [p, q], color = :red)
+    poly!(Axis(fig[3,1]), Makie.MultiPolygon([p]), color = :green)
+    poly!(Axis(fig[3,2]), Makie.MultiPolygon([p, q]), color = [:black, :red])
+    fig
+end
+
+@reference_test "lines (some with NaNs) with array colors" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    lines!(ax, 1:10, 1:10, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5)
+    lines!(ax, 1:10, 2:11, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, [3, 4, NaN, 6, 7, NaN, 9, 10, 11, NaN], color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5)
+    lines!(ax, 1:10, 4:13, color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, fill(NaN, 10), color = repeat([RGBAf(1, 0, 0, 0.5), RGBAf(0, 0, 1, 0.5)], 5), linewidth = 5)
+    lines!(ax, 1:10, [6, 7, 8, NaN, 10, 11, 12, 13, 14, 15], color = [:red, :blue, fill(:red, 8)...], linewidth = 5)
+    lines!(ax, 1:3, [7, 8, 9], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [8, 9, NaN], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:3, [NaN, 10, 11], color = [:red, :red, :blue], linewidth = 5)
+    lines!(ax, 1:5, [10, 11, NaN, 13, 14], color = [:red, :red, :blue, :blue, :blue], linewidth = [5, 5, 5, 10, 10])
+    lines!(ax, 1:10, 11:20, color = [fill(RGBAf(1, 0, 0, 0.5), 5); fill(RGBAf(0, 0, 1, 0.5), 5)], linewidth = 5, linestyle = :dot)
+    lines!(ax, 1:10, 12:21, color = fill(RGBAf(1, 0, 0, 0.5), 10), linewidth = 5, linestyle = :dot)
+    f
+end
+
+@reference_test "contour with single alpha color" begin
+    x = range(-π, π; length=50)
+    z = @. sin(x) * cos(x')
+    fig, ax = contour(x, x, z, color=RGBAf(1,0,0,0.4), linewidth=6)
+end
+
+@reference_test "Triplot with points, ghost edges, and convex hull" begin
+    pts = RNG.rand(2, 50)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri,
+        triangle_color = :lightgray, strokewidth = 4,
+        show_points=true, markersize = 20, markercolor = :orange,
+        show_ghost_edges=true, ghost_edge_linewidth = 4,
+        show_convex_hull=true, convex_hull_linewidth = 4
+
+    )
+    fig
+end
+
+# TODO: as noted in https://github.com/MakieOrg/Makie.jl/pull/3520#issuecomment-1873382060
+# this test has some issues with random number generation across Julia 1.6 and 1, for now
+# it's disabled until someone has time to look into it
+
+# @reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
+#     curve_1 = [[
+#         (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
+#         (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
+#         (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
+#         (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
+#         (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
+#         (-4.0, 0.0), (0.0, 0.0),
+#     ]]
+#     curve_2 = [[
+#         (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
+#         (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
+#         (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
+#     ]]
+#     curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
+#     curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
+#     curves = [curve_1, curve_2, curve_3, curve_4]
+#     points = [
+#         (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
+#         (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
+#         (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
+#         (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
+#         (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
+#         (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
+#         (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
+#         (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
+#         (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
+#         (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
+#         (7.0, 7.8), (7.0, 7.4)]
+#     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+#     tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
+#     refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
+#     fig, ax, sc = triplot(tri,
+#         show_points=true,
+#         show_constrained_edges=true,
+#         constrained_edge_linewidth=2,
+#         strokewidth=0.2,
+#         markersize=15,
+#         point_color=:blue,
+#         show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
+#         marker='x',
+#         bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
+#     fig
+# end
+
+@reference_test "Triplot with nonlinear transformation" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1])
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    tr = triplot!(ax, points)
+    f
+end
+
+@reference_test "Triplot after adding points and make sure the representative_point_list is correctly updated" begin
+    points = [(0.0,0.0),(0.95,0.0),(1.0,1.4),(0.0,1.0)] # not 1 so that we have a unique triangulation
+    tri = Observable(triangulate(points; delete_ghosts = false))
+    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
+    for p in [(0.3, 0.5), (-1.5, 2.3), (0.2, 0.2), (0.2, 0.5)]
+        add_point!(tri[], p)
+    end
+    convex_hull!(tri[])
+    notify(tri)
+    ax = Axis(fig[1, 2])
+    triplot!(ax, tri[], show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
+    fig
+end
+
+@reference_test "Triplot Showing ghost edges for a triangulation with disjoint boundaries" begin
+    θ = LinRange(0, 2π, 20) |> collect
+    θ[end] = 0 # need to make sure that 2π gives the exact same coordinates as 0
+    xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
+    cx = 0.0
+    for i in 1:2
+        ## Make the exterior circle
+        push!(xy, [[(cx + cos(θ), sin(θ)) for θ in θ]])
+        ## Now the interior circle - clockwise
+        push!(xy, [[(cx + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
+        cx += 3.0
+    end
+    boundary_nodes, points = convert_boundary_points_to_indices(xy)
+    tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
+    fig, ax, sc = triplot(tri, show_ghost_edges=true)
+    fig
+end
+
+@reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
+    points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
+    tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
+    refine!(tri; max_area=1e-2, min_angle = 29.871, rng = RNG.STABLE_RNG)
+    vorn = voronoi(tri)
+    smooth_vorn = centroidal_smooth(vorn; maxiters = 250, rng = RNG.STABLE_RNG)
+    cmap = cgrad(:matter)
+    fig, ax, sc = voronoiplot(smooth_vorn, markersize=10, strokewidth = 4, markercolor = :red)
+    fig
+end
+
+@reference_test "Voronoiplot for a tessellation with a custom bounding box" begin
+    pts = 25RNG.randn(2, 50)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    vorn = voronoi(tri, false)
+    fig, ax, sc = voronoiplot(vorn,
+        show_generators=true,
+        colormap=:RdBu,
+        strokecolor=:white,
+        strokewidth=4,
+        markersize=25,
+        marker = 'x',
+        markercolor=:green,
+        unbounded_edge_extension_factor=5.0)
+    xlims!(ax, -120, 120)
+    ylims!(ax, -120, 120)
+    fig
+end
+
+@reference_test "Voronoiplots with clipped tessellation and unbounded polygons" begin
+    pts = 25RNG.randn(2, 10)
+    tri = triangulate(pts; rng = RNG.STABLE_RNG)
+    vorn = voronoi(tri, true)
+    fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2), markersize = 20, strokewidth = 4)
+
+    # used to be bugged
+    points = [(0.0, 1.0), (-1.0, 2.0), (-2.0, -1.0)]
+    tri = triangulate(points)
+    vorn = voronoi(tri)
+    voronoiplot(fig[1,2], vorn, show_generators = true, strokewidth = 4,
+        color = [:red, :blue, :green], markercolor = :white, markersize = 20)
+
+    fig
+end
+
+@reference_test "Voronoiplot with a nonlinear transform" begin
+    f = Figure()
+    ax = PolarAxis(f[1, 1], theta_as_x = false)
+    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
+    Makie.rlims!(ax, 12) # to make rect clip visible if circular clip doesn't happen
+    ax = PolarAxis(f[1, 2], theta_as_x = false)
+    tr = voronoiplot!(ax, points, smooth = true, show_generators = false, color = polygon_color_2)
+    Makie.rlims!(ax, 12)
+    f
+end
+
+@reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
+    points = [(-3.0, 7.0), (1.0, 6.0), (-1.0, 3.0), (-2.0, 4.0), (3.0, -2.0), (5.0, 5.0), (-4.0, -3.0), (3.0, 8.0)]
+    tri = triangulate(points)
+    vorn = voronoi(tri)
+    color = [:red, :blue, :green, :yellow, :cyan, :magenta, :black, :brown] # the polygon colors should not change even if some are not included (because they're outside of the box)
+    fig = Figure()
+    ax1 = Axis(fig[1, 1], title = "Default")
+    voronoiplot!(ax1, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color)
+    ax2 = Axis(fig[1, 2], title = "Some excluded")
+    voronoiplot!(ax2, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, clip = BBox(0.0, 5.0, -15.0, 15.0))
+    ax3 = Axis(fig[2, 1], title = "Bigger range")
+    voronoiplot!(ax3, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, clip = (-15.0, 15.0, -15.0, 15.0))
+    ax4 = Axis(fig[2, 2], title = "Only one polygon")
+    voronoiplot!(ax4, vorn, show_generators = true, markersize=14, strokewidth = 4, color = color, clip = (10.0, 12.0, 2.0, 5.0))
+    for ax in fig.content
+        xlims!(ax4, -15, 15)
+        ylims!(ax4, -15, 15)
+    end
+    fig
+end
+
+@reference_test "Voronoiplot after adding points" begin
+    points = Observable([(0.0,0.0), (1.0,0.0), (1.0,1.0), (0.0,1.0)])
+    fig, ax, sc = voronoiplot(points, show_generators=true, markersize=36) # make sure any regressions with missing generators are identified, so use 36
+    push!(points[], (2.0, 2.0), (0.5, 0.5), (0.25, 0.25), (0.25, 0.75), (0.75, 0.25), (0.75, 0.75))
+    notify(points)
+    ax2 = Axis(fig[1, 2])
+    voronoiplot!(ax2, voronoi(triangulate(points[])), show_generators=true, markersize=36)
+    xlims!(ax,-0.5,2.5)
+    ylims!(ax,-0.5,2.5)
+    xlims!(ax2,-0.5,2.5)
+    ylims!(ax2,-0.5,2.5) # need to make sure all generators are shown, and the bounding box is automatically updated
+    fig
+end
+
+function ppu_test_plot(resolution, px_per_unit, scalefactor)
+    fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
+    DataInspector(ax)
+    hidedecorations!(ax)
+    fig
+end
+
+@reference_test "px_per_unit and scalefactor" begin
+    resolution = (800, 800)
+    let st = nothing
+        @testset begin
+            matr = [(px, scale) for px in [0.5, 1, 2], scale in [0.5, 1, 2]]
+            imgs = map(matr) do (px_per_unit, scalefactor)
+                img = colorbuffer(ppu_test_plot(resolution, px_per_unit, scalefactor); px_per_unit=px_per_unit, scalefactor=scalefactor)
+                @test size(img) == (800, 800) .* px_per_unit
+                return img
+            end
+            fig = Figure()
+            st = Makie.RamStepper(fig, Makie.current_backend().Screen(fig.scene), vec(imgs), :png)
+        end
+        st
+    end
+end
+
+@reference_test "spurious minor tick (#3487)" begin
+    fig = Figure(size=(227, 170))
+    ax = Axis(fig[1, 1]; yticks = 0:.2:1, yminorticksvisible = true)
+    ylims!(ax, 0, 1)
     fig
 end

@@ -4,7 +4,7 @@ struct DelaunayTriangulation end
     tricontourf(triangles::Triangulation, zs; kwargs...)
     tricontourf(xs, ys, zs; kwargs...)
 
-Plots a filled tricontour of the height information in `zs` at the horizontal positions `xs` and 
+Plots a filled tricontour of the height information in `zs` at the horizontal positions `xs` and
 vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 
@@ -29,6 +29,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each scattered marker by passing a `Vector` of colors or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap from which the band colors are sampled.
+- `colorscale::Function = identity` color transform function.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -38,6 +39,7 @@ $(ATTRIBUTES)
         levels = 10,
         mode = :normal,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         extendlow = nothing,
         extendhigh = nothing,
         nan_color = :transparent,
@@ -52,16 +54,16 @@ function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, 
     return (:triangulation,)
 end
 
-function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}; 
+function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
     triangulation=DelaunayTriangulation())
     z = elconvert(Float32, z)
     points = [x'; y']
     if triangulation isa DelaunayTriangulation
         tri = DelTri.triangulate(points)
     elseif !(triangulation isa DelTri.Triangulation)
-        # Wrap user's provided triangulation into a Triangulation. Their triangulation must be such that DelTri.add_triangle! is defined. 
-        if typeof(triangulation) <: AbstractMatrix{<:Int} && size(triangulation, 1) != 3 
-            triangulation = triangulation' 
+        # Wrap user's provided triangulation into a Triangulation. Their triangulation must be such that DelTri.add_triangle! is defined.
+        if typeof(triangulation) <: AbstractMatrix{<:Int} && size(triangulation, 1) != 3
+            triangulation = triangulation'
         end
         tri = DelTri.Triangulation(points)
         triangles = DelTri.get_triangles(tri)
@@ -188,6 +190,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     poly!(c,
         polys,
         colormap = c._computed_colormap,
+        colorscale = c.colorscale,
         colorrange = colorrange,
         highclip = highcolor,
         lowclip = lowcolor,
@@ -195,7 +198,6 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = false,
         inspectable = c.inspectable,
         transparency = c.transparency
     )

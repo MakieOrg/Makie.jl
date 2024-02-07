@@ -10,12 +10,13 @@ in float lastlen;
 {{thickness_type}} thickness;
 
 {{color_type}} color;
-{{color_map_type}}  color_map;
+{{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
 
 uniform mat4 projectionview, model;
 uniform uint objectid;
 uniform float depth_shift;
+uniform float px_per_unit;
 
 out uvec2 g_id;
 out vec4 g_color;
@@ -42,7 +43,7 @@ void main()
     int index = gl_VertexID;
     g_id = uvec2(objectid, index+1);
     g_color = to_color(color, color_map, color_norm, index);
-    g_thickness = thickness;
+    g_thickness = px_per_unit * thickness;
     gl_Position = projectionview * model * to_vec4(vertex);
     gl_Position.z += gl_Position.w * depth_shift;
 }

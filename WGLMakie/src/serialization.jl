@@ -2,6 +2,21 @@ using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
 
+function lift_convert(key, value, ::Attributes)
+    convert(value) = wgl_convert(value, Key{key}())
+    if value isa Observable
+        val = lift(convert, value)
+    else
+        val = convert(value)
+    end
+    if key === :colormap && val[] isa AbstractArray
+        return ShaderAbstractions.Sampler(val)
+    else
+        return val
+    end
+end
+
+
 function lift_convert(key, value, plot)
     convert(value) = wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
     if value isa Observable
@@ -152,8 +167,10 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
     return convert(Quaternion, t)
 end
 
-function wgl_convert(value, key1, key2)
-    val = Makie.convert_attribute(value, key1, key2)
+
+
+function wgl_convert(value, key1, key2...)
+    val = Makie.convert_attribute(value, key1, key2...)
     return if val isa AbstractArray{<:Float64}
         return Makie.el32convert(val)
     else
@@ -161,7 +178,7 @@ function wgl_convert(value, key1, key2)
     end
 end
 
-function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
+function wgl_convert(value::AbstractMatrix, ::key"colormap", key2...)
     return ShaderAbstractions.Sampler(value)
 end
 
@@ -175,12 +192,12 @@ function serialize_named_buffer(buffer)
                 end)
 end
 
-function register_geometry_updates(update_buffer::Observable, named_buffers)
+function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, named_buffers)
     for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
-            on(ShaderAbstractions.updater(buffer).update) do (f, args)
+            on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
                 # update to replace the whole buffer!
-                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+                if f === ShaderAbstractions.update!
                     new_array = args[1]
                     flat = flatten_buffer(new_array)
                     update_buffer[] = [name, serialize_three(flat), length(new_array)]
@@ -192,27 +209,27 @@ function register_geometry_updates(update_buffer::Observable, named_buffers)
     return update_buffer
 end
 
-function register_geometry_updates(update_buffer::Observable, program::Program)
-    return register_geometry_updates(update_buffer, program.vertexarray)
+function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, program::Program)
+    return register_geometry_updates(plot, update_buffer, program.vertexarray)
 end
 
-function register_geometry_updates(update_buffer::Observable, program::InstancedProgram)
-    return register_geometry_updates(update_buffer, program.per_instance)
+function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, program::InstancedProgram)
+    return register_geometry_updates(plot, update_buffer, program.per_instance)
 end
 
-function uniform_updater(uniforms::Dict)
+function uniform_updater(@nospecialize(plot), uniforms::Dict)
     updater = Observable(Any[:none, []])
     for (name, value) in uniforms
         if value isa Sampler
-            on(ShaderAbstractions.updater(value).update) do (f, args)
-                if f == setindex! && args[2] isa Colon
+            on(plot, ShaderAbstractions.updater(value).update) do (f, args)
+                if f === ShaderAbstractions.update!
                     updater[] = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
                 end
                 return
             end
         else
             value isa Observable || continue
-            on(value) do value
+            on(plot, value) do value
                 updater[] = [name, serialize_three(value)]
                 return
             end
@@ -221,51 +238,53 @@ function uniform_updater(uniforms::Dict)
     return updater
 end
 
-function serialize_three(ip::InstancedProgram)
-    program = serialize_three(ip.program)
+function serialize_three(@nospecialize(plot), ip::InstancedProgram)
+    program = serialize_three(plot, ip.program)
     program[:instance_attributes] = serialize_named_buffer(ip.per_instance)
-    register_geometry_updates(program[:attribute_updater], ip)
+    register_geometry_updates(plot, program[:attribute_updater], ip)
     return program
 end
 
-reinterpret_faces(faces::AbstractVector) = collect(reinterpret(UInt32, decompose(GLTriangleFace, faces)))
+reinterpret_faces(p, faces::AbstractVector) = collect(reinterpret(UInt32, decompose(GLTriangleFace, faces)))
 
-function reinterpret_faces(faces::Buffer)
-    result = Observable(reinterpret_faces(ShaderAbstractions.data(faces)))
-    on(ShaderAbstractions.updater(faces).update) do (f, args)
-        if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
-            result[] = reinterpret_faces(args[1])
+function reinterpret_faces(@nospecialize(plot), faces::Buffer)
+    result = Observable(reinterpret_faces(plot, ShaderAbstractions.data(faces)))
+    on(plot, ShaderAbstractions.updater(faces).update) do (f, args)
+        if f === ShaderAbstractions.update!
+            result[] = reinterpret_faces(plot, args[1])
         end
     end
     return result
 end
 
 
-function serialize_three(program::Program)
-    facies = reinterpret_faces(_faces(program.vertexarray))
+function serialize_three(@nospecialize(plot), program::Program)
+    facies = reinterpret_faces(plot, _faces(program.vertexarray))
     indices = convert(Observable, facies)
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
-    register_geometry_updates(attribute_updater, program)
+    register_geometry_updates(plot, attribute_updater, program)
+    # TODO, make this configurable in ShaderAbstractions
+    update_shader(x) = replace(x, "#version 300 es" => "")
     return Dict(:vertexarrays => serialize_named_buffer(program.vertexarray),
                 :faces => indices, :uniforms => uniforms,
-                :vertex_source => program.vertex_source,
-                :fragment_source => program.fragment_source,
-                :uniform_updater => uniform_updater(program.uniforms),
+                :vertex_source => update_shader(program.vertex_source),
+                :fragment_source => update_shader(program.fragment_source),
+                :uniform_updater => uniform_updater(plot, program.uniforms),
                 :attribute_updater => attribute_updater)
 end
 
 function serialize_scene(scene::Scene)
 
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
-    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], pixelarea(scene))
+    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, viewport(scene))
 
     cam_controls = cameracontrols(scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        dict = Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
-        dict[:resolution] = lift(res -> Int32[res...], scene.camera.resolution)
+        dict = Dict((f => lift(serialize_three, scene, getfield(cam_controls, f)) for f in fields))
+        dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution)
         dict
     else
         nothing
@@ -273,10 +292,17 @@ function serialize_scene(scene::Scene)
 
     children = map(child-> serialize_scene(child), scene.children)
 
-    serialized = Dict(:pixelarea => pixel_area,
-                      :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
+    dirlight = Makie.get_directional_light(scene)
+    light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
+    cam_rel = isnothing(dirlight) ? false : dirlight.camera_relative
+
+    serialized = Dict(:viewport => pixel_area,
+                      :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor),
+                      :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor),
                       :clearscene => scene.clear,
                       :camera => serialize_camera(scene),
+                      :light_direction => light_dir,
+                      :camera_relative_light => cam_rel,
                       :plots => serialize_plots(scene, scene.plots),
                       :cam3d_state => cam3d_state,
                       :visible => scene.visible,
@@ -285,8 +311,9 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
     for plot in plots
+        plot isa Makie.PlotList && continue
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
             plot_data = serialize_three(scene, plot)
@@ -299,9 +326,9 @@ function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:Ab
     return result
 end
 
-function serialize_three(scene::Scene, plot::AbstractPlot)
+function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     program = create_shader(scene, plot)
-    mesh = serialize_three(program)
+    mesh = serialize_three(plot, program)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
     mesh[:uuid] = js_uuid(plot)
@@ -311,11 +338,11 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
 
-    pointlight = Makie.get_point_light(scene)
-    if !isnothing(pointlight)
-        uniforms[:lightposition] = serialize_three(pointlight.position[])
-        on(pointlight.position) do value
-            updater[] = [:lightposition, serialize_three(value)]
+    dirlight = Makie.get_directional_light(scene)
+    if !isnothing(dirlight)
+        uniforms[:light_color] = serialize_three(dirlight.color[])
+        on(plot, dirlight.color) do value
+            updater[] = [:light_color, serialize_three(value)]
             return
         end
     end
@@ -323,7 +350,7 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     ambientlight = Makie.get_ambient_light(scene)
     if !isnothing(ambientlight)
         uniforms[:ambient] = serialize_three(ambientlight.color[])
-        on(ambientlight.color) do value
+        on(plot, ambientlight.color) do value
             updater[] = [:ambient, serialize_three(value)]
             return
         end

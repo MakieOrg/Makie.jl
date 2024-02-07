@@ -57,7 +57,6 @@ function Makie.plot!(p::Union{HLines, VLines})
     ma = p isa HLines ? p.xmax : p.ymax
 
     onany(p, limits, p[1], mi, ma, transf) do lims, vals, mi, ma, transf
-        inv = inverse_transform(transf)
         empty!(points[])
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)
@@ -65,15 +64,13 @@ function Makie.plot!(p::Union{HLines, VLines})
             if p isa HLines
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
-                x_mi = _apply_x_transform(inv, x_mi)
-                x_ma = _apply_x_transform(inv, x_ma)
+                val = _apply_y_transform(transf, val)
                 push!(points[], Point2f(x_mi, val))
                 push!(points[], Point2f(x_ma, val))
             elseif p isa VLines
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
-                y_mi = _apply_y_transform(inv, y_mi)
-                y_ma = _apply_y_transform(inv, y_ma)
+                val = _apply_x_transform(transf, val)
                 push!(points[], Point2f(val, y_mi))
                 push!(points[], Point2f(val, y_ma))
             end
@@ -84,7 +81,27 @@ function Makie.plot!(p::Union{HLines, VLines})
     notify(p[1])
 
     line_attributes = copy(p.attributes)
-    delete!.(line_attributes, (:ymin, :ymax, :yautolimits))
+    foreach(key-> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
+    # Drop transform_func because we handle it manually
+    line_attributes[:transformation] = Transformation(p, transform_func = identity)
     linesegments!(p, line_attributes, points)
     p
+end
+
+function data_limits(p::HLines)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
+    ymin, ymax = extrema(p[1][])
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+end
+
+function data_limits(p::VLines)
+    scene = parent_scene(p)
+    limits = projview_to_2d_limits(scene.camera.projectionview[])
+    itf = inverse_transform(p.transformation.transform_func[])
+    xmin, xmax = extrema(p[1][])
+    ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
+    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
 end

@@ -5,7 +5,7 @@ end
 @reference_test "isorange, isovalue" begin
     r = range(-1, stop=1, length=100)
     matr = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
-    volume(matr .* (matr .> 1.4), algorithm=:iso, isorange=0.05, isovalue=1.7)
+    volume(matr .* (matr .> 1.4), algorithm=:iso, isorange=0.05, isovalue=1.7, colorrange=(0, 1))
 end
 
 @reference_test "levels" begin
@@ -27,7 +27,7 @@ end
 end
 
 @reference_test "shading" begin
-    mesh(Sphere(Point3f(0), 1f0), color=:orange, shading=false)
+    mesh(Sphere(Point3f(0), 1f0), color=:orange, shading=NoShading)
 end
 
 @reference_test "visible" begin

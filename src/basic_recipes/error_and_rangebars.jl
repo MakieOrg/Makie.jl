@@ -25,9 +25,11 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         inspectable = theme(scene, :inspectable),
-        transparency = false
+        transparency = false,
+        cycle = [:color]
     )
 end
 
@@ -53,9 +55,11 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         inspectable = theme(scene, :inspectable),
-        transparency = false
+        transparency = false,
+        cycle = [:color]
     )
 end
 
@@ -141,11 +145,15 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
     end
 
     linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
-        return map(x_y_low_high) do (x, y, l, h)
-            in_y ?
-                (Point2f(x, y - l), Point2f(x, y + h)) :
-                (Point2f(x - l, y), Point2f(x + h, y))
+        output = sizehint!(Point2f[], 2length(x_y_low_high))
+        for (x, y, l, h) in x_y_low_high
+            if in_y
+                push!(output, Point2f(x, y - l), Point2f(x, y + h))
+            else
+                push!(output, Point2f(x - l, y), Point2f(x + h, y))
+            end
         end
+        return output
     end
 
     _plot_bars!(plot, linesegpairs, is_in_y_direction)
@@ -167,11 +175,15 @@ function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTy
     end
 
     linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
-        return map(vlh) do (v, l, h)
-            in_y ?
-                (Point2f(v, l), Point2f(v, h)) :
-                (Point2f(l, v), Point2f(h, v))
+        output = sizehint!(Point2f[], 2length(vlh))
+        for (v, l, h) in vlh
+            if in_y
+                push!(output, Point2f(v, l), Point2f(v, h))
+            else
+                push!(output, Point2f(l, v), Point2f(h, v))
+            end
         end
+        return output
     end
 
     _plot_bars!(plot, linesegpairs, is_in_y_direction)
@@ -183,19 +195,18 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    @extract plot (whiskerwidth, color, linewidth, visible, colormap, colorrange, inspectable, transparency)
+    @extract plot (whiskerwidth, color, linewidth, visible, colormap, colorscale, colorrange, inspectable, transparency)
 
     scene = parent_scene(plot)
 
     whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
-        scene.px_area, transform_func(plot), whiskerwidth) do pairs, _, _, _, _, whiskerwidth
+        scene.viewport, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
 
-        endpoints = [p for pair in pairs for p in pair]
         screenendpoints = plot_to_screen(plot, endpoints)
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
             (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
-             sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
+            sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
         end
 
         return [p for pair in screenendpoints_shifted_pairs for p in pair]
@@ -222,12 +233,12 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     linesegments!(
         plot, linesegpairs, color = color, linewidth = linewidth, visible = visible,
-        colormap = colormap, colorrange = colorrange, inspectable = inspectable,
+        colormap = colormap, colorscale = colorscale, colorrange = colorrange, inspectable = inspectable,
         transparency = transparency
     )
     linesegments!(
         plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
-        visible = visible, colormap = colormap, colorrange = colorrange,
+        visible = visible, colormap = colormap, colorscale = colorscale, colorrange = colorrange,
         inspectable = inspectable, transparency = transparency, space = :pixel,
         model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
     )

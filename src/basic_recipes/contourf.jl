@@ -32,6 +32,7 @@ $(ATTRIBUTES)
         levels = 10,
         mode = :normal,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         extendlow = nothing,
         extendhigh = nothing,
         # TODO, Isoband doesn't seem to support nans?
@@ -47,9 +48,7 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-function _get_isoband_levels(levels::Int, mi, ma)
-    edges = Float32.(LinRange(mi, ma, levels+1))
-end
+_get_isoband_levels(levels::Int, mi, ma) = Float32.(LinRange(mi, ma, levels+1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
@@ -57,17 +56,16 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges
 end
 
-conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
+conversion_trait(::Type{<:Contourf}) = VertexGrid()
 
 function _get_isoband_levels(::Val{:normal}, levels, values)
-    _get_isoband_levels(levels, extrema_nan(values)...)
+    return _get_isoband_levels(levels, extrema_nan(values)...)
 end
 
 function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     mi, ma = extrema_nan(values)
-    Float32.(levels .* (ma - mi) .+ mi)
+    return Float32.(levels .* (ma - mi) .+ mi)
 end
-
 
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
@@ -92,7 +90,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, highcolor)
-
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
     polys = Observable(PolyType[])
@@ -144,7 +141,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = false,
+        shading = NoShading,
         inspectable = c.inspectable,
         transparency = c.transparency
     )
@@ -160,9 +157,7 @@ inner polygons which are holes in the outer polygon. It is possible that one
 group has multiple outer polygons with multiple holes each.
 """
 function _group_polys(points, ids)
-
     polys = [points[ids .== i] for i in unique(ids)]
-    npolys = length(polys)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 

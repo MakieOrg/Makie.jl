@@ -1,5 +1,8 @@
 :root {
     --text-color: #494e52;
+    --masthead-height-desktop: 3rem;
+    --grid-gap: 2rem;
+    --content-table-top-margin: 2rem;
 }
 
 html {
@@ -281,11 +284,11 @@ th {
 /* masthead */
 
 img.masthead-icon {
-    height: 1.5em;
+    height: 1.5rem;
 }
 
 .title-icon img {
-    height: 2em;
+    height: 2rem;
 }
 
 a.title-icon {
@@ -448,23 +451,77 @@ a.boxlink:hover {
     margin-top: 0;
 }
 
-/* #navbar ul ul.collapsed {
-    display: none;
-} */
-
-/* #navbar ul li a::after {
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    content: "\f078";
+#makiesearch {
+    margin-bottom: 0.5rem;
 }
 
-#navbar ul.collapsed li a::after {
-    content: "\f054";
-} */
+#content-table {
+    max-height: 33vh;
+    overflow-y: auto;
+}
+
+#content-table ul li {
+    margin: 0;
+}
+
+#content-table a {
+    text-decoration: none;
+    color: #83898f;
+    display: block;
+}
+
+#content-table a.active {
+    color: black;
+}
+
+#content-table a:hover {
+    color: black;
+}
+
+#content-table ul {
+    list-style: none;
+    padding: 0;
+}
+
+#content-table ul ul {
+    padding-left: 0.5rem;
+}
+
+#content-table li ul {
+    margin-top: 0;
+}
+
+#content-table-container.content-table-hidden #on-this-page {
+    border-radius: 0.5rem;
+}
+
+#on-this-page {
+    width: 100%;
+    border: 0;
+    border-radius: 0.5rem 0.5rem 0 0;
+    padding: 0.4rem;
+    transition: 0.2s;
+}
+
+#content-table {
+    background-color: rgb(244, 244, 244);
+    max-height: 66vh;
+    transition: 0.4s;
+}
+
+#content-table .page-content {
+    padding: 0.2rem 0.5rem;
+}
+
+#content-table-container.content-table-hidden #content-table {
+    height: 0px !important;
+}
+
 
 .franklin-content {
     grid-column: 2;
     grid-row: 1;
+    overflow-x: scroll;
 }
 
 #main {
@@ -472,6 +529,7 @@ a.boxlink:hover {
     max-width: none;
     display: block;
     margin-bottom: 1em;
+    padding-top: 1rem;
 }
 
 #navbar-container {
@@ -493,6 +551,35 @@ a.boxlink:hover {
     padding-right: 1em;
     overflow-y: auto;
 }
+
+#makiesearch-overlay-container {
+    height: 100vh;
+    width: 100vw;
+    background: rgba(0, 0, 0, 0.3);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 25;
+    transition: 0.3s;
+    padding: 5rem;
+}
+
+#makiesearch-overlay-container.hidden {
+    display: none;
+    opacity: 0;
+}
+
+#makiesearch-overlay-container-inner {
+    opacity: 1;
+    background-color: white;
+    border-radius: 1rem;
+    padding: 3rem;
+    max-width: 80ch;
+    margin: 0 auto;
+    overflow-y: scroll;
+    max-height: calc(100vh - 10rem);
+}
+
 
 #overlay {
     height: 100vh;
@@ -519,6 +606,10 @@ a.boxlink:hover {
 }
 
 .masthead ul.visible-links {
+    display: none;
+}
+
+#masthead-search-button {
     display: none;
 }
 
@@ -551,29 +642,51 @@ a.boxlink:hover {
 
 @media (min-width: 1200px) {
     #main {
-        width: 1150px;
+        max-width: 1800px;
+        width: 100%;
         display: grid;
-        grid-template-columns: 800px 300px;
-        grid-gap: 50px;
+        grid-template-columns: 1fr 4fr 1fr;
+        grid-gap: var(--grid-gap);
+        padding: 0 1rem;
+    }
+    .franklin-content h1 {
+        margin-top: 0rem;
     }
     .masthead__inner-wrap {
-        width: 1150px;
+        max-width: 1800px;
+        width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    #masthead-search-button {
+        display: inline;
+    }
+    #masthead-search-button button {
+        border-radius: 0.5rem;
+        border: 0;
+        padding: 0.3rem 0.5rem;
+    }
+    #makiesearch {
+        display: none;
     }
     #navbar-container {
-        float: left;
+        /* float: left; */
         background: transparent;
         position: static;
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 1;
         width: 100%;
         padding: 0;
         z-index: 0;
+        border-right: 1px solid #f2f3f3;
+        padding-right: var(--grid-gap);
+        padding-top: 0.5rem;
     }
     #navbar {
         position: sticky;
-        top: 4em;
+        top: calc(var(--masthead-height-desktop) + 1px);
         height: auto;
-        max-height: calc(100vh - 4em);
+        max-height: calc(100vh - var(--masthead-height-desktop));
         min-height: calc(100vh - 16em);
         padding: 0;
     }
@@ -581,8 +694,33 @@ a.boxlink:hover {
         display: none;
     }
     .franklin-content {
-        grid-column: 1;
+        grid-column: 2;
         grid-row: 1;
+    }
+    #content-table-container {
+        grid-column: 3;
+        grid-row: 1;
+        position: static;
+        width: 100%;
+        padding: var(--content-table-top-margin) 0 0 0;
+        z-index: 0;
+    }
+    #content-table {
+        position: sticky;
+        top: calc(var(--masthead-height-desktop) + var(--content-table-top-margin) + 1px);
+        background-color: transparent;
+        max-height: calc(100vh - var(--masthead-height-desktop));
+        padding: 0;
+        font-size: .85rem;
+        border-left: 1px solid #f2f3f3;
+        padding-left: calc(var(--grid-gap) / 3);
+    }
+    #on-this-page {
+        display: none;
+    }
+    #content-table-container.content-table-hidden #content-table {
+        height: fit-content !important;
+        background-color: transparent;
     }
 }
 
@@ -622,15 +760,6 @@ input.collapse-toggle {
     display: none;
 }
 
-#navbar ul.page-content {
-    display: block;
-    font-size: 0.85em;
-}
-
-#navbar ul.page-content ul {
-    display: block;
-}
-
 #navbar input:checked~ul {
     display: block;
 }
@@ -666,23 +795,6 @@ input.collapse-toggle {
 
 .result-query {
     font-weight: bold;
-}
-
-#lunrSearchForm {
-    margin: 1em 0;
-    padding: 0;
-    background-color: transparent;
-}
-
-#lunrSearchForm input {
-    box-shadow: inset 0px 0px 3px 0px rgba(0, 0, 0, 0.04);
-    padding: 0.25em 0.5em;
-    border-radius: 1em;
-    border: 1px solid #ddd;
-}
-
-#lunrSearchForm input:focus {
-    border: 1px solid #7192e1;
 }
 
 .banner-container {
@@ -776,6 +888,10 @@ button.copy-code {
     font-size: 1.2em;
     display: flex;
     align-items: center;
+}
+
+button.copy-code .far {
+    font-family: "Font Awesome 5 Free";
 }
 
 .copied-text {

@@ -1,5 +1,4 @@
 import Formatting
-using Match
 import Animations
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
@@ -21,6 +20,7 @@ include("lineaxis.jl")
 include("interactions.jl")
 include("blocks/axis.jl")
 include("blocks/axis3d.jl")
+include("blocks/polaraxis.jl")
 include("blocks/colorbar.jl")
 include("blocks/label.jl")
 include("blocks/slider.jl")
@@ -36,6 +36,7 @@ include("blocks/textbox.jl")
 
 export Axis
 export Axis3
+export PolarAxis
 export Slider
 export SliderGrid
 export IntervalSlider
@@ -51,7 +52,7 @@ export Menu
 export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
-export autolimits!, limits!, reset_limits!
+export autolimits!, limits!, reset_limits!, rlims!, thetalims!
 export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
 export hidexdecorations!, hideydecorations!, hidezdecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
@@ -60,13 +61,12 @@ export labelslider!, labelslidergrid!
 export addmouseevents!
 export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
 export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
-# export hlines!, vlines!, abline!, hspan!, vspan!
+export hlines!, vlines!, abline!, hspan!, vspan!
 export Cycle
 export Cycled
 
 # from GridLayoutBase
 export GridLayout, GridPosition, GridSubposition
-export GridLayoutSpec
 export BBox
 export LayoutObservables
 export Inside, Outside, Mixed
@@ -91,5 +91,3 @@ export grid!, hgrid!, vgrid!
 export swap!
 export ncols, nrows
 export contents, content
-
-Base.@deprecate_binding MakieLayout Makie true "The module `MakieLayout` has been removed and integrated into Makie, so simply replace all usage of `MakieLayout` with `Makie`."
