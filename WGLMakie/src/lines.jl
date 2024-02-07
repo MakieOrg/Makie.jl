@@ -107,7 +107,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 for i in 2:length(ps)
                     clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
                     current = scale .* Point2f(clip) ./ clip[4]
-                    output[i] = output[i-1] + norm(current - prev)
+                    l = norm(current - prev)
+                    output[i] = ifelse(isnan(l), 0f0, output[i-1] + l)
                     prev = current
                 end
             end
