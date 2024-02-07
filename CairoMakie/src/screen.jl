@@ -182,6 +182,8 @@ Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.he
 # we render the scene directly, since we have
 # no screen dependent state like in e.g. opengl
 Base.insert!(screen::Screen, scene::Scene, plot) = nothing
+Base.insert!(screen::Screen, scene::Scene, plot::Plot{Makie.plotlist}) = nothing # resolve ambiguity
+
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     # Currently, we rerender every time, so nothing needs
     # to happen here.  However, in the event that changes,
