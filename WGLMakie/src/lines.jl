@@ -63,7 +63,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             notify(indices)
             return output
         else
-            sizehint!(indices[], length(output) + 2)
+            sizehint!(empty!(indices[]), length(output) + 2)
             was_nan = true
             for i in eachindex(output)
                 # dublicate first and last element of line selection
@@ -79,7 +79,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
                 push!(indices[], i)
             end
-            isnan(last(output)) || push!(indices[], length(output))
+            push!(indices[], length(output))
             notify(indices)
 
             return output[indices[]]
@@ -128,7 +128,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         else
             attributes[name] = lift(plot, indices, attr) do idxs, vals
                 # TODO: indices in js?
-                serialize_buffer_attribute(vals[idxs])
+                serialize_buffer_attribute(vals[min.(idxs, end)])
             end
         end
     end
