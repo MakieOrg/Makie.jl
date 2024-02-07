@@ -54,21 +54,36 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         get!(uniforms, :colorrange, false)
     end
 
+    indices = Observable(Int[])
     points_transformed = lift(plot, transform_func_obs(plot), plot[1], plot.space) do tf, ps, space
         output = apply_transform(tf, ps, space)
         # TODO: Do this in javascript?
-        if !isempty(output)
-            new_output = similar(output, length(output) + 2)
-            new_output[1] = output[1]
-            @views copyto!(new_output[2:end-1], output)
-            new_output[end] = output[end]
-            return new_output
-            # pushfirst!(output, output[1])
-            # push!(output, output[end])
-            # @info output
-            # return eltype(output)[first(output); output; last(output)]
+        if isempty(output)
+            empty!(indices[])
+            notify(indices)
+            return output
+        else
+            sizehint!(indices[], length(output) + 2)
+            was_nan = true
+            for i in eachindex(output)
+                # dublicate first and last element of line selection
+                if isnan(output[i])
+                    if !was_nan
+                        push!(indices[], i-1) # end of line dublication
+                    end
+                    was_nan = true
+                elseif was_nan
+                    push!(indices[], i) # start of line dublication
+                    was_nan = false
+                end
+
+                push!(indices[], i)
+            end
+            isnan(last(output)) || push!(indices[], length(output))
+            notify(indices)
+
+            return output[indices[]]
         end
-        return output
     end
     positions = lift(serialize_buffer_attribute, plot, points_transformed)
     attributes = Dict{Symbol, Any}(:linepoint => positions)
@@ -110,17 +125,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             uniforms[Symbol("$(name)_start")] = attr
             uniforms[Symbol("$(name)_end")] = attr
         else
-            attributes[name] = lift(plot, attr) do vals
-                # TODO: in js?
-                # padded = isempty(vals) ? vals : eltype(vals)[first(vals); vals; last(vals)]
-                if !isempty(vals)
-                    new_output = similar(vals, length(vals) + 2)
-                    new_output[1] = vals[1]
-                    @views copyto!(new_output[2:end-1], vals)
-                    new_output[end] = vals[end]
-                    return serialize_buffer_attribute(new_output)
-                end
-                serialize_buffer_attribute(vals)
+            attributes[name] = lift(plot, indices, attr) do idxs, vals
+                # TODO: indices in js?
+                serialize_buffer_attribute(vals[idxs])
             end
         end
     end
