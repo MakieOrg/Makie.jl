@@ -48,7 +48,7 @@ function Makie.plot!(pl::Bracket)
 
     textoffset_vec = Observable(Vec2f[])
     bp = Observable(BezierPath[])
-    textpoints = Observable(Point2f[])
+    text_tuples = Observable(Tuple{Any,Point2f}[])
 
     realtextoffset = lift(pl, pl.textoffset, pl.fontsize) do to, fs
         return to === automatic ? Float32.(0.75 .* fs) : Float32.(to)
@@ -56,13 +56,13 @@ function Makie.plot!(pl::Bracket)
 
     onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
           scene.viewport, pl.offset, pl.width, pl.orientation, realtextoffset,
-          pl.style) do points, _, _, _, _, offset, width, orientation, textoff, style
+          pl.style, pl.text) do points, _, _, _, _, offset, width, orientation, textoff, style, text
 
         empty!(bp[])
         empty!(textoffset_vec[])
-        empty!(textpoints[])
+        empty!(text_tuples[])
 
-        broadcast_foreach(points, offset, width, orientation, textoff, style) do (_p1, _p2), offset, width, orientation, textoff, style
+        broadcast_foreach(points, offset, width, orientation, textoff, style, text) do (_p1, _p2), offset, width, orientation, textoff, style, text
             p1 = plot_to_screen(pl, _p1)
             p2 = plot_to_screen(pl, _p2)
 
@@ -79,12 +79,12 @@ function Makie.plot!(pl::Bracket)
             push!(textoffset_vec[], d2 * textoff)
 
             b, textpoint = bracket_bezierpath(style, p1 + off, p2 + off, d2, width)
-            push!(textpoints[], textpoint)
+            push!(text_tuples[], (text, textpoint))
             push!(bp[], b)
         end
 
         notify(bp)
-        notify(textpoints)
+        notify(text_tuples)
     end
 
     notify(points)
@@ -102,15 +102,10 @@ function Makie.plot!(pl::Bracket)
         return rots
     end
 
-    # TODO: this works around `text()` not being happy if text="xyz" comes with one-element vector attributes
-    texts = lift(pl, pl.text) do text
-        return text isa AbstractString ? [text] : text
-    end
-
     # Avoid scale!() / translate!() / rotate!() to affect these
     series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
         linestyle = pl.linestyle, transformation = Transformation())
-    text!(pl, textpoints, text = texts, space = :pixel, align = pl.align, offset = textoffset_vec,
+    text!(pl, text_tuples, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
         justification = pl.justification, model = Mat4f(I))
     pl

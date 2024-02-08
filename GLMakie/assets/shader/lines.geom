@@ -21,17 +21,17 @@ out highp float f_quad_sdf0;
 out highp vec3 f_quad_sdf1;
 out highp float f_quad_sdf2;
 out vec2 f_truncation;
-out vec2 f_uv;
 out float f_linestart;
 out float f_linelength;
 
 flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
-flat out vec2 f_extrusion12;
+flat out vec2 f_extrusion;
 flat out vec2 f_discard_limit;
 flat out vec4 f_color1;
 flat out vec4 f_color2;
+flat out float f_cumulative_length;
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -43,7 +43,7 @@ uniform vec2 resolution;
 // Constants
 const float MITER_LIMIT = -0.4;
 const float AA_RADIUS = 0.8;
-const float AA_THICKNESS = 2.0 * AA_RADIUS;
+const float AA_THICKNESS = 2.0 * AA_RADIUS + 2.0;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
@@ -58,7 +58,6 @@ struct LineVertex {
     float quad_sdf2;
     vec2 truncation;
 
-    vec2 uv;
     float linestart;
     float linelength;
 };
@@ -69,7 +68,6 @@ void emit_vertex(LineVertex vertex) {
     f_quad_sdf1    = vertex.quad_sdf1;
     f_quad_sdf2    = vertex.quad_sdf2;
     f_truncation   = vertex.truncation;
-    f_uv           = vertex.uv;
     f_linestart    = vertex.linestart;
     f_linelength   = vertex.linelength;
     f_id           = g_id[vertex.index];
@@ -87,13 +85,13 @@ vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
 vec2 process_pattern(Nothing pattern, bool[4] isvalid, mat2 extrusion, float halfwidth) {
     // do not adjust stuff
-    f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
+    f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
     return vec2(0);
 }
 vec2 process_pattern(sampler2D pattern, bool[4] isvalid, mat2 extrusion, float halfwidth) {
     // TODO
     // This is not a case that's used at all yet. Maybe consider it in the future...
-    f_pattern_overwrite = vec4(1e5, 1.0, -1e5, 1.0);
+    f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
     return vec2(0);
 }
 
@@ -110,10 +108,10 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
     float left, center, right;
 
     if (isvalid[0]) {
-        float offset = max(abs(extrusion[0][1]), halfwidth);
-        left   = texture(pattern, (g_lastlen[1] - offset) / pattern_length).x;
-        center = texture(pattern, g_lastlen[1] / pattern_length).x;
-        right  = texture(pattern, (g_lastlen[1] + offset) / pattern_length).x;
+        float offset = max(abs(extrusion[0][0]), 0.5 * g_thickness[1]);
+        left   = g_thickness[1] * texture(pattern, (g_lastlen[1] - offset) / (g_thickness[1] * pattern_length)).x;
+        center = g_thickness[1] * texture(pattern,  g_lastlen[1]           / (g_thickness[1] * pattern_length)).x;
+        right  = g_thickness[1] * texture(pattern, (g_lastlen[1] + offset) / (g_thickness[1] * pattern_length)).x;
 
         // cases:
         // ++-, +--, +-+ => elongate backwards
@@ -123,7 +121,8 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
         if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
             // default/freeze
             // overwrite until one AA gap past the corner/joint
-            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0][1]) + AA_RADIUS) / pattern_length;
+            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0][0]) + AA_RADIUS) /
+                (g_thickness[1] * pattern_length);
             // using the sign of the center to decide between drawing or not drawing
             f_pattern_overwrite.y = sign(center);
         } else if (left > 0) {
@@ -134,21 +133,23 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
             adjust.x = 1.0;
         } else {
             // default - see above
-            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0][1]) + AA_RADIUS) / pattern_length;
+            f_pattern_overwrite.x = (g_lastlen[1] + abs(extrusion[0][0]) + AA_RADIUS) /
+                (g_thickness[1] * pattern_length);
             f_pattern_overwrite.y = sign(center);
         }
 
     } // else there is no left segment, no left join, so no overwrite
 
     if (isvalid[3]) {
-        float offset = max(abs(extrusion[1][1]), halfwidth);
-        left   = texture(pattern, (g_lastlen[2] - offset) / pattern_length).x;
-        center = texture(pattern, g_lastlen[2] / pattern_length).x;
-        right  = texture(pattern, (g_lastlen[2] + offset) / pattern_length).x;
+        float offset = max(abs(extrusion[1][0]), 0.5 * g_thickness[2]);
+        left   = g_thickness[2] * texture(pattern, (g_lastlen[2] - offset) / (g_thickness[2] * pattern_length)).x;
+        center = g_thickness[2] * texture(pattern,  g_lastlen[2]           / (g_thickness[2] * pattern_length)).x;
+        right  = g_thickness[2] * texture(pattern, (g_lastlen[2] + offset) / (g_thickness[2] * pattern_length)).x;
 
         if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
             // default/freeze
-            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1][1]) - AA_RADIUS) / pattern_length;
+            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1][0]) - AA_RADIUS) /
+                (g_thickness[2] * pattern_length);
             f_pattern_overwrite.w = sign(center);
         } else if (left > 0) {
             // shrink backwards
@@ -158,25 +159,13 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
             adjust.y = 1.0;
         } else {
             // default - see above
-            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1][1]) - AA_RADIUS) / pattern_length;
+            f_pattern_overwrite.z = (g_lastlen[2] - abs(extrusion[1][0]) - AA_RADIUS) /
+                (g_thickness[2] * pattern_length);
             f_pattern_overwrite.w = sign(center);
         }
     }
 
     return adjust;
-}
-
-// If we don't have a pattern we don't need uv's
-vec2 generate_uv(Nothing pattern, int index, float extrusion, float linewidth) { return vec2(0); }
-// If we have a 1D pattern we don't need uv.y
-vec2 generate_uv(sampler1D pattern, int index, float extrusion, float linewidth) {
-    return vec2((g_lastlen[1] + extrusion) / pattern_length, 0.0);
-}
-vec2 generate_uv(sampler2D pattern, int index, float extrusion, float linewidth) {
-    return vec2(
-        (g_lastlen[1] + extrusion) / pattern_length,
-        0.5 + linewidth / g_thickness[index]
-    );
 }
 
 
@@ -236,23 +225,30 @@ void main(void)
     vec3 v1 = (p2 - p1);
     float segment_length1 = length(v1.xy);
     v1 /= segment_length1;
-    vec3 v0 = v1;
-    vec3 v2 = v1;
+
+    // depth is irrelevant for these
     float segment_length0 = 0.0, segment_length2 = 0.0;
+    vec2 v0 = v1.xy;
+    vec2 v2 = v1.xy;
     if (p1 != p0 && isvalid[0]) {
-        v0 = (p1 - p0);
-        segment_length0 = length(p1.xy - p0.xy);
+        v0 = (p1.xy - p0.xy);
+        segment_length0 = length(v0);
         v0 /= segment_length0;
     }
     if (p3 != p2 && isvalid[3]) {
-        v2 = (p3 - p2);
-        segment_length2 = length(p3.xy - p2.xy);
+        v2 = (p3.xy - p2.xy);
+        segment_length2 = length(v2);
         v2 /= segment_length2;
     }
 
     // Since we are measuring from the center of the line we will need half
     // the thickness/linewidth for most things.
-    float halfwidth = 0.5 * g_thickness[1];
+    // Note that if a line becomes very thin the alpha value generated by the
+    // SDF will be location dependent, causing the line to flicker if it moves.
+    // It also becomes darker than it should be due to the AA smoothstep becoming
+    // unbalanced (< AA_RADIUS inside). To avoid these issues we reduce alpha
+    // directly rather than shrinking the linewidth further at certain point.
+    float halfwidth = 0.5 * max(AA_RADIUS, g_thickness[1]);
 
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = normal_vector(v0);
@@ -273,8 +269,8 @@ void main(void)
 
     // Are we truncating the joint?
     bvec2 is_truncated = bvec2(
-        dot(v0.xy, v1.xy) < MITER_LIMIT,
-        dot(v1.xy, v2.xy) < MITER_LIMIT
+        dot(v0, v1.xy) < MITER_LIMIT,
+        dot(v1.xy, v2) < MITER_LIMIT
     );
 
     // How far the line needs to extend to accomodate the joint
@@ -347,7 +343,7 @@ void main(void)
     // if start/end don't elongate
     // if joint skipped elongate to new length
     // if joint elongate a lot to let discard/truncation handle joint
-    f_extrusion12 = vec2(
+    f_extrusion = vec2(
         !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : max(abs(extrusion[0][1]), halfwidth)),
         !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : max(abs(extrusion[1][1]), halfwidth))
     );
@@ -358,6 +354,11 @@ void main(void)
     // for color sampling
     f_color1 = g_color[1];
     f_color2 = g_color[2];
+    f_color1.a *= min(1.0, g_thickness[1] / AA_RADIUS);
+    f_color2.a *= min(1.0, g_thickness[1] / AA_RADIUS);
+
+    // for uv's
+    f_cumulative_length = g_lastlen[1];
 
     // Generate interpolated/varying outputs:
 
@@ -409,6 +410,7 @@ void main(void)
             }
 
             vertex.position = vec3[2](p1, p2)[x] + offset;
+            // vertex.position = 0.03125 * round(32.0 * vec3[2](p1, p2)[x] + offset);
 
             // Generate SDF's
 
@@ -417,7 +419,7 @@ void main(void)
             vec2 VP2 = vertex.position.xy - p2.xy;
 
             // generate uv coordinate
-            vertex.uv = generate_uv(pattern, vertex.index, dot(VP1, v1.xy), dot(VP2, n1));
+            // vertex.uv = generate_uv(pattern, vertex.index, dot(VP1, v1.xy), dot(VP2, n1));
 
             // Note: Adding an offset of -0.5 to all SDF's in v direction
             // fixes most issues with picking which segment renders a fragment

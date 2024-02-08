@@ -20,20 +20,20 @@ out float f_quad_sdf0;
 out vec3 f_quad_sdf1;
 out float f_quad_sdf2;
 out vec2 f_truncation;
-out vec2 f_uv;
 out float f_linestart;
 out float f_linelength;
 
 flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
-flat out vec2 f_extrusion12;
+flat out vec2 f_extrusion;
 flat out vec2 f_discard_limit;
 flat out vec4 f_color1;
 flat out vec4 f_color2;
+flat out float f_cumulative_length;
 
 const float AA_RADIUS = 0.8;
-const float AA_THICKNESS = 4.0 * AA_RADIUS;
+const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
@@ -70,14 +70,17 @@ void main(void)
     f_quad_sdf2 = 10.0;             // not joint to next segment
     f_truncation = vec2(-10.0);     // no truncated joint
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0); // no joints to overwrite
-    f_extrusion12 = vec2(0);        // no joints needing extrusion
+    f_extrusion = vec2(0.5);        // no joints needing extrusion
     f_discard_limit = vec2(10.0);   // no joints needing discards
 
     // constants
     f_color1 = g_color[0];
     f_color2 = g_color[1];
+    f_color1.a *= min(1.0, g_thickness[0] / AA_RADIUS);
+    f_color2.a *= min(1.0, g_thickness[0] / AA_RADIUS);
     f_linestart = 0;                // no corners so no joint extrusion to consider
     f_linelength = segment_length;  // and also no changes in line length
+    f_cumulative_length = 0.0;      // resets for each new segment
 
     // Generate vertices
 
@@ -85,7 +88,7 @@ void main(void)
         // Get offset in line direction
         float v_offset = (2 * x - 1) * AA_THICKNESS;
         // pass on linewidth and id (picking) for the current line vertex
-        float halfwidth = 0.5 * g_thickness[x];
+        float halfwidth = 0.5 * max(AA_RADIUS, g_thickness[x]);
         // TODO: if we just make this a varying output we probably get var linewidths here
         f_linewidth = halfwidth;
         f_id = g_id[x];
@@ -106,12 +109,6 @@ void main(void)
             f_quad_sdf1.x = dot(VP1, -v1.xy);
             f_quad_sdf1.y = dot(VP2,  v1.xy);
             f_quad_sdf1.z = n_offset;
-
-            // generate uv coordinate
-            f_uv = vec2(
-                -f_quad_sdf1.x / pattern_length,
-                0.5 + halfwidth / g_thickness[x]
-            );
 
             // finalize vertex
             EmitVertex();

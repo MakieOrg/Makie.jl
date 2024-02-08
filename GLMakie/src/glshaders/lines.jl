@@ -8,7 +8,7 @@ function sumlengths(points)
         if !(any(map(isnan, p1)) || any(map(isnan, p2)))
             result[i] = result[i0] + norm(p1[i12] - p2[i12])
         else
-            result[i] = result[i0]
+            result[i] = 0f0
         end
     end
     result

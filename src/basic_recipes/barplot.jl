@@ -238,7 +238,10 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
 end
 
 function Makie.plot!(p::BarPlot)
-
+    bar_points = p[1]
+    if !(eltype(bar_points[]) <: Point2)
+        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`.")
+    end
     labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2f}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])

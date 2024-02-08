@@ -439,8 +439,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
 end
 
 
-_mean(xs) = sum(xs) / length(xs) # skip Statistics import
-
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
     return cached_robj!(screen, scene, plot) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
@@ -458,9 +456,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         else
             linewidth = gl_attributes[:thickness]
             px_per_unit = data[:px_per_unit]
-            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
-                return ppu * _mean(lw) .* ls
-            end
+            data[:pattern] = map(*, plot, linestyle, px_per_unit)
             data[:fast] = false
 
             pvm = lift(*, plot, data[:projectionview], data[:model])
@@ -491,9 +487,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
             data[:pattern] = nothing
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = lift(plot, linestyle, linewidth, px_per_unit) do ls, lw, ppu
-                ppu * _mean(lw) .* ls
-            end
+            data[:pattern] = lift(*, plot, linestyle, px_per_unit)
         end
         positions = handle_view(plot[1], data)
 

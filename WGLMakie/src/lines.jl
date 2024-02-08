@@ -33,7 +33,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         uniforms[:pattern_length] = 1f0
     else
         # TODO: pixel per unit
-        pattern = map((ls, lw) -> lw .* ls, plot, linestyle, linewidth)
+        pattern = map(identity, plot, linestyle)
         uniforms[:pattern] = Sampler(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
         uniforms[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
     end
@@ -54,21 +54,36 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         get!(uniforms, :colorrange, false)
     end
 
+    indices = Observable(Int[])
     points_transformed = lift(plot, transform_func_obs(plot), plot[1], plot.space) do tf, ps, space
         output = apply_transform(tf, ps, space)
         # TODO: Do this in javascript?
-        if !isempty(output)
-            new_output = similar(output, length(output) + 2)
-            new_output[1] = output[1]
-            @views copyto!(new_output[2:end-1], output)
-            new_output[end] = output[end]
-            return new_output
-            # pushfirst!(output, output[1])
-            # push!(output, output[end])
-            # @info output
-            # return eltype(output)[first(output); output; last(output)]
+        if isempty(output)
+            empty!(indices[])
+            notify(indices)
+            return output
+        else
+            sizehint!(empty!(indices[]), length(output) + 2)
+            was_nan = true
+            for i in eachindex(output)
+                # dublicate first and last element of line selection
+                if isnan(output[i])
+                    if !was_nan
+                        push!(indices[], i-1) # end of line dublication
+                    end
+                    was_nan = true
+                elseif was_nan
+                    push!(indices[], i) # start of line dublication
+                    was_nan = false
+                end
+
+                push!(indices[], i)
+            end
+            push!(indices[], length(output))
+            notify(indices)
+
+            return output[indices[]]
         end
-        return output
     end
     positions = lift(serialize_buffer_attribute, plot, points_transformed)
     attributes = Dict{Symbol, Any}(:linepoint => positions)
@@ -78,20 +93,24 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         cam = Makie.parent_scene(plot).camera
         pvm = lift(*, plot, cam.projectionview, uniforms[:model])
         attributes[:lastlen] = map(plot, points_transformed, pvm, cam.resolution) do ps, pvm, res
-            # clip -> pixel, but we can skip offset
-            scale = Vec2f(0.5 * res[1], 0.5 * res[2])
-            # Initial position
-            clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[1], 0f0), 1f0)
-            prev = scale .* Point2f(clip) ./ clip[4]
-
-            # calculate cumulative pixel scale length
             output = Vector{Float32}(undef, length(ps))
-            output[1] = 0f0
-            for i in 2:length(ps)
-                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
-                current = scale .* Point2f(clip) ./ clip[4]
-                output[i] = output[i-1] + norm(current - prev)
-                prev = current
+
+            if !isempty(ps)
+                # clip -> pixel, but we can skip offset
+                scale = Vec2f(0.5 * res[1], 0.5 * res[2])
+                # Initial position
+                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[1], 0f0), 1f0)
+                prev = scale .* Point2f(clip) ./ clip[4]
+
+                # calculate cumulative pixel scale length
+                output[1] = 0f0
+                for i in 2:length(ps)
+                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
+                    current = scale .* Point2f(clip) ./ clip[4]
+                    l = norm(current - prev)
+                    output[i] = ifelse(isnan(l), 0f0, output[i-1] + l)
+                    prev = current
+                end
             end
 
             return serialize_buffer_attribute(output)
@@ -107,23 +126,12 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             uniforms[Symbol("$(name)_start")] = attr
             uniforms[Symbol("$(name)_end")] = attr
         else
-            attributes[name] = lift(plot, attr) do vals
-                # TODO: in js?
-                # padded = isempty(vals) ? vals : eltype(vals)[first(vals); vals; last(vals)]
-                if !isempty(vals)
-                    new_output = similar(vals, length(vals) + 2)
-                    new_output[1] = vals[1]
-                    @views copyto!(new_output[2:end-1], vals)
-                    new_output[end] = vals[end]
-                    return serialize_buffer_attribute(new_output)
-                end
-                serialize_buffer_attribute(vals)
+            attributes[name] = lift(plot, indices, attr) do idxs, vals
+                # TODO: indices in js?
+                serialize_buffer_attribute(vals[min.(idxs, end)])
             end
         end
     end
-
-    # @info typeof(plot)
-    # @info attributes
 
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
