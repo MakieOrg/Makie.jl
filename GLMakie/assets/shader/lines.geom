@@ -344,7 +344,7 @@ void main(void)
             // float precision issues with joint discards. (I.e. what makes this segment discards
             // pixels drawn by the previous/next segment.) Higher values reduce jitter but probably
             // increase risk of creating overlap/gaps
-            vertex.position = vec3[2](p1, p2)[x] + 0.0078125 * round(128.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
+            vertex.position = 0.03125 * round(32.0 * (vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0)));
 
             // Generate SDF's
 

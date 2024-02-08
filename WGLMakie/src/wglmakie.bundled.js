@@ -21827,8 +21827,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // round seems to fix overdraw/underdraw but introduces slight jitter
                 // round(f * ...) / f reduces jitter but may reintroduce over/underdraw
-                vec3 point = 0.5 * (p1 + p2) + 0.125 * round(8.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
-                // vec3 point = 0.5 * (p1 + p2) + round((v_offset * v1 + n_offset * vec3(n1, 0)));
+                // vec3 point = 0.5 * (p1 + p2) + 0.125 * round(8.0 * (v_offset * v1 + n_offset * vec3(n1, 0)));
+                vec3 point = 0.125 * round(8.0 * (0.5 * (p1 + p2) + v_offset * v1 + n_offset * vec3(n1, 0)));
 
 
                 // SDF's
