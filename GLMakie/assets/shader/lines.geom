@@ -108,10 +108,11 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
     float left, center, right;
 
     if (isvalid[0]) {
-        float offset = max(abs(extrusion[0][0]), 0.5 * g_thickness[1]);
-        left   = g_thickness[1] * texture(pattern, (g_lastlen[1] - offset) / (g_thickness[1] * pattern_length)).x;
-        center = g_thickness[1] * texture(pattern,  g_lastlen[1]           / (g_thickness[1] * pattern_length)).x;
-        right  = g_thickness[1] * texture(pattern, (g_lastlen[1] + offset) / (g_thickness[1] * pattern_length)).x;
+        // float offset = max(abs(extrusion[0][0]), halfwidth + AA_RADIUS);
+        float offset = abs(extrusion[0][0]);
+        left   = 2.0 * halfwidth * texture(pattern, (g_lastlen[1] - offset) / (2.0 * halfwidth * pattern_length)).x;
+        center = 2.0 * halfwidth * texture(pattern, (g_lastlen[1]         ) / (2.0 * halfwidth * pattern_length)).x;
+        right  = 2.0 * halfwidth * texture(pattern, (g_lastlen[1] + offset) / (2.0 * halfwidth * pattern_length)).x;
 
         // cases:
         // ++-, +--, +-+ => elongate backwards
@@ -141,10 +142,11 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
     } // else there is no left segment, no left join, so no overwrite
 
     if (isvalid[3]) {
-        float offset = max(abs(extrusion[1][0]), 0.5 * g_thickness[2]);
-        left   = g_thickness[2] * texture(pattern, (g_lastlen[2] - offset) / (g_thickness[2] * pattern_length)).x;
-        center = g_thickness[2] * texture(pattern,  g_lastlen[2]           / (g_thickness[2] * pattern_length)).x;
-        right  = g_thickness[2] * texture(pattern, (g_lastlen[2] + offset) / (g_thickness[2] * pattern_length)).x;
+        // float offset = max(abs(extrusion[1][0]), halfwidth + AA_RADIUS);
+        float offset = abs(extrusion[1][0]);
+        left   = 2.0 * halfwidth * texture(pattern, (g_lastlen[2] - offset) / (2.0 * halfwidth * pattern_length)).x;
+        center = 2.0 * halfwidth * texture(pattern, (g_lastlen[2]         ) / (2.0 * halfwidth * pattern_length)).x;
+        right  = 2.0 * halfwidth * texture(pattern, (g_lastlen[2] + offset) / (2.0 * halfwidth * pattern_length)).x;
 
         if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
             // default/freeze
@@ -344,8 +346,8 @@ void main(void)
     // if joint skipped elongate to new length
     // if joint elongate a lot to let discard/truncation handle joint
     f_extrusion = vec2(
-        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : max(abs(extrusion[0][1]), halfwidth)),
-        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : max(abs(extrusion[1][1]), halfwidth))
+        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0][0])),
+        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1][0]))
     );
 
     // used to compute width sdf
@@ -369,25 +371,6 @@ void main(void)
 
         for (int y = 0; y < 2; y++) {
             // Calculate offset from p1/p2
-            // vec3 offset;
-            // if (adjustment[x] == 0.0) {
-            //     if (is_truncated[x] || !isvalid[3 * x] || !can_adjust_geom[x]) {
-            //         // handle overlap in fragment shader via SDF comparison
-            //         offset =
-            //             (2 * x - 1) * (abs(extrusion[x]) + AA_THICKNESS) * v1 +
-            //             vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0);
-            //     } else {
-            //         // handle overlap by adjusting geometry
-            //         // TODO: should this include z in miter_n?
-            //         offset = (2 * y - 1) * (halfwidth + AA_THICKNESS) / float[2](miter_offset1, miter_offset2)[x] *
-            //             vec3(vec2[2](miter_n1, miter_n2)[x], 0);
-            //     }
-            // } else {
-            //     // discard joint for cleaner pattern handling
-            //     offset =
-            //         adjustment[x] * (max(abs(extrusion[x]), halfwidth) + AA_THICKNESS) * v1 +
-            //         vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0);
-            // }
             vec3 offset;
             if (adjustment[x] == 0.0) {
                 if (is_truncated[x] || !isvalid[3 * x] ) {
@@ -405,12 +388,13 @@ void main(void)
             } else {
                 // discard joint for cleaner pattern handling
                 offset =
-                    adjustment[x] * (max(abs(extrusion[x][1]), halfwidth) + AA_THICKNESS) * v1 +
+                    adjustment[x] * (abs(extrusion[x][1]) + AA_THICKNESS) * v1 +
                     vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0);
             }
 
             vertex.position = vec3[2](p1, p2)[x] + offset;
-            // vertex.position = 0.03125 * round(32.0 * vec3[2](p1, p2)[x] + offset);
+            // No not here...
+            // vertex.position = 0.03125 * round(32.0 * (vec3[2](p1, p2)[x] + offset));
 
             // Generate SDF's
 
@@ -421,26 +405,22 @@ void main(void)
             // generate uv coordinate
             // vertex.uv = generate_uv(pattern, vertex.index, dot(VP1, v1.xy), dot(VP2, n1));
 
-            // Note: Adding an offset of -0.5 to all SDF's in v direction
-            // fixes most issues with picking which segment renders a fragment
-            // of a joint.
-
             // signed distance of previous segment at shared control point in line
             // direction. Used decide which segments renders which joint fragment.
             // If the left joint is adjusted this sdf is disabled.
             if (isvalid[0] && (adjustment[0] == 0) && (!can_adjust_geom[0] || is_truncated[0]))
-                vertex.quad_sdf0 = dot(VP1, v0.xy) - 0.5;
+                vertex.quad_sdf0 = dot(VP1, v0.xy);
             else
                 vertex.quad_sdf0 = 1e12;
 
             // sdf of this segment
-            vertex.quad_sdf1.x = dot(VP1, -v1.xy) - 0.5;
-            vertex.quad_sdf1.y = dot(VP2,  v1.xy) - 0.5;
+            vertex.quad_sdf1.x = dot(VP1, -v1.xy);
+            vertex.quad_sdf1.y = dot(VP2,  v1.xy);
             vertex.quad_sdf1.z = dot(VP1,  n1);
 
             // SDF for next segment, see quad_sdf0
             if (isvalid[3] && (adjustment[1] == 0) && (!can_adjust_geom[1] || is_truncated[1]))
-                vertex.quad_sdf2 = dot(VP2, -v2.xy) - 0.5;
+                vertex.quad_sdf2 = dot(VP2, -v2.xy);
             else
                 vertex.quad_sdf2 = 1e12;
 

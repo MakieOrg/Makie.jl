@@ -5,6 +5,7 @@
 // show the various regions of the rendered segment
 // (anti-aliased edges, joint truncation, overlap cutoff, patterns)
 // #define DEBUG
+uniform bool debug;
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
@@ -68,13 +69,18 @@ void write2framebuffer(vec4 color, uvec2 id);
 void main(){
     vec4 color;
 
+    // if (f_id.y % 2 != 1)
+        // discard;
+
     // f_quad_sdf1.x is the negative distance from p1 in v1 direction
     // (where f_cumulative_length applies) so we need to subtract here
     vec2 uv = vec2(
         (f_cumulative_length - f_quad_sdf1.x) / (2.0 * f_linewidth * pattern_length),
         0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
     );
-#ifndef DEBUG
+
+// #ifndef DEBUG
+if (!debug) {
     // discard fragments that are "more inside" the other segment to remove
     // overlap between adjacent line segments.
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
@@ -125,10 +131,11 @@ void main(){
     } else {
         color.a *= step(0.0, -sdf);
     }
-#endif
+// #endif
 
+} else {
 
-#ifdef DEBUG
+// #ifdef DEBUG
     // base color
     color = vec4(0.5, 0.5, 0.5, 0.2);
     color.rgb += (2 * mod(f_id.y, 2) - 1) * 0.1;
@@ -139,7 +146,7 @@ void main(){
     color.rgb -= vec3(0.4) * step(0.0, sdf);
 
     // Mark regions excluded via truncation in green
-    color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
+    // color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
     // Mark discarded space in red/blue
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
@@ -157,14 +164,19 @@ void main(){
         color.b += 0.2;
 
     // and smooth inner truncation as soft green?
-    if (f_quad_sdf1.x > 0.0)
-        color.g += 0.2;
-    if (f_quad_sdf1.y > 0.0)
-        color.g += 0.2;
+    // if (f_quad_sdf1.x > 0.0)
+    //     color.g += 0.2;
+    // if (f_quad_sdf1.y > 0.0)
+    //     color.g += 0.2;
+    if (uv.x <= f_pattern_overwrite.x)
+        color.g += 0.4;
+    if (uv.x >= f_pattern_overwrite.z)
+        color.g += 0.4;
 
     // mark pattern in white
-    color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
-#endif
+    // color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
+// #endif
+}
 
     write2framebuffer(color, f_id);
 }
