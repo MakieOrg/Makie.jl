@@ -71,7 +71,7 @@ void main(){
     // f_quad_sdf1.x is the negative distance from p1 in v1 direction
     // (where f_cumulative_length applies) so we need to subtract here
     vec2 uv = vec2(
-        (f_cumulative_length - f_quad_sdf1.x) / (2.0 * f_linewidth * pattern_length),
+        (f_cumulative_length - f_quad_sdf1.x + 0.5) / (2.0 * f_linewidth * pattern_length),
         0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
     );
 #ifndef DEBUG

@@ -108,7 +108,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
     float left, center, right;
 
     if (isvalid[0]) {
-        float offset = max(abs(extrusion[0]), 0.5 * g_thickness[1]);
+        float offset = abs(extrusion[0]);
         left   = g_thickness[1] * texture(pattern, (g_lastlen[1] - offset) / (g_thickness[1] * pattern_length)).x;
         center = g_thickness[1] * texture(pattern,  g_lastlen[1]           / (g_thickness[1] * pattern_length)).x;
         right  = g_thickness[1] * texture(pattern, (g_lastlen[1] + offset) / (g_thickness[1] * pattern_length)).x;
@@ -141,7 +141,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, float[2] extrusion) {
     } // else there is no left segment, no left join, so no overwrite
 
     if (isvalid[3]) {
-        float offset = max(abs(extrusion[1]), 0.5 * g_thickness[2]);
+        float offset = abs(extrusion[1]);
         left   = g_thickness[2] * texture(pattern, (g_lastlen[2] - offset) / (g_thickness[2] * pattern_length)).x;
         center = g_thickness[2] * texture(pattern,  g_lastlen[2]           / (g_thickness[2] * pattern_length)).x;
         right  = g_thickness[2] * texture(pattern, (g_lastlen[2] + offset) / (g_thickness[2] * pattern_length)).x;
@@ -307,8 +307,8 @@ void main(void)
     // if joint skipped elongate to new length
     // if joint elongate a lot to let discard/truncation handle joint
     f_extrusion = vec2(
-        !isvalid[0] ? 0.5 : 1e12,
-        !isvalid[3] ? 0.5 : 1e12
+        !isvalid[0] ? 0.5 : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0]) + 0.5),
+        !isvalid[3] ? 0.5 : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1]) + 0.5)
     );
 
     // used to compute width sdf
@@ -333,7 +333,7 @@ void main(void)
         if (adjustment[x] == 0.0)
             v_offset = (2 * x - 1) * (abs(extrusion[x]) + AA_THICKNESS);
         else
-            v_offset = adjustment[x] * (max(abs(extrusion[x]), halfwidth) + AA_THICKNESS);
+            v_offset = adjustment[x] * (abs(extrusion[x]) + AA_THICKNESS);
         vertex.index = x+1;
 
         for (int y = 0; y < 2; y++) {
