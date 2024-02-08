@@ -1222,10 +1222,18 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linewidth = theme(scene, :linewidth)
         "The default line color used for LineElements"
         linecolor = theme(scene, :linecolor)
+        "The default colormap for LineElements"
+        linecolormap = theme(scene, :colormap)
+        "The default colorrange for LineElements"
+        linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
+        "The default marker colormap for MarkerElements"
+        markercolormap = theme(scene, :colormap)
+        "The default marker colorrange for MarkerElements"
+        markercolorrange = automatic
         "The default marker for MarkerElements"
         marker = theme(scene, :marker)
         "The default marker points used for MarkerElements in normalized coordinates relative to each label patch."
@@ -1244,6 +1252,10 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolor = theme(scene, :patchcolor)
         "The default poly stroke color used for PolyElements."
         polystrokecolor = theme(scene, :patchstrokecolor)
+        "The default colormap for PolyElements"
+        polycolormap = theme(scene, :colormap)
+        "The default colorrange for PolyElements"
+        polycolorrange = automatic
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."

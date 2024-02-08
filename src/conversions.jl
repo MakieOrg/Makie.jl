@@ -3,7 +3,6 @@
 ################################################################################
 const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Any,Any}}
 
-
 @convert_target struct Surface{N}
     # Surfaces allow unstructured grids via matrices for x/y
     # But also allow vectors or ClosedInterval for just ranges.

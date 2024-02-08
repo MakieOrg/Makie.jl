@@ -195,19 +195,20 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     P = Plot{Func}
     args_obs = Any[convert(Observable, x) for x in args]
     args_no_obs = map(to_value, args_obs)
+    used_attrs = used_attributes(P, args_no_obs...)
+    kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
 
-    converted = convert_arguments(P, args_no_obs...; plot_attributes...)
+    converted = convert_arguments(P, args_no_obs...; kw...)
 
 
     # Temporarily work around not having a clear definition for when the conversion should get applied
     if Func !== text && Func !== annotations && (Func in atomic_functions || Func === barplot)
         args_obs = axis_convert(plot_attributes, args_obs...)
     end
-    used_attrs = used_attributes(P, args_no_obs...)
     if used_attrs === ()
         args_converted = convert_arguments(P, args_no_obs...)
     else
-        kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+
         args_converted = convert_arguments(P, args_no_obs...; kw...)
     end
 

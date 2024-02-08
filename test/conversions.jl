@@ -361,6 +361,8 @@ end
         # Is this what we want to test for?
         @test_throws MethodError convert_arguments(Heatmap, m1, m2, m3) === (m1, m2, m3)
         @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
+        # https://github.com/MakieOrg/Makie.jl/issues/3515
+        @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) == (0.5:8.5, 0.5:8.5, zeros(8, 8))
     end
 end
 
