@@ -145,9 +145,6 @@ if (!debug) {
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
     color.rgb -= vec3(0.4) * step(0.0, sdf);
 
-    // Mark regions excluded via truncation in green
-    // color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
-
     // Mark discarded space in red/blue
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
     float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
@@ -157,24 +154,23 @@ if (!debug) {
         color.b += 0.5;
     }
 
-    // inner truncation - show second part as softer red/blue
+    // remaining overlap as softer red/blue
     if (f_quad_sdf1.x - f_quad_sdf0 - 1.0 > 0.0)
         color.r += 0.2;
     if (f_quad_sdf1.y - f_quad_sdf2 - 1.0 > 0.0)
         color.b += 0.2;
 
-    // and smooth inner truncation as soft green?
-    // if (f_quad_sdf1.x > 0.0)
-    //     color.g += 0.2;
-    // if (f_quad_sdf1.y > 0.0)
-    //     color.g += 0.2;
-    if (uv.x <= f_pattern_overwrite.x)
-        color.g += 0.4;
-    if (uv.x >= f_pattern_overwrite.z)
-        color.g += 0.4;
+    // Mark regions excluded via truncation in green
+    color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
+
+    // and inner truncation as softer green
+    if (min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0) > 0.0)
+        color.g += 0.2;
+    if (min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0) > 0.0)
+        color.g += 0.2;
 
     // mark pattern in white
-    // color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
+    color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
 // #endif
 }
 

@@ -301,14 +301,6 @@ void main(void)
         extrusion[1][0] = -extrusion[1][1];
     }
 
-    // Do we have enough space to adjust the geometry to do a miter joint (not
-    // truncated)? Max inset is ~ 2x sin(60°) / cos(60°) * (halfwidth + AA_THICKNESS)
-    // float max_inset = 3.5 * (halfwidth + AA_THICKNESS);
-    // bvec2 can_adjust_geom =  bvec2(
-    //     (segment_length0 > max_inset) && (segment_length1 > max_inset),
-    //     (segment_length2 > max_inset) && (segment_length1 > max_inset)
-    // );
-
     // TODO: maybe only for double sharp joints
     // truncated could extrude
     // start/end could extrude
@@ -333,6 +325,11 @@ void main(void)
     // the pattern in either the on state (draw) or off state (no draw) to avoid
     // fragmenting it around a corner.
     vec2 adjustment = process_pattern(pattern, isvalid, extrusion, halfwidth);
+
+    // If adjustment != 0.0 we replace a joint by an extruded line, so we no longer
+    // need to shrink the line for the joint to fit.
+    if (adjustment[0] != 0.0 || adjustment[1] != 0.0)
+        shape_factor = vec2(1.0);
 
     // limit range of distance sampled in prev/next segment
     // this makes overlapping segments draw over each other when reaching the limit
