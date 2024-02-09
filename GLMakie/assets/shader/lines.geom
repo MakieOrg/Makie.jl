@@ -43,7 +43,7 @@ uniform vec2 resolution;
 // Constants
 const float MITER_LIMIT = -0.4;
 const float AA_RADIUS = 0.8;
-const float AA_THICKNESS = 2.0 * AA_RADIUS;
+const float AA_THICKNESS = 4.0 * AA_RADIUS;
 // TODO: if MITER_LIMIT becomes a variable AA_THICKNESS needs to scale with the joint extrusion
 
 vec3 screen_space(vec4 vertex) {
@@ -367,7 +367,7 @@ void main(void)
             // Calculate offset from p1/p2
             vec3 offset;
             if (adjustment[x] == 0.0) {
-                if (is_truncated[x]) {
+                if (is_truncated[x] || !isvalid[3*x]) {
                     // handle overlap in fragment shader via SDF comparison
                     offset = shape_factor[y] * (
                         (extrusion[x][y] + (2 * x - 1) * AA_THICKNESS) * v1 +

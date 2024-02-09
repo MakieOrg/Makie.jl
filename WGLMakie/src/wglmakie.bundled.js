@@ -21857,7 +21857,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec3 offset;
                 int x = int(is_end), y = int(is_up);
                 if (adjustment[x] == 0.0) {
-                    if (is_truncated[x]) {
+                    if (is_truncated[x] || !isvalid[3 * x]) {
                         // handle overlap in fragment shader via SDF comparison
                         offset = shape_factor[y] * (
                             (extrusion[x][y] + position.x * AA_THICKNESS) * v1 +
