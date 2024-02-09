@@ -4,6 +4,7 @@
 
 - Fixed an issue where CairoMakie would unnecessarily rasterize polygons [#3605](https://github.com/MakieOrg/Makie.jl/pull/3605).
 - Added `PointBased` conversion trait to `scatterlines` recipe [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603).
+- Added Axis converts (dim_convert), for unit/categorical and dates support [#3226](https://github.com/MakieOrg/Makie.jl/pull/3226).
 
 ## [0.20.7] - 2024-02-04
 
