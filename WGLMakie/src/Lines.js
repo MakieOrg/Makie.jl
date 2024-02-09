@@ -705,7 +705,7 @@ function lines_fragment_shader(uniforms, attributes) {
     out vec4 fragment_color;
 
     // Half width of antialiasing smoothstep
-    const float AA_RADIUS = 0.7071067811865476;
+    const float AA_RADIUS = 0.8;
     // space allocated for AA
     const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
