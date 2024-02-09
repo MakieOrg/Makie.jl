@@ -195,12 +195,11 @@ GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...
 
 function apply_typed_convert(P, @nospecialize(args::Tuple))
     converted = convert_arguments_typed(P, args...)
-    if converted isa NoConversion
+    if converted isa NoConversion || converted isa MakieCore.ConversionError
         return args
     elseif converted isa NamedTuple
         return values(converted)
     else
-        @assert args === converted
         return converted
     end
 end

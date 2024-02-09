@@ -327,9 +327,9 @@ const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
             Tried plotting with `$(F)!` into a `FigureAxisPlot` object, this is not allowed.
 
             The `FigureAxisPlot` object is returned by plotting functions not ending in `!` like `lines(...)` or `scatter(...)`.
-            
+
             It contains the new `Figure`, the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. It exists just as a convenience because returning it displays the contained figure. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-            
+
             You can do this with the destructuring syntax `fig, ax, plt = some_plot(...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
@@ -339,9 +339,9 @@ const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
 
             The `AxisPlot` object is returned by plotting functions not ending in `!` with
             a `GridPosition` as the first argument, like `lines(fig[1, 2], ...)` or `scatter(fig[1, 2], ...)`.
-            
+
             It contains the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-            
+
             You can do this with the destructuring syntax `ax, plt = some_plot(fig[1, 2], ...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
@@ -385,10 +385,12 @@ plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     if haskey(plot.kw, :x_dim_convert) && hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] != to_value(plot.kw[:x_dim_convert])
         ax.x_dim_convert[] = to_value(plot.kw[:x_dim_convert])
+        connect_conversion!(ax, ax.x_dim_convert, ax.x_dim_convert[], 1)
     end
 
     if haskey(plot.kw, :y_dim_convert) && hasproperty(ax, :y_dim_convert) && ax.y_dim_convert[] != to_value(plot.kw[:y_dim_convert])
         ax.y_dim_convert[] = to_value(plot.kw[:y_dim_convert])
+        connect_conversion!(ax, ax.y_dim_convert, ax.y_dim_convert[], 2)
     end
     plot!(ax.scene, plot)
     # some area-like plots basically always look better if they cover the whole plot area.

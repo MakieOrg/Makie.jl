@@ -319,6 +319,9 @@ function initialize_block!(ax::Axis; palette = nothing)
     xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values=true)
     ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values=true)
 
+    connect_conversion!(ax, ax.x_dim_convert, ax.x_dim_convert[], 1)
+    connect_conversion!(ax, ax.y_dim_convert, ax.y_dim_convert[], 2)
+
     xaxis = LineAxis(blockscene, endpoints = xaxis_endpoints, limits = xlims,
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,

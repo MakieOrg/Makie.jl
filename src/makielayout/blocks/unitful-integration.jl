@@ -163,22 +163,22 @@ function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, c
     return UnitfulTicks(unit, unit isa Automatic, conversion, units_in_label, short_label)
 end
 
-function Observables.connect!(ax::Axis, ticks_obs::Observable, conversion::UnitfulTicks, dim)
-    if isassigned(conversion.parent)
-        @warn("Connecting tick object to multiple axes results in shared state! If not desired, use a distinct object for each axis")
-    end
-    conversion.parent[] = ax
+connect_conversion!(ax::Axis, obs::Observable, conversion, dim) = nothing
+
+function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::UnitfulTicks, dim)
     if conversion.automatic_units
-        on(ax.finallimits) do limits
+        on(ax.blockscene, ax.finallimits) do limits
             unit = conversion.unit[]
             # Only time & length units are tested/supported right now
             if !(unit isa Automatic) && Unitful.dimension(unit) in (Unitful.𝐓, Unitful.𝐋)
                 mini, maxi = getindex.(extrema(limits), dim)
                 t(v) = upreferred(to_free_unit(unit)) * v
                 new_unit = best_unit(t(mini), t(maxi))
-                conversion.unit[] = new_unit
-                # Make sure conversion get rerendered
-                notify(ticks_obs)
+                if new_unit != unit
+                    conversion.unit[] = new_unit
+                    # Make sure conversion get rerendered
+                    notify(conversion_obs)
+                end
             end
         end
     end

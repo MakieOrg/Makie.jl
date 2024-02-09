@@ -174,15 +174,21 @@ end
 
 function simple_conversion(P, args, kw)
     converted = convert_arguments(P, args...; kw...)
-    typed = convert_arguments_typed(P, converted)
-    if typed isa NamedTuple
-        return values(typed), :done
-    elseif typed isa Tuple
-        return typed, :no_conversion_wanted
-    elseif typed isa NoConversion
-        return converted, :no_conversion
+    if !(converted isa Tuple)
+        return converted, :done
     else
-        error("convert_arguments_typed returned an invalid type: $(typed)")
+        typed = convert_arguments_typed(P, converted...)
+        if typed isa MakieCore.ConversionError
+            return converted, :no_success
+        elseif typed isa Tuple
+            return typed, :no_conversion_wanted
+        elseif typed isa NamedTuple
+            return values(typed), :done
+        elseif typed isa NoConversion
+            return converted, :no_success
+        else
+            error("convert_arguments_typed returned an invalid type: $(typed)")
+        end
     end
 end
 
@@ -197,18 +203,16 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     args_no_obs = map(to_value, args_obs)
     used_attrs = used_attributes(P, args_no_obs...)
     kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+    converted, status = simple_conversion(P, (args_no_obs...,), kw)
 
-    converted = convert_arguments(P, args_no_obs...; kw...)
-
-
-    # Temporarily work around not having a clear definition for when the conversion should get applied
-    if Func !== text && Func !== annotations && (Func in atomic_functions || Func === barplot)
+    if status == :no_success && Func != text
         args_obs = axis_convert(plot_attributes, args_obs...)
+        args_no_obs = map(to_value, args_obs)
     end
+
     if used_attrs === ()
         args_converted = convert_arguments(P, args_no_obs...)
     else
-
         args_converted = convert_arguments(P, args_no_obs...; kw...)
     end
 

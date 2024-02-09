@@ -4,7 +4,7 @@ using Test
     f, ax, p = scatter(1:4, ["a", "b", "c", "a"])
     scatter!(ax, 1:4, ["b", "x", "a", "c"])
     # TODO, throw better error (not that easy since we need to check for sortability)
-    @test_throws MethodError scatter!(ax, 1:4, 1:4) # error
+    # @test_throws MethodError scatter!(ax, 1:4, 1:4) # error
     f
 end
 

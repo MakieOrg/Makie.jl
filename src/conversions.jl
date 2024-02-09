@@ -46,12 +46,6 @@ end
     volume::AbstractArray{Float32,3}
 end
 
-# TODO find an appropriate target and
-@convert_target struct Text
-    glyphs::Any
-end
-
-
 function got_converted(@nospecialize(result), @nospecialize(args))
     if result === args
         return false
