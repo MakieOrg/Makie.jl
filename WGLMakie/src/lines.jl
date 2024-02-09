@@ -33,9 +33,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         uniforms[:pattern_length] = 1f0
     else
         # TODO: pixel per unit
-        pattern = map(identity, plot, linestyle)
-        uniforms[:pattern] = Sampler(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
-        uniforms[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
+        uniforms[:pattern] = Sampler(map(pt -> ticks(pt, 100), linestyle), x_repeat = :repeat)
+        uniforms[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), linestyle)
     end
 
     color = plot.calculated_colors
@@ -91,7 +90,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     # TODO: in Javascript
     if plot isa Lines && to_value(linestyle) isa Vector
         cam = Makie.parent_scene(plot).camera
-        pvm = lift(*, plot, cam.projectionview, uniforms[:model])
+        pvm = lift(plot, cam.projectionview, cam.pixel_space, plot.space, uniforms[:model]) do _, _, space, model
+            return Makie.space_to_clip(cam, space, true) * model
+        end
         attributes[:lastlen] = map(plot, points_transformed, pvm, cam.resolution) do ps, pvm, res
             output = Vector{Float32}(undef, length(ps))
 

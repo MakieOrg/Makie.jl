@@ -5,6 +5,7 @@
 // show the various regions of the rendered segment
 // (anti-aliased edges, joint truncation, overlap cutoff, patterns)
 // #define DEBUG
+uniform bool debug;
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
@@ -42,19 +43,29 @@ float get_pattern_sdf(sampler2D pattern, vec2 uv){
     return 2.0 * f_linewidth * texture(pattern, uv).x;
 }
 float get_pattern_sdf(sampler1D pattern, vec2 uv){
-    float sdf_offset, x, w = 2.0 * f_linewidth;
+    float w = 2.0 * f_linewidth;
+    // f_pattern_overwrite.x
+    //      v           joint
+    //    ----------------
+    //      |          |
+    //    ----------------
+    // joint           ^
+    //      f_pattern_overwrite.z
     if (uv.x <= f_pattern_overwrite.x) {
-        // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
-        // if overwrite.y (target sdf in joint) is
-        // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
-        // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
-        sdf_offset = max(w * f_pattern_overwrite.y * texture(pattern, f_pattern_overwrite.x).x, -AA_RADIUS);
-        return f_pattern_overwrite.y * (w * pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
+        // overwrite for pattern with "ON" to the right (positive uv.x)
+        float sdf_overwrite = w * pattern_length * (f_pattern_overwrite.x - uv.x);
+        // pattern value where we start overwriting
+        float edge_sample = w * texture(pattern, f_pattern_overwrite.x).x;
+        // offset for overwrite to smoothly connect between sampling and edge
+        float sdf_offset = max(f_pattern_overwrite.y * edge_sample, -AA_RADIUS);
+        // add offset and apply direction ("ON" to left or right) to overwrite
+        return f_pattern_overwrite.y * (sdf_overwrite + sdf_offset);
     } else if (uv.x >= f_pattern_overwrite.z) {
-        // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
-        // see above
-        sdf_offset = max(w * f_pattern_overwrite.w * texture(pattern, f_pattern_overwrite.z).x, -AA_RADIUS);
-        return f_pattern_overwrite.w * (w * pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
+        // same as above (other than mirroring overwrite direction)
+        float sdf_overwrite = w * pattern_length * (uv.x - f_pattern_overwrite.z);
+        float edge_sample = w * texture(pattern, f_pattern_overwrite.z).x;
+        float sdf_offset = max(f_pattern_overwrite.w * edge_sample, -AA_RADIUS);
+        return f_pattern_overwrite.w * (sdf_overwrite + sdf_offset);
     } else
         // in allowed range
         return w * texture(pattern, uv.x).x;
@@ -68,13 +79,18 @@ void write2framebuffer(vec4 color, uvec2 id);
 void main(){
     vec4 color;
 
+    // if (f_id.y % 2 != 1)
+        // discard;
+
     // f_quad_sdf1.x is the negative distance from p1 in v1 direction
     // (where f_cumulative_length applies) so we need to subtract here
     vec2 uv = vec2(
         (f_cumulative_length - f_quad_sdf1.x + 0.5) / (2.0 * f_linewidth * pattern_length),
         0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
     );
-#ifndef DEBUG
+
+// #ifndef DEBUG
+if (!debug) {
     // discard fragments that are "more inside" the other segment to remove
     // overlap between adjacent line segments.
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
@@ -117,7 +133,6 @@ void main(){
     // f_start_length.y is the distance between the edges of this segment, in v1 direction
     // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
     float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
-    // color = vec4(factor, 0, 0, 1);
     color = f_color1 + factor * (f_color2 - f_color1);
 
     if (!fxaa) {
@@ -125,10 +140,11 @@ void main(){
     } else {
         color.a *= step(0.0, -sdf);
     }
-#endif
+// #endif
 
+} else {
 
-#ifdef DEBUG
+// #ifdef DEBUG
     // base color
     color = vec4(0.5, 0.5, 0.5, 0.2);
     color.rgb += (2 * mod(f_id.y, 2) - 1) * 0.1;
@@ -137,9 +153,6 @@ void main(){
     float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
     color.rgb -= vec3(0.4) * step(0.0, sdf);
-
-    // Mark regions excluded via truncation in green
-    color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
     // Mark discarded space in red/blue
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
@@ -150,21 +163,25 @@ void main(){
         color.b += 0.5;
     }
 
-    // inner truncation - show second part as softer red/blue
+    // remaining overlap as softer red/blue
     if (f_quad_sdf1.x - f_quad_sdf0 - 1.0 > 0.0)
         color.r += 0.2;
     if (f_quad_sdf1.y - f_quad_sdf2 - 1.0 > 0.0)
         color.b += 0.2;
 
-    // and smooth inner truncation as soft green?
-    if (f_quad_sdf1.x > 0.0)
+    // Mark regions excluded via truncation in green
+    color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
+
+    // and inner truncation as softer green
+    if (min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0) > 0.0)
         color.g += 0.2;
-    if (f_quad_sdf1.y > 0.0)
+    if (min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0) > 0.0)
         color.g += 0.2;
 
     // mark pattern in white
     color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
-#endif
+// #endif
+}
 
     write2framebuffer(color, f_id);
 }
