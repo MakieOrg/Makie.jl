@@ -284,30 +284,30 @@ void main(void)
 
     if (is_truncated[0]) {
         // need to extend segment to include previous segments corners for truncated join
-        extrusion[0][1] = -halfwidth * abs(miter_offset1 / dot(miter_v1, n1));
+        extrusion[0][1] = -abs(miter_offset1 / dot(miter_v1, n1));
         extrusion[0][0] = extrusion[0][1];
     } else {
         // shallow/spike join needs to include point where miter normal meets outer line edge
-        extrusion[0][1] = halfwidth * dot(miter_n1, v1.xy) / miter_offset1;
+        extrusion[0][1] = dot(miter_n1, v1.xy) / miter_offset1;
         extrusion[0][0] = -extrusion[0][1];
     }
 
     if (is_truncated[1]) {
         // extrusion[1] = halfwidth * miter_offset2 / dot(miter_v2, n1);
-        extrusion[1][1] = halfwidth * abs(miter_offset2 / dot(miter_n2, v1.xy));
+        extrusion[1][1] = abs(miter_offset2 / dot(miter_n2, v1.xy));
         extrusion[1][0] = extrusion[1][1];
     } else {
-        extrusion[1][1] = halfwidth * dot(miter_n2, v1.xy) / miter_offset2;
+        extrusion[1][1] = dot(miter_n2, v1.xy) / miter_offset2;
         extrusion[1][0] = -extrusion[1][1];
     }
 
     // Do we have enough space to adjust the geometry to do a miter joint (not
     // truncated)? Max inset is ~ 2x sin(60°) / cos(60°) * (halfwidth + AA_THICKNESS)
-    float max_inset = 3.5 * (halfwidth + AA_THICKNESS);
-    bvec2 can_adjust_geom =  bvec2(
-        (segment_length0 > max_inset) && (segment_length1 > max_inset),
-        (segment_length2 > max_inset) && (segment_length1 > max_inset)
-    );
+    // float max_inset = 3.5 * (halfwidth + AA_THICKNESS);
+    // bvec2 can_adjust_geom =  bvec2(
+    //     (segment_length0 > max_inset) && (segment_length1 > max_inset),
+    //     (segment_length2 > max_inset) && (segment_length1 > max_inset)
+    // );
 
     // TODO: maybe only for double sharp joints
     // truncated could extrude
@@ -321,9 +321,11 @@ void main(void)
     //   '---'
     // by stopping the line at x
     vec2 shape_factor = vec2(
-        segment_length1 / max(segment_length1, extrusion[0][0] - extrusion[1][0]), // -n
-        segment_length1 / max(segment_length1, extrusion[0][1] - extrusion[1][1])  // +n
+        segment_length1 / max(segment_length1, (halfwidth + AA_THICKNESS) * (extrusion[0][0] - extrusion[1][0])), // -n
+        segment_length1 / max(segment_length1, (halfwidth + AA_THICKNESS) * (extrusion[0][1] - extrusion[1][1]))  // +n
     );
+
+    extrusion = halfwidth * extrusion;
 
     // Generate static/flat outputs
 
@@ -382,7 +384,8 @@ void main(void)
                     // handle overlap by adjusting geometry
                     // TODO: should this include z in miter_n?
                     offset = (2 * y - 1) * shape_factor[y] *
-                        (halfwidth + AA_THICKNESS) / float[2](miter_offset1, miter_offset2)[x] *
+                        (halfwidth + AA_THICKNESS) /
+                        float[2](miter_offset1, miter_offset2)[x] *
                         vec3(vec2[2](miter_n1, miter_n2)[x], 0);
                 }
             } else {
@@ -393,8 +396,6 @@ void main(void)
             }
 
             vertex.position = vec3[2](p1, p2)[x] + offset;
-            // No not here...
-            // vertex.position = 0.03125 * round(32.0 * (vec3[2](p1, p2)[x] + offset));
 
             // Generate SDF's
 
@@ -408,7 +409,7 @@ void main(void)
             // signed distance of previous segment at shared control point in line
             // direction. Used decide which segments renders which joint fragment.
             // If the left joint is adjusted this sdf is disabled.
-            if (isvalid[0] && (adjustment[0] == 0) && (!can_adjust_geom[0] || is_truncated[0]))
+            if (isvalid[0] && (adjustment[0] == 0) && is_truncated[0])
                 vertex.quad_sdf0 = dot(VP1, v0.xy);
             else
                 vertex.quad_sdf0 = 1e12;
@@ -419,7 +420,7 @@ void main(void)
             vertex.quad_sdf1.z = dot(VP1,  n1);
 
             // SDF for next segment, see quad_sdf0
-            if (isvalid[3] && (adjustment[1] == 0) && (!can_adjust_geom[1] || is_truncated[1]))
+            if (isvalid[3] && (adjustment[1] == 0) && is_truncated[1])
                 vertex.quad_sdf2 = dot(VP2, -v2.xy);
             else
                 vertex.quad_sdf2 = 1e12;
