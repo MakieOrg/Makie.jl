@@ -715,23 +715,32 @@ function lines_fragment_shader(uniforms, attributes) {
 
     // Pattern sampling
     float get_pattern_sdf(sampler2D pattern, vec2 uv){
-        float sdf_offset, x, w = 2.0 * f_linewidth;
+        float w = 2.0 * f_linewidth;
+        // f_pattern_overwrite.x
+        //      v           joint
+        //    ----------------
+        //      |          |
+        //    ----------------
+        // joint           ^
+        //      f_pattern_overwrite.z
         if (uv.x <= f_pattern_overwrite.x) {
-            // below allowed range of uv.x's (end of left joint + AA_THICKNESS)
-            // if overwrite.y (target sdf in joint) is
-            // .. +1 we start from max(pattern[overwrite.x], -AA) and extrapolate to positive values
-            // .. -1 we start from min(pattern[overwrite.x], +AA) and extrapolate to negative values
-            sdf_offset = max(w * f_pattern_overwrite.y * texture(pattern, vec2(f_pattern_overwrite.x, 0.0)).x, -AA_RADIUS);
-            return f_pattern_overwrite.y * (w * pattern_length * (f_pattern_overwrite.x - uv.x) + sdf_offset);
+            // overwrite for pattern with "ON" to the right (positive uv.x)
+            float sdf_overwrite = w * pattern_length * (f_pattern_overwrite.x - uv.x);
+            // pattern value where we start overwriting
+            float edge_sample = w * texture(pattern, vec2(f_pattern_overwrite.x, 0.5)).x;
+            // offset for overwrite to smoothly connect between sampling and edge
+            float sdf_offset = max(f_pattern_overwrite.y * edge_sample, -AA_RADIUS);
+            // add offset and apply direction ("ON" to left or right) to overwrite
+            return f_pattern_overwrite.y * (sdf_overwrite + sdf_offset);
         } else if (uv.x >= f_pattern_overwrite.z) {
-            // above allowed range of uv.x's (start of right joint - AA_THICKNESS)
-            // see above
-            sdf_offset = max(w * f_pattern_overwrite.w * texture(pattern, vec2(f_pattern_overwrite.z, 0.0)).x, -AA_RADIUS);
-            return f_pattern_overwrite.w * (w * pattern_length * (uv.x - f_pattern_overwrite.z) + sdf_offset);
-        } else {
+            // same as above (other than mirroring overwrite direction)
+            float sdf_overwrite = w * pattern_length * (uv.x - f_pattern_overwrite.z);
+            float edge_sample = w * texture(pattern, vec2(f_pattern_overwrite.z, 0.5)).x;
+            float sdf_offset = max(f_pattern_overwrite.w * edge_sample, -AA_RADIUS);
+            return f_pattern_overwrite.w * (sdf_overwrite + sdf_offset);
+        } else
             // in allowed range
             return w * texture(pattern, uv).x;
-        }
     }
 
     float get_pattern_sdf(bool _, vec2 uv){
