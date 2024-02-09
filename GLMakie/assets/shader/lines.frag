@@ -123,7 +123,6 @@ if (!debug) {
     // f_start_length.y is the distance between the edges of this segment, in v1 direction
     // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
     float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
-    // color = vec4(factor, 0, 0, 1);
     color = f_color1 + factor * (f_color2 - f_color1);
 
     if (!fxaa) {

@@ -33,9 +33,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         uniforms[:pattern_length] = 1f0
     else
         # TODO: pixel per unit
-        pattern = map(identity, plot, linestyle)
-        uniforms[:pattern] = Sampler(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
-        uniforms[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
+        uniforms[:pattern] = Sampler(map(pt -> ticks(pt, 100), linestyle), x_repeat = :repeat)
+        uniforms[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), linestyle)
     end
 
     color = plot.calculated_colors
