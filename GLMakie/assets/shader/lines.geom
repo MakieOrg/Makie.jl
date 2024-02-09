@@ -333,17 +333,15 @@ void main(void)
 
     // limit range of distance sampled in prev/next segment
     // this makes overlapping segments draw over each other when reaching the limit
-    // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
-    // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
     f_discard_limit = vec2(
         is_truncated[0] ? 0.0 : 1e12,
         is_truncated[1] ? 0.0 : 1e12
     );
 
     // used to elongate sdf to include joints
-    // if start/end don't elongate
-    // if joint skipped elongate to new length
-    // if joint elongate a lot to let discard/truncation handle joint
+    // if start/end       don't elongate TODO: this may need ~AA_RADIUS elongation to cleanly close lines?
+    // if joint skipped   elongate to new length
+    // if normal joint    elongate a lot to let discard/truncation handle joint
     f_extrusion = vec2(
         !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0][0])),
         !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1][0]))
@@ -355,6 +353,8 @@ void main(void)
     // for color sampling
     f_color1 = g_color[1];
     f_color2 = g_color[2];
+
+    // handle very thin lines by adjusting alpha rather than linewidth/sdfs
     f_color1.a *= min(1.0, g_thickness[1] / AA_RADIUS);
     f_color2.a *= min(1.0, g_thickness[1] / AA_RADIUS);
 
@@ -372,11 +372,12 @@ void main(void)
             // Calculate offset from p1/p2
             vec3 offset;
             if (adjustment[x] == 0.0) {
-                if (is_truncated[x] || !isvalid[3 * x] ) {
+                if (is_truncated[x]) {
                     // handle overlap in fragment shader via SDF comparison
                     offset = shape_factor[y] * (
                         (extrusion[x][y] + (2 * x - 1) * AA_THICKNESS) * v1 +
-                        vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0));
+                        vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0)
+                    );
                 } else {
                     // handle overlap by adjusting geometry
                     // TODO: should this include z in miter_n?
