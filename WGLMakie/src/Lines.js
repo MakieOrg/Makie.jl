@@ -564,8 +564,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // if joint skipped elongate to new length
                 // if joint elongate a lot to let discard/truncation handle joint
                 f_extrusion = vec2(
-                    !isvalid[0] ? AA_RADIUS : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0][0])),
-                    !isvalid[3] ? AA_RADIUS : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1][0]))
+                    !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0][0])),
+                    !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1][0]))
                 );
 
                 // used to compute width sdf
@@ -606,19 +606,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0);
                 }
 
-
                 // Vertex position (padded for joint & anti-aliasing)
-                // float v_offset, n_offset;
-                // if (adjustment[int(is_end)] == 0.0) {
-                //     v_offset = position.x * (0.5 * segment_length + abs(extrusion[int(is_end)]) + AA_THICKNESS);
-                // } else {
-                //     v_offset = position.x * 0.5 * segment_length + adjustment[int(is_end)] * (
-                //         max(abs(extrusion[int(is_end)]), halfwidth) +
-                //         AA_THICKNESS
-                //     );
-                // }
-                // n_offset = (halfwidth + AA_THICKNESS) * position.y;
-
                 vec3 point = vec3[2](p1, p2)[x] + offset;
 
                 // SDF's
