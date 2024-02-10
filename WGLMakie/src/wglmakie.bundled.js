@@ -21396,7 +21396,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             vec3 screen_space(vec3 point) {
                 vec4 vertex = projectionview * model * vec4(point, 1);
-                return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w + depth_shift);
+                return vec3(
+                    (0.5 * vertex.xy / vertex.w + 0.5) * px_per_unit * resolution,
+                    vertex.z / vertex.w + depth_shift
+                );
             }
 
             vec3 screen_space(vec2 point) {
@@ -21421,7 +21424,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                float width = is_end ? linewidth_end : linewidth_start;
+                float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 vec3 p1 = screen_space(linepoint_start);
@@ -21499,7 +21502,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_color2.a *= min(1.0, width / AA_RADIUS);
 
                 // clip space position
-                gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
+                gl_Position = vec4(2.0 * point.xy / (px_per_unit * resolution) - 1.0, point.z, 1.0);
             }
         `;
     } else {
@@ -21661,7 +21664,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             vec3 screen_space(vec3 point) {
                 vec4 vertex = projectionview * model * vec4(point, 1);
-                return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w + depth_shift);
+                return vec3(
+                    (0.5 * vertex.xy / vertex.w + 0.5) * px_per_unit * resolution,
+                    vertex.z / vertex.w + depth_shift
+                );
             }
 
             vec3 screen_space(vec2 point) {
@@ -21687,7 +21693,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                float width = is_end ? linewidth_end : linewidth_start;
+                float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 vec3 p0 = screen_space(linepoint_prev);
@@ -21942,7 +21948,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_color2.a *= min(1.0, width / AA_RADIUS);
 
                 // clip space position
-                gl_Position = vec4(2.0 * point.xy / resolution - 1.0, point.z, 1.0);
+                gl_Position = vec4(2.0 * point.xy / (px_per_unit * resolution) - 1.0, point.z, 1.0);
             }
         `;
     }
