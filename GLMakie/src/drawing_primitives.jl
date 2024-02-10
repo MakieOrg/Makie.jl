@@ -456,9 +456,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
 
             positions = lift(apply_transform, plot, transform_func, positions, space)
         else
-            linewidth = gl_attributes[:thickness]
-            px_per_unit = data[:px_per_unit]
-            data[:pattern] = map(*, plot, linestyle, px_per_unit)
+            data[:pattern] = linestyle
             data[:fast] = false
 
             pvm = lift(*, plot, data[:projectionview], data[:model])
@@ -489,8 +487,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
         if isnothing(ls)
             data[:pattern] = nothing
         else
-            linewidth = gl_attributes[:thickness]
-            data[:pattern] = lift(*, plot, linestyle, px_per_unit)
+            data[:pattern] = linestyle
         end
         positions = handle_view(plot[1], data)
 

@@ -138,7 +138,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
+                float width = is_end ? linewidth_end : linewidth_start;
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 vec3 p1 = screen_space(linepoint_start);
@@ -409,7 +409,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
+                float width = is_end ? linewidth_end : linewidth_start;
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 vec3 p0 = screen_space(linepoint_prev);
