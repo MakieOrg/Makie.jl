@@ -4,6 +4,14 @@
 
 - Fixed an issue where CairoMakie would unnecessarily rasterize polygons [#3605](https://github.com/MakieOrg/Makie.jl/pull/3605).
 - Added `PointBased` conversion trait to `scatterlines` recipe [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603).
+- **Breaking** Reworked line shaders in GLMakie and WGLMakie [#3558](https://github.com/MakieOrg/Makie.jl/pull/3558)
+  - GLMakie: Removed support for per point linewidths
+  - GLMakie: Adjusted dots (e.g. with `linestyle = :dot`) to bend across a joint
+  - GLMakie: Cleaned up anti-aliasing for truncated joints
+  - WGLMakie: Added support for linestyles
+  - WGLMakie: Added line joints
+  - WGLMakie: Added native anti-aliasing which generally improves quality but introduces outline artifacts in some cases (same as GLMakie)
+  - Both: Adjusted handling of thin lines which may result in different color intensities
 
 ## [0.20.7] - 2024-02-04
 
