@@ -772,19 +772,20 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
 end
 
 function _draw_rect_heatmap(ctx, xys, ni, nj, colors, margin_factor=0.05f0)
-    # dx and dy are the margin widths that are added to the
-    # heatmap cell sizes further down
-    # adding 5% seems like a good compromise between avoiding artifacts
-    # and not changing pixel sizes too much
-    # how much is added can be controlled via margin_factor
-
-    dx = abs(xys[2,1][1] - xys[1,1][1]) * 0.5f0 * margin_factor
-    dy = abs(xys[1,2][2] - xys[1,1][2]) * 0.5f0 * margin_factor
     @inbounds for i in 1:ni, j in 1:nj
         p1 = xys[i, j]
         p2 = xys[i+1, j]
         p3 = xys[i+1, j+1]
         p4 = xys[i, j+1]
+
+        # dx and dy are the margin widths that are added to the
+        # heatmap cell sizes further down
+        # adding 5% seems like a good compromise between avoiding artifacts
+        # and not changing pixel sizes too much
+        # how much is added can be controlled via margin_factor
+    
+        dx = abs(p2[1] - p1[1]) * 0.5f0 * margin_factor
+        dy = abs(p4[2] - p1[2]) * 0.5f0 * margin_factor
 
         # Rectangles and polygons that are directly adjacent usually show
         # white lines between them due to anti aliasing. To avoid this we
