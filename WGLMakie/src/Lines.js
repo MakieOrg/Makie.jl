@@ -262,13 +262,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
 
-            vec2 process_pattern(bool pattern, bool[4] isvalid, mat2 extrusion, float halfwidth) {
+            vec2 process_pattern(bool pattern, bool[4] isvalid, vec2 extrusion, float halfwidth) {
                 // do not adjust stuff
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
                 return vec2(0);
             }
 
-            vec2 process_pattern(sampler2D pattern, bool[4] isvalid, mat2 extrusion, float halfwidth) {
+            vec2 process_pattern(sampler2D pattern, bool[4] isvalid, vec2 extrusion, float halfwidth) {
                 // samples:
                 //   -ext1  p1 ext1    -ext2 p2 ext2
                 //      1   2   3        4   5   6
@@ -283,7 +283,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float left, center, right;
 
                 if (isvalid[0]) {
-                    float offset = abs(extrusion[0][0]);
+                    float offset = abs(extrusion[0]);
                     left   = width * texture(pattern, vec2(uv_scale * (lastlen_start - offset), 0.0)).x;
                     center = width * texture(pattern, vec2(uv_scale * (lastlen_start         ), 0.0)).x;
                     right  = width * texture(pattern, vec2(uv_scale * (lastlen_start + offset), 0.0)).x;
@@ -296,7 +296,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
                         // overwrite until one AA gap past the corner/joint
-                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0][0]) + AA_RADIUS);
+                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0]) + AA_RADIUS);
                         // using the sign of the center to decide between drawing or not drawing
                         f_pattern_overwrite.y = sign(center);
                     } else if (left > 0.0) {
@@ -307,21 +307,21 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.x = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0][0]) + AA_RADIUS);
+                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0]) + AA_RADIUS);
                         f_pattern_overwrite.y = sign(center);
                     }
 
                 } // else there is no left segment, no left join, so no overwrite
 
                 if (isvalid[3]) {
-                    float offset = abs(extrusion[1][0]);
+                    float offset = abs(extrusion[1]);
                     left   = width * texture(pattern, vec2(uv_scale * (lastlen_end - offset), 0.0)).x;
                     center = width * texture(pattern, vec2(uv_scale * (lastlen_end         ), 0.0)).x;
                     right  = width * texture(pattern, vec2(uv_scale * (lastlen_end + offset), 0.0)).x;
 
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
-                        f_pattern_overwrite.z = uv_scale * (lastlen_end - abs(extrusion[1][0]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (lastlen_end - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     } else if (left > 0.0) {
                         // shrink backwards
@@ -331,7 +331,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.y = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.z = uv_scale * (lastlen_end - abs(extrusion[1][0]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (lastlen_end - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     }
                 }
@@ -484,27 +484,23 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // uses:    p1 + extrusion[0][1] * v1  -----  p2 + extrusion[1][1] * v1
                 //                    |                             |
                 //          p1 + extrusion[0][0] * v1  -----  p2 + extrusion[1][0] * v1
+                // where the y index (second index) is omitted as it is constant per vertex.
                 // Note that these are not yet scaled to the given linewidth because
                 // we need them scaled to (linewidth + 2AA_THICKNESS) once
-                mat2 extrusion;
+                vec2 extrusion;
 
                 if (is_truncated[0]) {
                     // need to extend segment to include previous segments corners for truncated join
-                    extrusion[0][1] = -abs(miter_offset1 / dot(miter_v1, n1));
-                    extrusion[0][0] = extrusion[0][1];
+                    extrusion[0] = -abs(miter_offset1 / dot(miter_v1, n1));
                 } else {
                     // shallow/spike join needs to include point where miter normal meets outer line edge
-                    extrusion[0][1] = dot(miter_n1, v1.xy) / miter_offset1;
-                    extrusion[0][0] = -extrusion[0][1];
+                    extrusion[0] = position.y * dot(miter_n1, v1.xy) / miter_offset1;
                 }
 
                 if (is_truncated[1]) {
-                    // extrusion[1] = halfwidth * miter_offset2 / dot(miter_v2, n1);
-                    extrusion[1][1] = abs(miter_offset2 / dot(miter_n2, v1.xy));
-                    extrusion[1][0] = extrusion[1][1];
+                    extrusion[1] = abs(miter_offset2 / dot(miter_n2, v1.xy));
                 } else {
-                    extrusion[1][1] = dot(miter_n2, v1.xy) / miter_offset2;
-                    extrusion[1][0] = -extrusion[1][1];
+                    extrusion[1] = position.y * dot(miter_n2, v1.xy) / miter_offset2;
                 }
 
 
@@ -520,9 +516,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 //     x
                 //   '---'
                 // by stopping the line at x
-                vec2 shape_factor = vec2(
-                    max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][0] - extrusion[1][0]))), // -n
-                    max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][1] - extrusion[1][1])))  // +n
+                float shape_factor = max(
+                    0.0,
+                    segment_length / max(
+                        segment_length,
+                        (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1])
+                    )
                 );
 
                 // Now we can scale them to the linewidth
@@ -536,7 +535,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // If adjustment != 0.0 we replace a joint by an extruded line, so we no longer
                 // need to shrink the line for the joint to fit.
                 if (adjustment[0] != 0.0 || adjustment[1] != 0.0)
-                    shape_factor = vec2(1.0);
+                    shape_factor = 1.0;
 
                 // TODO: do we still need this?
                 // // patterns need to be processed with joints to avoid artifacts
@@ -564,8 +563,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // if joint skipped elongate to new length
                 // if joint elongate a lot to let discard/truncation handle joint
                 f_extrusion = vec2(
-                    !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0][0])),
-                    !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1][0]))
+                    !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0])),
+                    !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1]))
                 );
 
                 // used to compute width sdf
@@ -583,18 +582,18 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // TODO: we can probably calculate just the extrusion and shape_factor we need here
 
                 vec3 offset;
-                int x = int(is_end), y = int(is_up);
+                int x = int(is_end);
                 if (adjustment[x] == 0.0) {
                     if (is_truncated[x] || !isvalid[3 * x]) {
                         // handle overlap in fragment shader via SDF comparison
-                        offset = shape_factor[y] * (
-                            (extrusion[x][y] + position.x * AA_THICKNESS) * v1 +
+                        offset = shape_factor * (
+                            (extrusion[x] + position.x * AA_THICKNESS) * v1 +
                             vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0)
                         );
                     } else {
                         // handle overlap by adjusting geometry
                         // TODO: should this include z in miter_n?
-                        offset = position.y * shape_factor[y] *
+                        offset = position.y * shape_factor *
                             (halfwidth + AA_THICKNESS) /
                             float[2](miter_offset1, miter_offset2)[x] *
                             vec3(vec2[2](miter_n1, miter_n2)[x], 0);
@@ -602,7 +601,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 } else {
                     // discard joint for cleaner pattern handling
                     offset =
-                        adjustment[x] * (abs(extrusion[x][1]) + AA_THICKNESS) * v1 +
+                        adjustment[x] * (abs(extrusion[x]) + AA_THICKNESS) * v1 +
                         vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0);
                 }
 
@@ -648,8 +647,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // - calculating normalized distance here will cause div 0/negative
                 //   issues as (linelength +- (extrusion[0] + extrusion[1])) <= 0 is possible
                 // So defer color interpolation to fragment shader
-                f_linestart = shape_factor[y] * extrusion[0][y];
-                f_linelength = max(1.0, segment_length - shape_factor[y] * (extrusion[0][y] - extrusion[1][y]));
+                f_linestart = shape_factor * extrusion[0];
+                f_linelength = max(1.0, segment_length - shape_factor * (extrusion[0] - extrusion[1]));
 
                 // for color sampling
                 f_color1 = get_color(color_start, colormap, colorrange);
@@ -845,9 +844,9 @@ function lines_fragment_shader(uniforms, attributes) {
         color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
         // and inner truncation as soft green
-        if (f_quad_sdf1.x > 0.0)
+        if (min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0) > 0.0)
             color.g += 0.2;
-        if (f_quad_sdf1.y > 0.0)
+        if (min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0) > 0.0)
             color.g += 0.2;
 
         // mark pattern in white
