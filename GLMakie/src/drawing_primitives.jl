@@ -479,18 +479,11 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
     return cached_robj!(screen, scene, plot) do gl_attributes
-        linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
+        data[:pattern] = pop!(data, :linestyle)
         get!(data, :debug, lines_debug)
-        px_per_unit = data[:px_per_unit]
-        ls = to_value(linestyle)
-        if isnothing(ls)
-            data[:pattern] = nothing
-        else
-            data[:pattern] = linestyle
-        end
-        positions = handle_view(plot[1], data)
 
+        positions = handle_view(plot[1], data)
         positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
