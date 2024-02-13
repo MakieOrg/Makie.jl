@@ -40,6 +40,30 @@ function generic_plot_attributes(attr)
     )
 end
 
+function mixin_generic_plot_attributes()
+    quote
+        transformation = automatic
+        "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
+        model = automatic
+        "Controls whether the plot will be rendered or not."
+        visible = true
+        "Adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency."
+        transparency = false
+        "Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends"
+        overdraw = false
+        "Enables screen-space ambient occlusion."
+        ssao = false
+        "sets whether this plot should be seen by `DataInspector`."
+        inspectable = true
+        "adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
+        depth_shift = 0.0f0
+        "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
+        space = :data
+        "adjusts whether the plot is rendered with fxaa (anti-aliasing)."
+        fxaa = true
+    end
+end
+
 """
 ### Color attributes
 
@@ -74,6 +98,30 @@ function colormap_attributes(attr)
         nan_color = attr[:nan_color],
         alpha = attr[:alpha]
     )
+end
+
+function mixin_colormap_attributes()
+    quote
+        """
+        Sets the colormap that is sampled for numeric `color`s.
+        `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils.
+        To see all available color gradients, you can call `Makie.available_gradients()`.
+        """
+        colormap = @inherit :colormap :viridis
+        """
+        The color transform function. Can be any function, but only works well together with `Colorbar` for `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        """
+        colorscale = identity
+        "The values representing the start and end points of `colormap`."
+        colorrange = automatic
+        "The color for any value below the colorrange."
+        lowclip = automatic
+        "The color for any value above the colorrange."
+        highclip = automatic
+        nan_color = :transparent
+        "The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied."
+        alpha = 1.0
+    end
 end
 
 """
@@ -396,31 +444,28 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Scatter, positions) do scene
-    attr = Attributes(;
-        color = theme(scene, :markercolor),
+@recipe Scatter positions begin
+    color = @inherit :markercolor :black
 
-        marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
+    marker = @inherit :marker :circle
+    markersize = @inherit :markersize 8
 
-        strokecolor = theme(scene, :markerstrokecolor),
-        strokewidth = theme(scene, :markerstrokewidth),
-        glowcolor = (:black, 0.0),
-        glowwidth = 0.0,
+    strokecolor = @inherit :markerstrokecolor :transparent
+    strokewidth = @inherit :markerstrokewidth 0
+    glowcolor = (:black, 0.0)
+    glowwidth = 0.0
 
-        rotations = Billboard(),
-        marker_offset = automatic,
+    rotations = Billboard()
+    marker_offset = automatic
 
-        transform_marker = false, # Applies the plots transformation to marker
-        distancefield = nothing,
-        uv_offset_width = (0.0, 0.0, 0.0, 0.0),
-        markerspace = :pixel,
-
-        fxaa = false,
-        cycle = [:color],
-    )
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+    transform_marker = false # Applies the plots transformation to marker
+    distancefield = nothing
+    uv_offset_width = (0.0, 0.0, 0.0, 0.0)
+    markerspace = :pixel
+    cycle = [:color]
+    
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
