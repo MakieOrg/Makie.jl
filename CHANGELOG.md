@@ -7,6 +7,7 @@
 - **Breaking** Reworked line shaders in GLMakie and WGLMakie [#3558](https://github.com/MakieOrg/Makie.jl/pull/3558)
   - GLMakie: Removed support for per point linewidths
   - GLMakie: Adjusted dots (e.g. with `linestyle = :dot`) to bend across a joint
+  - GLMakie: Adjusted linestyles to scale with linewidth dynamically so that dots remain dots with changing linewidth
   - GLMakie: Cleaned up anti-aliasing for truncated joints
   - WGLMakie: Added support for linestyles
   - WGLMakie: Added line joints
