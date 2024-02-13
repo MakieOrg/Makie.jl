@@ -75,12 +75,12 @@ function plot!(plot::Text)
 
     attrs = copy(plot.attributes)
     # remove attributes that are already in the glyphcollection
-    pop!(attrs, :position)
+    attributes(attrs)[:position] = positions
     pop!(attrs, :text)
     pop!(attrs, :align)
     pop!(attrs, :color)
 
-    t = text!(plot, glyphcollections; attrs..., position = positions)
+    t = text!(plot, attrs, glyphcollections)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)

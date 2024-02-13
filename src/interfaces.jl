@@ -200,10 +200,10 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     end
     P = Plot{Func}
     args_obs = Any[convert(Observable, x) for x in args]
-    args_no_obs = map(to_value, args_obs)
+    args_no_obs = [to_value(x) for x in args]
     used_attrs = used_attributes(P, args_no_obs...)
-    kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
-    converted, status = simple_conversion(P, (args_no_obs...,), kw)
+    kw = [Pair{Symbol, Any}(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+    converted, status = simple_conversion(P, Tuple(args_no_obs), kw)
 
     if status == :no_success && Func != text
         args_obs = axis_convert(plot_attributes, args_obs...)
