@@ -154,6 +154,23 @@ function shading_attributes(attr)
     )
 end
 
+function mixin_shading_attributes()
+    quote
+        "Sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie."
+        shading = automatic
+        "Sets how strongly the red, green and blue channel react to diffuse (scattered) light."
+        diffuse = 1.0
+        "Sets how strongly the object reflects light in the red, green and blue channels."
+        specular = 0.2
+        "Sets how sharp the reflection is."
+        shininess = 32.0f0
+        "Sets a weight for secondary light calculation with inverted normals."
+        backlight = 0f0
+        "Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`."
+        ssao = false
+    end
+end
+
 """
     `calculated_attributes!(trait::Type{<: AbstractPlot}, plot)`
 trait version of calculated_attributes
@@ -230,16 +247,11 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Heatmap, x, y, values) do scene
-    attr = Attributes(;
-
-        interpolate = false,
-
-        linewidth = 0.0,
-        fxaa = true,
-    )
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe Heatmap x y values begin
+    "Sets whether colors should be interpolated"
+    interpolate = false
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
@@ -270,18 +282,18 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Volume, x, y, z, volume) do scene
-    attr = Attributes(;
-
-        algorithm = :mip,
-        isovalue = 0.5,
-        isorange = 0.05,
-        interpolate = true,
-        fxaa = true,
-    )
-    generic_plot_attributes!(attr)
-    shading_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe Volume x y z volume begin
+    "Sets the volume algorithm that is used."    
+    algorithm = :mip
+    "Sets the range of values picked up by the IsoValue algorithm."
+    isovalue = 0.5
+    "Sets the target value for the IsoValue algorithm."
+    isorange = 0.05
+    "Sets whether the volume data should be sampled with interpolation."
+    interpolate = true
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_shading_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
@@ -304,16 +316,14 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Surface, x, y, z) do scene
-    attr = Attributes(;
-        color = nothing,
-        invert_normals = false,
-
-        fxaa = true,
-    )
-    shading_attributes!(attr)
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe Surface x y z begin
+    "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`."
+    color = nothing
+    "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
+    invert_normals = false
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_shading_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
@@ -411,17 +421,15 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Mesh, mesh) do scene
-    attr = Attributes(;
-        color = :black,
-        interpolate = true,
-
-        fxaa = true,
-        cycle = [:color => :patchcolor],
-    )
-    shading_attributes!(attr)
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe Mesh mesh begin
+    "Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates."
+    color = @inherit :patchcolor :black
+    "sets whether colors should be interpolated"
+    interpolate = true
+    cycle = [:color => :patchcolor]
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_shading_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
@@ -453,23 +461,31 @@ $(Base.Docs.doc(colormap_attributes!))
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Scatter positions begin
+    "Sets the color of the marker. If no color is set, multiple calls to `scatter!` will cycle through the axis color palette."
     color = @inherit :markercolor :black
-
+    "Sets the scatter marker."
     marker = @inherit :marker :circle
+    "Sets the size of the marker."
     markersize = @inherit :markersize 8
-
+    "Sets the color of the outline around a marker."
     strokecolor = @inherit :markerstrokecolor :transparent
+    "Sets the width of the outline around a marker."
     strokewidth = @inherit :markerstrokewidth 0
+    "Sets the color of the glow effect around the marker."
     glowcolor = (:black, 0.0)
+    "Sets the size of a glow effect around the marker."
     glowwidth = 0.0
 
+    "Sets the rotation of the marker. A `Billboard` rotation is always around the depth axis."
     rotations = Billboard()
     marker_offset = automatic
-
-    transform_marker = false # Applies the plots transformation to marker
+    "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
+    transform_marker = false
     distancefield = nothing
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
+    "Sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs"
     markerspace = :pixel
+    "Sets which attributes to cycle when creating multiple plots"
     cycle = [:color]
     
     @mixin mixin_generic_plot_attributes
@@ -501,21 +517,21 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(MeshScatter, positions) do scene
-    attr = Attributes(;
-        color = theme(scene, :markercolor),
-
-        marker = :Sphere,
-        markersize = 0.1,
-        rotations = 0.0,
-        space = :data,
-
-        fxaa = true,
-        cycle = [:color],
-    )
-    shading_attributes!(attr)
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe MeshScatter positions begin
+    "Sets the color of the marker."
+    color = @inherit :markercolor :black
+    "Sets the scattered mesh."
+    marker = :Sphere
+    "Sets the scale of the mesh. This can be given as a `Vector` to apply to each scattered mesh individually."
+    markersize = 0.1
+    "Sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually."
+    rotations = 0.0
+    space = :data
+    fxaa = true
+    cycle = [:color]
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_shading_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
@@ -549,28 +565,42 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Text, positions) do scene
-    attr = Attributes(;
-        color = theme(scene, :textcolor),
-
-        font = theme(scene, :font),
-        fonts = theme(scene, :fonts),
-
-        strokecolor = (:black, 0.0),
-        strokewidth = 0,
-        align = (:left, :bottom),
-        rotation = 0.0,
-        fontsize = theme(scene, :fontsize),
-        position = (0.0, 0.0),
-        justification = automatic,
-        lineheight = 1.0,
-        markerspace = :pixel,
-        transform_marker = false,
-        offset = (0.0, 0.0),
-        word_wrap_width = -1,
-    )
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe Text positions begin
+    "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
+    text = ""
+    "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}`, or one colorant for the whole text. If color is a vector of numbers, the colormap args are used to map the numbers to colors."
+    color = @inherit :textcolor :black
+    "Sets the font. Can be a `Symbol` which will be looked up in the `fonts` dictionary or a `String` specifying the (partial) name of a font or the file path of a font file"
+    font = @inherit :font :regular
+    "Used as a dictionary to look up fonts specified by `Symbol`, for example `:regular`, `:bold` or `:italic`."
+    fonts = @inherit :fonts Attributes()
+    "Sets the color of the outline around a marker."
+    strokecolor = (:black, 0.0)
+    "Sets the width of the outline around a marker."
+    strokewidth = 0
+    "Sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions."
+    align = (:left, :bottom)
+    "Rotates text around the given position"
+    rotation = 0.0
+    "The fontsize in units depending on `markerspace`."
+    fontsize = @inherit :fontsize 16
+    "Deprecated: Specifies the position of the text. Use the positional argument to `text` instead."
+    position = (0.0, 0.0)
+    "Sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`."
+    justification = automatic
+    "The lineheight multiplier."
+    lineheight = 1.0
+    "Sets the space in which `fontsize` acts. See `Makie.spaces()` for possible inputs."
+    markerspace = :pixel
+    "Controls whether the model matrix (without translation) applies to the glyph itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)"
+    transform_marker = false
+    "The offset of the text from the given position in `markerspace` units."
+    offset = (0.0, 0.0)
+    "Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping."
+    word_wrap_width = -1
+    
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
@@ -606,22 +636,30 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Poly) do scene
-    attr = Attributes(;
-        color = theme(scene, :patchcolor),
+@recipe Poly begin
+    """
+    Sets the color of the poly. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
+    A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
+    Vector or Matrices of numbers can be used as well, which will use the colormap arguments to map the numbers to colors.
+    One can also use `Makie.LinePattern`, to cover the poly with a regular stroke pattern.
+    """
+    color = @inherit :patchcolor :black
+    "Sets the color of the outline around a marker."
+    strokecolor = @inherit :patchstrokecolor :transparent
+    "Sets the colormap that is sampled for numeric `color`s."
+    strokecolormap = @inherit :colormap :viridis
+    "Sets the width of the outline."
+    strokewidth = @inherit :patchstrokewidth 0
+    "Sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)"
+    linestyle = nothing
 
-        strokecolor = theme(scene, :patchstrokecolor),
-        strokecolormap = theme(scene, :colormap),
-        strokewidth = theme(scene, :patchstrokewidth),
-        linestyle = nothing,
+    shading = NoShading
+    fxaa = true
 
-        shading = NoShading,
-        fxaa = true,
+    cycle = [:color => :patchcolor]
 
-        cycle = [:color => :patchcolor],
-    )
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_colormap_attributes
 end
 
 @recipe(Wireframe) do scene
