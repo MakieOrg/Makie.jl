@@ -21847,7 +21847,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if (is_truncated[x] || !isvalid[3 * x]) {
                         // handle overlap in fragment shader via SDF comparison
                         offset = shape_factor * (
-                            (halfwidth + AA_THICKNESS) * extrusion[x] * v1 +
+                            (halfwidth * extrusion[x] + position.x * AA_THICKNESS) * v1 +
                             vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0)
                         );
                     } else {
@@ -21861,7 +21861,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 } else {
                     // discard joint for cleaner pattern handling
                     offset =
-                        adjustment[x] * (halfwidth + AA_THICKNESS) * abs(extrusion[x]) * v1 +
+                        adjustment[x] * (halfwidth * abs(extrusion[x]) + AA_THICKNESS) * v1 +
                         vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0);
                 }
 
@@ -21880,7 +21880,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 else
                     f_quad_sdf0 = 1e12;
 
-                // sdf of this segment (negative inside)
+                // sdf of this segment
                 f_quad_sdf1.x = dot(VP1, -v1.xy);
                 f_quad_sdf1.y = dot(VP2,  v1.xy);
                 f_quad_sdf1.z = dot(VP1,  n1);

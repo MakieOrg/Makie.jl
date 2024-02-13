@@ -372,7 +372,7 @@ void main(void)
                 if (is_truncated[x] || !isvalid[3*x]) {
                     // handle overlap in fragment shader via SDF comparison
                     offset = shape_factor[y] * (
-                        (halfwidth + AA_THICKNESS) * extrusion[x][y] * v1 +
+                        (halfwidth * extrusion[x][y] + (2 * x - 1) * AA_THICKNESS) * v1 +
                         vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0)
                     );
                 } else {
@@ -386,7 +386,7 @@ void main(void)
             } else {
                 // discard joint for cleaner pattern handling
                 offset =
-                    adjustment[x] * (halfwidth + AA_THICKNESS) * abs(extrusion[x][1]) * v1 +
+                    adjustment[x] * (halfwidth * abs(extrusion[x][1]) + AA_THICKNESS) * v1 +
                     vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0);
             }
 
