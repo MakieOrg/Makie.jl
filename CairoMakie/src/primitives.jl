@@ -777,21 +777,20 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors, margin_factor=0.05f0)
         p2 = xys[i+1, j]
         p3 = xys[i+1, j+1]
         p4 = xys[i, j+1]
-
-        # dx and dy are the margin widths that are added to the
-        # heatmap cell sizes further down
-        # adding 5% seems like a good compromise between avoiding artifacts
-        # and not changing pixel sizes too much
-        # how much is added can be controlled via margin_factor
-    
-        dx = abs(p2[1] - p1[1]) * 0.5f0 * margin_factor
-        dy = abs(p4[2] - p1[2]) * 0.5f0 * margin_factor
-
+        
         # Rectangles and polygons that are directly adjacent usually show
         # white lines between them due to anti aliasing. To avoid this we
         # increase their size slightly.
-
+        
         if alpha(colors[i, j]) == 1 && margin_factor > 0
+            # dx and dy are the margin widths that are added to the
+            # heatmap cell sizes further down
+            # adding 5% seems like a good compromise between avoiding artifacts
+            # and not changing pixel sizes too much
+            # how much is added can be controlled via margin_factor
+            dx = abs(p2[1] - p1[1]) * 0.5f0 * margin_factor
+            dy = abs(p4[2] - p1[2]) * 0.5f0 * margin_factor
+
             # sign.(p - center) gives the direction in which we need to
             # extend the polygon. (Which may change due to rotations in the
             # model matrix.) (i!=1) etc is used to avoid increasing the
