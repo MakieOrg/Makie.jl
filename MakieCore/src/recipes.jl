@@ -189,6 +189,48 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr
 end
 
+macro recipe(Tsym::Symbol, args...)
+    @info "This is the new recipe"
+    syms = args[1:end-1]
+    for sym in syms
+        sym isa Symbol || throw(ArgumentError("Found argument that is not a symbol in the position where optional argument names should appear: $sym"))
+    end
+    attrexpr = args[end]
+    if !(attrexpr isa Expr && attrexpr.head === :block)
+        throw(ArgumentError("Last argument is not a begin end block"))
+    end
+end
+
+function extract_attr(arg)
+    has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
+
+    if has_docs
+        docs = arg.args[3]
+        attr = arg.args[4]
+    else
+        docs = nothing
+        attr = arg
+    end
+
+    if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
+        error("$attr is not a valid attribute line like :x[::Type] = default_value")
+    end
+    left = attr.args[1]
+    default = attr.args[2]
+    if left isa Symbol
+        attr_symbol = left
+        type = Any
+    else
+        if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
+            error("$left is not a Symbol or an expression such as x::Type")
+        end
+        attr_symbol = left.args[1]::Symbol
+        type = left.args[2]
+    end
+
+    (docs = docs, symbol = attr_symbol, type = type, default = default)
+end
+
 """
     Plot(args::Vararg{<:DataType,N})
 

@@ -205,44 +205,14 @@ function extract_attributes!(body)
 
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
-    function extract_attr(arg)
-        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
+    attrs::Vector{Any} = map(MakieCore.extract_attr, args)
 
-        if has_docs
-            docs = arg.args[3]
-            attr = arg.args[4]
-        else
-            docs = nothing
-            attr = arg
-        end
-
-        if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
-            error("$attr is not a valid attribute line like :x[::Type] = default_value")
-        end
-        left = attr.args[1]
-        default = attr.args[2]
-        if left isa Symbol
-            attr_symbol = left
-            type = Any
-        else
-            if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
-                error("$left is not a Symbol or an expression such as x::Type")
-            end
-            attr_symbol = left.args[1]::Symbol
-            type = left.args[2]
-        end
-
-        (docs = docs, symbol = attr_symbol, type = type, default = default)
-    end
-
-    attrs = map(extract_attr, args)
-
-    lras = map(extract_attr, layout_related_attributes)
+    lras = map(MakieCore.extract_attr, layout_related_attributes)
 
     for lra in lras
         i = findfirst(x -> x.symbol == lra.symbol, attrs)
         if i === nothing
-            push!(attrs, extract_attr(lra))
+            push!(attrs, lra)
         end
     end
 
