@@ -189,8 +189,21 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr
 end
 
+function is_attribute end
+function default_attribute_values end
+function attribute_default_expressions end
+function _attribute_docs end
+function attribute_names end
+
+attribute_names(_) = nothing
+
 macro recipe(Tsym::Symbol, args...)
-    @info "This is the new recipe"
+
+    funcname_sym = to_func_name(Tsym)
+    funcname! = esc(Symbol("$(funcname_sym)!"))
+    PlotType = esc(Tsym)
+    funcname = esc(funcname_sym)
+
     syms = args[1:end-1]
     for sym in syms
         sym isa Symbol || throw(ArgumentError("Found argument that is not a symbol in the position where optional argument names should appear: $sym"))
@@ -201,7 +214,57 @@ macro recipe(Tsym::Symbol, args...)
     end
     attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
+    q = quote
+        $(funcname)() = not_implemented_for($funcname)
+        const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
+        $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
+        Core.@__doc__ function ($funcname)(args...; kw...)
+            kwdict = Dict{Symbol, Any}(kw)
+            _create_plot($funcname, kwdict, args...)
+        end
+        function ($funcname!)(args...; kw...)
+            kwdict = Dict{Symbol, Any}(kw)
+             _create_plot!($funcname, kwdict, args...)
+        end
+        function MakieCore.is_attribute(T::Type{<:$(PlotType)}, sym::Symbol)
+            sym in MakieCore.attribute_names(T)
+        end
+        function MakieCore.attribute_names(::Type{<:$(PlotType)})
+            Set{Symbol}([$([QuoteNode(a.symbol) for a in attrs]...)])
+        end
+
+        function $(MakieCore).default_theme(scene, ::Type{<:$PlotType})
+            $(make_attr_dict_expr(attrs, :scene))
+        end
+
+        function MakieCore.attribute_default_expressions(::Type{<:$PlotType})
+            $(
+                if attrs === nothing
+                    Dict{Symbol, String}()
+                else
+                    Dict{Symbol, String}([a.symbol => _defaultstring(a.default) for a in attrs])
+                end
+            )
+        end
+
+        function MakieCore._attribute_docs(::Type{<:$PlotType})
+            Dict(
+                $(
+                    (attrs !== nothing ?
+                        [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
+                        [])...
+                )
+            )
+        end
+        
+        export $PlotType, $funcname, $funcname!
+    end
+
+    q
 end
+
+_defaultstring(x) = string(Base.remove_linenums!(x))
+_defaultstring(x::String) = repr(x)
 
 function extract_attribute_metadata(arg)
     has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
@@ -231,6 +294,39 @@ function extract_attribute_metadata(arg)
     end
 
     (docs = docs, symbol = attr_symbol, type = type, default = default)
+end
+
+function make_attr_dict_expr(attrs, scenesym::Symbol)
+
+    pairs = map(attrs) do a
+
+        d = a.default
+        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
+            if length(d.args) != 4
+                error("@inherit works with exactly 2 arguments, expression was $d")
+            end
+            if !(d.args[3] isa QuoteNode)
+                error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
+            end
+            key, default = d.args[3:4]
+            # first check scene theme
+            # then default value
+            d = quote
+                if haskey(thm, $key)
+                    to_value(thm[$key]) # only use value of theme entry
+                else
+                    $default
+                end
+            end
+        end
+
+        Expr(:call, :(=>), QuoteNode(a.symbol), d)
+    end
+
+    quote
+        thm = theme($scenesym)
+        Dict($(pairs...))
+    end
 end
 
 """
@@ -277,3 +373,16 @@ e.g.:
 ```
 """
 plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
+
+function validate_kw(P::Type{<:Plot}, kw::Dict{Symbol})
+    nameset = attribute_names(P)
+    nameset === nothing && return
+    unknown = setdiff(keys(kw), nameset)
+    if !isempty(unknown)
+        n = length(unknown)
+        throw(ArgumentError(
+            """Unknown attribute$(n > 1 ? "s" : "") for plot type $P: $(join(unknown, ", ", " and ")).
+            The available attributes are: $(join(sort(collect(nameset)), ", ", " and "))."""
+        ))
+    end
+end
