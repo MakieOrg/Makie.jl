@@ -1,24 +1,4 @@
 # Same as GLMakie, see GLMakie/shaders/lines.jl
-# TODO: maybe move to Makie?
-dist(a, b) = abs(a-b)
-mindist(x, a, b) = min(dist(a, x), dist(b, x))
-function gappy(x, ps)
-    n = length(ps)
-    x <= first(ps) && return first(ps) - x
-    for j=1:(n-1)
-        p0 = ps[j]
-        p1 = ps[min(j+1, n)]
-        if p0 <= x && p1 >= x
-            return mindist(x, p0, p1) * (isodd(j) ? 1 : -1)
-        end
-    end
-    return last(ps) - x
-end
-function ticks(points, resolution)
-    scaled = ((resolution + 1) / resolution) .* points
-    r = range(first(scaled), stop=last(scaled), length=resolution+1)[1:end-1]
-    return Float16[-gappy(x, scaled) for x = r]
-end
 
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     Makie.@converted_attribute plot (linewidth, linestyle)
@@ -28,13 +8,14 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :depth_shift => plot.depth_shift,
         :picking => false
     )
+
     if isnothing(to_value(linestyle))
         uniforms[:pattern] = false
         uniforms[:pattern_length] = 1f0
     else
         # TODO: pixel per unit
-        uniforms[:pattern] = Sampler(map(pt -> ticks(pt, 100), linestyle), x_repeat = :repeat)
-        uniforms[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), linestyle)
+        uniforms[:pattern] = Sampler(lift(Makie.linestyle_to_sdf, plot, linestyle); x_repeat=:repeat)
+        uniforms[:pattern_length] = lift(ls -> Float32(last(ls) - first(ls)), linestyle)
     end
 
     color = plot.calculated_colors
@@ -55,18 +36,18 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
     indices = Observable(Int[])
     points_transformed = lift(plot, transform_func_obs(plot), plot[1], plot.space) do tf, ps, space
-        output = apply_transform(tf, ps, space)
+        transformed_points = apply_transform(tf, ps, space)
         # TODO: Do this in javascript?
-        if isempty(output)
+        if isempty(transformed_points)
             empty!(indices[])
             notify(indices)
-            return output
+            return transformed_points
         else
-            sizehint!(empty!(indices[]), length(output) + 2)
+            sizehint!(empty!(indices[]), length(transformed_points) + 2)
             was_nan = true
-            for i in eachindex(output)
+            for i in eachindex(transformed_points)
                 # dublicate first and last element of line selection
-                if isnan(output[i])
+                if isnan(transformed_points[i])
                     if !was_nan
                         push!(indices[], i-1) # end of line dublication
                     end
@@ -78,10 +59,10 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
                 push!(indices[], i)
             end
-            push!(indices[], length(output))
+            push!(indices[], length(transformed_points))
             notify(indices)
 
-            return output[indices[]]
+            return transformed_points[indices[]]
         end
     end
     positions = lift(serialize_buffer_attribute, plot, points_transformed)

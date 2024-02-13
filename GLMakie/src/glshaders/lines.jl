@@ -29,36 +29,6 @@ function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
         Texture(intensity)
     end
 end
-#TODO NaNMath.min/max?
-dist(a, b) = abs(a-b)
-mindist(x, a, b) = min(dist(a, x), dist(b, x))
-function gappy(x, ps)
-    n = length(ps)
-    x <= first(ps) && return first(ps) - x
-    for j=1:(n-1)
-        p0 = ps[j]
-        p1 = ps[min(j+1, n)]
-        if p0 <= x && p1 >= x
-            return mindist(x, p0, p1) * (isodd(j) ? 1 : -1)
-        end
-    end
-    return last(ps) - x
-end
-function ticks(points, resolution)
-    # This is used to map a vector of `points` to a signed distance field. The
-    # points mark transition between "on" and "off" section of the pattern.
-
-    # The output should be periodic so the signed distance field value
-    # representing points[1] should be equal to the one representing points[end].
-    # => range(..., length = resolution+1)[1:end-1]
-
-    # points[end] should still represent the full length of the pattern though,
-    # so we need rescaling by ((resolution + 1) / resolution)
-
-    scaled = ((resolution + 1) / resolution) .* points
-    r = range(first(scaled), stop=last(scaled), length=resolution+1)[1:end-1]
-    return Float16[-gappy(x, scaled) for x = r]
-end
 
 @nospecialize
 function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
@@ -110,10 +80,10 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             if !isa(to_value(pattern), Vector)
                 error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
             end
-            tex = GLAbstraction.Texture(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
+            tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
             data[:pattern] = tex
         end
-        data[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
+        data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
 
     data[:intensity] = intensity_convert(intensity, vertex)
@@ -123,7 +93,7 @@ end
 function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex              = positions => GLBuffer
-        color               = default(RGBA, s, 1) => GLBuffer
+        color               = nothing => GLBuffer
         color_map           = nothing => Texture
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
@@ -151,9 +121,9 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         if !isa(to_value(pattern), Vector)
             error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
         end
-        tex = GLAbstraction.Texture(map(pt -> ticks(pt, 100), pattern), x_repeat = :repeat)
+        tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
         data[:pattern] = tex
-        data[:pattern_length] = map(pt -> Float32(last(pt) - first(pt)), pattern)
+        data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
     robj = assemble_shader(data)
     return robj
