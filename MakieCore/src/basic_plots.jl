@@ -339,18 +339,17 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Lines, positions) do scene
-    attr = Attributes(;
-
-        color = theme(scene, :linecolor),
-        linewidth = theme(scene, :linewidth),
-
-        linestyle = nothing,
-        fxaa = false,
-        cycle = [:color],
-    )
-    generic_plot_attributes!(attr, )
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe Lines positions begin
+    "Sets the color of the line. If no color is set, multiple calls to `line!` will cycle through the axis color palette"
+    color = @inherit :linecolor :black
+    "Sets the width of the line in pixel units"
+    linewidth = @inherit :linewidth 1.0
+    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    linestyle = nothing
+    "Sets which attributes to cycle when creating multiple plots."
+    cycle = [:color]
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_colormap_attributes
 end
 
 """
