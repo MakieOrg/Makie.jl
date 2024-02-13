@@ -374,7 +374,7 @@ e.g.:
 """
 plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 
-function validate_kw(P::Type{<:Plot}, kw::Dict{Symbol})
+function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
     nameset = attribute_names(P)
     nameset === nothing && return
     unknown = setdiff(keys(kw), nameset)

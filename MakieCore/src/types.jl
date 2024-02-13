@@ -79,7 +79,7 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     parent::Union{AbstractScene,Plot}
 
     function Plot{Typ,T}(kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable}) where {Typ,T,N}
-        validate_kw(Plot{Typ}, kw)
+        validate_attribute_keys(Plot{Typ}, kw)
         return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[],
                    Observables.ObserverFunction[])
     end
