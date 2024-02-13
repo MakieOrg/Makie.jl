@@ -205,9 +205,9 @@ function extract_attributes!(body)
 
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
-    attrs::Vector{Any} = map(MakieCore.extract_attr, args)
+    attrs::Vector{Any} = map(MakieCore.extract_attribute_metadata, args)
 
-    lras = map(MakieCore.extract_attr, layout_related_attributes)
+    lras = map(MakieCore.extract_attribute_metadata, layout_related_attributes)
 
     for lra in lras
         i = findfirst(x -> x.symbol == lra.symbol, attrs)

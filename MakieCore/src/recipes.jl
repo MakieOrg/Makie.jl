@@ -195,13 +195,15 @@ macro recipe(Tsym::Symbol, args...)
     for sym in syms
         sym isa Symbol || throw(ArgumentError("Found argument that is not a symbol in the position where optional argument names should appear: $sym"))
     end
-    attrexpr = args[end]
-    if !(attrexpr isa Expr && attrexpr.head === :block)
+    attrblock = args[end]
+    if !(attrblock isa Expr && attrblock.head === :block)
         throw(ArgumentError("Last argument is not a begin end block"))
     end
+    attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
+
 end
 
-function extract_attr(arg)
+function extract_attribute_metadata(arg)
     has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
 
     if has_docs
