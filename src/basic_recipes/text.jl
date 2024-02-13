@@ -76,6 +76,7 @@ function plot!(plot::Text)
     pop!(attrs, :text)
     pop!(attrs, :align)
     pop!(attrs, :color)
+    pop!(attrs, :calculated_colors)
 
     t = text!(plot, glyphcollections; attrs..., position = positions)
     # remove attributes that the backends will choke on
@@ -158,8 +159,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
 
     attrs = plot.attributes
     pop!(attrs, :position)
+    pop!(attrs, :calculated_colors)
+    pop!(attrs, :text)
 
-    text!(plot, positions; text = strings, attrs...)
+    text!(plot, positions; attrs..., text = strings)
 
     # update both text and positions together
     on(plot, strings_and_positions) do str_pos
