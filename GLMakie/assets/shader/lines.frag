@@ -43,7 +43,7 @@ float get_pattern_sdf(sampler2D pattern, vec2 uv){
     return 2.0 * f_linewidth * texture(pattern, uv).x;
 }
 float get_pattern_sdf(sampler1D pattern, vec2 uv){
-    float w = 2.0 * f_linewidth;
+
     // f_pattern_overwrite.x
     //      v           joint
     //    ----------------
@@ -51,6 +51,8 @@ float get_pattern_sdf(sampler1D pattern, vec2 uv){
     //    ----------------
     // joint           ^
     //      f_pattern_overwrite.z
+
+    float w = 2.0 * f_linewidth;
     if (uv.x <= f_pattern_overwrite.x) {
         // overwrite for pattern with "ON" to the right (positive uv.x)
         float sdf_overwrite = w * pattern_length * (f_pattern_overwrite.x - uv.x);
@@ -79,9 +81,6 @@ void write2framebuffer(vec4 color, uvec2 id);
 void main(){
     vec4 color;
 
-    // if (f_id.y % 2 != 1)
-        // discard;
-
     // f_quad_sdf1.x is the negative distance from p1 in v1 direction
     // (where f_cumulative_length applies) so we need to subtract here
     vec2 uv = vec2(
@@ -92,14 +91,14 @@ void main(){
 // #ifndef DEBUG
 if (!debug) {
     // discard fragments that are "more inside" the other segment to remove
-    // overlap between adjacent line segments.
+    // overlap between adjacent line segments. (truncated joints)
     float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
     float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
     if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
         discard;
 
-    // sdf for inside vs outside along the line direction. extrusion makes sure
-    // we include enough for a joint
+    // SDF for inside vs outside along the line direction. extrusion adjusts
+        // the distance from p1/p2 for joints etc
     float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
 
     // distance in linewidth direction

@@ -1,5 +1,3 @@
-# Same as GLMakie, see GLMakie/shaders/lines.jl
-
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     Makie.@converted_attribute plot (linewidth, linestyle)
 
@@ -9,11 +7,11 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :picking => false
     )
 
+    # TODO: maybe convert nothing to Sampler([-1.0]) to allowed dynamic linestyles?
     if isnothing(to_value(linestyle))
         uniforms[:pattern] = false
         uniforms[:pattern_length] = 1f0
     else
-        # TODO: pixel per unit
         uniforms[:pattern] = Sampler(lift(Makie.linestyle_to_sdf, plot, linestyle); x_repeat=:repeat)
         uniforms[:pattern_length] = lift(ls -> Float32(last(ls) - first(ls)), linestyle)
     end
@@ -34,6 +32,10 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         get!(uniforms, :colorrange, false)
     end
 
+    # This is mostly NaN handling. The shader only draws a segment if each
+    # involved point are not NaN, i.e. p1 -- p2 is only drawn if all of
+    # (p0, p1, p2, p3) are not NaN. So if p3 is NaN we need to dublicate p2 to
+    # make the p1 -- p2 segment draw, which is what indices does.
     indices = Observable(Int[])
     points_transformed = lift(plot, transform_func_obs(plot), plot[1], plot.space) do tf, ps, space
         transformed_points = apply_transform(tf, ps, space)
@@ -69,6 +71,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attributes = Dict{Symbol, Any}(:linepoint => positions)
 
     # TODO: in Javascript
+    # This calculates the cumulative pixel-space distance of each point from the
+    # last start point of a line. (I.e. from either the first point or the first
+    # point after the last NaN)
     if plot isa Lines && to_value(linestyle) isa Vector
         cam = Makie.parent_scene(plot).camera
         pvm = lift(plot, cam.projectionview, cam.pixel_space, plot.space, uniforms[:model]) do _, _, space, model
@@ -108,8 +113,10 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             uniforms[Symbol("$(name)_start")] = attr
             uniforms[Symbol("$(name)_end")] = attr
         else
+            # TODO: to js?
+            # dublicates per vertex attributes to match positional dublication
+            # min(idxs, end) avoids update order issues here
             attributes[name] = lift(plot, indices, attr) do idxs, vals
-                # TODO: indices in js?
                 serialize_buffer_attribute(vals[min.(idxs, end)])
             end
         end

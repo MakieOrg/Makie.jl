@@ -38,17 +38,32 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
         ////////////////////////////////////////////////////////////////////////
         /// Linessegments
         ////////////////////////////////////////////////////////////////////////
+
+        // Note:
+        // If we run into problems with the number of varying vertex attributes
+        // used here, try splitting up f_quad_sdf1. The vec3 might be taking
+        // a full vec4 slot, while vec2 + float would not.
+        // Alternatively:
+        // - f_truncation could probably be traded for a float f_truncation_distance,
+        //   with truncation happening at something like
+        //   trunc_sdf = f_quad_sdf1.x - f_quad_sdf0 +- f_truncation_distance
+        // - f_quad_sdf1.x and .y could potentially be merged used abs like the
+        //   normal direction (f_quad_sdf1.z).
+        // If those are not possible without degrading line quality we could
+        // also generate a simplified fragment shader for linesegments which
+        // drops all the unnecessary attributes to enable that as a workaround.
+
         return `precision mediump int;
             precision highp float;
 
             ${attribute_decl}
 
 
-            out highp float f_quad_sdf0;    // invalid / not needed
+            out highp float f_quad_sdf0;        // invalid / not needed
             out highp vec3 f_quad_sdf1;
-            out highp float f_quad_sdf2;    // invalid / not needed
-            out vec2 f_truncation;          // invalid / not needed
-            out float f_linestart;          // constant
+            out highp float f_quad_sdf2;        // invalid / not needed
+            out vec2 f_truncation;              // invalid / not needed
+            out float f_linestart;              // constant
             out float f_linelength;
 
             flat out vec2 f_extrusion;          // invalid / not needed
@@ -134,7 +149,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             void main() {
                 bool is_end = position.x == 1.0;
-
 
                 ////////////////////////////////////////////////////////////////////
                 // Handle line geometry (position, directions)
@@ -406,7 +420,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
 
             void main() {
-                bool is_up  = position.y == 1.0;
                 bool is_end = position.x == 1.0;
 
 
@@ -426,7 +439,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 bool[4] isvalid = bool[4](p0 != p1, true, true, p2 != p3);
 
                 // line vectors (xy-normalized vectors in line direction)
-                // Need z component for correct depth order
+                // Need z component here for correct depth order
                 vec3 v1 = p2 - p1;
                 float segment_length = length(v1);
                 v1 /= segment_length;
@@ -434,20 +447,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // We don't need the z component for these
                 vec2 v0 = v1.xy, v2 = v1.xy;
                 bool[2] skip_joint;
-                if (isvalid[0]) {
-                    v0 = p1.xy - p0.xy;
-                    float l = length(v0);
-                    v0 /= l;
-                    // Skip joints as a workaround to avoid dissipation of tiny line segments.
-                    // TODO: replace this with skipping points
-                    // skip_joint[0] = (l < 1.0 && segment_length < 1.0);
-                }
-                if (isvalid[3]) {
-                    v2 = (p3.xy - p2.xy);
-                    float l = length(v2);
-                    v2 /= l;
-                    // skip_joint[1] = (l < 1.0 && segment_length < 1.0);
-                }
+                if (isvalid[0])
+                    v0 = normalize(p1.xy - p0.xy);
+                if (isvalid[3])
+                    v2 = normalize(p3.xy - p2.xy);
 
                 // line normals (i.e. in linewidth direction)
                 vec2 n0 = normal_vector(v0);
@@ -479,14 +482,16 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     dot(v1.xy, v2.xy) < MITER_LIMIT
                 );
 
-                // How far the line needs to extend to accomodate the joint
-                // These are calulated in n1 direction, as prefactors of v1. I.e the rect
-                // uses:    p1 + extrusion[0][1] * v1  -----  p2 + extrusion[1][1] * v1
-                //                    |                             |
-                //          p1 + extrusion[0][0] * v1  -----  p2 + extrusion[1][0] * v1
-                // where the y index (second index) is omitted as it is constant per vertex.
-                // Note that these are not yet scaled to the given linewidth because
-                // we need them scaled to (linewidth + 2AA_THICKNESS) once
+                // How far the line needs to extend to accomodate the joint.
+                // These are calculated as prefactors to v1 so that the line quad
+                // is given by:
+                //      p1 + w * extrusion[0] * v1  -----  p2 + w * extrusion[1] * v1
+                //                |                                 |
+                //      p1 + w * extrusion[0] * v1  -----  p2 + w * extrusion[1] * v1
+                // with w = halfwidth for drawn corners and w = halfwidth + AA_THICKNESS
+                // for the corners of quad. The sign difference due to miter joints
+                // is included based on the current vertex position (position.y).
+                // (truncated miter joints do not differ here)
                 vec2 extrusion;
 
                 if (is_truncated[0]) {
@@ -509,13 +514,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                // factor to reduce size of quad to make sure vertices do not pass each other
-                // i.e. avoid:
+                // Miter joints can cause vertices to move past each other, e.g.
                 //  _______
                 //  '.   .'
                 //     x
                 //   '---'
-                // by stopping the line at x
+                // To avoid drawing the "inverted" section we move the relevant
+                // vertices to the crossing point (x) using this scaling factor.
                 float shape_factor = max(
                     0.0,
                     segment_length / max(
@@ -524,47 +529,40 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     )
                 );
 
-                // Now we can scale them to the linewidth
-                extrusion = halfwidth * extrusion;
+                // If a pattern starts or stops drawing in a joint it will get
+                // fractured across the joint. To avoid this we either:
+                // - adjust the involved line segments so that the patterns ends
+                //   on straight line quad (adjustment becomes +1.0 or -1.0)
+                // - or adjust the pattern to start/stop outside of the joint
+                //   (f_pattern_overwrite is set, adjustment is 0.0)
+                vec2 adjustment = process_pattern(pattern, isvalid, halfwidth * extrusion, halfwidth);
 
-                // Set up pattern overwrites at joints if patterns are used. This "freezes"
-                // the pattern in either the on state (draw) or off state (no draw) to avoid
-                // fragmenting it around a corner.
-                vec2 adjustment = process_pattern(pattern, isvalid, extrusion, halfwidth);
-
-                // If adjustment != 0.0 we replace a joint by an extruded line, so we no longer
-                // need to shrink the line for the joint to fit.
+                // If adjustment != 0.0 we replace a joint by an extruded line,
+                // so we no longer need to shrink the line for the joint to fit.
                 if (adjustment[0] != 0.0 || adjustment[1] != 0.0)
                     shape_factor = 1.0;
-
-                // TODO: do we still need this?
-                // // patterns need to be processed with joints to avoid artifacts
-                // // even if we skip the joint for the line segments
-                // isvalid[0] = isvalid[0] && !skip_joint[0];
-                // isvalid[3] = isvalid[3] && !skip_joint[1];
-
 
                 ////////////////////////////////////////////////////////////////////
                 // Static vertex data
                 ////////////////////////////////////////////////////////////////////
 
 
-                // limit range of distance sampled in prev/next segment
-                // this makes overlapping segments draw over each other when reaching the limit
-                // Maxiumum overlap in sharp joint is halfwidth / dot(miter_n, n) ~ 1.83 halfwidth
-                // So 2 halfwidth = g_thickness[1] will avoid overdraw in sharp joints
+                // For truncated miter joints we discard overlapping sections of
+                // the two involved line segments. To avoid discarding far into
+                // the line segment we limit the range here. (Without this short
+                // segments can cut holes into longer sections.)
                 f_discard_limit = vec2(
                     is_truncated[0] ? 0.0 : 1e12,
                     is_truncated[1] ? 0.0 : 1e12
                 );
 
-                // used to elongate sdf to include joints
-                // if start/end don't elongate
-                // if joint skipped elongate to new length
-                // if joint elongate a lot to let discard/truncation handle joint
+                // Used to elongate sdf to include joints
+                // if start/end         elongate slightly so that there is no AA gap in loops
+                // if joint skipped     elongate to new length
+                // if normal joint      elongate a lot to let shape/truncation handle joint
                 f_extrusion = vec2(
-                    !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : abs(extrusion[0])),
-                    !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : abs(extrusion[1]))
+                    !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0])),
+                    !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1]))
                 );
 
                 // used to compute width sdf
@@ -579,7 +577,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
 
-                // TODO: we can probably calculate just the extrusion and shape_factor we need here
 
                 vec3 offset;
                 int x = int(is_end);
@@ -587,7 +584,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if (is_truncated[x] || !isvalid[3 * x]) {
                         // handle overlap in fragment shader via SDF comparison
                         offset = shape_factor * (
-                            (extrusion[x] + position.x * AA_THICKNESS) * v1 +
+                            (halfwidth + AA_THICKNESS) * extrusion[x] * v1 +
                             vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0)
                         );
                     } else {
@@ -601,7 +598,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 } else {
                     // discard joint for cleaner pattern handling
                     offset =
-                        adjustment[x] * (abs(extrusion[x]) + AA_THICKNESS) * v1 +
+                        adjustment[x] * (halfwidth + AA_THICKNESS) * abs(extrusion[x]) * v1 +
                         vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0);
                 }
 
@@ -612,9 +609,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec2 VP1 = point.xy - p1.xy;
                 vec2 VP2 = point.xy - p2.xy;
 
-                // signed distance of previous segment at shared control point in line
-                // direction. Used decide which segments renders which joint fragment.
-                // If the left joint is adjusted this sdf is disabled.
+                // Signed distance of the previous segment from the shared point
+                // p1 in line direction. Used decide which segments renders
+                // which joint fragment/pixel for truncated joints.
                 if (isvalid[0] && (adjustment[0] == 0.0) && is_truncated[0])
                     f_quad_sdf0 = dot(VP1, v0.xy);
                 else
@@ -633,7 +630,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // sdf for creating a flat cap on truncated joints
                 // (sign(dot(...)) detects if line bends left or right)
-                // left/right adjustments disable
                 f_truncation.x = !is_truncated[0] ? -1.0 :
                     dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1)
                     - abs(adjustment[0]) * 1e12;
@@ -641,14 +637,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2)
                     - abs(adjustment[1]) * 1e12;
 
-                // colors should be sampled based on the normalized distance from the
+                // Colors should be sampled based on the normalized distance from the
                 // extruded edge (varies with offset in n direction)
                 // - correcting for this with per-vertex colors results visible face border
                 // - calculating normalized distance here will cause div 0/negative
                 //   issues as (linelength +- (extrusion[0] + extrusion[1])) <= 0 is possible
                 // So defer color interpolation to fragment shader
-                f_linestart = shape_factor * extrusion[0];
-                f_linelength = max(1.0, segment_length - shape_factor * (extrusion[0] - extrusion[1]));
+                f_linestart = shape_factor * halfwidth * extrusion[0];
+                f_linelength = max(1.0, segment_length - shape_factor * halfwidth * (extrusion[0] - extrusion[1]));
 
                 // for color sampling
                 f_color1 = get_color(color_start, colormap, colorrange);
@@ -708,7 +704,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
     // Pattern sampling
     float get_pattern_sdf(sampler2D pattern, vec2 uv){
-        float w = 2.0 * f_linewidth;
+
         // f_pattern_overwrite.x
         //      v           joint
         //    ----------------
@@ -716,6 +712,8 @@ function lines_fragment_shader(uniforms, attributes) {
         //    ----------------
         // joint           ^
         //      f_pattern_overwrite.z
+
+        float w = 2.0 * f_linewidth;
         if (uv.x <= f_pattern_overwrite.x) {
             // overwrite for pattern with "ON" to the right (positive uv.x)
             float sdf_overwrite = w * pattern_length * (f_pattern_overwrite.x - uv.x);
@@ -759,26 +757,22 @@ function lines_fragment_shader(uniforms, attributes) {
             0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
         );
 
-
-        // if (f_instance_id % uint(2) == uint(0))
-        //     discard;
-
     #ifndef DEBUG
         // discard fragments that are "more inside" the other segment to remove
-        // overlap between adjacent line segments.
+        // overlap between adjacent line segments. (truncated joints)
         float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
         float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
         if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
             discard;
 
-        // sdf for inside vs outside along the line direction. extrusion makes sure
-        // we include enough for a joint
+        // SDF for inside vs outside along the line direction. extrusion adjusts
+        // the distance from p1/p2 for joints etc
         float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
 
         // distance in linewidth direction
         sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
 
-        // truncation of truncated joints
+        // truncation of truncated joints (creates flat cap)
         sdf = max(sdf, f_truncation.x);
         sdf = max(sdf, f_truncation.y);
 
@@ -881,15 +875,16 @@ function create_line_material(uniforms, attributes, is_linesegments) {
 }
 
 function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments, is_position) {
+    // Buffer      required                 generated
+    // linepoint   prev, start, end, next   all
+    // color       start, end               start, end
+    // lastlen     start                    start, end
+    // linewidth   start, end*              start, end
+    // * used but not strictly needed
+
     const skip_elems = is_segments ? 2 * ndim : ndim;
     const buffer = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
     buffer.count = Math.max(0, is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3);
-    // TODO:
-    // We don't need this much for every vertex attribute!
-    // positions:   all 4
-    // color:       start, end
-    // lastlen:     start
-    // linewidth:   start, end
 
     geometry.setAttribute(
         attr_name + "_start",
@@ -910,7 +905,6 @@ function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segm
             new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim)
         ); // xyz3
     }
-    console.log(buffer);
     return buffer;
 }
 
@@ -930,7 +924,6 @@ function create_line_instance_geometry() {
 }
 
 function create_line_buffer(geometry, buffers, name, attr, is_segments, is_position) {
-    console.log(name);
     const flat_buffer = attr.value.flat;
     const ndims = attr.value.type_length;
     const linebuffer = attach_interleaved_line_buffer(
@@ -953,7 +946,6 @@ function create_line_buffers(geometry, buffers, attributes, is_segments) {
 }
 
 function attach_updates(mesh, buffers, attributes, is_segments) {
-    let geometry = mesh.geometry;
     for (let name in attributes) {
         const attr = attributes[name];
         attr.on((new_vertex_data) => {
@@ -961,22 +953,12 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
             const new_flat_data = new_vertex_data.flat;
             const old_length = buff.array.length;
             if (old_length != new_flat_data.length) {
-                console.log("Remake buffer ", name);
                 mesh.geometry.dispose();
-                geometry = create_line_instance_geometry();
-                create_line_buffers(geometry, buffers, attributes, is_segments);
-                const new_count = geometry.attributes.linepoint_start.count;
-
-                // console.log(old_length, " => ", new_flat_data.length);
-                // console.log(mesh.geometry.instanceCount, " => ", new_count);
-
-                mesh.geometry = geometry;
-                mesh.geometry.instanceCount = new_count;
-
-                // console.log(mesh.geometry);
+                mesh.geometry = create_line_instance_geometry();
+                create_line_buffers(mesh.geometry, buffers, attributes, is_segments);
+                mesh.geometry.instanceCount = mesh.geometry.attributes.linepoint_start.count;
             } else {
                 buff.set(new_flat_data);
-                // console.log("Update buffer ", name, " ", mesh.geometry.instanceCount);
             }
             buff.needsUpdate = true;
             mesh.needsUpdate = true;
@@ -998,15 +980,10 @@ export function _create_line(line_data, is_segments) {
         geometry.attributes,
         is_segments
     );
-    console.log("Geometry:")
-    console.log(geometry);
 
     material.uniforms.is_linesegments = {value: is_segments};
     const mesh = new THREE.Mesh(geometry, material);
     mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
-
-    console.log("init:");
-    console.log("instances/segments: ", mesh.geometry.instanceCount);
 
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;

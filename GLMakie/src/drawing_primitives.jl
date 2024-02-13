@@ -448,10 +448,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         get!(data, :debug, lines_debug)
 
         transform_func = transform_func_obs(plot)
-        ls = to_value(linestyle)
         space = plot.space
-        if isnothing(ls)
-            data[:pattern] = ls
+        if isnothing(to_value(linestyle))
+            data[:pattern] = nothing
             data[:fast] = true
 
             positions = lift(apply_transform, plot, transform_func, positions, space)
