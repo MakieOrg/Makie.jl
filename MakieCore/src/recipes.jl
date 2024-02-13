@@ -261,6 +261,16 @@ macro recipe(Tsym::Symbol, args...)
         export $PlotType, $funcname, $funcname!
     end
 
+    if !isempty(syms)
+        push!(
+            q.args,
+            :(
+                $(esc(:($(MakieCore).argument_names)))(::Type{<:$PlotType}, len::Integer) =
+                    $syms
+            ),
+        )
+    end
+
     q
 end
 
