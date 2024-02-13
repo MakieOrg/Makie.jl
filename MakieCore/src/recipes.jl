@@ -234,7 +234,7 @@ macro recipe(Tsym::Symbol, args...)
         end
 
         function $(MakieCore).default_theme(scene, ::Type{<:$PlotType})
-            $(make_attr_dict_expr(attrs, :scene))
+            $(make_default_theme_expr(attrs, :scene))
         end
 
         function MakieCore.attribute_default_expressions(::Type{<:$PlotType})
@@ -296,7 +296,7 @@ function extract_attribute_metadata(arg)
     (docs = docs, symbol = attr_symbol, type = type, default = default)
 end
 
-function make_attr_dict_expr(attrs, scenesym::Symbol)
+function make_default_theme_expr(attrs, scenesym::Symbol)
 
     pairs = map(attrs) do a
 
@@ -325,7 +325,7 @@ function make_attr_dict_expr(attrs, scenesym::Symbol)
 
     quote
         thm = theme($scenesym)
-        Dict($(pairs...))
+        Attributes([$(pairs...)])
     end
 end
 
@@ -381,8 +381,7 @@ function validate_kw(P::Type{<:Plot}, kw::Dict{Symbol})
     if !isempty(unknown)
         n = length(unknown)
         throw(ArgumentError(
-            """Unknown attribute$(n > 1 ? "s" : "") for plot type $P: $(join(unknown, ", ", " and ")).
-            The available attributes are: $(join(sort(collect(nameset)), ", ", " and "))."""
+            """Invalid attribute$(n > 1 ? "s" : "") for plot type $P: $(join(unknown, ", ", " and ")). The available attributes are: $(join(sort(collect(nameset)), ", ", " and "))."""
         ))
     end
 end
