@@ -6,16 +6,17 @@
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    window_size = widths(screen)
     fb = screen.framebuffer
     buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     rx, ry = minimum(rect)
     rw, rh = widths(rect)
-    w, h = window_size
-    sid = zeros(SelectionID{UInt32}, widths(rect)...)
+    w, h = size(screen.root_scene)
+    ppu = screen.px_per_unit[]
     if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
+        rx, ry, rw, rh = round.(Int, ppu .* (rx, ry, rw, rh))
+        sid = zeros(SelectionID{UInt32}, rw, rh)
         glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
         return sid
     else
@@ -26,15 +27,16 @@ end
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    sid = Base.RefValue{SelectionID{UInt32}}()
-    window_size = widths(screen)
     fb = screen.framebuffer
     buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = floor.(Int, xy)
-    w, h = window_size
+    w, h = size(screen.root_scene)
+    ppu = screen.px_per_unit[]
     if x > 0 && y > 0 && x <= w && y <= h
+        x, y = round.(Int, ppu .* (x, y))
+        sid = Base.RefValue{SelectionID{UInt32}}()
         glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
         return convert(SelectionID{Int}, sid[])
     end
@@ -65,7 +67,7 @@ end
 # Skips one set of allocations
 function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
+    w, h = size(scene)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
     x0, y0 = max.(1, floor.(Int, xy .- range))
@@ -95,7 +97,7 @@ end
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
+    w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end
@@ -111,11 +113,11 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     for i in 1:dx, j in 1:dy
         if picks[i, j].id > 0
             d = (x-i)^2 + (y-j)^2
-            i = findfirst(isequal(picks[i, j]), selected)
-            if i === nothing
-                @warn "This shouldn't happen..."
-            elseif distances[i] > d
-                distances[i] = d
+            idx = findfirst(isequal(picks[i, j]), selected)
+            if idx === nothing
+                continue
+            elseif distances[idx] > d
+                distances[idx] = d
             end
         end
     end

@@ -26,17 +26,42 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
+get_scene(gp::GridLayoutBase.GridPosition) = get_scene(get_figure(gp))
+get_scene(gp::GridLayoutBase.GridSubposition) = get_scene(get_figure(gp))
 
-const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
-"Returns the current active figure (or the last figure that got created)"
-current_figure() = _current_figure[]
-"Set `fig` as the current active scene"
-current_figure!(fig) = (_current_figure[] = fig)
 
-"Returns the current active axis (or the last axis that got created)"
+
+const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
+const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
+
+"""
+    current_figure()
+
+Returns the current active figure (or the last figure created).
+Returns `nothing` if there is no current active figure.
+"""
+current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
+
+"""
+    current_figure!(fig)
+
+Set `fig` as the current active figure.
+"""
+current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
+
+"""
+    current_axis()
+
+Returns the current active axis (or the last axis created). Returns `nothing` if there is no current active axis.
+"""
 current_axis() = current_axis(current_figure())
+current_axis(::Nothing) = nothing
 current_axis(fig::Figure) = fig.current_axis[]
-"Set `ax` as the current active axis in `fig`"
+"""
+    current_axis!(fig::Figure, ax)
+
+Set `ax` as the current active axis in `fig`.
+"""
 function current_axis!(fig::Figure, ax)
     if ax.parent !== fig
         error("This axis' parent is not the given figure")
@@ -44,9 +69,16 @@ function current_axis!(fig::Figure, ax)
     fig.current_axis[] = ax
     ax
 end
+
 function current_axis!(fig::Figure, ::Nothing)
     fig.current_axis[] = nothing
 end
+
+"""
+    current_axis!(ax)
+
+Set an axis `ax`, which must be part of a figure, as the figure's current active axis.
+"""
 function current_axis!(ax)
     fig = ax.parent
     if !(fig isa Figure)
@@ -66,10 +98,9 @@ to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
-    padding = pop!(kwargs_dict, :figure_padding, current_default_theme()[:figure_padding])
-    scene = Scene(; camera=campixel!, kwargs_dict...)
-    padding = padding isa Observable ? padding : Observable{Any}(padding)
-
+    padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
+    scene = Scene(; camera=campixel!, clear = true, kwargs_dict...)
+    padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, padding)
 
     layout = GridLayout(scene)
@@ -141,6 +172,11 @@ Once resized, all content should fit the available space, including
 the `Figure`'s outer padding.
 """
 function resize_to_layout!(fig::Figure)
+    # it is assumed that all plot objects have been added at this point,
+    # but it's possible the limits have not been updated, yet,
+    # so without `update_state_before_display!` it's possible that the layout
+    # is optimized for the wrong ticks
+    update_state_before_display!(fig)
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
     resize!(fig.scene, widths(bbox)...)
@@ -161,7 +197,7 @@ end
 # Layouts are already hooked up to this, so it's very simple.
 """
     resize!(fig::Figure, width, height)
-Resizes the given `Figure` to the resolution given by `width` and `height`.
+Resizes the given `Figure` to the size given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
-Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)
+Makie.resize!(figure::Figure, width::Integer, height::Integer) = resize!(figure.scene, width, height)

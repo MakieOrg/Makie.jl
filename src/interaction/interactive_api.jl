@@ -10,7 +10,7 @@ Returns true if the mouse currently hovers any of `plots`.
 mouseover(x, plots::AbstractPlot...) = mouseover(get_scene(x), plots...)
 function mouseover(scene::Scene, plots::AbstractPlot...)
     p, idx = pick(scene)
-    return p in flatten_plots(plots)
+    return p in collect_atomic_plots(plots)
 end
 
 """
@@ -22,38 +22,13 @@ hovered element
 """
 onpick(f, x, plots::AbstractPlot...; range=1) = onpick(f, get_scene(x), plots..., range = range)
 function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
-    fplots = flatten_plots(plots)
+    fplots = collect_atomic_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
         p, idx = pick(args...)
         (p in fplots) && f(p, idx)
         return Consume(false)
     end
-end
-
-@deprecate mouse_selection pick
-
-function flatten_plots(x::Atomic, plots = AbstractPlot[])
-    if isempty(x.plots)
-        push!(plots, x)
-    else
-        flatten_plots(x.plots, plots)
-    end
-    plots
-end
-
-function flatten_plots(x::Combined, plots = AbstractPlot[])
-    for elem in x.plots
-        flatten_plots(elem, plots)
-    end
-    plots
-end
-
-function flatten_plots(array, plots = AbstractPlot[])
-    for elem in array
-        flatten_plots(elem, plots)
-    end
-    plots
 end
 
 """
@@ -67,7 +42,7 @@ function mouse_in_scene(scene::Scene; priority = 0)
     p = rootparent(scene)
     output = Observable(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp
-        output[] = Vec(mp) .- minimum(pixelarea(scene)[])
+        output[] = Vec(mp) .- minimum(viewport(scene)[])
         return Consume(false)
     end
     output
@@ -135,6 +110,8 @@ function pick_closest(scene::SceneLike, screen, xy, range)
     return selected == (0, 0) ? (nothing, 0) : picks[selected[1], selected[2]]
 end
 
+using InteractiveUtils
+
 """
     pick_sorted(fig/ax/scene, xy::VecLike, range)
 
@@ -144,11 +121,11 @@ sorted by distance to `xy`.
 function pick_sorted(scene::Scene, xy, range)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
-    pick_sorted(scene, screen, xy, range)
+    return pick_sorted(scene, screen, xy, range)
 end
 
 function pick_sorted(scene::Scene, screen, xy, range)
-    w, h = widths(screen)
+    w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end
@@ -158,16 +135,14 @@ function pick_sorted(scene::Scene, screen, xy, range)
 
     picks = pick(scene, screen, Rect2i(x0, y0, dx, dy))
 
-    selected = filter(x -> x[1] != nothing, unique(vec(picks)))
+    selected = filter(x -> x[1] !== nothing, unique(vec(picks)))
     distances = [range^2 for _ in selected]
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        if picks[i, j][1] != nothing
+        if picks[i, j][1] !== nothing
             d = (x-i)^2 + (y-j)^2
-            i = findfirst(isequal(picks[i, j]), selected)
-            if i === nothing
-                @warn "This shouldn't happen..."
-            elseif distances[i] > d
+            i = findfirst(isequal(picks[i, j]), selected)::Int
+            if distances[i] > d
                 distances[i] = d
             end
         end
@@ -198,7 +173,7 @@ Normalizes mouse position `pos` relative to the screen rectangle.
 """
 screen_relative(x, mpos) = screen_relative(get_scene(x), mpos)
 function screen_relative(scene::Scene, mpos)
-    return Point2f(mpos) .- Point2f(minimum(pixelarea(scene)[]))
+    return Point2f(mpos) .- Point2f(minimum(viewport(scene)[]))
 end
 
 """
@@ -210,6 +185,7 @@ given `scene`.
 By default uses the `scene` that the mouse is currently hovering over.
 """
 mouseposition(x) = mouseposition(get_scene(x))
+
 function mouseposition(scene::Scene = hovered_scene())
     return to_world(scene, mouseposition_px(scene))
 end

@@ -2,7 +2,7 @@ using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
 RPR = RadeonProRender
-GLMakie.set_window_config!(float=true, focus_on_show=false)
+GLMakie.activate!(float=true, focus_on_show=false)
 cat = load(GLMakie.assetpath("cat.obj"))
 
 begin
@@ -12,7 +12,7 @@ begin
     emissive = RPR.EmissiveMaterial(matsys)
     diffuse = RPR.DiffuseMaterial(matsys)
 
-    fig = Figure(resolution=(1000, 1000))
+    fig = Figure(size=(1000, 1000))
     ax = LScene(fig[1, 1], show_axis=false)
     for i in 4:4:12
         n = i + 1

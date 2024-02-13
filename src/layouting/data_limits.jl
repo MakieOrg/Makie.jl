@@ -40,29 +40,39 @@ function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
 end
 
 # TODO?
-function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
+function data_limits(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
     if is_data_space(text.markerspace[])
-        return decompose(Point, boundingbox(text))
+        return boundingbox(text)
     else
         if text.position[] isa VecTypes
-            return [to_ndim(Point3f, text.position[], 0.0)]
+            return Rect3f(text.position[])
         else
-            return convert_arguments(PointBased(), text.position[])[1]
+            # TODO: is this branch necessary?
+            return Rect3f(convert_arguments(PointBased(), text.position[])[1])
         end
     end
 end
 
-function point_iterator(text::Text)
-    return point_iterator(text.plots[1])
+function data_limits(text::Text)
+    return data_limits(text.plots[1])
 end
 
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
 
 function point_iterator(list::AbstractVector)
-    Iterators.flatten((point_iterator(elem) for elem in list))
+    if length(list) == 1
+        # save a copy!
+        return point_iterator(list[1])
+    else
+        points = Point3f[]
+        for elem in list
+            for point in point_iterator(elem)
+                push!(points, to_ndim(Point3f, point, 0))
+            end
+        end
+        return points
+    end
 end
-
-point_iterator(plot::Combined) = point_iterator(plot.plots)
 
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
@@ -74,45 +84,9 @@ function br_getindex(matrix::AbstractMatrix, idx::CartesianIndex, dim::Int)
     return matrix[idx]
 end
 
-function get_point_xyz(linear_indx::Int, indices, X, Y, Z)
-    idx = indices[linear_indx]
-    x = br_getindex(X, idx, 1)
-    y = br_getindex(Y, idx, 2)
-    z = Z[linear_indx]
-    return Point(x, y, z)
-end
-
-function get_point_xyz(linear_indx::Int, indices, X, Y)
-    idx = indices[linear_indx]
-    x = br_getindex(X, idx, 1)
-    y = br_getindex(Y, idx, 2)
-    return Point(x, y, 0.0)
-end
-
-function point_iterator(plot::Surface)
-    X = plot.x[]
-    Y = plot.y[]
-    Z = plot.z[]
-    indices = CartesianIndices(Z)
-    return (get_point_xyz(idx, indices, X, Y, Z) for idx in 1:length(Z))
-end
-
-function point_iterator(plot::Heatmap)
-    X = plot.x[]
-    Y = plot.y[]
-    Z = plot[3][]
-    zsize = size(Z) .+ 1
-    indices = CartesianIndices(zsize)
-    return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
-end
-
-function point_iterator(plot::Image)
-    X = plot.x[]
-    Y = plot.y[]
-    Z = plot[3][]
-    zsize = size(Z)
-    indices = CartesianIndices(zsize)
-    return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
+function point_iterator(plot::Union{Image, Heatmap, Surface})
+    rect = data_limits(plot)
+    return unique(decompose(Point3f, rect))
 end
 
 function point_iterator(x::Volume)
@@ -132,7 +106,7 @@ end
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
-function foreach_plot(f, plot::Combined)
+function foreach_plot(f, plot::Plot)
     if isempty(plot.plots)
         f(plot)
     else
@@ -162,14 +136,14 @@ function iterate_transformed(plot)
     points = point_iterator(plot)
     t = transformation(plot)
     model = model_transform(t)
-    # TODO: For some reason this was identity before and limit calculations in Axis with log scale are wrong if not, because they're already log transformed. What's the right behavior?
-    # trans_func = t.transform_func[]
-    trans_func = identity
-    iterate_transformed(points, model, trans_func)
+    # TODO: without this, axes with log scales error.  Why?
+    trans_func = identity # transform_func(t)
+    # trans_func = identity
+    iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
 end
 
-function iterate_transformed(points, model, trans_func)
-    (to_ndim(Point3f, project(model, apply_transform(trans_func, point)), 0f0) for point in points)
+function iterate_transformed(points, model, space, trans_func)
+    (to_ndim(Point3f, project(model, apply_transform(trans_func, point, space)), 0f0) for point in points)
 end
 
 function update_boundingbox!(bb_ref, point)
@@ -192,18 +166,32 @@ function update_boundingbox!(bb_ref, bb::Rect)
     return
 end
 
+# Default data_limits
 function data_limits(plot::AbstractPlot)
-    limits_from_transformed_points(iterate_transformed(plot))
+    # Assume primitive plot
+    if isempty(plot.plots)
+        return limits_from_transformed_points(iterate_transformed(plot))
+    end
+
+    # Assume Plot Plot
+    bb_ref = Base.RefValue(data_limits(plot.plots[1]))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
+    end
+
+    return bb_ref[]
 end
 
-function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
+function _update_rect(rect::Rect{N, T}, point::VecTypes{N, T}) where {N, T}
     mi = minimum(rect)
     ma = maximum(rect)
     mis_mas = map(mi, ma, point) do _mi, _ma, _p
         (isnan(_mi) ? _p : _p < _mi ? _p : _mi), (isnan(_ma) ? _p : _p > _ma ? _p : _ma)
     end
     new_o = map(first, mis_mas)
-    new_w = map((-) ∘ Base.splat(-), mis_mas)
+    new_w = map(mis_mas) do (mi, ma)
+        ma - mi
+    end
     typeof(rect)(new_o, new_w)
 end
 
@@ -212,6 +200,22 @@ function limits_from_transformed_points(points_iterator)
     first, rest = Iterators.peel(points_iterator)
     bb = foldl(_update_rect, rest, init = Rect3f(first, zero(first)))
     return bb
+end
+
+# include bbox from scaled markers
+function limits_from_transformed_points(positions, scales, rotations, element_bbox)
+    isempty(positions) && return Rect3f()
+
+    first_scale = attr_broadcast_getindex(scales, 1)
+    first_rot = attr_broadcast_getindex(rotations, 1)
+    full_bbox = Ref(first_rot * (element_bbox * first_scale) + first(positions))
+    for (i, pos) in enumerate(positions)
+        scale, rot = attr_broadcast_getindex(scales, i), attr_broadcast_getindex(rotations, i)
+        transformed_bbox = rot * (element_bbox * scale) + pos
+        update_boundingbox!(full_bbox, transformed_bbox)
+    end
+
+    return full_bbox[]
 end
 
 function data_limits(scenelike, exclude=(p)-> false)
@@ -244,4 +248,21 @@ function data_limits(plot::Image)
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)
     return Rect3f(mini, maxi .- mini)
+end
+
+function data_limits(plot::MeshScatter)
+    # TODO: avoid mesh generation here if possible
+    @get_attribute plot (marker, markersize, rotations)
+    marker_bb = Rect3f(marker)
+    positions = iterate_transformed(plot)
+    scales = markersize
+    # fast path for constant markersize
+    if scales isa VecTypes{3} && rotations isa Quaternion
+        bb = limits_from_transformed_points(positions)
+        marker_bb = rotations * (marker_bb * scales)
+        return Rect3f(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+    else
+        # TODO: optimize const scale, var rot and var scale, const rot
+        return limits_from_transformed_points(positions, scales, rotations, marker_bb)
+    end
 end

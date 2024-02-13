@@ -6,18 +6,14 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-release
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
+    tags:
+      - '*'
     branches:
       - master
-      - breaking-release
-    tags: '*'
 
 concurrency:
-  group: rprmakie-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -30,12 +26,12 @@ jobs:
         version:
           - '1' # automatically expands to the latest stable 1.x release of Julia
         os:
-          - ubuntu-latest
+          - ubuntu-20.04
         arch:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
@@ -53,7 +49,7 @@ jobs:
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("RPRMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: ./RPRMakie/test/recorded
@@ -61,6 +57,6 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v4
         with:
           file: lcov.info

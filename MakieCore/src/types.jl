@@ -9,7 +9,36 @@ abstract type Transformable end
 abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
-abstract type AbstractScreen <: AbstractDisplay end
+
+"""
+Screen constructors implemented by all backends:
+
+```julia
+# Constructor aimed at showing the plot in a window.
+Screen(scene::Scene; screen_config...)
+
+# Screen to save a png/jpeg to file or io
+Screen(scene::Scene, io::IO, mime; screen_config...)
+
+# Screen that is efficient for `colorbuffer(screen, format)`
+Screen(scene::Scene, format::Makie.ImageStorageFormat; screen_config...)
+```
+
+Interface implemented by all backends:
+
+```julia
+# Needs to be overload:
+size(screen) # Size in pixel
+empty!(screen) # empties screen state to reuse the screen, or to close it
+
+# Optional
+wait(screen) # waits as long window is open
+
+# Provided by Makie:
+push_screen!(scene, screen)
+```
+"""
+abstract type MakieScreen <: AbstractDisplay end
 
 const SceneLike = Union{AbstractScene, ScenePlot}
 
@@ -21,16 +50,41 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
-struct Combined{Typ, T} <: ScenePlot{Typ}
-    parent::SceneLike
-    transformation::Transformable
+"""
+    Plot{PlotFunc}(args::Tuple, kw::Dict{Symbol, Any})
+
+Creates a Plot corresponding to the recipe function `PlotFunc`.
+Each recipe defines an alias for `Plot{PlotFunc}`.
+Example:
+```julia
+const Scatter = Plot{scatter} # defined in the scatter recipe
+Plot{scatter}((1:4,), Dict{Symbol, Any}(:color => :red)) isa Scatter
+# Same as:
+Scatter((1:4,), Dict{Symbol, Any}(:color => :red))
+```
+"""
+mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
+    transformation::Union{Nothing, Transformable}
+
+    # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
+    kw::Dict{Symbol,Any}
+    args::Vector{Any}
+
+    converted::NTuple{N,Observable} where {N}
+    # Converted and processed arguments
     attributes::Attributes
-    input_args::Tuple
-    converted::Tuple
-    plots::Vector{AbstractPlot}
+
+    plots::Vector{Plot}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
+    parent::Union{AbstractScene,Plot}
+
+    function Plot{Typ,T}(kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable}) where {Typ,T,N}
+        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[],
+                   Observables.ObserverFunction[])
+    end
 end
 
-function Base.show(io::IO, plot::Combined)
+function Base.show(io::IO, plot::Plot)
     print(io, typeof(plot))
 end
 
@@ -81,3 +135,9 @@ end
 Billboard() = Billboard(0f0)
 Billboard(angle::Real) = Billboard(Float32(angle))
 Billboard(angles::Vector) = Billboard(Float32.(angles))
+
+@enum ShadingAlgorithm begin
+    NoShading
+    FastShading
+    MultiLightShading
+end

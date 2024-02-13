@@ -1,14 +1,12 @@
 using GLMakie
 GLMakie.activate!()
 
-set_window_config!(pause_rendering = false)
-
 ##
 
 function copy_scene_settings(s)
     cc = cameracontrols(s)
     (
-        px_area = s.px_area[],
+        viewport = s.viewport[],
         eyeposition = cc.eyeposition[],
         lookat = cc.lookat[],
         upvector = cc.upvector[],
@@ -32,7 +30,7 @@ function apply_camera_settings!(s, settings)
     cc.pulser[] = settings.pulser
     Makie.update!(s)
     Makie.update!(s)
-    resize!(s, settings.px_area)
+    resize!(s, settings.viewport)
     return
 end
 

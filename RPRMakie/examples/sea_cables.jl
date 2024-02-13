@@ -47,11 +47,10 @@ for i in 1:length(toLines)
 end
 
 earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/commons/5/56/Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg"))
-Makie.inline!(true)
 # the actual plot !
 RPRMakie.activate!(; iterations=100)
 scene = with_theme(theme_dark()) do
-    fig = Figure(; resolution=(1000, 1000))
+    fig = Figure(; size=(1000, 1000))
     radiance = 30
     lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
               PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
@@ -64,7 +63,7 @@ scene = with_theme(theme_dark()) do
     ze = [cos(θ) for θ in θ, φ in φ]
     surface!(ax, xe, ye, ze; color=earth_img)
     meshscatter!(toPoints3D; color=1:length(toPoints3D), markersize=0.005, colormap=:plasma)
-    colors = Makie.default_palettes.color[]
+    colors = Makie.DEFAULT_PALETTES.color[]
     c = Iterators.cycle(colors)
     foreach(((l, c),) -> lines!(ax, l; linewidth=2, color=c), zip(splitLines3D, c))
     ax.scene.camera_controls.eyeposition[] = Vec3f(1.5)

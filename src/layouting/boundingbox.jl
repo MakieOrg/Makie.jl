@@ -22,9 +22,10 @@ function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
     map(gl.glyphs, gl.extents, scales) do c, ext, scale
         hi_bb = height_insensitive_boundingbox_with_advance(ext)
+        # TODO c != 0 filters out all non renderables, which is not always desired
         Rect2f(
             Makie.origin(hi_bb) * scale,
-            (c != '\n') * widths(hi_bb) * scale
+            (c != 0) * widths(hi_bb) * scale
         )
     end
 end
@@ -47,14 +48,11 @@ end
 
 _inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
 
-function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
-    return boundingbox(glyphcollection, rotation) + position
-end
+unchecked_boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion) =
+    unchecked_boundingbox(glyphcollection, rotation) + position
 
-function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
-    if isempty(glyphcollection.glyphs)
-        return Rect3f(Point3f(0), Vec3f(0))
-    end
+function unchecked_boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
+    isempty(glyphcollection.glyphs) && return Rect3f(Point3f(0), Vec3f(0))
 
     glyphorigins = glyphcollection.origins
     glyphbbs = gl_bboxes(glyphcollection)
@@ -68,25 +66,27 @@ function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
             bb = union(bb, charbb)
         end
     end
-    !isfinite_rect(bb) && error("Invalid text boundingbox")
     return bb
 end
 
-function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
-    if isempty(layouts)
-        return Rect3f((0, 0, 0), (0, 0, 0))
-    else
-        bb = Rect3f()
-        broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
-            if !isfinite_rect(bb)
-                bb = boundingbox(layout, pos, rot)
-            else
-                bb = union(bb, boundingbox(layout, pos, rot))
-            end
+function unchecked_boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
+    isempty(layouts) && return Rect3f((0, 0, 0), (0, 0, 0))
+
+    bb = Rect3f()
+    broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
+        if !isfinite_rect(bb)
+            bb = boundingbox(layout, pos, rot)
+        else
+            bb = union(bb, boundingbox(layout, pos, rot))
         end
-        !isfinite_rect(bb) && error("Invalid text boundingbox")
-        return bb
     end
+    return bb
+end
+
+function boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
+    bb = unchecked_boundingbox(x, args...)
+    isfinite_rect(bb) || error("Invalid text boundingbox")
+    bb
 end
 
 function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
@@ -124,14 +124,15 @@ function boundingbox(plot::Text)
     return bb
 end
 
-_is_latex_string(x::AbstractVector{<:LaTeXString}) = true 
-_is_latex_string(x::LaTeXString) = true 
-_is_latex_string(other) = false 
+_is_latex_string(x::AbstractVector{<:LaTeXString}) = true
+_is_latex_string(x::LaTeXString) = true
+_is_latex_string(other) = false
 
 function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)
+    fonts = nothing # TODO: remove the arg if possible
     layout = layout_text(
-        str, size, font, Vec2f(0), rot, 0.5, 1.0,
+        str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
         RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
     return boundingbox(layout, Point3f(0), rot)
 end

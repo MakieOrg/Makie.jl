@@ -1,5 +1,6 @@
-using Makie: MouseButtonEvent, KeyEvent
+using Makie: MouseButtonEvent, KeyEvent, Figure, Textbox
 using Makie: Not, And, Or
+using InteractiveUtils
 
 # rudimentary equality for tests
 Base.:(==)(l::Exclusively, r::Exclusively) = l.x == r.x
@@ -125,15 +126,81 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
             @test x | false == x
         end
     end
+    # Okay, this is hacky,
+    # but we're not going to install a whole linux desktop environment on the CI just to test the clipboard
+    # (what the hell xclip, y u need all that)
+    @eval InteractiveUtils begin
+        const CLIP = Ref{String}()
+        clipboard(str::String) = (CLIP[] = str)
+        clipboard() = CLIP[]
+    end
+    @testset "copy_paste" begin
+        f = Figure(size=(640,480))
+        tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+        e = events(f.scene)
+
+        # Initial state
+        @test !tb.focused[]
+        @test tb.stored_string[] === nothing
+
+        # Select textbox
+        e.mouseposition[] = (320, 240)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test tb.focused[]
+
+        # Fill clipboard with a string
+        clipboard("test string")
+
+        # Trigger left ctrl+v
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_control, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_control, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.release)
+
+        @test tb.stored_string[] == "test string"
+
+
+        # Refresh figure to test right control + v combination
+        empty!(f)
+
+        f = Figure(size=(640,480))
+        tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+        e = events(f.scene)
+
+        # Initial state
+        @test !tb.focused[]
+        @test tb.stored_string[] === nothing
+
+        # Re-select textbox
+        e.mouseposition[] = (320, 240)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test tb.focused[]
+
+        clipboard("test string2")
+
+        # Trigger right ctrl+v
+        e.keyboardbutton[] = KeyEvent(Keyboard.right_control, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.right_control, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.release)
+
+        @test tb.stored_string[] == "test string2"
+    end
 
     # This testset is based on the results the current camera system has. If
     # cam3d! is updated this is likely to break.
     @testset "cam3d!" begin
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
-
+        
         # Verify initial camera state
         @test cc.lookat[]       == Vec3f(0)
         @test cc.eyeposition[]  == Vec3f(3)
@@ -151,20 +218,20 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         # 2) Outside scene, in drag
         e.mouseposition[] = (1000, 450)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491522)
+        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491514)
         @test cc.upvector[]     ≈ Vec3f(-0.5050875, -0.6730229, 0.5403024)
 
         # 3) not in drag
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
         e.mouseposition[] = (400, 250)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491522)
+        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491514)
         @test cc.upvector[]     ≈ Vec3f(-0.5050875, -0.6730229, 0.5403024)
 
 
 
         # Reset state so this is indepentent from the last checks
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
@@ -176,29 +243,30 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
         # translation
         # 1) In scene, in drag
+        e.mouseposition[] = (400, 250)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         e.mouseposition[] = (600, 250)
-        @test cc.lookat[]       ≈ Vec3f(5.4697413, -3.3484206, -2.1213205)
-        @test cc.eyeposition[]  ≈ Vec3f(8.469742, -0.34842062, 0.8786795)
+        @test cc.lookat[]       ≈ Vec3f(1.0146117, -1.0146117, 0.0)
+        @test cc.eyeposition[]  ≈ Vec3f(4.0146117, 1.9853883, 3.0)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
 
         # 2) Outside scene, in drag
         e.mouseposition[] = (1000, 450)
-        @test cc.lookat[]       ≈ Vec3f(9.257657, -5.4392805, -3.818377)
-        @test cc.eyeposition[]  ≈ Vec3f(12.257658, -2.4392805, -0.81837714)
+        @test cc.lookat[]       ≈ Vec3f(3.6296215, -2.4580488, -1.1715729)
+        @test cc.eyeposition[]  ≈ Vec3f(6.6296215, 0.5419513, 1.8284271)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
 
         # 3) not in drag
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
         e.mouseposition[] = (400, 250)
-        @test cc.lookat[]       ≈ Vec3f(9.257657, -5.4392805, -3.818377)
-        @test cc.eyeposition[]  ≈ Vec3f(12.257658, -2.4392805, -0.81837714)
+        @test cc.lookat[]       ≈ Vec3f(3.6296215, -2.4580488, -1.1715729)
+        @test cc.eyeposition[]  ≈ Vec3f(6.6296215, 0.5419513, 1.8284271)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
 
 
 
         # Reset state
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
@@ -207,26 +275,24 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         @test cc.lookat[]       == Vec3f(0)
         @test cc.eyeposition[]  == Vec3f(3)
         @test cc.upvector[]     == Vec3f(0, 0, 1)
-        @test cc.zoom_mult[]    == 1f0
 
         # Zoom
+        e.mouseposition[] = (400, 250) # for debugging
         e.scroll[] = (0.0, 4.0)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(3)
+        @test cc.eyeposition[]  ≈ 0.6830134f0 * Vec3f(3)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
-        @test cc.zoom_mult[]    ≈ 0.6830134f0
 
         # should not work outside the scene
         e.mouseposition[] = (1000, 450)
         e.scroll[] = (0.0, 4.0)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(3)
+        @test cc.eyeposition[]  ≈ 0.6830134f0 * Vec3f(3)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
-        @test cc.zoom_mult[]    ≈ 0.6830134f0
     end
 
     @testset "mouse state machine" begin
-        scene = Scene(resolution=(800, 600));
+        scene = Scene(size=(800, 600));
         e = events(scene)
         bbox = Observable(Rect2(200, 200, 400, 300))
         msm = addmouseevents!(scene, bbox, priority=typemax(Int))
@@ -323,7 +389,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
             empty!(eventlog)
         end
 
-        # TODO: This should probably be:
+        # TODO: This should probably produce:
         # left down > right down > right click > right up > left up
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
@@ -347,7 +413,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         @test eventlog[4].type == MouseEventTypes.leftup
         empty!(eventlog)
 
-        # This should probably be a leftdragstop on right down
+        # This should probably produce a leftdragstop on right down instead of left up
         e.mouseposition[] = (300, 300)
         empty!(eventlog)
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
@@ -373,5 +439,48 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         @test eventlog[6].px == Point2f(400, 400)
         @test eventlog[7].px == Point2f(400, 400)
         empty!(eventlog)
+    end
+
+    # TODO: test more
+    @testset "Axis Interactions" begin
+        f = Figure(size = (400, 400))
+        a = Axis(f[1, 1])
+        e = events(f)
+
+        names = (:rectanglezoom, :dragpan, :limitreset, :scrollzoom)
+        @test keys(a.interactions) == Set(names)
+
+        types = (Makie.RectangleZoom, Makie.DragPan, Makie.LimitReset, Makie.ScrollZoom)
+        for (name, type) in zip(names, types)
+            @test a.interactions[name][1] == true
+            @test a.interactions[name][2] isa type
+        end
+
+        blocked = Observable(true)
+        on(x -> blocked[] = false, e.scroll, priority = typemin(Int))
+
+        @assert !is_mouseinside(a.scene)
+        e.scroll[] = (0.0, 0.0)
+        @test !blocked[]
+        blocked[] = true
+        e.scroll[] = (0.0, 1.0)
+        @test !blocked[]
+
+        blocked[] = true
+        e.mouseposition[] = (200, 200)
+        e.scroll[] = (0.0, 0.0)
+        @test blocked[] # TODO: should it block?
+        blocked[] = true
+        e.scroll[] = (0.0, 1.0)
+        @test blocked[]
+
+        deactivate_interaction!.((a,), names)
+
+        blocked[] = true
+        e.scroll[] = (0.0, 0.0)
+        @test !blocked[]
+        blocked[] = true
+        e.scroll[] = (0.0, 1.0)
+        @test !blocked[]
     end
 end

@@ -17,4 +17,42 @@ end
     @test svg_isnt_rasterized(lines(1:3))
     @test svg_isnt_rasterized(heatmap(rand(5, 5)))
     @test !svg_isnt_rasterized(image(rand(5, 5)))
+    # issue 2510
+    @test svg_isnt_rasterized(begin
+        fig = Figure()
+        ax = Axis(fig[1,1])
+        poly!(ax, Makie.GeometryBasics.Polygon(Point2.([[0,0],[1,0],[0,1],[0,0]])), color = ("#FF0000", 0.7), label = "foo")
+        poly!(ax, Makie.GeometryBasics.Polygon(Point2.([[0,0],[1,0],[0,1],[0,0]])), color = (:blue, 0.7), label = "bar")
+        fig[1, 2] = Legend(fig, ax, "Bar")
+        fig
+    end)
+    @test svg_isnt_rasterized(poly(Circle(Point2f(0, 0), 10)))
+    @test svg_isnt_rasterized(poly(BezierPath([
+        MoveTo(0.0, 0.0), LineTo(1.0, 0.0), LineTo(1.0, 1.0), CurveTo(1.0, 1.0, 0.5, 1.0, 0.5, 0.5), ClosePath()
+    ])))
+    @test !svg_isnt_rasterized(poly(rand(Point2f, 10); color = rand(RGBAf, 10)))
+
+    poly1 = Makie.GeometryBasics.Polygon(rand(Point2f, 10))
+    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1])))
+    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = :red))
+    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = [:red, :blue]))
+
+    @testset "GeoInterface polygons" begin
+        using GeoInterface, GeoInterfaceMakie
+        poly2 = GeoInterface.convert(GeoInterface.Wrappers, poly1)
+        @test svg_isnt_rasterized(poly(poly2))
+        @test svg_isnt_rasterized(poly(poly2, color = :red))
+        @test svg_isnt_rasterized(poly(GeoInterface.Wrappers.MultiPolygon([poly2, poly2]), color = [:red, :blue]))
+    end
+
+end
+
+@testset "reproducable svg ids" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/2406
+    f, ax, sc = scatter(1:10)
+    save("test1.svg", f)
+    save("test2.svg", f)
+    @test read("test1.svg") == read("test2.svg")
+    rm("test1.svg")
+    rm("test2.svg")
 end

@@ -1,8 +1,11 @@
+using InteractiveUtils: clipboard
+
+
 function initialize_block!(tbox::Textbox)
 
     topscene = tbox.blockscene
 
-    scenearea = lift(tbox.layoutobservables.computedbbox) do bb
+    scenearea = lift(topscene, tbox.layoutobservables.computedbbox) do bb
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
@@ -11,20 +14,20 @@ function initialize_block!(tbox::Textbox)
     cursorindex = Observable(0)
     setfield!(tbox, :cursorindex, cursorindex)
 
-    bbox = lift(Rect2f ∘ Makie.zero_origin, scenearea)
+    bbox = lift(Rect2f ∘ Makie.zero_origin, topscene, scenearea)
 
-    roundedrectpoints = lift(roundedrectvertices, scenearea, tbox.cornerradius, tbox.cornersegments)
+    roundedrectpoints = lift(roundedrectvertices, topscene, scenearea, tbox.cornerradius, tbox.cornersegments)
 
     tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? tbox.placeholder[] : tbox.stored_string[]
 
-    displayed_is_valid = lift(tbox.displayed_string, tbox.validator) do str, validator
-        valid::Bool = validate_textbox(str, validator)
+    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator) do str, validator
+        return validate_textbox(str, validator)::Bool
     end
 
     hovering = Observable(false)
     realbordercolor = Observable{RGBAf}()
 
-    map!(realbordercolor, tbox.bordercolor, tbox.bordercolor_focused,
+    map!(topscene, realbordercolor, tbox.bordercolor, tbox.bordercolor_focused,
         tbox.bordercolor_focused_invalid, tbox.bordercolor_hover, tbox.focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
         c = if focused
             valid ? bcf : bcfi
@@ -35,7 +38,7 @@ function initialize_block!(tbox::Textbox)
     end
 
     realboxcolor = Observable{RGBAf}()
-    map!(realboxcolor, tbox.boxcolor, tbox.boxcolor_focused,
+    map!(topscene, realboxcolor, tbox.boxcolor, tbox.boxcolor_focused,
         tbox.boxcolor_focused_invalid, tbox.boxcolor_hover, tbox.focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
 
         c = if focused
@@ -50,10 +53,11 @@ function initialize_block!(tbox::Textbox)
         strokecolor = realbordercolor,
         color = realboxcolor, inspectable = false)
 
-    displayed_chars = @lift([c for c in $(tbox.displayed_string)])
+    displayed_chars = lift(ds -> [c for c in ds], topscene, tbox.displayed_string)
 
     realtextcolor = Observable{RGBAf}()
-    map!(realtextcolor, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused, tbox.stored_string, tbox.displayed_string) do tc, tcph, foc, cont, disp
+    map!(topscene, realtextcolor, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
+         tbox.stored_string, tbox.displayed_string) do tc, tcph, foc, cont, disp
         # the textbox has normal text color if it's focused
         # if it's defocused, the displayed text has to match the stored text in order
         # to be normal colored
@@ -62,14 +66,14 @@ function initialize_block!(tbox::Textbox)
 
     t = Label(scene, text = tbox.displayed_string, bbox = bbox, halign = :left, valign = :top,
         width = Auto(true), height = Auto(true), color = realtextcolor,
-        textsize = tbox.textsize, padding = tbox.textpadding)
+        fontsize = tbox.fontsize, padding = tbox.textpadding)
 
     textplot = t.blockscene.plots[1]
-    displayed_charbbs = lift(textplot.text, textplot[1]) do _, _
+    displayed_charbbs = lift(topscene, textplot.text, textplot[1]) do _, _
         charbbs(textplot)
     end
 
-    cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
+    cursorpoints = lift(topscene, cursorindex, displayed_charbbs) do ci, bbs
 
         textplot = t.blockscene.plots[1]
         glyphcollection = textplot.plots[1][1][][]::Makie.GlyphCollection
@@ -95,11 +99,11 @@ function initialize_block!(tbox::Textbox)
         end
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 2, inspectable = false)
+    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
 
     tbox.cursoranimtask = nothing
 
-    on(t.layoutobservables.reporteddimensions) do dims
+    on(topscene, t.layoutobservables.reporteddimensions) do dims
         tbox.layoutobservables.autosize[] = dims.inner
     end
 
@@ -180,7 +184,7 @@ function initialize_block!(tbox::Textbox)
         tbox.displayed_string[] = join(newchars)
     end
 
-    on(events(scene).unicode_input, priority = 60) do char
+    on(topscene, events(scene).unicode_input; priority=60) do char
         if tbox.focused[] && is_allowed(char, tbox.restriction[])
             insertchar!(char, cursorindex[] + 1)
             return Consume(true)
@@ -208,8 +212,26 @@ function initialize_block!(tbox::Textbox)
     end
 
 
-    on(events(scene).keyboardbutton, priority = 60) do event
+    on(topscene, events(scene).keyboardbutton; priority=60) do event
         if tbox.focused[]
+            ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
+            if ispressed(scene, ctrl_v)
+                local content::String = ""
+                try
+                    content = clipboard()
+                catch err
+                    @warn "Accessing the clipboard failed: $err"
+                    return Consume(false)
+                end
+
+                if all(char -> is_allowed(char, tbox.restriction[]), content)
+                    foreach(char -> insertchar!(char, cursorindex[] + 1), content)
+                    return Consume(true)
+                else
+                    return Consume(false)
+                end
+            end
+
             if event.action != Keyboard.release
                 key = event.key
                 if key == Keyboard.backspace
@@ -241,7 +263,6 @@ function initialize_block!(tbox::Textbox)
 
         return Consume(false)
     end
-
     tbox
 end
 
@@ -254,7 +275,7 @@ function charbbs(text)
     pos = Point2f(text[1][][1])
     bbs = Rect2f[]
     broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
-        bb = Makie.height_insensitive_boundingbox_with_advance(ext) 
+        bb = Makie.height_insensitive_boundingbox_with_advance(ext)
         bb = bb * sc
         fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
         push!(bbs, fr)

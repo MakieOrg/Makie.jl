@@ -8,8 +8,14 @@ using ReferenceTests.FileIO
 using ReferenceTests.Colors
 using ReferenceTests.LaTeXStrings
 using ReferenceTests.DelimitedFiles
+using ReferenceTests.Test
+using ReferenceTests.Colors: RGB, N0f8
+using ReferenceTests.DelaunayTriangulation
 using Makie: Record, volume
 
+@testset "specapi" begin
+    include("specapi.jl")
+end
 @testset "primitives" begin
     include("primitives.jl")
 end
@@ -30,4 +36,7 @@ end
 end
 @testset "figures_and_makielayout.jl" begin
     include("figures_and_makielayout.jl")
+end
+@testset "updating_plots" begin
+    include("updating.jl")
 end

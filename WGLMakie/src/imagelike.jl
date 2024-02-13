@@ -6,137 +6,53 @@ using Makie: el32convert, surface_normals, get_dim
 nothing_or_color(c) = to_color(c)
 nothing_or_color(c::Nothing) = RGBAf(0, 0, 0, 1)
 
-function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
-    uniforms = Dict(uniforms)
-
-    colormap = if haskey(plot, :colormap)
-        cmap = lift(el32convert ∘ to_colormap, plot.colormap)
-        uniforms[:colormap] = Sampler(cmap)
-    end
-
-    colorrange = if haskey(plot, :colorrange)
-        uniforms[:colorrange] = lift(Vec2f, plot.colorrange)
-    end
-
-    get!(uniforms, :colormap, false)
-    get!(uniforms, :colorrange, false)
-    get!(uniforms, :color, false)
-    get!(uniforms, :model, plot.model)
-    get!(uniforms, :depth_shift, 0f0)
-    get!(uniforms, :lightposition, Vec3f(1))
-    get!(uniforms, :ambient, Vec3f(1))
-    get!(uniforms, :interpolate_in_fragment_shader, true)
-    uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
-        i = Vec(1, 2, 3)
-        return transpose(inv(v[i, i] * m[i, i]))
-    end
-
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
-end
-
-xy_convert(x::AbstractArray{Float32}, n) = copy(x)
-xy_convert(x::AbstractArray, n) = el32convert(x)
-xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
-
-function limits_to_uvmesh(plot)
-    px, py, pz = plot[1], plot[2], plot[3]
-    px = map((x, z)-> xy_convert(x, size(z, 1)), px, pz)
-    py = map((y, z)-> xy_convert(y, size(z, 2)), py, pz)
-    # Special path for ranges of length 2 wich
-    # can be displayed as a rectangle
-    t = Makie.transform_func_obs(plot)[]
-    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
-        rect = lift(px, py) do x, y
-            xmin, xmax = extrema(x)
-            ymin, ymax = extrema(y)
-            return Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
-        end
-        positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
-        faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
-        uv = Buffer(lift(decompose_uv, rect))
-    else
-        grid(x, y, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, zeros(length(x), length(y)))
-        rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
-        positions = Buffer(lift(grid, px, py, t))
-        faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
-        uv = Buffer(lift(decompose_uv, rect))
-    end
-
-    vertices = GeometryBasics.meta(positions; uv=uv)
-
-    return GeometryBasics.Mesh(vertices, faces)
-end
-
-function get_color(plot, key::Symbol)::Observable{RGBAf}
-    if haskey(plot, key)
-        return lift(to_color, plot[key])
-    else
-        return Observable(RGBAf(0, 0, 0, 0))
-    end
-end
-
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
-    grid(x, y, z, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, z)
-    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
-    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
-    faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
-    uv = Buffer(lift(decompose_uv, rect))
-    plot_attributes = copy(plot.attributes)
-    pcolor = if haskey(plot, :color) && plot.color[] isa AbstractArray
-        if plot.color[] isa AbstractMatrix{<:Colorant}
-            delete!(plot_attributes, :colormap)
-            delete!(plot_attributes, :colorrange)
-        end
-        plot.color
-    else
-        pz
-    end
-    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
-    normals = Buffer(lift(surface_normals, px, py, pz))
-    vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
-    mesh = GeometryBasics.Mesh(vertices, faces)
-    return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=false,
-                     shading=plot.shading, diffuse=plot.diffuse,
-                     specular=plot.specular, shininess=plot.shininess,
-                     depth_shift=get(plot, :depth_shift, Observable(0f0)),
-                     backlight=plot.backlight,
-                     highclip=get_color(plot, :highclip),
-                     lowclip=get_color(plot, :lowclip),
-                     nan_color=get_color(plot, :nan_color))
+    grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
+
+    # TODO: Use Makie.surface2mesh
+    ps = lift(grid, plot, px, py, pz, transform_func_obs(plot), get(plot, :space, :data))
+    positions = Buffer(ps)
+    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
+    fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
+    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), plot, ps, fs)
+    faces = Buffer(fs)
+    # This adjusts uvs (compared to decompose_uv) so texture sampling starts at
+    # the center of a texture pixel rather than the edge, fixing
+    # https://github.com/MakieOrg/Makie.jl/pull/2598#discussion_r1152552196
+    uv = Buffer(lift(plot, rect) do r
+        Nx, Ny = r.nvertices
+        f = Vec2f(1 / Nx, 1 / Ny)
+        [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+    end)
+    normals = Buffer(lift(Makie.nan_aware_normals, plot, ps, fs))
+
+    per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
+    uniforms = Dict(:uniform_color => color, :color => false)
+
+    return draw_mesh(mscene, per_vertex, plot, uniforms)
 end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
-    image = plot[3]
-    color = Sampler(map(x -> el32convert(x'), image);
-                    minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
-    plot_attributes = copy(plot.attributes)
-    if eltype(color) <: Colorant
-        delete!(plot_attributes, :colormap)
-        delete!(plot_attributes, :colorrange)
-    end
+    uniforms = Dict(
+        :normals => Vec3f(0),
+        :shading => false,
+        :diffuse => Vec3f(0),
+        :specular => Vec3f(0),
+        :shininess => 0.0f0,
+        :backlight => 0.0f0,
+    )
 
-    return draw_mesh(mscene, mesh, plot_attributes;
-                     uniform_color=color, color=false,
-                     normals=Vec3f(0), shading=false,
-                     diffuse=plot.diffuse, specular=plot.specular,
-                     colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
-                     shininess=plot.shininess,
-                     highclip=get_color(plot, :highclip),
-                     lowclip=get_color(plot, :lowclip),
-                     nan_color=get_color(plot, :nan_color),
-                     backlight=0f0,
-                     depth_shift = get(plot, :depth_shift, Observable(0f0)))
+    return draw_mesh(mscene, mesh, plot, uniforms)
 end
 
 function create_shader(mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
     box = GeometryBasics.mesh(Rect3f(Vec3f(0), Vec3f(1)))
     cam = cameracontrols(mscene)
-    model2 = lift(plot.model, x, y, z) do m, xyz...
+    model2 = lift(plot, plot.model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
         w = maxi .- mi
@@ -144,20 +60,98 @@ function create_shader(mscene::Scene, plot::Volume)
         return convert(Mat4f, m) * m2
     end
 
-    modelinv = lift(inv, model2)
-    algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
+    modelinv = lift(inv, plot, model2)
+    algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot, plot.algorithm)
 
-    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
-                   volumedata=Sampler(lift(Makie.el32convert, vol)),
-                   modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
-                   colorrange=lift(Vec2f, plot.colorrange),
-                   isovalue=lift(Float32, plot.isovalue),
-                   isorange=lift(Float32, plot.isorange),
-                   absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
-                   algorithm=algorithm,
-                   diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
-                   model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
-                   # these get filled in later by serialization, but we need them
-                   # as dummy values here, so that the correct uniforms are emitted
-                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1))
+    diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot, plot.diffuse)
+    specular = lift(x -> convert_attribute(x, Key{:specular}()), plot, plot.specular)
+    shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess)
+
+
+
+    uniforms = Dict{Symbol, Any}(
+        :modelinv => modelinv,
+        :isovalue => lift(Float32, plot, plot.isovalue),
+        :isorange => lift(Float32, plot, plot.isorange),
+        :absorption => lift(Float32, plot, get(plot, :absorption, Observable(1.0f0))),
+        :algorithm => algorithm,
+        :diffuse => diffuse,
+        :specular => specular,
+        :shininess => shininess,
+        :model => model2,
+        :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
+        # these get filled in later by serialization, but we need them
+        # as dummy values here, so that the correct uniforms are emitted
+        :light_direction => Vec3f(1),
+        :light_color => Vec3f(1),
+        :eyeposition => Vec3f(1),
+        :ambient => Vec3f(1),
+        :picking => false,
+        :object_id => UInt32(0)
+    )
+
+    handle_color!(plot, uniforms, nothing, :volumedata; permute_tex=false)
+    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
+end
+
+
+
+xy_convert(x::AbstractArray{Float32}, n) = copy(x)
+xy_convert(x::AbstractArray, n) = el32convert(x)
+xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
+
+# TODO, speed up GeometryBasics
+function fast_faces(nvertices)
+    w, h = nvertices
+    idx = LinearIndices(nvertices)
+    nfaces = 2 * (w - 1) * (h - 1)
+    faces = Vector{GLTriangleFace}(undef, nfaces)
+    face_idx = 1
+    @inbounds for i in 1:(w - 1)
+        for j in 1:(h - 1)
+            a, b, c, d = idx[i, j], idx[i + 1, j], idx[i + 1, j + 1], idx[i, j + 1]
+            faces[face_idx] = GLTriangleFace(a, b, c)
+            face_idx += 1
+            faces[face_idx] = GLTriangleFace(a, c, d)
+            face_idx += 1
+        end
+    end
+    return faces
+end
+
+# TODO, speed up GeometryBasics
+function fast_uv(nvertices)
+    xrange, yrange = LinRange.((0, 1), (1, 0), nvertices)
+    return [Vec2f(x, y) for y in yrange for x in xrange]
+end
+
+function limits_to_uvmesh(plot)
+    px, py, pz = plot[1], plot[2], plot[3]
+    px = map((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
+    py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
+    # Special path for ranges of length 2 which
+    # can be displayed as a rectangle
+    t = Makie.transform_func_obs(plot)[]
+
+    # TODO, this branch is only hit by Image, but not for Heatmap with stepranges
+    # because convert_arguments converts x/y to Vector{Float32}
+    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
+        rect = lift(plot, px, py) do x, y
+            xmin, xmax = extrema(x)
+            ymin, ymax = extrema(y)
+            return Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
+        end
+        positions = Buffer(lift(rect -> decompose(Point2f, rect), plot, rect))
+        faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
+        uv = Buffer(lift(decompose_uv, plot, rect))
+    else
+        function grid(x, y, trans, space)
+            return Makie.matrix_grid(p -> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
+        end
+        resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values=true)
+        positions = Buffer(lift(grid, plot, px, py, t, get(plot, :space, :data)))
+        faces = Buffer(lift(fast_faces, plot, resolution))
+        uv = Buffer(lift(fast_uv, plot, resolution))
+    end
+    return Dict(:positions => positions, :faces => faces, :uv => uv)
 end

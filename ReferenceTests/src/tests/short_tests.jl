@@ -46,7 +46,7 @@ end
 
 @reference_test "streamplot with func" begin
     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
-    streamplot(v, -2..2, -2..2, arrow_size=10)
+    streamplot(v, -2..2, -2..2)
 end
 
 @reference_test "lines with func" lines(-1..1, x -> x^2)
@@ -54,8 +54,8 @@ end
 
 @reference_test "volume translated" begin
     r = range(-3pi, stop=3pi, length=100)
-    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
-    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip,
+    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), colorrange=(0, 1), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
+    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, colorrange=(0, 1),
                  transformation=(translation=Vec3f(6pi, 0, 0),))
     fig
 end
@@ -132,7 +132,7 @@ end
         highclip = :red,
         lowclip = :black,
         nan_color = (:green, 0.5),
-        shading = false,
+        shading = NoShading,
     )
     surface!(
         Axis(fig[2, 2]),
@@ -141,7 +141,7 @@ end
         highclip = :red,
         lowclip = :black,
         nan_color = (:green, 0.5),
-        shading = false,
+        shading = NoShading,
     )
     fig
 end
@@ -158,7 +158,7 @@ end
 
 @reference_test "lines linesegments width test" begin
     res = 200
-    s = Scene(camera=campixel!, resolution=(res, res))
+    s = Scene(camera=campixel!, size=(res, res))
     half = res / 2
     linewidth = 10
     xstart = half - (half/2)
@@ -222,3 +222,82 @@ end
     Colorbar(f[1, 1]; size = 200)
     f
 end
+
+@reference_test "scene visibility" begin
+    f, ax, pl = scatter(1:4, markersize=200)
+    ax2, pl = scatter(f[1, 2][1, 1], 1:4, color=1:4, markersize=200)
+    ax3, pl = scatter(f[1, 2][2, 1], 1:4, color=1:4, markersize=200)
+    ax3.scene.visible[] = false
+    ax2.scene.visible[] = false
+    ax2.blockscene.visible[] = false
+    f
+end
+
+@reference_test "redisplay after closing screen" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/2392
+    Makie.inline!(false)
+    f = Figure()
+    Menu(f[1,1], options=["one", "two", "three"])
+    screen = display(f; visible=false)
+    # Close the window & redisplay
+    close(screen)
+    # Now, menu should be displayed again and not stay blank!
+    f
+end
+
+@reference_test "space test in transformed axis" begin
+    f = lines(exp.(0.1*(1.0:100));  axis=(yscale=log10,))
+    poly!(Rect(1, 1, 100, 100), color=:red, space=:pixel)
+    scatter!(2*mod.(1:100:10000, 97), 2*mod.(1:101:10000, 97), color=:blue, space=:pixel)
+    scatter!(Point2f(0, 0.25), space=:clip)
+    lines!([0.5,0.5], [0, 1];  space=:relative)
+    lines!([50,50], [0, 100];  space=:pixel)
+    lines!([0,1], [0.25, 0.25];  space=:clip)
+    scatter!(Point2f(0.5, 0), space=:relative)
+    f
+end
+
+@reference_test "colorbuffer for axis" begin
+    fig = Figure()
+    ax1 = Axis(fig[1, 1])
+    ax2 = Axis(fig[1, 2])
+    ax3 = Axis(fig[2, 2])
+    ax4 = Axis(fig[2, 1])
+    scatter!(ax1, 1:10, 1:10; markersize=50, color=1:10)
+    scatter!(ax2, 1:10, 1:10; markersize=50, color=:red)
+    heatmap!(ax3, -8:0.1:8, 8:0.1:8, (x, y) -> sin(x) + cos(y))
+    meshscatter!(ax4, 1:10, 1:10; markersize=1, color=:red)
+    img1 = colorbuffer(ax1; include_decorations=true)
+    img2 = colorbuffer(ax2; include_decorations=false)
+    img3 = colorbuffer(ax3; include_decorations=true)
+    img4 = colorbuffer(ax4; include_decorations=false)
+    f, ax5, pl = image(rotr90(img1); axis=(; aspect=DataAspect()))
+    ax6, pl = image(f[1, 2], rotr90(img2); axis=(; aspect=DataAspect()))
+    ax7, pl = image(f[2, 2], rotr90(img3); axis=(; aspect=DataAspect()))
+    ax8, pl = image(f[2, 1], rotr90(img4); axis=(; aspect=DataAspect()))
+    hidedecorations!(ax5)
+    hidedecorations!(ax6)
+    hidedecorations!(ax7)
+    hidedecorations!(ax8)
+    f
+end
+
+
+# Needs a way to disable autolimits on show
+# @reference_test "interactions after close" begin
+#     # After saving, interactions may be cleaned up:
+#     # https://github.com/MakieOrg/Makie.jl/issues/2380
+#     f = Figure()
+#     ax = Axis(f[1,1])
+#     # Show something big for reference tests to make a difference
+#     lines!(ax, 1:5, 1:5, linewidth=20)
+#     scatter!(ax, decompose(Point2f, Circle(Point2f(2.5), 2.5)), markersize=50)
+#     display(f; visible=false)
+#     save("test.png", f)
+#     rm("test.png")
+#     # Trigger zoom interactions
+#     f.scene.events.mouseposition[] = (200, 200)
+#     f.scene.events.scroll[] = (0, -10)
+#     # reference test the zoomed out plot
+#     f
+# end

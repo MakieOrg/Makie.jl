@@ -4,7 +4,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     end
 
     result[:faces] = indexbuffer(map(((m,_),)-> faces(m), m_attr))
-    result[:vertices] = GLBuffer(map(((m,_),)-> decompose(Point, m), m_attr))
+    result[:vertices] = GLBuffer(map(((m, _),) -> metafree(coordinates(m)), m_attr))
 
     attribs = m_attr[][2]
 
@@ -26,33 +26,44 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     to_buffer(:color, :vertex_color)
     to_buffer(:uv, :texturecoordinates)
     to_buffer(:uvw, :texturecoordinates)
-    to_buffer(:normals, :normals)
+    # Only emit normals, when we shadin'
+    shading = get(result, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
+    matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
+    if matcap_active || shading != NoShading
+        to_buffer(:normals, :normals)
+    end
     to_buffer(:attribute_id, :attribute_id)
     return result
 end
 
-function draw_mesh(shader_cache, @nospecialize(mesh), data::Dict)
-    to_opengl_mesh!(data, mesh)
+function draw_mesh(screen, data::Dict)
+    shading = pop!(data, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
-        shading = true
+        vertices = nothing => GLBuffer
+        faces = nothing => indexbuffer
+        normals = nothing => GLBuffer
         backlight = 0f0
-        vertex_color = nothing
-        texturecoordinates = Vec2f(0)
+        vertex_color = nothing => GLBuffer
         image = nothing => Texture
         matcap = nothing => Texture
         color_map = nothing => Texture
         color_norm = nothing
         fetch_pixel = false
+        texturecoordinates = Vec2f(0) => GLBuffer
         uv_scale = Vec2f(1)
         transparency = false
         interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
-            shader_cache,
-            "util.vert", "mesh.vert", "mesh.frag", "fragment_output.frag",
+            screen,
+            "util.vert", "mesh.vert",
+            "fragment_output.frag", "mesh.frag",
+            "lighting.frag",
             view = Dict(
-                "light_calc" => light_calc(shading),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "shading" => light_calc(shading),
+                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
     end

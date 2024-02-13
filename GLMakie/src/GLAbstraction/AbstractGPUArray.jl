@@ -8,7 +8,6 @@ import Base: getindex
 import Base: map
 import Base: size
 import Base: iterate
-using Serialization
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
 
@@ -17,7 +16,7 @@ size(A::GPUArray) = A.size
 function checkdimensions(value::Array, ranges::Union{Integer, UnitRange}...)
     array_size   = size(value)
     indexes_size = map(length, ranges)
-    (array_size != indexes_size) && throw(DimensionMismatch("asigning a $array_size to a $(indexes_size) location"))
+    (array_size != indexes_size) && throw(DimensionMismatch("Assigning a $array_size to a $(indexes_size) location"))
     return true
 end
 function to_range(index)
@@ -30,7 +29,7 @@ end
 
 setindex!(A::GPUArray{T, N}, value::Union{T, Array{T, N}}) where {T, N} = (A[1] = value)
 
-function setindex!(A::GPUArray{T, N}, value, indices::Vararg{<: Integer, N}) where {T, N}
+function setindex!(A::GPUArray{T, N}, value, indices::Vararg{Integer, N}) where {T, N}
     v = Array{T, N}(undef, ntuple(i-> 1, N))
     v[1] = convert(T, value)
     setindex!(A, v, (:).(indices, indices)...)
@@ -58,8 +57,8 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2
 end
 function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     switch_context!(A)
-    if length(A) != length(value)
-        if isa(A, GLBuffer)
+    if size(A) != size(value)
+        if isa(A, GLBuffer) && length(A) != length(value)
             resize!(A, length(value))
         elseif isa(A, Texture)
             resize_nocopy!(A, size(value))
@@ -191,23 +190,17 @@ gpu_setindex!(t) = error("gpu_setindex! not implemented for: $(typeof(t)). This 
 max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happens, when you call setindex! on an array, without implementing the GPUArray interface")
 
 
-function (::Type{T})(x::Observable; kw...) where T <: GPUArray
-    gpu_mem = T(x[]; kw...)
-    on(x-> update!(gpu_mem, x), x)
-    gpu_mem
+function (::Type{GPUArrayType})(data::Observable; kw...) where GPUArrayType <: GPUArray
+    gpu_mem = GPUArrayType(data[]; kw...)
+    # TODO merge these and handle update tracking during contruction
+    obs2 = on(new_data -> update!(gpu_mem, new_data), data)
+    if GPUArrayType <: TextureBuffer
+        push!(gpu_mem.buffer.observers, obs2)
+    else
+        push!(gpu_mem.observers, obs2)
+    end
+    return gpu_mem
 end
-
-const BaseSerializer = Serialization.AbstractSerializer
-
-function Serialization.serialize(s::BaseSerializer, t::T) where T<:GPUArray
-    Serialization.serialize_type(s, T)
-    Serialization.serialize(s, Array(t))
-end
-function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T <: GPUArray
-    A = Serialization.deserialize(s)
-    T(A)
-end
-
 
 export data
 export resize

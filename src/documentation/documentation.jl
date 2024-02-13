@@ -32,7 +32,7 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     str = to_string(input)
 
     # Print docstrings
-    println(io, Base.Docs.doc(func))
+    println(io, Base.doc(func))
 
     # Arguments
     help_arguments(io, func)
@@ -186,7 +186,7 @@ to_func(func::Function) = func
 
 Maps the input of a function name to its cooresponding Type.
 """
-to_type(func::Function) = Combined{func}
+to_type(func::Function) = Plot{func}
 
 to_type(Typ::Type{T}) where T <: AbstractPlot = Typ
 

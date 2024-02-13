@@ -14,13 +14,15 @@ using Makie: Scene, Lines, Text, Image, Heatmap, Scatter
 using Makie: convert_attribute, @extractvalue, LineSegments
 using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
-using Makie: inline!, to_native
+using Makie: to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
-import Makie: to_font, glyph_uv_width!, el32convert
+import Makie: to_font, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
+import Makie: RelocatableFolders
 
 using ShaderAbstractions
 using FreeTypeAbstraction
 using GeometryBasics: StaticVector
+using Observables
 
 using Base: RefValue
 import Base: push!, isopen, show
@@ -36,31 +38,43 @@ for name in names(Makie, all=true)
     end
 end
 
-export inline!
 import ShaderAbstractions: Sampler, Buffer
 export Sampler, Buffer
 
-struct GLBackend <: Makie.AbstractBackend
+struct ShaderSource
+    typ::GLenum
+    source::String
+    name::String
 end
 
-loadshader(name) = normpath(joinpath(@__DIR__, "..", "assets", "shader", name))
+function ShaderSource(path)
+    typ = GLAbstraction.shadertype(splitext(path)[2])
+    source = read(path, String)
+    name = String(path)
+    return ShaderSource(typ, source, name)
+end
+
+const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
+const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
+const LOADED_SHADERS = Dict{String, ShaderSource}()
+
+function loadshader(name)
+    # Turns out, joinpath is so slow, that it actually makes sense
+    # To memoize it :-O
+    # when creating 1000 plots with the PlotSpec API, timing drop from 1.5s to 1s just from this change:
+    return get!(LOADED_SHADERS, name) do
+        return ShaderSource(joinpath(SHADER_DIR, name))
+    end
+end
+
+gl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
 
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")
 
-function activate!(use_display=true)
-    b = GLBackend()
-    Makie.register_backend!(b)
-    Makie.set_glyph_resolution!(Makie.High)
-    Makie.current_backend[] = b
-    Makie.inline!(!use_display)
-end
-
 function __init__()
     activate!()
 end
-
-export set_window_config!
 
 include("precompiles.jl")
 

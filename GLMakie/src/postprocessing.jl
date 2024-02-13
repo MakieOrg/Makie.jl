@@ -21,10 +21,11 @@ rcpframe(x) = 1f0 ./ Vec2f(x[1], x[2])
 struct PostProcessor{F}
     robjs::Vector{RenderObject}
     render::F
+    constructor::Any
 end
 
 function empty_postprocessor(args...; kwargs...)
-    PostProcessor(RenderObject[], screen -> nothing)
+    PostProcessor(RenderObject[], screen -> nothing, empty_postprocessor)
 end
 
 
@@ -68,11 +69,10 @@ function OIT_postprocessor(framebuffer, shader_cache)
         # Blend transparent onto opaque
         glDrawBuffer(color_id)
         glViewport(0, 0, w, h)
-        glDisable(GL_STENCIL_TEST)
         GLAbstraction.render(pass)
     end
 
-    PostProcessor(RenderObject[pass], full_render)
+    PostProcessor(RenderObject[pass], full_render, OIT_postprocessor)
 end
 
 
@@ -162,8 +162,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
         # SSAO - calculate occlusion
         glDrawBuffer(normal_occ_id)  # occlusion buffer
         glViewport(0, 0, w, h)
-        glDisable(GL_STENCIL_TEST)
         glEnable(GL_SCISSOR_TEST)
+        ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
@@ -171,8 +171,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
             # scenes. It should be a leaf scene to avoid repeatedly shading
             # the same region (though this is not guaranteed...)
             isempty(scene.children) || continue
-            a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            a = viewport(scene)[]
+            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
             data1[:projection] = scene.camera.projection[]
             data1[:bias] = scene.ssao.bias[]
@@ -185,8 +185,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
             isempty(scene.children) || continue
-            a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            a = viewport(scene)[]
+            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
             data2[:blur_range] = scene.ssao.blur
             GLAbstraction.render(pass2)
@@ -194,11 +194,11 @@ function ssao_postprocessor(framebuffer, shader_cache)
         glDisable(GL_SCISSOR_TEST)
     end
 
-    PostProcessor(RenderObject[pass1, pass2], full_render)
+    PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
 end
 
 """
-    fxaa_postprocessor(framebuffer)
+    fxaa_postprocessor(framebuffer, shader_cache)
 
 Returns a PostProcessor that handles fxaa.
 """
@@ -260,17 +260,19 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         GLAbstraction.render(pass2)
     end
 
-    PostProcessor(RenderObject[pass1, pass2], full_render)
+    PostProcessor(RenderObject[pass1, pass2], full_render, fxaa_postprocessor)
 end
 
 
 """
-    to_screen_postprocessor(framebuffer)
+    to_screen_postprocessor(framebuffer, shader_cache, default_id = nothing)
 
 Sets up a Postprocessor which copies the color buffer to the screen. Used as a
-final step for displaying the screen.
+final step for displaying the screen. The argument `screen_fb_id` can be used
+to pass in a reference to the framebuffer ID of the screen. If `nothing` is
+used (the default), 0 is used.
 """
-function to_screen_postprocessor(framebuffer, shader_cache)
+function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothing)
     # draw color buffer
     shader = LazyShader(
         shader_cache,
@@ -284,15 +286,21 @@ function to_screen_postprocessor(framebuffer, shader_cache)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
     full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
-
         # transfer everything to the screen
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
-        glViewport(0, 0, w, h)
+        default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
+        # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
+        glBindFramebuffer(GL_FRAMEBUFFER, default_id)
+        glViewport(0, 0, framebuffer_size(screen.glscreen)...)
         glClear(GL_COLOR_BUFFER_BIT)
         GLAbstraction.render(pass) # copy postprocess
     end
 
-    PostProcessor(RenderObject[pass], full_render)
+    PostProcessor(RenderObject[pass], full_render, to_screen_postprocessor)
+end
+
+function destroy!(pp::PostProcessor)
+    while !isempty(pp.robjs)
+        destroy!(pop!(pp.robjs))
+    end
+    return
 end

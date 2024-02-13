@@ -143,7 +143,7 @@ function plot!(
 
     if any(x -> x isa AbstractString, category_labels)
         ulabels = unique(category_labels)
-        if !haskey(allattrs, :orientation) || allattrs.orientation[] == :vertical
+        if !haskey(allattrs, :orientation) || allattrs.orientation[] === :vertical
             ax.xticks = (1:length(ulabels), ulabels)
         else
             ax.yticks = (1:length(ulabels), ulabels)
@@ -172,7 +172,7 @@ function group_labels(category_labels, data_array)
 end
 
 function ungroup_labels(category_labels, data_array)
-    if eltype(data_array) isa AbstractVector
+    if eltype(data_array) <: AbstractVector
         @warn "Using a nested array for raincloud is deprected. Read raincloud's documentation and update your usage accordingly."
         data_array_ = reduce(vcat, data_array)
         category_labels_ = similar(category_labels, length(data_array_))
@@ -190,7 +190,6 @@ function convert_arguments(::Type{<: RainClouds}, category_labels, data_array)
     cloud_plot_check_args(category_labels, data_array)
     return (category_labels, data_array)
 end
-
 
 function plot!(plot::RainClouds)
     category_labels = plot.category_labels[]
@@ -241,12 +240,12 @@ function plot!(plot::RainClouds)
 
 
     # Set-up
-    if plot.orientation[] == :horizontal
+    if plot.orientation[] === :horizontal
         # flip side to when horizontal
-        side = side == :left ? :right : :left
+        side = side === :left ? :right : :left
     end
-    (side == :left) && (side_nudge_direction = 1.0)
-    (side == :right) && (side_nudge_direction = -1.0)
+    (side === :left) && (side_nudge_direction = 1.0)
+    (side === :right) && (side_nudge_direction = -1.0)
     side_scatter_nudge_with_direction = side_scatter_nudge * side_nudge_direction
     side_boxplot_nudge_with_direction = boxplot_nudge * side_nudge_direction
 
@@ -274,19 +273,19 @@ function plot!(plot::RainClouds)
             edges = pick_hist_edges(data_array, hist_bins)
             # dodge belongs below: it ensure that the histogram groups labels by both dodge
             # and category (so there is a separate histogram for each dodge group)
-            groupings = if plot.dodge[] isa MakieCore.Automatic 
-                category_labels 
-            else 
+            groupings = if plot.dodge[] isa MakieCore.Automatic
+                category_labels
+            else
                 zip(category_labels, plot.dodge[])
             end
             for (_, ixs) in group_labels(groupings, data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
                 hist!(plot, view(data_array, ixs); offset=xoffset,
-                        scale_to=(side == :left ? -1 : 1)*cloud_width*width_ratio, bins=edges,
+                        scale_to=(side === :left ? -1 : 1)*cloud_width*width_ratio, bins=edges,
                         # yes, we really do want :x when orientation is :vertical
                         # an :x directed histogram has a vertical orientation
-                        direction=plot.orientation[] == :vertical ? :x : :y, 
+                        direction=plot.orientation[] === :vertical ? :x : :y,
                         color=getuniquevalue(plot.color[], ixs))
             end
         else
@@ -296,7 +295,7 @@ function plot!(plot::RainClouds)
 
     scatter_x = final_x_positions .+ side_scatter_nudge_with_direction.*width_ratio .+
                 jitter .- recenter_to_boxplot_nudge_value.*width_ratio
-    if plot.orientation[] == :vertical
+    if plot.orientation[] === :vertical
         scatter!(plot, scatter_x, data_array; markersize=markersize, plot.color, plot.cycle)
     else
         scatter!(plot, data_array, scatter_x; markersize=markersize, plot.color, plot.cycle)

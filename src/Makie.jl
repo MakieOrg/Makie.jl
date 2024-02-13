@@ -12,10 +12,16 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
+# Import FilePaths for invalidations
+# When loading Electron for WGLMakie, which depends on FilePaths
+# It invalidates half of Makie. Simplest fix is to load it early on in Makie
+# So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
+#
+import FilePaths
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG # get FFMPEG on any system!
+using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
 using PlotUtils
@@ -23,21 +29,24 @@ using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
+using CRC32c
 using Packing
 using SignedDistanceFields
 using Markdown
 using DocStringExtensions # documentation
-using Serialization # serialize events
+using Scratch
 using StructArrays
 # Text related packages
 using FreeType
 using FreeTypeAbstraction
-using UnicodeFun
 using LinearAlgebra
 using Statistics
 using MakieCore
 using OffsetArrays
+using Downloads
+using ShaderAbstractions
 
+import UnicodeFun
 import RelocatableFolders
 import StatsBase
 import Distributions
@@ -48,6 +57,10 @@ import GridLayoutBase
 import ImageIO
 import FileIO
 import SparseArrays
+import TriplotBase
+import DelaunayTriangulation as DelTri
+import REPL
+import MacroTools
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
@@ -65,29 +78,36 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
-using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
-using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
+using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
+using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
+using MakieCore: NoShading, FastShading, MultiLightShading
 using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
-get_attribute, plotsym, plotkey, attributes, used_attributes
-import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
-import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+                  get_attribute, plotsym, plotkey, attributes, used_attributes
+import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
+import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
+import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 
-export @L_str
-export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+export @L_str, @colorant_str
+export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
+export Linestyle
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
+const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
+assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
+
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
+include("bezier.jl")
 include("types.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
@@ -95,19 +115,21 @@ include("interaction/liftmacro.jl")
 include("colorsampler.jl")
 include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
+include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 
+include("interfaces.jl")
+include("conversions.jl")
+include("units.jl")
+include("shorthands.jl")
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
 include("themes/theme_black.jl")
 include("themes/theme_minimal.jl")
 include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
-include("interfaces.jl")
-include("units.jl")
-include("conversions.jl")
-include("shorthands.jl")
+include("themes/theme_latexfonts.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
@@ -126,8 +148,10 @@ include("basic_recipes/axis.jl")
 include("basic_recipes/band.jl")
 include("basic_recipes/barplot.jl")
 include("basic_recipes/buffers.jl")
+include("basic_recipes/bracket.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
+include("basic_recipes/datashader.jl")
 include("basic_recipes/error_and_rangebars.jl")
 include("basic_recipes/hvlines.jl")
 include("basic_recipes/hvspan.jl")
@@ -139,14 +163,23 @@ include("basic_recipes/stairs.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
+include("basic_recipes/tricontourf.jl")
+include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
+include("basic_recipes/voronoiplot.jl")
+include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
+include("basic_recipes/tooltip.jl")
 
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
 include("layouting/layouting.jl")
 include("layouting/boundingbox.jl")
+
+# Declaritive SpecApi
+include("specapi.jl")
+
 # more default recipes
 # statistical recipes
 include("stats/conversions.jl")
@@ -157,22 +190,31 @@ include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
+include("stats/hexbin.jl")
+
 
 # Interactiveness
 include("interaction/events.jl")
 include("interaction/interactive_api.jl")
+include("interaction/ray_casting.jl")
 include("interaction/inspector.jl")
 
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+include("ffmpeg-util.jl")
+include("recording.jl")
+include("event-recorder.jl")
+
+# bezier paths
+export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
-export AbstractScene, SceneLike, Scene, AbstractScreen
-export AbstractPlot, Combined, Atomic, OldAxis
+export AbstractScene, SceneLike, Scene, MakieScreen
+export AbstractPlot, Plot, Atomic, OldAxis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme, update_theme!
@@ -184,6 +226,7 @@ export theme_black
 export theme_minimal
 export theme_light
 export theme_dark
+export theme_latexfonts
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange
@@ -192,15 +235,14 @@ export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
 # Observable/Signal related
-export Observable, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
+export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
 export broadcast_foreach, to_vector, replace_automatic!
-
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
-export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize, categorical_colors, resample_cmap
+export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categorical_colors, resample_cmap
 export to_ndim, Reverse
 
 # Transformations
@@ -215,11 +257,11 @@ export SceneSpace, PixelSpace, Pixel
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
 export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
-export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
+export viewport, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
+export mouseover, onpick, pick, Events, Keyboard, Mouse, is_mouseinside
 export ispressed, Exclusively
 export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
@@ -231,6 +273,7 @@ export Consume
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 export Billboard
+export NoShading, FastShading, MultiLightShading
 
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
@@ -250,18 +293,19 @@ export PlotSpec
 export plot!, plot
 export abline! # until deprecation removal
 
-
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
-export VideoStream, recordframe!, record
-export save
+export VideoStream, recordframe!, record, Record
+export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients
 
-export Pattern
+# other "available" functions
+export available_plotting_methods, available_marker_symbols
 
-const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
-assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
+
+export Pattern
+export ReversibleScale
 
 export assetpath
 # default icon for Makie
@@ -276,25 +320,18 @@ function logo()
     FileIO.load(assetpath("logo.png"))
 end
 
+# populated by __init__()
+makie_cache_dir = ""
+
 function __init__()
     # Make GridLayoutBase default row and colgaps themeable when using Makie
     # This mutates module-level state so it could mess up other libraries using
     # GridLayoutBase at the same time as Makie, which is unlikely, though
     GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-        ct = Makie.current_default_theme()
-        if haskey(ct, :colgap)
-            ct[:colgap][]
-        else
-            GridLayoutBase.DEFAULT_COLGAP[]
-        end
+        return convert(Float64, to_value(Makie.theme(:colgap; default=GridLayoutBase.DEFAULT_COLGAP[])))
     end
     GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-        ct = Makie.current_default_theme()
-        if haskey(ct, :rowgap)
-            ct[:rowgap][]
-        else
-            GridLayoutBase.DEFAULT_ROWGAP[]
-        end
+        return convert(Float64, to_value(Makie.theme(:rowgap; default=GridLayoutBase.DEFAULT_ROWGAP[])))
     end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
@@ -303,6 +340,8 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
         "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+
+    global makie_cache_dir = @get_scratch!("makie")
 end
 
 include("figures.jl")
@@ -314,12 +353,13 @@ include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
+include("deprecated.jl")
 
-export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
-export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
-export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe
+export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
+export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
 
-export PointLight, EnvironmentLight, AmbientLight, SSAO
+export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 
 include("precompiles.jl")
 

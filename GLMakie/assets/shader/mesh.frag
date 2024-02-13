@@ -4,15 +4,11 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
-uniform vec3 ambient;
-uniform vec3 diffuse;
-uniform vec3 specular;
-uniform float shininess;
-uniform float backlight;
+// Sets which shading procedures to use
+{{shading}}
 
-in vec3 o_normal;
-in vec3 o_lightdir;
-in vec3 o_camdir;
+in vec3 o_world_normal;
+in vec3 o_view_normal;
 in vec4 o_color;
 in vec3 o_uv;
 flat in uvec2 o_id;
@@ -74,7 +70,8 @@ vec4 get_color(sampler3D intensity, vec3 uv, vec2 color_norm, sampler1D color_ma
 }
 
 vec4 matcap_color(sampler2D matcap){
-    vec2 muv = o_normal.xy * 0.5 + vec2(0.5, 0.5);
+    // TODO should matcaps use view space normals?
+    vec2 muv = o_view_normal.xy * 0.5 + vec2(0.5, 0.5);
     return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
 vec4 get_color(Nothing image, vec3 uv, Nothing color_norm, Nothing color_map, sampler2D matcap){
@@ -108,25 +105,11 @@ vec4 get_pattern_color(sampler3D color){
 // Needs to exist for opengl to be happy
 vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
 
-vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
-
-    // specular coefficient
-    vec3 H = normalize(L + V);
-
-    float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
-    if (diff_coeff <= 0.0 || isnan(spec_coeff))
-        spec_coeff = 0.0;
-
-    // final lighting model
-    return vec3(
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
-    );
-}
-
 void write2framebuffer(vec4 color, uvec2 id);
 
+#ifndef NO_SHADING
+vec3 illuminate(vec3 normal, vec3 base_color);
+#endif
 
 void main(){
     vec4 color;
@@ -136,6 +119,8 @@ void main(){
     }else{
         color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
-    {{light_calc}}
+    #ifndef NO_SHADING
+    color.rgb = illuminate(normalize(o_world_normal), color.rgb);
+    #endif
     write2framebuffer(color, o_id);
 }

@@ -2,8 +2,8 @@ using GeometryBasics, RPRMakie
 using Colors, FileIO, ImageShow
 using Colors: N0f8
 
-RPRMakie.activate!(plugin=RPR.Northstar)
-fig = Figure(; resolution=(800, 600), fontsize=26)
+RPRMakie.activate!(plugin=RPR.Northstar, resource=RPR.GPU0)
+fig = Figure(; size=(800, 600), fontsize=26)
 radiance = 10000
 lights = [EnvironmentLight(0.5, load(RPR.assetpath("studio026.exr"))),
           PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))]
@@ -25,4 +25,4 @@ cam.eyeposition[] = Float32[5, 22, 12]
 cam.lookat[] = Float32[5, 5, -0.5]
 cam.upvector[] = Float32[0.0, 0.0, 1.0]
 cam.fov[] = 14.0
-ax.scene
+@time display(ax.scene)

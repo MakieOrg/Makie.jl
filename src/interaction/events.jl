@@ -12,13 +12,10 @@ hasfocus(scene, native_window) = not_implemented_for(native_window)
 entered_window(scene, native_window) = not_implemented_for(native_window)
 
 function connect_screen(scene::Scene, screen)
-    while !isempty(scene.current_screens)
-        old_screen = pop!(scene.current_screens)
-        disconnect_screen(scene, old_screen)
-        old_screen !== screen && close(old_screen)
-    end
 
-    push_screen!(scene, screen)
+    on(scene, screen.window_open) do open
+        events(scene).window_open[] = open
+    end
 
     window_area(scene, screen)
     window_open(scene, screen)
@@ -34,24 +31,25 @@ function connect_screen(scene::Scene, screen)
     return
 end
 
-to_native(window::AbstractScreen) = error("to_native(window) not implemented for $(typeof(window)).")
-disconnect!(window::AbstractScreen, signal) = disconnect!(to_native(window), signal)
+to_native(window::MakieScreen) = error("to_native(window) not implemented for $(typeof(window)).")
+disconnect!(window::MakieScreen, signal) = disconnect!(to_native(window), signal)
 
 function disconnect_screen(scene::Scene, screen)
-    delete_screen!(scene, screen)
     e = events(scene)
-
-    disconnect!(screen, window_area)
-    disconnect!(screen, window_open)
-    disconnect!(screen, mouse_buttons)
-    disconnect!(screen, mouse_position)
-    disconnect!(screen, scroll)
-    disconnect!(screen, keyboard_buttons)
-    disconnect!(screen, unicode_input)
-    disconnect!(screen, dropped_files)
-    disconnect!(screen, hasfocus)
-    disconnect!(screen, entered_window)
-
+    # the isopen check was never needed, since we didn't seem to disconnect from a closed screen.
+    # But due to a bug, it became clear that disconnecting events from a destroyed screen may segfault...
+    if isopen(screen)
+        disconnect!(screen, window_area)
+        disconnect!(screen, window_open)
+        disconnect!(screen, mouse_buttons)
+        disconnect!(screen, mouse_position)
+        disconnect!(screen, scroll)
+        disconnect!(screen, keyboard_buttons)
+        disconnect!(screen, unicode_input)
+        disconnect!(screen, dropped_files)
+        disconnect!(screen, hasfocus)
+        disconnect!(screen, entered_window)
+    end
     return
 end
 
@@ -59,6 +57,11 @@ end
 Picks a mouse position.  Implemented by the backend.
 """
 function pick end
+
+function pick(::Scene, ::Screen, xy) where Screen
+    @warn "Picking not supported yet by $(parentmodule(Screen))" maxlog=1
+    return nothing, 0
+end
 
 """
     onpick(func, plot)
@@ -71,8 +74,6 @@ function onpick end
 ### ispressed logic
 ################################################################################
 
-
-abstract type BooleanOperator end
 
 """
     And(left, right[, rest...])
@@ -221,10 +222,10 @@ create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
 # ispressed and logic evaluation
 
 """
-    ispressed(scene, result::Bool)
-    ispressed(scene, button::Union{Mouse.Button, Keyboard.Button)
-    ispressed(scene, collection::Union{Set, Vector, Tuple})
-    ispressed(scene, op::BooleanOperator)
+ispressed(parent, result::Bool[, waspressed = nothing])
+ispressed(parent, button::Union{Mouse.Button, Keyboard.Button[, waspressed = nothing])
+    ispressed(parent, collection::Union{Set, Vector, Tuple}[, waspressed = nothing])
+    ispressed(parent, op::BooleanOperator[, waspressed = nothing])
 
 This function checks if a button or combination of buttons is pressed.
 
@@ -235,35 +236,44 @@ outside.
 Passing a button or collection of buttons such as `Keyboard.enter` or
 `Mouse.left` will return true if all of the given buttons are pressed.
 
+Parent can be any object that has `get_scene` method implemented, which includes
+e.g. Figure, Axis, Axis3, Lscene, FigureAxisPlot, and AxisPlot.
+
 For more complicated combinations of buttons they can be combined into boolean
 expression with `&`, `|` and `!`. For example, you can have
-`ispressed(scene, !Keyboard.left_control & Keyboard.c))` and
-`ispressed(scene, Keyboard.left_control & Keyboard.c)` to avoid triggering both
+`ispressed(parent, !Keyboard.left_control & Keyboard.c))` and
+`ispressed(parent, Keyboard.left_control & Keyboard.c)` to avoid triggering both
 cases at the same time.
 
 Furthermore you can also make any button, button collection or boolean
 expression exclusive by wrapping it in `Exclusively(...)`. With that `ispressed`
 will only return true if the currently pressed buttons match the request exactly.
 
-See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
+For cases where you want to react to a release event you can optionally add
+a key or mousebutton `waspressed` which is then assumed to be pressed regardless
+of it's current state. For example, when reacting to a mousebutton event, you can
+pass `event.button` so that a key combination including that button still evaluates
+as true.
+
+See also: [`waspressed`](@ref) [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
 [`&`](@ref), [`|`](@ref), [`!`](@ref)
 """
-ispressed(events::Events, mb::Mouse.Button) = mb in events.mousebuttonstate
-ispressed(events::Events, key::Keyboard.Button) = key in events.keyboardstate
-ispressed(scene, result::Bool) = result
+ispressed(events::Events, mb::Mouse.Button, waspressed = nothing) = mb in events.mousebuttonstate || mb == waspressed
+ispressed(events::Events, key::Keyboard.Button, waspressed = nothing) = key in events.keyboardstate || key == waspressed
+ispressed(parent, result::Bool, waspressed = nothing) = result
 
-ispressed(scene, mb::Mouse.Button) = ispressed(events(scene), mb)
-ispressed(scene, key::Keyboard.Button) = ispressed(events(scene), key)
-@deprecate ispressed(scene, ::Nothing) ispressed(scene, true)
+ispressed(parent, mb::Mouse.Button, waspressed = nothing) = ispressed(events(parent), mb, waspressed)
+ispressed(parent, key::Keyboard.Button, waspressed = nothing) = ispressed(events(parent), key, waspressed)
 
 # Boolean Operator evaluation
-ispressed(scene, op::And) = ispressed(scene, op.left) && ispressed(scene, op.right)
-ispressed(scene, op::Or)  = ispressed(scene, op.left) || ispressed(scene, op.right)
-ispressed(scene, op::Not) = !ispressed(scene, op.x)
-ispressed(scene::Scene, op::Exclusively) = ispressed(events(scene), op)
-ispressed(e::Events, op::Exclusively) = op.x == union(e.keyboardstate, e.mousebuttonstate)
+ispressed(parent, op::And, waspressed = nothing) = ispressed(parent, op.left, waspressed) && ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Or, waspressed = nothing)  = ispressed(parent, op.left, waspressed) || ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Not, waspressed = nothing) = !ispressed(parent, op.x, waspressed)
+ispressed(parent, op::Exclusively, waspressed = nothing) = ispressed(events(parent), op, waspressed)
+ispressed(e::Events, op::Exclusively, waspressed::Union{Mouse.Button, Keyboard.Button}) = op.x == union(e.keyboardstate, e.mousebuttonstate, waspressed)
+ispressed(e::Events, op::Exclusively, waspressed = nothing) = op.x == union(e.keyboardstate, e.mousebuttonstate)
 
 # collections
-ispressed(scene, set::Set) = all(x -> ispressed(scene, x), set)
-ispressed(scene, set::Vector) = all(x -> ispressed(scene, x), set)
-ispressed(scene, set::Tuple) = all(x -> ispressed(scene, x), set)
+ispressed(parent, set::Set, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
+ispressed(parent, set::Vector, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
+ispressed(parent, set::Tuple, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)

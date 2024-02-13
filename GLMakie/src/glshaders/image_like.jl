@@ -31,26 +31,21 @@ end
 """
 A matrix of Intensities will result in a contourf kind of plot
 """
-function draw_heatmap(shader_cache, main, data::Dict)
+function draw_heatmap(screen, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
+    pop!(data, :shading, FastShading)
     @gen_defaults! data begin
-        intensity = main => Texture
-        nan_color = RGBAf(1, 0, 0, 1)
-        highclip = RGBAf(0, 0, 0, 0)
-        lowclip = RGBAf(0, 0, 0, 0)
+        intensity = nothing => Texture
         color_map = nothing => Texture
         color_norm = nothing
-        stroke_width::Float32 = 0.0f0
-        levels::Float32 = 0f0
-        stroke_color = RGBA{Float32}(0,0,0,0)
         transparency = false
         shader = GLVisualizeShader(
-            shader_cache,
+            screen,
             "fragment_output.frag", "heatmap.vert", "heatmap.frag",
             view = Dict(
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         fxaa = false
@@ -58,9 +53,11 @@ function draw_heatmap(shader_cache, main, data::Dict)
     return assemble_shader(data)
 end
 
-function draw_volume(shader_cache, main::VolumeTypes, data::Dict)
+function draw_volume(screen, main::VolumeTypes, data::Dict)
     geom = Rect3f(Vec3f(0), Vec3f(1))
     to_opengl_mesh!(data, const_lift(GeometryBasics.triangle_mesh, geom))
+    shading = pop!(data, :shading, FastShading)
+    pop!(data, :backlight, 0f0) # We overwrite this
     @gen_defaults! data begin
         volumedata = main => Texture
         model = Mat4f(I)
@@ -73,18 +70,23 @@ function draw_volume(shader_cache, main::VolumeTypes, data::Dict)
         absorption = 1f0
         isovalue = 0.5f0
         isorange = 0.01f0
+        backlight = 1f0
         enable_depth = true
         transparency = false
         shader = GLVisualizeShader(
-            shader_cache,
-            "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
+            screen,
+            "util.vert", "volume.vert",
+            "fragment_output.frag", "lighting.frag", "volume.frag",
             view = Dict(
+                "shading" => light_calc(shading),
+                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "depth_init"  => vol_depth_init(to_value(enable_depth)),
                 "depth_default"  => vol_depth_default(to_value(enable_depth)),
                 "depth_main"  => vol_depth_main(to_value(enable_depth)),
                 "depth_write" => vol_depth_write(to_value(enable_depth)),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
