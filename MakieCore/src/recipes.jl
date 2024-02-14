@@ -405,6 +405,8 @@ e.g.:
 """
 plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 
+# plot types can overload this to throw errors or show warnings when deprecated attributes are used.
+# this is easier than if every plot type added manual checks in its `plot!` methods
 deprecated_attributes(_) = NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}[]
 
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
