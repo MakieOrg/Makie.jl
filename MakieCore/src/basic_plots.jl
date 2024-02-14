@@ -603,6 +603,12 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     @mixin mixin_colormap_attributes
 end
 
+function deprecated_attributes(::Type{<:Text})
+    [
+        (; attribute = :textsize, message = "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.", error = true)
+    ]
+end
+
 """
     poly(vertices, indices; kwargs...)
     poly(points; kwargs...)

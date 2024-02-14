@@ -1,11 +1,10 @@
 function check_textsize_deprecation(@nospecialize(dictlike))
     if haskey(dictlike, :textsize)
-        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+        throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
 end
 
 function plot!(plot::Text)
-    check_textsize_deprecation(plot)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[]; ignore_equal_values=true)
@@ -145,7 +144,9 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    attrs = copy(plot.attributes)
+    pop!(attrs, :calculated_colors)
+    text!(plot, plot.position; attrs..., text = plot[1])
     plot
 end
 

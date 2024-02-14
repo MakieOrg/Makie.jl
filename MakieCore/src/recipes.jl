@@ -405,15 +405,27 @@ e.g.:
 """
 plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 
+deprecated_attributes(_) = NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}[]
+
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
     nameset = attribute_names(P)
     nameset === nothing && return
     allowlist = [:xautolimits, :yautolimits, :zautolimits, :label]
-    unknown = setdiff(keys(kw), nameset, allowlist)
+    deprecations = deprecated_attributes(P)::Vector{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}
+    unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
     if !isempty(unknown)
         n = length(unknown)
         throw(ArgumentError(
             """Invalid attribute$(n > 1 ? "s" : "") for plot type $P: $(join(unknown, ", ", " and ")). The available plot attributes are: $(join(sort(collect(nameset)), ", ", " and ")). Additional generic keywords are $(join(allowlist, ", ", " and "))."""
         ))
+    end
+    for (deprecated, message, should_error) in deprecations
+        if haskey(kw, deprecated)
+            if should_error
+                throw(ArgumentError(message))
+            else
+                @warn message
+            end
+        end
     end
 end
