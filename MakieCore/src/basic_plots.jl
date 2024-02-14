@@ -60,7 +60,7 @@ function mixin_generic_plot_attributes()
         "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
         space = :data
         "adjusts whether the plot is rendered with fxaa (anti-aliasing)."
-        fxaa = true
+        fxaa = false
     end
 end
 
@@ -359,6 +359,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     linestyle = nothing
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
+    fxaa = false
     @mixin mixin_generic_plot_attributes
     @mixin mixin_colormap_attributes
 end
@@ -394,6 +395,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     linestyle = nothing
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
+    fxaa = false
     @mixin mixin_generic_plot_attributes
     @mixin mixin_colormap_attributes
 end
@@ -489,7 +491,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     markerspace = :pixel
     "Sets which attributes to cycle when creating multiple plots"
     cycle = [:color]
-    
+    fxaa = false
     @mixin mixin_generic_plot_attributes
     @mixin mixin_colormap_attributes
 end
@@ -600,7 +602,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     offset = (0.0, 0.0)
     "Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping."
     word_wrap_width = -1
-    
+    fxaa = false
     @mixin mixin_generic_plot_attributes
     @mixin mixin_colormap_attributes
 end
