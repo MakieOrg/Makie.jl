@@ -291,6 +291,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
+    enable_depth = true
     @mixin mixin_generic_plot_attributes
     @mixin mixin_shading_attributes
     @mixin mixin_colormap_attributes
