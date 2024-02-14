@@ -160,6 +160,10 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     pop!(attr, :labelsize)
     pop!(attr, :labelcolor)
     pop!(attr, :labelformatter)
+    pop!(attr, :color)
+    pop!(attr, :linestyle)
+    pop!(attr, :enable_depth)
+    pop!(attr, :linewidth)
     volume!(plot, attr, x, y, z, volume)
 end
 
