@@ -125,7 +125,9 @@ function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, 
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractString}})
-    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    attrs = copy(plot.attributes)
+    pop!(attrs, :calculated_colors)
+    text!(plot, plot.position; attrs..., text = plot[1])
     plot
 end
 
