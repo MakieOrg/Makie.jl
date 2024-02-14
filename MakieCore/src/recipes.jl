@@ -408,11 +408,12 @@ plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
     nameset = attribute_names(P)
     nameset === nothing && return
-    unknown = setdiff(keys(kw), nameset)
+    allowlist = [:xautolimits, :yautolimits, :zautolimits, :label]
+    unknown = setdiff(keys(kw), nameset, allowlist)
     if !isempty(unknown)
         n = length(unknown)
         throw(ArgumentError(
-            """Invalid attribute$(n > 1 ? "s" : "") for plot type $P: $(join(unknown, ", ", " and ")). The available attributes are: $(join(sort(collect(nameset)), ", ", " and "))."""
+            """Invalid attribute$(n > 1 ? "s" : "") for plot type $P: $(join(unknown, ", ", " and ")). The available plot attributes are: $(join(sort(collect(nameset)), ", ", " and ")). Additional generic keywords are $(join(allowlist, ", ", " and "))."""
         ))
     end
 end
