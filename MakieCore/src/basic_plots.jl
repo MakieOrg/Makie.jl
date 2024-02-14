@@ -491,6 +491,8 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     markerspace = :pixel
     "Sets which attributes to cycle when creating multiple plots"
     cycle = [:color]
+    "Enables depth-sorting of markers which can improve border artifacts. Currently supported in GLMakie only."
+    depthsorting = false
     @mixin mixin_generic_plot_attributes
     @mixin mixin_colormap_attributes
     fxaa = false
