@@ -458,20 +458,18 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors
     op = map(total -> (x -> log10(x + 1) / log10(total + 1)), toal_value)
-    for (k, canvas) in canvases
+
+    for (k, canv) in canvases
         color = colors[k]
         cmap = [(color, 0.0), (color, 1.0)]
-        image!(p, canvas; colorrange=Vec2f(0, 1), colormap=cmap, operation=identity, local_operation=op)
+        image!(p, canv, identity, op; colorrange=Vec2f(0, 1), colormap=cmap)
     end
     return p
 end
 
 data_limits(p::DataShader) =  p._boundingbox[]
 
-used_attributes(::Canvas) = (:operation, :local_operation)
-
-function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
-                           operation=automatic, local_operation=identity)
+function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)
     pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
     return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel)
