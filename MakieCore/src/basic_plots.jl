@@ -428,6 +428,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     "sets whether colors should be interpolated"
     interpolate = true
     cycle = [:color => :patchcolor]
+    matcap = nothing
     @mixin mixin_generic_plot_attributes
     @mixin mixin_shading_attributes
     @mixin mixin_colormap_attributes
