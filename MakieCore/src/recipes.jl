@@ -412,7 +412,7 @@ deprecated_attributes(_) = NamedTuple{(:attribute, :message, :error), Tuple{Symb
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
     nameset = attribute_names(P)
     nameset === nothing && return
-    allowlist = [:xautolimits, :yautolimits, :zautolimits, :label]
+    allowlist = [:xautolimits, :yautolimits, :zautolimits, :label, :rasterize]
     deprecations = deprecated_attributes(P)::Vector{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}
     unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
     if !isempty(unknown)
