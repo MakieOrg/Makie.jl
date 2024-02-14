@@ -81,6 +81,7 @@ function plot!(plot::Text)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)
+    pop!(t.attributes, :text)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
 
     plot
