@@ -400,8 +400,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         return
     end
     p.raw_colorrange = colorrange
-    image!(p, canvas_with_aggregation;
-        operation=p.operation, local_operation=p.local_operation, interpolate=p.interpolate,
+    image!(p, canvas_with_aggregation, p.operation, p.local_operation;
+        interpolate=p.interpolate,
         MakieCore.generic_plot_attributes(p)...,
         MakieCore.colormap_attributes(p)...)
     return p
