@@ -199,13 +199,13 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Image, x, y, image) do scene
-    attr = Attributes(;
-        interpolate = true,
-        fxaa = false,
-    )
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, [:black, :white])
+@recipe Image x y image begin
+    "Sets whether colors should be interpolated between pixels."
+    interpolate = true
+    @mixin mixin_generic_plot_attributes
+    @mixin mixin_colormap_attributes
+    fxaa = false
+    colormap = [:black, :white]
 end
 
 """
