@@ -27,8 +27,8 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 
 
 * WGLMakie should mostly work with a websocket connection. Bonito tries to [infer the proxy setup](https://github.com/SimonDanisch/Bonito.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem, on hosted ones one may need add `jupyter-server-proxy`. See:
-    * [https://github.com/MakieOrg/Makie.jl/issues/2464](https://github.com/MakieOrg/Makie.jl/issues/2464)
-    * [https://github.com/MakieOrg/Makie.jl/issues/2405]([https://github.com/MakieOrg/Makie.jl/issues/2405)
+    * [issue #2464](https://github.com/MakieOrg/Makie.jl/issues/2464)
+    * [issue #2405]([https://github.com/MakieOrg/Makie.jl/issues/2405)
 
 
 #### Pluto
