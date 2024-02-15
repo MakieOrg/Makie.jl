@@ -409,17 +409,79 @@ plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 # this is easier than if every plot type added manual checks in its `plot!` methods
 deprecated_attributes(_) = NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}[]
 
+struct InvalidAttributeError <: Exception
+    plottype::Type
+    attributes::Set{Symbol}
+end
+
+function print_columns(io::IO, v::Vector{String}; gapsize = 2, row_major = true, cols = displaysize(io)[2])
+    lens = length.(v) # for unicode ligatures etc this won't work, but we don't use those for attribute names
+    function col_widths(ncols)
+        max_widths = zeros(Int, ncols)
+        for (i, len) in enumerate(lens)
+            j = mod1(i, ncols)
+            max_widths[j] = max(max_widths[j], len)
+        end
+        return max_widths
+    end
+    ncols = 1
+    while true
+        widths = col_widths(ncols)
+        aggregated_width = (sum(widths) + (ncols-1) * gapsize)
+        if aggregated_width > cols
+            ncols = max(1, ncols-1)
+            break
+        end
+        ncols += 1
+    end
+    widths = col_widths(ncols)
+
+    for (i, (str, len)) in enumerate(zip(v, lens))
+        j = mod1(i, ncols)
+        last_col = j == ncols
+        print(io, str)
+        remaining = widths[j] - len + !last_col * gapsize
+        for _ in 1:remaining
+            print(io, ' ')
+        end
+        if last_col
+            print(io, '\n')
+        end
+    end
+
+    return
+end
+
+function Base.showerror(io::IO, i::InvalidAttributeError)
+    print(io, "InvalidAttributeError: ")
+    n = length(i.attributes)
+    println(io, "Plot type $(i.plottype) does not recognize attribute$(n > 1 ? "s" : "") $(join(i.attributes, ", ", " and ")).")
+    nameset = sort(string.(collect(attribute_names(i.plottype))))
+    println(io)
+    println(io, "The available plot attributes for $(i.plottype) are:")
+    println(io)
+    print_columns(io, nameset; cols = displaysize(stderr)[2])
+    allowlist = attribute_name_allowlist()
+    println(io)
+    println(io)
+    println(io, "Generic attributes are:")
+    println(io)
+    print_columns(io, sort(string.(allowlist)); cols = displaysize(stderr)[2])
+    println(io)
+end
+
+function attribute_name_allowlist()
+    [:xautolimits, :yautolimits, :zautolimits, :label, :rasterize]
+end
+
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
     nameset = attribute_names(P)
     nameset === nothing && return
-    allowlist = [:xautolimits, :yautolimits, :zautolimits, :label, :rasterize]
+    allowlist = attribute_name_allowlist()
     deprecations = deprecated_attributes(P)::Vector{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}
     unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
     if !isempty(unknown)
-        n = length(unknown)
-        throw(ArgumentError(
-            """Invalid attribute$(n > 1 ? "s" : "") for plot type $P: $(join(unknown, ", ", " and ")). The available plot attributes are: $(join(sort(collect(nameset)), ", ", " and ")). Additional generic keywords are $(join(allowlist, ", ", " and "))."""
-        ))
+        throw(InvalidAttributeError(P, unknown))
     end
     for (deprecated, message, should_error) in deprecations
         if haskey(kw, deprecated)
