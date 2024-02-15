@@ -73,7 +73,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         end => GLBuffer
         lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
-        debug = false
+        debug               = false
     end
     if to_value(pattern) !== nothing
         if !isa(pattern, Texture)
@@ -113,9 +113,9 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
             )
         )
-        gl_primitive   = GL_LINES
-        pattern_length = 1f0
-        debug = false
+        gl_primitive        = GL_LINES
+        pattern_length      = 1f0
+        debug               = false
     end
     if !isa(pattern, Texture) && to_value(pattern) !== nothing
         if !isa(to_value(pattern), Vector)

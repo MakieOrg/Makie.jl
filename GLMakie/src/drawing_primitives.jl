@@ -438,14 +438,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
     end
 end
 
-const lines_debug = Observable(false)
-
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
     return cached_robj!(screen, scene, plot) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         positions = handle_view(plot[1], data)
-        get!(data, :debug, lines_debug)
 
         transform_func = transform_func_obs(plot)
         space = plot.space
@@ -480,7 +477,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
     return cached_robj!(screen, scene, plot) do gl_attributes
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = pop!(data, :linestyle)
-        get!(data, :debug, lines_debug)
 
         positions = handle_view(plot[1], data)
         positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)
