@@ -407,7 +407,7 @@ plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 
 # plot types can overload this to throw errors or show warnings when deprecated attributes are used.
 # this is easier than if every plot type added manual checks in its `plot!` methods
-deprecated_attributes(_) = NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}[]
+deprecated_attributes(_) = ()
 
 struct InvalidAttributeError <: Exception
     plottype::Type
@@ -478,7 +478,7 @@ function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
     nameset = attribute_names(P)
     nameset === nothing && return
     allowlist = attribute_name_allowlist()
-    deprecations = deprecated_attributes(P)::Vector{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}
+    deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
     unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
     if !isempty(unknown)
         throw(InvalidAttributeError(P, unknown))
