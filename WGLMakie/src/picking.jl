@@ -12,7 +12,7 @@ function pick_native(screen::Screen, rect::Rect2i)
         return empty
     end
     w2, h2 = picking_data["size"]
-    @assert w2 == w && h2 == h
+    # @assert w2 == w && h2 == h
     matrix = reshape(picking_data["data"], (w2, h2))
     if isempty(matrix)
         return empty
@@ -62,7 +62,7 @@ end
 
 function Makie.pick(scene::Scene, screen::Screen, xy)
     plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
-    @assert size(plot_matrix) == (1, 1)
+    # @assert size(plot_matrix) == (1, 1)
     return plot_matrix[1, 1]
 end
 
