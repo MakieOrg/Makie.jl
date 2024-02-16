@@ -137,7 +137,7 @@ end
 
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
 
-    pairs = map(attrs) do a
+    exprs = map(attrs) do a
 
         d = a.default
         if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
@@ -162,10 +162,14 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             end
         end
 
-        Expr(:call, :(=>), QuoteNode(a.symbol), d)
+        :(d[$(QuoteNode(a.symbol))] = $d)
     end
 
-    :(Dict($(pairs...)))
+    quote
+        d = Dict{Symbol,Any}()
+        $(exprs...)
+        d
+    end
 end
 
 
