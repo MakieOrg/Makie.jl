@@ -231,7 +231,7 @@ macro recipe(Tsym::Symbol, args...)
             sym in MakieCore.attribute_names(T)
         end
         function MakieCore.attribute_names(::Type{<:$(PlotType)})
-            Set{Symbol}([$([QuoteNode(a.symbol) for a in attrs]...)])
+            ($([QuoteNode(a.symbol) for a in attrs]...),)
         end
 
         function $(MakieCore).default_theme(scene, ::Type{<:$PlotType})
