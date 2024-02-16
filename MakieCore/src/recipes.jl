@@ -309,7 +309,7 @@ end
 
 function make_default_theme_expr(attrs, scenesym::Symbol)
 
-    pairs = map(attrs) do a
+    exprs = map(attrs) do a
 
         d = a.default
         if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
@@ -331,12 +331,14 @@ function make_default_theme_expr(attrs, scenesym::Symbol)
             end
         end
 
-        Expr(:call, :(=>), QuoteNode(a.symbol), d)
+        :(attr[$(QuoteNode(a.symbol))] = $d)
     end
 
     quote
         thm = theme($scenesym)
-        Attributes([$(pairs...)])
+        attr = Attributes()
+        $(exprs...)
+        attr
     end
 end
 
@@ -466,7 +468,7 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
     println(io)
     println(io, "Generic attributes are:")
     println(io)
-    print_columns(io, sort(string.(allowlist)); cols = displaysize(stderr)[2])
+    print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2])
     println(io)
 end
 
