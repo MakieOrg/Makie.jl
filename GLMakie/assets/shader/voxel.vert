@@ -76,16 +76,15 @@ void main() {
     int dim, id = gl_InstanceID, front = -1;
     if (gap > 0.01) {
         front = 1 - 2 * int(gl_InstanceID & 1);
-        int temp_id = (id + 1) >> 1;
         if (id < 2 * size.z) {
             dim = 2;
-            id = temp_id;
+            id = id;
         } else if (id < 2 * (size.z + size.y)) {
             dim = 1;
-            id = temp_id - size.z;
+            id = id - 2 * size.z;
         } else { // if (id > 2 * (size.z + size.y)) {
             dim = 0;
-            id = temp_id - (size.z + size.y);
+            id = id - 2 * (size.z + size.y);
         }
     } else {
         if (id < size.z + 1) {
@@ -120,8 +119,18 @@ void main() {
         vec4 origin = model * vec4(0, 0, 0, 1);
         float dist = dot(eyeposition - origin.xyz / origin.w, normal) / dot(normal, normal);
         int start = clamp(int(dist), 0, size[dim]);
-        // this should work better with integer modulo...
-        displacement = mod(start + dir * (id - 0.5 * gap * front), size[dim] + 0.001) * unit_vecs[dim];
+        if (gap > 0.01) {
+            // planes are doubled
+            // 2 * start + max(dir, 0)  closest plane
+            // dir * id                 iterate away from first plane
+            // + 2 * size[dim]          avoid negative indices
+            // % 2 * size[dim]          keep in valid range
+            int plane_idx = (2 * start + max(dir, 0) + dir * id + 2 * size[dim]) % (2 * size[dim]);
+            // (plane_idx + 1) / 2      map to idx 0, 1, 2, 3, 4 -> displacements 0, 1, 1, 2, 2, ...
+            // 0.5 * dir * gap * front  gap based offset from tight placements
+            displacement = ((plane_idx + 1) / 2 - 0.5 * dir * gap * front) * unit_vecs[dim];
+        } else
+            displacement = ((start + dir * id + size[dim]) % (size[dim] + 1)) * unit_vecs[dim];
     }
 
     // place plane vertices
@@ -152,7 +161,7 @@ void main() {
     // | 1 | 2 | 0 |   v
     // If we shift in +normal direction (towards viewer) the planes would sample
     // from the id closer to the viewer, drawing a backface.
-    o_uvw = (voxel_pos - 0.5 * (1 - gap) * o_normal) / size;
+    o_uvw = (voxel_pos - 0.5 * (1.0 - gap) * o_normal) / size;
 
     // normal in: -x -y -z +x +y +z direction
     o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);

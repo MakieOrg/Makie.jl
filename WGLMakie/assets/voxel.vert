@@ -61,20 +61,19 @@ void main() {
     // How do we do this for non-cubic chunks?
     ivec3 size = textureSize(voxel_id, 0);
     int dim, id = gl_InstanceID;
-    float front = -1.0;
+    int front = -1;
     float gap = get_gap();
     if (gap > 0.01) {
-        front = float(1 - 2 * int(gl_InstanceID & 1));
-        int temp_id = (id + 1) >> 1;
+        front = 1 - 2 * int(gl_InstanceID & 1);
         if (id < 2 * size.z) {
             dim = 2;
-            id = temp_id;
+            id = id;
         } else if (id < 2 * (size.z + size.y)) {
             dim = 1;
-            id = temp_id - size.z;
+            id = id - 2 * size.z;
         } else { // if (id > 2 * (size.z + size.y)) {
             dim = 0;
-            id = temp_id - (size.z + size.y);
+            id = id - 2 * (size.z + size.y);
         }
     } else {
         if (id < size.z + 1) {
@@ -92,7 +91,7 @@ void main() {
 #ifdef DEBUG_RENDER_ORDER
     plane_render_idx = float(id) / float(size[dim]-1);
     plane_dim = dim;
-    plane_front = front;
+    plane_front = float(front);
 #endif
 
     // plane placement
@@ -104,19 +103,27 @@ void main() {
         // depthsorted should start far away from viewer so every plane draws
         displacement = (
             (0.5 + 0.5 * dir) * float(size[dim]) -
-            dir * (float(id) - 0.5 * gap * front)
+            dir * (float(id) - 0.5 * gap * float(front))
         ) * unit_vecs[dim];
     } else {
         // no sorting should start at viewer and expand in view direction so
         // that depth test can quickly eliminate unnecessary fragments
         vec4 origin = get_model() * vec4(0, 0, 0, 1);
         float dist = dot(get_eyeposition() - origin.xyz / origin.w, normal) / dot(normal, normal);
-        float start = clamp(float(int(dist)), 0.0, float(size[dim]));
+        int start = clamp(int(dist), 0, size[dim]);
         // this should work better with integer modulo...
-        displacement = mod(
-            start + dir * (float(id) - 0.5 * gap * front),
-            float(size[dim]) + 0.001
-        ) * unit_vecs[dim];
+        if (gap > 0.01) {
+            // planes are doubled
+            // 2 * start + max(dir, 0)  closest plane
+            // dir * id                 iterate away from first plane
+            // + 2 * size[dim]          avoid negative indices
+            // % 2 * size[dim]          keep in valid range
+            int plane_idx = (2 * start + max(int(dir), 0) + int(dir) * id + 2 * size[dim]) % (2 * size[dim]);
+            // (plane_idx + 1) / 2      map to idx 0, 1, 2, 3, 4 -> displacements 0, 1, 1, 2, 2, ...
+            // 0.5 * dir * gap * front  gap based offset from tight placements
+            displacement = (float((plane_idx + 1) / 2) - 0.5 * dir * float(front) * gap) * unit_vecs[dim];
+        } else
+            displacement = float((start + int(dir) * id + size[dim]) % (size[dim] + 1)) * unit_vecs[dim];
     }
 
     // place plane vertices
@@ -131,7 +138,7 @@ void main() {
     // If we assume the viewer to be outside of a voxel, the normal direction
     // should always be facing them. Thus:
     o_camdir = get_eyeposition() - world_pos.xyz / world_pos.w;
-    float normal_dir = -front * sign(dot(o_camdir, normal));
+    float normal_dir = -float(front) * sign(dot(o_camdir, normal));
     o_normal = normalize(normal_dir * normal);
 
     // The texture coordinate can also be derived. `voxel_pos` effectively gives
