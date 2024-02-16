@@ -109,7 +109,14 @@ void main()
 #ifdef DEBUG_RENDER_ORDER
     if (plane_dim != DEBUG_RENDER_ORDER)
         discard;
-    voxel_color = vec4(plane_render_idx, 0, 0, id == 0 ? 0.01 : 1.0);
+    voxel_color = vec4(
+        plane_front * plane_render_idx,
+        -plane_front * plane_render_idx,
+        0,
+        id == 0 ? 0.1 : 1.0
+    );
+    // voxel_color = vec4(o_normal, id == 0 ? 0.1 : 1.0);
+    // voxel_color = vec4(plane_front, 0, 0, 1.0);
 #endif
 
 #ifndef NO_SHADING

@@ -71,9 +71,11 @@ void main() {
     */
 
     // TODO: might be better for transparent rendering to alternate xyz?
-    // How do we do this for non-cubic chunks?
+    // But how would we do this for non-cubic chunks?
+
+    // Map instance id to dimension and index along dimension (0..N+1 or 0..2N)
     ivec3 size = textureSize(voxel_id, 0);
-    int dim, id = gl_InstanceID, front = -1;
+    int dim, id = gl_InstanceID, front = 1;
     if (gap > 0.01) {
         front = 1 - 2 * int(gl_InstanceID & 1);
         if (id < 2 * size.z) {
@@ -108,65 +110,75 @@ void main() {
     // plane placement
     // Figure out which plane to start with
     vec3 normal = world_normalmatrix * unit_vecs[dim];
-    int dir = int(sign(dot(view_direction, normal)));
-    vec3 displacement;
+    int dir = int(sign(dot(view_direction, normal))), start;
     if (depthsorting) {
-        // depthsorted should start far away from viewer so every plane draws
-        displacement = ((0.5 + 0.5 * dir) * size - dir * (id - 0.5 * gap * front)) * unit_vecs[dim];
+        // TODO: depthsorted should start far away from viewer so every plane draws
+        start = int((0.5 + 0.5 * dir) * size[dim]);
+        dir *= -1;
     } else {
-        // no sorting should start at viewer and expand in view direction so
-        // that depth test can quickly eliminate unnecessary fragments
+        // otherwise we should start at viewer and expand in view direction so
+        // that the depth test can quickly eliminate unnecessary fragments
+        // Note that model can have rotations and (uneven) scaling
         vec4 origin = model * vec4(0, 0, 0, 1);
-        float dist = dot(eyeposition - origin.xyz / origin.w, normal) / dot(normal, normal);
-        int start = clamp(int(dist), 0, size[dim]);
-        if (gap > 0.01) {
-            // planes are doubled
-            // 2 * start + max(dir, 0)  closest plane
-            // dir * id                 iterate away from first plane
-            // + 2 * size[dim]          avoid negative indices
-            // % 2 * size[dim]          keep in valid range
-            int plane_idx = (2 * start + max(dir, 0) + dir * id + 2 * size[dim]) % (2 * size[dim]);
-            // (plane_idx + 1) / 2      map to idx 0, 1, 2, 3, 4 -> displacements 0, 1, 1, 2, 2, ...
-            // 0.5 * dir * gap * front  gap based offset from tight placements
-            displacement = ((plane_idx + 1) / 2 - 0.5 * dir * gap * front) * unit_vecs[dim];
-        } else
-            displacement = ((start + dir * id + size[dim]) % (size[dim] + 1)) * unit_vecs[dim];
+        vec4 back   = model * vec4(size, 1);
+        float front_dist = dot(origin.xyz / origin.w, normal);
+        float back_dist  = dot(back.xyz / back.w, normal);
+        float cam_dist   = dot(eyeposition, normal);
+        float dist01 = (cam_dist - front_dist) / (back_dist - front_dist);
+
+        // index of voxel closest to (and in front of) the camera
+        start = clamp(int(float(size[dim]) * dist01), 0, size[dim]);
+    }
+
+    vec3 displacement;
+    if (gap > 0.01) {
+        // planes are doubled
+        // 2 * start + min(dir, 0)                  closest (camera facing) plane
+        // dir * id                                 iterate away from first plane
+        // (idx + 2 * size[dim]) % 2 * size[dim]    normalize to [0, 2size[dim])
+        int plane_idx = (2 * start + min(dir, 0) + dir * id + 2 * size[dim]) % (2 * size[dim]);
+        // (plane_idx + 1) / 2          map to idx 0, 1, 2, 3, 4 -> displacements 0, 1, 1, 2, 2, ...
+        // 0.5 * dir * gap * front      gap based offset from space filling placements
+        displacement = ((plane_idx + 1) / 2 + 0.5 * dir * front * gap) * unit_vecs[dim];
+    } else {
+        // similar to above but with N+1 indices around N voxels
+        displacement = ((start + dir * id + size[dim] + 1) % (size[dim] + 1)) * unit_vecs[dim];
     }
 
     // place plane vertices
-    vec3 voxel_pos = size * (orientations[dim] * vertices) + displacement;
-    vec4 world_pos = model * vec4(voxel_pos, 1.0f);
+    vec3 plane_vertex = size * (orientations[dim] * vertices) + displacement;
+    vec4 world_pos = model * vec4(plane_vertex, 1.0f);
     o_world_pos = world_pos.xyz;
     gl_Position = projectionview * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 
-    // For each plane the normal is constant and its direction is given by the
-    // `displacement` direction, i.e. `n = unit_vecs[dim]`. We just need to derive
-    // whether it's +n or -n.
-    // If we assume the viewer to be outside of a voxel, the normal direction
-    // should always be facing them. Thus:
+    // For each plane the normal is constant in
+    // +- normal = +- world_normalmatrix * unit_vecs[dim] direction. We just need
+    // the correct prefactor
     o_camdir = eyeposition - world_pos.xyz / world_pos.w;
-    float normal_dir = -front * sign(dot(o_camdir, normal));
+    float normal_dir;
+    if (gap > 0.01) {
+        // With a gap we render front and back faces. Since the gap always takes
+        // away from a voxel the normal should go in the opposite direction.
+        normal_dir = -float(dir * front);
+    } else {
+        // Without a gap we skip back facing faces so every normal faces the camera
+        normal_dir = sign(dot(o_camdir, normal));
+    }
     o_normal = normal_dir * normalize(normal);
 
-    // The texture coordinate can also be derived. `voxel_pos` effectively gives
-    // an integer index into the chunk, shifted to be centered. We can convert
-    // this to a float index into the voxel_id texture by normalizing.
-    // The minor ceveat here is that because planes are drawn between voxels we
-    // would be sampling between voxels like this. To fix this we want to shift
-    // the uvw coordinate to the relevant voxel center, which we can do using the
-    // normal direction.
-    // Here we want to shift in -normal direction to get a front face. Consider
-    // this example with 1, 2 solid, 0 air and v the viewer:
-    // | 1 | 2 | 0 |   v
-    // If we shift in +normal direction (towards viewer) the planes would sample
-    // from the id closer to the viewer, drawing a backface.
-    o_uvw = (voxel_pos - 0.5 * (1.0 - gap) * o_normal) / size;
+    // The quad we render here is directly between two slices of voxels in our
+    // chunk. Each `plane_vertex` of the quad is in a 0 .. size scale, so they
+    // can be mapped directly to texture indices. We just need to figure out if
+    // the quad is associated with the "previous" or "next" slice of voxels. We
+    // can derive that from the normal direction, as the normal always points
+    // away from the voxel center.
+    o_uvw = (plane_vertex - 0.5 * (1.0 - gap) * o_normal) / size;
 
     // normal in: -x -y -z +x +y +z direction
     o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);
 
-    // map voxel_pos (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
+    // map plane_vertex (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
     // if the normal is negative invert range (w .. 0)
-    o_tex_uv = transpose(orientations[dim]) * (vec3(-normal_dir, normal_dir, 1.0) * voxel_pos);
+    o_tex_uv = transpose(orientations[dim]) * (vec3(-normal_dir, normal_dir, 1.0) * plane_vertex);
 }
