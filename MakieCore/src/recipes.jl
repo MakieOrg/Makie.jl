@@ -301,21 +301,21 @@ end
 function make_recipe_docstring(P::Type{<:Plot}, funcsym, docstring)
     io = IOBuffer()
 
+    attr_docstrings = _attribute_docs(P)
+
     print(io, docstring)
 
     # println(io, "```")
     println(io, "## Attributes")
-    println(io, "Type `?$funcsym.attribute` in the REPL to get more information on any specific attribute.")
     println(io)
-    println(io, "|Attribute|Default|")
-    println(io, "|:--|:--|")
 
     names = sort(collect(attribute_names(P)))
     exprdict = attribute_default_expressions(P)
     for name in names
-        print(io, "| `", name, "` |")
         default = exprdict[name]
-        println(io, "`", default, "`|")
+        print(io, "**`", name, "`:**", " `", default, "`  — ")
+        println(io, something(attr_docstrings[name], "*No docs available.*"))
+        println(io)
     end
 
     return String(take!(io))
