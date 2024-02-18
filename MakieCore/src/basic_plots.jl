@@ -188,16 +188,6 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
     image(image)
 
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
-
-## Attributes
-
-### Specific to `Image`
-
-- `interpolate::Bool = true` sets whether colors should be interpolated.
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Image x y image begin
     "Sets whether colors should be interpolated between pixels."
@@ -236,16 +226,6 @@ Pairs that are missing from the resulting grid will be treated as if `zvector` h
 If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(matrix)`.
 
 Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
-
-## Attributes
-
-### Specific to `Heatmap`
-
-- `interpolate::Bool = false` sets whether colors should be interpolated.
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Heatmap x y values begin
     "Sets whether colors should be interpolated"
@@ -266,21 +246,6 @@ Available algorithms are:
 * `:absorptionrgba` => AbsorptionRGBA
 * `:additive` => AdditiveRGBA
 * `:indexedabsorption` => IndexedAbsorptionRGBA
-
-## Attributes
-
-### Specific to `Volume`
-
-- `algorithm::Union{Symbol, RaymarchAlgorithm} = :mip` sets the volume algorithm that is used.
-- `isorange::Real = 0.05` sets the range of values picked up by the IsoValue algorithm.
-- `isovalue = 0.5` sets the target value for the IsoValue algorithm.
-- `interpolate::Bool = true` sets whether the volume data should be sampled with interpolation.
-
-$(Base.Docs.doc(shading_attributes!))
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Volume x y z volume begin
     "Sets the volume algorithm that is used."    
@@ -304,19 +269,6 @@ end
 
 Plots a surface, where `(x, y)` define a grid whose heights are the entries in `z`.
 `x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
-
-## Attributes
-
-### Specific to `Surface`
-
-- `invert_normals::Bool = false` inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface.
-- `color = nothing`, can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`.
-
-$(Base.Docs.doc(shading_attributes!))
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Surface x y z begin
     "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`."
@@ -336,20 +288,6 @@ end
 Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
 
 `NaN` values are displayed as gaps in the line.
-
-## Attributes
-
-### Specific to `Lines`
-
-- `color=theme(scene, :linecolor)` sets the color of the line. If no color is set, multiple calls to `line!` will cycle through the axis color palette.
-  Otherwise, one can set one color per line point by passing a `Vector{<:Colorant}`, or one colorant for the whole line. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
-- `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
-- `linestyle::Union{Nothing, Symbol, Linestyle} = nothing` sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`.
-- `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Lines positions begin
     "The color of the line."
@@ -409,21 +347,6 @@ end
     mesh(xyz, faces)
 
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
-
-## Attributes
-
-### Specific to `Mesh`
-
-- `color=theme(scene, :patchcolor)` sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
-   A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
-   Vector or Matrices of numbers can be used as well, which will use the colormap arguments to map the numbers to colors.
-- `interpolate::Bool = false` sets whether colors should be interpolated.
-
-$(Base.Docs.doc(shading_attributes!))
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Mesh mesh begin
     "Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates."
@@ -443,27 +366,6 @@ end
     scatter(x, y, z)
 
 Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
-
-## Attributes
-
-### Specific to `Scatter`
-
-- `color=theme(scene, :markercolor)` sets the color of the marker. If no color is set, multiple calls to `scatter!` will cycle through the axis color palette.
-  Otherwise, one can set one color per point by passing a `Vector{<:Colorant}`, or one colorant for the whole scatterplot. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
-- `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
-- `marker::Union{Symbol, Char, Matrix{<:Colorant}, BezierPath, Polygon}` sets the scatter marker.
-- `markersize::Union{<:Real, Vec2f} = 9` sets the size of the marker.
-- `markerspace::Symbol = :pixel` sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs.
-- `strokewidth::Real = 0` sets the width of the outline around a marker.
-- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
-- `glowwidth::Real = 0` sets the size of a glow effect around the marker.
-- `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
-- `rotations::Union{Real, Billboard, Quaternion} = Billboard(0f0)` sets the rotation of the marker. A `Billboard` rotation is always around the depth axis.
-- `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker.)
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Scatter positions begin
     "Sets the color of the marker. If no color is set, multiple calls to `scatter!` will cycle through the axis color palette."
@@ -506,23 +408,6 @@ end
 
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
 `markersize` is a scaling applied to the primitive passed as `marker`.
-
-## Attributes
-
-### Specific to `MeshScatter`
-
-- `color = theme(scene, :markercolor)` sets the color of the marker. If no color is set, multiple calls to `meshscatter!` will cycle through the axis color palette.
-  Otherwise, one can set one color per point by passing a `Vector{<:Colorant}`, or one colorant for the whole meshscatterplot. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
-- `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
-- `marker::Union{Symbol, GeometryBasics.GeometryPrimitive, GeometryBasics.Mesh}` sets the scattered mesh.
-- `markersize::Union{<:Real, Vec3f} = 0.1` sets the scale of the mesh. This can be given as a Vector to apply to each scattered mesh individually.
-- `rotations::Union{Real, Vec3f, Quaternion} = 0` sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually.
-
-$(Base.Docs.doc(shading_attributes!))
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe MeshScatter positions begin
     "Sets the color of the marker."
@@ -548,29 +433,6 @@ end
 
 Plots one or multiple texts passed via the `text` keyword.
 `Text` uses the `PointBased` conversion trait.
-
-## Attributes
-
-### Specific to `Text`
-
-- `color=theme(scene, :textcolor)` sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}`, or one colorant for the whole text. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
-- `text` specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`.
-- `align::Tuple{Union{Symbol, Real}, Union{Symbol, Real}} = (:left, :bottom)` sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions.
-- `font::Union{String, Vector{String}} = :regular` sets the font for the string or each character.
-- `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
-- `rotation::Union{Real, Quaternion}` rotates text around the given position.
-- `fontsize::Union{Real, Vec2f}` sets the size of each character.
-- `markerspace::Symbol = :pixel` sets the space in which `fontsize` acts. See `Makie.spaces()` for possible inputs.
-- `strokewidth::Real = 0` sets the width of the outline around a marker.
-- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
-- `glowwidth::Real = 0` sets the size of a glow effect around the marker.
-- `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
-- `word_wrap_width::Real = -1` specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
-- `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the glyph itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Text positions begin
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
@@ -632,22 +494,6 @@ When a shape is given (essentially anything decomposable by `GeometryBasics`), i
 Plots polygons, which are defined by
 `coordinates` (the coordinates of the vertices) and
 `connectivity` (the edges between the vertices).
-
-## Attributes
-
-### Specific to `Poly`
-- `color=theme(scene, :patchcolor)` sets the color of the poly. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
-   A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
-   Vector or Matrices of numbers can be used as well, which will use the colormap arguments to map the numbers to colors.
-   One can also use `Makie.LinePattern`, to cover the poly with a regular stroke pattern.
-- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
-- `strokecolormap`::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
-- `strokewidth::Real = 0` sets the width of the outline around a marker.
-- `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe Poly begin
     """
