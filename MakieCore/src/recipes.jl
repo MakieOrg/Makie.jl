@@ -215,11 +215,32 @@ macro recipe(Tsym::Symbol, args...)
     attrblock = expand_mixins(attrblock)
     attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
+    docs_placeholder = gensym()
+
     q = quote
+        # This part is as far as I know the only way to modify the docstring on top of the
+        # recipe, so that we can offer the convenience of automatic augmented docstrings
+        # but combine them with the simplicity of using a normal docstring.
+        # The trick is to mark some variable (in this case a gensymmed placeholder) with the
+        # Core.@__doc__ macro, which causes this variable to get assigned the docstring on top
+        # of the @recipe invocation. From there, it can then be retrieved, modified, and later
+        # attached to plotting function by using @doc again. We also delete the binding to the
+        # temporary variable so no unnecessary docstrings stay in place.
+        Core.@__doc__ $(esc(docs_placeholder)) = nothing
+        binding = Docs.Binding(@__MODULE__, $(QuoteNode(docs_placeholder)))
+        user_docstring = if haskey(Docs.meta(@__MODULE__), binding)
+            _docstring = @doc($docs_placeholder)
+            delete!(Docs.meta(@__MODULE__), binding)
+            _docstring
+        else
+            "No docstring defined.\n"
+        end
+
+
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        Core.@__doc__ function ($funcname)(args...; kw...)
+        function ($funcname)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
             _create_plot($funcname, kwdict, args...)
         end
@@ -257,6 +278,9 @@ macro recipe(Tsym::Symbol, args...)
                 )
             )
         end
+
+        docstring_modified = make_recipe_docstring($PlotType, user_docstring)
+        @doc docstring_modified $funcname_sym
         
         export $PlotType, $funcname, $funcname!
     end
@@ -274,7 +298,43 @@ macro recipe(Tsym::Symbol, args...)
     q
 end
 
-_defaultstring(x) = string(Base.remove_linenums!(x))
+function make_recipe_docstring(P::Type{<:Plot}, docstring)
+    io = IOBuffer()
+
+    print(io, docstring)
+
+    # println(io, "```")
+    println(io, "## Attributes")
+    println(io, "Type `?$P.attribute` in the REPL to get more information on any specific attribute.")
+    println(io)
+    println(io, "|Attribute|Default|")
+    println(io, "|:--|:--|")
+
+    names = sort(collect(attribute_names(P)))
+    exprdict = attribute_default_expressions(P)
+    for name in names
+        print(io, "| `", name, "` |")
+        default = exprdict[name]
+        println(io, "`", default, "`|")
+    end
+
+    return String(take!(io))
+end
+
+# from MacroTools
+isline(ex) = (ex isa Expr && ex.head === :line) || isa(ex, LineNumberNode)
+rmlines(x) = x
+function rmlines(x::Expr)
+  # Do not strip the first argument to a macrocall, which is
+  # required.
+  if x.head === :macrocall && length(x.args) >= 2
+    Expr(x.head, x.args[1], nothing, filter(x->!isline(x), x.args[3:end])...)
+  else
+    Expr(x.head, filter(x->!isline(x), x.args)...)
+  end
+end
+
+_defaultstring(x) = string(rmlines(x))
 _defaultstring(x::String) = repr(x)
 
 function extract_attribute_metadata(arg)
