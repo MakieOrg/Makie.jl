@@ -279,7 +279,7 @@ macro recipe(Tsym::Symbol, args...)
             )
         end
 
-        docstring_modified = make_recipe_docstring($PlotType, user_docstring)
+        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(funcname_sym)), user_docstring)
         @doc docstring_modified $funcname_sym
         
         export $PlotType, $funcname, $funcname!
@@ -298,14 +298,14 @@ macro recipe(Tsym::Symbol, args...)
     q
 end
 
-function make_recipe_docstring(P::Type{<:Plot}, docstring)
+function make_recipe_docstring(P::Type{<:Plot}, funcsym, docstring)
     io = IOBuffer()
 
     print(io, docstring)
 
     # println(io, "```")
     println(io, "## Attributes")
-    println(io, "Type `?$P.attribute` in the REPL to get more information on any specific attribute.")
+    println(io, "Type `?$funcsym.attribute` in the REPL to get more information on any specific attribute.")
     println(io)
     println(io, "|Attribute|Default|")
     println(io, "|:--|:--|")
