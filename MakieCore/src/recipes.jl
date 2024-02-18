@@ -313,7 +313,7 @@ function make_recipe_docstring(P::Type{<:Plot}, funcsym, docstring)
     exprdict = attribute_default_expressions(P)
     for name in names
         default = exprdict[name]
-        print(io, "**`", name, "`:**", " `", default, "`  — ")
+        print(io, "**`", name, "`** = ", " `", default, "`  — ")
         println(io, something(attr_docstrings[name], "*No docs available.*"))
         println(io)
     end
