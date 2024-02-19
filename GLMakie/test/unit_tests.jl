@@ -443,3 +443,25 @@ end
     im[3][] = zeros(RGBf, 25, 15) # larger size
     GLMakie.closeall()
 end
+
+@testset "Camera caching" begin
+    f=Figure(size=(200,200))
+    screen = display(f, visible = false)
+    ax=Axis(f[1,1])
+    lines!(ax,sin.(0.0:0.1:2pi))
+    text!(ax,10.0,0.0,text="sine wave")
+    expected_keys = [
+        :projection_data, :view_data, :projectionview_pixel, :projectionview_data,
+        :px_resolution, :projection_pixel, :view_pixel
+    ]
+    for key in expected_keys
+        @test haskey(ax.scene.camera.calculated_values, key)
+        @test !isempty(ax.scene.camera.calculated_values[key].inputs)
+    end
+    empty!(ax)
+    for key in expected_keys
+        @test haskey(ax.scene.camera.calculated_values, key)
+        @test !isempty(ax.scene.camera.calculated_values[key].inputs)
+    end
+    GLMakie.closeall()
+end
