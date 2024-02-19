@@ -142,12 +142,21 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         # Overwrite these, user defined attributes shouldn't use those!
         gl_attributes[key] = lift(identity, plot, getfield(cam, key))
     end
+
     get!(gl_attributes, :view) do
-        # get!(cam.calculated_values, Symbol("view_$(space[])")) do
-            return lift(plot, cam.view, space) do view, space
-                return is_data_space(space) ? view : Mat4f(I)
-            end
-        # end
+        return lift(cam.view, space) do _, space
+            return Makie.get_cached_matrix(cam, :view, space)
+        end
+    end
+    get!(gl_attributes, :projection) do
+        return lift(cam.projection, cam.pixel_space, space) do _, _, space
+            return Makie.get_cached_matrix(cam, :projection, space)
+        end
+    end
+    get!(gl_attributes, :projectionview) do
+        return lift(cam.projectionview, cam.pixel_space, space) do _, _, space
+            return Makie.get_cached_matrix(cam, :projectionview, space)
+        end
     end
 
     # for lighting
@@ -165,20 +174,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
             return transpose(inv(v[i, i] * m[i, i]))
         end
     end
-    get!(gl_attributes, :projection) do
-        # return get!(cam.calculated_values, Symbol("projection_$(space[])")) do
-            return lift(plot, cam.projection, cam.pixel_space, space) do _, _, space
-                return Makie.space_to_clip(cam, space, false)
-            end
-        # end
-    end
-    get!(gl_attributes, :projectionview) do
-        # get!(cam.calculated_values, Symbol("projectionview_$(space[])")) do
-            return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-                Makie.space_to_clip(cam, space, true)
-            end
-        # end
-    end
+
     # resolution in real hardware pixels, not scaled pixels/units
     get!(gl_attributes, :resolution) do
         # Note:
@@ -186,7 +182,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
         # resolution we need to create a copy here.
         # TODO closing the screen should delete the cached entry as px_per_unit
         # could be different in the next screen
-        lift(identity, get!(cam.calculated_values, :resolution) do
+        return lift(identity, get!(cam.calculated_values, :px_resolution) do
             return lift(*, gl_attributes[:px_per_unit], cam.resolution)
         end)
     end

@@ -123,3 +123,30 @@ function is_mouseinside(scene::Scene)
     #     is_mouseinside(child) && return false
     # end
 end
+
+function get_cached_obs(cam::Camera, name::Symbol, space::Symbol)
+    fullname = Symbol("$(name)_$(space)")
+    obs = get!(cam.calculated_values, fullname) do
+        # These run at max priority so they update before default priority
+        # listeners to projectionview etc are called.
+        if name == :view
+            return lift(cam.view, priority = typemax(Int)) do view
+                return is_data_space(space) ? view : Mat4f(I)
+            end
+        elseif name == :projection
+            return lift(cam.projection, cam.pixel_space, priority = typemax(Int)) do _, _
+                return Makie.space_to_clip(cam, space, false)
+            end
+        elseif name == :projectionview
+            return lift(cam.projectionview, cam.pixel_space, priority = typemax(Int)) do _, _
+                return Makie.space_to_clip(cam, space, true)
+            end
+        else
+            error("Cannot create a cached Observable for unrecognized camera matrix :$(name).")
+        end
+    end
+    return obs
+end
+@inline function get_cached_matrix(cam::Camera, name::Symbol, space::Symbol)
+    return get_cached_obs(cam, name, space)[]
+end
