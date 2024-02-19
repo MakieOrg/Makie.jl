@@ -358,6 +358,9 @@ end
         @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0f0:10f0), o2, o3)
         @test_throws ErrorException convert_arguments(Heatmap, m1, m2, m3)
         @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
+
+        # https://github.com/MakieOrg/Makie.jl/issues/3515
+        @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) == (0.5:8.5, 0.5:8.5, zeros(8, 8))
     end
 end
 

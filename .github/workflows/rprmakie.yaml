@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - sd/beta-20
   push:
     tags:
       - '*'
@@ -58,6 +57,6 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           file: lcov.info

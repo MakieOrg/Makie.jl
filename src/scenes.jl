@@ -467,9 +467,6 @@ function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
     end
-    for arg in plot.args
-        Observables.clear(arg)
-    end
     foreach(free, plot.plots)
     empty!(plot.plots)
     empty!(plot.deregister_callbacks)

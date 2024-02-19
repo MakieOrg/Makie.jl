@@ -144,11 +144,33 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 end
 
 """
-    heatmap(x, y, values)
-    heatmap(values)
+    heatmap(x, y, matrix)
+    heatmap(x, y, func)
+    heatmap(matrix)
+    heatmap(xvector, yvector, zvector)
 
-Plots a heatmap as a collection of rectangles centered at `x[i], y[j]` with
-colors derived from `values[i, j]`. (Defaults to `x, y = axes(values)`.)
+Plots a heatmap as a collection of rectangles.
+`x` and `y` can either be of length `i` and `j` where
+`(i, j)` is `size(matrix)`, in this case the rectangles will be placed
+around these grid points like voronoi cells. Note that
+for irregularly spaced `x` and `y`, the points specified by them
+are not centered within the resulting rectangles.
+
+`x` and `y` can also be of length `i+1` and `j+1`, in this case they
+are interpreted as the edges of the rectangles.
+
+Colors of the rectangles are derived from `matrix[i, j]`.
+The third argument may also be a `Function` (i, j) -> v which is then evaluated over the
+grid spanned by `x` and `y`.
+
+Another allowed form is using three vectors `xvector`, `yvector` and `zvector`.
+In this case it is assumed that no pair of elements `x` and `y` exists twice.
+Pairs that are missing from the resulting grid will be treated as if `zvector` had a `NaN`
+    element at that position.
+
+If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(matrix)`.
+
+Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
 
 ## Attributes
 
