@@ -181,9 +181,14 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     end
     # resolution in real hardware pixels, not scaled pixels/units
     get!(gl_attributes, :resolution) do
-        get!(cam.calculated_values, :resolution) do
-            return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
-        end
+        # Note:
+        # robj cleanup deletes all uniforms so to avoid deleting the cached
+        # resolution we need to create a copy here.
+        # TODO closing the screen should delete the cached entry as px_per_unit
+        # could be different in the next screen
+        lift(identity, get!(cam.calculated_values, :resolution) do
+            return lift(*, gl_attributes[:px_per_unit], cam.resolution)
+        end)
     end
 
     delete!(gl_attributes, :space)
