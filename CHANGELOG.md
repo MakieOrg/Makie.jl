@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - **Breaking (sort of)** Added a new `@recipe` variant which allows documenting attributes directly where they are defined and validating that all attributes are known whenever a plot is created. This is not breaking in the sense that the API changes, but user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed.
+- Fixed bugs with format strings and add new features by switching to Format.jl [#3633](https://github.com/MakieOrg/Makie.jl/pull/3633).
 - Fixed an issue where CairoMakie would unnecessarily rasterize polygons [#3605](https://github.com/MakieOrg/Makie.jl/pull/3605).
 - Added `PointBased` conversion trait to `scatterlines` recipe [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603).
 
