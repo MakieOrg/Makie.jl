@@ -41,9 +41,20 @@ function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, str
     draw_poly_as_mesh(scene, screen, poly)
 end
 
+"""
+    _retrieve_poly_calculated_colors(poly::Makie.Poly)
+
+Polygon colors are passed down to the internal `mesh` and `lines` 
+plots which do the computation correctly, so we need to retrieve 
+them from there, since `poly` doesn't define a [`Makie.calculated_attributes!`](@ref) method!
+"""
+function _retrieve_poly_calculated_colors(poly::Makie.Poly)
+    color = to_cairo_color(poly.plots[1].calculated_colors[], poly)
+    strokecolor = to_cairo_color(poly.plots[2].calculated_colors[], poly)
+    return (color, strokecolor)
+end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
-    color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    color, strokecolor = _retrieve_poly_calculated_colors(poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
 end
@@ -69,8 +80,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
-    color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    color, strokecolor = _retrieve_poly_calculated_colors(poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     broadcast_foreach(points_list, color,
@@ -87,7 +97,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     space = to_value(get(poly, :space, :data))
     projected_shapes = project_shape.(Ref(poly), space, shapes, Ref(model))
 
-    color = to_cairo_color(poly.color[], poly)
+    color, strokecolor = _retrieve_poly_calculated_colors(poly)
 
     linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     if isnothing(linestyle)
@@ -97,7 +107,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     else
         error("Wrong type for linestyle: $(poly.linestyle[]).")
     end
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+
     broadcast_foreach(projected_shapes, color, strokecolor, poly.strokewidth[]) do shape, c, sc, sw
         create_shape_path!(screen.context, shape)
         set_source(screen.context, c)
@@ -165,8 +175,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     space = to_value(get(poly, :space, :data))
     projected_polys = project_polygon.(Ref(poly), space, polygons, Ref(model))
 
-    color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    color, strokecolor = _retrieve_poly_calculated_colors(poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do po, c, sc, ss, sw
@@ -185,8 +194,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     space = to_value(get(poly, :space, :data))
     projected_polys = project_multipolygon.(Ref(poly), space, polygons, Ref(model))
 
-    color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    color, strokecolor = _retrieve_poly_calculated_colors(poly)
+
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do mpo, c, sc, ss, sw
         for po in mpo.polygons
@@ -211,9 +220,14 @@ end
 
 function draw_plot(scene::Scene, screen::Screen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    
+    # Similarly to what we do in `poly`, we retrieve the 
+    # calculated colors from the internal `mesh` plot of `band`.
+    # See the `_retrieve_poly_calculated_colors` function for more details.
+    band_color = band.plots[1].calculated_colors[]
 
-    if !(band.color[] isa AbstractArray)
-        color = to_cairo_color(band.color[], band)
+    if !(band_color isa AbstractArray)
+        color = to_cairo_color(band_color, band)
         upperpoints = band[1][]
         lowerpoints = band[2][]
         points = vcat(lowerpoints, reverse(upperpoints))
@@ -252,7 +266,7 @@ end
 function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
 
     pol = only(tric.plots)::Poly
-    colornumbers = pol.color[]
+    colornumbers = pol.plots[1].calculated_colors[] # just as in `poly`, we retrieve the calculated colors from the internal `mesh` plot.
     colors = to_cairo_color(colornumbers, pol)
     polygons = pol[1][]
     model = pol.model[]
