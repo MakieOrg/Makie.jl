@@ -49,8 +49,17 @@ plots which do the computation correctly, so we need to retrieve
 them from there, since `poly` doesn't define a [`Makie.calculated_attributes!`](@ref) method!
 """
 function _retrieve_poly_calculated_colors(poly::Makie.Poly)
-    color = to_cairo_color(poly.plots[1].calculated_colors[], poly)
-    strokecolor = to_cairo_color(poly.plots[2].calculated_colors[], poly)
+    color = if haskey(poly.plots[1].attributes, :calculated_colors)
+        to_cairo_color(poly.plots[1].calculated_colors[], poly)
+    else
+        to_cairo_color(poly.color[], poly)
+    end
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    # if haskey(poly.plots[2].attributes, :calculated_colors)
+    #     to_cairo_color(poly.plots[2].calculated_colors[], poly)
+    # else
+    #     to_cairo_color(poly.strokecolor[], poly)
+    # end
     return (color, strokecolor)
 end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
