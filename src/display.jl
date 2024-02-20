@@ -489,6 +489,7 @@ function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene:
     png_io = IOBuffer()
     backend_show(screen, png_io, MIME"image/png"(), scene)
     b64 = Base64.base64encode(String(take!(png_io)))
-    print(io, "<img width=$w height=$h style='object-fit: contain;' src=\"data:image/png;base64, $(b64)\"/>")
+    style = "object-fit: contain; height: auto;"
+    print(io, "<img width=$w height=$h style='$style' src=\"data:image/png;base64, $(b64)\"/>")
     return
 end
