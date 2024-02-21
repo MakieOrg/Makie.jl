@@ -1392,3 +1392,11 @@ end
     ylims!(ax, 0, 1)
     fig
 end
+
+@reference_test "transparency in band (#3356)" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    band!(ax, 1:10, 1:10, 2:11)
+    band!(ax, reverse(1:10), 1:10, 2:11, alpha = 0.5)
+    f
+end

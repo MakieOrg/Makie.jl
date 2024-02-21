@@ -6,6 +6,7 @@
 - Fixed bugs with format strings and add new features by switching to Format.jl [#3633](https://github.com/MakieOrg/Makie.jl/pull/3633).
 - Fixed an issue where CairoMakie would unnecessarily rasterize polygons [#3605](https://github.com/MakieOrg/Makie.jl/pull/3605).
 - Added `PointBased` conversion trait to `scatterlines` recipe [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603).
+- Fixed `band` not passing the `alpha` keyword to its mesh [#3612](https://github.com/MakieOrg/Makie.jl/pull/3612)
 
 ## [0.20.7] - 2024-02-04
 
