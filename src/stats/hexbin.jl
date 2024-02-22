@@ -34,10 +34,10 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
         strokecolor=:black)
 end
 
-function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi::T, xma::T, ymi::T, yma::T) where T
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
-    x_diff = xma - xmi
-    y_diff = yma - ymi
+    x_diff = max(eps(float(T)), xma - xmi)
+    y_diff = max(eps(float(T)), yma - ymi)
 
     xspacing, yspacing = (x_diff, y_diff) ./ (bins .- 1)
     return xspacing, yspacing, xmi, ymi, bins...
@@ -70,7 +70,6 @@ function data_limits(hb::Hexbin)
     ms = 2 .* fn(hb.plots[1].markersize[])
     nw = widths(bb) .+ (ms..., 0.0f0)
     no = bb.origin .- ((ms ./ 2.0f0)..., 0.0f0)
-
     return Rect3f(no, nw)
 end
 
@@ -91,16 +90,11 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 
         isempty(xy) && return
 
-        sqrt3 = sqrt(3)
-
         # enclose data in limits
         _expand((lo, hi)) = prevfloat(lo), nextfloat(hi)
 
         xmi, xma = _expand(extrema((p[1] for p in xy)))
         ymi, yma = _expand(extrema((p[2] for p in xy)))
-
-        x_diff = xma - xmi
-        y_diff = yma - ymi
 
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy =
             spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)
@@ -109,7 +103,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         ry = ysize / 2
 
         xsize = xspacing * 2
-        rx = xsize / sqrt3
+        rx = xsize / √3
 
         d = Dict{Tuple{Int,Int}, Float64}()
 
@@ -126,11 +120,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             d1 = ((_x - nx)^2 + (yweight * (_y - ny))^2)
             d2 = ((_x - nxs)^2 + (yweight * (_y - nys))^2)
 
-            is_grid1 = d1 < d2
-
-            # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
-
-            id = if is_grid1
+            id = if (is_grid1 = d1 < d2)
                 (
                     cld(dvx, 2),
                     iseven(dvy) ? dvy : dvy+1
@@ -142,7 +132,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 )
             end
 
-            d[id] = get(d, id, 0) + (get_weight(weights, i))
+            d[id] = get(d, id, 0.0) + get_weight(weights, i)
             i += 1
         end
 
@@ -187,11 +177,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
             # a singular colorrange error down the line.
             if mi == ma
-                if ma == 0
-                    (0, 1)
-                else
-                    (0, ma)
-                end
+                (0, ma == 0 ? one(ma) : ma)
             else
                 (mi, ma)
             end
@@ -220,13 +206,8 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     strokecolor=hb.strokecolor)
 end
 
-function center_value(dv, spacing, offset, is_grid1)
-    if is_grid1
-        offset + spacing * (dv + isodd(dv))
-    else
-        offset + spacing * (dv + iseven(dv))
-    end
-end
+center_value(dv, spacing, offset, is_grid1) =
+    offset + spacing * (dv + is_grid1 ? isodd(dv) : iseven(dv))
 
 function nearest_center(val, spacing, offset)
     dv = Int(fld(val - offset, spacing))

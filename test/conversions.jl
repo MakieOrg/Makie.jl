@@ -1,10 +1,12 @@
-using Makie:
+import Makie:
     NoConversion,
     convert_arguments,
     conversion_trait,
     convert_single_argument,
     to_vertices,
-    categorical_colors
+    categorical_colors,
+    check_line_pattern,
+    line_diff_pattern
 
 @testset "Conversions" begin
     # NoConversion
@@ -130,8 +132,6 @@ end
         @test fval ≈ sin(val) atol=1f-6
     end
 end
-
-using Makie: check_line_pattern, line_diff_pattern
 
 @testset "Linetype" begin
     @test isnothing(check_line_pattern("-."))

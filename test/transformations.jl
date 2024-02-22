@@ -1,5 +1,4 @@
-using Makie: PointTrans, apply_transform
-using LinearAlgebra
+import Makie: PointTrans, apply_transform
 
 function xyz_boundingbox(trans, points)
     bb_ref = Base.RefValue(Rect3f())

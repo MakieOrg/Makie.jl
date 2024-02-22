@@ -65,7 +65,7 @@ end
     @test bb.origin ≈ Point3f(-0.2)
     @test bb.widths ≈ Vec3f(2.4)
 
-    fig, ax, p = volume(rand(5, 5, 5))
+    fig, ax, p = Makie.volume(rand(5, 5, 5))
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(0)
     @test bb.widths ≈ Vec3f(5)

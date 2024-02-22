@@ -5,38 +5,31 @@ using Makie.GeometryBasics
 using Makie.PlotUtils
 using Makie.FileIO
 using Makie.IntervalSets
-using GeometryBasics: Pyramid
-
-using Makie: volume
+using LinearAlgebra
 
 @testset "Unit tests" begin
-    @testset "#659 Volume errors if data is not a cube" begin
-        fig, ax, vplot = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
-        lims = Makie.data_limits(vplot)
-        lo, hi = extrema(lims)
-        @test all(lo .<= 1)
-        @test all(hi .>= (8,8,10))
-    end
-
-    include("deprecated.jl")
-    include("specapi.jl")
-    include("primitives.jl")
-    include("pipeline.jl")
-    include("record.jl")
-    include("scenes.jl")
-    include("conversions.jl")
-    include("quaternions.jl")
-    include("projection_math.jl")
-    include("liftmacro.jl")
-    include("makielayout.jl")
-    include("figures.jl")
-    include("transformations.jl")
-    include("events.jl")
-    include("text.jl")
-    include("boundingboxes.jl")
-    include("ray_casting.jl")
-    include("PolarAxis.jl")
     include("barplot.jl")
     include("bezier.jl")
+    include("boundingboxes.jl")
+    include("conversions.jl")
+    include("deprecated.jl")
+    include("events.jl")
+    include("figures.jl")
     include("hist.jl")
+    include("issues.jl")
+    include("liftmacro.jl")
+    include("makielayout.jl")
+    include("pipeline.jl")
+    include("polaraxis.jl")
+    include("primitives.jl")
+    include("projection_math.jl")
+    include("quaternions.jl")
+    include("ray_casting.jl")
+    include("record.jl")
+    include("scenes.jl")
+    include("specapi.jl")
+    # include("statistical_tests.jl")  # FIXME: untested and broken ?
+    include("text.jl")
+    include("transformations.jl")
+    # include("zoom_pan.jl")  # FIXME: untested and broken ?
 end
