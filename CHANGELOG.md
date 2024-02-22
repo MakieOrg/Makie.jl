@@ -429,7 +429,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.7...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.8...HEAD
+[0.20.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.7...v0.20.8
 [0.20.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.6...v0.20.7
 [0.20.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.5...v0.20.6
 [0.20.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.4...v0.20.5
