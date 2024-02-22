@@ -74,8 +74,8 @@ end
 
 struct TestPlot
 end
-function Makie.convert_arguments(P::Type{<:Plot}, arg::TestPlot)
-    return PlotSpec(Symbol(P), Point2f.(1:5, 1:5); color=1:5, cycle=[])
+function Makie.convert_arguments(P::Type{<:Plot}, ::TestPlot)
+    return PlotSpec(P, Point2f.(1:5, 1:5); color=1:5, cycle=[])
 end
 
 @testset "PlotSpec with attributes in convert_arguments" begin
