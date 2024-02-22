@@ -141,14 +141,19 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
         kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
         args_converted = convert_arguments(P, map(to_value, args)...; kw...)
     end
-    PNew, converted = apply_convert!(P, Attributes(), args_converted)
+    preconvert_attr = Attributes()
+    PNew, converted = apply_convert!(P, preconvert_attr, args_converted)
 
     obs_args = Any[convert(Observable, x) for x in args]
 
     ArgTyp = MakieCore.argtypes(converted)
     converted_obs = map(Observable, converted)
     FinalPlotFunc = plotfunc(plottype(PNew, converted...))
-    return Plot{FinalPlotFunc,ArgTyp}(plot_attributes, obs_args, converted_obs)
+    plot = Plot{FinalPlotFunc,ArgTyp}(plot_attributes, obs_args, converted_obs)
+    for (k, v) in preconvert_attr
+        attributes(plot.attributes)[k] = v
+    end
+    return plot
 end
 
 """
