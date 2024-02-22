@@ -10,6 +10,7 @@
 - Added `PointBased` conversion trait to `scatterlines` recipe [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603).
 - Multiple small fixes for `map_latest`, `WGLMakie` picking and `PlotSpec` [#3637](https://github.com/MakieOrg/Makie.jl/pull/3637).
 - Fixed PolarAxis `rticks` being incompatible with rich text. [#3615](https://github.com/MakieOrg/Makie.jl/pull/3615)
+- Fixed an issue causing lines, scatter and text to not scale with resolution after deleting plots in GLMakie. [#3649](https://github.com/MakieOrg/Makie.jl/pull/3649)
 
 ## [0.20.7] - 2024-02-04
 
