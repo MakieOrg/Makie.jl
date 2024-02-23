@@ -52,6 +52,7 @@ function Makie.convert_arguments(::Type{<:Poly}, poly::MultiPolyWrapper)
 end
 
 @testset "Polygon Wrappers" begin
+    poly1 = Makie.GeometryBasics.Polygon(rand(Point2f, 10))
     poly2 = PolyWrapper(poly1)
     @test svg_isnt_rasterized(poly(poly2))
     @test svg_isnt_rasterized(poly(poly2; color=:red))
