@@ -71,3 +71,20 @@ import Makie.SpecApi as S
         @test Set(obs_to_notify) == Set([scene.plots[1].color, scene.plots[2].color])
     end
 end
+
+struct TestPlot
+end
+function Makie.convert_arguments(P::Type{<:Plot}, ::TestPlot)
+    return PlotSpec(P, Point2f.(1:5, 1:5); color=1:5, cycle=[])
+end
+
+@testset "PlotSpec with attributes in convert_arguments" begin
+    f, ax, pl = scatter(TestPlot())
+    @test pl.color[] == 1:5
+    pl.color = [0, 1, 2, 3, 4]
+    @test pl.color[] == [0, 1, 2, 3, 4]
+    f, ax, pl = lines(TestPlot())
+    @test pl.color[] == 1:5
+    pl.color = [0, 1, 2, 3, 4]
+    @test pl.color[] == [0, 1, 2, 3, 4]
+end
