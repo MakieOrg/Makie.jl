@@ -10,10 +10,10 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-xs = rand(1:3, 1000)
-ys = randn(1000)
+categories = rand(1:3, 1000)
+values = randn(1000)
 
-violin(xs, ys)
+violin(categories, values)
 ```
 \end{examplefigure}
 
@@ -23,12 +23,12 @@ using CairoMakie
 CairoMakie.activate!() # hide
 
 
-xs = rand(1:3, 1000)
-ys = map(xs) do x
+categories = rand(1:3, 1000)
+values = map(categories) do x
     return x == 1 ? randn() : x == 2 ? 0.5 * randn() : 5 * rand()
 end
 
-violin(xs, ys, datalimits = extrema)
+violin(categories, values, datalimits = extrema)
 ```
 \end{examplefigure}
 
@@ -39,15 +39,15 @@ CairoMakie.activate!() # hide
 
 
 N = 1000
-xs = rand(1:3, N)
+categories = rand(1:3, N)
 dodge = rand(1:2, N)
 side = rand([:left, :right], N)
 color = @. ifelse(side === :left, :orange, :teal)
-ys = map(side) do s
+values = map(side) do s
     return s === :left ? randn() : rand()
 end
 
-violin(xs, ys, dodge = dodge, side = side, color = color)
+violin(categories, values, dodge = dodge, side = side, color = color)
 ```
 \end{examplefigure}
 
@@ -58,17 +58,17 @@ CairoMakie.activate!() # hide
 
 
 N = 1000
-xs = rand(1:3, N)
+categories = rand(1:3, N)
 side = rand([:left, :right], N)
-color = map(xs, side) do x, s
+color = map(categories, side) do x, s
     colors = s === :left ? [:red, :orange, :yellow] : [:blue, :teal, :cyan]
     return colors[x]
 end
-ys = map(side) do s
+values = map(side) do s
     return s === :left ? randn() : rand()
 end
 
-violin(xs, ys, side = side, color = color)
+violin(categories, values, side = side, color = color)
 ```
 \end{examplefigure}
 
@@ -81,15 +81,46 @@ CairoMakie.activate!() # hide
 
 
 N = 100_000
-x = rand(1:3, N)
-y = rand(Uniform(-1, 5), N)
+categories = rand(1:3, N)
+values = rand(Uniform(-1, 5), N)
 
-w = pdf.(Normal(), x .- y)
+w = pdf.(Normal(), categories .- values)
 
 fig = Figure()
 
-violin(fig[1,1], x, y)
-violin(fig[1,2], x, y, weights = w)
+violin(fig[1,1], categories, values)
+violin(fig[1,2], categories, values, weights = w)
+
+fig
+```
+\end{examplefigure}
+
+#### Horizontal axis
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+fig = Figure()
+
+categories = rand(1:3, 1000)
+values = randn(1000)
+
+ax_vert = Axis(fig[1,1];
+    xlabel = "categories",
+    ylabel = "values",
+    xticks = (1:3, ["one", "two", "three"])
+)
+ax_horiz = Axis(fig[1,2];
+    xlabel="values", # note that x/y still correspond to horizontal/vertical axes respectively
+    ylabel="categories",
+    yticks=(1:3, ["one", "two", "three"])
+)
+
+# Note: same order of category/value, despite different axes
+violin!(ax_vert, categories, values) # `orientation=:vertical` is default
+violin!(ax_horiz, categories, values; orientation=:horizontal)
 
 fig
 ```

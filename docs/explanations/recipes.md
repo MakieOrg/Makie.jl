@@ -341,3 +341,57 @@ GLMakie.activate!() # hide
 ```
 
 \video{stockchart_animation}
+
+## Makie Package Extension
+
+For a simple example of a package extension for Makie,
+see <https://github.com/jkrumbiegel/MakiePkgExtTest>.
+The following documentation explains the basics of the implementation
+in the linked example.
+
+Set up your [package extension](https://pkgdocs.julialang.org/v1/creating-packages/#Conditional-loading-of-code-in-packages-(Extensions))
+to have `Makie` as a dependency, not `MakieCore` or any of the Makie backends.
+
+You'll have to define and export your full recipe functions in your main package,
+for example:
+
+```julia
+module SomePackage
+
+export someplot
+export someplot!
+
+# functions with no methods
+function someplot end
+function someplot! end
+
+end # module
+```
+
+and then your Makie extension package will add methods to `someplot!`.
+
+```julia
+module MakieExtension
+
+using SomePackage
+import SomePackage: someplot, someplot!
+
+Makie.convert_single_argument(v::SomeVector) = v.v
+
+@recipe(SomePlot) do scene
+    Theme()
+end
+
+function Makie.plot!(p::SomePlot)
+    lines!(p, p[1])
+    scatter!(p, p[1])
+    return p
+end
+
+end # module
+```
+
+See the linked example above for more functionalities
+such as accommodating for both extensions and `Requires.jl`,
+or providing error hints for plotting functions that don't yet have methods,
+or setting up your `Project.toml`.

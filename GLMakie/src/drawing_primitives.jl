@@ -181,9 +181,9 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     end
     # resolution in real hardware pixels, not scaled pixels/units
     get!(gl_attributes, :resolution) do
-        get!(cam.calculated_values, :resolution) do
+        # get!(cam.calculated_values, :resolution) do
             return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
-        end
+        # end
     end
 
     delete!(gl_attributes, :space)
