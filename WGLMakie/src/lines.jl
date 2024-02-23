@@ -130,7 +130,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :cam_space => plot.space[],
         :uniforms => serialize_uniforms(uniforms),
         :uniform_updater => uniform_updater(plot, uniforms),
-        :attributes => attributes
+        :attributes => attributes,
+        :transparency => plot.transparency,
+        :overdraw => plot.overdraw
     )
     return attr
 end

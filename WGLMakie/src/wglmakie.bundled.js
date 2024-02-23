@@ -22211,6 +22211,8 @@ function _create_line(line_data, is_segments) {
     const buffers = {};
     create_line_buffers(geometry, buffers, line_data.attributes, is_segments);
     const material = create_line_material(line_data.uniforms, geometry.attributes, is_segments);
+    material.depthTest = !line_data.overdraw.value;
+    material.depthWrite = !line_data.transparency.value;
     material.uniforms.is_linesegments = {
         value: is_segments
     };
@@ -22847,7 +22849,10 @@ function threejs_module(canvas) {
         antialias: true,
         canvas: canvas,
         context: context,
-        powerPreference: "high-performance"
+        powerPreference: "high-performance",
+        precision: "highp",
+        alpha: true,
+        logarithmicDepthBuffer: true
     });
     renderer.debug.onShaderError = on_shader_error;
     renderer.setClearColor("#ffffff");

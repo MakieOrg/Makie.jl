@@ -866,9 +866,19 @@ function create_line_material(uniforms, attributes, is_linesegments) {
     const mat = new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
         glslVersion: THREE.GLSL3,
-        vertexShader: lines_vertex_shader(uniforms_des, attributes, is_linesegments),
+        vertexShader: lines_vertex_shader(
+            uniforms_des,
+            attributes,
+            is_linesegments
+        ),
         fragmentShader: lines_fragment_shader(uniforms_des, attributes),
-        transparent: true,
+        transparent: true, // Enable transparency
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        blendEquation: THREE.AddEquation,
     });
     mat.uniforms.object_id = { value: 1 };
     return mat;
@@ -980,6 +990,9 @@ export function _create_line(line_data, is_segments) {
         geometry.attributes,
         is_segments
     );
+
+    material.depthTest = !line_data.overdraw.value;
+    material.depthWrite = !line_data.transparency.value;
 
     material.uniforms.is_linesegments = {value: is_segments};
     const mesh = new THREE.Mesh(geometry, material);
