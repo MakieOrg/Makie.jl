@@ -141,13 +141,44 @@ function axis_convert(attributes::Dict, x::Observable, y::Observable)
     xconv = convert_axis_dim(xconvert_new, x)
 
     yconvert = to_value(get(attributes, :y_dim_convert, automatic))
-
     yconvert_new = convert_from_args(yconvert, y[])
     attributes[:y_dim_convert] = yconvert_new
     yconv = convert_axis_dim(yconvert_new, y)
 
     return Any[xconv, yconv]
 end
+
+
+function no_obs_conversion(P, args, kw)
+    converted = convert_arguments(P, args...; kw...)
+    if !(converted isa Tuple)
+        # SpecPlot/Vector{SpecPlot}/GridLayoutSpec
+        return converted, :done
+    else
+        typed = convert_arguments_typed(P, converted...)
+        if typed isa MakieCore.ConversionError
+            return converted, :no_success
+        elseif typed isa NamedTuple
+            return values(typed), :done
+        elseif typed isa NoConversion
+            return converted, :not_overloaded
+        else
+            error("convert_arguments_typed returned an invalid type: $(typed)")
+        end
+    end
+end
+
+
+function conversion_pipeline(P, args_obs, kw_obs, plot_attributes)
+    args = [to_value(x) for x in args_obs]
+    kw = to_value(kw_obs)
+    converted, status = no_obs_conversion(P, args, kw)
+    if status == :no_success
+        args_obs = axis_convert(plot_attributes, args_obs...)
+        args = map(to_value, args_obs)
+    end
+end
+
 
 function convert_arguments!(plot::Plot{F}) where {F}
     P = Plot{F,Any}
@@ -156,8 +187,9 @@ function convert_arguments!(plot::Plot{F}) where {F}
         pnew, converted = apply_convert!(P, plot.attributes, nt)
         @assert plotfunc(pnew) === F "Changed the plot type in convert_arguments. This isn't allowed!"
         for (obs, new_val) in zip(plot.converted, converted)
-            obs[] = new_val
+            obs.val = new_val
         end
+        foreach(notify, plot.converted)
     end
     used_attrs = used_attributes(P, to_value.(plot.args)...)
     convert_keys = intersect(used_attrs, keys(plot.attributes))
@@ -172,25 +204,7 @@ function convert_arguments!(plot::Plot{F}) where {F}
     return
 end
 
-function simple_conversion(P, args, kw)
-    converted = convert_arguments(P, args...; kw...)
-    if !(converted isa Tuple)
-        return converted, :done
-    else
-        typed = convert_arguments_typed(P, converted...)
-        if typed isa MakieCore.ConversionError
-            return converted, :no_success
-        elseif typed isa Tuple
-            return typed, :no_conversion_wanted
-        elseif typed isa NamedTuple
-            return values(typed), :done
-        elseif typed isa NoConversion
-            return converted, :no_success
-        else
-            error("convert_arguments_typed returned an invalid type: $(typed)")
-        end
-    end
-end
+
 
 function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here

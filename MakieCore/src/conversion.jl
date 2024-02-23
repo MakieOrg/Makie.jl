@@ -128,13 +128,19 @@ function convert_arguments_typed(::Type{<:ConversionTrait}, @nospecialize(args..
     return NoConversion()
 end
 
-# Explicitely requested no conversion (default for recipes)
-convert_arguments_typed(::NoConversion, args...) = args
-convert_arguments_typed(::Type{<:NoConversion}, args...) = args
-
 struct ConversionError
-    message::String
-    error::Any
+    type::Any
+    name::String
+    arg::Any
+end
+
+function Base.show(io::IO, ce::ConversionError)
+    println(io, """
+    Can't convert argument $($(string(name)))::$(typeof($name)) to target type $($TargetType).
+    Either define:
+        convert_arguments(::Type{<: $($target_name)}, $(join(arg_types, ", "))) where {$($targs...)}) = ...
+    Or use a type that can get converted to $($TargetType).
+    """)
 end
 
 """
@@ -192,14 +198,7 @@ macro convert_target(struct_expr)
                     $conv_name = if hasmethod(convert, Tuple{Type{<:$TargetType}, typeof($name)})
                         convert($TargetType, $name)
                     else
-                        arg_types = map(typeof, ($(names...),))
-                        # err = """
-                        # Can't convert argument $($(string(name)))::$(typeof($name)) to target type $($TargetType).
-                        # Either define:
-                        #     convert_arguments(::Type{<: $($target_name)}, $(join(arg_types, ", "))) where {$($targs...)}) = ...
-                        # Or use a type that can get converted to $($TargetType).
-                        # """
-                        return MakieCore.ConversionError("", arg_types)
+                        return MakieCore.ConversionError($(target_name), $(string(name)), $name)
                     end
                 end
             end
