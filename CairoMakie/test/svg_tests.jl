@@ -36,15 +36,26 @@ end
     @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1])))
     @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = :red))
     @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = [:red, :blue]))
+end
 
-    # @testset "GeoInterface polygons" begin
-    #     using GeoInterface, GeoInterfaceMakie
-    #     poly2 = GeoInterface.convert(GeoInterface.Wrappers, poly1)
-    #     @test svg_isnt_rasterized(poly(poly2))
-    #     @test svg_isnt_rasterized(poly(poly2, color = :red))
-    #     @test svg_isnt_rasterized(poly(GeoInterface.Wrappers.MultiPolygon([poly2, poly2]), color = [:red, :blue]))
-    # end
+struct PolyWrapper
+    poly::Any
+end
+function Makie.convert_arguments(::Type{<: Poly}, poly::PolyWrapper)
+    return convert_arguments(Poly, poly.poly)
+end
+struct MultiPolyWrapper
+    poly::Vector
+end
+function Makie.convert_arguments(::Type{<:Poly}, poly::MultiPolyWrapper)
+    return convert_arguments(Poly, poly.poly)
+end
 
+@testset "Polygon Wrappers" begin
+    poly2 = PolyWrapper(poly1)
+    @test svg_isnt_rasterized(poly(poly2))
+    @test svg_isnt_rasterized(poly(poly2; color=:red))
+    @test svg_isnt_rasterized(poly(MultiPolyWrapper([poly1, poly1]); color=[:red, :blue]))
 end
 
 @testset "reproducable svg ids" begin
