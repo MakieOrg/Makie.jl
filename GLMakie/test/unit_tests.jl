@@ -443,3 +443,23 @@ end
     im[3][] = zeros(RGBf, 25, 15) # larger size
     GLMakie.closeall()
 end
+
+@testset "Verify camera uniforms after delete" begin
+    f=Figure(size=(200,200))
+    screen = display(f, visible = false)
+    ax=Axis(f[1,1])
+    lines!(ax,sin.(0.0:0.1:2pi))
+    text!(ax,10.0,0.0,text="sine wave")
+    empty!(ax)
+    ids = [robj.id for (_, _, robj) in screen.renderlist]
+
+    lines!(ax, sin.(0.0:0.1:2pi))
+    text!(ax,10.0,0.0,text="sine wave")
+    resize!(current_figure(), 800, 800)
+
+    robj = filter(x -> !(x.id in ids), last.(screen.renderlist))[1]
+    cam = ax.scene.camera
+
+    @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
+    @test robj.uniforms[:projectionview][] == cam.projectionview[]
+end

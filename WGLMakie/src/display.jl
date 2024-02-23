@@ -169,7 +169,7 @@ end
 for M in Makie.WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
-            inline_display = App() do session::Session
+            inline_display = App(title="WGLMakie") do session::Session
                 return render_with_init(screen, session, scene)
             end
             Base.show(io, m, inline_display)
@@ -246,7 +246,7 @@ function Base.display(screen::Screen, scene::Scene; unused...)
     if scene_already_displayed(screen, scene)
         return screen
     end
-    app = App() do session
+    app = App(title="WGLMakie") do session
         return render_with_init(screen, session, scene)
     end
     display(app)

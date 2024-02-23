@@ -1,4 +1,4 @@
-import Formatting
+import Format
 import Animations
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
