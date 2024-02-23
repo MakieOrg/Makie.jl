@@ -216,12 +216,17 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
         args_converted = convert_arguments(P, args_no_obs...; kw...)
     end
 
-    PNew, converted = apply_convert!(P, Attributes(), args_converted)
+    preconvert_attr = Attributes()
+    PNew, converted = apply_convert!(P, preconvert_attr, args_converted)
 
     ArgTyp = MakieCore.argtypes(converted)
     converted_obs = map(Observable, converted)
     FinalPlotFunc = plotfunc(plottype(PNew, converted...))
-    return Plot{FinalPlotFunc,ArgTyp}(plot_attributes, args_obs, converted_obs)
+    plot = Plot{FinalPlotFunc,ArgTyp}(plot_attributes, args_obs, converted_obs)
+    for (k, v) in preconvert_attr
+        attributes(plot.attributes)[k] = v
+    end
+    return plot
 end
 
 """

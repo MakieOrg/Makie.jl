@@ -66,6 +66,7 @@ end
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
+PlotSpec(::Type{P}, args...; kwargs...) where {P <: Plot} = PlotSpec(plotsym(P), args...; kwargs...)
 to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotsym(P), args...; kwargs...)
 
 function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
@@ -354,8 +355,8 @@ end
 """
     plotlist!(
         [
-            PlotSpec(:scatter, args...; kwargs...),
-            PlotSpec(:lines, args...; kwargs...),
+            PlotSpec(:Scatter, args...; kwargs...),
+            PlotSpec(:Lines, args...; kwargs...),
         ]
     )
 

@@ -63,12 +63,9 @@ function serialize_three(array::Buffer)
     return serialize_three(flatten_buffer(array))
 end
 
-serialize_three(array::AbstractArray{UInt8}) = vec(array)
-serialize_three(array::AbstractArray{Int32}) = vec(array)
-serialize_three(array::AbstractArray{UInt32}) = vec(array)
-serialize_three(array::AbstractArray{Float32}) = vec(array)
-serialize_three(array::AbstractArray{Float16}) = vec(array)
-serialize_three(array::AbstractArray{Float64}) = vec(array)
+function serialize_three(array::AbstractArray{T}) where {T<:Union{UInt8,Int32,UInt32,Float32,Float16,Float64}}
+    vec(convert(Array, array))
+end
 
 function serialize_three(p::Makie.AbstractPattern)
     return serialize_three(Makie.to_image(p))

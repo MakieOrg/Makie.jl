@@ -479,7 +479,7 @@ end
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
           formats numbers rounded to 2 decimal digits and with the suffix `kg`.
         """
         xtickformat = Makie.automatic
@@ -513,7 +513,7 @@ end
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
           formats numbers rounded to 2 decimal digits and with the suffix `kg`.
         """
         ytickformat = Makie.automatic

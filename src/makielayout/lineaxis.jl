@@ -662,9 +662,9 @@ get_ticklabels(formatfunction::Function, values) = formatfunction(values)
 """
     get_ticklabels(formatstring::AbstractString, values)
 
-Gets tick labels by formatting each value in `values` according to a `Formatting.format` format string.
+Gets tick labels by formatting each value in `values` according to a `Format.format` format string.
 """
-get_ticklabels(formatstring::AbstractString, values) = [Formatting.format(formatstring, v) for v in values]
+get_ticklabels(formatstring::AbstractString, values) = [Format.format(formatstring, v) for v in values]
 
 function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmin = vmin / m.multiple
