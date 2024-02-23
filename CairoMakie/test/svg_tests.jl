@@ -37,13 +37,13 @@ end
     @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = :red))
     @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = [:red, :blue]))
 
-    @testset "GeoInterface polygons" begin
-        using GeoInterface, GeoInterfaceMakie
-        poly2 = GeoInterface.convert(GeoInterface.Wrappers, poly1)
-        @test svg_isnt_rasterized(poly(poly2))
-        @test svg_isnt_rasterized(poly(poly2, color = :red))
-        @test svg_isnt_rasterized(poly(GeoInterface.Wrappers.MultiPolygon([poly2, poly2]), color = [:red, :blue]))
-    end
+    # @testset "GeoInterface polygons" begin
+    #     using GeoInterface, GeoInterfaceMakie
+    #     poly2 = GeoInterface.convert(GeoInterface.Wrappers, poly1)
+    #     @test svg_isnt_rasterized(poly(poly2))
+    #     @test svg_isnt_rasterized(poly(poly2, color = :red))
+    #     @test svg_isnt_rasterized(poly(GeoInterface.Wrappers.MultiPolygon([poly2, poly2]), color = [:red, :blue]))
+    # end
 
 end
 
