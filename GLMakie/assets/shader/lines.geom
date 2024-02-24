@@ -252,12 +252,17 @@ void main(void)
     vec2 n1 = normal_vector(v1);
     vec2 n2 = normal_vector(v2);
 
+    // Are we truncating the joint?
+    bvec2 is_truncated = bvec2(
+        dot(v0, v1.xy) < MITER_LIMIT,
+        dot(v1.xy, v2) < MITER_LIMIT
+    );
+
     // Miter normals (normal of truncated edge / vector to sharp corner)
-    // Note: n0 + n1 = vec(0) for a 180° change in direction. v0 - v1 is the same
-    //       direction, but becomes vec(0) at 0°, so together they always produce
-    //       a valid result
-    vec2 miter_n1 = normalize(n0 + n1 + v0.xy - v1.xy);
-    vec2 miter_n2 = normalize(n1 + n2 + v1.xy - v2.xy);
+    // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
+    //       same direction, but becomes vec(0) at 0°, so we can use it instead
+    vec2 miter_n1 = is_truncated[0] ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+    vec2 miter_n2 = is_truncated[1] ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
     // miter vectors (line vector matching miter normal)
     vec2 miter_v1 = -normal_vector(miter_n1);
@@ -266,12 +271,6 @@ void main(void)
     // distance between p1/2 and respective sharp corner
     float miter_offset1 = dot(miter_n1, n1); // = dot(miter_v1, v1)
     float miter_offset2 = dot(miter_n2, n1); // = dot(miter_v2, v1)
-
-    // Are we truncating the joint?
-    bvec2 is_truncated = bvec2(
-        dot(v0, v1.xy) < MITER_LIMIT,
-        dot(v1.xy, v2) < MITER_LIMIT
-    );
 
     // How far the line needs to extend in v1 directionto accomodate the joint.
     // The line quad (w/o width) is given by:

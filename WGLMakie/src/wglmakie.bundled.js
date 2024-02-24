@@ -21727,9 +21727,18 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
 
                 // joint information
+
+                // Are we truncating the joint?
+                bool[2] is_truncated = bool[2](
+                    dot(v0.xy, v1.xy) < MITER_LIMIT,
+                    dot(v1.xy, v2.xy) < MITER_LIMIT
+                );
+
                 // Miter normals (normal of truncated edge / vector to sharp corner)
-                vec2 miter_n1 = normalize(n0 + n1);
-                vec2 miter_n2 = normalize(n1 + n2);
+                // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
+                //       same direction, but becomes vec(0) at 0°, so we can use it instead
+                vec2 miter_n1 = is_truncated[0] ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+                vec2 miter_n2 = is_truncated[1] ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
                 // miter vectors (line vector matching miter normal)
                 vec2 miter_v1 = -normal_vector(miter_n1);
@@ -21738,12 +21747,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // distance between p1/2 and respective sharp corner
                 float miter_offset1 = dot(miter_n1, n1); // = dot(miter_v1, v1)
                 float miter_offset2 = dot(miter_n2, n1); // = dot(miter_v2, v1)
-
-                // Are we truncating the joint?
-                bool[2] is_truncated = bool[2](
-                    dot(v0.xy, v1.xy) < MITER_LIMIT,
-                    dot(v1.xy, v2.xy) < MITER_LIMIT
-                );
 
                 // How far the line needs to extend to accomodate the joint.
                 // These are calculated as prefactors to v1 so that the line quad
@@ -22132,7 +22135,13 @@ function create_line_material(uniforms, attributes, is_linesegments) {
         glslVersion: THREE.GLSL3,
         vertexShader: lines_vertex_shader(uniforms_des, attributes, is_linesegments),
         fragmentShader: lines_fragment_shader(uniforms_des, attributes),
-        transparent: true
+        transparent: true,
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        blendEquation: THREE.AddEquation
     });
     mat.uniforms.object_id = {
         value: 1
