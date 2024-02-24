@@ -253,8 +253,11 @@ void main(void)
     vec2 n2 = normal_vector(v2);
 
     // Miter normals (normal of truncated edge / vector to sharp corner)
-    vec2 miter_n1 = normalize(n0 + n1);
-    vec2 miter_n2 = normalize(n1 + n2);
+    // Note: n0 + n1 = vec(0) for a 180° change in direction. v0 - v1 is the same
+    //       direction, but becomes vec(0) at 0°, so together they always produce
+    //       a valid result
+    vec2 miter_n1 = normalize(n0 + n1 + v0.xy - v1.xy);
+    vec2 miter_n2 = normalize(n1 + n2 + v1.xy - v2.xy);
 
     // miter vectors (line vector matching miter normal)
     vec2 miter_v1 = -normal_vector(miter_n1);
