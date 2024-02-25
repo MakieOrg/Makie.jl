@@ -77,6 +77,6 @@ end
 
 function map_latest(f, observables...; spawn=false, ignore_equal_values=false)
     result = Observable(f(map(to_value, observables)...); ignore_equal_values=ignore_equal_values)
-    map_latest!(f, result, observables...; update=update, spawn=spawn)
+    map_latest!(f, result, observables...; spawn=spawn)
     return result
 end

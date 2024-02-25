@@ -255,7 +255,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed, priority = -2)
+    onany(update_axis_camera, blockscene, camera(scene), scene.transformation.transform_func, finallimits,
+          ax.xreversed, ax.yreversed; priority=-2)
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
@@ -376,22 +377,22 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xticksmirrored = lift(mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-                          Ref(scene.viewport), :x, ax.xaxisposition[])
+                          scene.viewport, :x, ax.xaxisposition[], ax.spinewidth)
     xticksmirrored_lines = linesegments!(blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-                          Ref(scene.viewport), :y, ax.yaxisposition[])
+                          scene.viewport, :y, ax.yaxisposition[], ax.spinewidth)
     yticksmirrored_lines = linesegments!(blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-                               ax.xminortickalign, Ref(scene.viewport), :x, ax.xaxisposition[])
+                               ax.xminortickalign, scene.viewport, :x, ax.xaxisposition[], ax.spinewidth)
     xminorticksmirrored_lines = linesegments!(blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-                               ax.yminortickalign, Ref(scene.viewport), :y, ax.yaxisposition[])
+                               ax.yminortickalign, scene.viewport, :y, ax.yaxisposition[], ax.spinewidth)
     yminorticksmirrored_lines = linesegments!(blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
     translate!(yminorticksmirrored_lines, 0, 0, 10)
@@ -520,8 +521,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     return ax
 end
 
-function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition)
-    a = viewport[][]
+function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition, spinewidth)
+    a = viewport
     if side === :x
         opp = axisposition === :bottom ? top(a) : bottom(a)
         sign =  axisposition === :bottom ? 1 : -1
@@ -531,15 +532,16 @@ function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axispo
     end
     d = ticksize * sign
     points = Vector{Point2f}(undef, 2*length(tickpositions))
+    spineoffset = sign * (0.5 * spinewidth)
     if side === :x
         for (i, (x, _)) in enumerate(tickpositions)
-            points[2i-1] = Point2f(x, opp - d * tickalign)
-            points[2i] = Point2f(x, opp + d - d * tickalign)
+            points[2i-1] = Point2f(x, opp - d * tickalign + spineoffset)
+            points[2i] = Point2f(x, opp + d - d * tickalign + spineoffset)
         end
     else
         for (i, (_, y)) in enumerate(tickpositions)
-            points[2i-1] = Point2f(opp - d * tickalign, y)
-            points[2i] = Point2f(opp + d - d * tickalign, y)
+            points[2i-1] = Point2f(opp - d * tickalign + spineoffset, y)
+            points[2i] = Point2f(opp + d - d * tickalign + spineoffset, y)
         end
     end
     return points
@@ -897,13 +899,20 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 end
 
 """
+    autolimits!()
     autolimits!(la::Axis)
 
 Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
+The argument `la` defaults to `current_axis()`.
 """
 function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
     return
+end
+function autolimits!()
+    curr_ax = current_axis()
+    isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
+    autolimits!(curr_ax)
 end
 
 function autolimits(ax::Axis, dim::Integer)
@@ -1364,8 +1373,10 @@ function limits!(ax::Axis, rect::Rect2)
     Makie.ylims!(ax, ymin, ymax)
 end
 
-function limits!(args...)
-    limits!(current_axis(), args...)
+function limits!(args::Union{Nothing, Real, HyperRectangle}...)
+    axis = current_axis()
+    axis isa Nothing && error("There is no currently active axis!")
+    limits!(axis, args...)
 end
 
 Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)

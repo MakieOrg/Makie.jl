@@ -103,3 +103,12 @@ end
     @test bb.origin ≈ Point3f(343.0, 345.0, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)
 end
+
+@testset "invalid contour bounding box" begin
+    a = b = 1:3
+    levels = collect(1:3)
+    c = [0 1 2; 1 2 3; 4 5 NaN]
+    contour(a, b, c; levels, labels = true)
+    c = [0 1 2; 1 2 3; 4 5 Inf]
+    contour(a, b, c; levels, labels = true)
+end

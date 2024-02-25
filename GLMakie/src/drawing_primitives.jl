@@ -181,9 +181,9 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     end
     # resolution in real hardware pixels, not scaled pixels/units
     get!(gl_attributes, :resolution) do
-        get!(cam.calculated_values, :resolution) do
+        # get!(cam.calculated_values, :resolution) do
             return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
-        end
+        # end
     end
 
     delete!(gl_attributes, :space)
@@ -571,6 +571,8 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = plot.visible
+        gl_attributes[:fxaa] = get(plot, :fxaa, Observable(false))
+        gl_attributes[:depthsorting] = get(plot, :depthsorting, false)
         cam = scene.camera
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
@@ -741,8 +743,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         end
 
         space = plot.space
-
-        gl_attributes[:image] = img
+        interp = to_value(pop!(gl_attributes, :interpolate, true))
+        interp = interp ? :linear : :nearest
+        gl_attributes[:image] = Texture(img; minfilter=interp)
 
         @assert to_value(plot[3]) isa AbstractMatrix
         types = map(v -> typeof(to_value(v)), plot[1:2])
@@ -802,11 +805,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             )
             return convert(Mat4f, m) * m2
         end
+        interp = to_value(pop!(gl_attributes, :interpolate))
+        interp = interp ? :linear : :nearest
+        Tex(x) = Texture(x; minfilter=interp)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
-            return draw_volume(screen, intensity, gl_attributes)
+            return draw_volume(screen, Tex(intensity), gl_attributes)
         else
-            return draw_volume(screen, plot[4], gl_attributes)
+            return draw_volume(screen, Tex(plot[4]), gl_attributes)
         end
     end
 end

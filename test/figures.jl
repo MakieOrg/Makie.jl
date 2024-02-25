@@ -17,6 +17,7 @@ end
     @test fig isa Figure
     @test ax isa Axis
     @test p isa Scatter
+    @test_throws ArgumentError lines!(fap, 1:10)
 
     fig2, ax2, p2 = scatter(rand(100, 3))
     @test fig2 isa Figure
@@ -34,6 +35,7 @@ end
     ap = scatter(gridpos, rand(100, 2))
     @test ap isa Makie.AxisPlot
     @test current_axis() === ap.axis
+    @test_throws ArgumentError lines!(ap, 1:10)
 
     ax2, p2 = scatter(fig[1, 2], rand(100, 2))
     @test ax2 isa Axis

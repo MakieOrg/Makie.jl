@@ -45,7 +45,7 @@ Settings include anything that isn't a mouse or keyboard button.
     - `:adaptive` scales `near` by `norm(eyeposition - lookat)` and passes `far` as is
     - `:view_relative` scales `near` and `far` by `norm(eyeposition - lookat)`
     - `:bbox_relative` scales `near` and `far` to the scene bounding box as passed to the camera with `update_cam!(..., bbox)`. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
-- `center = true`: Controls whether the camera placement gets reset when calling `update_cam!(scene[, cam], bbox)`, which is called when a new plot is added. This is automatically set to `false` after calling `update_cam!(scene[, cam], eyepos, lookat[, up])`.
+- `center = true`: Controls whether the camera placement gets reset when calling `center!(scene)`, which is called when a new plot is added.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
 - `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
@@ -168,7 +168,7 @@ function Camera3D(scene::Scene; kwargs...)
         fixed_axis = true,
         cad = false,
         center = true,
-        clipping_mode = :adaptive
+        clipping_mode = :adaptive # TODO: use bbox to adjust near/far automatically
     )
 
     replace!(settings, :Camera3D, scene, overwrites)
@@ -259,17 +259,23 @@ function Camera3D(scene::Scene; kwargs...)
     end
 
     # reset
-    on(camera(scene), events(scene).keyboardbutton) do event
-        if cam.selected[] && ispressed(scene, controls[:reset][])
+    on(camera(scene), events(scene).keyboardbutton, events(scene).mousebutton, priority = 1) do ke, me
+        if cam.selected[] && ispressed(scene, controls[:reset][]) &&
+            (ke.action == Keyboard.press || me.action == Mouse.press)
             # center keeps the rotation of the camera so we reset that here
             # might make sense to keep user set lookat, upvector, eyeposition
             # around somewhere for this?
+            old_center = cam.settings.center[]
+            cam.settings.center[] = true
             center!(scene)
+            cam.settings.center[] = old_center
             return Consume(true)
         end
         return Consume(false)
     end
+
     update_cam!(scene, cam)
+
     cam
 end
 
@@ -728,7 +734,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
         far = far_dist * far
     elseif cam.settings.clipping_mode[] === :adaptive
         view_dist = norm(eyeposition - lookat)
-        near = view_dist * near; far = max(1f0, view_dist) * far
+        near = view_dist * near; far = max(radius(bounding_sphere) / tand(0.5f0 * cam.fov[]), view_dist) * far
     elseif cam.settings.clipping_mode[] !== :static
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
     end
@@ -774,8 +780,8 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool =
         cam.near[] = 0.1f0 * dist
         cam.far[] = 2f0 * dist
     elseif cam.settings.clipping_mode[] === :adaptive
-        cam.near[] = 0.1f0 * dist / norm(cam.eyeposition[] - cam.lookat[])
-        cam.far[] = 2.2f0 * dist / norm(cam.eyeposition[] - cam.lookat[])
+        cam.near[] = 0.1f0
+        cam.far[] = 2f0
     end
 
     update_cam!(scene, cam)
@@ -785,7 +791,6 @@ end
 
 # Update camera position via camera Position & Orientation
 function update_cam!(scene::Scene, camera::Camera3D, eyeposition::VecTypes, lookat::VecTypes, up::VecTypes = camera.upvector[])
-    camera.settings.center[] = false
     camera.lookat[]      = Vec3f(lookat)
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[]    = Vec3f(up)
@@ -806,7 +811,6 @@ function update_cam!(
         radius::Real = norm(camera.eyeposition[] - camera.lookat[]),
         center = camera.lookat[]
     )
-    camera.settings.center[] = false
     st, ct = sincos(theta)
     sp, cp = sincos(phi)
     v = Vec3f(ct * cp, ct * sp, st)

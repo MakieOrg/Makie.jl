@@ -27,6 +27,7 @@ uniform float           glow_width;
 uniform int             shape; // shape is a uniform for now. Making them a in && using them for control flow is expected to kill performance
 uniform float           px_per_unit;
 uniform bool            transparent_picking;
+uniform bool            fxaa;
 
 flat in float           f_viewport_from_u_scale;
 flat in float           f_distancefield_scale;
@@ -123,6 +124,14 @@ void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 col
     }
 }
 
+void stroke_fxaa(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
+    if (width != 0.0){
+        float t = step(min(width, 0.0), signed_distance) - step(max(width, 0.0), signed_distance);
+        vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
+        color = mix(bg_color, strokecolor, t);
+    }
+}
+
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
     if (glow_width > 0.0){
         float s_stroke_width = px_per_unit * stroke_width;
@@ -179,16 +188,30 @@ void main(){
 
     float s_stroke_width = px_per_unit * stroke_width;
     float inside_start = max(-s_stroke_width, 0.0);
-    float inside = aastep(inside_start, signed_distance);
-
-    // For the initial coloring we can use the base pixel color and modulate
-    // its alpha value to create the shape set by the signed distance field. (i.e. inside)
     vec4 final_color = fill(f_color, image, tex_uv);
-    final_color.a = final_color.a * inside;
 
-    // Stroke and glow need to also modulate colors (rgb) to smoothly transition
-    // from one to another.
-    stroke(f_stroke_color, signed_distance, -s_stroke_width, final_color);
+    if (!fxaa){ // anti-aliasing via sdf
+        // For the initial coloring we can use the base pixel color and modulate
+        // its alpha value to create the shape set by the signed distance field. (i.e. inside)
+        float inside = aastep(inside_start, signed_distance);
+        final_color.a = final_color.a * inside;
+
+        // Stroke and glow need to also modulate colors (rgb) to smoothly transition
+        // from one to another.
+        stroke(f_stroke_color, signed_distance, -s_stroke_width, final_color);
+
+    } else { // AA via FXAA
+        // Here we don't smooth edges (i.e. use step rather than smoothstep) and
+        // let fxaa figure out smoothing/anti-aliasing later. This fixes the
+        // halo artifact when rendering at different depths for solid colors
+        float inside = step(inside_start, signed_distance);
+        final_color.a = final_color.a * inside;
+
+        stroke_fxaa(f_stroke_color, signed_distance, -s_stroke_width, final_color);
+    }
+
+    // glow is always semi transparent so switching between step and smoothstep
+    // is mostly useless here
     glow(f_glow_color, signed_distance, aastep(-s_stroke_width, signed_distance), final_color);
 
 

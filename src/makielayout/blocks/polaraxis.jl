@@ -554,7 +554,7 @@ function _polar_clip_polygon(
 end
 
 function draw_axis!(po::PolarAxis)
-    rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
+    rtick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
     rtick_align = Observable{Point2f}()
     rtick_offset = Observable{Point2f}()
     rtick_rotation = Observable{Float32}()
@@ -630,7 +630,7 @@ function draw_axis!(po::PolarAxis)
     end
 
 
-    thetatick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
+    thetatick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
     thetatick_align = Observable(Point2f[])
     thetatick_offset = Observable(Point2f[])
     thetagridpoints = Observable{Vector{Point2f}}()

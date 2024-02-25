@@ -27,7 +27,7 @@ using Makie: volume
     include("conversions.jl")
     include("quaternions.jl")
     include("projection_math.jl")
-    include("liftmacro.jl")
+    include("observables.jl")
     include("makielayout.jl")
     include("figures.jl")
     include("transformations.jl")

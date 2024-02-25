@@ -474,3 +474,30 @@ end
 
     fig
 end
+
+@reference_test "Plot transform overwrite" begin
+    # Tests that (primitive) plots can have different transform function to their
+    # parent scene (identity in this case)
+    fig = Figure()
+
+    ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
+    xlims!(ax, 1, 10)
+    ylims!(ax, 1, 10)
+    empty!(ax.scene.lights)
+    hidedecorations!(ax)
+
+    heatmap!(ax, 0..0.5, 0..0.5, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    image!(ax, 0..0.5, 0.5..1, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    mesh!(ax, Rect2f(0.5, 0.0, 1.0, 0.25), transformation = Transformation(), color = :green)
+    p = surface!(ax, 0.5..1, 0.25..0.75, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    translate!(p, Vec3f(0, 0, -20))
+    poly!(ax, Rect2f(0.5, 0.75, 1.0, 1.0), transformation = Transformation(), color = :blue)
+
+    lines!(ax, [0, 1], [0, 0.1], linewidth = 10, color = :red, transformation = Transformation())
+    linesegments!(ax, [0, 1], [0.2, 0.3], linewidth = 10, color = :red, transformation = Transformation())
+    scatter!(ax, [0.1, 0.9], [0.4, 0.5], markersize = 50, color = :red, transformation = Transformation())
+    text!(ax, Point2f(0.5, 0.45), text = "Test", fontsize = 50, color = :red, align = (:center, :center), transformation = Transformation())
+    meshscatter!(ax, [0.1, 0.9], [0.6, 0.7], markersize = 0.05, color = :red, transformation = Transformation())
+
+    fig
+end

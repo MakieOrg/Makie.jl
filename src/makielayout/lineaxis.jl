@@ -187,6 +187,10 @@ function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observ
     return
 end
 
+# if labels are given manually, it's possible that some of them are outside the displayed limits
+# we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
+is_within_limits(tv, limits) = (limits[1] ≤ tv || limits[1] ≈ tv) && (tv ≤ limits[2] || tv ≈ limits[2])
+
 function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
 
     tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits_obs = closure_args
@@ -204,12 +208,7 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     lim_o = limits[1]
     lim_w = limits[2] - limits[1]
 
-    # if labels are given manually, it's possible that some of them are outside the displayed limits
-    # we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
-    i_values_within_limits = findall(tickvalues_unfiltered) do tv
-        return (limits[1] <= tv || limits[1] ≈ tv) &&
-                (tv <= limits[2] || tv ≈ limits[2])
-    end
+    i_values_within_limits = findall(tv -> is_within_limits(tv, limits), tickvalues_unfiltered)
 
     tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
 
@@ -231,13 +230,15 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     return
 end
 
-function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
+function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_extents_horizontal, minortickvalues_unfiltered, scale, reversed::Bool)
     position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal
 
     extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
 
     px_o = extents[1]
     px_width = extents[2] - extents[1]
+
+    minortickvalues = filter(tv -> is_within_limits(tv, limits), minortickvalues_unfiltered)
 
     tickvalues_scaled = scale.(minortickvalues)
 
@@ -617,27 +618,6 @@ end
 logit_10(x) = Makie.logit(x) / log(10)
 expit_10(x) = Makie.logistic(log(10) * x)
 
-# function get_ticks(l::LogitTicks, scale::typeof(Makie.logit), ::Automatic, vmin, vmax)
-
-#     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
-
-#     ticks = expit_10.(ticks_scaled)
-
-#     base_labels = get_ticklabels(automatic, ticks_scaled)
-
-#     labels = map(ticks_scaled, base_labels) do t, bl
-#         if t == 0
-#             "¹/₂"
-#         elseif t < 0
-#             "10" * Makie.UnicodeFun.to_superscript(bl)
-#         else
-#             "1-10" * Makie.UnicodeFun.to_superscript("-" * bl)
-#         end
-#     end
-
-#     (ticks, labels)
-# end
-
 """
     get_tickvalues(lt::LinearTicks, vmin, vmax)
 
@@ -682,9 +662,9 @@ get_ticklabels(formatfunction::Function, values) = formatfunction(values)
 """
     get_ticklabels(formatstring::AbstractString, values)
 
-Gets tick labels by formatting each value in `values` according to a `Formatting.format` format string.
+Gets tick labels by formatting each value in `values` according to a `Format.format` format string.
 """
-get_ticklabels(formatstring::AbstractString, values) = [Formatting.format(formatstring, v) for v in values]
+get_ticklabels(formatstring::AbstractString, values) = [Format.format(formatstring, v) for v in values]
 
 function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmin = vmin / m.multiple

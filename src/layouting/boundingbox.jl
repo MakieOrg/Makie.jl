@@ -48,14 +48,11 @@ end
 
 _inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
 
-function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
-    return boundingbox(glyphcollection, rotation) + position
-end
+unchecked_boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion) =
+    unchecked_boundingbox(glyphcollection, rotation) + position
 
-function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
-    if isempty(glyphcollection.glyphs)
-        return Rect3f(Point3f(0), Vec3f(0))
-    end
+function unchecked_boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
+    isempty(glyphcollection.glyphs) && return Rect3f(Point3f(0), Vec3f(0))
 
     glyphorigins = glyphcollection.origins
     glyphbbs = gl_bboxes(glyphcollection)
@@ -69,25 +66,27 @@ function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
             bb = union(bb, charbb)
         end
     end
-    !isfinite_rect(bb) && error("Invalid text boundingbox")
     return bb
 end
 
-function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
-    if isempty(layouts)
-        return Rect3f((0, 0, 0), (0, 0, 0))
-    else
-        bb = Rect3f()
-        broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
-            if !isfinite_rect(bb)
-                bb = boundingbox(layout, pos, rot)
-            else
-                bb = union(bb, boundingbox(layout, pos, rot))
-            end
+function unchecked_boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
+    isempty(layouts) && return Rect3f((0, 0, 0), (0, 0, 0))
+
+    bb = Rect3f()
+    broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
+        if !isfinite_rect(bb)
+            bb = boundingbox(layout, pos, rot)
+        else
+            bb = union(bb, boundingbox(layout, pos, rot))
         end
-        !isfinite_rect(bb) && error("Invalid text boundingbox")
-        return bb
     end
+    return bb
+end
+
+function boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
+    bb = unchecked_boundingbox(x, args...)
+    isfinite_rect(bb) || error("Invalid text boundingbox")
+    bb
 end
 
 function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})

@@ -1,50 +1,8 @@
-struct ThreeDisplay
-    session::JSServe.Session
-end
-
-JSServe.session(td::ThreeDisplay) = td.session
-Base.empty!(::ThreeDisplay) = nothing # TODO implement
-
-
-function Base.close(screen::ThreeDisplay)
-    # TODO implement
-end
-
-function Base.size(screen::ThreeDisplay)
-    # look at d.qs().clientWidth for displayed width
-    js = js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"
-    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; timeout=100))
-    return (width, height)
-end
-
-function render_with_init(screen, session, scene)
-    screen.session = session
-    three, canvas, on_init = three_display(screen, session, scene)
-    screen.display = true
-    Makie.push_screen!(scene, screen)
-    on(session, on_init) do i
-        if !isready(screen.three)
-            put!(screen.three, three)
-        end
-        mark_as_displayed!(screen, scene)
-        return
-    end
-    return three, canvas, on_init
-end
-
-function JSServe.jsrender(session::Session, scene::Scene)
-    screen = Screen(scene)
-    three, canvas, on_init = render_with_init(screen, session, scene)
-    return canvas
-end
-
-function JSServe.jsrender(session::Session, fig::Makie.FigureLike)
-    Makie.update_state_before_display!(fig)
-    return JSServe.jsrender(session, Makie.get_scene(fig))
-end
 
 """
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+* `resize_to = nothing`: Resize the canvas to the parent element with `resize_to=:parent`, or to the body if `resize_to = :body`. The default `nothing`, will resize nothing.
+    A tuple is allowed too, with the same values just for width/height.
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
@@ -54,10 +12,8 @@ struct ScreenConfig
     px_per_unit::Union{Nothing,Float64} # nothing, a.k.a the browser px_per_unit (devicePixelRatio)
     scalefactor::Union{Nothing,Float64}
     resize_to_body::Bool
-    function ScreenConfig(
-            framerate::Number, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
-            scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool})
-
+    function ScreenConfig(framerate::Number, resize_to::Any, px_per_unit::Union{Number,Automatic,Nothing},
+                          scalefactor::Union{Number,Automatic,Nothing}, resize_to_body::Union{Nothing,Bool})
         if px_per_unit isa Automatic
             px_per_unit = nothing
         end
@@ -72,19 +28,80 @@ struct ScreenConfig
                 resize_to = resize_to_body ? :body : nothing
             end
         end
-        ResizeType = Union{Nothing, Symbol}
+        ResizeType = Union{Nothing,Symbol}
         if !(resize_to isa Union{ResizeType,Tuple{ResizeType,ResizeType}})
             error("Only nothing, :parent, or :body allowed, or a tuple of those for width/height.")
         end
         return new(framerate, resize_to, px_per_unit, scalefactor)
     end
 end
+"""
+    Screen(args...; screen_config...)
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
+
+# Constructors:
+
+$(Base.doc(MakieScreen))
+"""
+mutable struct Screen <: Makie.MakieScreen
+    plot_initialized::Channel{Bool}
+    session::Union{Nothing,Session}
+    scene::Union{Nothing,Scene}
+    displayed_scenes::Set{String}
+    config::ScreenConfig
+    canvas::Union{Nothing,Bonito.HTMLElement}
+    function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
+        return new(Channel{Bool}(1), nothing, scene, Set{String}(), config, nothing)
+    end
+end
+
+function scene_already_displayed(screen::Screen, scene=screen.scene)
+    scene === nothing && return false
+    screen.scene === scene || return false
+    screen.canvas === nothing && return false
+    return !isnothing(screen.session) &&
+           isready(screen.session) && isready(screen.plot_initialized) &&
+           js_uuid(screen.scene) in screen.displayed_scenes
+end
+
+function render_with_init(screen::Screen, session::Session, scene::Scene)
+    # Reference to three object which gets set once we serve this to a browser
+    # Make sure it's a new Channel, since we may re-use the screen.
+    screen.plot_initialized = Channel{Bool}(1)
+    screen.session = session
+    Makie.push_screen!(scene, screen)
+    canvas, on_init = three_display(screen, session, scene)
+    screen.canvas = canvas
+    on(session, on_init) do initialized
+        if !isready(screen.plot_initialized) && initialized
+            put!(screen.plot_initialized, true)
+            mark_as_displayed!(screen, scene)
+        else
+            error("Three object should be ready after init, but isn't - connection interrupted? Session: $(session), initialized: $(initialized)")
+        end
+        return
+    end
+    return canvas
+end
+
+function Bonito.jsrender(session::Session, scene::Scene)
+    screen = Screen(scene)
+    return render_with_init(screen, session, scene)
+end
+
+function Bonito.jsrender(session::Session, fig::Makie.FigureLike)
+    Makie.update_state_before_display!(fig)
+    return Bonito.jsrender(session, Makie.get_scene(fig))
+end
 
 
 """
     WithConfig(fig::Makie.FigureLike; screen_config...)
 
-Allows to pass a screenconfig to a figure, inside a JSServe.App.
+Allows to pass a screenconfig to a figure, inside a Bonito.App.
 This circumvents using `WGLMakie.activate!(; screen_config...)` inside an App, which modifies these values globally.
 Example:
 
@@ -107,61 +124,38 @@ function WithConfig(fig::Makie.FigureLike; kw...)
     return WithConfig(fig, config)
 end
 
-function JSServe.jsrender(session::Session, wconfig::WithConfig)
+function Bonito.jsrender(session::Session, wconfig::WithConfig)
     fig = wconfig.fig
     Makie.update_state_before_display!(fig)
     scene = Makie.get_scene(fig)
     screen = Screen(scene, wconfig.config)
-    three, canvas, on_init = render_with_init(screen, session, scene)
-    return canvas
+    return render_with_init(screen, session, scene)
 end
 
 
-
-"""
-    Screen(args...; screen_config...)
-
-# Arguments one can pass via `screen_config`:
-
-$(Base.doc(ScreenConfig))
-
-# Constructors:
-
-$(Base.doc(MakieScreen))
-"""
-mutable struct Screen <: Makie.MakieScreen
-    three::Channel{ThreeDisplay}
-    session::Union{Nothing, Session}
-    display::Any
-    scene::Union{Nothing, Scene}
-    displayed_scenes::Set{String}
-    config::ScreenConfig
-    function Screen(
-            three::Channel{ThreeDisplay},
-            display::Any,
-            scene::Union{Nothing, Scene}, config::ScreenConfig)
-        return new(three, nothing, display, scene, Set{String}(), config)
-    end
-end
 
 function Base.show(io::IO, screen::Screen)
     c = screen.config
     ppu = c.px_per_unit
     sf = c.scalefactor
-    print(io, """WGLMakie.Screen(
-        framerate = $(c.framerate),
-        resize_to = $(c.resize_to),
-        px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
-        scalefactor = $(isnothing(sf) ? :automatic : sf)
-    )""")
+    three_str = sprint(io -> show(io, MIME"text/plain"(), screen.plot_initialized))
+    return print(io, """WGLMakie.Screen(
+               framerate = $(c.framerate),
+               resize_to = $(c.resize_to),
+               px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
+               scalefactor = $(isnothing(sf) ? :automatic : sf),
+               session = $(isnothing(screen.session) ? :nothing : isopen(screen.session)),
+               three = $(three_str),
+               scene = $(isnothing(screen.scene) ? :nothing : screen.scene),
+           )""")
 end
 
 # Resizing the scene is enough for WGLMakie
 Base.resize!(::WGLMakie.Screen, w, h) = nothing
 
 function Base.isopen(screen::Screen)
-    three = get_three(screen)
-    return !isnothing(three) && isopen(three.session)
+    session = get_screen_session(screen)
+    return !isnothing(session) && isopen(session)
 end
 
 function mark_as_displayed!(screen::Screen, scene::Scene)
@@ -175,12 +169,10 @@ end
 for M in Makie.WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
-            inline_display = App() do session::Session
-                three, canvas, init_obs = render_with_init(screen, session, scene)
-                return canvas
+            inline_display = App(title="WGLMakie") do session::Session
+                return render_with_init(screen, session, scene)
             end
             Base.show(io, m, inline_display)
-            screen.display = true
             return screen
         end
     end
@@ -197,46 +189,36 @@ function Base.size(screen::Screen)
     return size(screen.scene)
 end
 
-function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=nothing)::Union{Nothing, ThreeDisplay}
+function get_screen_session(screen::Screen; timeout=100,
+                   error::Union{Nothing,String}=nothing)::Union{Nothing,Session}
     function throw_error(status)
         if !isnothing(error)
             message = "Can't get three: $(status)\n$(error)"
             Base.error(message)
         end
     end
-    if screen.display !== true
-        throw_error("Screen hasn't displayed yet, so can't get connection to three")
+    if isnothing(screen.session)
+        throw_error("Screen has no session. Not yet displayed?")
         return nothing
     end
-    if isnothing(screen.session)
-        throw_error("Screen has no session. Not yet displayed?"); return nothing
+    if !(screen.session.status in (Bonito.RENDERED, Bonito.DISPLAYED, Bonito.OPEN))
+        throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status)")
+        return nothing
     end
-    if !(screen.session.status in (JSServe.RENDERED, JSServe.DISPLAYED, JSServe.OPEN))
-        throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status)"); return nothing
+    success = Bonito.wait_for_ready(screen.session; timeout=timeout)
+    if success !== :success
+        throw_error("Timed out waiting for session to get ready")
+        return nothing
     end
-    tstart = time()
-    result = nothing
-    while true
-        yield()
-        if time() - tstart > timeout
-            break # we waited LONG ENOUGH!!
-        end
-        if isready(screen.three)
-            result = fetch(screen.three)
-            break
-        end
-    end
+    success = Bonito.wait_for(() -> isready(screen.plot_initialized); timeout=timeout)
     # Throw error if error message specified
-    if isnothing(result)
+    if success !== :success
         throw_error("Timed out waiting $(timeout)s for session to get initilize")
     end
-    return result
+    # At this point we should have a fully initialized plot + session
+    return screen.session
 end
 
-function Makie.apply_screen_config!(screen::ThreeDisplay, config::ScreenConfig, args...)
-    #TODO implement
-    return screen
-end
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args...)
     #TODO implement
     return screen
@@ -244,38 +226,33 @@ end
 
 # TODO, create optimized screens, forward more options to JS/WebGL
 function Screen(scene::Scene; kw...)
-    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(kw))
-    return Screen(Channel{ThreeDisplay}(1), nothing, scene, config)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(kw))
+    return Screen(scene, config)
 end
-Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
 function Base.empty!(screen::Screen)
     screen.scene = nothing
-    screen.display = false
+    screen.plot_initialized = Channel{Bool}(1)
+    return
     # TODO, empty state in JS, to be able to reuse screen
 end
 
-Makie.wait_for_display(screen::Screen) = get_three(screen)
+Makie.wait_for_display(screen::Screen) = get_screen_session(screen)
 
 function Base.display(screen::Screen, scene::Scene; unused...)
-    Makie.push_screen!(scene, screen)
-    # Reference to three object which gets set once we serve this to a browser
-    app = App() do session
-        screen.session = session
-        three, canvas, done_init = three_display(screen, session, scene)
-        on(session, done_init) do _
-            put!(screen.three, three)
-            mark_as_displayed!(screen, scene)
-            return
-        end
-        return canvas
+    # already displayed!
+    if scene_already_displayed(screen, scene)
+        return screen
+    end
+    app = App(title="WGLMakie") do session
+        return render_with_init(screen, session, scene)
     end
     display(app)
-    screen.display = true
+    Bonito.wait_for_ready(screen.session)
     # wait for plot to be full initialized, so that operations don't get racy (e.g. record/RamStepper & friends)
-    get_three(screen)
+    get_screen_session(screen; error="Waiting for plot to be initialized in display")
     return screen
 end
 
@@ -289,34 +266,34 @@ function session2image(session::Session, scene::Scene)
         })
     }()
     """
-    picture_base64 = JSServe.evaljs_value(session, to_data; timeout=100)
+    picture_base64 = Bonito.evaljs_value(session, to_data; timeout=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
-    bytes = JSServe.Base64.base64decode(picture_base64)
+    bytes = Bonito.Base64.base64decode(picture_base64)
     return PNGFiles.load(IOBuffer(bytes))
 end
 
 function Makie.colorbuffer(screen::Screen)
-    if screen.display !== true
+    if isnothing(screen.session)
         Base.display(screen, screen.scene)
     end
-    three = get_three(screen; error="Not able to show scene in a browser")
-    return session2image(three.session, screen.scene)
+    session = get_screen_session(screen; error="Not able to show scene in a browser")
+    return session2image(session, screen.scene)
 end
 
-function insert_scene!(disp, screen::Screen, scene::Scene)
+function insert_scene!(session::Session, screen::Screen, scene::Scene)
     if js_uuid(scene) in screen.displayed_scenes
         return true
     else
         if !(js_uuid(scene.parent) in screen.displayed_scenes)
             # Parents serialize their child scenes, so we only need to
             # serialize & update the parent scene
-            return insert_scene!(disp, screen, scene.parent)
+            return insert_scene!(session, screen, scene.parent)
         end
         scene_ser = serialize_scene(scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
         err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
-        evaljs_value(disp.session, js"""
+        evaljs_value(session, js"""
         $(WGL).then(WGL=> {
             const parent = WGL.find_scene($(parent_uuid));
             if (!parent) {
@@ -331,23 +308,23 @@ function insert_scene!(disp, screen::Screen, scene::Scene)
     end
 end
 
-function insert_plot!(disp::ThreeDisplay, scene::Scene, @nospecialize(plot::Plot))
+function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     plot_data = serialize_plots(scene, [plot])
-    plot_sub = Session(disp.session)
-    JSServe.init_session(plot_sub)
+    plot_sub = Session(session)
+    Bonito.init_session(plot_sub)
     plot.__wgl_session = plot_sub
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
-    JSServe.evaljs_value(plot_sub, js; timeout=50)
+    Bonito.evaljs_value(plot_sub, js; timeout=50)
     return
 end
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
-    disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
+    session = get_screen_session(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
-        insert_plot!(disp, scene, plot)
+        insert_plot!(session, scene, plot)
     else
         # Newly created scene gets inserted!
         # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
@@ -360,17 +337,17 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
         # We serialize the whole scene (containing `plot` as well),
         # since, we should only get here if scene is newly created and this is the first plot we insert!
         @assert scene.plots[1] == plot
-        insert_scene!(disp, screen, scene)
+        insert_scene!(session, screen, scene)
     end
     return
 end
 
 function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
                             session::Union{Nothing,Session})
-    three = get_three(screen)
-    isnothing(three) && return # if no session we haven't displayed and dont need to delete
-    isready(three.session) || return
-    JSServe.evaljs(three.session, js"""
+    main_session = get_screen_session(screen)
+    isnothing(main_session) && return # if no session we haven't displayed and dont need to delete
+    isready(main_session) || return
+    Bonito.evaljs(main_session, js"""
     $(WGL).then(WGL=> {
         WGL.delete_plots($(plot_uuids));
     })""")
@@ -388,23 +365,22 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plots=Plot[])
 end
 
 function delete_js_objects!(screen::Screen, scene::Scene)
-    three = get_three(screen)
-    isnothing(three) && return # if no session we haven't displayed and dont need to delete
-    isready(three.session) || return
+    session = get_screen_session(screen)
+    isnothing(session) && return # if no session we haven't displayed and dont need to delete
+    isready(session) || return
     scene_uuids, plots = all_plots_scenes(scene)
     for plot in plots
         if haskey(plot, :__wgl_session)
-            session = plot.__wgl_session[]
-            close(session)
+            wgl_session = plot.__wgl_session[]
+            close(wgl_session)
         end
     end
-    JSServe.evaljs(three.session, js"""
+    Bonito.evaljs(session, js"""
     $(WGL).then(WGL=> {
         WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
     })""")
     return
 end
-
 
 struct LockfreeQueue{T,F}
     # Double buffering to be lock free
@@ -463,7 +439,7 @@ function Base.push!(queue::LockfreeQueue, item)
 end
 
 const DISABLE_JS_FINALZING = Base.RefValue(false)
-const DELETE_QUEUE = LockfreeQueue{Tuple{Screen, Vector{String}, Union{Session, Nothing}}}(delete_js_objects!)
+const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Vector{String},Union{Session,Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
 function Base.delete!(screen::Screen, scene::Scene, plot::Plot)

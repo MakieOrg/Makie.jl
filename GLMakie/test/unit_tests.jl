@@ -6,6 +6,46 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+@testset "shader cache" begin
+    GLMakie.closeall()
+    screen = display(Figure())
+    cache = screen.shader_cache
+    # Postprocessing shaders
+    @test length(cache.shader_cache) == 5
+    @test length(cache.template_cache) == 5
+    @test length(cache.program_cache) == 4
+
+    # Shaders for scatter + linesegments + poly etc (axis)
+    display(screen, scatter(1:4))
+    @test length(cache.shader_cache) == 16
+    @test length(cache.template_cache) == 16
+    @test length(cache.program_cache) == 10
+
+    # No new shaders should be added:
+    display(screen, scatter(1:4))
+    @test length(cache.shader_cache) == 16
+    @test length(cache.template_cache) == 16
+    @test length(cache.program_cache) == 10
+
+    # Same for linesegments
+    display(screen, linesegments(1:4))
+    @test length(cache.shader_cache) == 16
+    @test length(cache.template_cache) == 16
+    @test length(cache.program_cache) == 10
+
+    # Lines hasn't been compiled so one new program should be added
+    display(screen, lines(1:4))
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
+
+    # For second time no new shaders should be added
+    display(screen, lines(1:4))
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
+end
+
 @testset "unit tests" begin
     GLMakie.closeall()
     @testset "Window handling" begin
@@ -250,7 +290,7 @@ end
 
         @test screen.root_scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.22
+        @test (Base.summarysize(screen) / 10^6) < 1.4
     end
     # All should go to pool after close
     @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)
@@ -392,4 +432,34 @@ end
     end
 
     GLMakie.closeall()
+end
+
+@testset "image size changes" begin
+    s = Scene()
+    im = image!(s, 0..10, 0..10, zeros(RGBf, 10, 20))
+    display(s)
+    im[3][] = zeros(RGBf, 20, 10) # same length, different size
+    im[3][] = zeros(RGBf, 15, 5) # smaller size
+    im[3][] = zeros(RGBf, 25, 15) # larger size
+    GLMakie.closeall()
+end
+
+@testset "Verify camera uniforms after delete" begin
+    f=Figure(size=(200,200))
+    screen = display(f, visible = false)
+    ax=Axis(f[1,1])
+    lines!(ax,sin.(0.0:0.1:2pi))
+    text!(ax,10.0,0.0,text="sine wave")
+    empty!(ax)
+    ids = [robj.id for (_, _, robj) in screen.renderlist]
+
+    lines!(ax, sin.(0.0:0.1:2pi))
+    text!(ax,10.0,0.0,text="sine wave")
+    resize!(current_figure(), 800, 800)
+
+    robj = filter(x -> !(x.id in ids), last.(screen.renderlist))[1]
+    cam = ax.scene.camera
+
+    @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
+    @test robj.uniforms[:projectionview][] == cam.projectionview[]
 end

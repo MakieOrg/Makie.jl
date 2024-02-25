@@ -1029,6 +1029,14 @@ end
         fontsize = range(12, 24, length = 5),
     )
 
+    # https://github.com/MakieOrg/Makie.jl/issues/3569
+    b = bracket!(ax,
+        [5, 6],
+        [1, 2],
+        [6, 7],
+        [1, 2],
+    )
+
     f
 end
 
@@ -1171,50 +1179,54 @@ end
     fig
 end
 
-@reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
-    curve_1 = [[
-        (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
-        (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
-        (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
-        (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
-        (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
-        (-4.0, 0.0), (0.0, 0.0),
-    ]]
-    curve_2 = [[
-        (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
-        (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
-        (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
-    ]]
-    curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
-    curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
-    curves = [curve_1, curve_2, curve_3, curve_4]
-    points = [
-        (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
-        (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
-        (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
-        (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
-        (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
-        (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
-        (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
-        (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
-        (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
-        (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
-        (7.0, 7.8), (7.0, 7.4)]
-    boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
-    tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
-    refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
-    fig, ax, sc = triplot(tri,
-        show_points=true,
-        show_constrained_edges=true,
-        constrained_edge_linewidth=2,
-        strokewidth=0.2,
-        markersize=15,
-        point_color=:blue,
-        show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
-        marker='x',
-        bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
-    fig
-end
+# TODO: as noted in https://github.com/MakieOrg/Makie.jl/pull/3520#issuecomment-1873382060
+# this test has some issues with random number generation across Julia 1.6 and 1, for now
+# it's disabled until someone has time to look into it
+
+# @reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
+#     curve_1 = [[
+#         (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
+#         (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
+#         (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
+#         (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
+#         (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
+#         (-4.0, 0.0), (0.0, 0.0),
+#     ]]
+#     curve_2 = [[
+#         (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
+#         (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
+#         (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
+#     ]]
+#     curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
+#     curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
+#     curves = [curve_1, curve_2, curve_3, curve_4]
+#     points = [
+#         (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
+#         (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
+#         (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
+#         (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
+#         (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
+#         (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
+#         (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
+#         (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
+#         (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
+#         (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
+#         (7.0, 7.8), (7.0, 7.4)]
+#     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+#     tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
+#     refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
+#     fig, ax, sc = triplot(tri,
+#         show_points=true,
+#         show_constrained_edges=true,
+#         constrained_edge_linewidth=2,
+#         strokewidth=0.2,
+#         markersize=15,
+#         point_color=:blue,
+#         show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
+#         marker='x',
+#         bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
+#     fig
+# end
 
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
@@ -1354,7 +1366,7 @@ function ppu_test_plot(resolution, px_per_unit, scalefactor)
     fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
     DataInspector(ax)
     hidedecorations!(ax)
-    return fig
+    fig
 end
 
 @reference_test "px_per_unit and scalefactor" begin
@@ -1372,4 +1384,11 @@ end
         end
         st
     end
+end
+
+@reference_test "spurious minor tick (#3487)" begin
+    fig = Figure(size=(227, 170))
+    ax = Axis(fig[1, 1]; yticks = 0:.2:1, yminorticksvisible = true)
+    ylims!(ax, 0, 1)
+    fig
 end

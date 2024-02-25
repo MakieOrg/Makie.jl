@@ -13,9 +13,9 @@ using Tar
 
 pagefind = let
     url = if Sys.isapple()
-        "https://github.com/CloudCannon/pagefind/releases/download/v0.12.0/pagefind-v0.12.0-aarch64-apple-darwin.tar.gz"
+        "https://github.com/CloudCannon/pagefind/releases/download/v1.0.4/pagefind-v1.0.4-aarch64-apple-darwin.tar.gz"
     elseif Sys.islinux()
-        "https://github.com/CloudCannon/pagefind/releases/download/v0.12.0/pagefind-v0.12.0-x86_64-unknown-linux-musl.tar.gz"
+        "https://github.com/CloudCannon/pagefind/releases/download/v1.0.4/pagefind-v1.0.4-x86_64-unknown-linux-musl.tar.gz"
     else
         error()
     end
@@ -27,9 +27,9 @@ pagefind = let
 end
 success(`$pagefind`)
 
-# copy NEWS file over to documentation
+# copy CHANGELOG file over to documentation
 cp(
-    joinpath(@__DIR__, "..", "NEWS.md"),
+    joinpath(@__DIR__, "..", "CHANGELOG.md"),
     joinpath(@__DIR__, "news.md"),
     force = true)
 
@@ -68,7 +68,7 @@ serve(; single=true, cleanup=false, clear=true, fail_on_warning=true)
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 
 cd("__site") do
-    run(`$pagefind --source . --root-selector .franklin-content`)
+    run(`$pagefind --site . --root-selector .franklin-content`)
 end
 
 # by making all links relative, we can forgo the `prepath` setting of Franklin
