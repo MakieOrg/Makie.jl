@@ -147,9 +147,9 @@ translate!(scene::Transformable, xyz::VecTypes) = translate!(Absolute, scene, xy
 translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
 
 """
-    translate!(Accum, scene::Transformable, xyz...)
+    translate!(Accum, t::Transformable, xyz...)
 
-Translate the given `Transformable` (a Scene or Plot) relative to its current position.
+Translate the given `Transformable` (a Scene or Plot), relative to its current position.
 """
 translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
 
