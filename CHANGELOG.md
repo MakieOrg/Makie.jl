@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Added `scale` attribute to `violin` [#3352](https://github.com/MakieOrg/Makie.jl/pull/3352).
 
 ## [0.20.8] - 2024-02-22
 
