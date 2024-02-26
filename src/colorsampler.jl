@@ -225,10 +225,9 @@ fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized
 """
-struct Categorical{T} <: AbstractVector{RGBAf}
-    values::Vector{T}
+struct Categorical
+    values::Any
 end
-Categorical(values) = Categorical(to_colormap(values))
 Base.getindex(c::Categorical, i) = c.values[i]
 Base.size(c::Categorical) = size(c.values)
 

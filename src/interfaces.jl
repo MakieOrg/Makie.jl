@@ -148,35 +148,56 @@ function axis_convert(attributes::Dict, x::Observable, y::Observable)
     return Any[xconv, yconv]
 end
 
-
 function no_obs_conversion(P, args, kw)
     converted = convert_arguments(P, args...; kw...)
     if !(converted isa Tuple)
         # SpecPlot/Vector{SpecPlot}/GridLayoutSpec
-        return converted, :done
+        return converted, :half_converted
     else
         typed = convert_arguments_typed(P, converted...)
-        if typed isa MakieCore.ConversionError
-            return converted, :no_success
-        elseif typed isa NamedTuple
-            return values(typed), :done
+        if typed isa NamedTuple
+            return values(typed), :converted
+        elseif typed isa MakieCore.ConversionError
+            return converted, :needs_conversion
         elseif typed isa NoConversion
-            return converted, :not_overloaded
+            return converted, :no_typed_conversion
         else
             error("convert_arguments_typed returned an invalid type: $(typed)")
         end
     end
 end
 
+apply_axis_conversion(P, args...) = false
 
-function conversion_pipeline(P, args_obs, kw_obs, plot_attributes)
+function conversion_pipeline(P, args_obs, user_attributes, plot_attributes)
     args = [to_value(x) for x in args_obs]
-    kw = to_value(kw_obs)
+    used_attrs = used_attributes(P, args...)
+    kw = [Pair{Symbol, Any}(k, to_value(user_attributes[k])) for k in used_attrs if haskey(user_attributes, k)]
+    conversion_functions = []
+    arg1 = map(args) do arg
+        can_axis_convert(P, arg) ? axis_convert : nothing
+    end
+    push!(conversion_functions, arg1)
+    converted = apply_conversion(arg1, args...)
+
     converted, status = no_obs_conversion(P, args, kw)
-    if status == :no_success
+    if status === :converted
+        return converted
+    elseif status === :needs_conversion
         args_obs = axis_convert(plot_attributes, args_obs...)
         args = map(to_value, args_obs)
+        if used_attrs === ()
+            args_converted = convert_arguments(P, args...)
+        else
+            args_converted = convert_arguments(P, args...; kw...)
+        end
+    else
+        args = converted
     end
+
+
+
+    return converted, status = no_obs_conversion(P, args, kw)
 end
 
 
@@ -217,7 +238,7 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     args_no_obs = [to_value(x) for x in args]
     used_attrs = used_attributes(P, args_no_obs...)
     kw = [Pair{Symbol, Any}(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
-    converted, status = simple_conversion(P, args_no_obs, kw)
+    converted, status = no_obs_conversion(P, args_no_obs, kw)
 
     if status == :no_success && Func != text
         args_obs = axis_convert(plot_attributes, args_obs...)
@@ -230,17 +251,13 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
         args_converted = convert_arguments(P, args_no_obs...; kw...)
     end
 
-    preconvert_attr = Attributes()
-    PNew, converted = apply_convert!(P, preconvert_attr, args_converted)
+    attributes = Attributes()
+    PNew, converted = apply_convert!(P, attributes, args_converted)
 
     ArgTyp = MakieCore.argtypes(converted)
     converted_obs = map(Observable, converted)
     FinalPlotFunc = plotfunc(plottype(PNew, converted...))
-    plot = Plot{FinalPlotFunc,ArgTyp}(plot_attributes, args_obs, converted_obs)
-    for (k, v) in preconvert_attr
-        attributes(plot.attributes)[k] = v
-    end
-    return plot
+    return Plot{FinalPlotFunc,ArgTyp}(plot_attributes, args_obs, converted_obs, attributes)
 end
 
 """

@@ -143,6 +143,12 @@ function Base.show(io::IO, ce::ConversionError)
     """)
 end
 
+
+can_dim_convert(plot_type, argtype) = false
+can_dim_convert(argtype) = false
+can_dim_convert_eltype(plot_type, argtype) = false
+
+
 """
     @convert_target(expr)
 Allows to define a conversion target for a plot type, so that `convert_arguments` can be checked properly, if it converts to the correct types.
@@ -209,6 +215,9 @@ macro convert_target(struct_expr)
             function MakieCore.convert_arguments_typed(::Type{<:$(target_name)}, $(names...))
                 $(convert_expr...)
                 return NamedTuple{($(QuoteNode.(names)...),)}(($(converted...),))
+            end
+            function MakieCore.can_dim_convert(::Type{<:$(target_name)}, arg)
+                return MakieCore.can_dim_convert(arg)
             end
         end
         return esc(expr)

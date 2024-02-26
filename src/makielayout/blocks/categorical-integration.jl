@@ -51,6 +51,8 @@ function recalculate_categories!(conversion::CategoricalConversion)
     return merge!(conversion.category_to_int[], Dict(reverse(p) for p in i2c))
 end
 
+can_dim_convert(::Type{String}) = true
+
 dim_conversion_type(::Type{String}) = CategoricalConversion(; sortby=identity)
 
 function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observable)
@@ -63,7 +65,7 @@ function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observa
     # so we introduce a placeholder observable that gets triggered when an update is needed
     # outside of category_to_int updating
     update_needed = Observable(nothing)
-    map(values_obs) do values
+    on(values_obs) do values
         new_values = Set(values)
         if new_values != prev_values
             conversion.sets[values_obs] = new_values
