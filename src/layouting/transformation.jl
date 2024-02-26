@@ -44,20 +44,20 @@ function translated(scene::Scene; kw_args...)
 end
 
 function transform!(
-        scene::Transformable;
+        t::Transformable;
         translation = Vec3f(0),
         scale = Vec3f(1),
         rotation = 0.0,
     )
-    translate!(scene, to_value(translation))
-    scale!(scene, to_value(scale))
-    rotate!(scene, to_value(rotation))
+    translate!(t, to_value(translation))
+    scale!(t, to_value(scale))
+    rotate!(t, to_value(rotation))
 end
 
 function transform!(
-        scene::Transformable, attributes::Union{Attributes, AbstractDict, NamedTuple}
+        t::Transformable, attributes::Union{Attributes, AbstractDict, NamedTuple}
     )
-    transform!(scene; attributes...)
+    transform!(t; attributes...)
 end
 
 transformation(t::Scene) = t.transformation
@@ -80,39 +80,39 @@ This is an absolute scaling, and there is no option to perform relative scaling.
 """
 scale!(t::Transformable, xyz...) = scale!(t, xyz)
 
-rotation(scene::Transformable) = transformation(scene).rotation
+rotation(t::Transformable) = transformation(t).rotation
 
-function rotate!(::Type{T}, scene::Transformable, q) where T
+function rotate!(::Type{T}, t::Transformable, q) where T
     rot = convert_attribute(q, key"rotation"())
     if T === Accum
-        rot1 = rotation(scene)[]
-        rotation(scene)[] = rot1 * rot
+        rot1 = rotation(t)[]
+        rotation(t)[] = rot1 * rot
     elseif T == Absolute
-        rotation(scene)[] = rot
+        rotation(t)[] = rot
     else
         error("Unknown transformation: $T")
     end
 end
 
 """
-    rotate!(Accum, scene::Transformable, axis_rot...)
+    rotate!(Accum, t::Transformable, axis_rot...)
 
-Apply a relative rotation to the Scene, by multiplying by the current rotation.
+Apply a relative rotation to the transformable, by multiplying by the current rotation.
 """
-rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
+rotate!(::Type{T}, t::Transformable, axis_rot...) where T = rotate!(T, t, axis_rot)
 
 """
     rotate!(t::Transformable, axis_rot::Quaternion)
     rotate!(t::Transformable, axis_rot::AbstractFloat)
     rotate!(t::Transformable, axis_rot...)
 
-Apply an absolute rotation to the Scene. Rotations are all internally converted to `Quaternion`s.
+Apply an absolute rotation to the transformable. Rotations are all internally converted to `Quaternion`s.
 """
-rotate!(scene::Transformable, axis_rot...) = rotate!(Absolute, scene, axis_rot)
-rotate!(scene::Transformable, axis_rot::Quaternion) = rotate!(Absolute, scene, axis_rot)
-rotate!(scene::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, scene, axis_rot)
+rotate!(t::Transformable, axis_rot...) = rotate!(Absolute, t, axis_rot)
+rotate!(t::Transformable, axis_rot::Quaternion) = rotate!(Absolute, t, axis_rot)
+rotate!(t::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, t, axis_rot)
 
-translation(scene::Transformable) = transformation(scene).translation
+translation(t::Transformable) = transformation(t).translation
 
 """
     Accum
@@ -127,12 +127,12 @@ This is the default setting.
 """
 struct Absolute end
 
-function translate!(::Type{T}, scene::Transformable, t) where T
-    offset = to_ndim(Vec3f, Float32.(t), 0)
+function translate!(::Type{T}, t::Transformable, trans) where T
+    offset = to_ndim(Vec3f, Float32.(trans), 0)
     if T === Accum
-        translation(scene)[] = translation(scene)[] .+ offset
+        translation(t)[] = translation(t)[] .+ offset
     elseif T === Absolute
-        translation(scene)[] = offset
+        translation(t)[] = offset
     else
         error("Unknown translation type: $T")
     end
@@ -143,33 +143,33 @@ end
 
 Apply an absolute translation to the given `Transformable` (a Scene or Plot), translating it to `x, y, z`.
 """
-translate!(scene::Transformable, xyz::VecTypes) = translate!(Absolute, scene, xyz)
-translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
+translate!(t::Transformable, xyz::VecTypes) = translate!(Absolute, t, xyz)
+translate!(t::Transformable, xyz...) = translate!(Absolute, t, xyz)
 
 """
     translate!(Accum, t::Transformable, xyz...)
 
 Translate the given `Transformable` (a Scene or Plot), relative to its current position.
 """
-translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
+translate!(::Type{T}, t::Transformable, xyz...) where T = translate!(T, t, xyz)
 
-function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
+function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
     plane, dimval = string(x[1]), Float32(x[2])
     if length(plane) != 2 || (!all(x-> x in ('x', 'y', 'z'), plane))
         error("plane needs to define a 2D plane in xyz. It should only contain 2 symbols out of (:x, :y, :z). Found: $plane")
     end
     if all(x-> x in ('x', 'y'), plane) # xy plane
-        translate!(scene, 0, 0, dimval)
+        translate!(t, 0, 0, dimval)
     elseif all(x-> x in ('x', 'z'), plane) # xz plane
-        rotate!(scene, Vec3f(1, 0, 0), 0.5pi)
-        translate!(scene, 0, dimval, 0)
+        rotate!(t, Vec3f(1, 0, 0), 0.5pi)
+        translate!(t, 0, dimval, 0)
     else #yz plane
         r1 = qrotation(Vec3f(0, 1, 0), 0.5pi)
         r2 = qrotation(Vec3f(1, 0, 0), 0.5pi)
-        rotate!(scene,  r2 * r1)
-        translate!(scene, dimval, 0, 0)
+        rotate!(t,  r2 * r1)
+        translate!(t, dimval, 0, 0)
     end
-    scene
+    t
 end
 
 transformationmatrix(x) = transformation(x).model
