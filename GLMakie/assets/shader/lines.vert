@@ -25,9 +25,6 @@ out float g_lastlen;
 out int g_valid_vertex;
 out float g_thickness;
 
-vec4 getindex(sampler2D tex, int index);
-vec4 getindex(sampler1D tex, int index);
-
 vec4 to_vec4(vec3 v){return vec4(v, 1);}
 vec4 to_vec4(vec2 v){return vec4(v, 0, 1);}
 

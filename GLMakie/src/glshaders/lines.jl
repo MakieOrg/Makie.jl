@@ -54,7 +54,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         fast         = false
         shader              = GLVisualizeShader(
             screen,
-            "fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag",
+            "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
@@ -102,7 +102,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         transparency        = false
         shader              = GLVisualizeShader(
             screen,
-            "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom",
+            "fragment_output.frag", "line_segment.vert", "line_segment.geom",
             "lines.frag",
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
