@@ -207,7 +207,7 @@ struct AttributeSet
     set::Set{Symbol}
 end
 AttributeSet(args::Symbol...) = AttributeSet(Set([args...]))
-Base.merge!(a::AttributeSet, b::AttributeSet) = (merge!(a.set, b.set); a)
+Base.merge!(a::AttributeSet, b::AttributeSet) = (union!(a.set, b.set); a)
 
 macro documented_attributes(attrblock)
     if !(attrblock isa Expr && attrblock.head === :block)
