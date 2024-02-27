@@ -100,14 +100,14 @@ function colormap_attributes(attr)
     )
 end
 
-function mixin_colormap_attributes()
-    quote
+function colormap_attributes()
+    @documented_attributes begin
         """
         Sets the colormap that is sampled for numeric `color`s.
         `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils.
         To see all available color gradients, you can call `Makie.available_gradients()`.
         """
-        colormap = @inherit :colormap :viridis
+        colormap = :colormap
         """
         The color transform function. Can be any function, but only works well together with `Colorbar` for `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
         """
@@ -118,6 +118,9 @@ function mixin_colormap_attributes()
         lowclip = automatic
         "The color for any value above the colorrange."
         highclip = automatic
+        """
+        The color NaN gets mapped to
+        """
         nan_color = :transparent
         "The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied."
         alpha = 1.0
@@ -155,7 +158,7 @@ function shading_attributes(attr)
 end
 
 function mixin_shading_attributes()
-    quote
+    @documented_attributes begin
         "Sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie."
         shading = automatic
         "Sets how strongly the red, green and blue channel react to diffuse (scattered) light."
@@ -189,13 +192,15 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
 
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 """
-@recipe Image x y image begin
-    "Sets whether colors should be interpolated between pixels."
-    interpolate = true
-    @mixin mixin_generic_plot_attributes
-    @mixin mixin_colormap_attributes
-    fxaa = false
-    colormap = [:black, :white]
+@recipe(Image, x, y, image) do scene
+    attr = @documented_attributes begin
+        "Sets whether colors should be interpolated between pixels."
+        interpolate = true
+        fxaa = false
+        colormap = [:black, :white]
+    end
+    merge!(attr, colormap_attributes())
+    return attr
 end
 
 """
@@ -248,7 +253,7 @@ Available algorithms are:
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
 @recipe Volume x y z volume begin
-    "Sets the volume algorithm that is used."    
+    "Sets the volume algorithm that is used."
     algorithm = :mip
     "Sets the range of values picked up by the IsoValue algorithm."
     isovalue = 0.5

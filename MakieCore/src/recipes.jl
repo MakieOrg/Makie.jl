@@ -197,6 +197,34 @@ function attribute_names end
 
 attribute_names(_) = nothing
 
+struct DocumentedAttributes
+    names::Vector{Symbol}
+    defaults::Vector{Any}
+    docs::Vector{String}
+end
+
+struct AttributeSet
+    set::Set{Symbol}
+end
+AttributeSet(args::Symbol...) = AttributeSet(Set([args...]))
+Base.merge!(a::AttributeSet, b::AttributeSet) = (merge!(a.set, b.set); a)
+
+macro documented_attributes(attrblock)
+    if !(attrblock isa Expr && attrblock.head === :block)
+        throw(ArgumentError("Last argument is not a begin end block"))
+    end
+    attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
+    global_var = QuoteNode(gensym("DOCUMENTED_ATTRIBUTES"))
+    quote
+        setproperty!(MakieCore, $(global_var), MakieCore.DocumentedAttributes(
+            $([a.symbol for a in attrs]),
+            $([a.default for a in attrs]),
+            $([a.docs for a in attrs])
+        ))
+        MakieCore.AttributeSet($(global_var))
+    end
+end
+
 macro recipe(Tsym::Symbol, args...)
 
     funcname_sym = to_func_name(Tsym)
@@ -281,7 +309,7 @@ macro recipe(Tsym::Symbol, args...)
 
         docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(funcname_sym)), user_docstring)
         @doc docstring_modified $funcname_sym
-        
+
         export $PlotType, $funcname, $funcname!
     end
 
@@ -344,7 +372,7 @@ function extract_attribute_metadata(arg)
         docs = arg.args[3]
         attr = arg.args[4]
     else
-        docs = nothing
+        docs = ""
         attr = arg
     end
 
