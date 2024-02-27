@@ -285,7 +285,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
   Otherwise, one can set one color per line point by passing a `Vector{<:Colorant}`, or one colorant for the whole line. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `linestyle::Union{Nothing, Symbol, Linestyle} = nothing` sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`.
-- `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
+- `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units. Note that linewidth may change between NaN-separated lines, but not per-point.
 
 $(Base.Docs.doc(colormap_attributes!))
 
