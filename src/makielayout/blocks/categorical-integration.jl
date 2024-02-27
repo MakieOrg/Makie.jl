@@ -51,9 +51,12 @@ function recalculate_categories!(conversion::CategoricalConversion)
     return merge!(conversion.category_to_int[], Dict(reverse(p) for p in i2c))
 end
 
-can_dim_convert(::Type{String}) = true
+MakieCore.can_axis_convert_type(::Type{Categorical}) = true
 
-dim_conversion_type(::Type{String}) = CategoricalConversion(; sortby=identity)
+dim_conversion_type(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
+
+get_values(x) = x
+get_values(x::Categorical) = x.values
 
 function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observable)
     prev_values = Set{Any}()
@@ -65,8 +68,8 @@ function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observa
     # so we introduce a placeholder observable that gets triggered when an update is needed
     # outside of category_to_int updating
     update_needed = Observable(nothing)
-    on(values_obs) do values
-        new_values = Set(values)
+    on(values_obs; update=true) do values
+        new_values = Set(get_values(values))
         if new_values != prev_values
             conversion.sets[values_obs] = new_values
             prev_values = new_values
@@ -84,7 +87,7 @@ function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observa
     # So now we update when either category_to_int changes, or
     # when values changes and an update is needed
     values_num = map(update_needed, conversion.category_to_int) do _, categories
-        return getindex.((categories,), values_obs[])
+        return getindex.((categories,), get_values(values_obs[]))
     end
 
     return values_num

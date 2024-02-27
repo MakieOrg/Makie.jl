@@ -63,9 +63,10 @@ struct DateTimeConversion
 end
 
 dim_conversion_type(::Type{<: Dates.TimeType}) = DateTimeConversion()
+MakieCore.can_axis_convert_type(::Type{<: Dates.TimeType}) = true
 
 function convert_axis_dim(conversion::DateTimeConversion, values::Observable)
-    eltype = get_element_type(values[])
+    eltype = MakieCore.get_element_type(values[])
     T, mini = conversion.type[]
     if T <: Automatic
         new_type = eltype

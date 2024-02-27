@@ -210,7 +210,8 @@ function get_ticks(conversion::UnitfulTicks, ticks, scale, formatter, vmin, vmax
     return tick_vals_preferred, labels
 end
 
-dim_conversion_type(::Type{<: Union{Period, Unitful.Quantity, Unitful.Units}}) = UnitfulTicks()
+dim_conversion_type(::Type{<:Union{Period,Unitful.Quantity,Unitful.Units}}) = UnitfulTicks()
+MakieCore.can_axis_convert_type(::Type{<:Union{Period,Unitful.Quantity,Unitful.Units}}) = true
 
 function convert_axis_dim(conversion::UnitfulTicks, values::Observable)
     if conversion.unit[] isa Automatic

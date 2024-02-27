@@ -106,14 +106,7 @@ const atomic_functions = (
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
 
-get_element_type(::T) where {T} = T
-function get_element_type(arr::AbstractArray{T}) where {T}
-    if T == Any
-        return mapreduce(typeof, promote_type, arr)
-    else
-        return T
-    end
-end
+
 
 dim_conversion_type(::Type{<:Number}) = automatic
 dim_conversion_type(any) = automatic
@@ -121,31 +114,34 @@ dim_conversion_type(any) = automatic
 convert_from_args(conversion, values) = conversion
 
 function convert_from_args(::Automatic, values)
-    return dim_conversion_type(get_element_type(values))
+    return dim_conversion_type(MakieCore.get_element_type(values))
 end
 
 # single arguments gets ignored for now
 # TODO: add similar overloads as convert_arguments for the most common ones that work with units
-axis_convert(::Dict, args::Observable...) = Any[args...]
+axis_convert(P, ::Dict, args::Observable...) = Any[args...]
 # we leave Z + n alone for now!
-function axis_convert(attr::Dict, x::Observable, y::Observable, z::Observable, args...)
+function axis_convert(P, attr::Dict, x::Observable, y::Observable, z::Observable, args...)
     return Any[axis_convert(attr, x, y)..., z, args...]
 end
 
 convert_axis_dim(convert, value) = value
 
-function axis_convert(attributes::Dict, x::Observable, y::Observable)
-    xconvert = to_value(get(attributes, :x_dim_convert, automatic))
-    xconvert_new = convert_from_args(xconvert, x[])
-    attributes[:x_dim_convert] = xconvert_new
-    xconv = convert_axis_dim(xconvert_new, x)
+function axis_convert(P, attributes::Dict, x::Observable, y::Observable)
+    if MakieCore.can_axis_convert(P, x[]) || haskey(attributes, :x_dim_convert)
+        xconvert = to_value(get(attributes, :x_dim_convert, automatic))
+        xconvert_new = convert_from_args(xconvert, x[])
+        attributes[:x_dim_convert] = xconvert_new
+        x = convert_axis_dim(xconvert_new, x)
+    end
+    if MakieCore.can_axis_convert(P, y[]) || haskey(attributes, :y_dim_convert)
+        yconvert = to_value(get(attributes, :y_dim_convert, automatic))
+        yconvert_new = convert_from_args(yconvert, y[])
+        attributes[:y_dim_convert] = yconvert_new
+        y = convert_axis_dim(yconvert_new, y)
+    end
 
-    yconvert = to_value(get(attributes, :y_dim_convert, automatic))
-    yconvert_new = convert_from_args(yconvert, y[])
-    attributes[:y_dim_convert] = yconvert_new
-    yconv = convert_axis_dim(yconvert_new, y)
-
-    return Any[xconv, yconv]
+    return Any[x, y]
 end
 
 function no_obs_conversion(P, args, kw)
@@ -169,95 +165,76 @@ end
 
 apply_axis_conversion(P, args...) = false
 
-function conversion_pipeline(P, args_obs, user_attributes, plot_attributes)
+function conversion_pipeline(P, args_obs, user_attributes, plot_attributes, recursion=1)
+    if recursion == 3
+        return P, args_obs
+    end
     args = [to_value(x) for x in args_obs]
+
     used_attrs = used_attributes(P, args...)
     kw = [Pair{Symbol, Any}(k, to_value(user_attributes[k])) for k in used_attrs if haskey(user_attributes, k)]
-    conversion_functions = []
-    arg1 = map(args) do arg
-        can_axis_convert(P, arg) ? axis_convert : nothing
-    end
-    push!(conversion_functions, arg1)
-    converted = apply_conversion(arg1, args...)
 
+    args_obs = axis_convert(P, user_attributes, args_obs...)
+    args = [to_value(x) for x in args_obs]
     converted, status = no_obs_conversion(P, args, kw)
+
     if status === :converted
-        return converted
-    elseif status === :needs_conversion
-        args_obs = axis_convert(plot_attributes, args_obs...)
-        args = map(to_value, args_obs)
-        if used_attrs === ()
-            args_converted = convert_arguments(P, args...)
-        else
-            args_converted = convert_arguments(P, args...; kw...)
+        new_args_obs = [Observable(arg) for arg in converted]
+        onany(args_obs...) do args...
+            conv, status = no_obs_conversion(P, args, kw)
+            for (obs, arg) in zip(new_args_obs, conv)
+                obs[] = arg
+            end
+            return
         end
+        return P, new_args_obs
+    elseif status === :needs_conversion
+        new_args_obs = [Observable(arg) for arg in converted]
+        onany(args_obs...) do args...
+            conv, status = no_obs_conversion(P, args, kw)
+            for (obs, arg) in zip(new_args_obs, conv)
+                obs[] = arg
+            end
+            return
+        end
+        return P, axis_convert(P, user_attributes, new_args_obs...)
+        return conversion_pipeline(P, new_args_obs, user_attributes, plot_attributes, recursion + 1)
     else
-        args = converted
+        P, converted2 = apply_convert!(P, plot_attributes, converted)
+        new_args_obs = [Observable(arg) for arg in converted2]
+        onany(args_obs...) do args...
+            conv, status = no_obs_conversion(P, args, kw)
+            P, converted3 = apply_convert!(P, plot_attributes, conv)
+            for (obs, arg) in zip(new_args_obs, converted3)
+                obs[] = arg
+            end
+            return
+        end
+        return P, new_args_obs
     end
-
-
-
-    return converted, status = no_obs_conversion(P, args, kw)
 end
 
 
 function convert_arguments!(plot::Plot{F}) where {F}
-    P = Plot{F,Any}
-    function on_update(kw, args...)
-        nt = convert_arguments(P, args...; kw...)
-        pnew, converted = apply_convert!(P, plot.attributes, nt)
-        @assert plotfunc(pnew) === F "Changed the plot type in convert_arguments. This isn't allowed!"
-        for (obs, new_val) in zip(plot.converted, converted)
-            obs.val = new_val
-        end
-        foreach(notify, plot.converted)
-    end
-    used_attrs = used_attributes(P, to_value.(plot.args)...)
-    convert_keys = intersect(used_attrs, keys(plot.attributes))
-    kw_signal = if isempty(convert_keys)
-        # lift(f) isn't supported so we need to catch the empty case
-        Observable(())
-    else
-        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
-        lift((args...) -> Pair.(convert_keys, args), plot, pop!.(plot.attributes, convert_keys)...)
-    end
-    onany(on_update, plot, kw_signal, plot.args...)
+
     return
 end
 
 
-
-function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
+function Plot{Func}(args::Tuple, user_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(args) && first(args) isa Attributes
-        merge!(plot_attributes, attributes(first(args)))
-        return Plot{Func}(Base.tail(args), plot_attributes)
+        merge!(user_attributes, attributes(first(args)))
+        return Plot{Func}(Base.tail(args), user_attributes)
     end
     P = Plot{Func}
-    args_obs = Any[convert(Observable, x) for x in args]
-    args_no_obs = [to_value(x) for x in args]
-    used_attrs = used_attributes(P, args_no_obs...)
-    kw = [Pair{Symbol, Any}(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
-    converted, status = no_obs_conversion(P, args_no_obs, kw)
-
-    if status == :no_success && Func != text
-        args_obs = axis_convert(plot_attributes, args_obs...)
-        args_no_obs = map(to_value, args_obs)
-    end
-
-    if used_attrs === ()
-        args_converted = convert_arguments(P, args_no_obs...)
-    else
-        args_converted = convert_arguments(P, args_no_obs...; kw...)
-    end
-
-    attributes = Attributes()
-    PNew, converted = apply_convert!(P, attributes, args_converted)
-
-    ArgTyp = MakieCore.argtypes(converted)
-    converted_obs = map(Observable, converted)
-    FinalPlotFunc = plotfunc(plottype(PNew, converted...))
-    return Plot{FinalPlotFunc,ArgTyp}(plot_attributes, args_obs, converted_obs, attributes)
+    args_obs = Any[x isa Observable ? x : Observable{Any}(x)  for x in args]
+    plot_attributes = Attributes()
+    PNew, converted_obs = conversion_pipeline(P, args_obs, user_attributes, plot_attributes)
+    args = map(to_value, converted_obs)
+    ArgTyp = MakieCore.argtypes((args...,))
+    FinalPlotFunc = plotfunc(plottype(PNew, args...))
+    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, args_obs, (converted_obs...,), plot_attributes)
 end
 
 """

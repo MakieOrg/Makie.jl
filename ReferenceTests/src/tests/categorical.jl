@@ -1,8 +1,10 @@
 using Test
 
+using Makie: Categorical
+
 @reference_test "multi plot, error with non categorical" begin
-    f, ax, p = scatter(1:4, ["a", "b", "c", "a"])
-    scatter!(ax, 1:4, ["b", "x", "a", "c"])
+    f, ax, p = scatter(1:4, Categorical(["a", "b", "c", "a"]))
+    scatter!(ax, 1:4, Categorical(["b", "x", "a", "c"]))
     # TODO, throw better error (not that easy since we need to check for sortability)
     # @test_throws MethodError scatter!(ax, 1:4, 1:4) # error
     f
@@ -18,34 +20,34 @@ end
         x_dim_convert=Makie.CategoricalConversion(),
         y_dim_convert=Makie.CategoricalConversion())
 
-    p = scatter!(ax, 1:4, ["a", "b", "c", "a"])
+    p = scatter!(ax, 1:4, Categorical(["a", "b", "c", "a"]))
     scatter!(ax, 1:4, 1:4)
     scatter!(ax, [1im, 2im], 1:2)
     f
 end
 
 @reference_test "new random categories, interactive" begin
-    obs = Observable(["o", "m", "d", "p", "p"])
-    obs2 = Observable(["q", "f", "y", "e", "n"])
+    obs = Observable(Categorical(["o", "m", "d", "p", "p"]))
+    obs2 = Observable(Categorical(["q", "f", "y", "e", "n"]))
     f, ax, pl = scatter(1:5, obs)
     scatter!(1:5, obs2)
-    obs[] = ["f", "z", "a", "u", "z"]
-    obs2[] = ["f", "s", "n", "i", "o"]
+    obs[] = Categorical(["f", "z", "a", "u", "z"])
+    obs2[] = Categorical(["f", "s", "n", "i", "o"])
     autolimits!(ax)
     f
 end
 
 @reference_test "changing order of categorical values" begin
-    obs = Observable(["a", "a", "b", "b"])
+    obs = Observable(Categorical(["a", "a", "b", "b"]))
     f, ax, p = scatter(1:4, obs)
-    obs[] = ["a", "b", "a", "b"]
+    obs[] = Categorical(["a", "b", "a", "b"])
     f
 end
 
 @reference_test "new categories, inbetween old values" begin
-    obs = Observable(["a", "c", "e", "g"])
+    obs = Observable(Categorical(["a", "c", "e", "g"]))
     f, ax, p = scatter(1:4, obs)
-    obs[] = ["b", "d", "f", "h"]
+    obs[] = Categorical(["b", "d", "f", "h"])
     f
 end
 

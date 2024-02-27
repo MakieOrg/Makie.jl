@@ -136,17 +136,29 @@ end
 
 function Base.show(io::IO, ce::ConversionError)
     println(io, """
-    Can't convert argument $($(string(name)))::$(typeof($name)) to target type $($TargetType).
+       Can't convert argument $(ce.name)::$(typeof(ce.arg)) to target type $(ce.type).
     Either define:
-        convert_arguments(::Type{<: $($target_name)}, $(join(arg_types, ", "))) where {$($targs...)}) = ...
-    Or use a type that can get converted to $($TargetType).
+
     """)
 end
 
+get_element_type(::T) where {T} = T
+function get_element_type(arr::AbstractArray{T}) where {T}
+    if T == Any
+        return mapreduce(typeof, promote_type, arr)
+    else
+        return T
+    end
+end
 
-can_dim_convert(plot_type, argtype) = false
-can_dim_convert(argtype) = false
-can_dim_convert_eltype(plot_type, argtype) = false
+can_axis_convert_type(::Type) = false
+has_typed_convert(::Type) = false
+
+function can_axis_convert(P::Type{<: Plot}, argtype)
+    typed_convert = has_typed_convert(P) || has_typed_convert(typeof(conversion_trait(P)))
+    ax_convert = can_axis_convert_type(get_element_type(argtype))
+    return typed_convert && ax_convert
+end
 
 
 """
@@ -216,9 +228,7 @@ macro convert_target(struct_expr)
                 $(convert_expr...)
                 return NamedTuple{($(QuoteNode.(names)...),)}(($(converted...),))
             end
-            function MakieCore.can_dim_convert(::Type{<:$(target_name)}, arg)
-                return MakieCore.can_dim_convert(arg)
-            end
+            MakieCore.has_typed_convert(::Type{<:$(target_name)}) = true
         end
         return esc(expr)
     end
