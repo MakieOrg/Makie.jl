@@ -11,7 +11,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 layout(lines_adjacency) in;
 layout(triangle_strip, max_vertices = 4) out;
 
-in vec4 g_color[];
+in {{stripped_color_type}} g_color[];
 in float g_lastlen[];
 in uvec2 g_id[];
 in int g_valid_vertex[];
@@ -29,8 +29,9 @@ flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out vec2 f_discard_limit;
 flat out uvec2 f_id;
-flat out vec4 f_color1;
-flat out vec4 f_color2;
+flat out {{stripped_color_type}} f_color1;
+flat out {{stripped_color_type}} f_color2;
+flat out float f_alpha_weight;
 flat out float f_cumulative_length;
 
 out vec3 o_view_pos;
@@ -354,8 +355,7 @@ void main(void)
     f_color2 = g_color[2];
 
     // handle very thin lines by adjusting alpha rather than linewidth/sdfs
-    f_color1.a *= min(1.0, g_thickness[1] / AA_RADIUS);
-    f_color2.a *= min(1.0, g_thickness[1] / AA_RADIUS);
+    f_alpha_weight = min(1.0, g_thickness[1] / AA_RADIUS);
 
     // for uv's
     f_cumulative_length = g_lastlen[1];

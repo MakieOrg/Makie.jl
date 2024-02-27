@@ -469,6 +469,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
                 output
             end
         end
+
+        if haskey(data, :intensity)
+            data[:color] = pop!(data, :intensity)
+        end
+
         return draw_lines(screen, positions, data)
     end
 end

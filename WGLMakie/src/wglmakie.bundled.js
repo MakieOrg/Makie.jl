@@ -21319,7 +21319,7 @@ function deserialize_uniforms(data) {
 function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     const attribute_decl = attributes_to_type_declaration(attributes);
     const uniform_decl = uniforms_to_type_declaration(uniforms);
-    attribute_type(attributes.color_start) || uniform_type(uniforms.color_start);
+    const color = attribute_type(attributes.color_start) || uniform_type(uniforms.color_start);
     if (is_linesegments) {
         return `precision mediump int;
             precision highp float;
@@ -21339,8 +21339,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_pattern_overwrite;  // invalid / not needed
             flat out vec2 f_discard_limit;      // invalid / not needed
             flat out uint f_instance_id;
-            flat out vec4 f_color1;
-            flat out vec4 f_color2;
+            flat out ${color} f_color1;
+            flat out ${color} f_color2;
+            flat out float f_alpha_weight;
             flat out float f_cumulative_length;
 
             ${uniform_decl}
@@ -21348,45 +21349,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Constants
             const float AA_RADIUS = 0.8;
             const float AA_THICKNESS = 2.0 * AA_RADIUS;
-
-
-            ////////////////////////////////////////////////////////////////////////
-            // Color handling
-            ////////////////////////////////////////////////////////////////////////
-
-
-            vec4 get_color_from_cmap(float value, sampler2D colormap, vec2 colorrange) {
-                float cmin = colorrange.x;
-                float cmax = colorrange.y;
-                if (value <= cmax && value >= cmin) {
-                    // in value range, continue!
-                } else if (value < cmin) {
-                    return lowclip;
-                } else if (value > cmax) {
-                    return highclip;
-                } else {
-                    // isnan CAN be broken (of course) -.-
-                    // so if outside value range and not smaller/bigger min/max we assume NaN
-                    return nan_color;
-                }
-                float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
-                // 1/0 corresponds to the corner of the colormap, so to properly interpolate
-                // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
-                float stepsize = 1.0 / float(textureSize(colormap, 0));
-                i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
-                return texture(colormap, vec2(i01, 0.0));
-            }
-
-            vec4 get_color(float color, sampler2D colormap, vec2 colorrange) {
-                return get_color_from_cmap(color, colormap, colorrange);
-            }
-
-            vec4 get_color(vec4 color, bool colormap, bool colorrange) {
-                return color;
-            }
-            vec4 get_color(vec3 color, bool colormap, bool colorrange) {
-                return vec4(color, 1.0);
-            }
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -21495,10 +21457,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linelength = segment_length;
 
                 // for color sampling
-                f_color1 = get_color(color_start, colormap, colorrange);
-                f_color2 = get_color(color_end,   colormap, colorrange);
-                f_color1.a *= min(1.0, width / AA_RADIUS);
-                f_color2.a *= min(1.0, width / AA_RADIUS);
+                f_color1 = color_start;
+                f_color2 = color_end;
+                f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
                 gl_Position = vec4(2.0 * point.xy / (px_per_unit * resolution) - 1.0, point.z, 1.0);
@@ -21522,8 +21483,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_pattern_overwrite;
             flat out vec2 f_discard_limit;
             flat out uint f_instance_id;
-            flat out vec4 f_color1;
-            flat out vec4 f_color2;
+            flat out ${color} f_color1;
+            flat out ${color} f_color2;
+            flat out float f_alpha_weight;
             flat out float f_cumulative_length;
 
             ${uniform_decl}
@@ -21614,45 +21576,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 }
 
                 return adjust;
-            }
-
-
-            ////////////////////////////////////////////////////////////////////////
-            // Color handling
-            ////////////////////////////////////////////////////////////////////////
-
-
-            vec4 get_color_from_cmap(float value, sampler2D colormap, vec2 colorrange) {
-                float cmin = colorrange.x;
-                float cmax = colorrange.y;
-                if (value <= cmax && value >= cmin) {
-                    // in value range, continue!
-                } else if (value < cmin) {
-                    return lowclip;
-                } else if (value > cmax) {
-                    return highclip;
-                } else {
-                    // isnan CAN be broken (of course) -.-
-                    // so if outside value range and not smaller/bigger min/max we assume NaN
-                    return nan_color;
-                }
-                float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
-                // 1/0 corresponds to the corner of the colormap, so to properly interpolate
-                // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
-                float stepsize = 1.0 / float(textureSize(colormap, 0));
-                i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
-                return texture(colormap, vec2(i01, 0.0));
-            }
-
-            vec4 get_color(float color, sampler2D colormap, vec2 colorrange) {
-                return get_color_from_cmap(color, colormap, colorrange);
-            }
-
-            vec4 get_color(vec4 color, bool colormap, bool colorrange) {
-                return color;
-            }
-            vec4 get_color(vec3 color, bool colormap, bool colorrange) {
-                return vec4(color, 1.0);
             }
 
 
@@ -21913,10 +21836,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linelength = max(1.0, segment_length - shape_factor * halfwidth * (extrusion[0] - extrusion[1]));
 
                 // for color sampling
-                f_color1 = get_color(color_start, colormap, colorrange);
-                f_color2 = get_color(color_end,   colormap, colorrange);
-                f_color1.a *= min(1.0, width / AA_RADIUS);
-                f_color2.a *= min(1.0, width / AA_RADIUS);
+                f_color1 = color_start;
+                f_color2 = color_end;
+                f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
                 gl_Position = vec4(2.0 * point.xy / (px_per_unit * resolution) - 1.0, point.z, 1.0);
@@ -21928,9 +21850,15 @@ function lines_fragment_shader(uniforms, attributes) {
     const color_uniforms = filter_by_key(uniforms, [
         "picking",
         "pattern",
-        "pattern_length"
+        "pattern_length",
+        "colorrange",
+        "colormap",
+        "nan_color",
+        "highclip",
+        "lowclip"
     ]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
+    const color = attribute_type(attributes.color_start) || uniform_type(uniforms.color_start);
     return `
     // uncomment for debug rendering
     // #define DEBUG
@@ -21951,8 +21879,9 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in vec4 f_pattern_overwrite;
     flat in vec2 f_extrusion;
     flat in vec2 f_discard_limit;
-    flat in vec4 f_color1;
-    flat in vec4 f_color2;
+    flat in ${color} f_color1;
+    flat in ${color} f_color2;
+    flat in float f_alpha_weight;
     flat in uint f_instance_id;
     flat in float f_cumulative_length;
 
@@ -21970,7 +21899,51 @@ function lines_fragment_shader(uniforms, attributes) {
         return smoothstep(threshold-AA_RADIUS, threshold+AA_RADIUS, value);
     }
 
+
+    ////////////////////////////////////////////////////////////////////////
+    // Color handling
+    ////////////////////////////////////////////////////////////////////////
+
+
+    vec4 get_color_from_cmap(float value, sampler2D colormap, vec2 colorrange) {
+        float cmin = colorrange.x;
+        float cmax = colorrange.y;
+        if (value <= cmax && value >= cmin) {
+            // in value range, continue!
+        } else if (value < cmin) {
+            return lowclip;
+        } else if (value > cmax) {
+            return highclip;
+        } else {
+            // isnan CAN be broken (of course) -.-
+            // so if outside value range and not smaller/bigger min/max we assume NaN
+            return nan_color;
+        }
+        float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+        // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+        // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+        float stepsize = 1.0 / float(textureSize(colormap, 0));
+        i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+        return texture(colormap, vec2(i01, 0.0));
+    }
+
+    vec4 get_color(float color, sampler2D colormap, vec2 colorrange) {
+        return get_color_from_cmap(color, colormap, colorrange);
+    }
+
+    vec4 get_color(vec4 color, bool colormap, bool colorrange) {
+        return color;
+    }
+    vec4 get_color(vec3 color, bool colormap, bool colorrange) {
+        return vec4(color, 1.0);
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////
     // Pattern sampling
+    ////////////////////////////////////////////////////////////////////////
+
+
     float get_pattern_sdf(sampler2D pattern, vec2 uv){
 
         // f_pattern_overwrite.x
@@ -22068,9 +22041,9 @@ function lines_fragment_shader(uniforms, attributes) {
         // f_start_length.y is the distance between the edges of this segment, in v1 direction
         // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
         float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
-        color = f_color1 + factor * (f_color2 - f_color1);
+        color = get_color(f_color1 + factor * (f_color2 - f_color1), colormap, colorrange);
 
-        color.a *= aastep(0.0, -sdf);
+        color.a *= aastep(0.0, -sdf) * f_alpha_weight;
     #endif
 
     #ifdef DEBUG

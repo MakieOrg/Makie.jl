@@ -22,14 +22,21 @@ flat in float f_linewidth;
 flat in vec4 f_pattern_overwrite;
 flat in vec2 f_extrusion;
 flat in vec2 f_discard_limit;
-flat in vec4 f_color1;
-flat in vec4 f_color2;
+flat in {{stripped_color_type}} f_color1;
+flat in {{stripped_color_type}} f_color2;
+flat in float f_alpha_weight;
 flat in uvec2 f_id;
 flat in float f_cumulative_length;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;
 uniform bool fxaa;
+
+{{color_map_type}} color_map;
+{{color_norm_type}} color_norm;
+uniform vec4 highclip;
+uniform vec4 lowclip;
+uniform vec4 nan_color;
 
 // Half width of antialiasing smoothstep
 const float AA_RADIUS = 0.8;
@@ -38,7 +45,49 @@ float aastep(float threshold1, float dist) {
     return smoothstep(threshold1-AA_RADIUS, threshold1+AA_RADIUS, dist);
 }
 
+////////////////////////////////////////////////////////////////////////
+// Color handling
+////////////////////////////////////////////////////////////////////////
+
+
+vec4 get_color_from_cmap(float value, sampler1D colormap, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
+    } else if (value < cmin) {
+        return lowclip;
+    } else if (value > cmax) {
+        return highclip;
+    } else {
+        // isnan CAN be broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return nan_color;
+    }
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(colormap, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(colormap, i01);
+}
+
+vec4 get_color(float color, sampler1D colormap, vec2 colorrange) {
+    return get_color_from_cmap(color, colormap, colorrange);
+}
+
+vec4 get_color(vec4 color, Nothing colormap, Nothing colorrange) {
+    return color;
+}
+vec4 get_color(vec3 color, Nothing colormap, Nothing colorrange) {
+    return vec4(color, 1.0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Pattern sampling
+////////////////////////////////////////////////////////////////////////////////
+
+
 float get_pattern_sdf(sampler2D pattern, vec2 uv){
     return 2.0 * f_linewidth * texture(pattern, uv).x;
 }
@@ -75,6 +124,7 @@ float get_pattern_sdf(sampler1D pattern, vec2 uv){
 float get_pattern_sdf(Nothing _, vec2 uv){
     return -10.0;
 }
+
 
 void write2framebuffer(vec4 color, uvec2 id);
 
@@ -132,7 +182,8 @@ if (!debug) {
     // f_start_length.y is the distance between the edges of this segment, in v1 direction
     // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
     float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
-    color = f_color1 + factor * (f_color2 - f_color1);
+    color = get_color(f_color1 + factor * (f_color2 - f_color1), color_map, color_norm);
+    color.a *= f_alpha_weight;
 
     if (!fxaa) {
         color.a *= aastep(0.0, -sdf);

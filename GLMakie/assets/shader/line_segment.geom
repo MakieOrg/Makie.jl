@@ -12,7 +12,7 @@ uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
 
-in vec4 g_color[];
+in {{stripped_color_type}} g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
 
@@ -28,8 +28,9 @@ flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
 flat out vec2 f_extrusion;
 flat out vec2 f_discard_limit;
-flat out vec4 f_color1;
-flat out vec4 f_color2;
+flat out {{stripped_color_type}} f_color1;
+flat out {{stripped_color_type}} f_color2;
+flat out float f_alpha_weight;
 flat out float f_cumulative_length;
 
 const float AA_RADIUS = 0.8;
@@ -76,8 +77,7 @@ void main(void)
     // constants
     f_color1 = g_color[0];
     f_color2 = g_color[1];
-    f_color1.a *= min(1.0, g_thickness[0] / AA_RADIUS);
-    f_color2.a *= min(1.0, g_thickness[0] / AA_RADIUS);
+    f_alpha_weight = min(1.0, g_thickness[0] / AA_RADIUS);
     f_linestart = 0;                // no corners so no joint extrusion to consider
     f_linelength = segment_length;  // and also no changes in line length
     f_cumulative_length = 0.0;      // resets for each new segment

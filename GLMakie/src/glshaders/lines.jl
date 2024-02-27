@@ -14,21 +14,14 @@ function sumlengths(points)
     result
 end
 
-intensity_convert(intensity, verts) = intensity
-function intensity_convert(intensity::VecOrSignal{T}, verts) where T
-    if length(to_value(intensity)) == length(to_value(verts))
-        GLBuffer(intensity)
-    else
-        Texture(intensity)
-    end
-end
-function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
-    if length(to_value(intensity)) == length(to_value(verts))
-        TextureBuffer(intensity)
-    else
-        Texture(intensity)
-    end
-end
+# because the "color_type" generated in GLAbstraction also include "uniform"
+gl_color_type_annotation(x::Observable) = gl_color_type_annotation(x.val)
+gl_color_type_annotation(::Vector{<:Real}) = "float"
+gl_color_type_annotation(::Vector{<:Makie.RGB}) = "vec3"
+gl_color_type_annotation(::Vector{<:Makie.RGBA}) = "vec4"
+gl_color_type_annotation(::Real) = "float"
+gl_color_type_annotation(::Makie.RGB) = "vec3"
+gl_color_type_annotation(::Makie.RGBA) = "vec4"
 
 @nospecialize
 function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
@@ -38,10 +31,11 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         const_lift(vec, position)
     end
 
+    color_type = gl_color_type_annotation(data[:color])
+
     @gen_defaults! data begin
         total_length::Int32 = const_lift(x-> Int32(length(x)), position)
         vertex              = p_vec => GLBuffer
-        intensity           = nothing
         color               = nothing => GLBuffer
         color_map           = nothing => Texture
         color_norm          = nothing
@@ -64,7 +58,8 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
-                "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : ""
+                "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : "",
+                "stripped_color_type" => color_type
             )
         )
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
@@ -86,11 +81,12 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
 
-    data[:intensity] = intensity_convert(intensity, vertex)
     return assemble_shader(data)
 end
 
 function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where T <: Point
+    color_type = gl_color_type_annotation(data[:color])
+
     @gen_defaults! data begin
         vertex              = positions => GLBuffer
         color               = nothing => GLBuffer
@@ -111,6 +107,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
+                "stripped_color_type" => color_type
             )
         )
         gl_primitive        = GL_LINES
