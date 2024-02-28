@@ -382,6 +382,8 @@ end
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
+connect_conversion!(ax::AbstractAxis, obs::Observable, conversion, dim) = nothing
+
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     if haskey(plot.kw, :x_dim_convert) && hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] != to_value(plot.kw[:x_dim_convert])
         ax.x_dim_convert[] = to_value(plot.kw[:x_dim_convert])

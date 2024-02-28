@@ -163,7 +163,6 @@ function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, c
     return UnitfulTicks(unit, unit isa Automatic, conversion, units_in_label, short_label)
 end
 
-connect_conversion!(ax::Axis, obs::Observable, conversion, dim) = nothing
 
 function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::UnitfulTicks, dim)
     if conversion.automatic_units
