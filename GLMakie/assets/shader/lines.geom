@@ -212,21 +212,7 @@ void main(void)
     // extends the line. First let's get some vectors we need.
 
     // Get the four vertices passed to the shader in pixel space.
-    // Without FAST_PATH the conversions happen on the CPU
-// #ifdef FAST_PATH
-//     vec4 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
-//     vec4 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
-//     vec4 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
-//     vec4 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
-// #else
-//     vec4 p0 = gl_in[0].gl_Position; // start of previous segment
-//     vec4 p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
-//     vec4 p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
-//     vec4 p3 = gl_in[3].gl_Position; // end of next segment
-// #endif
-
     // TODO: document
-
     vec3 p0, p1, p2, p3;
     {
         vec4 _p0 = gl_in[0].gl_Position; // start of previous segment
@@ -238,12 +224,10 @@ void main(void)
         if (_p1.w < 0.0) { // means behind camera
             isvalid[0] = false; // not connected
             _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
-            f_color1 = vec4(1,0,0,1);
         }
         if (_p2.w < 0.0) {
             isvalid[3] = false;
             _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
-            f_color2 = vec4(1,0,0,1);
         }
 
         p0 = screen_space(_p0); // start of previous segment
