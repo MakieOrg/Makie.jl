@@ -3,6 +3,15 @@
 ## [Unreleased]
 
 - **Breaking (sort of)** Added a new `@recipe` variant which allows documenting attributes directly where they are defined and validating that all attributes are known whenever a plot is created. This is not breaking in the sense that the API changes, but user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed.
+- **Breaking** Reworked line shaders in GLMakie and WGLMakie [#3558](https://github.com/MakieOrg/Makie.jl/pull/3558)
+  - GLMakie: Removed support for per point linewidths
+  - GLMakie: Adjusted dots (e.g. with `linestyle = :dot`) to bend across a joint
+  - GLMakie: Adjusted linestyles to scale with linewidth dynamically so that dots remain dots with changing linewidth
+  - GLMakie: Cleaned up anti-aliasing for truncated joints
+  - WGLMakie: Added support for linestyles
+  - WGLMakie: Added line joints
+  - WGLMakie: Added native anti-aliasing which generally improves quality but introduces outline artifacts in some cases (same as GLMakie)
+  - Both: Adjusted handling of thin lines which may result in different color intensities
 
 ## [0.20.8] - 2024-02-22
 

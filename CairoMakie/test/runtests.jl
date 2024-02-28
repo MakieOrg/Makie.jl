@@ -184,7 +184,8 @@ excludes = Set([
     "scatter with glow",
     "scatter with stroke",
     "heatmaps & surface",
-    "Textured meshscatter" # not yet implemented
+    "Textured meshscatter", # not yet implemented
+    "Miter Joints for line rendering", # CairoMakie does not show overlap here and extrudes lines a little more
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
