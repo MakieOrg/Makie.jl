@@ -248,7 +248,7 @@ function Plot{Func}(args::Tuple, user_attributes::Dict) where {Func}
         return Plot{Func}(Base.tail(args), user_attributes)
     end
     P = Plot{Func}
-    attr = used_attributes(P, args...)
+    attr = used_attributes(P, map(to_value, args)...)
     args_obs = Any[x isa Observable ? x : Observable{Any}(x)  for x in args]
     plot_attributes = Attributes()
     deregister = Observables.ObserverFunction[]
