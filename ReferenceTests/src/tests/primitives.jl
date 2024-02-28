@@ -544,6 +544,7 @@ end
     fig = Figure(size = (800, 400))
     chunk = reshape(UInt8[1, 0, 2, 0, 0, 0, 3, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 6, 0, 0, 0, 7, 0, 8],
                     (3, 3, 3))
+
     cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
     voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
     a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
