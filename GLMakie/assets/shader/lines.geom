@@ -85,19 +85,19 @@ vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 ////////////////////////////////////////////////////////////////////////////////
 
 
-vec2 process_pattern(Nothing pattern, bool[4] isvalid, mat2 extrusion, float halfwidth) {
+vec2 process_pattern(Nothing pattern, bool[4] isvalid, mat2 extrusion, float segment_length, float halfwidth) {
     // do not adjust stuff
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
     return vec2(0);
 }
-vec2 process_pattern(sampler2D pattern, bool[4] isvalid, mat2 extrusion, float halfwidth) {
+vec2 process_pattern(sampler2D pattern, bool[4] isvalid, mat2 extrusion, float segment_length, float halfwidth) {
     // TODO
     // This is not a case that's used at all yet. Maybe consider it in the future...
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
     return vec2(0);
 }
 
-vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float halfwidth) {
+vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float segment_length, float halfwidth) {
     // samples:
     //   -ext1  p1 ext1    -ext2 p2 ext2
     //      1   2   3        4   5   6
@@ -148,13 +148,13 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
     if (isvalid[3]) {
         // float offset = max(abs(extrusion[1][0]), halfwidth + AA_RADIUS);
         float offset = abs(extrusion[1][0]);
-        left   = width * texture(pattern, uv_scale * (g_lastlen[2] - offset)).x;
-        center = width * texture(pattern, uv_scale * (g_lastlen[2]         )).x;
-        right  = width * texture(pattern, uv_scale * (g_lastlen[2] + offset)).x;
+        left   = width * texture(pattern, uv_scale * (g_lastlen[1] + segment_length - offset)).x;
+        center = width * texture(pattern, uv_scale * (g_lastlen[1] + segment_length         )).x;
+        right  = width * texture(pattern, uv_scale * (g_lastlen[1] + segment_length + offset)).x;
 
         if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
             // default/freeze
-            f_pattern_overwrite.z = uv_scale * (g_lastlen[2] - abs(extrusion[1][0]) - AA_RADIUS);
+            f_pattern_overwrite.z = uv_scale * (g_lastlen[1] + segment_length - abs(extrusion[1][0]) - AA_RADIUS);
             f_pattern_overwrite.w = sign(center);
         } else if (left > 0) {
             // shrink backwards
@@ -164,7 +164,7 @@ vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float h
             adjust.y = 1.0;
         } else {
             // default - see above
-            f_pattern_overwrite.z = uv_scale * (g_lastlen[2] - abs(extrusion[1][0]) - AA_RADIUS);
+            f_pattern_overwrite.z = uv_scale * (g_lastlen[1] + segment_length - abs(extrusion[1][0]) - AA_RADIUS);
             f_pattern_overwrite.w = sign(center);
         }
     }
@@ -213,17 +213,44 @@ void main(void)
 
     // Get the four vertices passed to the shader in pixel space.
     // Without FAST_PATH the conversions happen on the CPU
-#ifdef FAST_PATH
-    vec3 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
-    vec3 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
-    vec3 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
-    vec3 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
-#else
-    vec3 p0 = gl_in[0].gl_Position.xyz; // start of previous segment
-    vec3 p1 = gl_in[1].gl_Position.xyz; // end of previous segment, start of current segment
-    vec3 p2 = gl_in[2].gl_Position.xyz; // end of current segment, start of next segment
-    vec3 p3 = gl_in[3].gl_Position.xyz; // end of next segment
-#endif
+// #ifdef FAST_PATH
+//     vec4 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
+//     vec4 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
+//     vec4 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
+//     vec4 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
+// #else
+//     vec4 p0 = gl_in[0].gl_Position; // start of previous segment
+//     vec4 p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
+//     vec4 p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
+//     vec4 p3 = gl_in[3].gl_Position; // end of next segment
+// #endif
+
+    // TODO: document
+
+    vec3 p0, p1, p2, p3;
+    {
+        vec4 _p0 = gl_in[0].gl_Position; // start of previous segment
+        vec4 _p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
+        vec4 _p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
+        vec4 _p3 = gl_in[3].gl_Position; // end of next segment
+
+        vec4 v1 = _p2 - _p1;
+        if (_p1.w < 0.0) { // means behind camera
+            isvalid[0] = false; // not connected
+            _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
+            f_color1 = vec4(1,0,0,1);
+        }
+        if (_p2.w < 0.0) {
+            isvalid[3] = false;
+            _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+            f_color2 = vec4(1,0,0,1);
+        }
+
+        p0 = screen_space(_p0); // start of previous segment
+        p1 = screen_space(_p1); // end of previous segment, start of current segment
+        p2 = screen_space(_p2); // end of current segment, start of next segment
+        p3 = screen_space(_p3); // end of next segment
+    }
 
     // Since we are measuring from the center of the line we will need half
     // the thickness/linewidth for most things.
@@ -322,7 +349,7 @@ void main(void)
     //   on straight line quad (adjustment becomes +1.0 or -1.0)
     // - or adjust the pattern to start/stop outside of the joint
     //   (f_pattern_overwrite is set, adjustment is 0.0)
-    vec2 adjustment = process_pattern(pattern, isvalid, halfwidth * extrusion, halfwidth);
+    vec2 adjustment = process_pattern(pattern, isvalid, halfwidth * extrusion, segment_length, halfwidth);
 
     // If adjustment != 0.0 we replace a joint by an extruded line, so we no longer
     // need to shrink the line for the joint to fit.
