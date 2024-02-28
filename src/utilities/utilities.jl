@@ -489,3 +489,33 @@ function available_conversions(PlotType)
     end
     return result
 end
+                  
+mindist(x, a, b) = min(abs(a - x), abs(b - x))
+function gappy(x, ps)
+    n = length(ps)
+    x <= first(ps) && return first(ps) - x
+    for j in 1:(n - 1)
+        p0 = ps[j]
+        p1 = ps[min(j + 1, n)]
+        if p0 <= x && p1 >= x
+            return mindist(x, p0, p1) * (isodd(j) ? 1 : -1)
+        end
+    end
+    return last(ps) - x
+end
+
+
+# This is used to map a vector of `points` to a signed distance field. The
+# points mark transition between "on" and "off" section of the pattern.
+
+# The output should be periodic so the signed distance field value
+# representing points[1] should be equal to the one representing points[end].
+# => range(..., length = resolution+1)[1:end-1]
+
+# points[end] should still represent the full length of the pattern though,
+# so we need rescaling by ((resolution + 1) / resolution)
+function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real=100)
+    scaled = ((resolution + 1) / resolution) .* linestyle
+    r = range(first(scaled); stop=last(scaled), length=resolution + 1)[1:(end - 1)]
+    return Float16[-gappy(x, scaled) for x in r]
+end
