@@ -87,17 +87,16 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Geometry/Position Utils
             ////////////////////////////////////////////////////////////////////////
 
+            vec4 clip_space(vec3 point) {
+                return projectionview * model * vec4(point, 1);
+            }
+            vec4 clip_space(vec2 point) { return clip_space(vec3(point, 0)); }
 
-            vec3 screen_space(vec3 point) {
-                vec4 vertex = projectionview * model * vec4(point, 1);
+            vec3 screen_space(vec4 vertex) {
                 return vec3(
                     (0.5 * vertex.xy / vertex.w + 0.5) * px_per_unit * resolution,
                     vertex.z / vertex.w + depth_shift
                 );
-            }
-
-            vec3 screen_space(vec2 point) {
-                return screen_space(vec3(point, 0));
             }
 
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
@@ -120,8 +119,20 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
-                vec3 p1 = screen_space(linepoint_start);
-                vec3 p2 = screen_space(linepoint_end);
+                // restrict to visible area (see other shader)
+                vec3 p1, p2;
+                {
+                    vec4 _p1 = clip_space(linepoint_start), _p2 = clip_space(linepoint_end);
+                    vec4 v1 = _p2 - _p1;
+
+                    if (_p1.w < 0.0)
+                        _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
+                    if (_p2.w < 0.0)
+                        _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+
+                    p1 = screen_space(_p1);
+                    p2 = screen_space(_p2);
+                }
 
                 // line vector (xy-normalized vectors in line direction)
                 // Need z component for correct depth order
@@ -238,13 +249,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
 
-            vec2 process_pattern(bool pattern, bool[4] isvalid, vec2 extrusion, float halfwidth) {
+            vec2 process_pattern(bool pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
                 // do not adjust stuff
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
                 return vec2(0);
             }
 
-            vec2 process_pattern(sampler2D pattern, bool[4] isvalid, vec2 extrusion, float halfwidth) {
+            vec2 process_pattern(sampler2D pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
                 // samples:
                 //   -ext1  p1 ext1    -ext2 p2 ext2
                 //      1   2   3        4   5   6
@@ -291,13 +302,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 if (isvalid[3]) {
                     float offset = abs(extrusion[1]);
-                    left   = width * texture(pattern, vec2(uv_scale * (lastlen_end - offset), 0.0)).x;
-                    center = width * texture(pattern, vec2(uv_scale * (lastlen_end         ), 0.0)).x;
-                    right  = width * texture(pattern, vec2(uv_scale * (lastlen_end + offset), 0.0)).x;
+                    left   = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length - offset), 0.0)).x;
+                    center = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length         ), 0.0)).x;
+                    right  = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length + offset), 0.0)).x;
 
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
-                        f_pattern_overwrite.z = uv_scale * (lastlen_end - abs(extrusion[1]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     } else if (left > 0.0) {
                         // shrink backwards
@@ -307,7 +318,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.y = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.z = uv_scale * (lastlen_end - abs(extrusion[1]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     }
                 }
@@ -320,17 +331,16 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Geometry/Position Utils
             ////////////////////////////////////////////////////////////////////////
 
+            vec4 clip_space(vec3 point) {
+                return projectionview * model * vec4(point, 1);
+            }
+            vec4 clip_space(vec2 point) { return clip_space(vec3(point, 0)); }
 
-            vec3 screen_space(vec3 point) {
-                vec4 vertex = projectionview * model * vec4(point, 1);
+            vec3 screen_space(vec4 vertex) {
                 return vec3(
                     (0.5 * vertex.xy / vertex.w + 0.5) * px_per_unit * resolution,
                     vertex.z / vertex.w + depth_shift
                 );
-            }
-
-            vec3 screen_space(vec2 point) {
-                return screen_space(vec3(point, 0));
             }
 
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
@@ -354,12 +364,52 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
-                vec3 p0 = screen_space(linepoint_prev);
-                vec3 p1 = screen_space(linepoint_start);
-                vec3 p2 = screen_space(linepoint_end);
-                vec3 p3 = screen_space(linepoint_next);
+                bool[4] isvalid = bool[4](
+                    linepoint_prev != linepoint_start,
+                    true, true,
+                    linepoint_end != linepoint_next
+                );
 
-                bool[4] isvalid = bool[4](p0 != p1, true, true, p2 != p3);
+                // To apply pixel space linewidths we transform line vertices to pixel space
+                // here. This is dangerous with perspective projection as p.xyz / p.w sends
+                // points from behind the camera to beyond far (clip z > 1), causing lines
+                // to invert. To avoid this we translate points along the line direction,
+                // moving them to the edge of the visible area.
+                vec3 p0, p1, p2, p3;
+                {
+                    // All in clip space
+                    vec4 clip_p0 = clip_space(linepoint_prev);
+                    vec4 clip_p1 = clip_space(linepoint_start);
+                    vec4 clip_p2 = clip_space(linepoint_end);
+                    vec4 clip_p3 = clip_space(linepoint_next);
+
+                    vec4 v1 = clip_p2 - clip_p1;
+
+                    // With our perspective projection matrix clip.w = -view.z with
+                    // clip.w < 0.0 being behind the camera.
+                    // Note that if the signs in the projectionmatrix change, this may become wrong.
+                    if (clip_p1.w < 0.0) {
+                        // the line connects outside the visible area so we may consider it disconnected
+                        isvalid[0] = false;
+                        // A clip position is visible if -w <= z <= w. To move the line along
+                        // the line direction v to the start of the visible area, we solve:
+                        //   p.z + t * v.z = +-(p.w + t * v.w)
+                        // where (-) gives us the result for the near clipping plane as p.z
+                        // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
+                        clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+                    }
+                    if (clip_p2.w < 0.0) {
+                        isvalid[3] = false;
+                        clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+                    }
+
+                    // transform clip -> screen space, applying xyz / w normalization (which
+                    // is now save as all vertices are in front of the camera)
+                    p0 = screen_space(clip_p0); // start of previous segment
+                    p1 = screen_space(clip_p1); // end of previous segment, start of current segment
+                    p2 = screen_space(clip_p2); // end of current segment, start of next segment
+                    p3 = screen_space(clip_p3); // end of next segment
+                }
 
                 // line vectors (xy-normalized vectors in line direction)
                 // Need z component here for correct depth order
@@ -461,7 +511,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 //   on straight line quad (adjustment becomes +1.0 or -1.0)
                 // - or adjust the pattern to start/stop outside of the joint
                 //   (f_pattern_overwrite is set, adjustment is 0.0)
-                vec2 adjustment = process_pattern(pattern, isvalid, halfwidth * extrusion, halfwidth);
+                vec2 adjustment = process_pattern(
+                    pattern, isvalid, halfwidth * extrusion, segment_length, halfwidth
+                );
 
                 // If adjustment != 0.0 we replace a joint by an extruded line,
                 // so we no longer need to shrink the line for the joint to fit.
