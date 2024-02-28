@@ -212,28 +212,46 @@ void main(void)
     // extends the line. First let's get some vectors we need.
 
     // Get the four vertices passed to the shader in pixel space.
-    // TODO: document
+
+    // To apply pixel space linewidths we transform line vertices to pixel space
+    // here. This is dangerous with perspective projection as p.xyz / p.w sends
+    // points from behind the camera to beyond far (clip z > 1), causing lines
+    // to invert. To avoid this we translate points along the line direction,
+    // moving them to the edge of the visible area.
     vec3 p0, p1, p2, p3;
     {
-        vec4 _p0 = gl_in[0].gl_Position; // start of previous segment
-        vec4 _p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
-        vec4 _p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
-        vec4 _p3 = gl_in[3].gl_Position; // end of next segment
+        // All in clip space
+        vec4 clip_p0 = gl_in[0].gl_Position; // start of previous segment
+        vec4 clip_p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
+        vec4 clip_p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
+        vec4 clip_p3 = gl_in[3].gl_Position; // end of next segment
 
-        vec4 v1 = _p2 - _p1;
-        if (_p1.w < 0.0) { // means behind camera
-            isvalid[0] = false; // not connected
-            _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
+        vec4 v1 = clip_p2 - clip_p1;
+
+        // With our perspective projection matrix clip.w = -view.z with
+        // clip.w < 0.0 being behind the camera.
+        // Note that if the signs in the projectionmatrix change, this may become wrong.
+        if (clip_p1.w < 0.0) {
+            // the line connects outside the visible area so we may consider it disconnected
+            isvalid[0] = false;
+            // A clip position is visible if -w <= z <= w. To move the line along
+            // the line direction v to the start of the visible area, we solve:
+            //   p.z + t * v.z = +-(p.w + t * v.w)
+            // where (-) gives us the result for the near clipping plane as p.z
+            // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
+            clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
         }
-        if (_p2.w < 0.0) {
+        if (clip_p2.w < 0.0) {
             isvalid[3] = false;
-            _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+            clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
         }
 
-        p0 = screen_space(_p0); // start of previous segment
-        p1 = screen_space(_p1); // end of previous segment, start of current segment
-        p2 = screen_space(_p2); // end of current segment, start of next segment
-        p3 = screen_space(_p3); // end of next segment
+        // transform clip -> screen space, applying xyz / w normalization (which
+        // is now save as all vertices are in front of the camera)
+        p0 = screen_space(clip_p0); // start of previous segment
+        p1 = screen_space(clip_p1); // end of previous segment, start of current segment
+        p2 = screen_space(clip_p2); // end of current segment, start of next segment
+        p3 = screen_space(clip_p3); // end of next segment
     }
 
     // Since we are measuring from the center of the line we will need half

@@ -57,12 +57,7 @@ void main(void)
     }
 
     // get start and end point of line segment
-    // Note:
-    // We are applying the xyz / w division here to move to pixel space. This
-    // sort of breaks clipping with perspective projection, as positions behind
-    // the camera are mapped ... TODO
-
-    // restrict to visible area
+    // restrict to visible area (see lines.geom)
     vec3 p1, p2;
     {
         vec4 _p1 = gl_in[0].gl_Position, _p2 = gl_in[1].gl_Position;
