@@ -165,6 +165,23 @@ end
 
 apply_axis_conversion(P, args...) = false
 
+function get_kw_values(func, names, kw)
+    return [Pair{Symbol,Any}(k, func(kw[k]))
+            for k in names if haskey(kw, k)]
+end
+
+function get_kw_obs(names, kw)
+    kw_copy = copy(kw)
+    init = get_kw_values(to_value, names, kw_copy)
+    obs = Observable(init; ignore_equal_values=true)
+    in_obs = [kw_copy[k] for k in names if haskey(kw_copy, k)]
+    onany(in_obs...) do args...
+        obs[] = get_kw_values(to_value, names, kw_copy)
+        return
+    end
+    return obs
+end
+
 function conversion_pipeline(P, args_obs, user_attributes, plot_attributes, deregister, recursion=1)
     if recursion == 3
         return P, args_obs
@@ -172,15 +189,15 @@ function conversion_pipeline(P, args_obs, user_attributes, plot_attributes, dere
     args = [to_value(x) for x in args_obs]
 
     used_attrs = used_attributes(P, args...)
-    kw = [Pair{Symbol, Any}(k, to_value(pop!(user_attributes, k))) for k in used_attrs if haskey(user_attributes, k)]
-
+    kw_obs = get_kw_obs(used_attrs, user_attributes)
+    kw = to_value(kw_obs)
     args_obs = axis_convert(P, user_attributes, args_obs...)
     args = [to_value(x) for x in args_obs]
     converted, status = no_obs_conversion(P, args, kw)
 
     if status === :converted
         new_args_obs = [Observable(arg) for arg in converted]
-        fs = onany(args_obs...) do args...
+        fs = onany(kw_obs, args_obs...) do kw, args...
             conv, status = no_obs_conversion(P, args, kw)
             for (obs, arg) in zip(new_args_obs, conv)
                 obs[] = arg
@@ -191,7 +208,7 @@ function conversion_pipeline(P, args_obs, user_attributes, plot_attributes, dere
         return P, new_args_obs
     elseif status === :needs_conversion
         new_args_obs = [Observable(arg) for arg in converted]
-        fs = onany(args_obs...) do args...
+        fs = onany(kw_obs, args_obs...) do kw, args...
             conv, status = no_obs_conversion(P, args, kw)
             for (obs, arg) in zip(new_args_obs, conv)
                 obs[] = arg
@@ -204,7 +221,7 @@ function conversion_pipeline(P, args_obs, user_attributes, plot_attributes, dere
     else
         P, converted2 = apply_convert!(P, plot_attributes, converted)
         new_args_obs = [Observable(arg) for arg in converted2]
-        fs = onany(args_obs...) do args...
+        fs = onany(kw_obs, args_obs...) do kw, args...
             conv, status = no_obs_conversion(P, args, kw)
             P, converted3 = apply_convert!(P, plot_attributes, conv)
             for (obs, arg) in zip(new_args_obs, converted3)
@@ -231,6 +248,7 @@ function Plot{Func}(args::Tuple, user_attributes::Dict) where {Func}
         return Plot{Func}(Base.tail(args), user_attributes)
     end
     P = Plot{Func}
+    attr = used_attributes(P, args...)
     args_obs = Any[x isa Observable ? x : Observable{Any}(x)  for x in args]
     plot_attributes = Attributes()
     deregister = Observables.ObserverFunction[]
@@ -238,6 +256,8 @@ function Plot{Func}(args::Tuple, user_attributes::Dict) where {Func}
     args = map(to_value, converted_obs)
     ArgTyp = MakieCore.argtypes((args...,))
     FinalPlotFunc = plotfunc(plottype(PNew, args...))
+    foreach(x -> delete!(user_attributes, x), attr)
+    foreach(x -> delete!(plot_attributes, x), attr)
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, args_obs, (converted_obs...,), plot_attributes,
                                       deregister)
 end
