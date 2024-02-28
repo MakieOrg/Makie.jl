@@ -438,9 +438,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
     end
 end
 
-
-_mean(xs) = sum(xs) / length(xs) # skip Statistics import
-
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
     return cached_robj!(screen, scene, plot) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
@@ -448,19 +445,14 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         positions = handle_view(plot[1], data)
 
         transform_func = transform_func_obs(plot)
-        ls = to_value(linestyle)
         space = plot.space
-        if isnothing(ls)
-            data[:pattern] = ls
+        if isnothing(to_value(linestyle))
+            data[:pattern] = nothing
             data[:fast] = true
 
             positions = lift(apply_transform, plot, transform_func, positions, space)
         else
-            linewidth = gl_attributes[:thickness]
-            px_per_unit = data[:px_per_unit]
-            data[:pattern] = map(linestyle, linewidth, px_per_unit) do ls, lw, ppu
-                ppu * _mean(lw) .* ls
-            end
+            data[:pattern] = linestyle
             data[:fast] = false
 
             pvm = lift(*, plot, data[:projectionview], data[:model])
@@ -468,36 +460,30 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
                             data[:resolution]) do f, ps, space, pvm, res
                 transformed = apply_transform(f, ps, space)
                 output = Vector{Point3f}(undef, length(transformed))
-                scale = Vec3f(res[1], res[2], 1f0)
+                scale = Vec3f(0.5 * res[1], 0.5 * res[2], 1f0)
+                offset = Vec3f(0.5 * res[1], 0.5 * res[2], 0)
                 for i in eachindex(transformed)
                     clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                    output[i] = scale .* Point3f(clip) ./ clip[4]
+                    output[i] = scale .* Point3f(clip) ./ clip[4] .+ offset
                 end
                 output
             end
         end
+
+        if haskey(data, :intensity)
+            data[:color] = pop!(data, :intensity)
+        end
+
         return draw_lines(screen, positions, data)
     end
 end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
     return cached_robj!(screen, scene, plot) do gl_attributes
-        linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        px_per_unit = data[:px_per_unit]
-        ls = to_value(linestyle)
-        if isnothing(ls)
-            data[:pattern] = nothing
-            data[:fast] = true
-        else
-            linewidth = gl_attributes[:thickness]
-            data[:pattern] = lift(plot, linestyle, linewidth, px_per_unit) do ls, lw, ppu
-                ppu * _mean(lw) .* ls
-            end
-            data[:fast] = false
-        end
-        positions = handle_view(plot[1], data)
+        data[:pattern] = pop!(data, :linestyle)
 
+        positions = handle_view(plot[1], data)
         positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
