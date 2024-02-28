@@ -1,14 +1,20 @@
 function sumlengths(points, resolution)
+    # normalize w component if availabke
+    f(p::VecTypes{4}) = p[Vec(1, 2)] / p[4]
+    f(p::VecTypes) = p[Vec(1, 2)]
+
+    invalid(p::VecTypes{4}) = p[4] <= 1e-6
+    invalid(p::VecTypes) = false
+
     T = eltype(eltype(typeof(points)))
     result = zeros(T, length(points))
-    i12 = Vec(1, 2)
     for i in eachindex(points)
         i0 = max(i-1, 1)
         p1, p2 = points[i0], points[i]
-        if !(any(map(isnan, p1)) || any(map(isnan, p2)))
-            result[i] = result[i0] + norm(resolution .* (p1[i12] - p2[i12]))
-        else
+        if any(map(isnan, p1)) || any(map(isnan, p2)) || invalid(p1) || invalid(p2)
             result[i] = 0f0
+        else
+            result[i] = result[i0] + 0.5 * norm(resolution .* (f(p1) - f(p2)))
         end
     end
     result
