@@ -364,11 +364,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
-                bool[4] isvalid = bool[4](
-                    linepoint_prev != linepoint_start,
-                    true, true,
-                    linepoint_end != linepoint_next
-                );
+                bool[4] isvalid = bool[4](true, true, true, true);
 
                 // To apply pixel space linewidths we transform line vertices to pixel space
                 // here. This is dangerous with perspective projection as p.xyz / p.w sends
@@ -410,6 +406,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     p2 = screen_space(clip_p2); // end of current segment, start of next segment
                     p3 = screen_space(clip_p3); // end of next segment
                 }
+
+                // doesn't work correctly with linepoint_x...
+                isvalid[0] = p0 != p1;
+                isvalid[3] = p2 != p3;
 
                 // line vectors (xy-normalized vectors in line direction)
                 // Need z component here for correct depth order
