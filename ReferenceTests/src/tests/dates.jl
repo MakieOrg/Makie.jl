@@ -1,11 +1,29 @@
-using Makie.Unitful, Makie.Dates, Test
+using Makie, Makie.Unitful, Makie.Dates, Test
 
-time = Time("11:11:55.914")
+t = Time("11:11:55.914")
 date = Date("2021-10-27")
 date_time = DateTime("2021-10-27T11:11:55.914")
-time_range = time .+ range(Second(0); step=Second(5), length=10)
+time_range = t .+ range(Second(0); step=Second(5), length=10)
 date_range = range(date, step=Day(5), length=10)
 date_time_range = range(date_time, step=Week(5), length=10)
+
+function test_conversion(range)
+    T = eltype(range)
+    init_vals = Makie.date_to_number.(T, range)
+    scaling = Makie.update_scaling_factors(Makie.Float32Scaling(1.0, 0.0), extrema(init_vals)...)
+    scaled = Makie.scale_value.(Ref(scaling), init_vals)
+    vals = Makie.unscale_value.(Ref(scaling), scaled)
+    @test all(init_vals .≈ Float64.(vals))
+    # Currently this isn't lossless
+    # time_vals = Makie.number_to_date.(T, vals)
+    # @test all(time_vals .= range)
+end
+
+@testset "date/time conversion" begin
+    test_conversion(time_range)
+    test_conversion(date_range)
+    test_conversion(date_time_range)
+end
 
 @reference_test "time_range" scatter(time_range, 1:10)
 @reference_test "date_range" scatter(date_range, 1:10)
@@ -26,7 +44,7 @@ end
 @reference_test "Time Observable" begin
     obs = Observable(time_range)
     f, ax, pl = scatter(obs, 1:10)
-    obs[] = time .+ range(Second(0); step=Second(1), length=10)
+    obs[] = t .+ range(Second(0); step=Second(1), length=10)
     autolimits!(ax)
     f
 end
