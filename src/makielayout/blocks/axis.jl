@@ -1234,7 +1234,10 @@ function Makie.xlims!(ax::Axis, xlims)
     end
 
     mlims = convert_limit_attribute(ax.limits[])
-
+    if hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] isa Float32Conversion
+        scaling = ax.x_dim_convert[].scaling[]
+        xlims = scale_value.(Ref(scaling), xlims)
+    end
     ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
     nothing
@@ -1253,7 +1256,10 @@ function Makie.ylims!(ax::Axis, ylims)
     end
 
     mlims = convert_limit_attribute(ax.limits[])
-
+    if hasproperty(ax, :y_dim_convert) && ax.y_dim_convert[] isa Float32Conversion
+        scaling = ax.y_dim_convert[].scaling[]
+        ylims = scale_value.(Ref(scaling), ylims)
+    end
     ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
     nothing

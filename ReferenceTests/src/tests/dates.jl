@@ -1,4 +1,4 @@
-using Makie.Unitful, Makie.Dates, Test
+using Makie, Makie.Unitful, Makie.Dates, Test
 
 some_time = Time("11:11:55.914")
 date = Date("2021-10-27")

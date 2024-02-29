@@ -100,9 +100,9 @@ struct DateTimeConversion
     # Second entry in tuple is a value we use to normalize the number range,
     # so that they fit into float32
     type::Observable{Tuple{DataType,Float32Scaling{Int64}}}
-    k_min::Union{Automatic,Int}
-    k_max::Union{Automatic,Int}
-    k_ideal::Union{Automatic,Int}
+    k_min::Union{Automatic, Int}
+    k_max::Union{Automatic, Int}
+    k_ideal::Union{Automatic, Int}
     function DateTimeConversion(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
         F32S = Float32Scaling{Int64}
         obs = Observable{Tuple{DataType,F32S}}((type, F32S(1.0, 0.0)); ignore_equal_values=true)
