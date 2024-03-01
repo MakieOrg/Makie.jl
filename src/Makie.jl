@@ -65,7 +65,7 @@ import MacroTools
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
 
-using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
+using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector, Point2d
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
@@ -107,6 +107,7 @@ assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
+include("utilities/stable-hashing.jl")
 include("bezier.jl")
 include("types.jl")
 include("utilities/texture_atlas.jl")
