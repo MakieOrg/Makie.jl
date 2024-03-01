@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
+
 ## [0.20.8] - 2024-02-22
 
 - Fixed excessive use of space with HTML image outputs [#3642](https://github.com/MakieOrg/Makie.jl/pull/3642).
