@@ -30,47 +30,61 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
     projected_positions, indices = let
+        # Standard transform from input space to clip space
         points = Makie.apply_transform(Makie.transform_func(primitive), positions, space)
         res = scene.camera.resolution[]
         transform = Makie.space_to_clip(scene.camera, space) * model
         clip_points = map(p -> transform * to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0), points)
-        screen_points = sizehint!(Vector{Vec2f}(undef, 0), length(clip_points))
-        indices = sizehint!(Vector{Int}(undef, 0), length(clip_points))
 
+        # yflip and clip -> screen/pixel coords
         function clip2screen(res, p)
             s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] / p[4] .+ 0.5f0
             return res .* s
         end
 
+        screen_points = sizehint!(Vector{Vec2f}(undef, 0), length(clip_points))
+        indices = sizehint!(Vector{Int}(undef, 0), length(clip_points))
+
+        # Adjust points such that they are always in front of the camera.
+        # TODO: Consider skipping this if there is no perspetive projection.
+        # (i.e. use project_position.(..., positions) and indices = eachindex(positions))
         for (i, p) in enumerate(clip_points)
-            # don't allow points to be behind the camera with perspective projection
-            push!(indices, i)
-            if p[4] < 0.0
-                if primitive isa Lines
+            if p[4] < 0.0               # point behind camera and ...
+                if primitive isa Lines  # ... part of a continuous line
+                    # create an extra point for the incoming line segment at the
+                    # near clipping plane (i.e. on line prev --> this)
                     if i > 1
-                        # move line end to near plane
                         prev = clip_points[i-1]
                         v = p - prev
+                        #
                         p2 = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
                         push!(screen_points, clip2screen(res, p2))
                         push!(indices, i)
                     end
-                    push!(screen_points, Vec2f(NaN)) # separate line
+
+                    # disconnect the line
+                    push!(screen_points, Vec2f(NaN))
+
+                    # and create another point for the outgoing line segment at
+                    # the near clipping plane (on this ---> next)
                     if i < length(clip_points)
-                        # move line start to near plane
                         next = clip_points[i+1]
                         v = next - p
                         p2 = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
                         push!(screen_points, clip2screen(res, p2))
                         push!(indices, i)
                     end
-                else
+
+                else                    # ... part of a discontinuous set of segments
                     if iseven(i)
+                        # if this is the last point of the segment we move towards
+                        # the previous (start) point
                         prev = clip_points[i-1]
                         v = p - prev
                         p = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
                         push!(screen_points, clip2screen(res, p))
                     else
+                        # otherwise we move to the next (end) point
                         next = clip_points[i+1]
                         v = next - p
                         p = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
@@ -78,8 +92,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
                     end
                 end
             else
+                # otherwise we can just draw the point
                 push!(screen_points, clip2screen(res, p))
             end
+
+            # we always have at least one point
+            push!(indices, i)
         end
 
         screen_points, indices
