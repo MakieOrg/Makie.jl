@@ -1072,6 +1072,23 @@ function convert_gaps(gaps::GapType)
     return (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
+function convert_attribute(value::Symbol, k::key"capstyle")
+    # TODO: make this an enum?
+    vals = Dict(:butt => 0, :square => 1, :round => 2)
+    return get(vals, value) do
+        error("$value is not a valid cap style. It must be one of $(keys(vals)).")
+    end
+end
+function convert_attribute(value::Symbol, k::key"capstyle")
+    # TODO: make this an enum?
+    vals = Dict(:auto => 0, :round => 1)
+    return get(vals, value) do
+        error("$value is not a valid joint style. It must be one of $(keys(vals)).")
+    end
+end
+
+
+
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f(c)
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
