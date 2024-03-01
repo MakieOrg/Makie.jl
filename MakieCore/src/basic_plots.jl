@@ -517,11 +517,16 @@ Plots polygons, which are defined by
     mixin_colormap_attributes()...
 end
 
-@recipe(Wireframe) do scene
-    attr = Attributes(;
-        depth_shift = -1f-5,
-    )
-    return merge!(attr, default_theme(scene, LineSegments))
+"""
+    wireframe(x, y, z)
+    wireframe(positions)
+    wireframe(mesh)
+
+Draws a wireframe, either interpreted as a surface or as a mesh.
+"""
+@recipe Wireframe begin
+    documented_attributes(LineSegments)...
+    depth_shift = -1f-5
 end
 
 @recipe(Arrows, points, directions) do scene
