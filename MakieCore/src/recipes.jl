@@ -194,6 +194,7 @@ function default_attribute_values end
 function attribute_default_expressions end
 function _attribute_docs end
 function attribute_names end
+function documented_attributes end # this can be used for inheriting from other recipes
 
 attribute_names(_) = nothing
 
@@ -373,6 +374,8 @@ macro recipe(Tsym::Symbol, args...)
         end
 
         const MakieCore.$(attr_placeholder) = @DocumentedAttributes $attrblock
+
+        $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = MakieCore.$(attr_placeholder)
 
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
