@@ -197,6 +197,140 @@ function attribute_names end
 
 attribute_names(_) = nothing
 
+Base.@kwdef struct AttributeMetadata
+    docstring::Union{Nothing,String}
+    default_expr::Any
+end
+
+update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetadata(
+    am2.docstring === nothing ? am1.docstring : am2.docstring,
+    am2.default_expr # TODO: should it be possible to overwrite only a docstring by not giving a default expr?
+)
+
+struct DocumentedAttributes
+    d::Dict{Symbol,AttributeMetadata}
+    closure::Function
+end
+
+macro DocumentedAttributes(expr::Expr)
+    if !(expr isa Expr && expr.head === :block)
+        throw(ArgumentError("Argument is not a begin end block"))
+    end
+
+    metadata_exprs = []
+    closure_exprs = []
+    mixin_exprs = Expr[]
+
+    for arg in expr.args
+        arg isa LineNumberNode && continue
+        
+        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
+
+        if has_docs
+            docs = arg.args[3]
+            attr = arg.args[4]
+        else
+            docs = nothing
+            attr = arg
+        end
+
+        is_attr_line = attr isa Expr && attr.head === :(=) && length(attr.args) == 2
+        is_mixin_line = attr isa Expr && attr.head === :(...) && length(attr.args) == 1
+        if !(is_attr_line || is_mixin_line)
+            error("$attr is neither a valid attribute line like `x = default_value` nor a mixin line like `some_mixin...`")
+        end
+
+        if is_attr_line
+            sym = attr.args[1]
+            default = attr.args[2]
+            if !(sym isa Symbol)
+                error("$sym should be a symbol")
+            end
+            
+            push!(metadata_exprs, quote
+                am = AttributeMetadata(; docstring = $docs, default_expr = $(QuoteNode(default)))
+                if haskey(d, $(QuoteNode(sym)))
+                    d[$(QuoteNode(sym))] = update_metadata(d[$(QuoteNode(sym))], am)
+                else
+                    d[$(QuoteNode(sym))] = am
+                end
+            end)
+
+            if default isa Expr && default.head === :macrocall && default.args[1] === Symbol("@inherit")
+                if length(default.args) ∉ (3, 4)
+                    error("@inherit works with 1 or 2 arguments, expression was $d")
+                end
+                if !(default.args[3] isa Symbol)
+                    error("Argument 1 of @inherit must be a Symbol, got $(default.args[3])")
+                end
+                key = default.args[3]
+                _default = get(default.args, 4, :(error("Inherited key $($(QuoteNode(key))) not found in theme with no fallback given.")))
+                # first check scene theme
+                # then default value
+                d = :(
+                    dict[$(QuoteNode(sym))] = if haskey(thm, $(QuoteNode(key)))
+                        to_value(thm[$(QuoteNode(key))]) # only use value of theme entry
+                    else
+                        $_default
+                    end
+                )
+                push!(closure_exprs, d)
+            else
+                push!(closure_exprs, :(
+                    dict[$(QuoteNode(sym))] = $(esc(default))
+                ))
+            end
+        elseif is_mixin_line
+            # this intermediate variable is needed to evaluate each mixin only once
+            # and is inserted at the start of the final code block
+            gsym = gensym("mixin")
+            mixin = only(attr.args)
+            push!(mixin_exprs, quote
+                $gsym = $(esc(mixin))
+                if !($gsym isa DocumentedAttributes)
+                    error("Mixin was not a DocumentedAttributes but $($gsym)")
+                end
+            end)
+
+            # the actual runtime values of the mixed in defaults
+            # are computed using the closure stored in the DocumentedAttributes
+            closure_exp = quote
+                # `scene` and `dict` here are defined below where this exp is interpolated into
+                merge!(dict, $gsym.closure(scene))
+            end
+            push!(closure_exprs, closure_exp)
+
+            # docstrings and default expressions of the mixed in
+            # DocumentedAttributes are inserted
+            metadata_exp = quote
+                for (key, value) in $gsym.d
+                    if haskey(d, key)
+                        error("Mixin `$($(QuoteNode(mixin)))` had the key :$key which already existed. It's not allowed for mixins to overwrite keys to avoid accidental overwrites. Drop those keys from the mixin first.")
+                    end
+                    d[key] = value
+                end
+            end
+            push!(metadata_exprs, metadata_exp)
+        else
+            error("Unreachable")
+        end
+    end
+
+    quote
+        $(mixin_exprs...)
+        d = Dict{Symbol,AttributeMetadata}()
+        $(metadata_exprs...)
+        closure = function (scene)
+            thm = theme(scene)
+            dict = Dict{Symbol,Any}()
+            $(closure_exprs...)
+            return dict
+        end
+        DocumentedAttributes(d, closure)
+    end
+end
+
+
 macro recipe(Tsym::Symbol, args...)
 
     funcname_sym = to_func_name(Tsym)
@@ -212,10 +346,12 @@ macro recipe(Tsym::Symbol, args...)
     if !(attrblock isa Expr && attrblock.head === :block)
         throw(ArgumentError("Last argument is not a begin end block"))
     end
-    attrblock = expand_mixins(attrblock)
-    attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
+    # attrblock = expand_mixins(attrblock)
+    # attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
     docs_placeholder = gensym()
+
+    attr_placeholder = gensym()
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
@@ -236,6 +372,7 @@ macro recipe(Tsym::Symbol, args...)
             "No docstring defined.\n"
         end
 
+        const MakieCore.$(attr_placeholder) = @DocumentedAttributes $attrblock
 
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
@@ -251,32 +388,21 @@ macro recipe(Tsym::Symbol, args...)
         function MakieCore.is_attribute(T::Type{<:$(PlotType)}, sym::Symbol)
             sym in MakieCore.attribute_names(T)
         end
+
         function MakieCore.attribute_names(::Type{<:$(PlotType)})
-            ($([QuoteNode(a.symbol) for a in attrs]...),)
+            keys(MakieCore.$(attr_placeholder).d)
         end
 
         function $(MakieCore).default_theme(scene, ::Type{<:$PlotType})
-            $(make_default_theme_expr(attrs, :scene))
+            MakieCore.$(attr_placeholder).closure(scene)
         end
 
         function MakieCore.attribute_default_expressions(::Type{<:$PlotType})
-            $(
-                if attrs === nothing
-                    Dict{Symbol, String}()
-                else
-                    Dict{Symbol, String}([a.symbol => _defaultstring(a.default) for a in attrs])
-                end
-            )
+            Dict(k => v.default_expr for (k, v) in MakieCore.$(attr_placeholder).d)
         end
 
         function MakieCore._attribute_docs(::Type{<:$PlotType})
-            Dict(
-                $(
-                    (attrs !== nothing ?
-                        [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
-                        [])...
-                )
-            )
+            Dict(k => v.docstring for (k, v) in MakieCore.$(attr_placeholder).d)
         end
 
         docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(funcname_sym)), user_docstring)
