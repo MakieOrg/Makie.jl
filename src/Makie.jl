@@ -65,7 +65,7 @@ import MacroTools
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
 
-using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector, Point2d
+using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
