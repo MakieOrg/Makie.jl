@@ -373,9 +373,7 @@ macro recipe(Tsym::Symbol, args...)
             "No docstring defined.\n"
         end
 
-        const MakieCore.$(attr_placeholder) = @DocumentedAttributes $attrblock
-
-        $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = MakieCore.$(attr_placeholder)
+        $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = @DocumentedAttributes $attrblock # TODO: make this constant, store somewhere global
 
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
@@ -392,20 +390,20 @@ macro recipe(Tsym::Symbol, args...)
             sym in MakieCore.attribute_names(T)
         end
 
-        function MakieCore.attribute_names(::Type{<:$(PlotType)})
-            keys(MakieCore.$(attr_placeholder).d)
+        function MakieCore.attribute_names(T::Type{<:$(PlotType)})
+            keys(documented_attributes(T).d)
         end
 
-        function $(MakieCore).default_theme(scene, ::Type{<:$PlotType})
-            MakieCore.$(attr_placeholder).closure(scene)
+        function $(MakieCore).default_theme(scene, T::Type{<:$PlotType})
+            documented_attributes(T).closure(scene)
         end
 
-        function MakieCore.attribute_default_expressions(::Type{<:$PlotType})
-            Dict(k => v.default_expr for (k, v) in MakieCore.$(attr_placeholder).d)
+        function MakieCore.attribute_default_expressions(T::Type{<:$PlotType})
+            Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
         end
 
-        function MakieCore._attribute_docs(::Type{<:$PlotType})
-            Dict(k => v.docstring for (k, v) in MakieCore.$(attr_placeholder).d)
+        function MakieCore._attribute_docs(T::Type{<:$PlotType})
+            Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
         end
 
         docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(funcname_sym)), user_docstring)
