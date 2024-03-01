@@ -376,7 +376,7 @@ macro recipe(Tsym::Symbol, args...)
 
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
-        
+
         $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = @DocumentedAttributes $attrblock # TODO: make this constant, store somewhere global
 
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
@@ -397,7 +397,7 @@ macro recipe(Tsym::Symbol, args...)
         end
 
         function $(MakieCore).default_theme(scene, T::Type{<:$PlotType})
-            documented_attributes(T).closure(scene)
+            Attributes(documented_attributes(T).closure(scene))
         end
 
         function MakieCore.attribute_default_expressions(T::Type{<:$PlotType})
