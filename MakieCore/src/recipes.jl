@@ -373,10 +373,12 @@ macro recipe(Tsym::Symbol, args...)
             "No docstring defined.\n"
         end
 
-        $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = @DocumentedAttributes $attrblock # TODO: make this constant, store somewhere global
 
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
+        
+        $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = @DocumentedAttributes $attrblock # TODO: make this constant, store somewhere global
+
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         function ($funcname)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
