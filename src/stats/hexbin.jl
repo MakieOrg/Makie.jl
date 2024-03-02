@@ -73,6 +73,7 @@ function data_limits(hb::Hexbin)
 
     return Rect3f(no, nw)
 end
+boundingbox(p::Hexbin) = _boundingbox(p, data_limits(hb))
 
 get_weight(weights, i) = Float64(weights[i])
 get_weight(::StatsBase.UnitWeights, i) = 1e0

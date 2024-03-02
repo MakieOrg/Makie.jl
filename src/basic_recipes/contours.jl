@@ -336,11 +336,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    axes = (x[1], x[2])
-    extremata = map(extrema∘to_value, axes)
-    minpoint = Point2f(first.(extremata)...)
-    widths = last.(extremata) .- first.(extremata)
-    rect = Rect2f(minpoint, Vec2f(widths))
-    return unique(decompose(Point, rect))
+function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
+    mini = Vec3d(first.(mini_maxi)..., 0)
+    maxi = Vec3d(last.(mini_maxi)..., 0)
+    return Rect3d(mini, maxi .- mini)
+end
+function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    return _boundingbox(plot, data_limits(plot))
 end

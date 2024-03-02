@@ -245,11 +245,11 @@ function data_limits(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     if transform_func(p) isa Polar
         # Because the Polar transform is handled explicitly we cannot rely
         # on the default data_limits. (data limits are pre transform)
-        iter = (to_ndim(Point3f, p, 0f0) for p in p.converted[1][])
-        limits_from_transformed_points(iter)
+        return Rect3d(p.converted[1][])
     else
-        # First component is either another Voronoiplot or a poly plot. Both
+        # First component is either another Triplot or a poly plot. Both
         # cases span the full limits of the plot
-        data_limits(p.plots[1])
+        return data_limits(p.plots[1])
     end
 end
+boundingbox(p::Triplot{<:Tuple{<:Vector{<:Point}}}) = _boundingbox(p, data_limits(p))
