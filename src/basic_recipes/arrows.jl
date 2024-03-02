@@ -122,8 +122,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         fxaa, ssao, transparency, visible, inspectable
     )
 
-    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
     line_c = map((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
+    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, line_c)
     fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic == fxaa for 3D
 
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)

@@ -529,34 +529,54 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
     depth_shift = -1f-5
 end
 
-@recipe(Arrows, points, directions) do scene
-    attr = Attributes(
-        color = :black,
+@recipe Arrows points directions begin
+    color = :black
 
-        arrowsize = automatic,
-        arrowhead = automatic,
-        arrowtail = automatic,
+    """Scales the size of the arrow head. This defaults to
+    `0.3` in the 2D case and `Vec3f(0.2, 0.2, 0.3)` in the 3D case. For the latter
+    the first two components scale the radius (in x/y direction) and the last scales
+    the length of the cone. If the arrowsize is set to 1, the cone will have a
+    diameter and length of 1."""
+    arrowsize = automatic
+    """Defines the marker (2D) or mesh (3D) that is used as
+    the arrow head. The default for is `'▲'` in 2D and a cone mesh in 3D. For the
+    latter the mesh should start at `Point3f(0)` and point in positive z-direction."""
+    arrowhead = automatic
+    """Defines the mesh used to draw the arrow tail in 3D.
+    It should start at `Point3f(0)` and extend in negative z-direction. The default
+    is a cylinder. This has no effect on the 2D plot."""
+    arrowtail = automatic
+    """Sets the color used for the arrow tail which is
+    represented by a line in 2D."""
+    linecolor = automatic
+    """Sets the linestyle used in 2D. Does not apply to 3D plots."""
+    linestyle = nothing
+    """Sets how arrows are positioned. By default arrows start at
+    the given positions and extend along the given directions. If this attribute is
+    set to `:head`, `:lineend`, `:tailend`, `:headstart` or `:center` the given
+    positions will be between the head and tail of each arrow instead."""
+    align = :origin
+    """By default the lengths of the directions given to `arrows`
+    are used to scale the length of the arrow tails. If this attribute is set to
+    true the directions are normalized, skipping this scaling."""
+    normalize = false
+    """Scales the length of the arrow tail."""
+    lengthscale = 1f0
 
-        linecolor = automatic,
-        linestyle = nothing,
-        align = :origin,
+    """Defines the number of angle subdivisions used when generating
+    the arrow head and tail meshes. Consider lowering this if you have performance
+    issues. Only applies to 3D plots."""
+    quality = 32
+    markerspace = :pixel
 
-        normalize = false,
-        lengthscale = 1f0,
+    mixin_generic_plot_attributes()...
+    mixin_shading_attributes()...
+    mixin_colormap_attributes()...
 
-        colorscale = identity,
-
-        quality = 32,
-        markerspace = :pixel,
-    )
-
-    generic_plot_attributes!(attr)
-    shading_attributes!(attr)
-    colormap_attributes!(attr, theme(scene, :colormap))
-
-    attr[:fxaa] = automatic
-    attr[:linewidth] = automatic
-    # connect arrow + linecolor by default
-    get!(attr, :arrowcolor, attr[:linecolor])
-    return attr
+    fxaa = automatic
+    """Scales the width/diameter of the arrow tail.
+    Defaults to `1` for 2D and `0.05` for the 3D case."""
+    linewidth = automatic
+    """Sets the color of the arrow head."""
+    arrowcolor = automatic
 end
