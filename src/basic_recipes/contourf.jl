@@ -10,7 +10,7 @@ and vertical grid positions `ys`.
     - an `Int` that produces n equally wide levels or bands
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
 
-    If `levels` is an `Int`, the contour plot will be rectangular as all `zs` values will be covered edge to edge.
+    If `levels` is an `Int`, the contourf plot will be rectangular as all `zs` values will be covered edge to edge.
     This is why `Axis` defaults to tight limits for such contourf plots.
     If you specify `levels` as an `AbstractVector{<:Real}`, however, note that the axis limits include the default margins because the contourf plot can have an irregular shape.
     You can use `tightlimits!(ax)` to tighten the limits similar to the `Int` behavior.
