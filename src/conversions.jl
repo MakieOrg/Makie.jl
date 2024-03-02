@@ -27,9 +27,9 @@ end
     image::AbstractMatrix{<:Union{Float32,Colorant}}
 end
 
-@convert_target struct PointBased{N} # We can use the traits as well for conversion targers
+@convert_target struct PointBased{N, T} # We can use the traits as well for conversion targers
     # all position based traits get converted to a simple vector of points
-    positions::AbstractVector{Point{N,Float32}}
+    positions::AbstractVector{Point{N,T}}
 end
 
 @convert_target struct Mesh
@@ -122,19 +122,19 @@ convert_single_argument(a::AbstractArray{<:Point{N}}) where {N} = a
 Wrap a single point or equivalent object in a single-element array.
 """
 function convert_arguments(::PointBased, x::Real, y::Real)
-    ([Point2f(x, y)],)
+    ([Point2(x, y)],)
 end
 
 function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
-    ([Point3f(x, y, z)],)
+    ([Point3(x, y, z)],)
 end
 
-function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
-    ([convert(Point{N, Float32}, position)],)
+function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <: Real}
+    ([convert(Point{N, T}, position)],)
 end
 
-function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
-    (elconvert(Point{N, Float32}, positions),)
+function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
+    (elconvert(Point{N, T}, positions),)
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -147,7 +147,7 @@ Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
 function convert_arguments(::PointBased, x::AbstractArray{<: Real}, y::AbstractVector{<: Real}, z::AbstractArray{<: Real})
-    (vec(Point3f.(x, y', z)),)
+    (vec(Point3.(x, y', z)),)
 end
 
 function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::RealMatrix)
@@ -156,7 +156,7 @@ end
 
 function convert_arguments(::PointBased, x::AbstractArray{<:Real}, y::RealMatrix,
                            z::AbstractArray{<:Real})
-    (vec(Point3f.(x, y, z)),)
+    (vec(Point3.(x, y, z)),)
 end
 
 """
@@ -166,8 +166,8 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f.(x, y, z),)
-convert_arguments(P::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
+convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3.(x, y, z),)
+convert_arguments(P::PointBased, x::RealVector, y::RealVector) = (Point2.(x, y),)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -212,11 +212,11 @@ Takes an input `Rect` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2)
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
+    return convert_arguments(P, decompose(Point3, mesh))
 end
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
