@@ -3,37 +3,32 @@
 ################################################################################
 const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Any,Any}}
 
-# if no plot type based conversion is defined, we try using a trait
-function convert_arguments(T::PlotFunc, args...; kw...)
-    ct = conversion_trait(T, args...)
-    try
-        convert_arguments(ct, args...; kw...)
-    catch e
-        if e isa MethodError
-            try
-                convert_arguments_individually(T, args...)
-            catch ee
-                if ee isa MethodError
-                    error(
-                        """
-                        `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
+@convert_target struct PointBased{N, T} # We can use the traits as well for conversion targers
+    # all position based traits get converted to a simple vector of points
+    positions::AbstractVector{Point{N,T}}
+end
 
-                        The signature that could not be converted was:
-                        $(join("::" .* string.(typeof.(args)), ", "))
+@convert_target struct Mesh
+    # We currently allow Mesh and vector of meshes for the Mesh type.
+    mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh}
+end
 
-                        Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
+@convert_target struct Volume
+    # Volumes also are just defined on a cube, so we only accept intervals.
+    # convert_arguments will convert from ranges etc to intervals
+    x::ClosedInterval
+    y::ClosedInterval
+    z::ClosedInterval
+    volume::AbstractArray{Float32,3}
+end
 
-                        Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
-                        """
-                    )
-                else
-                    rethrow(ee)
-                end
-            end
-        else
-            rethrow(e)
-        end
+function got_converted(@nospecialize(result), @nospecialize(args))
+    if result === args
+        return false
+    elseif result isa NoConversion
+        return false
+    else
+        return true
     end
 end
 
@@ -85,19 +80,19 @@ end
 Wrap a single point or equivalent object in a single-element array.
 """
 function convert_arguments(::PointBased, x::Real, y::Real)
-    ([Point2f(x, y)],)
+    ([Point2(x, y)],)
 end
 
 function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
-    ([Point3f(x, y, z)],)
+    ([Point3(x, y, z)],)
 end
 
-function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
-    ([convert(Point{N, Float32}, position)],)
+function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <: Real}
+    ([convert(Point{N, T}, position)],)
 end
 
-function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
-    (elconvert(Point{N, Float32}, positions),)
+function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
+    (elconvert(Point{N, T}, positions),)
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -109,16 +104,17 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z::AbstractArray)
-    (vec(Point3f.(x, y', z)),)
+function convert_arguments(::PointBased, x::AbstractArray{<: Real}, y::AbstractVector{<: Real}, z::AbstractArray{<: Real})
+    (vec(Point3.(x, y', z)),)
 end
 
 function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix)
     return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
-function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
-    (vec(Point3f.(x, y, z)),)
+function convert_arguments(::PointBased, x::AbstractArray{<:Real}, y::RealMatrix,
+                           z::AbstractArray{<:Real})
+    (vec(Point3.(x, y, z)),)
 end
 
 """
@@ -128,7 +124,8 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f.(x, y, z),)
+convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3.(x, y, z),)
+convert_arguments(P::PointBased, x::RealVector, y::RealVector) = (Point2.(x, y),)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -176,11 +173,11 @@ Takes an input `Rect` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2)
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
+    return convert_arguments(P, decompose(Point3, mesh))
 end
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
