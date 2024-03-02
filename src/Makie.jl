@@ -380,6 +380,7 @@ export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
+include("makielayout/blocks/float32-scaling2.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
