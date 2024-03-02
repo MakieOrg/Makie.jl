@@ -1,18 +1,18 @@
 function boundingbox(plot::Text)
     @warn """
-    `boundingbox(::Text)` has been deprecated in favor of `px_boundingbox(::Text)`.
+    `boundingbox(::Text)` has been deprecated in favor of `Makie.text_boundingbox(::Text)`.
     In the future `boundingbox(::Text)` will be adjusted to match the other
     `boundingbox(plot)` functions. The new functionality is currently available
     as `Makie._boundingbox(plot::Text)`.
     """
-    return px_boundingbox(plot)
+    return text_boundingbox(plot)
 end
 
 # TODO: Naming: not px, it's whatever markerspace is...
-function px_boundingbox(plot::Text)
+function text_boundingbox(plot::Text)
     bb = Rect3d()
     for p in plot.plots
-        _bb = px_boundingbox(p)
+        _bb = text_boundingbox(p)
         if !isfinite_rect(bb)
             bb = _bb
         elseif isfinite_rect(_bb)
@@ -22,7 +22,7 @@ function px_boundingbox(plot::Text)
     return bb
 end
 
-function px_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
+function text_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
     if x.space[] == x.markerspace[]
         pos = to_ndim(Point3d, x.position[], 0)
     else
@@ -30,10 +30,10 @@ function px_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
         pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
     end
-    return px_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
+    return text_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
-function px_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
+function text_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     if x.space[] == x.markerspace[]
         pos = to_ndim.(Point3d, x.position[], 0)
     else
@@ -41,10 +41,10 @@ function px_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
         pos = Makie.project.(cam, x.space[], x.markerspace[], transformed) # TODO: vectorized project
     end
-    return px_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
+    return text_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
-function px_boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
+function text_boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
     bb = unchecked_boundingbox(x, args...)
     isfinite_rect(bb) || error("Invalid text boundingbox")
     return bb
@@ -57,7 +57,7 @@ function text_bb(str, font, size)
     layout = layout_text(
         str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
         RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
-    return px_boundingbox(layout, Point3d(0), rot)
+    return text_boundingbox(layout, Point3d(0), rot)
 end
 
 
@@ -91,9 +91,9 @@ function unchecked_boundingbox(layouts::AbstractArray{<:GlyphCollection}, positi
     bb = Rect3d()
     broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
         if !isfinite_rect(bb)
-            bb = px_boundingbox(layout, pos, rot)
+            bb = text_boundingbox(layout, pos, rot)
         else
-            bb = union(bb, px_boundingbox(layout, pos, rot))
+            bb = union(bb, text_boundingbox(layout, pos, rot))
         end
     end
     return bb
