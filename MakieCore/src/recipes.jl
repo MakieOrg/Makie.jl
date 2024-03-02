@@ -354,6 +354,8 @@ macro recipe(Tsym::Symbol, args...)
 
     attr_placeholder = gensym()
 
+
+
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
         # recipe, so that we can offer the convenience of automatic augmented docstrings
@@ -377,7 +379,8 @@ macro recipe(Tsym::Symbol, args...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
 
-        $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = @DocumentedAttributes $attrblock # TODO: make this constant, store somewhere global
+        const $attr_placeholder = @DocumentedAttributes $attrblock
+        $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         function ($funcname)(args...; kw...)
