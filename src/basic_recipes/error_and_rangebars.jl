@@ -290,4 +290,4 @@ end
 
 # ignore whiskers when determining data limits
 data_limits(bars::Union{Errorbars, Rangebars}) = data_limits(bars.plots[1])
-boundingbox(bars::Union{Errorbars, Rangebars}) = _boundingbox(bars, data_limits(bars))
+boundingbox(bars::Union{Errorbars, Rangebars}) = transform_bbox(bars, data_limits(bars))

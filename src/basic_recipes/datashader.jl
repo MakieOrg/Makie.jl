@@ -467,7 +467,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
 end
 
 data_limits(p::DataShader) =  p._boundingbox[]
-boundingbox(p::DataShader) =  _boundingbox(p, p._boundingbox[])
+boundingbox(p::DataShader) =  transform_bbox(p, p._boundingbox[])
 
 used_attributes(::Canvas) = (:operation, :local_operation)
 

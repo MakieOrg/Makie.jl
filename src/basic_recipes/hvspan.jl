@@ -110,4 +110,4 @@ function data_limits(p::VSpan)
     return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
 
-boundingbox(p::Union{HSpan, VSpan}) = _boundingbox(p, data_limits(p))
+boundingbox(p::Union{HSpan, VSpan}) = transform_bbox(p, data_limits(p))

@@ -343,5 +343,5 @@ function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     return Rect3d(mini, maxi .- mini)
 end
 function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    return _boundingbox(plot, data_limits(plot))
+    return transform_bbox(plot, data_limits(plot))
 end
