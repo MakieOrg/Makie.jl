@@ -45,10 +45,10 @@ function data_limits(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVecto
         return boundingbox(text)
     else
         if text.position[] isa VecTypes
-            return Rect3f(text.position[])
+            return Rect3d(text.position[])
         else
             # TODO: is this branch necessary?
-            return Rect3f(convert_arguments(PointBased(), text.position[])[1])
+            return Rect3d(convert_arguments(PointBased(), text.position[])[1])
         end
     end
 end
@@ -64,10 +64,10 @@ function point_iterator(list::AbstractVector)
         # save a copy!
         return point_iterator(list[1])
     else
-        points = Point3f[]
+        points = Point3d[]
         for elem in list
             for point in point_iterator(elem)
-                push!(points, to_ndim(Point3f, point, 0))
+                push!(points, to_ndim(Point3d, point, 0))
             end
         end
         return points
@@ -86,15 +86,15 @@ end
 
 function point_iterator(plot::Union{Image, Heatmap, Surface})
     rect = data_limits(plot)
-    return unique(decompose(Point3f, rect))
+    return unique(decompose(Point3d, rect))
 end
 
 function point_iterator(x::Volume)
     axes = (x[1], x[2], x[3])
     extremata = map(extrema∘to_value, axes)
-    minpoint = Point3f(first.(extremata)...)
+    minpoint = Point3d(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
-    rect = Rect3f(minpoint, Vec3f(widths))
+    rect = Rect3d(minpoint, Vec3d(widths))
     return unique(decompose(Point, rect))
 end
 
@@ -132,6 +132,12 @@ function foreach_transformed(f, plot)
     foreach_transformed(f, points, model, identity)
 end
 
+# TODO:
+# These two functions currently:
+# - skip transfunc
+# - skip translations from model (due to 0f0 in project)
+# - apply scaling and rotation
+# What do we actually want from them?
 function iterate_transformed(plot)
     points = point_iterator(plot)
     t = transformation(plot)
@@ -141,14 +147,19 @@ function iterate_transformed(plot)
     # trans_func = identity
     iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
 end
-
-function iterate_transformed(points, model, space, trans_func)
-    (to_ndim(Point3f, project(model, apply_transform(trans_func, point, space)), 0f0) for point in points)
+function iterate_transformed(points::AbstractVector{<: VecTypes{N, T}}, model, space, trans_func) where {N, T}
+    # TODO: either skip this all-together or make model a Float64 matrix
+    [to_ndim(Point3d, project(Mat4{T}(model), apply_transform(trans_func, point, space)), zero(T)) for point in points]
+end
+# TODO: this is just to catch types the above misses
+function iterate_transformed(points::T, model, space, trans_func) where T
+    @warn "iterate_transformed with $T"
+    [to_ndim(Point3f, project(model, apply_transform(trans_func, point, space)), 0f0) for point in points]
 end
 
 function update_boundingbox!(bb_ref, point)
     if all(isfinite, point)
-        vec = to_ndim(Vec3f, point, 0.0)
+        vec = to_ndim(Vec3d, point, 0.0)
         bb_ref[] = update(bb_ref[], vec)
     end
 end
@@ -196,15 +207,15 @@ function _update_rect(rect::Rect{N, T}, point::VecTypes{N, T}) where {N, T}
 end
 
 function limits_from_transformed_points(points_iterator)
-    isempty(points_iterator) && return Rect3f()
+    isempty(points_iterator) && return Rect3d()
     first, rest = Iterators.peel(points_iterator)
-    bb = foldl(_update_rect, rest, init = Rect3f(first, zero(first)))
+    bb = foldl(_update_rect, rest, init = Rect3d(first, zero(first)))
     return bb
 end
 
 # include bbox from scaled markers
 function limits_from_transformed_points(positions, scales, rotations, element_bbox)
-    isempty(positions) && return Rect3f()
+    isempty(positions) && return Rect3d()
 
     first_scale = attr_broadcast_getindex(scales, 1)
     first_rot = attr_broadcast_getindex(rotations, 1)
@@ -219,7 +230,7 @@ function limits_from_transformed_points(positions, scales, rotations, element_bb
 end
 
 function data_limits(scenelike, exclude=(p)-> false)
-    bb_ref = Base.RefValue(Rect3f())
+    bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
             update_boundingbox!(bb_ref, data_limits(plot))
@@ -233,34 +244,34 @@ function data_limits(plot::Surface)
     mini_maxi = extrema_nan.((plot.x[], plot.y[], plot.z[]))
     mini = first.(mini_maxi)
     maxi = last.(mini_maxi)
-    return Rect3f(mini, maxi .- mini)
+    return Rect3d(mini, maxi .- mini)
 end
 
 function data_limits(plot::Heatmap)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
-    mini = Vec3f(first.(mini_maxi)..., 0)
-    maxi = Vec3f(last.(mini_maxi)..., 0)
-    return Rect3f(mini, maxi .- mini)
+    mini = Vec3d(first.(mini_maxi)..., 0)
+    maxi = Vec3d(last.(mini_maxi)..., 0)
+    return Rect3d(mini, maxi .- mini)
 end
 
 function data_limits(plot::Image)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
-    mini = Vec3f(first.(mini_maxi)..., 0)
-    maxi = Vec3f(last.(mini_maxi)..., 0)
-    return Rect3f(mini, maxi .- mini)
+    mini = Vec3d(first.(mini_maxi)..., 0)
+    maxi = Vec3d(last.(mini_maxi)..., 0)
+    return Rect3d(mini, maxi .- mini)
 end
 
 function data_limits(plot::MeshScatter)
     # TODO: avoid mesh generation here if possible
     @get_attribute plot (marker, markersize, rotations)
-    marker_bb = Rect3f(marker)
+    marker_bb = Rect3d(marker)
     positions = iterate_transformed(plot)
     scales = markersize
     # fast path for constant markersize
     if scales isa VecTypes{3} && rotations isa Quaternion
         bb = limits_from_transformed_points(positions)
         marker_bb = rotations * (marker_bb * scales)
-        return Rect3f(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
     else
         # TODO: optimize const scale, var rot and var scale, const rot
         return limits_from_transformed_points(positions, scales, rotations, marker_bb)
