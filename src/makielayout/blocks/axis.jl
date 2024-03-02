@@ -79,6 +79,11 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims)
 
+    # TODO: prototyping
+    # This is all we would do in Axis
+    # update_limits!(float32convert, tlims)
+    # tlims = apply(float32convert, tlims)
+
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
 
