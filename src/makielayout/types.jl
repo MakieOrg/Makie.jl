@@ -201,8 +201,8 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2f}
-    finallimits::Observable{Rect2f}
+    targetlimits::Observable{Rect2d}
+    finallimits::Observable{Rect2d}
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}

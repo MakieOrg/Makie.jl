@@ -414,7 +414,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     decorations[:labeltext] = labeltext
 
-    tickvalues = Observable(Float32[]; ignore_equal_values=true)
+    tickvalues = Observable(Float64[]; ignore_equal_values=true)
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float32},Vector{Any}}}()
     map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, dim_convert, limits, ticks, tickformat,
@@ -430,7 +430,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         Observable((tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits)),
         tickvalues_labels_unfiltered, reversed, attrs.scale)
 
-    minortickvalues = Observable(Float32[]; ignore_equal_values=true)
+    minortickvalues = Observable(Float64[]; ignore_equal_values=true)
     minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
     onany(parent, tickvalues, minorticks) do tickvalues, minorticks
