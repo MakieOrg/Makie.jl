@@ -546,8 +546,9 @@ end
     It should start at `Point3f(0)` and extend in negative z-direction. The default
     is a cylinder. This has no effect on the 2D plot."""
     arrowtail = automatic
-    """Sets the color used for the arrow tail which is
-    represented by a line in 2D."""
+    """Sets the color used for the arrow tail which is represented by a line in 2D.
+    Will copy `color` if set to `automatic`.
+    """
     linecolor = automatic
     """Sets the linestyle used in 2D. Does not apply to 3D plots."""
     linestyle = nothing
@@ -577,6 +578,6 @@ end
     """Scales the width/diameter of the arrow tail.
     Defaults to `1` for 2D and `0.05` for the 3D case."""
     linewidth = automatic
-    """Sets the color of the arrow head."""
+    """Sets the color of the arrow head. Will copy `linecolor` if set to `automatic`."""
     arrowcolor = automatic
 end
