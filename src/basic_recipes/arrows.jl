@@ -22,9 +22,6 @@ grid.
 If a `Function` is provided in place of `u, v, [w]`, then it must accept
 a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
 or other array-like output.
-
-## Attributes
-$(ATTRIBUTES)
 """
 arrows
 
