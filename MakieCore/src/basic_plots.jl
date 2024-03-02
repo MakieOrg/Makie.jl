@@ -609,3 +609,10 @@ end
     get!(attr, :arrowcolor, attr[:linecolor])
     return attr
 end
+
+@recipe(Arc, origin, radius, start_angle, stop_angle) do scene
+    Attributes(;
+        default_theme(scene, Lines)...,
+        resolution = 361,
+    )
+end

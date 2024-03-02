@@ -14,12 +14,7 @@ Examples:
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Arc, origin, radius, start_angle, stop_angle) do scene
-    Attributes(;
-        default_theme(scene, Lines)...,
-        resolution = 361,
-    )
-end
+Arc
 
 function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
