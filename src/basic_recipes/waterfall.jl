@@ -67,10 +67,20 @@ function Makie.plot!(p::Waterfall)
         )
     end
 
+    bar_attrs = copy(p.attributes)
+    delete!(bar_attrs, :direction_color)
+    delete!(bar_attrs, :marker_pos)
+    delete!(bar_attrs, :final_color)
+    delete!(bar_attrs, :final_dodge_gap)
+    delete!(bar_attrs, :show_direction)
+    delete!(bar_attrs, :final_gap)
+    delete!(bar_attrs, :show_final)
+    delete!(bar_attrs, :marker_neg)
+
     barplot!(
         p,
         lift(x -> x.xy, p, fromto);
-        p.attributes...,
+        bar_attrs...,
         fillto=lift(x -> x.fillto, p, fromto),
         stack=automatic,
     )
