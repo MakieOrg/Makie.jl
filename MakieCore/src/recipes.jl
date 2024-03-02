@@ -200,7 +200,7 @@ attribute_names(_) = nothing
 
 Base.@kwdef struct AttributeMetadata
     docstring::Union{Nothing,String}
-    default_expr::Any
+    default_expr::String # stringified expression, just needed for docs purposes
 end
 
 update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetadata(
@@ -249,7 +249,7 @@ macro DocumentedAttributes(expr::Expr)
             end
             
             push!(metadata_exprs, quote
-                am = AttributeMetadata(; docstring = $docs, default_expr = $(QuoteNode(default)))
+                am = AttributeMetadata(; docstring = $docs, default_expr = $(_default_expr_string(default)))
                 if haskey(d, $(QuoteNode(sym)))
                     d[$(QuoteNode(sym))] = update_metadata(d[$(QuoteNode(sym))], am)
                 else
@@ -404,7 +404,7 @@ macro recipe(Tsym::Symbol, args...)
         end
 
         function MakieCore.attribute_default_expressions(T::Type{<:$PlotType})
-            Dict(k => _defaultstring(v.default_expr) for (k, v) in documented_attributes(T).d)
+            Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
         end
 
         function MakieCore._attribute_docs(T::Type{<:$PlotType})
@@ -466,8 +466,8 @@ function rmlines(x::Expr)
   end
 end
 
-_defaultstring(x) = string(rmlines(x))
-_defaultstring(x::String) = repr(x)
+_default_expr_string(x) = string(rmlines(x))
+_default_expr_string(x::String) = repr(x)
 
 function extract_attribute_metadata(arg)
     has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
