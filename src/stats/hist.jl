@@ -179,8 +179,17 @@ function Makie.plot!(plot::Hist)
     bar_labels = lift(plot, plot.bar_labels) do x
         x === :values ? :y : x
     end
+
+    bar_attrs = copy(plot.attributes)
+    delete!(bar_attrs, :over_background_color)
+    delete!(bar_attrs, :bins)
+    delete!(bar_attrs, :scale_to)
+    delete!(bar_attrs, :weights)
+    delete!(bar_attrs, :normalization)
+    delete!(bar_attrs, :over_bar_color)
+
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
+    bp = barplot!(plot, points[]; width = widths[], gap = 0, bar_attrs..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(plot, widths) do w
