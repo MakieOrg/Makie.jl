@@ -272,7 +272,7 @@ macro DocumentedAttributes(expr::Expr)
                     dict[$(QuoteNode(sym))] = if haskey(thm, $(QuoteNode(key)))
                         to_value(thm[$(QuoteNode(key))]) # only use value of theme entry
                     else
-                        $_default
+                        $(esc(_default))
                     end
                 )
                 push!(closure_exprs, d)
@@ -354,8 +354,6 @@ macro recipe(Tsym::Symbol, args...)
 
     attr_placeholder = gensym()
 
-
-
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
         # recipe, so that we can offer the convenience of automatic augmented docstrings
@@ -379,7 +377,15 @@ macro recipe(Tsym::Symbol, args...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
 
-        const $attr_placeholder = @DocumentedAttributes $attrblock
+        # This weird syntax is so that the output of the macrocall can be escaped because it
+        # contains user expressions, without escaping what's passed to the macro because that
+        # messes with its transformation logic. Because we escape the whole block with the macro,
+        # we don't reference it by symbol but splice in the macro itself into the AST
+        # with `var"@DocumentedAttributes"`
+        const $attr_placeholder = $(
+            esc(Expr(:macrocall, var"@DocumentedAttributes", LineNumberNode(@__LINE__), attrblock))
+        )
+
         $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
