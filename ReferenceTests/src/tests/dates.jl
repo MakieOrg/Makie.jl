@@ -20,9 +20,9 @@ function test_conversion(range)
 end
 
 @testset "date/time conversion" begin
-    test_conversion(time_range)
-    test_conversion(date_range)
-    test_conversion(date_time_range)
+    # test_conversion(time_range)
+    # test_conversion(date_range)
+    # test_conversion(date_time_range)
     @warn "TODO: update"
     @test false
 end

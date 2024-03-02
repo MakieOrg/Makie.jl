@@ -279,6 +279,5 @@ function screen_to_plot(plot, p::VecTypes)
 end
 
 # ignore whiskers when determining data limits
-function data_limits(bars::Union{Errorbars, Rangebars})
-    data_limits(bars.plots[1])
-end
+data_limits(bars::Union{Errorbars, Rangebars}) = data_limits(bars.plots[1])
+boundingbox(bars::Union{Errorbars, Rangebars}) = transform_bbox(bars, data_limits(bars))

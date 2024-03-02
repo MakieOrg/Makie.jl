@@ -68,6 +68,9 @@ mutable struct Scene <: AbstractScene
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
+    "A transformation rescaling data to a Float32-save range."
+    float32convert::Union{Nothing, Float32Convert}
+
     "The plots contained in the Scene."
     plots::Vector{AbstractPlot}
 
@@ -114,6 +117,7 @@ mutable struct Scene <: AbstractScene
             camera,
             camera_controls,
             transformation,
+            nothing,
             plots,
             theme,
             children,
@@ -547,10 +551,9 @@ end
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
-    bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding
-    bb = Rect3f(minimum(bb) .- padd, w .+ 2padd)
+    bb = Rect3d(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     scene
 end
@@ -562,7 +565,7 @@ parent_scene(x::Scene) = x
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
 function is2d(scene::SceneLike)
-    lims = data_limits(scene)
+    lims = boundingbox(scene)
     lims === nothing && return nothing
     return is2d(lims)
 end

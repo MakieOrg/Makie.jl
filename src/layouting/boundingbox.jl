@@ -1,163 +1,110 @@
-function parent_transform(x)
-    p = parent(transformation(x))
-    isnothing(p) ? Mat4f(I) : p.model[]
-end
 
-function boundingbox(x, exclude = (p)-> false)
-    return parent_transform(x) * data_limits(x, exclude)
-end
+################################################################################
+### boundingbox
+################################################################################
 
-function project_widths(matrix, vec)
-    pr = project(matrix, vec)
-    zero = project(matrix, zeros(typeof(vec)))
-    return pr - zero
-end
 
-function rotate_bbox(bb::Rect3f, rot)
-    points = decompose(Point3f, bb)
-    Rect3f(Ref(rot) .* points)
-end
+"""
+    boundingbox(scenelike[, exclude = plot -> false])
 
-function gl_bboxes(gl::GlyphCollection)
-    scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
-    map(gl.glyphs, gl.extents, scales) do c, ext, scale
-        hi_bb = height_insensitive_boundingbox_with_advance(ext)
-        # TODO c != 0 filters out all non renderables, which is not always desired
-        Rect2f(
-            Makie.origin(hi_bb) * scale,
-            (c != 0) * widths(hi_bb) * scale
-        )
-    end
-end
+Returns the combined world space bounding box of all plots collected under
+`scenelike`. This include `plot.transformation`, i.e. the `transform_func` and
+the `model` matrix. Plots with `exclude(plot) == true` are excluded.
 
-function height_insensitive_boundingbox(ext::GlyphExtent)
-    l = ext.ink_bounding_box.origin[1]
-    w = ext.ink_bounding_box.widths[1]
-    b = ext.descender
-    h = ext.ascender
-    return Rect2f((l, b), (w, h - b))
-end
-
-function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
-    l = 0f0
-    r = ext.hadvance
-    b = ext.descender
-    h = ext.ascender
-    return Rect2f((l, b), (r - l, h - b))
-end
-
-_inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
-
-unchecked_boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion) =
-    unchecked_boundingbox(glyphcollection, rotation) + position
-
-function unchecked_boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
-    isempty(glyphcollection.glyphs) && return Rect3f(Point3f(0), Vec3f(0))
-
-    glyphorigins = glyphcollection.origins
-    glyphbbs = gl_bboxes(glyphcollection)
-
-    bb = Rect3f()
-    for (charo, glyphbb) in zip(glyphorigins, glyphbbs)
-        charbb = rotate_bbox(Rect3f(glyphbb), rotation) + charo
-        if !isfinite_rect(bb)
-            bb = charbb
-        else
-            bb = union(bb, charbb)
+See also: [`data_limits`](@ref)
+"""
+function boundingbox(scenelike, exclude = (p)-> false)
+    bb_ref = Base.RefValue(Rect3d())
+    foreach_plot(scenelike) do plot
+        if !exclude(plot)
+            update_boundingbox!(bb_ref, future_boundingbox(plot))
         end
     end
-    return bb
-end
-
-function unchecked_boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
-    isempty(layouts) && return Rect3f((0, 0, 0), (0, 0, 0))
-
-    bb = Rect3f()
-    broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
-        if !isfinite_rect(bb)
-            bb = boundingbox(layout, pos, rot)
-        else
-            bb = union(bb, boundingbox(layout, pos, rot))
-        end
-    end
-    return bb
-end
-
-function boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
-    bb = unchecked_boundingbox(x, args...)
-    isfinite_rect(bb) || error("Invalid text boundingbox")
-    bb
-end
-
-function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
-    if x.space[] == x.markerspace[]
-        pos = to_ndim(Point3f, x.position[], 0)
-    else
-        cam = parent_scene(x).camera
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
-    end
-    return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
-end
-
-function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
-    if x.space[] == x.markerspace[]
-        pos = to_ndim.(Point3f, x.position[], 0)
-    else
-        cam = (parent_scene(x).camera,)
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project.(cam, x.space[], x.markerspace[], transformed)
-    end
-    return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
-end
-
-function boundingbox(plot::Text)
-    bb = Rect3f()
-    for p in plot.plots
-        _bb = boundingbox(p)
-        if !isfinite_rect(bb)
-            bb = _bb
-        elseif isfinite_rect(_bb)
-            bb = union(bb, _bb)
-        end
-    end
-    return bb
-end
-
-_is_latex_string(x::AbstractVector{<:LaTeXString}) = true
-_is_latex_string(x::LaTeXString) = true
-_is_latex_string(other) = false
-
-function text_bb(str, font, size)
-    rot = Quaternionf(0,0,0,1)
-    fonts = nothing # TODO: remove the arg if possible
-    layout = layout_text(
-        str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
-        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
-    return boundingbox(layout, Point3f(0), rot)
+    return bb_ref[]
 end
 
 """
-Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
-This is not perfect but works well enough. Check an A vs X to see the difference.
+    boundingbox(plot::AbstractPlot)
+
+Returns the world space bounding box of a plot. This include `plot.transformation`,
+i.e. the `transform_func` and the `model` matrix.
+
+See also: [`data_limits`](@ref)
 """
-function rotatedrect(rect::Rect{2, T}, angle)::Rect{2, T} where T
-    ox, oy = rect.origin
-    wx, wy = rect.widths
-    points = Mat{2, 4, T}(
-        ox, oy,
-        ox, oy+wy,
-        ox+wx, oy,
-        ox+wx, oy+wy
-    )
-    mrot = Mat{2, 2, T}(
-        cos(angle), -sin(angle),
-        sin(angle), cos(angle)
-    )
-    rotated = mrot * points
+boundingbox(plot::AbstractPlot) = _boundingbox(plot)
 
-    rmins = minimum(rotated; dims=2)
-    rmaxs = maximum(rotated; dims=2)
+# TODO: This only exists to deprecate boundingbox(::Text) more smoothly. Once
+#       that is fully removed this should be boundingbox(plot).
+function _boundingbox(plot::AbstractPlot)
+    # Assume primitive plot
+    if isempty(plot.plots)
+        return Rect3d(iterate_transformed(plot))
+    end
 
-    return Rect2(rmins..., (rmaxs .- rmins)...)
+    # Assume combined plot
+    bb_ref = Base.RefValue(future_boundingbox(plot.plots[1]))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, future_boundingbox(plot.plots[i]))
+    end
+
+    return bb_ref[]
+end
+# Replace future_boundingbox with just boundingbox once boundingbox(::Text) is
+# no longer in pixel space
+@inline future_boundingbox(plot::AbstractPlot) = boundingbox(plot)
+@inline future_boundingbox(plot::Text) = _boundingbox(plot)
+
+function _boundingbox(plot::Text)
+    if plot.space[] == plot.markerspace[]
+        return transform_bbox(plot, text_boundingbox(plot))
+    else
+        return Rect3d(iterate_transformed(plot))
+    end
+end
+
+# for convenience
+function transform_bbox(scenelike, lims::Rect)
+    return Rect3d(iterate_transformed(scenelike, point_iterator(lims)))
+end
+
+# same as data_limits except using iterate_transformed
+function boundingbox(plot::MeshScatter)
+    # TODO: avoid mesh generation here if possible
+    @get_attribute plot (marker, markersize, rotations)
+    marker_bb = Rect3d(marker)
+    positions = iterate_transformed(plot)
+    scales = markersize
+    # fast path for constant markersize
+    if scales isa VecTypes{3} && rotations isa Quaternion
+        bb = Rect3d(positions)
+        marker_bb = rotations * (marker_bb * scales)
+        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+    else
+        # TODO: optimize const scale, var rot and var scale, const rot
+        return limits_with_marker_transforms(positions, scales, rotations, marker_bb)
+    end
+end
+
+
+
+################################################################################
+### transformed point iterator
+################################################################################
+
+
+# TODO should Float32 conversions apply here?
+
+@inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
+
+function iterate_transformed(plot, points::AbstractArray{<: VecTypes})
+    return apply_transform_and_model(plot, points)
+end
+
+# TODO: Can this be deleted?
+function iterate_transformed(plot, points::T) where T
+    @warn "iterate_transformed with $T"
+    t = transformation(plot)
+    model = model_transform(t) # will auto-promote if points if Float64
+    trans_func = transform_func(t)
+    [to_ndim(Point3d, project(model, apply_transform(trans_func, point, space))) for point in points]
 end

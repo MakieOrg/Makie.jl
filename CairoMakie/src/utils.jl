@@ -8,10 +8,35 @@ function project_position(scene::Scene, transform_func::T, space, point, model::
     _project_position(scene, space, point, model, yflip)
 end
 
-function _project_position(scene::Scene, space, point, model, yflip::Bool)
+# much faster than dot-ing `project_position` because it skips all the repeated mat * mat
+function _project_position(scene::Scene, space, ps::Vector{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
+    transform = let
+        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        res = scene.camera.resolution[]
+        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+        px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
+        M = Makie.transformationmatrix(px_offset, px_scale) * M
+        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
+    end
+
+    output = similar(ps, Point2f)
+
+    @inbounds for i in eachindex(ps)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i], 0), 1)
+        px_pos = transform * p4d
+        output[i] = px_pos[Vec(1, 2)] / px_pos[3]
+    end
+
+    return output
+end
+
+function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, yflip::Bool) where {N, T1}
+    T = promote_type(Float32, T1) # always Float, at least Float32
     res = scene.camera.resolution[]
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
+    p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
@@ -29,12 +54,12 @@ function project_position(@nospecialize(scenelike), space, point, model, yflip::
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
-function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
-    project_scale(scene, space, Vec2f(s), model)
+function project_scale(scene::Scene, space, s::Number, model = Mat4d(I))
+    project_scale(scene, space, Vec2d(s), model)
 end
 
-function project_scale(scene::Scene, space, s, model = Mat4f(I))
-    p4d = model * to_ndim(Vec4f, s, 0f0)
+function project_scale(scene::Scene, space, s, model = Mat4d(I))
+    p4d = model * to_ndim(Vec4d, s, 0)
     if is_data_space(space)
         @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
         return p .* scene.camera.resolution[] .* 0.5

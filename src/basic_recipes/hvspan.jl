@@ -91,7 +91,7 @@ function data_limits(p::HSpan)
     xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
     ymin = minimum(p[1][])
     ymax = maximum(p[2][])
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
 
 function data_limits(p::VSpan)
@@ -101,5 +101,7 @@ function data_limits(p::VSpan)
     xmin = minimum(p[1][])
     xmax = maximum(p[2][])
     ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
+
+boundingbox(p::Union{HSpan, VSpan}) = transform_bbox(p, data_limits(p))

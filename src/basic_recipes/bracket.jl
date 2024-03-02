@@ -112,7 +112,8 @@ function Makie.plot!(pl::Bracket)
     pl
 end
 
-data_limits(pl::Bracket) = mapreduce(ps -> Rect3f([ps...]), union, pl[1][])
+data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl[1][])
+boundingbox(pl::Bracket) = transform_bbox(pl, data_limits(pl))
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 

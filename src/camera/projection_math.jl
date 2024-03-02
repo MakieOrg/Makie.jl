@@ -278,6 +278,16 @@ function to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
+function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}
+    T = promote_type(T1, T2) # TODO: technically this should be the less accurate of T1 and T2?
+    p = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), dim4)
+    p = matrix * p
+    to_ndim(VT, p, 0.0)
+end
+
+
+# TODO: these may need to consider float32 converts (depending on how we handle them)
+
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
     area = viewport(scene)[]
@@ -291,28 +301,29 @@ function project(scene::Scene, point::T) where T<:StaticVector
     )
 end
 
-function project(matrix::Mat4f, p::T, dim4 = 1.0) where T <: VecTypes
-    p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
-    p = matrix * p
-    to_ndim(T, p, 0.0)
-end
-
-function project(proj_view::Mat4f, resolution::Vec2, point::Point)
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
+function project(proj_view::Mat4{T1}, resolution::Vec2, point::Point{N, T2}) where {N, T1, T2}
+    T = promote_type(T1, T2)
+    p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     clip = proj_view * p4d
+    # at this point the visible range is strictly -1..1 so FLoat64 doesn't matter
     p = (clip ./ clip[4])[Vec(1, 2)]
     p = Vec2f(p[1], p[2])
     return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
 end
 
-function project_point2(mat4::Mat4, point2::Point2)
-    Point2f(mat4 * to_ndim(Point4f, to_ndim(Point3f, point2, 0), 1))
+function project_point2(mat4::Mat4{T1}, point2::Point2{T2}) where {T1, T2}
+    T = promote_type(T1, T2)
+    Point2{T2}(mat4 * to_ndim(Point4{T}, to_ndim(Point3{T}, point2, 0), 1))
 end
 
-function transform(model::Mat4, x::T) where T
-    x4d = to_ndim(Vec4f, x, 0.0)
-    to_ndim(T, model * x4d, 0.0)
+function transform(model::Mat4{T1}, x::VT) where {T1, VT}
+    T = promote_type(T1, eltype(VT))
+    # TODO: no w = 1? Is this meant to skip translations?
+    x4d = to_ndim(Vec4{T}, x, 0.0)
+    to_ndim(VT, model * x4d, 0.0)
 end
+
+################################################################################
 
 # project between different coordinate systems/spaces
 function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
@@ -360,11 +371,12 @@ function is_space_compatible(a::Union{Tuple, Vector}, b::Union{Tuple, Vector})
 end
 is_space_compatible(a::Union{Tuple, Vector}, b::Symbol) = is_space_compatible(b, a)
 
-function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
-    input_space === output_space && return to_ndim(Point3f, pos, 0)
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos::VecTypes{N, T1}) where {N, T1}
+    T = promote_type(Float32, T1) # always float, maybe Float64
+    input_space === output_space && return to_ndim(Point3{T}, pos, 0)
     clip_from_input = space_to_clip(cam, input_space)
     output_from_clip = clip_to_space(cam, output_space)
-    p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
     transformed = output_from_clip * clip_from_input * p4d
-    return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
+    return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end
