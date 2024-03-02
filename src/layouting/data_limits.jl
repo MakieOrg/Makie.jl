@@ -152,13 +152,9 @@ function update_boundingbox!(bb_ref, bb::Rect)
 end
 
 
-function foreach_plot(f, s::Scene)
-    foreach_plot(f, s.plots)
-    foreach(sub-> foreach_plot(f, sub), s.children)
-end
-
-foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
-foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
+foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
+# foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
+# foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
 function foreach_plot(f, plot::Plot)
     if isempty(plot.plots)
