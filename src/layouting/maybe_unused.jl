@@ -66,32 +66,6 @@
 
 
 ################################################################################
-# Utilities
-################################################################################
-
-# unused
-
-#=
-
-function _update_rect(rect::Rect{N, T}, point::VecTypes{N, T}) where {N, T}
-    mi = minimum(rect)
-    ma = maximum(rect)
-    mis_mas = map(mi, ma, point) do _mi, _ma, _p
-        (isnan(_mi) ? _p : _p < _mi ? _p : _mi), (isnan(_ma) ? _p : _p > _ma ? _p : _ma)
-    end
-    new_o = map(first, mis_mas)
-    new_w = map(mis_mas) do (mi, ma)
-        ma - mi
-    end
-    typeof(rect)(new_o, new_w)
-end
-
-=#
-
-
-
-
-################################################################################
 ### from boundingboxes/text
 ################################################################################
 
