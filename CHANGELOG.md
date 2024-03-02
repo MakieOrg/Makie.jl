@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 - Add axis converts, enabling unit/categorical support and more [#3226](https://github.com/MakieOrg/Makie.jl/pull/3226).
+- **Breaking** Streamline `data_limits` and `boundingbox` [#3671](https://github.com/MakieOrg/Makie.jl/pull/3671)
+  - `data_limits` now only considers plot positions, completely ignoring transformations
+  - `boundingbox(::Text)` is deprecated in favor of `text_boundingbox(::Text)`
+  - `boundingbox` now always consider `transform_func` and `model` (except for Text for the time being)
 - **Breaking** Reworked line shaders in GLMakie and WGLMakie [#3558](https://github.com/MakieOrg/Makie.jl/pull/3558)
   - GLMakie: Removed support for per point linewidths
   - GLMakie: Adjusted dots (e.g. with `linestyle = :dot`) to bend across a joint
@@ -12,6 +16,7 @@
   - WGLMakie: Added line joints
   - WGLMakie: Added native anti-aliasing which generally improves quality but introduces outline artifacts in some cases (same as GLMakie)
   - Both: Adjusted handling of thin lines which may result in different color intensities
+
 
 ## [0.20.8] - 2024-02-22
 
