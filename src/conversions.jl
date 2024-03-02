@@ -85,19 +85,19 @@ end
 Wrap a single point or equivalent object in a single-element array.
 """
 function convert_arguments(::PointBased, x::Real, y::Real)
-    ([Point2f(x, y)],)
+    ([Point2(x, y)],)
 end
 
 function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
-    ([Point3f(x, y, z)],)
+    ([Point3(x, y, z)],)
 end
 
-function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
-    ([convert(Point{N, Float32}, position)],)
+function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <: Real}
+    ([convert(Point{N, T}, position)],)
 end
 
-function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
-    (elconvert(Point{N, Float32}, positions),)
+function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
+    (elconvert(Point{N, T}, positions),)
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -109,16 +109,27 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
+<<<<<<< HEAD
 function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z::AbstractArray)
     (vec(Point3f.(x, y', z)),)
+=======
+function convert_arguments(::PointBased, x::AbstractArray{<: Real}, y::AbstractVector{<: Real}, z::AbstractArray{<: Real})
+    (vec(Point3.(x, y', z)),)
+>>>>>>> 637b0f09e (allow types to pass through PointBased conversion [prototyping])
 end
 
 function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix)
     return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
+<<<<<<< HEAD
 function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
     (vec(Point3f.(x, y, z)),)
+=======
+function convert_arguments(::PointBased, x::AbstractArray{<:Real}, y::RealMatrix,
+                           z::AbstractArray{<:Real})
+    (vec(Point3.(x, y, z)),)
+>>>>>>> 637b0f09e (allow types to pass through PointBased conversion [prototyping])
 end
 
 """
@@ -128,7 +139,12 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
+<<<<<<< HEAD
 convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f.(x, y, z),)
+=======
+convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3.(x, y, z),)
+convert_arguments(P::PointBased, x::RealVector, y::RealVector) = (Point2.(x, y),)
+>>>>>>> 637b0f09e (allow types to pass through PointBased conversion [prototyping])
 
 """
     convert_arguments(P, x)::(Vector)
@@ -174,13 +190,13 @@ Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::PointBased, x::Rect2)
+function convert_arguments(P::PointBased, x::Rect2{T}) where T
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2{promote_type(Float32, T)}, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
+    return convert_arguments(P, decompose(Point3, mesh))
 end
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}

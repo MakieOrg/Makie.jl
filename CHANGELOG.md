@@ -6,6 +6,10 @@
 - Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 
 - **Breaking (sort of)** Added a new `@recipe` variant which allows documenting attributes directly where they are defined and validating that all attributes are known whenever a plot is created. This is not breaking in the sense that the API changes, but user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed.
+- **Breaking** Streamline `data_limits` and `boundingbox` [#3671](https://github.com/MakieOrg/Makie.jl/pull/3671)
+  - `data_limits` now only considers plot positions, completely ignoring transformations
+  - `boundingbox(::Text)` is deprecated in favor of `text_boundingbox(::Text)`
+  - `boundingbox` now always consider `transform_func` and `model` (except for Text for the time being)
 - **Breaking** Reworked line shaders in GLMakie and WGLMakie [#3558](https://github.com/MakieOrg/Makie.jl/pull/3558)
   - GLMakie: Removed support for per point linewidths
   - GLMakie: Adjusted dots (e.g. with `linestyle = :dot`) to bend across a joint
@@ -16,6 +20,7 @@
   - WGLMakie: Added native anti-aliasing which generally improves quality but introduces outline artifacts in some cases (same as GLMakie)
   - Both: Adjusted handling of thin lines which may result in different color intensities
 - Fixed an issue with lines being drawn in the wrong direction in 3D (with perspective projection) [#3651](https://github.com/MakieOrg/Makie.jl/pull/3651).
+
 
 ## [0.20.8] - 2024-02-22
 
