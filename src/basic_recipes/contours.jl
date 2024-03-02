@@ -9,39 +9,39 @@ end
 
 Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
 If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
-
-The attribute levels can be either
-
-    an Int that produces n equally wide levels or bands
-
-    an AbstractVector{<:Real} that lists n consecutive edges from low to high, which result in n-1 levels or bands
-
-To add contour labels, use `labels = true`, and pass additional label attributes such as `labelcolor`, `labelsize`, `labelfont` or `labelformatter`.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Contour) do scene
-    attr = Attributes(;
-        color = nothing,
-        levels = 5,
-        linewidth = 1.0,
-        linestyle = nothing,
-        enable_depth = true,
-        transparency = false,
-        labels = false,
+@recipe Contour begin
+    """
+    The color of the contour lines. If `nothing`, the color is determined by the numerical values of the
+    contour levels in combination with `colormap` and `colorrange`.
+    """
+    color = nothing
+    """
+    Controls the number and location of the contour lines. Can be either
 
-        labelfont = theme(scene, :font),
-        labelcolor = nothing,  # matches color by default
-        labelformatter = contour_label_formatter,
-        labelsize = 10,  # arbitrary
-    )
-
-
-    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
-    MakieCore.generic_plot_attributes!(attr)
-
-    return attr
+    - an `Int` that produces n equally wide levels or bands
+    - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
+    """
+    levels = 5
+    linewidth = 1.0
+    linestyle = nothing
+    enable_depth = true
+    """
+    If `true`, adds text labels to the contour lines.
+    """
+    labels = false
+    "The font of the contour labels."
+    labelfont = @inherit font
+    "Color of the contour labels, if `nothing` it matches `color` by default."
+    labelcolor = nothing  # matches color by default
+    """
+    Formats the numeric values of the contour levels to strings.
+    """
+    labelformatter = contour_label_formatter
+    "Font size of the contour labels"
+    labelsize = 10 # arbitrary
+    MakieCore.mixin_colormap_attributes()...
+    MakieCore.mixin_generic_plot_attributes()...
 end
 
 """
@@ -49,12 +49,9 @@ end
 
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Contour3d) do scene
-    default_theme(scene, Contour)
+@recipe Contour3d begin
+    MakieCore.documented_attributes(Contour)...
 end
 
 angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
