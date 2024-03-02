@@ -649,7 +649,12 @@ end
 function Base.showerror(io::IO, i::InvalidAttributeError)
     print(io, "InvalidAttributeError: ")
     n = length(i.attributes)
-    println(io, "Plot type $(i.plottype) does not recognize attribute$(n > 1 ? "s" : "") $(join(i.attributes, ", ", " and ")).")
+    print(io, "Plot type $(i.plottype) does not recognize attribute$(n > 1 ? "s" : "") ")
+    for (j, att) in enumerate(i.attributes)
+        j > 1 && print(io, j == length(i.attributes) ? " and " : ", ")
+        printstyled(io, att; color = :red, bold = true)
+    end
+    println(".")
     nameset = sort(string.(collect(attribute_names(i.plottype))))
     println(io)
     println(io, "The available plot attributes for $(i.plottype) are:")
