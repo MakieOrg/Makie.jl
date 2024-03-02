@@ -404,7 +404,7 @@ macro recipe(Tsym::Symbol, args...)
         end
 
         function MakieCore.attribute_default_expressions(T::Type{<:$PlotType})
-            Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
+            Dict(k => _defaultstring(v.default_expr) for (k, v) in documented_attributes(T).d)
         end
 
         function MakieCore._attribute_docs(T::Type{<:$PlotType})
