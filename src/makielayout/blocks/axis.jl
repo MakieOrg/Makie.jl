@@ -165,8 +165,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
+    targetlimits = Observable{Rect2d}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
+    finallimits = Observable{Rect2d}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
 
@@ -581,7 +581,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mxlims...))
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
     end
     ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
         l = if yauto
@@ -597,7 +597,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mylims...))
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
     end
 
     if ax isa Axis3
@@ -1384,14 +1384,14 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
-    BBox(userlimits...)
+    BBox(Float64.(userlimits)...)
 end
 
 defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
 
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
-    xl = defaultlimits(userlimits[1], xscale)
-    yl = defaultlimits(userlimits[2], yscale)
+    xl = Float64.(defaultlimits(userlimits[1], xscale))
+    yl = Float64.(defaultlimits(userlimits[2], yscale))
     BBox(xl..., yl...)
 end
 
