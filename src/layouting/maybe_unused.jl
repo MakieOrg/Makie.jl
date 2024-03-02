@@ -72,19 +72,6 @@
 # unused
 
 #=
-_isfinite(x) = isfinite(x)
-_isfinite(x::VecTypes) = all(isfinite, x)
-scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
-scalarmax(x, y) = max(x, y)
-scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)
-scalarmin(x, y) = min(x, y)
-
-
-function distinct_extrema_nan(x)
-    lo, hi = extrema_nan(x)
-    lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
-end
-
 
 function _update_rect(rect::Rect{N, T}, point::VecTypes{N, T}) where {N, T}
     mi = minimum(rect)

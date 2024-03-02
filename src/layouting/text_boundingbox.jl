@@ -22,6 +22,10 @@ function text_boundingbox(plot::Text)
     return bb
 end
 
+# Text can contain linesegments. Use data_limits to avoid transformations as
+# they are already in markerspace
+text_boundingbox(x::LineSegments) = data_limits(x)
+
 function text_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
     if x.space[] == x.markerspace[]
         pos = to_ndim(Point3d, x.position[], 0)

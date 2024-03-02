@@ -106,10 +106,15 @@ point_iterator(bbox::Rect) = unique(decompose(Point3d, bbox))
 
 
 isfinite_rect(x::Rect) = all(isfinite, x.origin) &&  all(isfinite, x.widths)
+_isfinite(x) = isfinite(x)
+_isfinite(x::VecTypes) = all(isfinite, x)
+scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
+scalarmax(x, y) = max(x, y)
+scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)
+scalarmin(x, y) = min(x, y)
 
 extrema_nan(itr::Pair) = (itr[1], itr[2])
 extrema_nan(itr::ClosedInterval) = (minimum(itr), maximum(itr))
-
 function extrema_nan(itr)
     vs = iterate(itr)
     vs === nothing && return (NaN, NaN)
@@ -129,6 +134,12 @@ function extrema_nan(itr)
         vmin = scalarmin(x, vmin)
     end
     return (vmin, vmax)
+end
+
+# used in colorsampler.jl, datashader.jl
+function distinct_extrema_nan(x)
+    lo, hi = extrema_nan(x)
+    lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
 end
 
 function update_boundingbox!(bb_ref, point)
