@@ -106,6 +106,35 @@ const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
+################################################################################
+
+# TODO: remove after GeometryBasics#214
+const Point2d = Point2{Float64}
+const Point3d = Point3{Float64}
+const Point4d = Point4{Float64}
+const Vec2d = Vec2{Float64}
+const Vec3d = Vec3{Float64}
+const Vec4d = Vec4{Float64}
+const Rect2d = Rect2{Float64}
+const Rect3d = Rect3{Float64}
+const Mat3d = Mat3{Float64}
+const Mat4d = Mat4{Float64}
+
+# TODO: move to GeometryBasics?
+function GeometryBasics.Rect3{T}(r::Rect2) where {T} # used in text boundingbox
+    return Rect3{T}(Vec3{T}(origin(r)..., zero(T)), Vec3{T}(widths(r)..., zero(T)))
+end
+
+# TODO: patch GridLayoutBase, probably to use Float64 consistently?
+function GridLayoutBase.BBox(left::T1, right::T2, bottom::T3, top::T4) where {T1 <: Real, T2 <: Real, T3 <: Real, T4 <: Real}
+    mini = (left, bottom)
+    maxi = (right, top)
+    T = promote_type(T1, T2, T3, T4, Float32) # Float32 to skip Int outputs
+    return Rect2{T}(mini, maxi .- mini)
+end
+
+################################################################################
+
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
