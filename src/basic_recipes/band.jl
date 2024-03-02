@@ -4,17 +4,10 @@
 
 Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
 between the points in `lower` and `upper`.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Band, lowerpoints, upperpoints) do scene
-    attr = Attributes(;
-        default_theme(scene, Mesh)...,
-        colorrange = automatic,
-    )
-    attr[:shading][] = NoShading
-    attr
+@recipe Band lowerpoints upperpoints begin
+    MakieCore.documented_attributes(Mesh)...
+    shading = NoShading
 end
 
 convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
