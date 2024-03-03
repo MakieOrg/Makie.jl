@@ -374,7 +374,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     model = primitive.model[]
     positions = primitive[1][]
     isempty(positions) && return
-    size_model = transform_marker ? model : Mat4f(I)
+    size_model = transform_marker ? model : Mat4d(I)
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
 
@@ -630,7 +630,7 @@ function draw_glyph_collection(
     strokecolors = glyph_collection.strokecolors
 
     model = _deref(_model)
-    model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3f(I)
+    model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
     id = Mat4f(I)
 
     glyph_pos = let
@@ -639,7 +639,7 @@ function draw_glyph_collection(
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
-        model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
+        model * to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
     end
 
     Cairo.save(ctx)
@@ -674,8 +674,8 @@ function draw_glyph_collection(
         # origin. The resulting vectors give the directions in which the character
         # needs to be stretched in order to match the 3D projection
 
-        xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
-        yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
+        xvec = rotation * (scale3[1] * Point3d(1, 0, 0))
+        yvec = rotation * (scale3[2] * Point3d(0, -1, 0))
 
         glyphpos = _project_position(scene, markerspace, gp3, id, true)
         xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
@@ -767,7 +767,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     else
         ys = regularly_spaced_array_to_range(ys)
     end
-    model = primitive.model[]::Mat4f
+    model = primitive.model[]::Mat4d
     interpolate = to_value(primitive.interpolate)
 
     # Debug attribute we can set to disable fastpath
@@ -901,10 +901,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
-    vs =  decompose(Point2f, mesh)::Vector{Point2f}
+    vs = decompose(Point2f, mesh)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
-    model = plot.model[]::Mat4f
+    model = plot.model[]::Mat4d
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     space = to_value(get(plot, :space, :data))::Symbol
@@ -971,7 +971,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
 
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
-    model = attributes.model[]::Mat4f
+    model = attributes.model[]::Mat4d
     space = to_value(get(attributes, :space, :data))::Symbol
     func = Makie.transform_func(attributes)
 
@@ -1003,7 +1003,7 @@ function draw_mesh3D(
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(model[i, i]))
 
-    local_model = rotation * Makie.scalematrix(Vec3f(scale))
+    local_model = rotation * Makie.scalematrix(Vec3d(scale))
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
     vs = broadcast(meshpoints, (transform_func,)) do v, f
