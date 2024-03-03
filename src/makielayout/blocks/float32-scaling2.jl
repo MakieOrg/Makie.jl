@@ -83,3 +83,10 @@ end
 
 @inline apply(c::Float32Convert, p::VecTypes) = apply(c.scaling[], p)
 @inline apply(c::Float32Convert, ps::AbstractArray{<: VecTypes}) = apply.((c.scaling[],), ps)
+
+function Mat4d(c::Float32Convert)
+    linear = c.scaling[]
+    scale = to_ndim(Vec3d, linear.scale, 1)
+    translation = to_ndim(Vec3d, linear.offset, 0)
+    return transformationmatrix(translation, scale)
+end
