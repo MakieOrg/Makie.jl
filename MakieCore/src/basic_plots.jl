@@ -291,7 +291,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 @recipe Lines positions begin
     "The color of the line."
     color = @inherit linecolor
-    "Sets the width of the line in pixel units"
+    "Sets the width of the line in screen units"
     linewidth = @inherit linewidth
     "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
     linestyle = nothing
