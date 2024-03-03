@@ -306,7 +306,7 @@ function getlimits(ax::Axis3, dim)
         ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
     end
 
-    bboxes = Makie.data_limits.(filtered_plots) # TODO: use boundingbox to include transform_func and model?
+    bboxes = Makie.data_limits.(filtered_plots)
     finite_bboxes = filter(Makie.isfinite_rect, bboxes)
 
     isempty(finite_bboxes) && return nothing

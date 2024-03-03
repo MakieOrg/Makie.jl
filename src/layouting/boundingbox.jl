@@ -17,7 +17,7 @@ function boundingbox(scenelike, exclude = (p)-> false)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
-            update_boundingbox!(bb_ref, boundingbox(plot))
+            update_boundingbox!(bb_ref, future_boundingbox(plot))
         end
     end
     return bb_ref[]
@@ -42,17 +42,22 @@ function _boundingbox(plot::AbstractPlot)
     end
 
     # Assume combined plot
-    bb_ref = Base.RefValue(boundingbox(plot.plots[1]))
+    bb_ref = Base.RefValue(future_boundingbox(plot.plots[1]))
     for i in 2:length(plot.plots)
-        update_boundingbox!(bb_ref, boundingbox(plot.plots[i]))
+        update_boundingbox!(bb_ref, future_boundingbox(plot.plots[i]))
     end
 
     return
 end
+# Replace future_boundingbox with just boundingbox once boundingbox(::Text) is
+# no longer in pixel space
+@inline future_boundingbox(plot::AbstractPlot) = boundingbox(plot)
+@inline future_boundingbox(plot::Text) = _boundingbox(plot)
+_boundingbox(plot::Text) = Rect3d(iterate_transformed(plot))
 
 # for convenience
-function _boundingbox(plot::AbstractPlot, lims::Rect)
-    return Rect3d(iterate_transformed(plot, point_iterator(lims)))
+function transform_bbox(scenelike, lims::Rect)
+    return Rect3d(iterate_transformed(scenelike, point_iterator(lims)))
 end
 
 

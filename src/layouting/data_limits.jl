@@ -75,6 +75,8 @@ function data_limits(x::Volume)
     return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
 end
 
+# We don't want pixel space line segments to be considered...
+data_limits(plot::Text) = Rect3d(point_iterator(plot))
 
 ################################################################################
 ### point_iterator & data_limits
@@ -87,7 +89,7 @@ end
 
 point_iterator(plot::Text) = point_iterator(plot.plots[1])
 function point_iterator(plot::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
-    return plot.positions[]
+    return plot.position[]
 end
 
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
