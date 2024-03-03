@@ -273,7 +273,7 @@ end
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
-    Please be vary of bugs in the implementation and open issues if you encounter odd behaviour.
+    Please be wary of bugs in the implementation and open issues if you encounter odd behaviour.
 
 Points can be any array type supporting iteration & getindex, including memory mapped arrays.
 If you have separate arrays for x and y coordinates and want to avoid conversion and copy, consider using:
@@ -282,60 +282,61 @@ using Makie.StructArrays
 points = StructArray{Point2f}((x, y))
 datashader(points)
 ```
-Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower then just copying it into a new array.
+Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower than just copying the data into a new array.
 
 For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
-
-## Attributes
-
-### Specific to `DataShader`
-
-- `agg = AggCount()` can be `AggCount()`, `AggAny()` or `AggMean()`. User extendable by overloading:
-
-
-    ```Julia
-        struct MyAgg{T} <: Makie.AggOp end
-        MyAgg() = MyAgg{Float64}()
-        Makie.Aggregation.null(::MyAgg{T}) where {T} = zero(T)
-        Makie.Aggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
-        Makie.Aggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
-        Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
-    ```
-
-- `method = AggThreads()` can be `AggThreads()` or `AggSerial()`.
-- `async::Bool = true` will calculate get_aggregation in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in documenter.
-
-- `operation::Function = automatic` Defaults to `Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`operation(final_aggregation_result)`).
-- `local_operation::Function = identity` function which gets call on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
-
-- `point_transform::Function = identity` function which gets applied to every point before aggregating it.
-- `binsize::Number = 1` factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a corser image.
-- `show_timings::Bool = false` show how long it takes to aggregate each frame.
-- `interpolate::Bool = true` If the resulting image should be displayed interpolated.
-
-$(Base.Docs.doc(MakieCore.colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(DataShader, points) do scene
-    attr = Theme(
+@recipe DataShader points begin
+    """
+    Can be `AggCount()`, `AggAny()` or `AggMean()`. User-extensible by overloading:
 
-        agg = AggCount(),
-        method = AggThreads(),
-        async = true,
-        # Defaults to equalize_histogram
-        # just set to automatic, so that if one sets local_operation, one doesn't do equalize_histogram on top of things.
-        operation=automatic,
-        local_operation=identity,
+    ```julia
+    struct MyAgg{T} <: Makie.AggOp end
+    MyAgg() = MyAgg{Float64}()
+    Makie.Aggregation.null(::MyAgg{T}) where {T} = zero(T)
+    Makie.Aggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
+    Makie.Aggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
+    Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
+    ```
+    """
+    agg = AggCount()
+    """
+    Can be `AggThreads()` or `AggSerial()` for threaded vs. serial aggregation.
+    """
+    method = AggThreads()
+    """
+    Will calculate `get_aggregation` in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in Documenter.
+    """
+    async = true
+    # Defaults to equalize_histogram
+    # just set to automatic, so that if one sets local_operation, one doesn't do equalize_histogram on top of things.
+    """
+    Defaults to `Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`operation(final_aggregation_result)`).
+    """
+    operation=automatic
+    """
+    Function which gets called on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
+    """
+    local_operation=identity
 
-        point_transform = identity,
-        binsize = 1,
-        show_timings = false,
-
-        interpolate = true
-    )
-    MakieCore.generic_plot_attributes!(attr)
-    return MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
+    """
+    Function which gets applied to every point before aggregating it.
+    """
+    point_transform = identity
+    """
+    Factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a coarser image.
+    """
+    binsize = 1
+    """
+    Set to `true` to show how long it takes to aggregate each frame.
+    """
+    show_timings = false
+    """
+    If the resulting image should be displayed interpolated.
+    """
+    interpolate = true
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
 end
 
 function fast_bb(points, f)
