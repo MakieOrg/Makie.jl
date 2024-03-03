@@ -119,6 +119,7 @@ const Rect2d = Rect2{Float64}
 const Rect3d = Rect3{Float64}
 const Mat3d = Mat3{Float64}
 const Mat4d = Mat4{Float64}
+export Point2d, Point3d, Point4d, Vec2d, Vec3d, Vec4d, Rect2d, Rect3d
 
 # TODO: move to GeometryBasics?
 function GeometryBasics.Rect3{T}(r::Rect2) where {T} # used in text boundingbox
