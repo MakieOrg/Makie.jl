@@ -22,7 +22,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
                         # TODO: probably boundingbox?
                         dl = data_limits(ls.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
                         if any(isinf, widths(dl)) || any(isinf, Makie.origin(dl))
-                            Rect3f((0f0, 0f0, 0f0), (1f0, 1f0, 1f0))
+                            Rect3d((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
                         else
                             dl
                         end
