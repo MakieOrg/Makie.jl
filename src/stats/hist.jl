@@ -21,34 +21,35 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
 end
 
 """
-    stephist(values; bins = 15, normalization = :none)
+    stephist(values)
 
-Plot a step histogram of `values`. `bins` can be an `Int` to create that
-number of equal-width bins over the range of `values`.
-Alternatively, it can be a sorted iterable of bin edges. The histogram
-can be normalized by setting `normalization`.
-
-Shares most options with `hist` plotting function.
-
-Statistical weights can be provided via the `weights` keyword argument.
-
-The following attributes can move the histogram around,
-which comes in handy when placing multiple histograms into one plot:
-* `scale_to = nothing`: allows to scale all values to a certain height
-
-## Attributes
-$(ATTRIBUTES)
+Plot a step histogram of `values`.
 """
-@recipe(StepHist, values) do scene
-    Attributes(
-        bins = 15, # Int or iterable of edges
-        normalization = :none,
-        weights = automatic,
-        cycle = [:color => :patchcolor],
-        color = theme(scene, :patchcolor),
-        linestyle = :solid,
-        scale_to = nothing,
-    )
+@recipe StepHist values begin
+    "Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges."
+    bins = 15 # Int or iterable of edges
+    """Allows to apply a normalization to the histogram.
+    Possible values are:
+
+    *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
+    has norm 1 and represents a PDF.
+    * `:density`: Normalize by bin sizes only. Resulting histogram represents
+    count density of input and does not have norm 1. Will not modify the
+    histogram if it already represents a density (`h.isdensity == 1`).
+    * `:probability`: Normalize by sum of weights only. Resulting histogram
+    represents the fraction of probability mass for each bin and does not have
+    norm 1.
+    *  `:none`: Do not normalize.
+    """
+    normalization = :none
+    "Allows to provide statistical weights."
+    weights = automatic
+    cycle = [:color => :patchcolor]
+    color = @inherit patchcolor
+    linewidth = @inherit linewidth
+    linestyle = :solid
+    "Allows to scale all values to a certain height."
+    scale_to = nothing
 end
 
 function Makie.plot!(plot::StepHist)
@@ -83,61 +84,58 @@ function Makie.plot!(plot::StepHist)
 end
 
 """
-    hist(values; bins = 15, normalization = :none)
+    hist(values)
 
-Plot a histogram of `values`. `bins` can be an `Int` to create that
-number of equal-width bins over the range of `values`.
-Alternatively, it can be a sorted iterable of bin edges. The histogram
-can be normalized by setting `normalization`. Possible values are:
-
-*  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-   has norm 1 and represents a PDF.
-* `:density`: Normalize by bin sizes only. Resulting histogram represents
-   count density of input and does not have norm 1. Will not modify the
-   histogram if it already represents a density (`h.isdensity == 1`).
-* `:probability`: Normalize by sum of weights only. Resulting histogram
-   represents the fraction of probability mass for each bin and does not have
-   norm 1.
-*  `:none`: Do not normalize.
-
-Statistical weights can be provided via the `weights` keyword argument.
-
-The following attributes can move the histogram around,
-which comes in handy when placing multiple histograms into one plot:
-* `offset = 0.0`: adds an offset to every value
-* `fillto = 0.0`: defines where the bar starts
-* `scale_to = nothing`: allows to scale all values to a certain height
-* `flip = false`: flips all values
-
-Color can either be:
-* a vector of `bins` colors
-* a single color
-* `:values`, to color the bars with the values from the histogram
-
-## Attributes
-$(ATTRIBUTES)
+Plot a histogram of `values`.
 """
-@recipe(Hist, values) do scene
-    Attributes(
-        bins = 15, # Int or iterable of edges
-        normalization = :none,
-        weights = automatic,
-        cycle = [:color => :patchcolor],
-        color = theme(scene, :patchcolor),
-        offset = 0.0,
-        fillto = automatic,
-        scale_to = nothing,
-
-        bar_labels = nothing,
-        flip_labels_at = Inf,
-        label_color = theme(scene, :textcolor),
-        over_background_color = automatic,
-        over_bar_color = automatic,
-        label_offset = 5,
-        label_font = theme(scene, :font),
-        label_size = 20,
-        label_formatter = bar_label_formatter
-    )
+@recipe Hist values begin
+    """
+    Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges. 
+    """
+    bins = 15
+    """
+    Allows to normalize the histogram. Possible values are:
+    
+    *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
+       has norm 1 and represents a PDF.
+    * `:density`: Normalize by bin sizes only. Resulting histogram represents
+       count density of input and does not have norm 1. Will not modify the
+       histogram if it already represents a density (`h.isdensity == 1`).
+    * `:probability`: Normalize by sum of weights only. Resulting histogram
+       represents the fraction of probability mass for each bin and does not have
+       norm 1.
+    *  `:none`: Do not normalize.
+    """
+    normalization = :none
+    "Allows to statistically weight the observations."
+    weights = automatic
+    cycle = [:color => :patchcolor]
+    """
+    Color can either be:
+    * a vector of `bins` colors
+    * a single color
+    * `:values`, to color the bars with the values from the histogram
+    """
+    color = @inherit patchcolor
+    strokewidth = @inherit patchstrokewidth
+    strokecolor = @inherit patchstrokecolor
+    "Adds an offset to every value."
+    offset = 0.0
+    "Defines where the bars start."
+    fillto = automatic
+    "Allows to scale all values to a certain height."
+    scale_to = nothing
+    bar_labels = nothing
+    flip_labels_at = Inf
+    label_color = @inherit textcolor
+    over_background_color = automatic
+    over_bar_color = automatic
+    label_offset = 5
+    label_font = @inherit font
+    label_size = 20
+    label_formatter = bar_label_formatter
+    "Set the direction of the bars."
+    direction = :y
 end
 
 function pick_hist_edges(vals, bins)
