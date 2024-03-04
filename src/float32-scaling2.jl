@@ -83,12 +83,15 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
     return false
 end
 
-@inline f32_convert(::Nothing, x) = Float32(x)
+@inline f32_convert(::Nothing, x::Real) = Float32(x)
+@inline f32_convert(::Nothing, x::VecTypes{N}) where N = to_ndim(Point{N, Float32}, x, 0)
+
 @inline function f32_convert(c::Float32Convert, p::VecTypes{N}) where N
-    return Point{N, Float32}(c.scaling[](p))
+    # Point3f(::Point3i) doesn't work
+    return to_ndim(Point{N, Float32}, c.scaling[](p), 0)
 end
 @inline function f32_convert(c::Float32Convert, ps::AbstractArray{<: VecTypes{N}}) where N
-    return [Point{N, Float32}(c.scaling[](p)) for p in ps]
+    return [to_ndim(Point{N, Float32}, c.scaling[](p), 0) for p in ps]
 end
 
 @inline f32_convert(::Nothing, x, dim) = Float32(x)
@@ -102,6 +105,7 @@ end
     maxi = c.scaling[](maximum(r))
     return Rect{N, Float32}(mini, maxi - mini)
 end
+
 
 f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
 function f32_convert_matrix(c::Float32Convert, space::Symbol)
