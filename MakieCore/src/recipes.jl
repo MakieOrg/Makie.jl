@@ -335,7 +335,8 @@ end
 macro recipe(Tsym::Symbol, args...)
 
     funcname_sym = to_func_name(Tsym)
-    funcname! = esc(Symbol("$(funcname_sym)!"))
+    funcname!_sym = Symbol("$(funcname_sym)!")
+    funcname! = esc(funcname!_sym)
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)
 
@@ -417,9 +418,10 @@ macro recipe(Tsym::Symbol, args...)
             Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
         end
 
-        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(funcname_sym)), user_docstring)
+        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)),user_docstring)
         @doc docstring_modified $funcname_sym
-        
+        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
+        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
         export $PlotType, $funcname, $funcname!
     end
 
@@ -436,14 +438,16 @@ macro recipe(Tsym::Symbol, args...)
     q
 end
 
-function make_recipe_docstring(P::Type{<:Plot}, funcsym, docstring)
+function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
     io = IOBuffer()
 
     attr_docstrings = _attribute_docs(P)
 
     print(io, docstring)
 
-    # println(io, "```")
+    println(io, "## Plot type")
+    println(io, "The plot type alias for the `$funcname_sym` function is `$Tsym`.")
+
     println(io, "## Attributes")
     println(io)
 
