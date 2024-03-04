@@ -653,14 +653,15 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, row_major = true,
 end
 
 function Base.showerror(io::IO, i::InvalidAttributeError)
-    print(io, "InvalidAttributeError: ")
     n = length(i.attributes)
-    print(io, "Plot type $(i.plottype) does not recognize attribute$(n > 1 ? "s" : "") ")
+    print(io, "Invalid attribute$(n > 1 ? "s" : "") ")
     for (j, att) in enumerate(i.attributes)
         j > 1 && print(io, j == length(i.attributes) ? " and " : ", ")
         printstyled(io, att; color = :red, bold = true)
     end
-    println(".")
+    print(io, " for plot type ")
+    printstyled(io, i.plottype; color = :blue, bold = true)
+    println(io, ".")
     nameset = sort(string.(collect(attribute_names(i.plottype))))
     println(io)
     println(io, "The available plot attributes for $(i.plottype) are:")
