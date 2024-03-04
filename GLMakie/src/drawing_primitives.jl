@@ -221,6 +221,32 @@ function get_space(x)
     return haskey(x, :markerspace) ? x.markerspace : x.space
 end
 
+function apply_transform_and_f32_conversion(
+        scene::Scene, plot::AbstractPlot, data,
+        space::Observable = get(plot, :space, Observable(:data))
+    )
+    f32c_obs = isnothing(scene.float32convert) ? Observable(nothing) : scene.float32convert.scaling
+    return map(plot, f32c_obs, transform_func_obs(plot), data, space) do _, _tf, data, space
+        tf = space == :data ? _tf : identity
+        f32c = space in (:data, :transformed) ? scene.float32convert : nothing
+        # avoid intermediate array?
+        return [Makie.f32_convert(f32c, apply_transform(tf, x)) for x in data]
+    end
+end
+
+# For Vector{<: Real} applying to x/y/z dimension
+function apply_transform_and_f32_conversion(
+        scene::Scene, plot::AbstractPlot, data, dim::Integer,
+        space::Observable = get(plot, :space, Observable(:data))
+    )
+    f32c_obs = isnothing(scene.float32convert) ? Observable(nothing) : scene.float32convert.scaling
+    return map(plot, f32c_obs, transform_func_obs(plot), data, space) do _, _tf, data, space
+        tf = space == :data ? _tf : identity
+        f32c = space in (:data, :transformed) ? scene.float32convert : nothing
+        return [Makie.f32_convert(f32c, apply_transform(tf, x), dim) for x in data]
+    end
+end
+
 const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO,
                         :lightposition, :material, :axis_cycler,
                         :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
@@ -382,7 +408,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
 
         space = plot.space
         positions = handle_view(plot[1], gl_attributes)
-        positions = lift(apply_transform, plot, transform_func_obs(plot), positions, space)
+        positions = apply_transform_and_f32_conversion(scene, plot, positions)
+        # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, space)
 
         if plot isa Scatter
             mspace = plot.markerspace
@@ -444,21 +471,27 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         data = Dict{Symbol, Any}(gl_attributes)
         positions = handle_view(plot[1], data)
 
-        transform_func = transform_func_obs(plot)
+        # transform_func = transform_func_obs(plot)
         space = plot.space
         if isnothing(to_value(linestyle))
             data[:pattern] = nothing
             data[:fast] = true
 
-            positions = lift(apply_transform, plot, transform_func, positions, space)
+            # positions = lift(apply_transform, plot, transform_func, positions, space)
+            positions = apply_transform_and_f32_conversion(scene, plot, positions)
         else
             data[:pattern] = linestyle
             data[:fast] = false
 
             pvm = lift(*, plot, data[:projectionview], data[:model])
-            positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
-                transformed = apply_transform(f, ps, space)
-                output = Vector{Point4f}(undef, length(transformed))
+            positions = lift(plot, scene.float32convert, transform_func, positions,
+                    space, pvm, data[:resolution]) do _f32c, f, ps, space, pvm, res
+
+                f32c = space in (:data, :transformed) ? _f32c : nothing
+                transformed = Makie.float32_convert(f32c, apply_transform(f, ps, space))
+                output = Vector{Point3f}(undef, length(transformed))
+                scale = Vec3f(0.5 * res[1], 0.5 * res[2], 1f0)
+                offset = Vec3f(0.5 * res[1], 0.5 * res[2], 0)
                 for i in eachindex(transformed)
                     output[i] = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
                 end
@@ -480,7 +513,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
         data[:pattern] = pop!(data, :linestyle)
 
         positions = handle_view(plot[1], data)
-        positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)
+        # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)
+        positions = apply_transform_and_f32_conversion(scene, plot, positions)
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
         end
@@ -489,6 +523,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
     end
 end
 
+# TODO: Float32 convert
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     return cached_robj!(screen, scene, plot) do gl_attributes
