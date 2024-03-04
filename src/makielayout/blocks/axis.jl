@@ -82,7 +82,7 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
 
     # TODO: apply model
     update_limits!(scene.float32convert, tlims) # update float32 scaling
-    lims32 = apply(scene.float32convert, tlims)  # get scaled limits
+    lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
     @info lims32
     left, bottom = minimum(lims32)
     right, top   = maximum(lims32)

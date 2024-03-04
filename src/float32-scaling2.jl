@@ -32,8 +32,7 @@ struct LinearScaling
 end
 
 # muladd is no better than a * b + c etc
-@inline apply(ls::LinearScaling, x::Real, dim::Integer) = ls(x, dim)
-@inline apply(ls::LinearScaling, p::VecTypes) = ls(p)
+# Don't apply Float32 here so we can still work with full precision by calling these directly
 @inline (ls::LinearScaling)(x::Real, dim::Integer) = ls.scale[dim] * x + ls.offset[dim]
 @inline (ls::LinearScaling)(p::VecTypes{2}) = ls.scale[Vec(1, 2)] .* p + ls.offset[Vec(1, 2)]
 @inline (ls::LinearScaling)(p::VecTypes{3}) = ls.scale .* p + ls.offset
@@ -84,20 +83,24 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
     return false
 end
 
-@inline apply(::Nothing, x) = x
-@inline apply(c::Float32Convert, p::VecTypes) = apply(c.scaling[], p)
-@inline apply(c::Float32Convert, ps::AbstractArray{<: VecTypes}) = apply.((c.scaling[],), ps)
-
-@inline apply(::Nothing, x, dim) = x
-@inline apply(c::Float32Convert, x::Real, dim::Integer) = apply(c.scaling[], x, dim)
-@inline function apply(c::Float32Convert, xs::AbstractArray{<: Real}, dim::Integer)
-    return apply.((c.scaling[],), xs, dim)
+@inline f32_convert(::Nothing, x) = Float32(x)
+@inline function f32_convert(c::Float32Convert, p::VecTypes{N}) where N
+    return Point{N, Float32}(c.scaling[](p))
+end
+@inline function f32_convert(c::Float32Convert, ps::AbstractArray{<: VecTypes{N}}) where N
+    return [Point{N, Float32}(c.scaling[](p)) for p in ps]
 end
 
-@inline function apply(c::Float32Convert, r::T) where {T <: Rect}
-    mini = apply(c.scaling[], minimum(r))
-    maxi = apply(c.scaling[], maximum(r))
-    return T(mini, maxi - mini)
+@inline f32_convert(::Nothing, x, dim) = Float32(x)
+@inline f32_convert(c::Float32Convert, x::Real, dim::Integer) = Float32(c.scaling[](x, dim))
+@inline function f32_convert(c::Float32Convert, xs::AbstractArray{<: Real}, dim::Integer)
+    return [Float32(c.scaling[](x, dim)) for x in xs]
+end
+
+@inline function f32_convert(c::Float32Convert, r::Rect{N}) where {N}
+    mini = c.scaling[](minimum(r))
+    maxi = c.scaling[](maximum(r))
+    return Rect{N, Float32}(mini, maxi - mini)
 end
 
 f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
