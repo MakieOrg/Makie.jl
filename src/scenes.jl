@@ -68,6 +68,9 @@ mutable struct Scene <: AbstractScene
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
+    "A transformation rescaling data to a Float32-save range."
+    float32convert::Union{Nothing, Float32Convert}
+
     "The plots contained in the Scene."
     plots::Vector{AbstractPlot}
 
@@ -114,6 +117,7 @@ mutable struct Scene <: AbstractScene
             camera,
             camera_controls,
             transformation,
+            nothing,
             plots,
             theme,
             children,
