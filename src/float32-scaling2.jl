@@ -26,33 +26,36 @@ Conversion chain:
   a good target range to avoid frequent updates
 =#
 
-struct LinearScaling{N}
-    scale::Vec{N, Float64}
-    offset::Vec{N, Float64}
+struct LinearScaling
+    scale::Vec{3, Float64}
+    offset::Vec{3, Float64}
 end
 
 # muladd is no better than a * b + c etc
+@inline apply(ls::LinearScaling, x::Real, dim::Integer) = ls(x, dim)
 @inline apply(ls::LinearScaling, p::VecTypes) = ls(p)
-@inline (ls::LinearScaling{N})(p::VecTypes{N}) where N = ls.scale .* p + ls.offset
-@inline function (ls::LinearScaling{N})(p::VecTypes{M}) where {N, M}
-    return ls.scale[SOneTo(M)] .* p + ls.offset[SOneTo(M)]
-end
+@inline (ls::LinearScaling)(x::Real, dim::Integer) = ls.scale[dim] * x + ls.offset[dim]
+@inline (ls::LinearScaling)(p::VecTypes{2}) = ls.scale[Vec(1, 2)] .* p + ls.offset[Vec(1, 2)]
+@inline (ls::LinearScaling)(p::VecTypes{3}) = ls.scale .* p + ls.offset
 
-struct Float32Convert{N}
-    scaling::Observable{LinearScaling{N}}
+struct Float32Convert
+    scaling::Observable{LinearScaling}
     resolution::Float32
 end
 
-function Float32Convert{N}() where N
-    scaling = LinearScaling{N}(Vec{N, Float64}(1.0), Vec{N, Float64}(0.0))
-    return Float32Convert{N}(Observable(scaling), 1e4)
+function Float32Convert()
+    scaling = LinearScaling(Vec{3, Float64}(1.0), Vec{3, Float64}(0.0))
+    return Float32Convert(Observable(scaling), 1e4)
 end
 
 # transformed space limits
-function update_limits!(c::Float32Convert{N}, lims::Rect{N, Float64}) where {N}
-    return update_limits!(c, minimum(lims), maximum(lims))
+update_limits!(::Nothing, lims::Rect) = false
+function update_limits!(c::Float32Convert, lims::Rect)
+    mini = to_ndim(Vec3d, minimum(lims), -1)
+    maxi = to_ndim(Vec3d, maximum(lims), +1)
+    return update_limits!(c, mini, maxi)
 end
-function update_limits!(c::Float32Convert{N}, mini::VecTypes{N, Float64}, maxi::VecTypes{N, Float64}) where {N}
+function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::VecTypes{3, Float64})
     linscale = c.scaling[]
 
     low  = linscale(mini)
@@ -81,12 +84,30 @@ function update_limits!(c::Float32Convert{N}, mini::VecTypes{N, Float64}, maxi::
     return false
 end
 
+@inline apply(::Nothing, x) = x
 @inline apply(c::Float32Convert, p::VecTypes) = apply(c.scaling[], p)
 @inline apply(c::Float32Convert, ps::AbstractArray{<: VecTypes}) = apply.((c.scaling[],), ps)
 
-function Mat4d(c::Float32Convert)
-    linear = c.scaling[]
-    scale = to_ndim(Vec3d, linear.scale, 1)
-    translation = to_ndim(Vec3d, linear.offset, 0)
-    return transformationmatrix(translation, scale)
+@inline apply(::Nothing, x, dim) = x
+@inline apply(c::Float32Convert, x::Real, dim::Integer) = apply(c.scaling[], x, dim)
+@inline function apply(c::Float32Convert, xs::AbstractArray{<: Real}, dim::Integer)
+    return apply.((c.scaling[],), xs, dim)
+end
+
+@inline function apply(c::Float32Convert, r::T) where {T <: Rect}
+    mini = apply(c.scaling[], minimum(r))
+    maxi = apply(c.scaling[], maximum(r))
+    return T(mini, maxi - mini)
+end
+
+f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
+function f32_convert_matrix(c::Float32Convert, space::Symbol)
+    if space in (:data, :transformed) # maybe :world?
+        linear = c.scaling[]
+        scale = to_ndim(Vec3d, linear.scale, 1)
+        translation = to_ndim(Vec3d, linear.offset, 0)
+        return transformationmatrix(translation, scale)
+    else
+        return Mat4d(I)
+    end
 end

@@ -72,21 +72,22 @@ function register_events!(ax, scene)
     return
 end
 
-function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
+function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
-    farclip = 10_000f0
+    farclip  =  10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims)
+    camera = scene.camera
 
-    # TODO: prototyping
-    # This is all we would do in Axis
-    # update_limits!(float32convert, tlims)
-    # tlims = apply(float32convert, tlims)
-
-    left, bottom = minimum(tlims)
-    right, top = maximum(tlims)
-
+    # TODO: apply model
+    update_limits!(scene.float32convert, tlims) # update float32 scaling
+    lims32 = apply(scene.float32convert, tlims)  # get scaled limits
+    @info lims32
+    left, bottom = minimum(lims32)
+    right, top   = maximum(lims32)
+    @info left, right
+    @info bottom, top
     leftright = xrev ? (right, left) : (left, right)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
@@ -190,6 +191,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
 
+    setfield!(scene, :float32convert, Float32Convert())
+
     if !isnothing(palette)
         # Backwards compatibility for when palette was part of axis!
         palette_attr = palette isa Attributes ? palette : Attributes(palette)
@@ -260,8 +263,10 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(update_axis_camera, blockscene, camera(scene), scene.transformation.transform_func, finallimits,
-          ax.xreversed, ax.yreversed; priority=-2)
+    onany(blockscene, scene.transformation.transform_func, finallimits,
+          ax.xreversed, ax.yreversed; priority=-2) do args...
+        update_axis_camera(scene, args...)
+    end
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
@@ -1235,7 +1240,6 @@ function Makie.xlims!(ax::Axis, xlims)
         ax.xreversed[] = false
     end
     mlims = convert_limit_attribute(ax.limits[])
-
     ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
     nothing
@@ -1253,7 +1257,6 @@ function Makie.ylims!(ax::Axis, ylims)
         ax.yreversed[] = false
     end
     mlims = convert_limit_attribute(ax.limits[])
-
     ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
     nothing
