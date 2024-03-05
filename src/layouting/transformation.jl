@@ -202,7 +202,7 @@ function apply_transform_and_model(model::Mat4, f, pos::VecTypes, space = :data,
         return transformed
     end
 end
-function apply_transform_and_model(model::Mat4, f, positions::Vector, space = :data, output_type = Point3d)
+function apply_transform_and_model(model::Mat4, f, positions::AbstractArray, space = :data, output_type = Point3d)
     return map(positions) do pos
         apply_transform_and_model(model, f, pos, space, output_type)
     end
