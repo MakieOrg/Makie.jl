@@ -534,8 +534,8 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
 end
 
 @recipe Arrows points directions begin
+    "Sets the color of arrowheads and lines. Can be overridden separately using `linecolor` and `arrowcolor`."
     color = :black
-
     """Scales the size of the arrow head. This defaults to
     `0.3` in the 2D case and `Vec3f(0.2, 0.2, 0.3)` in the 3D case. For the latter
     the first two components scale the radius (in x/y direction) and the last scales
@@ -582,6 +582,6 @@ end
     """Scales the width/diameter of the arrow tail.
     Defaults to `1` for 2D and `0.05` for the 3D case."""
     linewidth = automatic
-    """Sets the color of the arrow head. Will copy `linecolor` if set to `automatic`."""
+    """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
 end
