@@ -12,7 +12,7 @@ end
 function _project_position(scene::Scene, space, ps::Vector{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
+        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -36,7 +36,7 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    clip = Makie.space_to_clip(scene.camera, space) * f32convert * model * p4d
+    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
