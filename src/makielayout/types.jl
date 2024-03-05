@@ -1189,7 +1189,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         framewidth = 1f0
         "Controls if the legend border is visible."
         framevisible = true
-        "The size of the rectangles containing the legend markers."
+        "The size of the rectangles containing the legend markers. It can help to increase the width if line patterns are not clearly visible with the default size."
         patchsize = (20f0, 20f0)
         "The color of the border of the patches containing the legend markers."
         patchstrokecolor = :transparent

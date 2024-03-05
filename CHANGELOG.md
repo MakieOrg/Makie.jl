@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Added supported markers hint to unsupported marker warn message.
+
+- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 
 - **Breaking** Reworked line shaders in GLMakie and WGLMakie [#3558](https://github.com/MakieOrg/Makie.jl/pull/3558)
   - GLMakie: Removed support for per point linewidths
