@@ -337,7 +337,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 end
 
 function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
+    mini_maxi = extrema_nan.((plot[1][], plot[2][]))
     mini = Vec3d(first.(mini_maxi)..., 0)
     maxi = Vec3d(last.(mini_maxi)..., 0)
     return Rect3d(mini, maxi .- mini)

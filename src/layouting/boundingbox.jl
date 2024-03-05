@@ -47,7 +47,7 @@ function _boundingbox(plot::AbstractPlot)
         update_boundingbox!(bb_ref, future_boundingbox(plot.plots[i]))
     end
 
-    return
+    return bb_ref[]
 end
 # Replace future_boundingbox with just boundingbox once boundingbox(::Text) is
 # no longer in pixel space
@@ -66,12 +66,13 @@ end
 ### transformed point iterator
 ################################################################################
 
+# TODO should Float32 conversions apply here?
 
 @inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
 
 function iterate_transformed(plot, points)
     t = transformation(plot)
-    model = Mat4d(model_transform(t)) # TODO: make model matrix Float64?
+    model = model_transform(t)
     trans_func = transform_func(t)
     return iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
 end

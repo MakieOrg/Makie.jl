@@ -96,7 +96,7 @@ point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
 # Fallback for other primitive plots, used in boundingbox
-point_iterator(plot::AbstractPlot) = points_iterator(data_limits(plot))
+point_iterator(plot::AbstractPlot) = point_iterator(data_limits(plot))
 
 # For generic usage
 point_iterator(bbox::Rect) = unique(decompose(Point3d, bbox))
