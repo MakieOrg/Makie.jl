@@ -71,6 +71,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attributes = Dict{Symbol, Any}(:linepoint => positions)
 
     # TODO: in Javascript
+    # NOTE: clip.w needs to be available in shaders to avoid line inversion problems
+    #       if transformations are done on the CPU (compare with GLMakie)
     # This calculates the cumulative pixel-space distance of each point from the
     # last start point of a line. (I.e. from either the first point or the first
     # point after the last NaN)

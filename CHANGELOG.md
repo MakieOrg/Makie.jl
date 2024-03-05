@@ -11,6 +11,7 @@
   - WGLMakie: Added line joints
   - WGLMakie: Added native anti-aliasing which generally improves quality but introduces outline artifacts in some cases (same as GLMakie)
   - Both: Adjusted handling of thin lines which may result in different color intensities
+- Fixed an issue with lines being drawn in the wrong direction in 3D (with perspective projection) [#3651](https://github.com/MakieOrg/Makie.jl/pull/3651).
 
 ## [0.20.8] - 2024-02-22
 
