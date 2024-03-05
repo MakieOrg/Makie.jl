@@ -61,35 +61,26 @@ function transform_bbox(scenelike, lims::Rect)
 end
 
 
-
 ################################################################################
 ### transformed point iterator
 ################################################################################
+
 
 # TODO should Float32 conversions apply here?
 
 @inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
 
-function iterate_transformed(plot, points)
-    t = transformation(plot)
-    model = model_transform(t)
-    trans_func = transform_func(t)
-    return iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
+function iterate_transformed(plot, points::AbstractArray{<: VecTypes})
+    return apply_transform_and_model(plot, points)
 end
 
-function iterate_transformed(points::AbstractVector{<: VecTypes{N, T}}, model, space, trans_func) where {N, T}
-    output = similar(points, Point3d)
-    @inbounds for i in eachindex(points)
-        transformed = apply_transform(trans_func, points[i], space)
-        p4d = project(model, transformed)
-        output[i] = p4d[Vec(1, 2, 3)]
-    end
-    return output
-end
-
-function iterate_transformed(points::T, model, space, trans_func) where T
+# TODO: Can this be deleted?
+function iterate_transformed(plot, points::T) where T
     @warn "iterate_transformed with $T"
-    [to_ndim(Point3f, project(model, apply_transform(trans_func, point, space))) for point in points]
+    t = transformation(plot)
+    model = model_transform(t) # will auto-promote if points if Float64
+    trans_func = transform_func(t)
+    [to_ndim(Point3d, project(model, apply_transform(trans_func, point, space))) for point in points]
 end
 
 
