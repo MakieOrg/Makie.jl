@@ -11,8 +11,8 @@ end
 # much faster than dot-ing `project_position` because it skips all the repeated mat * mat
 function _project_position(scene::Scene, space, ps::Vector{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
     transform = let
-        # M = Mat4d(Makie.space_to_clip(scene.camera, space)) * Mat4d(float32convert) * model
-        M = Mat4d(Makie.space_to_clip(scene.camera, space)) * model
+        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -35,7 +35,8 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     T = promote_type(Float32, T1) # always Float, at least Float32
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
-    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
