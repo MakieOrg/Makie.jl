@@ -117,6 +117,7 @@ const Vec3d = Vec3{Float64}
 const Vec4d = Vec4{Float64}
 const Rect2d = Rect2{Float64}
 const Rect3d = Rect3{Float64}
+const Rectd = Rect{N, Float64} where N
 const Mat3d = Mat3{Float64}
 const Mat4d = Mat4{Float64}
 export Point2d, Point3d, Point4d, Vec2d, Vec3d, Vec4d, Rect2d, Rect3d
