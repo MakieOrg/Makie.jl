@@ -131,7 +131,7 @@ function initialize_block!(m::Menu; default = 1)
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values=true)
 
-    optionrects = Observable([Rect2f(0, 0, 0, 0)]; ignore_equal_values=true)
+    optionrects = Observable([Bbox(0, 0, 0, 0)]; ignore_equal_values=true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values=true)
 
     function update_option_colors!(hovered)

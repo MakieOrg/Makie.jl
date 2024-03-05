@@ -97,6 +97,7 @@ end
 
 @inline f32_convert(::Nothing, x::Real, dim::Integer) = Float32(x)
 @inline f32_convert(::Nothing, x::VecTypes, dim::Integer) = Float32(x[dim])
+@inline f32_convert(::Nothing, x::AbstractArray, dim::Integer) = f32_convert.(nothing, x, dim)
 @inline f32_convert(c::Float32Convert, x::Real, dim::Integer) = Float32(c.scaling[](x, dim))
 @inline function f32_convert(c::Float32Convert, xs::AbstractArray{<: Real}, dim::Integer)
     return [Float32(c.scaling[](x, dim)) for x in xs]
