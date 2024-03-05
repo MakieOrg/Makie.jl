@@ -345,3 +345,7 @@ end
 function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     return transform_bbox(plot, data_limits(plot))
 end
+# TODO: should this have a data_limits overload?
+function boundingbox(plot::Contour3d)
+    return transform_bbox(plot, data_limits(plot))
+end
