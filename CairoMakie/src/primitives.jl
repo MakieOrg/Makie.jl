@@ -33,8 +33,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # Standard transform from input space to clip space
         points = Makie.apply_transform(Makie.transform_func(primitive), positions, space)
         res = scene.camera.resolution[]
-        transform = Makie.space_to_clip(scene.camera, space) * model
-        clip_points = map(p -> transform * to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0), points)
+        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+        transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        clip_points = map(p -> transform * to_ndim(Vec4d, to_ndim(Vec3d, p, 0), 1), points)
 
         # yflip and clip -> screen/pixel coords
         function clip2screen(res, p)
