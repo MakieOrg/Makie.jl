@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Added supported markers hint to unsupported marker warn message.
 
 ## [0.20.8] - 2024-02-22
 
