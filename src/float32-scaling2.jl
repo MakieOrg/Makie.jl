@@ -85,6 +85,7 @@ end
 
 @inline f32_convert(::Nothing, x::Real) = Float32(x)
 @inline f32_convert(::Nothing, x::VecTypes{N}) where N = to_ndim(Point{N, Float32}, x, 0)
+@inline f32_convert(::Nothing, x::AbstractArray) = f32_convert.(nothing, x)
 
 @inline function f32_convert(c::Float32Convert, p::VecTypes{N}) where N
     # Point3f(::Point3i) doesn't work
@@ -94,7 +95,9 @@ end
     return [to_ndim(Point{N, Float32}, c.scaling[](p), 0) for p in ps]
 end
 
-@inline f32_convert(::Nothing, x, dim) = Float32(x)
+@inline f32_convert(::Nothing, x::Real, dim::Integer) = Float32(x)
+@inline f32_convert(::Nothing, x::VecTypes, dim::Integer) = Float32(x[dim])
+@inline f32_convert(::Nothing, x::AbstractArray, dim::Integer) = f32_convert.(nothing, x, dim)
 @inline f32_convert(c::Float32Convert, x::Real, dim::Integer) = Float32(c.scaling[](x, dim))
 @inline function f32_convert(c::Float32Convert, xs::AbstractArray{<: Real}, dim::Integer)
     return [Float32(c.scaling[](x, dim)) for x in xs]
@@ -104,6 +107,16 @@ end
     mini = c.scaling[](minimum(r))
     maxi = c.scaling[](maximum(r))
     return Rect{N, Float32}(mini, maxi - mini)
+end
+
+
+@inline f32_convert(c::Nothing, data, ::Symbol) = f32_convert(c, data)
+@inline function f32_convert(c::Float32Convert, data, space::Symbol)
+    return space in (:data, :transformed) ? f32_convert(c, data) : f32_convert(nothing, data)
+end
+@inline f32_convert(c::Nothing, data, dim::Integer, ::Symbol) = f32_convert(c, data, dim)
+@inline function f32_convert(c::Float32Convert, data, dim::Integer, space::Symbol)
+    return space in (:data, :transformed) ? f32_convert(c, data, dim) : f32_convert(nothing, data, dim)
 end
 
 

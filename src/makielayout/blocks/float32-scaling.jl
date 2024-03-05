@@ -1,4 +1,4 @@
-
+#=
 # Maybe parametrice this with the input target type (e.g. Int64, Float64, Int128)
 struct Float32Scaling{TargetType}
     scale::Base.TwicePrecision{Float64}
@@ -106,3 +106,4 @@ function get_ticks(conversion::Float32Conversion, ticks, scale, formatter, vmin,
     ticks, labels = get_ticks(ticks, scale, formatter, umin, umax)
     return scale_value.(Ref(f32scaling), ticks), labels
 end
+=#
