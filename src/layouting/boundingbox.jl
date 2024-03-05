@@ -53,7 +53,14 @@ end
 # no longer in pixel space
 @inline future_boundingbox(plot::AbstractPlot) = boundingbox(plot)
 @inline future_boundingbox(plot::Text) = _boundingbox(plot)
-_boundingbox(plot::Text) = Rect3d(iterate_transformed(plot))
+
+function _boundingbox(plot::Text)
+    if plot.space[] == plot.markerspace[]
+        return transform_bbox(plot, text_boundingbox(plot))
+    else
+        return Rect3d(iterate_transformed(plot))
+    end
+end
 
 # for convenience
 function transform_bbox(scenelike, lims::Rect)
