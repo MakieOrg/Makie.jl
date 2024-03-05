@@ -849,8 +849,24 @@ function getlimits(la::Axis, dim)
         # only use visible plots for limits
         return !to_value(get(plot, :visible, true))
     end
-    # get all data limits, minus the excluded plots
-    boundingbox = Makie.data_limits(la.scene, exclude)
+
+    # TODO:
+    # We used to include scale! and rotate! in data_limits. For compat we include
+    # them here again until we implement a full solution
+
+    # # get all data limits, minus the excluded plots
+    # boundingbox = Makie.data_limits(la.scene, exclude)
+    bb_ref = Base.RefValue(Rect3d())
+    for plot in la.scene
+        if !exclude(plot)
+            bb = data_limits(plot)
+            model = plot.model[][Vec(1,2,3), Vec(1,2,3)]
+            bb = Rect3d(map(p -> model * to_ndim(Point3d, p, 0), coordinates(bb)))
+            update_boundingbox!(bb_ref, bb)
+        end
+    end
+    boundingbox = bb_ref[]
+
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
     Makie.isfinite_rect(boundingbox) || return nothing
 
