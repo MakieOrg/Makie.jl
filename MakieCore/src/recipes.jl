@@ -189,11 +189,6 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr
 end
 
-function is_attribute end
-function default_attribute_values end
-function attribute_default_expressions end
-function _attribute_docs end
-function attribute_names end
 function documented_attributes end # this can be used for inheriting from other recipes
 
 attribute_names(_) = nothing
@@ -331,6 +326,26 @@ macro DocumentedAttributes(expr::Expr)
     end
 end
 
+function is_attribute(T::Type{<:Plot}, sym::Symbol)
+    sym in attribute_names(T)
+end
+
+function attribute_names(T::Type{<:Plot})
+    keys(documented_attributes(T).d)
+end
+
+function default_theme(scene, T::Type{<:Plot})
+    Attributes(documented_attributes(T).closure(scene))
+end
+
+function attribute_default_expressions(T::Type{<:Plot})
+    Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
+end
+
+function _attribute_docs(T::Type{<:Plot})
+    Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
+end
+
 
 macro recipe(Tsym::Symbol, args...)
 
@@ -397,25 +412,6 @@ macro recipe(Tsym::Symbol, args...)
         function ($funcname!)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
              _create_plot!($funcname, kwdict, args...)
-        end
-        function MakieCore.is_attribute(T::Type{<:$(PlotType)}, sym::Symbol)
-            sym in MakieCore.attribute_names(T)
-        end
-
-        function MakieCore.attribute_names(T::Type{<:$(PlotType)})
-            keys(documented_attributes(T).d)
-        end
-
-        function $(MakieCore).default_theme(scene, T::Type{<:$PlotType})
-            Attributes(documented_attributes(T).closure(scene))
-        end
-
-        function MakieCore.attribute_default_expressions(T::Type{<:$PlotType})
-            Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
-        end
-
-        function MakieCore._attribute_docs(T::Type{<:$PlotType})
-            Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
         end
 
         docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)),user_docstring)
