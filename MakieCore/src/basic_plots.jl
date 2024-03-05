@@ -59,7 +59,7 @@ function mixin_generic_plot_attributes()
         depth_shift = 0.0f0
         "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
         space = :data
-        "adjusts whether the plot is rendered with fxaa (anti-aliasing)."
+        "adjusts whether the plot is rendered with fxaa (anti-aliasing, GLMakie only)."
         fxaa = true
     end
 end
@@ -118,6 +118,7 @@ function mixin_colormap_attributes()
         lowclip = automatic
         "The color for any value above the colorrange."
         highclip = automatic
+        "The color for NaN values."
         nan_color = :transparent
         "The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied."
         alpha = 1.0
@@ -246,7 +247,7 @@ Available algorithms are:
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
 @recipe Volume x y z volume begin
-    "Sets the volume algorithm that is used."    
+    "Sets the volume algorithm that is used."
     algorithm = :mip
     "Sets the range of values picked up by the IsoValue algorithm."
     isovalue = 0.5
@@ -254,7 +255,9 @@ Available algorithms are:
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
+    "Enables depth write for Volume, so that volume correctly occludes other objects."
     enable_depth = true
+    "Absorption multiplier for algorithm=:absorption. This changes how much light each voxel absorbs."
     absorption = 1f0
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
@@ -384,9 +387,11 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 
     "Sets the rotation of the marker. A `Billboard` rotation is always around the depth axis."
     rotations = Billboard()
+    "The offset of the marker from the given position in `markerspace` units. Default is centered around the position (markersize * -0.5)."
     marker_offset = automatic
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
+    "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
     "Sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs"
