@@ -472,7 +472,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         data = Dict{Symbol, Any}(gl_attributes)
         positions = handle_view(plot[1], data)
 
-        # transform_func = transform_func_obs(plot)
         space = plot.space
         if isnothing(to_value(linestyle))
             data[:pattern] = nothing
@@ -485,12 +484,14 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             data[:fast] = false
 
             pvm = lift(*, plot, data[:projectionview], data[:model])
-            positions = lift(plot, scene.float32convert, transform_func, positions,
-                    space, pvm, data[:resolution]) do _f32c, f, ps, space, pvm, res
+            transform_func = transform_func_obs(plot)
+            f32c = scene.float32convert
+            f32c_obs = f32c isa Makie.Float32Convert ? f32c.scaling : Observable(nothing)
+            positions = lift(plot, f32c_obs, transform_func, positions,
+                    space, pvm) do _, f, ps, space, pvm
 
-                f32c = space in (:data, :transformed) ? _f32c : nothing
-                transformed = Makie.float32_convert(f32c, apply_transform(f, ps, space))
-                output = Vector{Point3f}(undef, length(transformed))
+                transformed = Makie.f32_convert(f32c, apply_transform(f, ps, space), space)
+                output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
                     output[i] = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
                 end

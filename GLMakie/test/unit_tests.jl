@@ -1,7 +1,7 @@
 using GLMakie.Makie: getscreen
 
 function project_sp(scene, point)
-    point_px = Makie.project(scene, point)
+    point_px = Makie.project(scene, Makie.f32_convert(scene.float32convert, point))
     offset = Point2f(minimum(viewport(scene)[]))
     return point_px .+ offset
 end
