@@ -5,6 +5,7 @@
 
 - Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 
+- **Breaking (sort of)** Added a new `@recipe` variant which allows documenting attributes directly where they are defined and validating that all attributes are known whenever a plot is created. This is not breaking in the sense that the API changes, but user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed.
 - **Breaking** Reworked line shaders in GLMakie and WGLMakie [#3558](https://github.com/MakieOrg/Makie.jl/pull/3558)
   - GLMakie: Removed support for per point linewidths
   - GLMakie: Adjusted dots (e.g. with `linestyle = :dot`) to bend across a joint

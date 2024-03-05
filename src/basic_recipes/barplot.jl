@@ -35,54 +35,53 @@ function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
 end
 
 """
-    barplot(x, y; kwargs...)
+    barplot(positions, heights; kwargs...)
 
-Plots a barplot; `y` defines the height. `x` and `y` should be 1 dimensional.
-Bar width is determined by the attribute `width`, shrunk by `gap` in the following way:
-`width -> width * (1 - gap)`.
-
-## Attributes
-$(ATTRIBUTES)
+Plots a barplot.
 """
-@recipe(BarPlot, x, y) do scene
-    Attributes(;
-        fillto = automatic,
-        offset = 0.0,
-        color = theme(scene, :patchcolor),
-        alpha = 1.0,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        dodge = automatic,
-        n_dodge = automatic,
-        gap = 0.2,
-        dodge_gap = 0.03,
-        marker = Rect,
-        stack = automatic,
-        strokewidth = theme(scene, :patchstrokewidth),
-        strokecolor = theme(scene, :patchstrokecolor),
-        width = automatic,
-        direction = :y,
-        visible = theme(scene, :visible),
-        inspectable = theme(scene, :inspectable),
-        cycle = [:color => :patchcolor],
-
-        bar_labels = nothing,
-        flip_labels_at = Inf,
-        label_rotation = 0π,
-        label_color = theme(scene, :textcolor),
-        color_over_background = automatic,
-        color_over_bar = automatic,
-        label_offset = 5,
-        label_font = theme(scene, :font),
-        label_size = theme(scene, :fontsize),
-        label_formatter = bar_label_formatter,
-        label_align = automatic,
-        transparency = false
-    )
+@recipe BarPlot x y begin
+    """Controls the baseline of the bars. This is zero in the default `automatic` case unless the barplot is in a log-scaled `Axis`.
+    With a log scale, the automatic default is half the minimum value because zero is an invalid value for a log scale.
+    """
+    fillto = automatic
+    offset = 0.0
+    color = @inherit patchcolor
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
+    dodge = automatic
+    n_dodge = automatic
+    """
+    The final width of the bars is calculated as `w * (1 - gap)` where `w` is the width of each bar
+    as determined with the `width` attribute.
+    """
+    gap = 0.2
+    dodge_gap = 0.03
+    stack = automatic
+    strokewidth = @inherit patchstrokewidth
+    strokecolor = @inherit patchstrokecolor
+    """
+    The gapless width of the bars. If `automatic`, the width `w` is calculated as `minimum(diff(sort(unique(positions)))`.
+    The actual width of the bars is calculated as `w * (1 - gap)`.
+    """
+    width = automatic
+    "Controls the direction of the bars, can be `:y` (vertical) or `:x` (horizontal)."
+    direction = :y
+    cycle = [:color => :patchcolor]
+    "Labels added at the end of each bar."
+    bar_labels = nothing
+    flip_labels_at = Inf
+    label_rotation = 0π
+    label_color = @inherit textcolor
+    color_over_background = automatic
+    color_over_bar = automatic
+    "The distance of the labels from the bar ends in screen units."
+    label_offset = 5
+    "The font of the bar labels."
+    label_font = @inherit font
+    "The font size of the bar labels."
+    label_size = @inherit fontsize
+    label_formatter = bar_label_formatter
+    label_align = automatic
 end
 
 conversion_trait(::Type{<: BarPlot}) = PointBased()

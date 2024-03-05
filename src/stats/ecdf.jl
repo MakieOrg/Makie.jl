@@ -44,12 +44,9 @@ Plot the empirical cumulative distribution function (ECDF) of `values`.
 
 `npoints` controls the resolution of the plot.
 If `weights` for the values are provided, a weighted ECDF is plotted.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(ECDFPlot) do scene
-    default_theme(scene, Stairs)
+@recipe ECDFPlot begin
+    MakieCore.documented_attributes(Stairs)...
 end
 
 used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)
