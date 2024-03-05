@@ -290,7 +290,6 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 
 `NaN` values are displayed as gaps in the line.
 """
-
 @recipe Lines positions begin
     "The color of the line."
     color = @inherit linecolor
