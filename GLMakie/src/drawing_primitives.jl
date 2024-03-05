@@ -154,7 +154,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     get!(gl_attributes, :world_normalmatrix) do
         return lift(plot, gl_attributes[:model]) do m
             i = Vec(1, 2, 3)
-            return transpose(inv(m[i, i]))
+            return Mat3f(transpose(inv(m[i, i])))
         end
     end
 
@@ -162,7 +162,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     get!(gl_attributes, :view_normalmatrix) do
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
-            return transpose(inv(v[i, i] * m[i, i]))
+            return Mat3f(transpose(inv(v[i, i] * m[i, i])))
         end
     end
     get!(gl_attributes, :projection) do
