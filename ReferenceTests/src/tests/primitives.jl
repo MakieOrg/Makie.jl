@@ -59,6 +59,31 @@ end
     scene
 end
 
+@reference_test "Lines from outside" begin
+    # This tests that lines that start or end in clipped regions are still
+    # rendered correctly. For perspective projections this can be tricky as
+    # points behind the camera get projected beyond far.
+    lps = let
+        ps1 = [Point3f(x, 0.2 * (z+1), z) for x in (-8, 0, 8) for z in (-9, -1, -1, 7)]
+        ps2 = [Point3f(x, 0.2 * (z+1), z) for z in (-9, -1, 7) for x in (-8, 0, 0, 8)]
+        vcat(ps1, ps2)
+    end
+    cs = [i for i in (1, 12, 2, 11, 3, 10, 4, 9, 5, 8, 6, 7) for _ in 1:2]
+
+    fig = Figure()
+
+    for (i, func) in enumerate((lines, linesegments))
+        for (j, ls) in enumerate((:solid, :dot))
+            a, p = func(fig[i, j], lps, color = cs, linewidth = 5, linestyle = ls)
+            cameracontrols(a).settings.center[] = false # avoid recenter on display
+            a.show_axis[] = false
+            update_cam!(a.scene, Vec3f(-0.2, 0.5, 0), Vec3f(-0.2, 0.2, -1), Vec3f(0, 1, 0))
+        end
+    end
+
+    fig
+end
+
 @reference_test "scatters" begin
     s = Scene(size = (800, 800), camera = campixel!)
 

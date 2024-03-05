@@ -485,16 +485,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
 
             pvm = lift(*, plot, data[:projectionview], data[:model])
             positions = lift(plot, scene.float32convert, transform_func, positions,
-                    space, pvm, data[:resolution]) do _f32c, f, ps, space, pvm, res
+                    space, pvm) do _f32c, f, ps, space, pvm
 
                 f32c = space in (:data, :transformed) ? _f32c : nothing
                 transformed = Makie.float32_convert(f32c, apply_transform(f, ps, space))
-                output = Vector{Point3f}(undef, length(transformed))
-                scale = Vec3f(0.5 * res[1], 0.5 * res[2], 1f0)
-                offset = Vec3f(0.5 * res[1], 0.5 * res[2], 0)
+                output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
-                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                    output[i] = scale .* Point3f(clip) ./ clip[4] .+ offset
+                    output[i] = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
                 end
                 output
             end
