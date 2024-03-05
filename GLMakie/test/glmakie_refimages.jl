@@ -59,7 +59,7 @@ end
         end
     end
     fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0; color=:black)
-    screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false), fig.scene)
+    screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false, visible=false), fig.scene)
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     @test isnothing(screen.rendertask)
