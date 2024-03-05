@@ -785,7 +785,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [MAkie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end
