@@ -44,32 +44,19 @@ Possible values are the following.
 Broadly speaking, `qqline = :identity` is useful to see if `x` and `y` follow the same distribution,
 whereas `qqline = :fit` and `qqline = :fitrobust` are useful to see if the distribution of `y` can be
 obtained from the distribution of `x` via an affine transformation.
-
-Graphical attributes are
-- `color` to control color of both line and markers (if `markercolor` is not specified)
-- `linestyle`
-- `linewidth`
-- `markercolor`
-- `strokecolor`
-- `strokewidth`
-- `marker`
-- `markersize`
 """
-@recipe(QQPlot) do scene
-    s_theme = default_theme(scene, Scatter)
-    l_theme = default_theme(scene, Lines)
-    Attributes(
-        color = l_theme.color,
-        linestyle = l_theme.linestyle,
-        linewidth = l_theme.linewidth,
-        markercolor = automatic,
-        markersize = s_theme.markersize,
-        strokecolor = s_theme.strokecolor,
-        strokewidth = s_theme.strokewidth,
-        marker = s_theme.marker,
-        inspectable = theme(scene, :inspectable),
-        cycle = [:color],
-    )
+@recipe QQPlot begin
+    "Control color of both line and markers (if `markercolor` is not specified)."
+    color = @inherit linecolor
+    linestyle = nothing
+    linewidth = @inherit linewidth
+    markercolor = automatic
+    markersize = @inherit markersize
+    strokecolor = @inherit markerstrokecolor
+    strokewidth = @inherit markerstrokewidth
+    marker = @inherit marker
+    MakieCore.mixin_generic_plot_attributes()...
+    cycle = [:color]
 end
 
 """
@@ -78,8 +65,8 @@ end
 Shorthand for `qqplot(Normal(0,1), y)`, i.e., draw a Q-Q plot of `y` against the
 standard normal distribution. See `qqplot` for more details.
 """
-@recipe(QQNorm) do scene
-    default_theme(scene, QQPlot)
+@recipe QQNorm begin
+    MakieCore.documented_attributes(QQPlot)...
 end
 
 # Compute points and line for the qqplot

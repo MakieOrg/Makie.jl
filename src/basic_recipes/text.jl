@@ -1,11 +1,10 @@
 function check_textsize_deprecation(@nospecialize(dictlike))
     if haskey(dictlike, :textsize)
-        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+        throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
 end
 
 function plot!(plot::Text)
-    check_textsize_deprecation(plot)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[]; ignore_equal_values=true)
@@ -79,11 +78,13 @@ function plot!(plot::Text)
     pop!(attrs, :text)
     pop!(attrs, :align)
     pop!(attrs, :color)
+    pop!(attrs, :calculated_colors)
 
     t = text!(plot, attrs, glyphcollections)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)
+    pop!(t.attributes, :text)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
 
     plot
@@ -127,7 +128,9 @@ function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, 
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractString}})
-    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    attrs = copy(plot.attributes)
+    pop!(attrs, :calculated_colors)
+    text!(plot, plot.position; attrs..., text = plot[1])
     plot
 end
 
@@ -145,7 +148,9 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    attrs = copy(plot.attributes)
+    pop!(attrs, :calculated_colors)
+    text!(plot, plot.position; attrs..., text = plot[1])
     plot
 end
 
@@ -161,8 +166,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
 
     attrs = plot.attributes
     pop!(attrs, :position)
+    pop!(attrs, :calculated_colors)
+    pop!(attrs, :text)
 
-    text!(plot, positions; text = strings, attrs...)
+    text!(plot, positions; attrs..., text = strings)
 
     # update both text and positions together
     on(plot, strings_and_positions) do str_pos

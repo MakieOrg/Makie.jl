@@ -13,24 +13,19 @@
 Plots errorbars at xy positions, extending by errors in the given `direction`.
 
 If you want to plot intervals from low to high values instead of relative errors, use `rangebars`.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Errorbars) do scene
-    Theme(
-        whiskerwidth = 0,
-        color = theme(scene, :linecolor),
-        linewidth = theme(scene, :linewidth),
-        direction = :y,
-        visible = theme(scene, :visible),
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        inspectable = theme(scene, :inspectable),
-        transparency = false,
-        cycle = [:color]
-    )
+@recipe Errorbars begin
+    "The width of the whiskers or line caps in screen units."
+    whiskerwidth = 0
+    "The color of the lines. Can be an array to color each bar separately."
+    color = @inherit linecolor
+    "The thickness of the lines in screen units."
+    linewidth = @inherit linewidth
+    "The direction in which the bars are drawn. Can be `:x` or `:y`."
+    direction = :y
+    cycle = [:color]
+    MakieCore.mixin_colormap_attributes()...
+    MakieCore.mixin_generic_plot_attributes()...
 end
 
 
@@ -43,24 +38,19 @@ Plots rangebars at `val` in one dimension, extending from `low` to `high` in the
 given the chosen `direction`.
 
 If you want to plot errors relative to a reference value, use `errorbars`.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Rangebars) do scene
-    Theme(
-        whiskerwidth = 0,
-        color = theme(scene, :linecolor),
-        linewidth = theme(scene, :linewidth),
-        direction = :y,
-        visible = theme(scene, :visible),
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        inspectable = theme(scene, :inspectable),
-        transparency = false,
-        cycle = [:color]
-    )
+@recipe Rangebars begin
+    "The width of the whiskers or line caps in screen units."
+    whiskerwidth = 0
+    "The color of the lines. Can be an array to color each bar separately."
+    color = @inherit linecolor
+    "The thickness of the lines in screen units."
+    linewidth = @inherit linewidth
+    "The direction in which the bars are drawn. Can be `:x` or `:y`."
+    direction = :y
+    cycle = [:color]
+    MakieCore.mixin_colormap_attributes()...
+    MakieCore.mixin_generic_plot_attributes()...
 end
 
 ### conversions for errorbars

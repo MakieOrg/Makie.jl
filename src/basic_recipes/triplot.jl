@@ -4,72 +4,63 @@
     triplot(triangles::Triangulation; kwargs...)
 
 Plots a triangulation based on the provided position or `Triangulation` from DelaunayTriangulation.jl.
-
-## Attributes
-
-- `show_points = false` determines whether to plot the individual points. Note that this will only plot points included in the triangulation.
-- `show_convex_hull = false` determines whether to plot the convex hull.
-- `show_ghost_edges = false` determines whether to plot the ghost edges.
-- `show_constrained_edges = false` determines whether to plot the constrained edges.
-- `recompute_centers = false` determines whether to recompute the representative points for the ghost edge orientation. Note that this will mutate `tri.representative_point_list` directly.
-
-- `markersize = 12` sets the size of the points.
-- `marker = :circle` sets the shape of the points.
-- `markercolor = :black` sets the color of the points.
-- `strokecolor = :black` sets the color of triangle edges.
-- `strokewidth = 1` sets the linewidth of triangle edges.
-- `linestyle = :solid` sets the linestyle of triangle edges.
-- `triangle_color = (:white, 0.0)` sets the color of the triangles.
-
-- `convex_hull_color = :red` sets the color of the convex hull.
-- `convex_hull_linestyle = :dash` sets the linestyle of the convex hull.
-- `convex_hull_linewidth = 1` sets the width of the convex hull.
-
-- `ghost_edge_color = :blue` sets the color of the ghost edges.
-- `ghost_edge_linestyle = :solid` sets the linestyle of the ghost edges.
-- `ghost_edge_linewidth = 1` sets the width of the ghost edges.
-- `ghost_edge_extension_factor = 0.1` sets the extension factor for the rectangle that the exterior ghost edges are extended onto.
-- `bounding_box::Union{Automatic, Rect2, Tuple} = automatic`: Sets the bounding box for truncating ghost edges which can be a `Rect2` (or `BBox`) or a tuple of the form `(xmin, xmax, ymin, ymax)`. By default, the rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the `ghost_edge_extension_factor`, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the points in the triangulation.
-
-- `constrained_edge_color = :magenta` sets the color of the constrained edges.
-- `constrained_edge_linestyle = :solid` sets the linestyle of the constrained edges.
-- `constrained_edge_linewidth = 1` sets the width of the constrained edges.
 """
-@recipe(Triplot, triangles) do scene
-    sc = default_theme(scene, Scatter)
-    return Attributes(;
-                      # Toggles
-                      show_points=false,
-                      show_convex_hull=false,
-                      show_ghost_edges=false,
-                      show_constrained_edges=false,
-                      recompute_centers=false,
+@recipe Triplot triangles begin
+    # Toggles
+    "Determines whether to plot the individual points. Note that this will only plot points included in the triangulation."
+    show_points=false
+    "Determines whether to plot the convex hull."
+    show_convex_hull=false
+    "Determines whether to plot the ghost edges."
+    show_ghost_edges=false
+    "Determines whether to plot the constrained edges."
+    show_constrained_edges=false
+    "Determines whether to recompute the representative points for the ghost edge orientation. Note that this will mutate `tri.representative_point_list` directly."
+    recompute_centers=false
 
-                      # Mesh settings
-                      markersize=theme(scene, :markersize),
-                      marker=theme(scene, :marker),
-                      markercolor=sc.color,
-                      strokecolor=theme(scene, :patchstrokecolor),
-                      strokewidth=1,
-                      linestyle=:solid,
-                      triangle_color=(:white, 0.0),
+    # Mesh settings
+    "Sets the size of the points."
+    markersize= @inherit markersize
+    "Sets the shape of the points."
+    marker= @inherit marker
+    "Sets the color of the points."
+    markercolor= @inherit markercolor
+    "Sets the color of triangle edges."
+    strokecolor= @inherit patchstrokecolor
+    "Sets the linewidth of triangle edges."
+    strokewidth=1
+    "Sets the linestyle of triangle edges."
+    linestyle=:solid
+    "Sets the color of the triangles."
+    triangle_color= :transparent
 
-                      # Convex hull settings
-                      convex_hull_color=:red,
-                      convex_hull_linestyle=:dash,
-                      convex_hull_linewidth=theme(scene, :linewidth),
+    # Convex hull settings
+    "Sets the color of the convex hull."
+    convex_hull_color=:red
+    "Sets the linestyle of the convex hull."
+    convex_hull_linestyle=:dash
+    "Sets the width of the convex hull."
+    convex_hull_linewidth= @inherit linewidth
 
-                      # Ghost edge settings
-                      ghost_edge_color=:blue,
-                      ghost_edge_linestyle=theme(scene, :linestyle),
-                      ghost_edge_linewidth=theme(scene, :linewidth),
-                      ghost_edge_extension_factor=0.1,
-                      bounding_box=automatic,
+    # Ghost edge settings
+    "Sets the color of the ghost edges."
+    ghost_edge_color=:blue
+    "Sets the linestyle of the ghost edges."
+    ghost_edge_linestyle= @inherit linestyle
+    "Sets the width of the ghost edges."
+    ghost_edge_linewidth= @inherit linewidth
+    "Sets the extension factor for the rectangle that the exterior ghost edges are extended onto."
+    ghost_edge_extension_factor=0.1
+    "Sets the bounding box for truncating ghost edges which can be a `Rect2` (or `BBox`) or a tuple of the form `(xmin, xmax, ymin, ymax)`. By default, the rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the `ghost_edge_extension_factor`, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the points in the triangulation."
+    bounding_box=automatic
 
-                      # Constrained edge settings
-                      constrained_edge_color=:magenta,
-                      constrained_edge_linestyle=theme(scene, :linestyle),
-                      constrained_edge_linewidth=theme(scene, :linewidth))
+    # Constrained edge settings
+    "Sets the color of the constrained edges."
+    constrained_edge_color=:magenta
+    "Sets the linestyle of the constrained edges."
+    constrained_edge_linestyle= @inherit linestyle
+    "Sets the width of the constrained edges."
+    constrained_edge_linewidth= @inherit linewidth
 end
 
 function get_all_triangulation_points!(points, tri)

@@ -8,44 +8,32 @@
 Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
 The tessellation can also be passed directly as a `VoronoiTessellation` from
 DelaunayTriangulation.jl.
-
-## Attributes
-
-- `show_generators = true` determines whether to plot the individual generators.
-
-- `markersize = 12` sets the size of the points.
-- `marker = :circle` sets the shape of the points.
-- `markercolor = :black` sets the color of the points.
-
-- `strokecolor = :black` sets the strokecolor of the polygons.
-- `strokewidth = 1` sets the width of the polygon stroke.
-- `color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
-- `unbounded_edge_extension_factor = 0.1` sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
-- `clip::Union{Automatic, Rect2, Circle, Tuple} = automatic` sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`.
-
-$(Base.Docs.doc(MakieCore.colormap_attributes!))
 """
-@recipe(Voronoiplot, vorn) do scene
-    th = default_theme(scene, Mesh)
-    sc = default_theme(scene, Scatter)
-    attr = Attributes(;
-                      # Toggles
-                      show_generators=true,
-                      smooth=false,
+@recipe Voronoiplot vorn begin
+    "Determines whether to plot the individual generators."
+    show_generators=true
+    smooth=false
 
-                      # Point settings
-                      markersize=sc.markersize,
-                      marker=sc.marker,
-                      markercolor=sc.color,
+    # Point settings
+    "Sets the size of the points."
+    markersize= @inherit markersize
+    "Sets the shape of the points."
+    marker= @inherit marker
+    "Sets the color of the points."
+    markercolor= @inherit markercolor
 
-                      # Polygon settings
-                      strokecolor=theme(scene, :patchstrokecolor),
-                      strokewidth=1.0,
-                      color=automatic,
-                      unbounded_edge_extension_factor=0.1,
-                      clip=automatic)
-    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
-    return attr
+    # Polygon settings
+    "Sets the strokecolor of the polygons."
+    strokecolor= @inherit patchstrokecolor
+    "Sets the width of the polygon stroke."
+    strokewidth=1.0
+    "Sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap."
+    color=automatic
+    "Sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`."
+    unbounded_edge_extension_factor=0.1
+    "Sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`."
+    clip=automatic
+    MakieCore.mixin_colormap_attributes()...
 end
 
 function _clip_polygon(poly::Polygon, circle::Circle)

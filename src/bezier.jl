@@ -1,5 +1,3 @@
-using StableHashTraits
-
 const Point2d = Point2{Float64}
 
 struct MoveTo
@@ -38,6 +36,11 @@ EllipticalArc(cx, cy, r1, r2, angle, a1, a2) = EllipticalArc(Point2d(cx, cy),
 
 struct ClosePath end
 const PathCommand = Union{MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath}
+
+# For hashing with crc32c
+function Base.write(io::IO, command::PathCommand)
+    write(io, Ref(command))
+end
 
 function bbox(commands::Vector{PathCommand})
     prev = commands[1]
@@ -109,7 +112,7 @@ struct BezierPath
     hash::UInt32
     function BezierPath(commands::Vector)
         c = convert(Vector{PathCommand}, commands)
-        return new(c, bbox(c), StableHashTraits.stable_hash(c; alg=crc32c, version=2))
+        return new(c, bbox(c), hash_crc32(c))
     end
 end
 bbox(x::BezierPath) = x.boundingbox
