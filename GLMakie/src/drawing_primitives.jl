@@ -1,6 +1,7 @@
 using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
+using Makie: apply_transform_and_f32_conversion, f32_conversion_obs
 
 function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.AbstractLight})
     @inline function push_inplace!(trg, idx, src)
@@ -219,33 +220,6 @@ function get_space(x)
     is_fast_pixel = to_value(get(x, :marker, nothing)) isa FastPixel
     is_fast_pixel && return x.space
     return haskey(x, :markerspace) ? x.markerspace : x.space
-end
-
-# TODO consider mirroring f32convert to plot attributes
-function apply_transform_and_f32_conversion(
-        scene::Scene, plot::AbstractPlot, data,
-        space::Observable = get(plot, :space, Observable(:data))
-    )
-    f32c_obs = isnothing(scene.float32convert) ? Observable(nothing) : scene.float32convert.scaling
-    return map(plot, f32c_obs, transform_func_obs(plot), data, space) do _, _tf, data, space
-        tf = space == :data ? _tf : identity
-        f32c = space in (:data, :transformed) ? scene.float32convert : nothing
-        # avoid intermediate array?
-        return [Makie.f32_convert(f32c, apply_transform(tf, x)) for x in data]
-    end
-end
-
-# For Vector{<: Real} applying to x/y/z dimension
-function apply_transform_and_f32_conversion(
-        scene::Scene, plot::AbstractPlot, data, dim::Integer,
-        space::Observable = get(plot, :space, Observable(:data))
-    )
-    f32c_obs = isnothing(scene.float32convert) ? Observable(nothing) : scene.float32convert.scaling
-    return map(plot, f32c_obs, transform_func_obs(plot), data, space) do _, _tf, data, space
-        tf = space == :data ? _tf : identity
-        f32c = space in (:data, :transformed) ? scene.float32convert : nothing
-        return [Makie.f32_convert(f32c, apply_transform(tf, x), dim) for x in data]
-    end
 end
 
 const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO,
@@ -485,12 +459,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
 
             pvm = lift(*, plot, data[:projectionview], data[:model])
             transform_func = transform_func_obs(plot)
-            f32c = scene.float32convert
-            f32c_obs = f32c isa Makie.Float32Convert ? f32c.scaling : Observable(nothing)
-            positions = lift(plot, f32c_obs, transform_func, positions,
+            positions = lift(plot, f32_conversion_obs(scene), transform_func, positions,
                     space, pvm) do _, f, ps, space, pvm
 
-                transformed = Makie.f32_convert(f32c, apply_transform(f, ps, space), space)
+                transformed = Makie.f32_convert(scene.float32convert, apply_transform(f, ps, space), space)
                 output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
                     output[i] = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
@@ -529,8 +501,6 @@ function draw_atomic(screen::Screen, scene::Scene,
     return cached_robj!(screen, scene, plot) do gl_attributes
         glyphcollection = plot[1]
 
-        f32c = scene.float32convert
-        f32c_obs = f32c isa Makie.Float32Convert ? f32c.scaling : Observable(nothing)
         transfunc = Makie.transform_func_obs(plot)
         pos = gl_attributes[:position]
         space = plot.space
@@ -539,8 +509,10 @@ function draw_atomic(screen::Screen, scene::Scene,
         atlas = gl_texture_atlas()
 
         # calculate quad metrics
-        glyph_data = lift(plot, pos, glyphcollection, offset, f32c_obs, transfunc, space) do pos, gc, offset, _, transfunc, space
-            return Makie.text_quads(atlas, pos, to_value(gc), offset, f32c, transfunc, space)
+        glyph_data = lift(
+                plot, pos, glyphcollection, offset, f32_conversion_obs(scene), transfunc, space
+            ) do pos, gc, offset, _, transfunc, space
+            return Makie.text_quads(atlas, pos, to_value(gc), offset, scene.float32convert, transfunc, space)
         end
 
         # unpack values from the one signal:
@@ -613,22 +585,23 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         t = Makie.transform_func_obs(plot)
         mat = plot[3]
         space = plot.space # needs to happen before connect_camera! call
-        f32c = scene.float32convert
-        f32c_obs = f32c isa Makie.Float32Convert ? f32c.scaling : Observable(nothing)
-        xypos = lift(plot, f32c_obs, t, plot[1], plot[2], space) do _, t, x, y, space
+        xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do _, t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
             if Makie.is_identity_transform(t)
-                return (Makie.f32_convert(f32c, x1d, 1), Makie.f32_convert(f32c, y1d, 2))
+                return (
+                    Makie.f32_convert(scene.float32convert, x1d, 1),
+                    Makie.f32_convert(scene.float32convert, y1d, 2)
+                )
             else
                 # If we do any transformation, we have to assume things aren't on the grid anymore
                 # so x + y need to become matrices.
                 map!(x1d, x1d) do x
-                    return Makie.f32_convert(f32c, apply_transform(t, Point(x, 0), space)[1], 1)
+                    return Makie.f32_convert(scene.float32convert, apply_transform(t, Point(x, 0), space)[1], 1)
                 end
                 map!(y1d, y1d) do y
-                    return Makie.f32_convert(f32c, apply_transform(t, Point(0, y), space)[2], 2)
+                    return Makie.f32_convert(scene.float32convert, apply_transform(t, Point(0, y), space)[2], 2)
                 end
                 return (x1d, y1d)
             end
@@ -773,20 +746,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(plot)
-            f32c = scene.float32convert
-            f32c_obs = f32c isa Makie.Float32Convert ? f32c.scaling : Observable(nothing)
             mat = plot[3]
-            xypos = lift(plot, f32c_obs, t, plot[1], plot[2], space) do f32c_inner, t, x, y, space
+            xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do f32c_inner, t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t) && isnothing(f32c_inner)
                     return (x, y)
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
+                        Makie.f32_convert(scene.float32convert, apply_transform.((t,), Point.(x, y), space), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+                        [Makie.f32_convert(scene.float32convert, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end

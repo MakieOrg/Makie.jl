@@ -26,21 +26,11 @@ Conversion chain:
   a good target range to avoid frequent updates
 =#
 
-struct LinearScaling
-    scale::Vec{3, Float64}
-    offset::Vec{3, Float64}
-end
-
 # muladd is no better than a * b + c etc
 # Don't apply Float32 here so we can still work with full precision by calling these directly
 @inline (ls::LinearScaling)(x::Real, dim::Integer) = ls.scale[dim] * x + ls.offset[dim]
 @inline (ls::LinearScaling)(p::VecTypes{2}) = ls.scale[Vec(1, 2)] .* p + ls.offset[Vec(1, 2)]
 @inline (ls::LinearScaling)(p::VecTypes{3}) = ls.scale .* p + ls.offset
-
-struct Float32Convert
-    scaling::Observable{LinearScaling}
-    resolution::Float32
-end
 
 function Float32Convert()
     scaling = LinearScaling(Vec{3, Float64}(1.0), Vec{3, Float64}(0.0))
@@ -119,7 +109,7 @@ end
     return space in (:data, :transformed) ? f32_convert(c, data, dim) : f32_convert(nothing, data, dim)
 end
 
-
+# For CairoMakie
 f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
 function f32_convert_matrix(c::Float32Convert, space::Symbol)
     if space in (:data, :transformed) # maybe :world?
@@ -129,5 +119,42 @@ function f32_convert_matrix(c::Float32Convert, space::Symbol)
         return transformationmatrix(translation, scale)
     else
         return Mat4d(I)
+    end
+end
+
+
+
+# For GLMakie, WGLMakie, maybe RPRMakie
+
+function f32_conversion_obs(scene::Scene)
+    if isnothing(scene.float32convert)
+        return Observable(nothing)
+    else
+        return scene.float32convert.scaling
+    end
+end
+
+# TODO consider mirroring f32convert to plot attributes
+function apply_transform_and_f32_conversion(
+        scene::Scene, plot::AbstractPlot, data,
+        space::Observable = get(plot, :space, Observable(:data))
+    )
+    return map(plot, f32_conversion_obs(scene), transform_func_obs(plot), data, space) do _, _tf, data, space
+        tf = space == :data ? _tf : identity
+        f32c = space in (:data, :transformed) ? scene.float32convert : nothing
+        # avoid intermediate array?
+        return [Makie.f32_convert(f32c, apply_transform(tf, x)) for x in data]
+    end
+end
+
+# For Vector{<: Real} applying to x/y/z dimension
+function apply_transform_and_f32_conversion(
+        scene::Scene, plot::AbstractPlot, data, dim::Integer,
+        space::Observable = get(plot, :space, Observable(:data))
+    )
+    return map(plot, f32_conversion_obs(scene), transform_func_obs(plot), data, space) do _, _tf, data, space
+        tf = space == :data ? _tf : identity
+        f32c = space in (:data, :transformed) ? scene.float32convert : nothing
+        return [Makie.f32_convert(f32c, apply_transform(tf, x), dim) for x in data]
     end
 end

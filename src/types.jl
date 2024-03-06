@@ -459,3 +459,14 @@ struct Cycler
 end
 
 Cycler() = Cycler(IdDict{Type,Int}())
+
+
+# Float32 conversions
+struct LinearScaling
+    scale::Vec{3, Float64}
+    offset::Vec{3, Float64}
+end
+struct Float32Convert
+    scaling::Observable{LinearScaling}
+    resolution::Float32
+end
