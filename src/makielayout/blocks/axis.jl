@@ -1239,6 +1239,7 @@ function Makie.xlims!(ax::Axis, xlims)
     else
         ax.xreversed[] = false
     end
+
     mlims = convert_limit_attribute(ax.limits[])
     # if hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] isa Float32Conversion
     #     scaling = ax.x_dim_convert[].scaling[]
@@ -1260,6 +1261,7 @@ function Makie.ylims!(ax::Axis, ylims)
     else
         ax.yreversed[] = false
     end
+
     mlims = convert_limit_attribute(ax.limits[])
     # if hasproperty(ax, :y_dim_convert) && ax.y_dim_convert[] isa Float32Conversion
     #     scaling = ax.y_dim_convert[].scaling[]
