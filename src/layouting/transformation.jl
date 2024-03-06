@@ -1,5 +1,10 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
+function parent_transform(x)
+    p = parent(transformation(x))
+    return isnothing(p) ? Mat4f(I) : p.model[]
+end
+
 function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
     tfuncs = []
     obsfunc = on(parent.model; update=true) do m

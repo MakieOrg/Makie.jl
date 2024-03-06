@@ -104,7 +104,7 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    selectionarea = Observable(Rect2f(0, 0, 0, 0); ignore_equal_values=true)
+    selectionarea = Observable(Rect2d(0, 0, 0, 0); ignore_equal_values=true)
 
     selectionpoly = poly!(
         blockscene, selectionarea, color = m.selection_cell_color_inactive[];
@@ -124,14 +124,14 @@ function initialize_block!(m::Menu; default = 1)
     notify(selected_text)
 
     on(blockscene, m.layoutobservables.computedbbox) do cbb
-        selectionarea[] = cbb
+        selectionarea[] = Rect2d(origin(cbb), widths(cbb))
         ch = height(cbb)
         selectiontextpos[] = cbb.origin + Point2f(m.textpadding[][1], ch/2)
     end
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values=true)
 
-    optionrects = Observable([BBox(0, 0, 0, 0)]; ignore_equal_values=true)
+    optionrects = Observable([Rect2d(0, 0, 0, 0)]; ignore_equal_values=true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values=true)
 
     function update_option_colors!(hovered)
