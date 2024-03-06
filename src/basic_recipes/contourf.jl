@@ -111,13 +111,10 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
 
         levelcenters = (highs .+ lows) ./ 2
 
-        @show levels c lowcolor highcolor levelcenters is_extended_low is_extended_high
-
         for (i, (center, group)) in enumerate(zip(levelcenters, isos))
             points = Point2f.(group.x, group.y)
             polygroups = _group_polys(points, group.id)
-            @show points center length(polygroups)
-            # length(polygroups) < 2 && continue
+            @show center length(polygroups)
             for polygroup in polygroups
                 outline = polygroup[1]
                 holes = polygroup[2:end]
@@ -126,7 +123,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
                 push!(colors[], center)
             end
         end
-        # polys[] = polys[]
         return
     end
 
