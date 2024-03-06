@@ -109,27 +109,17 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-<<<<<<< HEAD
-function convert_arguments(::PointBased, x::AbstractArray, y::AbstractVector, z::AbstractArray)
-    (vec(Point3f.(x, y', z)),)
-=======
 function convert_arguments(::PointBased, x::AbstractArray{<: Real}, y::AbstractVector{<: Real}, z::AbstractArray{<: Real})
     (vec(Point3.(x, y', z)),)
->>>>>>> 637b0f09e (allow types to pass through PointBased conversion [prototyping])
 end
 
 function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix)
     return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
-<<<<<<< HEAD
-function convert_arguments(::PointBased, x::AbstractArray, y::AbstractMatrix, z::AbstractArray)
-    (vec(Point3f.(x, y, z)),)
-=======
 function convert_arguments(::PointBased, x::AbstractArray{<:Real}, y::RealMatrix,
                            z::AbstractArray{<:Real})
     (vec(Point3.(x, y, z)),)
->>>>>>> 637b0f09e (allow types to pass through PointBased conversion [prototyping])
 end
 
 """
@@ -139,12 +129,8 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-<<<<<<< HEAD
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f.(x, y, z),)
-=======
 convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3.(x, y, z),)
-convert_arguments(P::PointBased, x::RealVector, y::RealVector) = (Point2.(x, y),)
->>>>>>> 637b0f09e (allow types to pass through PointBased conversion [prototyping])
+convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2.(x, y),)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -157,10 +143,6 @@ convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, de
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
-
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
-
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
 
 """
     convert_arguments(P, y)::Vector
