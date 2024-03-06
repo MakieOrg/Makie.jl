@@ -210,9 +210,9 @@ Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::PointBased, x::Rect2)
+function convert_arguments(P::PointBased, x::Rect2{T}) where T
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2{promote_type(Float32, T)}, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)

@@ -104,7 +104,7 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    selectionarea = Observable(Rect2f(0, 0, 0, 0); ignore_equal_values=true)
+    selectionarea = Observable(Rect2d(0, 0, 0, 0); ignore_equal_values=true)
 
     selectionpoly = poly!(
         blockscene, selectionarea, color = m.selection_cell_color_inactive[];
@@ -118,20 +118,20 @@ function initialize_block!(m::Menu; default = 1)
     )
 
     onany(blockscene, selected_text, m.fontsize, m.textpadding) do _, _, (l, r, b, t)
-        bb = boundingbox(selectiontext)
+        bb = text_boundingbox(selectiontext)
         m.layoutobservables.autosize[] = width(bb) + l + r, height(bb) + b + t
     end
     notify(selected_text)
 
     on(blockscene, m.layoutobservables.computedbbox) do cbb
-        selectionarea[] = cbb
+        selectionarea[] = Rect2d(origin(cbb), widths(cbb))
         ch = height(cbb)
         selectiontextpos[] = cbb.origin + Point2f(m.textpadding[][1], ch/2)
     end
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values=true)
 
-    optionrects = Observable([Bbox(0, 0, 0, 0)]; ignore_equal_values=true)
+    optionrects = Observable([Rect2d(0, 0, 0, 0)]; ignore_equal_values=true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values=true)
 
     function update_option_colors!(hovered)
@@ -162,7 +162,7 @@ function initialize_block!(m::Menu; default = 1)
 
     onany(blockscene, optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
-        bbs = map(x -> boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
+        bbs = map(x -> text_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
         heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
         heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         h = sum(heights)

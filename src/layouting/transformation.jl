@@ -1,5 +1,10 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
+function parent_transform(x)
+    p = parent(transformation(x))
+    return isnothing(p) ? Mat4f(I) : p.model[]
+end
+
 function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
     tfuncs = []
     obsfunc = on(parent.model; update=true) do m
@@ -193,12 +198,16 @@ function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3
 end
 function apply_transform_and_model(model::Mat4, f, pos::VecTypes, space = :data, output_type = Point3d)
     transformed = apply_transform(f, pos, space)
-    p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
-    p4d = model * p4d
-    p4d = p4d ./ p4d[4]
-    return to_ndim(output_type, p4d, NaN)
+    if space in (:data, :transformed)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
+        p4d = model * p4d
+        p4d = p4d ./ p4d[4]
+        return to_ndim(output_type, p4d, NaN)
+    else
+        return transformed
+    end
 end
-function apply_transform_and_model(model::Mat4, f, positions::Vector, space = :data, output_type = Point3d)
+function apply_transform_and_model(model::Mat4, f, positions::AbstractArray, space = :data, output_type = Point3d)
     return map(positions) do pos
         apply_transform_and_model(model, f, pos, space, output_type)
     end

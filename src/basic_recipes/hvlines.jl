@@ -88,7 +88,7 @@ function data_limits(p::HLines)
     itf = inverse_transform(p.transformation.transform_func[])
     xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
     ymin, ymax = extrema(p[1][])
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
 
 function data_limits(p::VLines)
@@ -97,5 +97,7 @@ function data_limits(p::VLines)
     itf = inverse_transform(p.transformation.transform_func[])
     xmin, xmax = extrema(p[1][])
     ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
+
+boundingbox(p::Union{HLines, VLines}) = transform_bbox(p, data_limits(p))

@@ -60,11 +60,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
         for gc in thetaticklabelplot.plots[1].plots[1][1][]
-            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            bbox = text_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
         for gc in rticklabelplot.plots[1].plots[1][1][]
-            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            bbox = text_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
 

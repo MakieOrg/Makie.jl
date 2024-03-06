@@ -213,6 +213,8 @@ include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
 include("layouting/layouting.jl")
 include("layouting/boundingbox.jl")
+include("layouting/text_boundingbox.jl")
+include("layouting/maybe_unused.jl")
 
 # Declaritive SpecApi
 include("specapi.jl")

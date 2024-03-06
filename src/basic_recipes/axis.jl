@@ -342,6 +342,6 @@ function plot!(axis::Axis3D)
     return axis
 end
 
-function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
+function axis3d!(scene::Scene, lims = boundingbox(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
     axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

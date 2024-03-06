@@ -551,7 +551,6 @@ end
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
-    bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding
     bb = Rect3d(minimum(bb) .- padd, w .+ 2padd)
@@ -566,7 +565,7 @@ parent_scene(x::Scene) = x
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
 function is2d(scene::SceneLike)
-    lims = data_limits(scene)
+    lims = boundingbox(scene)
     lims === nothing && return nothing
     return is2d(lims)
 end
