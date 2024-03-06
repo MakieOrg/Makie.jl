@@ -1232,6 +1232,7 @@ function Makie.xlims!(ax::Axis, xlims)
     else
         ax.xreversed[] = false
     end
+
     mlims = convert_limit_attribute(ax.limits[])
 
     ax.limits.val = (xlims, mlims[2])
@@ -1250,6 +1251,7 @@ function Makie.ylims!(ax::Axis, ylims)
     else
         ax.yreversed[] = false
     end
+
     mlims = convert_limit_attribute(ax.limits[])
 
     ax.limits.val = (mlims[1], ylims)
