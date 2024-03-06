@@ -2,12 +2,9 @@
     annotations(strings::Vector{String}, positions::Vector{Point})
 
 Plots an array of texts at each position in `positions`.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Annotations, text, position) do scene
-    default_theme(scene, Text)
+@recipe Annotations text position begin
+    MakieCore.documented_attributes(Text)...
 end
 
 function convert_arguments(::Type{<: Annotations},

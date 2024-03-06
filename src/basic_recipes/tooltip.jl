@@ -2,73 +2,53 @@
     tooltip(position, string)
     tooltip(x, y, string)
 
-Creates a tooltip pointing at `position` displaying the given `string`
-
-## Attributes
-
-### Generic
-
-- `visible::Bool = true` sets whether the plot will be rendered or not.
-- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
-- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
-- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
-- `space::Symbol = :data` sets the transformation space for positions of markers. See `Makie.spaces()` for possible inputs.
-
-### Tooltip specific
-
-- `offset = 10` sets the offset between the given `position` and the tip of the triangle pointing at that position.
-- `placement = :above` sets where the tooltipü should be placed relative to `position`. Can be `:above`, `:below`, `:left`, `:right`.
-- `align = 0.5` sets the alignment of the tooltip relative `position`. With `align = 0.5` the tooltip is centered above/below/left/right the `position`.
-- `backgroundcolor = :white` sets the background color of the tooltip.
-- `triangle_size = 10` sets the size of the triangle pointing at `position`.
-- `outline_color = :black` sets the color of the tooltip outline.
-- `outline_linewidth = 2f0` sets the linewidth of the tooltip outline.
-- `outline_linestyle = nothing` sets the linestyle of the tooltip outline.
-
-- `textpadding = (4, 4, 4, 4)` sets the padding around text in the tooltip. This is given as `(left, right, bottom top)` offsets.
-- `textcolor = theme(scene, :textcolor)` sets the text color.
-- `fontsize = 16` sets the text size.
-- `font = theme(scene, :font)` sets the font.
-- `strokewidth = 0`: Gives text an outline if set to a positive value.
-- `strokecolor = :white` sets the text outline color.
-- `justification = :left` sets whether text is aligned to the `:left`, `:center` or `:right` within its bounding box.
+Creates a tooltip pointing at `position` displaying the given `string
 """
-@recipe(Tooltip, position) do scene
-    Attributes(;
-        # General
-        text = "",
-        offset = 10,
-        placement = :above,
-        align = 0.5,
-        xautolimits = false,
-        yautolimits = false,
-        zautolimits = false,
-        overdraw = false,
-        depth_shift = 0f0,
-        transparency = false,
-        visible = true,
-        inspectable = false,
-        space = :data,
+@recipe Tooltip position begin
+    # General
+    text = ""
+    "Sets the offset between the given `position` and the tip of the triangle pointing at that position."
+    offset = 10
+    "Sets where the tooltip should be placed relative to `position`. Can be `:above`, `:below`, `:left`, `:right`."
+    placement = :above
+    "Sets the alignment of the tooltip relative `position`. With `align = 0.5` the tooltip is centered above/below/left/right the `position`."
+    align = 0.5
+    xautolimits = false
+    yautolimits = false
+    zautolimits = false
 
-        # Text
-        textpadding = (4, 4, 4, 4), # LRBT
-        textcolor = theme(scene, :textcolor),
-        fontsize = 16,
-        font = theme(scene, :font),
-        strokewidth = 0,
-        strokecolor = :white,
-        justification = :left,
+    # Text
+    "Sets the padding around text in the tooltip. This is given as `(left, right, bottom, top)` offsets."
+    textpadding = (4, 4, 4, 4) # LRBT
+    "Sets the text color."
+    textcolor = @inherit textcolor
+    "Sets the text size in screen units."
+    fontsize = 16
+    "Sets the font."
+    font = @inherit font
+    "Gives text an outline if set to a positive value."
+    strokewidth = 0
+    "Sets the text outline color."
+    strokecolor = :white
+    "Sets whether text is aligned to the `:left`, `:center` or `:right` within its bounding box."
+    justification = :left
 
-        # Background
-        backgroundcolor = :white,
-        triangle_size = 10,
+    # Background
+    "Sets the background color of the tooltip."
+    backgroundcolor = :white
+    "Sets the size of the triangle pointing at `position`."
+    triangle_size = 10
 
-        # Outline
-        outline_color = :black,
-        outline_linewidth = 2f0,
-        outline_linestyle = nothing,
-    )
+    # Outline
+    "Sets the color of the tooltip outline."
+    outline_color = :black
+    "Sets the linewidth of the tooltip outline."
+    outline_linewidth = 2f0
+    "Sets the linestyle of the tooltip outline."
+    outline_linestyle = nothing
+
+    MakieCore.mixin_generic_plot_attributes()...
+    inspectable = false
 end
 
 convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString) = (Point2f(x, y), str)

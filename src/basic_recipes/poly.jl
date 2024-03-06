@@ -164,7 +164,7 @@ end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
-    attributes = Attributes(
+    attrs = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
         space = plot.space, ssao = plot.ssao,
@@ -183,6 +183,8 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors, Float32}}()
 
+    interpolate_in_fragment_shader = Observable(false)
+
     map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
         if colors isa AbstractVector && length(colors) == length(num_meshes)
@@ -196,15 +198,15 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
                 end
             end
             # For GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
-            attributes[:interpolate_in_fragment_shader] = false
+            interpolate_in_fragment_shader[] = false
             return result
         else
             # If we have colors per vertex, we need to interpolate in fragment shader
-            attributes[:interpolate_in_fragment_shader] = true
+            interpolate_in_fragment_shader[] = true
             return to_color(colors)
         end
     end
-    attributes[:color] = mesh_colors
+    attrs[:color] = mesh_colors
     transform_func = plot.transformation.transform_func
     bigmesh = lift(plot, meshes, transform_func) do meshes, tf
         if isempty(meshes)
@@ -214,5 +216,8 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
             return merge(triangle_meshes)
         end
     end
-    return mesh!(plot, attributes, bigmesh)
+    mpl = mesh!(plot, attrs, bigmesh)
+    # splice in internal attribute after creation to avoid validation
+    attributes(mpl)[:interpolate_in_fragment_shader] = interpolate_in_fragment_shader
+    return mpl
 end

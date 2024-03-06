@@ -3,16 +3,11 @@
 
 Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Scene` with 2D projection at its current limits.
 You can pass one or multiple intercepts or slopes.
-
-All style attributes are the same as for `LineSegments`.
 """
-@recipe(ABLines) do scene
-    Theme(;
-        xautolimits = false,
-        yautolimits = false,
-        default_theme(LineSegments, scene)...,
-        cycle = :color,
-    )
+@recipe ABLines begin
+    xautolimits = false
+    yautolimits = false
+    MakieCore.documented_attributes(LineSegments)...
 end
 
 function Makie.plot!(p::ABLines)
