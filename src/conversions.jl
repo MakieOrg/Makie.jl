@@ -1,34 +1,37 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Any,Any}}
+const RangeLike = Union{AbstractVector,ClosedInterval,Tuple{Any,Any}}
 
-@convert_target struct PointBased{N, T} # We can use the traits as well for conversion targers
-    # all position based traits get converted to a simple vector of points
-    positions::AbstractVector{Point{N,T}}
-end
+# if no plot type based conversion is defined, we try using a trait
+function convert_arguments(T::PlotFunc, args...; kw...)
+    ct = conversion_trait(T, args...)
+    try
+        convert_arguments(ct, args...; kw...)
+    catch e
+        if e isa MethodError
+            try
+                convert_arguments_individually(T, args...)
+            catch ee
+                if ee isa MethodError
+                    error("""
+                          `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
 
-@convert_target struct Mesh
-    # We currently allow Mesh and vector of meshes for the Mesh type.
-    mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh}
-end
+                          The signature that could not be converted was:
+                          $(join("::" .* string.(typeof.(args)), ", "))
 
-@convert_target struct Volume
-    # Volumes also are just defined on a cube, so we only accept intervals.
-    # convert_arguments will convert from ranges etc to intervals
-    x::ClosedInterval
-    y::ClosedInterval
-    z::ClosedInterval
-    volume::AbstractArray{Float32,3}
-end
+                          Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
+                          You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
 
-function got_converted(@nospecialize(result), @nospecialize(args))
-    if result === args
-        return false
-    elseif result isa NoConversion
-        return false
-    else
-        return true
+                          Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
+                          """)
+                else
+                    rethrow(ee)
+                end
+            end
+        else
+            rethrow(e)
+        end
     end
 end
 
@@ -43,7 +46,7 @@ function convert_arguments_individually(T::PlotFunc, args...)
     end
     # otherwise we try converting our newly single-converted args again because
     # now a normal conversion method might work again
-    convert_arguments(T, single_converted...)
+    return convert_arguments(T, single_converted...)
 end
 
 function recursively_convert_argument(x)
@@ -54,6 +57,7 @@ function recursively_convert_argument(x)
         return recursively_convert_argument(newx)
     end
 end
+
 
 ################################################################################
 #                          Single Argument Conversion                          #

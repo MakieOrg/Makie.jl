@@ -417,7 +417,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     tickvalues = Observable(Float64[]; ignore_equal_values=true)
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64},Vector{Any}}}()
-    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, dim_convert, limits, ticks, tickformat,
+    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, limits, ticks, tickformat,
          attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
