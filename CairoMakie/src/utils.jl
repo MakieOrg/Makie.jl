@@ -9,7 +9,7 @@ function project_position(scene::Scene, transform_func::T, space, point, model::
 end
 
 # much faster than dot-ing `project_position` because it skips all the repeated mat * mat
-function _project_position(scene::Scene, space, ps::Vector{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
+function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
         M = Makie.space_to_clip(scene.camera, space) * model * f32convert
@@ -31,7 +31,7 @@ function _project_position(scene::Scene, space, ps::Vector{<: VecTypes{N, T1}}, 
     return output
 end
 
-function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, yflip::Bool) where {N, T1}
+function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, yflip::Bool) where {N, T1 <: Real}
     T = promote_type(Float32, T1) # always Float, at least Float32
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
