@@ -504,3 +504,17 @@ end
     end
     @test isempty(limits.listeners)
 end
+
+@testset "Contourf" begin
+    x = y = LinRange(0, 1, 10)
+    ymin, ymax = 0.4, 0.6
+    steepness = 0.1
+    f(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
+    z = [f(_x, _y) for _x in x, _y in y]
+
+    fig, ax, cof = contourf(x, y, z)
+    @test isfinite(cof.plots[1].color[][end])
+
+    fig, ax, cof = contourf(x, y, z; extendhigh = :auto)
+    @test isinf(cof.plots[1].color[][end])
+end

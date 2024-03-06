@@ -84,12 +84,12 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     lowcolor = Observable{RGBAf}()
     map!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, lowcolor)
+    is_extended_low = lift(!is_zero_color, c, lowcolor)
 
     highcolor = Observable{RGBAf}()
     map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, highcolor)
+    is_extended_high = lift(!is_zero_color, c, highcolor)
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
     polys = Observable(PolyType[])
@@ -111,9 +111,13 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
 
         levelcenters = (highs .+ lows) ./ 2
 
+        @show levels c lowcolor highcolor levelcenters is_extended_low is_extended_high
+
         for (i, (center, group)) in enumerate(zip(levelcenters, isos))
             points = Point2f.(group.x, group.y)
             polygroups = _group_polys(points, group.id)
+            @show points center length(polygroups)
+            # length(polygroups) < 2 && continue
             for polygroup in polygroups
                 outline = polygroup[1]
                 holes = polygroup[2:end]
@@ -122,7 +126,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
                 push!(colors[], center)
             end
         end
-        polys[] = polys[]
+        # polys[] = polys[]
         return
     end
 

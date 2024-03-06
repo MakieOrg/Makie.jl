@@ -95,6 +95,8 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
     return cm
 end
 
+is_zero_color(x) = x == RGBAf(0, 0, 0, 0)
+
 function compute_lowcolor(el, cmap)
     if isnothing(el)
         return RGBAf(0, 0, 0, 0)
@@ -130,12 +132,12 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     lowcolor = Observable{RGBAf}()
     map!(compute_lowcolor, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, c.extendlow)
+    is_extended_low = lift(!is_zero_color, c, c.extendlow)
 
     highcolor = Observable{RGBAf}()
     map!(compute_highcolor, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, c.extendhigh)
+    is_extended_high = lift(!is_zero_color, c, c.extendhigh)
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
