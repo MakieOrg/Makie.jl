@@ -96,8 +96,8 @@ function ray_from_projectionview(scene::Scene, xy::VecTypes{2})
 end
 
 
-function transform(M::Mat4f, ray::Ray)
-    p4d = M * to_ndim(Point4f, ray.origin, 1f0)
+function transform(M::Mat4{T}, ray::Ray) where {T}
+    p4d = M * to_ndim(Point4{T}, ray.origin, 1f0)
     dir = normalize(M[Vec(1,2,3), Vec(1,2,3)] * ray.direction)
     return Ray(p4d[Vec(1,2,3)] / p4d[4], dir)
 end

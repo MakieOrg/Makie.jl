@@ -316,7 +316,7 @@ function project_point2(mat4::Mat4{T1}, point2::Point2{T2}) where {T1, T2}
     Point2{T2}(mat4 * to_ndim(Point4{T}, to_ndim(Point3{T}, point2, 0), 1))
 end
 
-function transform(model::Mat4{T1}, x::VT) where {T1, VT}
+function transform(model::Mat4{T1}, x::VT) where {T1, VT<:VecTypes}
     T = promote_type(T1, eltype(VT))
     # TODO: no w = 1? Is this meant to skip translations?
     x4d = to_ndim(Vec4{T}, x, 0.0)

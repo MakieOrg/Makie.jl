@@ -97,8 +97,10 @@ export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGri
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
-const RealVector{T} = AbstractVector{T} where {T<:Real}
-const RealMatrix{T} = AbstractMatrix{T} where {T<:Real}
+const RealArray{T, N} = AbstractArray{T, N} where {T<:Real}
+const RealVector{T} = RealArray{1}
+const RealMatrix{T} = RealArray{2}
+
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
@@ -122,6 +124,10 @@ export Point2d, Point3d, Point4d, Vec2d, Vec3d, Vec4d, Rect2d, Rect3d
 # TODO: move to GeometryBasics?
 function GeometryBasics.Rect3{T}(r::Rect2) where {T} # used in text boundingbox
     return Rect3{T}(Vec3{T}(origin(r)..., zero(T)), Vec3{T}(widths(r)..., zero(T)))
+end
+
+function Base.convert(::Type{Rect{N, T}}, r::Rect{N}) where {N, T}
+    return Rect{N, T}(r)
 end
 
 # TODO: patch GridLayoutBase, probably to use Float64 consistently?
@@ -150,7 +156,7 @@ include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
-include("float32-scaling2.jl")
+include("float32-scaling.jl")
 include("scenes.jl")
 
 include("interfaces.jl")

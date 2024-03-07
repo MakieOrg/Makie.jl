@@ -69,12 +69,13 @@ convert_single_argument(x) = x
 
 # replace missings with NaNs
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
-    [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
+    return el32convert(a)
 end
 
 # same for points
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
-    [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
+function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N, PT}}}) where {N, PT}
+    T = float32type(PT)
+    return Point{N,T}[ismissing(x) ? Point{N,T}(NaN) : Point{N,T}(x) for x in a]
 end
 
 ################################################################################
@@ -85,19 +86,21 @@ end
 Wrap a single point or equivalent object in a single-element array.
 """
 function convert_arguments(::PointBased, x::Real, y::Real)
-    ([Point2(x, y)],)
+    T = float_type(x, y)
+    return ([Point{2, T}(x, y)],)
 end
 
 function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
-    ([Point3(x, y, z)],)
+    T = float_type(x, y, z)
+    return ([Point{3, T}(x, y, z)],)
 end
 
 function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <: Real}
-    ([convert(Point{N, T}, position)],)
+    return ([Point{N,float_type(T)}(position)],)
 end
 
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
-    (elconvert(Point{N, T}, positions),)
+    return (float_convert(positions),)
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -109,17 +112,13 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractArray{<: Real}, y::AbstractVector{<: Real}, z::AbstractArray{<: Real})
-    (vec(Point3.(x, y', z)),)
+function convert_arguments(::PointBased, x::RealArray, y::RealVector, z::RealArray)
+    T = float_type(x, y, z)
+    (vec(Point{3, T}.(x, y', z)),)
 end
 
-function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::AbstractMatrix)
+function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::RealArray)
     return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
-end
-
-function convert_arguments(::PointBased, x::AbstractArray{<:Real}, y::RealMatrix,
-                           z::AbstractArray{<:Real})
-    (vec(Point3.(x, y, z)),)
 end
 
 """
@@ -129,8 +128,15 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3.(x, y, z),)
-convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2.(x, y),)
+function convert_arguments(::PointBased, x::RealArray, y::RealMatrix, z::RealArray)
+    T = float_type(x, y, z)
+    (vec(Point{3, T}.(x, y, z)),)
+end
+
+
+function convert_arguments(::PointBased, x::RealVector, y::RealVector)
+    return (Point{2,float_type(x, y)}.(x, y),)
+end
 
 """
     convert_arguments(P, x)::(Vector)
@@ -138,7 +144,7 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2.(x, y),)
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
+convert_arguments(p::PointBased, x::GeometryPrimitive{Dim, T}) where {Dim, T} = convert_arguments(p, decompose(Point{Dim, float32type(T)}, x))
 
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
@@ -174,11 +180,11 @@ Takes an input `Rect` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2{T}) where T
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2{promote_type(Float32, T)}, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2{float_type(T)}, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3, mesh))
+    return convert_arguments(P, decompose(Point3f, mesh))
 end
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
@@ -186,19 +192,20 @@ function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) wh
     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 end
 
-function convert_arguments(P::PointBased, rect::Rect3)
-    return (decompose(Point3f, rect),)
+function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
+    return (decompose(Point3{float_type(T)}, rect),)
 end
 
-function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
+function convert_arguments(P::Type{<: LineSegments}, rect::Rect3{T}) where {T}
     f = decompose(LineFace{Int}, rect)
-    p = connect(decompose(Point3f, rect), f)
+    p = connect(decompose(Point3{float_type(T)}, rect), f)
     return convert_arguments(P, p)
 end
 
-function convert_arguments(::Type{<: Lines}, rect::Rect3)
-    points = unique(decompose(Point3f, rect))
-    push!(points, Point3f(NaN)) # use to seperate linesegments
+function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
+    PT = Point3{float_type(T)}
+    points = unique(decompose(PT, rect))
+    push!(points, PT(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
 """
@@ -240,7 +247,7 @@ function convert_arguments(PB::PointBased, pol::Polygon)
         push!(arr, arr[1]) # close exterior
     end
     for interior in pol.interiors
-        push!(arr, Point2f(NaN))
+        push!(arr, Point2(NaN))
         inter = convert_arguments(PB, interior)[1] # this should always be a Tuple{<: Vector{Point}}
         append!(arr, inter)
         if !isempty(inter) && inter[1] != inter[end]
@@ -256,8 +263,8 @@ end
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = Point2f[]
+function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon{N, T}}, MultiPolygon{N, T}}) where {N, T}
+    arr = Point{N,float_type(T)}[]
     n = length(mp)
     for idx in 1:n
         converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
@@ -343,10 +350,12 @@ whether they represent edges or centers of the heatmap bins.
 If they are centers, convert to edges. Convert eltypes to `Float32` and return
 outputs as a `Tuple`.
 """
-function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
+function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::AbstractVecOrMat{<:Real},
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
     return map(el32convert, adjust_axes(ct, x, y, z))
 end
-function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
+function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::AbstractVecOrMat{<:Real},
+                           z::AbstractMatrix{<:Real})
     return map(el32convert, adjust_axes(ct, x, y, z))
 end
 
@@ -358,7 +367,7 @@ convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = conver
 Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
-function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<: Union{Number, Colorant}})
+function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<: Union{Real, Colorant}})
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
@@ -367,16 +376,17 @@ end
 
 Generates `ClosedInterval`s of size `0 .. size(mat, 1/2)` as x and y values.
 """
-function convert_arguments(::ImageLike, data::AbstractMatrix)
+function convert_arguments(::ImageLike, data::AbstractMatrix{<: Union{Real, Colorant}})
     n, m = Float32.(size(data))
-    return (0f0 .. n, 0f0 .. m, el32convert(data))
+    return (Float32(0) .. n, Float32(0) .. m, el32convert(data))
 end
 
 function print_range_warning(side::String, value)
     @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait. Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop. Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
 end
 
-function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike, data::AbstractMatrix)
+function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
+                           data::AbstractMatrix{<:Union{Real,Colorant}})
     if xs isa AbstractVector
         print_range_warning("x", xs)
     end
@@ -390,12 +400,12 @@ function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike, data::Abst
     return (x, y, el32convert(data))
 end
 
-function convert_arguments(ct::GridBased, data::AbstractMatrix)
+function convert_arguments(ct::GridBased, data::RealMatrix)
     n, m = Float32.(size(data))
     convert_arguments(ct, 1f0 .. n, 1f0 .. m, el32convert(data))
 end
 
-function convert_arguments(ct::GridBased, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
+function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealVector)
     if !(length(x) == length(y) == length(z))
         error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
     end
@@ -417,7 +427,7 @@ function convert_arguments(ct::GridBased, x::AbstractVector{<:Number}, y::Abstra
         j = searchsortedfirst(y_centers, yi)
         @inbounds zs[i, j] = zi
     end
-    convert_arguments(ct, x_centers, y_centers, zs)
+    return convert_arguments(ct, x_centers, y_centers, zs)
 end
 
 
@@ -428,14 +438,11 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(ct::Union{GridBased, ImageLike}, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+function convert_arguments(ct::Union{GridBased, ImageLike}, x::AbstractVector, y::AbstractVector, f::Function)
     if !applicable(f, x[1], y[1])
-        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
+        error("You need to pass a function with signature f(x::$(eltype(x)), y::$(eltype(y))). Found: $f")
     end
-    T = typeof(f(x[1], y[1]))
-    z = similar(x, T, (length(x), length(y)))
-    z .= f.(x, y')
-    return convert_arguments(ct, x, y, z)
+    return convert_arguments(ct, x, y, f.(x, y'))
 end
 
 ################################################################################
@@ -450,12 +457,13 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
+function convert_arguments(::VolumeLike, data::RealArray{3})
     n, m, k = Float32.(size(data))
     return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
 end
 
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
+                           data::RealArray{3})
     return (x, y, z, el32convert(data))
 end
 """
@@ -465,7 +473,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
+function convert_arguments(::VolumeLike, x::RealVector, y::AbstractVector, z::RealVector, i::RealArray{3})
     (x, y, z, el32convert(i))
 end
 
@@ -473,9 +481,9 @@ end
 #                                <:Lines                                       #
 ################################################################################
 
-function convert_arguments(::Type{<: Lines}, x::Rect2)
+function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
     # TODO fix the order of decompose
-    points = decompose(Point2f, x)
+    points = decompose(Point2{float32type(T)}, x)
     return (points[[1, 2, 4, 3, 1]],)
 end
 
@@ -488,26 +496,14 @@ Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
 """
 function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where E <: Union{Pair{A, A}, Tuple{A, A}} where A <: VecTypes{N, T} where {N, T}
-    (elconvert(Point{N, Float32}, reinterpret(Point{N, T}, positions)),)
+    return (float_convert(reinterpret(Point{N,T}, positions)),)
 end
 
-function convert_arguments(::Type{<: LineSegments}, x::Rect2)
+function convert_arguments(::Type{<: LineSegments}, x::Rect2{T}) where T
     # TODO fix the order of decompose
-    points = decompose(Point2f, x)
+    points = decompose(Point2{float_type(T)}, x)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
 end
-
-################################################################################
-#                                    <:Text                                    #
-################################################################################
-
-"""
-    convert_arguments(x)::(String)
-
-Takes an input `AbstractString` `x` and converts it to a string.
-"""
-# convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
-
 
 ################################################################################
 #                                    <:Mesh                                    #
@@ -559,7 +555,7 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
 end
 
 function convert_arguments(
-        MT::Type{<:Mesh},
+        ::Type{<:Mesh},
         meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     )
     return (meshes,)
@@ -572,7 +568,7 @@ function convert_arguments(
     return convert_arguments(MT, triangle_mesh(xyz))
 end
 
-function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
+function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
     return (GeometryBasics.uv_normal_mesh(geom),)
@@ -653,7 +649,7 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
         A = (x, y, z)[i]
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
-    return (x, y, z, el32convert.(f.(_x, _y, _z)))
+    return (x, y, z, el32convert(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
@@ -710,22 +706,45 @@ to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), le
 Converts the elemen array type to `T1` without making a copy if the element type matches
 """
 elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N} = convert(AbstractArray{T1, N}, x)
-float32type(x::Type) = Float32
+
+function elconvert(::Type{T}, x::AbstractArray{<: Union{Missing, <:Real}}) where {T}
+    return map(x) do elem
+        return (ismissing(elem) ? T(NaN) : convert(T, elem))
+    end
+end
+
+float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
+float_type(a::AbstractArray, rest::AbstractArray...) = float_type(eltype(a), map(eltype, rest)...)
+float_type(a::Type, rest::Type...) = float_type(promote_type(a, rest...))
+float_type(::Type{Float64}) = Float64
+float_type(::Type{Float32}) = Float32
+float_type(::Type{<:Real}) = Float64
+float_type(::Type{<:Union{Int8,UInt8,Int16,UInt16}}) = Float32
+float_type(::Type{<:Union{Float16}}) = Float32
+float_type(::Type{Point{N,T}}) where {N,T} = Point{N,float_type(T)}
+float_type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float_type(T)}
+float_type(::AbstractArray{T}) where {T} = float_type(T)
+
+float_convert(x::AbstractArray) = elconvert(float_type(x), x)
+
+float32type(::Type{<:Real}) = Float32
+float32type(::Type{Point{N,T}}) where {N,T} = Point{N,float32type(T)}
+float32type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float32type(T)}
+
+# We may want to always use UInt8 for colors?
 float32type(::Type{<: RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
-float32type(x::AbstractArray{T}) where T = float32type(T)
-float32type(x::T) where T = float32type(T)
+float32type(::AbstractArray{T}) where T = float32type(T)
+float32type(::T) where {T} = float32type(T)
+
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
+el32convert(x::AbstractArray{<:Union{Missing, T}}) where {T<:Real} = elconvert(float32type(T), x)
 el32convert(x::AbstractArray{Float32}) = x
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 
-function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}, N}
-    return map(x) do elem
-        return (ismissing(elem) ? NaN32 : convert(Float32, elem))::Float32
-    end::Array{Float32, N}
-end
+
 """
     to_triangles(indices)
 
