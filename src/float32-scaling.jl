@@ -70,6 +70,7 @@ function f32_convert_matrix(ls::LinearScaling, space::Symbol)
     # maybe :world?
     return space in (:data, :transformed) ? f32_convert_matrix(ls) : Mat4d(I)
 end
+inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(inv(ls), space)
 
 Base.inv(ls::LinearScaling) = LinearScaling(1.0 / ls.scale, - ls.offset / ls.scale)
 
@@ -134,9 +135,14 @@ end
 
 @inline f32_convert(c::Float32Convert, args...) = f32_convert(c.scaling[], args...)
 
-# For CairoMakie
+# For CairoMakie & project
 f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
 f32_convert_matrix(c::Float32Convert, space::Symbol) = f32_convert_matrix(c.scaling[], space)
+f32_convert_matrix(x, space::Symbol) = f32_convert_matrix(f32_conversion(x), space)
+
+inv_f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
+inv_f32_convert_matrix(c::Float32Convert, space::Symbol) = f32_convert_matrix(inv(c.scaling[]), space)
+inv_f32_convert_matrix(x, space::Symbol) = inv_f32_convert_matrix(f32_conversion(x), space)
 
 # For GLMakie, WGLMakie, maybe RPRMakie
 function f32_conversion_obs(scene::Scene)
@@ -147,6 +153,9 @@ function f32_conversion_obs(scene::Scene)
     end
 end
 f32_conversion_obs(plot::AbstractPlot) = f32_conversion_obs(parent_scene(plot))
+
+f32_conversion(plot::AbstractPlot) = f32_conversion(parent_scene(plot))
+f32_conversion(scene::Scene) = scene.float32convert
 
 # TODO consider mirroring f32convert to plot attributes
 function apply_transform_and_f32_conversion(

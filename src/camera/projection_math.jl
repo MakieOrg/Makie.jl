@@ -278,31 +278,32 @@ function to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
+
+# TODO: consider warning here to discourage risky functions
 function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}
-    T = promote_type(T1, T2) # TODO: technically this should be the less accurate of T1 and T2?
+    T = promote_type(Float32, T1, T2)
     p = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), dim4)
     p = matrix * p
     to_ndim(VT, p, 0.0)
 end
 
-
-# TODO: these may need to consider float32 converts (depending on how we handle them)
-
-function project(scene::Scene, point::T) where T<:StaticVector
+function project(scene::Scene, point::VecTypes)
     cam = scene.camera
     area = viewport(scene)[]
     # TODO, I think we need  .+ minimum(area)
     # Which would be semi breaking at this point though, I suppose
     return project(
         cam.projectionview[] *
+        f32_convert_matrix(scene.float32convert, :data) *
         transformationmatrix(scene)[],
         Vec2f(widths(area)),
         Point(point)
     )
 end
 
+# TODO: consider warning here to discourage risky functions
 function project(proj_view::Mat4{T1}, resolution::Vec2, point::Point{N, T2}) where {N, T1, T2}
-    T = promote_type(T1, T2)
+    T = promote_type(Float32, T1, T2)
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     clip = proj_view * p4d
     # at this point the visible range is strictly -1..1 so FLoat64 doesn't matter
@@ -311,13 +312,15 @@ function project(proj_view::Mat4{T1}, resolution::Vec2, point::Point{N, T2}) whe
     return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
 end
 
+# TODO: consider warning here to discourage risky functions
 function project_point2(mat4::Mat4{T1}, point2::Point2{T2}) where {T1, T2}
-    T = promote_type(T1, T2)
+    T = promote_type(Float32, T1, T2)
     Point2{T2}(mat4 * to_ndim(Point4{T}, to_ndim(Point3{T}, point2, 0), 1))
 end
 
+# TODO: consider warning here to discourage risky functions
 function transform(model::Mat4{T1}, x::VT) where {T1, VT<:VecTypes}
-    T = promote_type(T1, eltype(VT))
+    T = promote_type(Float32, T1, eltype(VT))
     # TODO: no w = 1? Is this meant to skip translations?
     x4d = to_ndim(Vec4{T}, x, 0.0)
     to_ndim(VT, model * x4d, 0.0)
@@ -371,6 +374,7 @@ function is_space_compatible(a::Union{Tuple, Vector}, b::Union{Tuple, Vector})
 end
 is_space_compatible(a::Union{Tuple, Vector}, b::Symbol) = is_space_compatible(b, a)
 
+# TODO: consider warning here to discourage risky functions
 function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos::VecTypes{N, T1}) where {N, T1}
     T = promote_type(Float32, T1) # always float, maybe Float64
     input_space === output_space && return to_ndim(Point3{T}, pos, 0)
@@ -378,5 +382,17 @@ function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos::Ve
     output_from_clip = clip_to_space(cam, output_space)
     p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
     transformed = output_from_clip * clip_from_input * p4d
+    return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
+end
+
+function project(scenelike::SceneLike, input_space::Symbol, output_space::Symbol, pos::VecTypes{N, T1}) where {N, T1}
+    T = promote_type(Float32, T1) # always float, maybe Float64
+    input_space === output_space && return to_ndim(Point3{T}, pos, 0)
+    cam = camera(scenelike)
+    clip_from_input = space_to_clip(cam, input_space)
+    output_from_clip = clip_to_space(cam, output_space)
+    f32c = f32_convert_matrix(scenelike)
+    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
+    transformed = output_from_clip * clip_from_input * f32c * p4d
     return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end
