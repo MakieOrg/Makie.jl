@@ -28,7 +28,6 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
-          include-all-prereleases: true
           arch: x64
       - uses: julia-actions/cache@v1
       - name: Benchmark
