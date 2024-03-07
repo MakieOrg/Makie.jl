@@ -462,7 +462,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             positions = lift(plot, f32_conversion_obs(scene), transform_func, positions,
                     space, pvm) do f32c, f, ps, space, pvm
 
-                transformed = Makie.f32_convert(f32c, apply_transform(f, ps, space), space)
+                transformed = apply_transform_and_f32_conversion(f32c, f, ps, space)
                 output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
                     output[i] = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
@@ -595,10 +595,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
                 # If we do any transformation, we have to assume things aren't on the grid anymore
                 # so x + y need to become matrices.
                 map!(x1d, x1d) do x
-                    return Makie.f32_convert(f32c, apply_transform(t, Point(x, 0), space)[1], 1)
+                    return Makie.apply_transform_and_f32_conversion(f32c, t, x, 1, space)
                 end
                 map!(y1d, y1d) do y
-                    return Makie.f32_convert(f32c, apply_transform(t, Point(0, y), space)[2], 2)
+                    return Makie.apply_transform_and_f32_conversion(f32c, t, y, 2, space)
                 end
                 return (x1d, y1d)
             end

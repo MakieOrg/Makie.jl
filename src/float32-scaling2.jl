@@ -140,6 +140,7 @@ function f32_conversion_obs(scene::Scene)
         return scene.float32convert.scaling
     end
 end
+f32_conversion_obs(plot::AbstractPlot) = f32_conversion_obs(parent_scene(plot))
 
 # TODO consider mirroring f32convert to plot attributes
 function apply_transform_and_f32_conversion(
@@ -147,13 +148,9 @@ function apply_transform_and_f32_conversion(
         space::Observable = get(plot, :space, Observable(:data))
     )
     return map(
-            plot, f32_conversion_obs(scene), transform_func_obs(plot), data, space
-        ) do _f32c, _tf, data, space
-        tf = space == :data ? _tf : identity
-        f32c = space in (:data, :transformed) ? _f32c : nothing
-        # avoid intermediate array?
-        return [Makie.f32_convert(f32c, apply_transform(tf, x)) for x in data]
-    end
+        apply_transform_and_f32_conversion, plot,
+        f32_conversion_obs(scene), transform_func_obs(plot), data, space
+    )
 end
 
 # For Vector{<: Real} applying to x/y/z dimension
@@ -162,10 +159,34 @@ function apply_transform_and_f32_conversion(
         space::Observable = get(plot, :space, Observable(:data))
     )
     return map(
-            plot, f32_conversion_obs(scene), transform_func_obs(plot), data, space
-        ) do _f32c, _tf, data, space
-        tf = space == :data ? _tf : identity
-        f32c = space in (:data, :transformed) ? _f32c : nothing
-        return [Makie.f32_convert(f32c, apply_transform(tf, x), dim) for x in data]
+        apply_transform_and_f32_conversion, plot,
+        f32_conversion_obs(scene), transform_func_obs(plot), data, dim, space
+    )
+end
+
+function apply_transform_and_f32_conversion(
+        float32convert::Union{Nothing, Float32Convert, LinearScaling},
+        transform_func, data, space::Symbol
+    )
+    tf = space == :data ? transform_func : identity
+    f32c = space in (:data, :transformed) ? float32convert : nothing
+    # avoid intermediate arrays. TODO: Is transform_func strictly per element?
+    return [Makie.f32_convert(f32c, apply_transform(tf, x)) for x in data]
+end
+
+function apply_transform_and_f32_conversion(
+        float32convert::Union{Nothing, Float32Convert, LinearScaling},
+        transform_func, data, dim::Integer, space::Symbol
+    )
+    tf = space == :data ? transform_func : identity
+    f32c = space in (:data, :transformed) ? float32convert : nothing
+    if dim == 1
+        return [Makie.f32_convert(f32c, apply_transform(tf, Point2(x, 0))[1], dim) for x in data]
+    elseif dim == 2
+        return [Makie.f32_convert(f32c, apply_transform(tf, Point2(0, x))[2], dim) for x in data]
+    elseif dim == 3
+        return [Makie.f32_convert(f32c, apply_transform(tf, Point3(0, 0, x))[3], dim) for x in data]
+    else
+        error("The transform_func and float32 conversion can only be applied along dimensions 1, 2 or 3, not $dim")
     end
 end
