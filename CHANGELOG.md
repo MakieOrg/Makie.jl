@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 - Added supported markers hint to unsupported marker warn message.
-
+- `colorrange` can now accept any `Function` which returns a 2-tuple or length-2 vector, as well as an extensible interface for users to integrate their own colorrange objects. [#3688](https://github.com/MakieOrg/Makie.jl/pull/3688)
 - Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 
 ## [0.20.8] - 2024-02-22
