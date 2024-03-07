@@ -1,4 +1,4 @@
-const SERIALIZATION_FORMAT_VERSION = "v6"
+const SERIALIZATION_FORMAT_VERSION = "v7"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -286,16 +286,6 @@ end
 
 function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
     return atlas.uv_rectangles[glyph_index!(atlas, b)]
-end
-
-
-# Seems like StableHashTraits is so slow, that it's worthwhile to memoize the hashes
-const MEMOIZED_HASHES = Dict{Any, UInt32}()
-
-function fast_stable_hash(x)
-    return get!(MEMOIZED_HASHES, x) do
-        return StableHashTraits.stable_hash(x; alg=crc32c, version=2)
-    end
 end
 
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)

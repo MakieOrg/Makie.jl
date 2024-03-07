@@ -217,10 +217,6 @@ Example from [InteractiveChaos.jl](https://github.com/JuliaDynamics/InteractiveC
 ](https://github.com/JuliaDynamics/InteractiveChaos.jl)
 
 
-You can follow Makie on [twitter](https://twitter.com/MakiePlots) to get the latest, outstanding examples:
-[![image](https://user-images.githubusercontent.com/1010467/81500210-e7523a00-92d0-11ea-9849-1240f165e0f8.png)](https://twitter.com/MakiePlots)
-
-
 ## Sponsors
 
 <img src="https://github.com/MakieOrg/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>

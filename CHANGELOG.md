@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Added supported markers hint to unsupported marker warn message.
+
+- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 
 ## [0.20.8] - 2024-02-22
 
