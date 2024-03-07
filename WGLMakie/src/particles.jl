@@ -225,7 +225,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotations)
-    attributes[:model] = map(Mat4f, plot.model)
+    attributes[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
     delete!(attributes, :uv_offset_width)
@@ -277,7 +277,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     plot_attributes = copy(plot.attributes)
     plot_attributes.attributes[:calculated_colors] = uniform_color
     uniforms = Dict(
-        :model => map(Mat4f, plot.model),
+        :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :shape_type => Observable(Cint(3)),
         :rotations => uniform_rotation,
         :pos => positions,

@@ -153,6 +153,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
 
     # for lighting
     get!(gl_attributes, :world_normalmatrix) do
+        # NOTE: not sure if this should ignore float32converts
         return lift(plot, gl_attributes[:model]) do m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(m[i, i])))
@@ -161,6 +162,7 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
 
     # for SSAO
     get!(gl_attributes, :view_normalmatrix) do
+        # NOTE: not sure if this should ignore float32converts
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(v[i, i] * m[i, i])))
@@ -257,7 +259,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             gl_value = lift_convert(key, value, plot, screen)
             gl_key => gl_value
         end)
-        gl_attributes[:model] = plot.model
+        gl_attributes[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
         if haskey(plot, :markerspace)
             gl_attributes[:markerspace] = plot.markerspace
         end

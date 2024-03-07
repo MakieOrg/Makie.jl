@@ -61,16 +61,22 @@ end
 end
 
 # For CairoMakie
+function f32_convert_matrix(ls::LinearScaling)
+    scale = to_ndim(Vec3d, ls.scale, 1)
+    translation = to_ndim(Vec3d, ls.offset, 0)
+    return transformationmatrix(translation, scale)
+end
 function f32_convert_matrix(ls::LinearScaling, space::Symbol)
-    if space in (:data, :transformed) # maybe :world?
-        scale = to_ndim(Vec3d, ls.scale, 1)
-        translation = to_ndim(Vec3d, ls.offset, 0)
-        return transformationmatrix(translation, scale)
-    else
-        return Mat4d(I)
-    end
+    # maybe :world?
+    return space in (:data, :transformed) ? f32_convert_matrix(ls) : Mat4d(I)
 end
 
+Base.inv(ls::LinearScaling) = LinearScaling(1.0 / ls.scale, - ls.offset / ls.scale)
+
+# returns Matrix R such that M * ls = ls * R
+function patch_model(ls::LinearScaling, M::Mat4d)
+    return Mat4f(f32_convert_matrix(inv(ls)) * M * f32_convert_matrix(ls))
+end
 
 # Float32Convert
 
