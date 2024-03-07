@@ -136,7 +136,7 @@ end
 
 # For CairoMakie
 f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
-f32_convert_matrix(c::Float32Convert, space::Symbol) = f32_convert(c.scaling[], space)
+f32_convert_matrix(c::Float32Convert, space::Symbol) = f32_convert_matrix(c.scaling[], space)
 
 # For GLMakie, WGLMakie, maybe RPRMakie
 function f32_conversion_obs(scene::Scene)
