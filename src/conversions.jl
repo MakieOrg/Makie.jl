@@ -117,6 +117,12 @@ function convert_arguments(::PointBased, x::RealArray, y::RealVector, z::RealArr
     (vec(Point{3, T}.(x, y', z)),)
 end
 
+function convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector)
+    T = float_type(x, y, z)
+    return (Point{3,T}.(x, y, z),)
+end
+
+
 function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::RealArray)
     return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
@@ -354,10 +360,6 @@ function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::Abstra
                            z::AbstractMatrix{<:Union{Real,Colorant}})
     return map(el32convert, adjust_axes(ct, x, y, z))
 end
-function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::AbstractVecOrMat{<:Real},
-                           z::AbstractMatrix{<:Real})
-    return map(el32convert, adjust_axes(ct, x, y, z))
-end
 
 convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
 
@@ -400,7 +402,7 @@ function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
     return (x, y, el32convert(data))
 end
 
-function convert_arguments(ct::GridBased, data::RealMatrix)
+function convert_arguments(ct::GridBased, data::AbstractMatrix{<:Union{Real,Colorant}})
     n, m = Float32.(size(data))
     convert_arguments(ct, 1f0 .. n, 1f0 .. m, el32convert(data))
 end
@@ -723,6 +725,7 @@ float_type(::Type{<:Union{Int8,UInt8,Int16,UInt16}}) = Float32
 float_type(::Type{<:Union{Float16}}) = Float32
 float_type(::Type{Point{N,T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float_type(T)}
+float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 
 float_convert(x::AbstractArray) = elconvert(float_type(x), x)

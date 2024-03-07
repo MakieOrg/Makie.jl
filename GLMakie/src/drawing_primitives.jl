@@ -594,12 +594,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
             else
                 # If we do any transformation, we have to assume things aren't on the grid anymore
                 # so x + y need to become matrices.
-                map!(x1d, x1d) do x
-                    return Makie.apply_transform_and_f32_conversion(f32c, t, x, 1, space)
-                end
-                map!(y1d, y1d) do y
-                    return Makie.apply_transform_and_f32_conversion(f32c, t, y, 2, space)
-                end
+                x1d = Makie.apply_transform_and_f32_conversion(f32c, t, x1d, 1, space)
+                y1d = Makie.apply_transform_and_f32_conversion(f32c, t, y1d, 2, space)
                 return (x1d, y1d)
             end
         end
