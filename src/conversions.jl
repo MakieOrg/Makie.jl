@@ -746,7 +746,7 @@ el32convert(x::AbstractArray{<:Union{Missing, T}}) where {T<:Real} = elconvert(f
 el32convert(x::AbstractArray{Float32}) = x
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
-
+el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
 
 """
     to_triangles(indices)
