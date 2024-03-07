@@ -720,12 +720,15 @@ el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{Float32}) = x
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
+el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
 
 function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}, N}
     return map(x) do elem
         return (ismissing(elem) ? NaN32 : convert(Float32, elem))::Float32
     end::Array{Float32, N}
 end
+
+
 """
     to_triangles(indices)
 
