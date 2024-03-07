@@ -156,8 +156,8 @@ include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
-include("float32-scaling.jl")
 include("scenes.jl")
+include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("conversions.jl")
