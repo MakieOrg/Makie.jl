@@ -460,9 +460,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             pvm = lift(*, plot, data[:projectionview], data[:model])
             transform_func = transform_func_obs(plot)
             positions = lift(plot, f32_conversion_obs(scene), transform_func, positions,
-                    space, pvm) do _, f, ps, space, pvm
+                    space, pvm) do f32c, f, ps, space, pvm
 
-                transformed = Makie.f32_convert(scene.float32convert, apply_transform(f, ps, space), space)
+                transformed = Makie.f32_convert(f32c, apply_transform(f, ps, space), space)
                 output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
                     output[i] = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
@@ -511,8 +511,8 @@ function draw_atomic(screen::Screen, scene::Scene,
         # calculate quad metrics
         glyph_data = lift(
                 plot, pos, glyphcollection, offset, f32_conversion_obs(scene), transfunc, space
-            ) do pos, gc, offset, _, transfunc, space
-            return Makie.text_quads(atlas, pos, to_value(gc), offset, scene.float32convert, transfunc, space)
+            ) do pos, gc, offset, f32c, transfunc, space
+            return Makie.text_quads(atlas, pos, to_value(gc), offset, f32c, transfunc, space)
         end
 
         # unpack values from the one signal:
@@ -585,23 +585,20 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         t = Makie.transform_func_obs(plot)
         mat = plot[3]
         space = plot.space # needs to happen before connect_camera! call
-        xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do _, t, x, y, space
+        xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do f32c, t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
             if Makie.is_identity_transform(t)
-                return (
-                    Makie.f32_convert(scene.float32convert, x1d, 1),
-                    Makie.f32_convert(scene.float32convert, y1d, 2)
-                )
+                return (Makie.f32_convert(f32c, x1d, 1), Makie.f32_convert(f32c, y1d, 2))
             else
                 # If we do any transformation, we have to assume things aren't on the grid anymore
                 # so x + y need to become matrices.
                 map!(x1d, x1d) do x
-                    return Makie.f32_convert(scene.float32convert, apply_transform(t, Point(x, 0), space)[1], 1)
+                    return Makie.f32_convert(f32c, apply_transform(t, Point(x, 0), space)[1], 1)
                 end
                 map!(y1d, y1d) do y
-                    return Makie.f32_convert(scene.float32convert, apply_transform(t, Point(0, y), space)[2], 2)
+                    return Makie.f32_convert(f32c, apply_transform(t, Point(0, y), space)[2], 2)
                 end
                 return (x1d, y1d)
             end
@@ -747,17 +744,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(plot)
             mat = plot[3]
-            xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do f32c_inner, t, x, y, space
+            xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do f32c, t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
-                if Makie.is_identity_transform(t) && isnothing(f32c_inner)
+                if Makie.is_identity_transform(t) && isnothing(f32c)
                     return (x, y)
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(scene.float32convert, apply_transform.((t,), Point.(x, y), space), space)
+                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(scene.float32convert, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end
