@@ -65,7 +65,7 @@ poly_convert(mesh::GeometryBasics.Mesh, transform_func=identity) = mesh
 function poly_convert(polygon::Polygon, transform_func=identity)
     outer = metafree(coordinates(polygon.exterior))
     # TODO consider applying f32 convert here too. We would need to identify this though...
-    PT = Point2{float_type(outer)}
+    PT = float_type(outer)
     points = Vector{PT}[apply_transform(transform_func, outer)]
     points_flat = PT[outer;]
     for inner in polygon.interiors
