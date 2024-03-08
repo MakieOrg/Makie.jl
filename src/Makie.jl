@@ -214,7 +214,7 @@ include("basic_recipes/tooltip.jl")
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
-include("layouting/layouting.jl")
+include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")
 include("layouting/text_boundingbox.jl")
 include("layouting/maybe_unused.jl")
