@@ -57,9 +57,9 @@ end
 const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
 const LOADED_SHADERS = Dict{String, Tuple{Float64, ShaderSource}}()
+
 function loadshader(name)
-    # Turns out, joinpath is so slow, that it actually makes sense
-    # To memoize it :-O
+    # Turns out, loading shaders is so slow, that it actually makes sense to memoize it :-O
     # when creating 1000 plots with the PlotSpec API, timing drop from 1.5s to 1s just from this change:
     # Note that we need to check if the file is still valid to enable hot reloading of shaders
     path = joinpath(SHADER_DIR, name)

@@ -798,3 +798,74 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         end
     end
 end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
+    return cached_robj!(screen, scene, plot) do gl_attributes
+        @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
+
+        # voxel ids
+        tex = Texture(plot.converted[end], minfilter = :nearest)
+
+        # local update
+        buffer = Vector{UInt8}(undef, 1)
+        on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
+            required_length = length(is) * length(js) * length(ks)
+            if length(buffer) < required_length
+                resize!(buffer, required_length)
+            end
+            idx = 1
+            for k in ks, j in js, i in is
+                buffer[idx] = plot.converted[end].val[i, j, k]
+                idx += 1
+            end
+            GLAbstraction.texsubimage(tex, buffer, is, js, ks)
+            return
+        end
+
+        # adjust model matrix according to x/y/z limits
+        gl_attributes[:model] = map(
+                plot, plot.converted...,  pop!(gl_attributes, :model)
+            ) do xs, ys, zs, chunk, model
+            mini = minimum.((xs, ys, zs))
+            width = maximum.((xs, ys, zs)) .- mini
+            return model *
+                Makie.translationmatrix(Vec3f(mini)) *
+                Makie.scalematrix(Vec3f(width ./ size(chunk)))
+        end
+
+        # color attribute adjustments
+        # TODO:
+        pop!(gl_attributes, :lowclip, nothing)
+        pop!(gl_attributes, :highclip, nothing)
+        # Invalid:
+        pop!(gl_attributes, :nan_color, nothing)
+        pop!(gl_attributes, :alpha, nothing) # Why is this even here?
+        pop!(gl_attributes, :intensity, nothing)
+        pop!(gl_attributes, :color_norm, nothing)
+        # cleanup
+        pop!(gl_attributes, :_limits)
+        pop!(gl_attributes, :is_air)
+
+        # make sure these exist
+        get!(gl_attributes, :color, nothing)
+        get!(gl_attributes, :color_map, nothing)
+
+        # process texture mapping
+        uv_map = pop!(gl_attributes, :uvmap)
+        if !isnothing(to_value(uv_map))
+            gl_attributes[:uv_map] = Texture(uv_map, minfilter = :nearest)
+
+            interp = to_value(pop!(gl_attributes, :interpolate))
+            interp = interp ? :linear : :nearest
+            color = gl_attributes[:color]
+            gl_attributes[:color] = Texture(color, minfilter = interp)
+        elseif !isnothing(to_value(gl_attributes[:color]))
+            gl_attributes[:color] = Texture(gl_attributes[:color], minfilter = :nearest)
+        end
+
+        # for depthsorting
+        gl_attributes[:view_direction] = camera(scene).view_direction
+
+        return draw_voxels(screen, tex, gl_attributes)
+    end
+end
