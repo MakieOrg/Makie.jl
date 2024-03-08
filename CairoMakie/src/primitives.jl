@@ -1206,3 +1206,42 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     return nothing
 end
+
+
+
+################################################################################
+#                                    Voxel                                     #
+################################################################################
+
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
+    pos = Makie.voxel_positions(primitive)
+    scale = Makie.voxel_size(primitive)
+    colors = Makie.voxel_colors(primitive)
+    marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+
+    # For correct z-ordering we need to be in view/camera or screen space
+    model = copy(primitive.model[])
+    view = scene.camera.view[]
+
+    zorder = sortperm(pos, by = p -> begin
+        p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
+        cam_pos = view * model * p4d
+        cam_pos[3] / cam_pos[4]
+    end, rev=false)
+
+    submesh = Attributes(
+        model=model,
+        shading=primitive.shading, diffuse=primitive.diffuse,
+        specular=primitive.specular, shininess=primitive.shininess,
+        faceculling=get(primitive, :faceculling, -10),
+        transformation=Makie.transformation(primitive)
+    )
+
+    for i in zorder
+        submesh[:calculated_colors] = colors[i]
+        draw_mesh3D(scene, screen, submesh, marker, pos = pos[i], scale = scale)
+    end
+
+    return nothing
+end

@@ -75,6 +75,17 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
                     elow, ehigh, plot.nan_color)
 end
 
+function extract_colormap(plot::Voxels)
+    limits = plot._limits
+    # TODO: does this need padding for lowclip and highclip?
+    discretized_values = map(lims -> range(lims[1], lims[2], length = 253), plot, limits)
+
+    return ColorMapping(
+        discretized_values[], discretized_values, plot.colormap, limits, plot.colorscale,
+        plot.alpha, plot.lowclip, plot.highclip, Observable(:transparent)
+    )
+end
+
 
 function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
     cmap = extract_colormap(plot)
