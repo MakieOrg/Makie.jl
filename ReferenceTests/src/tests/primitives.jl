@@ -525,32 +525,41 @@ end
 
 @reference_test "Voxel - texture mapping" begin
     texture = let
-        w = RGBf(1,1,1); r = RGBf(1,0,0); g = RGBf(0,1,0); b = RGBf(0,0,1)
-        o = RGBf(1,1,0); c = RGBf(0,1,1); m = RGBf(1,0,1); k = RGBf(0,0,0)
-        [
-            r w g w b w k w;
-            w w w w w w w w;
-            r k g k b k w k;
-            k k k k k k k k;
-        ]
+        w = RGBf(1, 1, 1)
+        r = RGBf(1, 0, 0)
+        g = RGBf(0, 1, 0)
+        b = RGBf(0, 0, 1)
+        o = RGBf(1, 1, 0)
+        c = RGBf(0, 1, 1)
+        m = RGBf(1, 0, 1)
+        k = RGBf(0, 0, 0)
+        [r w g w b w k w;
+         w w w w w w w w;
+         r k g k b k w k;
+         k k k k k k k k]
     end
 
     # Use same uvs/texture-sections for every side of one voxel id
-    flat_uv_map = [
-        Vec4f(x, x+1/2, y, y+1/4)
-        for x in range(0.0, 1.0, length = 3)[1:end-1]
-        for y in range(0.0, 1.0, length = 5)[1:end-1]
-    ]
+    flat_uv_map = [Vec4f(x, x + 1 / 2, y, y + 1 / 4)
+                   for x in range(0.0, 1.0; length=3)[1:(end - 1)]
+                   for y in range(0.0, 1.0; length=5)[1:(end - 1)]]
 
-    flat_voxels = UInt8[
-        1 0 2; 0 0 0; 3 0 4;;;
-        0 0 0; 0 0 0; 0 0 0;;;
-        5 0 6; 0 0 0; 7 0 8;;;
-    ]
+    flat_voxels = UInt8[1, 0, 3,
+                        0, 0, 0,
+                        2, 0, 4,
+                        0, 0, 0,
+                        0, 0, 0,
+                        0, 0, 0,
+                        5, 0, 7,
+                        0, 0, 0,
+                        6, 0, 8]
 
-    fig = Figure(size = (800, 400))
-    a1 = LScene(fig[1, 1], show_axis = false)
-    p1 = voxels!(a1, flat_voxels, uvmap = flat_uv_map, color = texture)
+    # Reshape the flat vector into a 3D array of dimensions 3x3x3.
+    voxels_3d = reshape(flat_voxels, (3, 3, 3))
+
+    fig = Figure(; size=(800, 400))
+    a1 = LScene(fig[1, 1]; show_axis=false)
+    p1 = voxels!(a1, voxels_3d; uvmap=flat_uv_map, color=texture)
 
     # Use red for x, green for y, blue for z
     sided_uv_map = Matrix{Vec4f}(undef, 1, 6)
@@ -558,8 +567,8 @@ end
     sided_uv_map[1, 4:6] .= flat_uv_map[5:7]
 
     sided_voxels = reshape(UInt8[1], 1, 1, 1)
-    a2 = LScene(fig[1, 2], show_axis = false)
-    p2 = voxels!(a2, sided_voxels, uvmap = sided_uv_map, color = texture)
+    a2 = LScene(fig[1, 2]; show_axis=false)
+    p2 = voxels!(a2, sided_voxels; uvmap=sided_uv_map, color=texture)
 
     fig
 end
