@@ -523,7 +523,7 @@ function convert_arguments(
         T::Type{<:Mesh},
         x::RealVector, y::RealVector, z::RealVector
     )
-    convert_arguments(T, Point3f.(x, y, z))
+    convert_arguments(T, Point3{float_type(x, y, z)}.(x, y, z))
 end
 """
     convert_arguments(Mesh, xyz::AbstractVector)::GLNormalMesh
@@ -540,7 +540,7 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) where {N, T}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
         n = normals(metafree(decompose(Point, mesh)), faces(mesh))
@@ -550,11 +550,12 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
         end
     end
     # If already correct eltypes for GL, we can pass the mesh through as is
-    if eltype(metafree(coordinates(mesh))) == Point{N, Float32} && eltype(faces(mesh)) == GLTriangleFace
+    # if eltype(metafree(coordinates(mesh))) == Point{N, Float32} && eltype(faces(mesh)) == GLTriangleFace
+    if eltype(faces(mesh)) == GLTriangleFace
         return (mesh,)
     else
         # Else, we need to convert it!
-        return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+        return (GeometryBasics.mesh(mesh, pointtype=Point{N, T}, facetype=GLTriangleFace),)
     end
 end
 
@@ -569,13 +570,15 @@ function convert_arguments(
         MT::Type{<:Mesh},
         xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
     )
-    return convert_arguments(MT, triangle_mesh(xyz))
+    m = GeometryBasics.mesh(xyz; pointtype=float_type(xyz), facetype=GLTriangleFace)
+    return convert_arguments(MT, m)
 end
 
-function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive)
+function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.uv_normal_mesh(geom),)
+    m = GeometryBasics.mesh(geom; pointtype=Point{N,T}, uv=Vec2f, normaltype=Vec3f, facetype=GLTriangleFace)
+    return (m,)
 end
 
 """
@@ -589,7 +592,7 @@ function convert_arguments(
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
     )
-    return convert_arguments(T, Point3f.(x, y, z), indices)
+    return convert_arguments(T, Point3{float_type(x, y, z)}.(x, y, z), indices)
 end
 
 """
@@ -625,15 +628,15 @@ end
 # and magnitude of the arrows.  The function must accept `Point2f` as input.
 # and return Point2f or Vec2f or some array like structure as output.
 function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
-    points = Point2f.(x, y')
-    f_out = Vec2f.(f.(points))
+    points = Point2{float_type(x, y)}.(x, y')
+    f_out = Vec2{float_type(x, y)}.(f.(points))
     return (vec(points), vec(f_out))
 end
 
 function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector,
                            f::Function)
-    points = [Point3f(x, y, z) for x in x, y in y, z in z]
-    f_out = Vec3f.(f.(points))
+    points = [Point3{float_type(x, y, z)}(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3{float_type(x, y, z)}.(f.(points))
     return (vec(points), vec(f_out))
 end
 
