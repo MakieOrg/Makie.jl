@@ -188,8 +188,8 @@ function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observ
 end
 
 # if labels are given manually, it's possible that some of them are outside the displayed limits
-# we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
-is_within_limits(tv, limits) = (limits[1] ≤ tv || limits[1] ≈ tv) && (tv ≤ limits[2] || tv ≈ limits[2])
+# we only check approximately because we want to keep ticks on the frame
+is_within_limits(tv, limits) = (limits[1] - 100eps(limits[1]) < tv) && (tv < limits[2] + 100eps(limits[2]))
 
 function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
 
