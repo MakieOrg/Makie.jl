@@ -23,8 +23,6 @@ end
     test_conversion(time_range)
     test_conversion(date_range)
     test_conversion(date_time_range)
-    @warn "TODO: update"
-    @test false
 end
 
 @reference_test "time_range" scatter(time_range, 1:10)
