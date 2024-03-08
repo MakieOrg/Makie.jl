@@ -101,9 +101,8 @@ end
 
 
 
-xy_convert(x::AbstractArray{Float32}, n) = copy(x)
-xy_convert(x::AbstractArray, n) = el32convert(x)
-xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
+xy_convert(x::AbstractArray, n) = copy(x)
+xy_convert(x, n) = [LinRange(extrema(x)..., n + 1);]
 
 # TODO, speed up GeometryBasics
 function fast_faces(nvertices)
@@ -141,11 +140,11 @@ function limits_to_uvmesh(plot)
     # TODO, this branch is only hit by Image, but not for Heatmap with stepranges
     # because convert_arguments converts x/y to Vector{Float32}
     if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t) &&
-            isnothing(to_value(f32_conversion_obs(plot)))
+            isnothing(f32_conversion(plot))
         rect = lift(plot, px, py) do x, y
             xmin, xmax = extrema(x)
             ymin, ymax = extrema(y)
-            return Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
+            return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         positions = Buffer(lift(rect -> decompose(Point2f, rect), plot, rect))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
@@ -153,7 +152,10 @@ function limits_to_uvmesh(plot)
     else
         # TODO: Use Makie.surface2mesh
         function grid(x, y, f32c, trans, space)
-            return Makie.matrix_grid(p -> f32_convert(f32c, apply_transform(trans, p, space), space), x, y, zeros(length(x), length(y)))
+            return Makie.matrix_grid(
+                p -> f32_convert(f32c, apply_transform(trans, p, space), space),
+                x, y, zeros(length(x), length(y))
+            )
         end
         resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values=true)
         positions = Buffer(lift(
