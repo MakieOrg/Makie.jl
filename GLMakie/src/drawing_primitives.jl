@@ -578,9 +578,8 @@ end
 
 # el32convert doesn't copy for array of Float32
 # But we assume that xy_convert copies when we use it
-xy_convert(x::AbstractArray{Float32}, n) = copy(x)
-xy_convert(x::AbstractArray, n) = el32convert(x)
-xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
+xy_convert(x::AbstractArray, n) = copy(x)
+xy_convert(x, n) = [LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     return cached_robj!(screen, scene, plot) do gl_attributes
@@ -627,7 +626,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         position = lift(plot, plot[1], plot[2]) do x, y
             xmin, xmax = extrema(x)
             ymin, ymax = extrema(y)
-            rect =  Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
+            rect =  Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2d, rect)
         end
         gl_attributes[:vertices] = apply_transform_and_f32_conversion(scene, plot, position)

@@ -358,7 +358,8 @@ outputs as a `Tuple`.
 """
 function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::AbstractVecOrMat{<:Real},
                            z::AbstractMatrix{<:Union{Real,Colorant}})
-    return map(el32convert, adjust_axes(ct, x, y, z))
+    nx, ny, nz = adjust_axes(ct, x, y, z)
+    return (nx, ny, el32convert(nz))
 end
 
 convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
@@ -395,8 +396,9 @@ function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
     if ys isa AbstractVector
         print_range_warning("y", ys)
     end
-    _interval(v::Union{Interval,AbstractVector}) = Float32(minimum(v)) .. Float32(maximum(v)) # having minimum and maximum here actually invites bugs
-    _interval(t::Tuple{Any, Any}) = Float32(t[1]) .. Float32(t[2])
+    # having minimum and maximum here actually invites bugs
+    _interval(v::Union{Interval,AbstractVector}) = minimum(v) .. maximum(v)
+    _interval(t::Tuple{Any, Any}) = t[1] .. t[2]
     x = _interval(xs)
     y = _interval(ys)
     return (x, y, el32convert(data))

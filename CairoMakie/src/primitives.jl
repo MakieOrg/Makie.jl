@@ -812,8 +812,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
     space = to_value(get(primitive, :space, :data))
-    xy = project_position(primitive, space, Point2f(first.(imsize)), model)
-    xymax = project_position(primitive, space, Point2f(last.(imsize)), model)
+    xy = project_position(primitive, space, Point2(first.(imsize)), model)
+    xymax = project_position(primitive, space, Point2(last.(imsize)), model)
     w, h = xymax .- xy
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
@@ -843,7 +843,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))
-        xys = project_position(scene, Makie.transform_func(primitive), space, [Point2f(x, y) for x in xs, y in ys], model)
+        xys = project_position(scene, transform_func(primitive), space, [Point2(x, y) for x in xs, y in ys], model)
         colors = to_color(primitive.calculated_colors[])
 
         # Note: xs and ys should have size ni+1, nj+1
