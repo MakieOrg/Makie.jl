@@ -245,7 +245,7 @@ colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
 colormapping_type(::Categorical) = categorical
 
 """
-    evaluate_colormap(colorrange, color)::Vec2{Float64}
+    evaluate_colorrange(colorrange, color)::Vec2{Float64}
 
 This function must return a `Vec2{Float64}` of the colorrange as `(low, high)`.
 Add additional dispatches to this function for your own custom colorrange objects!
