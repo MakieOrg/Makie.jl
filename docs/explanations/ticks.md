@@ -36,6 +36,7 @@ axes[2, 2].xscale = log10
 axes[2, 2].xticks = LogTicks(WilkinsonTicks(7; k_min = 4)) # wrap any tick finder here
 axes[2, 3].title = "Manual ticks"
 axes[2, 3].xticks = [5, 15, 35, 64] # place any specific ticks you like!
+fig
 \end{examplefigure}
 
 ## Tick labels
