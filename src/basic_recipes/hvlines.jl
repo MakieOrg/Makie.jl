@@ -5,17 +5,14 @@ Create horizontal lines across a `Scene` with 2D projection.
 The lines will be placed at `ys` in data coordinates and `xmin` to `xmax`
 in scene coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
-
-All style attributes are the same as for `LineSegments`.
 """
-@recipe(HLines) do scene
-    Theme(;
-        xautolimits = false,
-        xmin = 0,
-        xmax = 1,
-        default_theme(scene, LineSegments)...,
-        cycle = :color,
-    )
+@recipe HLines begin
+    "The start of the lines in relative axis units (0 to 1) along the x dimension."
+    xmin = 0
+    "The end of the lines in relative axis units (0 to 1) along the x dimension."
+    xmax = 1
+    MakieCore.documented_attributes(LineSegments)...
+    cycle = [:color]
 end
 
 """
@@ -25,17 +22,14 @@ Create vertical lines across a `Scene` with 2D projection.
 The lines will be placed at `xs` in data coordinates and `ymin` to `ymax`
 in scene coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
-
-All style attributes are the same as for `LineSegments`.
 """
-@recipe(VLines) do scene
-    Theme(;
-        yautolimits = false,
-        ymin = 0,
-        ymax = 1,
-        default_theme(scene, LineSegments)...,
-        cycle = :color,
-    )
+@recipe VLines begin
+    "The start of the lines in relative axis units (0 to 1) along the y dimension."
+    ymin = 0
+    "The start of the lines in relative axis units (0 to 1) along the y dimension."
+    ymax = 1
+    MakieCore.documented_attributes(LineSegments)...
+    cycle = [:color]
 end
 
 function projview_to_2d_limits(pv)

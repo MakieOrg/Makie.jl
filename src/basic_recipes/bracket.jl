@@ -7,28 +7,29 @@
 Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text label at the midpoint.
 
 By default each label is rotated parallel to the line between the bracket points.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Bracket) do scene
-    Theme(
-        offset = 0,
-        width = 15,
-        text = "",
-        font = theme(scene, :font),
-        orientation = :up,
-        align = (:center, :center),
-        textoffset = automatic,
-        fontsize = theme(scene, :fontsize),
-        rotation = automatic,
-        color = theme(scene, :linecolor),
-        textcolor = theme(scene, :textcolor),
-        linewidth = theme(scene, :linewidth),
-        linestyle = :solid,
-        justification = automatic,
-        style = :curly,
-    )
+@recipe Bracket begin
+    "The offset of the bracket perpendicular to the line from start to end point in screen units.
+    The direction depends on the `orientation` attribute."
+    offset = 0
+    """
+    The width of the bracket (perpendicularly away from the line from start to end point) in screen units.
+    """
+    width = 15
+    text = ""
+    font = @inherit font
+    "Which way the bracket extends relative to the line from start to end point. Can be `:up` or `:down`."
+    orientation = :up
+    align = (:center, :center)
+    textoffset = automatic
+    fontsize = @inherit fontsize
+    rotation = automatic
+    color = @inherit linecolor
+    textcolor = @inherit textcolor
+    linewidth = @inherit linewidth
+    linestyle = :solid
+    justification = automatic
+    style = :curly
 end
 
 Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes, point2::VecTypes) = ([(Point2f(point1), Point2f(point2))],)

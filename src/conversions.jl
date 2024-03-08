@@ -1683,7 +1683,7 @@ function to_spritemarker(marker::Symbol)
     if haskey(default_marker_map(), marker)
         return to_spritemarker(default_marker_map()[marker])
     else
-        @warn("Unsupported marker: $marker, using ● instead")
+        @warn("Unsupported marker: $marker, using ● instead. Available options can be printed with available_marker_symbols()")
         return '●'
     end
 end

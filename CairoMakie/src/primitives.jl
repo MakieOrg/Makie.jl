@@ -27,7 +27,81 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     space = to_value(get(primitive, :space, :data))
-    projected_positions = project_position.(Ref(scene), (Makie.transform_func(primitive),), Ref(space), positions, Ref(model))
+    # Lines need to be handled more carefully with perspective projections to
+    # avoid them inverting.
+    projected_positions, indices = let
+        # Standard transform from input space to clip space
+        points = Makie.apply_transform(Makie.transform_func(primitive), positions, space)
+        res = scene.camera.resolution[]
+        transform = Makie.space_to_clip(scene.camera, space) * model
+        clip_points = map(p -> transform * to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0), points)
+
+        # yflip and clip -> screen/pixel coords
+        function clip2screen(res, p)
+            s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] / p[4] .+ 0.5f0
+            return res .* s
+        end
+
+        screen_points = sizehint!(Vector{Vec2f}(undef, 0), length(clip_points))
+        indices = sizehint!(Vector{Int}(undef, 0), length(clip_points))
+
+        # Adjust points such that they are always in front of the camera.
+        # TODO: Consider skipping this if there is no perspetive projection.
+        # (i.e. use project_position.(..., positions) and indices = eachindex(positions))
+        for (i, p) in enumerate(clip_points)
+            if p[4] < 0.0               # point behind camera and ...
+                if primitive isa Lines  # ... part of a continuous line
+                    # create an extra point for the incoming line segment at the
+                    # near clipping plane (i.e. on line prev --> this)
+                    if i > 1
+                        prev = clip_points[i-1]
+                        v = p - prev
+                        #
+                        p2 = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
+                        push!(screen_points, clip2screen(res, p2))
+                        push!(indices, i)
+                    end
+
+                    # disconnect the line
+                    push!(screen_points, Vec2f(NaN))
+
+                    # and create another point for the outgoing line segment at
+                    # the near clipping plane (on this ---> next)
+                    if i < length(clip_points)
+                        next = clip_points[i+1]
+                        v = next - p
+                        p2 = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
+                        push!(screen_points, clip2screen(res, p2))
+                        push!(indices, i)
+                    end
+
+                else                    # ... part of a discontinuous set of segments
+                    if iseven(i)
+                        # if this is the last point of the segment we move towards
+                        # the previous (start) point
+                        prev = clip_points[i-1]
+                        v = p - prev
+                        p = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
+                        push!(screen_points, clip2screen(res, p))
+                    else
+                        # otherwise we move to the next (end) point
+                        next = clip_points[i+1]
+                        v = next - p
+                        p = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
+                        push!(screen_points, clip2screen(res, p))
+                    end
+                end
+            else
+                # otherwise we can just draw the point
+                push!(screen_points, clip2screen(res, p))
+            end
+
+            # we always have at least one point
+            push!(indices, i)
+        end
+
+        screen_points, indices
+    end
 
     color = to_color(primitive.calculated_colors[])
 
@@ -64,7 +138,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         draw_multi(
             primitive, ctx,
             projected_positions,
-            color, linewidth,
+            color, linewidth, indices,
             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
         )
     else
@@ -150,16 +224,16 @@ function draw_single(primitive::LineSegments, ctx, positions)
 end
 
 # if linewidth is not an array
-function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, dash)
-    draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors], dash)
+function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, indices, dash)
+    draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors], indices, dash)
 end
 
 # if color is not an array
-function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, dash)
-    draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths, dash)
+function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, indices, dash)
+    draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths, indices, dash)
 end
 
-function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, dash)
+function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
     @assert iseven(length(positions))
     @assert length(positions) == length(colors)
     @assert length(linewidths) == length(colors)
@@ -194,7 +268,9 @@ function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArr
     end
 end
 
-function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, dash)
+function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
+    colors = colors[indices]
+    linewidths = linewidths[indices]
     @assert length(positions) == length(colors)
     @assert length(linewidths) == length(colors)
 

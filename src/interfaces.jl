@@ -138,7 +138,7 @@ function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
     if used_attrs === ()
         args_converted = convert_arguments(P, map(to_value, args)...)
     else
-        kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+        kw = [Pair(k, to_value(pop!(plot_attributes, k))) for k in used_attrs if haskey(plot_attributes, k)]
         args_converted = convert_arguments(P, map(to_value, args)...; kw...)
     end
     preconvert_attr = Attributes()

@@ -57,8 +57,20 @@ void main(void)
     }
 
     // get start and end point of line segment
-    vec3 p1 = screen_space(gl_in[0].gl_Position);
-    vec3 p2 = screen_space(gl_in[1].gl_Position);
+    // restrict to visible area (see lines.geom)
+    vec3 p1, p2;
+    {
+        vec4 _p1 = gl_in[0].gl_Position, _p2 = gl_in[1].gl_Position;
+        vec4 v1 = _p2 - _p1;
+
+        if (_p1.w < 0.0)
+            _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
+        if (_p2.w < 0.0)
+            _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+
+        p1 = screen_space(_p1);
+        p2 = screen_space(_p2);
+    }
 
     // get vector in line direction and vector in linewidth direction
     vec3 v1 = (p2 - p1);

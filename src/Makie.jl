@@ -107,6 +107,7 @@ assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
+include("utilities/stable-hashing.jl")
 include("bezier.jl")
 include("types.jl")
 include("utilities/texture_atlas.jl")
