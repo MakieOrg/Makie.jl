@@ -69,7 +69,7 @@ convert_single_argument(x) = x
 
 # replace missings with NaNs
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
-    return el32convert(a)
+    return float_convert(a)
 end
 
 # same for points
@@ -359,7 +359,7 @@ outputs as a `Tuple`.
 function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::AbstractVecOrMat{<:Real},
                            z::AbstractMatrix{<:Union{Real,Colorant}})
     nx, ny, nz = adjust_axes(ct, x, y, z)
-    return (nx, ny, el32convert(nz))
+    return (float_convert(nx), float_convert(ny), el32convert(nz))
 end
 
 convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
@@ -397,8 +397,8 @@ function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
         print_range_warning("y", ys)
     end
     # having minimum and maximum here actually invites bugs
-    _interval(v::Union{Interval,AbstractVector}) = minimum(v) .. maximum(v)
-    _interval(t::Tuple{Any, Any}) = t[1] .. t[2]
+    _interval(v::Union{Interval,AbstractVector}) = float_convert(minimum(v)) .. float_convert(maximum(v))
+    _interval(t::Tuple{Any, Any}) = float_convert(t[1]) .. float_convert(t[2])
     x = _interval(xs)
     y = _interval(ys)
     return (x, y, el32convert(data))
@@ -730,7 +730,12 @@ float_type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float_type(T)}
 float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 
+float_convert(x) = convert(float_type(x), x)
+float_convert(x::AbstractArray{Float32}) = x
+float_convert(x::AbstractArray{Float64}) = x
 float_convert(x::AbstractArray) = elconvert(float_type(x), x)
+float_convert(x::Observable) = lift(float_convert, x)
+float_convert(x::AbstractArray{<:Union{Missing, T}}) where {T<:Real} = elconvert(float_type(T), x)
 
 float32type(::Type{<:Real}) = Float32
 float32type(::Type{Point{N,T}}) where {N,T} = Point{N,float32type(T)}
@@ -749,6 +754,7 @@ el32convert(x::AbstractArray{Float32}) = x
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
+
 
 """
     to_triangles(indices)
