@@ -10,6 +10,7 @@ abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
+
 """
 Screen constructors implemented by all backends:
 

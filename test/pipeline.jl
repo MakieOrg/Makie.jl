@@ -161,3 +161,32 @@ end
     @test_throws InvalidAttributeError poly(Point2f[]; does_not_exist = 123)
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
+
+using Makie.Dates
+
+@recipe(DatePlot, x) do scene
+    return Attributes()
+end
+
+function Makie.plot!(plot::DatePlot)
+    return scatter!(plot, plot.x, map(x -> Time.(x), plot.x))
+end
+@testset "dates in recipe" begin
+    f, ax, pl = dateplot(1:5)
+    @test ax.y_dim_convert[] isa Makie.DateTimeConversion
+    @test pl.plots[1].kw[:y_dim_convert] isa Makie.DateTimeConversion
+    @test pl.plots[1][1][] == Point{2,Float32}[[1.0, -5.0], [2.0, -2.5], [3.0, 0.0], [4.0, 2.5], [5.0, 5.0]]
+end
+
+
+struct DateStruct end
+
+function Makie.convert_arguments(::PointBased, ::DateStruct)
+    return (1:5, Time.(1:5))
+end
+@testset "dates in convert_arguments" begin
+    f, ax, pl = scatter(DateStruct())
+    @test ax.y_dim_convert[] isa Makie.DateTimeConversion
+    @test pl.kw[:y_dim_convert] isa Makie.DateTimeConversion
+    @test pl[1][] == Point{2,Float32}[[1.0, -5.0], [2.0, -2.5], [3.0, 0.0], [4.0, 2.5], [5.0, 5.0]]
+end

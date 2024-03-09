@@ -224,6 +224,10 @@ macro convert_target(struct_expr)
         end
 
         expr = quote
+            # Fallback for args missmatch, which should also return an error instead of NoConversion
+            function MakieCore.convert_arguments_typed(::Type{<:$(target_name)}, args...)
+                return MakieCore.ConversionError($(target_name), "Args dont match", "Args don't match")
+            end
             function MakieCore.convert_arguments_typed(::Type{<:$(target_name)}, $(names...))
                 $(convert_expr...)
                 return NamedTuple{($(QuoteNode.(names)...),)}(($(converted...),))

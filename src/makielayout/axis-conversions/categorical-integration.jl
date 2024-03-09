@@ -22,7 +22,7 @@ xtickformat = x-> string.(getfield.(x, :value)) .* " val"
 barplot(Test.([:a, :b, :c]), rand(3), axis=(xticks=xticks, xtickformat=xtickformat))
 ```
 """
-struct CategoricalConversion
+struct CategoricalConversion <: AxisConversion
     sets::Dict{Observable,Set{Any}}
     category_to_int::Observable{Dict{Any,Int}}
     int_to_category::Vector{Pair{Int,Any}}
@@ -35,6 +35,10 @@ function CategoricalConversion(; sortby=nothing)
                               Pair{Int,Any}[],
                               sortby)
 end
+
+
+MakieCore.can_axis_convert_type(::Type{Categorical}) = true
+axis_conversion_type(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
 
 function recalculate_categories!(conversion::CategoricalConversion)
     all_categories = []
@@ -51,12 +55,17 @@ function recalculate_categories!(conversion::CategoricalConversion)
     return merge!(conversion.category_to_int[], Dict(reverse(p) for p in i2c))
 end
 
-MakieCore.can_axis_convert_type(::Type{Categorical}) = true
-
-dim_conversion_type(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
 
 get_values(x) = x
 get_values(x::Categorical) = x.values
+
+function convert_axis_value(conversion::CategoricalConversion, value::Categorical)
+    return getindex.(Ref(conversion.category_to_int[]), get_values(value))
+end
+
+function convert_axis_value(conversion::CategoricalConversion, value)
+    return conversion.category_to_int[][value]
+end
 
 function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observable)
     prev_values = Set{Any}()

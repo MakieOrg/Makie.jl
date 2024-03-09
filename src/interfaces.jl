@@ -108,13 +108,11 @@ const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
 
 
-dim_conversion_type(::Type{<:Number}) = automatic
-dim_conversion_type(any) = automatic
 
 convert_from_args(conversion, values) = conversion
 
 function convert_from_args(::Automatic, values)
-    return dim_conversion_type(MakieCore.get_element_type(values))
+    return axis_conversion_type(MakieCore.get_element_type(values))
 end
 
 # single arguments gets ignored for now
@@ -122,7 +120,7 @@ end
 axis_convert(P, ::Dict, args::Observable...) = args
 # we leave Z + n alone for now!
 function axis_convert(P, attr::Dict, x::Observable, y::Observable, z::Observable, args...)
-    return (axis_convert(attr, x, y)..., z, args...)
+    return (axis_convert(P, attr, x, y)..., z, args...)
 end
 
 convert_axis_dim(convert, value) = value
@@ -215,8 +213,9 @@ function conversion_pipeline(P, used_attrs, args_obs, args, user_attributes, plo
             return
         end
         append!(deregister, fs)
-        return P, axis_convert(P, user_attributes, new_args_obs...)
-        # return conversion_pipeline(P, new_args_obs, user_attributes, plot_attributes, deregister, recursion + 1)
+        # return P, axis_convert(P, user_attributes, new_args_obs...)
+        return conversion_pipeline(P, used_attrs, new_args_obs, args, user_attributes, plot_attributes, deregister,
+                                   recursion + 1)
     else
         P, converted2 = apply_convert!(P, plot_attributes, converted)
         new_args_obs = map(Observable, converted2)

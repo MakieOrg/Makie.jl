@@ -10,7 +10,7 @@ date_time_range = range(date_time, step=Week(5), length=10)
 function test_conversion(range)
     T = eltype(range)
     init_vals = Makie.date_to_number.(T, range)
-    scaling = Makie.update_scaling_factors(Makie.Float32Scaling(1.0, 0.0), extrema(init_vals)...)
+    scaling = Makie.update_scaling_factors(Makie.Float32Scaling{Float64}(1.0, 0.0), extrema(init_vals)...)
     scaled = Makie.scale_value.(Ref(scaling), init_vals)
     vals = Makie.unscale_value.(Ref(scaling), scaled)
     @test all(init_vals .≈ Float64.(vals))
@@ -23,8 +23,6 @@ end
     test_conversion(time_range)
     test_conversion(date_range)
     test_conversion(date_time_range)
-    @warn "TODO: update"
-    @test false
 end
 
 @reference_test "time_range" scatter(time_range, 1:10)

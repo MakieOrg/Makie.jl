@@ -384,17 +384,20 @@ plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
 connect_conversion!(ax::AbstractAxis, obs::Observable, conversion, dim) = nothing
 
+
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
-    if haskey(plot.kw, :x_dim_convert) && hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] != to_value(plot.kw[:x_dim_convert])
-        ax.x_dim_convert[] = to_value(plot.kw[:x_dim_convert])
+    plot!(ax.scene, plot)
+
+    plot_x_dim = get_axis_convert(plot, :x_dim_convert)
+    if !isnothing(plot_x_dim) && hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] != plot_x_dim
+        ax.x_dim_convert[] = plot_x_dim
         connect_conversion!(ax, ax.x_dim_convert, ax.x_dim_convert[], 1)
     end
-
-    if haskey(plot.kw, :y_dim_convert) && hasproperty(ax, :y_dim_convert) && ax.y_dim_convert[] != to_value(plot.kw[:y_dim_convert])
-        ax.y_dim_convert[] = to_value(plot.kw[:y_dim_convert])
+    plot_y_dim = get_axis_convert(plot, :y_dim_convert)
+    if !isnothing(plot_y_dim) && hasproperty(ax, :y_dim_convert) && ax.y_dim_convert[] != plot_y_dim
+        ax.y_dim_convert[] = plot_y_dim
         connect_conversion!(ax, ax.y_dim_convert, ax.y_dim_convert[], 2)
     end
-    plot!(ax.scene, plot)
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(ax)

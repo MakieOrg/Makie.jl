@@ -2,14 +2,18 @@ using Dates, Observables
 import Unitful
 using Unitful: Quantity, @u_str, uconvert, ustrip, upreferred
 
-const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
+const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.Units}
 
+axis_conversion_type(::Type{<:SupportedUnits}) = UnitfulConversion()
+MakieCore.can_axis_convert_type(::Type{<:SupportedUnits}) = true
+
+const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
 
 base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
 base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
-base_unit(x::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
+base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
 base_unit(x::Unitful.Unit) = x
 
 unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
@@ -20,7 +24,6 @@ unit_string(::Union{Number, Nothing}) = ""
 
 unit_string_long(unit) = unit_string_long(base_unit(unit))
 unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
-
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -99,7 +102,7 @@ end
 unit_convert(::Automatic, x) = x
 
 function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
-    return unit_convert.((unit,), x)
+    return map(unit_convert, Ref(unit), x)
 end
 
 # We always convert to preferred unit!
@@ -127,7 +130,7 @@ convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value
 # Overload conversion functions for Axis, to properly display units
 
 """
-    UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
+    UnitfulConversion(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
 
 Allows to plot arrays of unitful objects into an axis.
 
@@ -143,15 +146,15 @@ Allows to plot arrays of unitful objects into an axis.
 ```julia
 using Unitful, CairoMakie
 
-# UnitfulTicks will get chosen automatically:
+# UnitfulConversion will get chosen automatically:
 scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 
 # fix unit to always use Meter & display unit in the xlabel postfix
-yticks = UnitfulTicks(u"m"; units_in_label=true)
+yticks = UnitfulConversion(u"m"; units_in_label=true)
 scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(yticks=yticks,))
 ```
 """
-struct UnitfulTicks
+struct UnitfulConversion <: AxisConversion
     unit::Observable{Any}
     automatic_units::Bool
     tickformatter
@@ -159,11 +162,11 @@ struct UnitfulTicks
     short_label::Observable{Bool}
 end
 
-function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
-    return UnitfulTicks(unit, unit isa Automatic, conversion, units_in_label, short_label)
+function UnitfulConversion(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
+    return UnitfulConversion(unit, unit isa Automatic, conversion, units_in_label, short_label)
 end
 
-function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::UnitfulTicks, dim)
+function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::UnitfulConversion, dim)
     if conversion.automatic_units
         on(ax.blockscene, ax.finallimits) do limits
             unit = conversion.unit[]
@@ -182,16 +185,7 @@ function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::U
     end
 end
 
-function label_postfix(conversion::UnitfulTicks)
-    return map(conversion.unit, conversion.units_in_label, conversion.short_label) do unit, in_label, short
-        in_label || return ""
-        unit isa Automatic && return ""
-        unit_str = short ? unit_string(unit) : unit_string_long(unit)
-        return string(" in ", unit_str)
-    end
-end
-
-function get_ticks(conversion::UnitfulTicks, ticks, scale, formatter, vmin, vmax)
+function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax)
     unit = conversion.unit[]
     unit isa Automatic && return [], []
 
@@ -208,13 +202,14 @@ function get_ticks(conversion::UnitfulTicks, ticks, scale, formatter, vmin, vmax
     return tick_vals_preferred, labels
 end
 
-dim_conversion_type(::Type{<:Union{Period,Unitful.Quantity,Unitful.Units}}) = UnitfulTicks()
-MakieCore.can_axis_convert_type(::Type{<:Union{Period,Unitful.Quantity,Unitful.Units}}) = true
-
-function convert_axis_dim(conversion::UnitfulTicks, values::Observable)
+function convert_axis_dim(conversion::UnitfulConversion, values::Observable)
     if conversion.unit[] isa Automatic
         unit = new_unit(conversion.unit[], values[])
         conversion.unit[] = unit
     end
     return map(unit_convert, conversion.unit, values)
+end
+
+function convert_axis_value(conversion::UnitfulConversion, value::SupportedUnits)
+    return unit_convert(conversion.unit[], value)
 end

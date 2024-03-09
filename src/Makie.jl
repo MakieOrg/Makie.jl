@@ -355,9 +355,10 @@ export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
-include("makielayout/blocks/unitful-integration.jl")
-include("makielayout/blocks/categorical-integration.jl")
-include("makielayout/blocks/dates-integration.jl")
+include("makielayout/axis-conversions/axis-conversions.jl")
+include("makielayout/axis-conversions/unitful-integration.jl")
+include("makielayout/axis-conversions/categorical-integration.jl")
+include("makielayout/axis-conversions/dates-integration.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")

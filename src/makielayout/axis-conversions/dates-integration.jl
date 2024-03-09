@@ -69,7 +69,7 @@ end
 """
     DateTimeConversion(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
 
-Creates conversion & conversions for Date, DateTime and Time. For other time units one should use `UnitfulTicks`, which work with e.g. Seconds.
+Creates conversion & conversions for Date, DateTime and Time. For other time units one should use `UnitfulConversion`, which work with e.g. Seconds.
 
 For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conversion, otherwise `WilkinsonTicks` are used on the integer representation of the date.
 
@@ -110,8 +110,19 @@ struct DateTimeConversion
     end
 end
 
-dim_conversion_type(::Type{<:Dates.TimeType}) = DateTimeConversion()
+axis_conversion_type(::Type{<:Dates.TimeType}) = DateTimeConversion()
 MakieCore.can_axis_convert_type(::Type{<:Dates.TimeType}) = true
+
+
+function convert_axis_value(conversion::DateTimeConversion, value::Dates.TimeType)
+    T, scaling = conversion.type[]
+    return scale_value(scaling, date_to_number(T, value))
+end
+
+function convert_axis_value(conversion::DateTimeConversion, value::AbstractArray)
+    T, scaling = conversion.type[]
+    return scale_value.(Ref(scaling), date_to_number.(T, value))
+end
 
 function convert_axis_dim(conversion::DateTimeConversion, values::Observable)
     eltype = MakieCore.get_element_type(values[])
