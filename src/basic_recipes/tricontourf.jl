@@ -75,10 +75,13 @@ function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real
 end
 
 function compute_contourf_colormap(levels, cmap, elow, ehigh)
-    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-    n = length(levels_scaled)
-
     _cmap = to_colormap(cmap)
+
+    lo, hi = extrema(levels)
+    lo == hi && return cgrad(_cmap, levels; categorical=true)
+
+    levels_scaled = (levels .- lo) ./ (hi - lo)
+    n = length(levels_scaled)
 
     if elow === :auto && ehigh !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
@@ -122,7 +125,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(extrema_nan, c, c._computed_levels)
+    colorrange = lift(distinct_extrema_nan, c, c._computed_levels)
     computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap

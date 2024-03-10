@@ -292,11 +292,14 @@ function _colormapping(
     end
 
     colorrange = lift(color_tight, colorrange; ignore_equal_values=true) do color, crange
-        return crange isa Automatic ? Vec2{Float64}(distinct_extrema_nan(color)) : Vec2{Float64}(crange)
+        if !(auto = crange isa Automatic)
+            crange[1] == crange[2] && error("Cannot use a colorrange with a single value ($crange): provide distinct values instead.")
+        end
+        return auto ? Vec2{Float64}(distinct_extrema_nan(color)) : Vec2{Float64}(crange)
     end
 
-    colorrange_scaled = lift(colorrange, colorscale; ignore_equal_values=true) do range, scale
-        return Vec2f(apply_scale(scale, range))
+    colorrange_scaled = lift(colorrange, colorscale; ignore_equal_values=true) do crange, cscale
+        return Vec2f(apply_scale(cscale, crange))
     end
 
     color_scaled = lift(color_tight, colorscale) do color, scale

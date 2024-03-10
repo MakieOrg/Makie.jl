@@ -74,9 +74,8 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c, c._computed_levels) do levels
-        minimum(levels), maximum(levels)
-    end
+    colorrange = lift(distinct_extrema_nan, c._computed_levels)
+
     computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
@@ -171,7 +170,6 @@ function _group_polys(points, ids)
         for p1 in polys_lastdouble, p2 in polys_lastdouble]
 
     unclassified_polyindices = collect(1:size(containment_matrix, 1))
-    # @show unclassified_polyindices
 
     # each group has first an outer polygon, and then its holes
     # TODO: don't specifically type this 2f0?

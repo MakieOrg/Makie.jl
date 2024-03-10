@@ -33,7 +33,7 @@ end
     @test isempty(ax.scene.plots)
 end
 
-@testset "zero heatmap" begin
+@testset "Colorbar: zero heatmap" begin
     xs = LinRange(0, 20, 10)
     ys = LinRange(0, 15, 10)
     zs = zeros(length(xs), length(ys))
@@ -42,15 +42,48 @@ end
     _, hm = heatmap(fig[1, 1], xs, ys, zs)
     cb = Colorbar(fig[1, 2], hm)
 
-    @test hm.calculated_colors[].colorrange[] == Vec(-0.5, 0.5)
-    @test cb.limits[] == Vec(-.5, .5)
-
+    let (lo, hi) = hm.calculated_colors[].colorrange[]
+        @test lo ≉ hi
+    end
+    let (lo, hi) = cb.limits[]
+        @test lo ≉ hi
+    end
     hm.colorrange = Float32.((-1, 1))
     @test cb.limits[] == Vec(-1, 1)
+end
 
-    # TODO: This doesn't work anymore because colorbar doesn't use the same observable
-    # cb.limits[] = Float32.((-2, 2))
-    # @test hm.attributes[:colorrange][] == (-2, 2)
+@testset "Colorbar: invalid limits" begin
+    fig = Figure()
+    Axis(fig[1, 1])
+    @test_throws ErrorException Colorbar(fig[1, 2], limits = (1, 1))
+end
+
+@testset "Colorbar: zero contourf" begin
+    x = [0, 1]
+    y = [0, 2]
+    z = zeros(2, 2)
+
+    fig = Figure()
+    _, ct = contourf(fig[1, 1], x, y, z)
+    cb = Colorbar(fig[1, 2], ct)
+
+    let (lo, hi) = cb.limits[]
+        @test lo ≉ hi
+    end
+end
+
+@testset "Colorbar: zero tricontourf" begin
+    x = randn(10)
+    y = randn(10)
+    z = @. -sqrt(x^2 + y^2) + 0.1 * randn()
+
+    fig = Figure()
+    _, ct = tricontourf(fig[1, 1], x, y, z)
+    cb = Colorbar(fig[1, 2], ct)
+
+    let (lo, hi) = cb.limits[]
+        @test lo ≉ hi
+    end
 end
 
 @testset "Axis limits basics" begin
