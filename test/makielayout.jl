@@ -157,6 +157,17 @@ end
     @test ax.limits[] == ((0,1),(0,2),(nothing,nothing))
 end
 
+@testset "Axis limits intervals" begin
+    fig = Figure()
+    ax = Axis(fig[1,1],limits=(0..600,0..15))
+    xlims!(ax, 100..400)
+    @test ax.limits[] == ((100,400),(0,15))
+    ylims!(ax, 1..13)
+    @test ax.limits[] == ((100,400),(1,13))
+    limits!(ax, 1..3, 1..2)
+    @test ax.limits[] == ((1,3),(1,2))
+end
+
 @testset "Colorbar plot object kwarg clash" begin
     for attr in (:colormap, :limits)
         f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))

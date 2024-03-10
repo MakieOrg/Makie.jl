@@ -649,7 +649,9 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any})
-    lims
+    _convert_single_limit(x) = x
+    _convert_single_limit(x::Interval) = endpoints(x)
+    map(_convert_single_limit, lims)
 end
 
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
@@ -1218,6 +1220,10 @@ function Base.show(io::IO, ax::Axis)
     print(io, "Axis ($nplots plots)")
 end
 
+Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
+Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
+Makie.zlims!(ax::Axis, zlims::Interval) = Makie.zlims!(ax, endpoints(zlims))
+
 function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
@@ -1397,6 +1403,7 @@ end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)
 defaultlimits(limits::Tuple{Real, Real}, scale) = limits
+defaultlimits(limits::Interval, scale) = endpoints(limits)
 defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(scale)[2])
 defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)

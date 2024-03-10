@@ -792,7 +792,9 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any, Any})
-    lims
+    _convert_single_limit(x) = x
+    _convert_single_limit(x::Interval) = endpoints(x)
+    map(_convert_single_limit, lims)
 end
 
 
