@@ -19,7 +19,7 @@
     heatmap!(ax, 10..11, (1e9+2)..(1e9+3), [1 2; 3 4])
 
     mesh!(ax, Circle(Point2(5, 1e9 + 8.5), 1.0), color = :red)
-    poly!(ax, [7, 9, 8], 1e9 .+ [2, 2, 3], strokewidth = 2)
+    poly!(ax, Point2.([7, 9, 8], 1e9 .+ [2, 2, 3]), strokewidth = 2)
 
     fig
 end
