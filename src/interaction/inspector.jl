@@ -542,14 +542,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    # Manual boundingbox including transfunc
-    bbox = let
-        points = point_iterator(plot)
-        trans_func = transform_func(plot)
-        model = plot.model[]
-        iter = iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
-        limits_from_transformed_points(iter)
-    end
+    bbox = boundingbox(plot)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
