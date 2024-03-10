@@ -109,3 +109,6 @@ function data_limits(p::VSpan)
     ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
     return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
 end
+
+convert_arguments(P::Type{<:Union{HSpan, VSpan}}, x::Interval) =
+    convert_arguments(P, endpoints(x)...)

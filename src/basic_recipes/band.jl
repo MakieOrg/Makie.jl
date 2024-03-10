@@ -19,6 +19,9 @@ end
 
 convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
 
+convert_arguments(P::Type{<: Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
+    convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
+
 function band_connect(n)
     ns = 1:n-1
     ns2 = n+1:2n-1

@@ -127,6 +127,9 @@ function Makie.convert_arguments(::Type{<:Rangebars}, val, low_high)
     (val_low_high,)
 end
 
+Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
+    convert_arguments(P, x, endpoints.(y))
+
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
