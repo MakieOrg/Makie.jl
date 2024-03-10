@@ -11,7 +11,7 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
 
     mesh!(
-        plot, lift(m -> convert_arguments(Mesh, m), plot, plot[1]),
+        plot, lift(m -> convert_arguments(Mesh, m)[1], plot, plot[1]),
         color = plot.color,
         colormap = plot.colormap,
         colorscale = plot.colorscale,
@@ -44,7 +44,7 @@ function poly_convert(geometries::AbstractVector, transform_func=identity)
 end
 
 function poly_convert(geometry::AbstractGeometry, transform_func=identity)
-    return GeometryBasics.triangle_mesh(geometry)
+    return GeometryBasics.mesh(geometry; pointtype=Point{N,Float32}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
@@ -81,9 +81,8 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     return GeometryBasics.Mesh(points_flat, faces)
 end
 
-function poly_convert(polygon::AbstractVector{<:VecTypes}, transform_func=identity)
-    # TODO: Float64?
-    points = convert(Vector{Point2d}, polygon)
+function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=identity) where {T}
+    points = convert(Vector{Point2{float_type(T)}}, polygon)
     points_transformed = apply_transform(transform_func, points)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
