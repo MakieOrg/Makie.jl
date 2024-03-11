@@ -192,7 +192,7 @@ function convert_arguments(P::PointBased, x::Rect2{T}) where T
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
+    return convert_arguments(P, coordinates(mesh))
 end
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
