@@ -489,7 +489,7 @@ end
 
 function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
     # TODO fix the order of decompose
-    points = decompose(Point2{float32type(T)}, x)
+    points = decompose(Point2{float_type(T)}, x)
     return (points[[1, 2, 4, 3, 1]],)
 end
 
