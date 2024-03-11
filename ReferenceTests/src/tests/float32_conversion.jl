@@ -14,12 +14,14 @@
     # scatter + lines
     scatterlines!(1:10, 1e9 .+ (1:10))
     linesegments!(2:11, 1e9 .+ (1:10))
+    meshscatter!(3:12, 1e9 .+ (1:10))
 
-    image!(ax, 0..3, (1e9+7)..(1e9+10), [1 2; 3 4])
-    heatmap!(ax, 10..11, (1e9+2)..(1e9+3), [1 2; 3 4])
+    image!(ax, 0 .. 3, (1e9 + 7) .. (1e9 + 10), [1 2; 3 4])
+    heatmap!(ax, 10 .. 11, (1e9 + 2) .. (1e9 + 3), [1 2; 3 4])
+    surface!(ax, 10 .. 11, (1e9 + 4) .. (1e9 + 5), [1 2; 3 4]; shading=NoShading)
 
-    mesh!(ax, Circle(Point2(5, 1e9 + 8.5), 1.0), color = :red)
-    poly!(ax, Point2.([7, 9, 8], 1e9 .+ [2, 2, 3]), strokewidth = 2)
+    mesh!(ax, Circle(Point2(5, 1e9 + 8.5), 1.0); color=:red, shading=NoShading)
+    poly!(ax, [7, 9, 8], 1e9 .+ [2, 2, 3]; strokewidth=2)
 
     fig
 end
