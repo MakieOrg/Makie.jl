@@ -50,8 +50,8 @@ function poly_convert(geometries::AbstractVector, transform_func=identity)
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry, transform_func=identity)
-    return GeometryBasics.mesh(geometry; pointtype=Point{N,Float32}, facetype=GLTriangleFace)
+function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
+    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
