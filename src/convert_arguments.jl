@@ -76,7 +76,7 @@ end
 
 # same for points
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N, PT}}}) where {N, PT}
-    T = float32type(PT)
+    T = float_type(PT)
     return Point{N,T}[ismissing(x) ? Point{N,T}(NaN) : Point{N,T}(x) for x in a]
 end
 
