@@ -723,6 +723,7 @@ end
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
 float_type(a::AbstractArray, rest::AbstractArray...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::Type, rest::Type...) = float_type(promote_type(a, rest...))
+float_type(a::Tuple) = promote_type(float_type.(a)...)
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
 float_type(::Type{<:Real}) = Float64
