@@ -241,9 +241,9 @@ struct Camera
     resolution::Observable{Vec2f}
 
     """
-    Focal point of the camera, used for e.g. camera synchronized light direction.
+    Direction in which the camera looks.
     """
-    lookat::Observable{Vec3f}
+    view_direction::Observable{Vec3f}
 
     """
     Eye position of the camera, used for e.g. ray tracing.

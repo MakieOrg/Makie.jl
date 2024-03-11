@@ -43,6 +43,7 @@ include("lines.jl")
 include("meshes.jl")
 include("imagelike.jl")
 include("picking.jl")
+include("voxel.jl")
 
 const LAST_INLINE = Base.RefValue{Union{Automatic, Bool}}(Makie.automatic)
 

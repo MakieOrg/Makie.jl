@@ -523,6 +523,83 @@ end
     fig
 end
 
+@reference_test "Voxel - texture mapping" begin
+    texture = let
+        w = RGBf(1, 1, 1)
+        r = RGBf(1, 0, 0)
+        g = RGBf(0, 1, 0)
+        b = RGBf(0, 0, 1)
+        o = RGBf(1, 1, 0)
+        c = RGBf(0, 1, 1)
+        m = RGBf(1, 0, 1)
+        k = RGBf(0, 0, 0)
+        [r w g w b w k w;
+         w w w w w w w w;
+         r k g k b k w k;
+         k k k k k k k k]
+    end
+
+    # Use same uvs/texture-sections for every side of one voxel id
+    flat_uv_map = [Vec4f(x, x + 1 / 2, y, y + 1 / 4)
+                   for x in range(0.0, 1.0; length=3)[1:(end - 1)]
+                   for y in range(0.0, 1.0; length=5)[1:(end - 1)]]
+
+    flat_voxels = UInt8[1, 0, 3,
+                        0, 0, 0,
+                        2, 0, 4,
+                        0, 0, 0,
+                        0, 0, 0,
+                        0, 0, 0,
+                        5, 0, 7,
+                        0, 0, 0,
+                        6, 0, 8]
+
+    # Reshape the flat vector into a 3D array of dimensions 3x3x3.
+    voxels_3d = reshape(flat_voxels, (3, 3, 3))
+
+    fig = Figure(; size=(800, 400))
+    a1 = LScene(fig[1, 1]; show_axis=false)
+    p1 = voxels!(a1, voxels_3d; uvmap=flat_uv_map, color=texture)
+
+    # Use red for x, green for y, blue for z
+    sided_uv_map = Matrix{Vec4f}(undef, 1, 6)
+    sided_uv_map[1, 1:3] .= flat_uv_map[1:3]
+    sided_uv_map[1, 4:6] .= flat_uv_map[5:7]
+
+    sided_voxels = reshape(UInt8[1], 1, 1, 1)
+    a2 = LScene(fig[1, 2]; show_axis=false)
+    p2 = voxels!(a2, sided_voxels; uvmap=sided_uv_map, color=texture)
+
+    fig
+end
+
+@reference_test "Voxel - colors and colormap" begin
+    # test direct mapping of ids to colors & upsampling of vector colormap
+    fig = Figure(size = (800, 400))
+    chunk = reshape(UInt8[1, 0, 2, 0, 0, 0, 3, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 6, 0, 0, 0, 7, 0, 8],
+                    (3, 3, 3))
+
+    cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
+    voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
+    a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
+    fig
+end
+
+@reference_test "Voxel - lowclip and highclip" begin
+    # test that lowclip and highclip are visible for values just outside the colorrange
+    fig = Figure(size = (800, 400))
+    chunk = reshape(collect(1:900), 30, 30, 1)
+    a1, _ = voxels(fig[1,1], chunk, lowclip = :red, highclip = :red, colorrange = (1.0, 900.0), shading = NoShading)
+    a2, _ = voxels(fig[1,2], chunk, lowclip = :red, highclip = :red, colorrange = (1.1, 899.9), shading = NoShading)
+    foreach(a -> update_cam!(a.scene, Vec3f(0, 0, 40), Vec3f(0), Vec3f(0,1,0)), (a1, a2))
+    fig
+end
+
+@reference_test "Voxel - gap attribute" begin
+    # test direct mapping of ids to colors & upsampling of vector colormap
+    voxels(RNG.rand(3,3,3), gap = 0.3)
+end
+
 @reference_test "Plot transform overwrite" begin
     # Tests that (primitive) plots can have different transform function to their
     # parent scene (identity in this case)
