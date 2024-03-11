@@ -1,8 +1,4 @@
 using Makie:
-    NoConversion,
-    convert_arguments,
-    conversion_trait,
-    convert_single_argument,
     to_vertices,
     categorical_colors
 
