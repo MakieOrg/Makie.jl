@@ -329,15 +329,16 @@ end
 #                                  GridBased                                   #
 ################################################################################
 
-function edges(v::AbstractVector)
+function edges(v::AbstractVector{T}) where T
+    T_out = float_type(T)
     l = length(v)
     if l == 1
-        return [v[1] - 0.5, v[1] + 0.5]
+        return T_out[v[1] - 0.5, v[1] + 0.5]
     else
         # Equivalent to
         # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
         # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
-        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
+        borders = T_out[0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
         borders[1] = 2borders[1] - borders[2]
         borders[end] = 2borders[end] - borders[end-1]
         return borders
