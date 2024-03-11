@@ -154,7 +154,7 @@ function convert_arguments(p::PointBased, x::GeometryPrimitive{Dim, T}) where {D
     return convert_arguments(p, decompose(Point{Dim, float_type(T)}, x))
 end
 
-function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
+function convert_arguments(::PointBased, pos::AbstractMatrix{<: Real})
     (to_vertices(pos),)
 end
 
@@ -809,12 +809,13 @@ Converts a representation of vertices `v` to its canonical representation as a
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
 """
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
-    vert3f0 = T != Float32 ? map(Point3f, verts) : verts
-    return reinterpret(Point3f, vert3f0)
+    T_out = float_type(T)
+    vert3 = T != T_out ? map(Point3{T_out}, verts) : verts
+    return reinterpret(Point3{T_out}, vert3)
 end
 
-function to_vertices(verts::AbstractVector{<: VecTypes{N}}) where {N}
-    return map(Point{N, Float32}, verts)
+function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
+    return map(Point{N, float_type(T)}, verts)
 end
 
 function to_vertices(verts::AbstractMatrix{<: Number})
@@ -827,23 +828,23 @@ function to_vertices(verts::AbstractMatrix{<: Number})
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
+function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Real
     N = size(verts, 1)
-    if T == Float32 && N == 3
+    if T == float_type(T) && N == 3
         reinterpret(Point{N, T}, elconvert(T, vec(verts)))
     else
-        let N = Val(N), lverts = verts
+        let N = Val(N); lverts = verts; T_out = float_type(T)
             broadcast(1:size(verts, 2), N) do vidx, n
-                Point(ntuple(i-> Float32(lverts[i, vidx]), n))
+                Point(ntuple(i-> T_out(lverts[i, vidx]), n))
             end
         end
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
-    let N = Val(size(verts, 2)), lverts = verts
+function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Real
+    let N = Val(size(verts, 2));  lverts = verts; T_out = float_type(T)
         broadcast(1:size(verts, 1), N) do vidx, n
-            Point(ntuple(i-> Float32(verts[vidx, i]), n))
+            Point(ntuple(i-> T_out(lverts[vidx, i]), n))
         end
     end
 end
