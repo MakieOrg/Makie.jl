@@ -44,8 +44,6 @@ axis_conversion_type(argument_eltype::DataType) = automatic
 function get_axis_convert(plot::Plot, dim::Symbol)
     if haskey(plot.kw, dim)
         return to_value(plot.kw[dim])
-    elseif haskey(plot, dim)
-        return to_value(plot[dim])
     else
         for elem in plot.plots
             x = get_axis_convert(elem, dim)
