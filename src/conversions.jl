@@ -150,7 +150,9 @@ end
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(p::PointBased, x::GeometryPrimitive{Dim, T}) where {Dim, T} = convert_arguments(p, decompose(Point{Dim, float32type(T)}, x))
+function convert_arguments(p::PointBased, x::GeometryPrimitive{Dim, T}) where {Dim, T}
+    return convert_arguments(p, decompose(Point{Dim, float_type(T)}, x))
+end
 
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
