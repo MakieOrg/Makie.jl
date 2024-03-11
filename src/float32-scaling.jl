@@ -1,5 +1,5 @@
 #=
-New file to keep the old version around
+TODO: remove this and add some cleaner documentation
 
 # Notes
 Conversion chain:
@@ -26,13 +26,16 @@ Conversion chain:
   a good target range to avoid frequent updates
 =#
 
-# LinearScaling
+################################################################################
+### LinearScaling
+################################################################################
 
 # muladd is no better than a * b + c etc
 # Don't apply Float32 here so we can still work with full precision by calling these directly
 @inline (ls::LinearScaling)(x::Real, dim::Integer) = ls.scale[dim] * x + ls.offset[dim]
 @inline (ls::LinearScaling)(p::VecTypes{2}) = ls.scale[Vec(1, 2)] .* p + ls.offset[Vec(1, 2)]
 @inline (ls::LinearScaling)(p::VecTypes{3}) = ls.scale .* p + ls.offset
+
 
 @inline function f32_convert(ls::LinearScaling, p::VecTypes{N}) where N
     # TODO Point{N, Float32}(::Point{N, Int}) doesn't work
@@ -60,6 +63,14 @@ end
     return space in (:data, :transformed) ? f32_convert(ls, data, dim) : f32_convert(nothing, data, dim)
 end
 
+
+Base.inv(ls::LinearScaling) = LinearScaling(1.0 ./ ls.scale, - ls.offset ./ ls.scale)
+
+
+function inv_f32_scale(ls::LinearScaling, v::VecTypes{3})
+    return Vec3d(v) ./ ls.scale
+end
+
 # For CairoMakie
 function f32_convert_matrix(ls::LinearScaling)
     scale = to_ndim(Vec3d, ls.scale, 1)
@@ -72,7 +83,6 @@ function f32_convert_matrix(ls::LinearScaling, space::Symbol)
 end
 inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(inv(ls), space)
 
-Base.inv(ls::LinearScaling) = LinearScaling(1.0 ./ ls.scale, - ls.offset ./ ls.scale)
 
 # returns Matrix R such that M * ls = ls * R
 patch_model(::Nothing, M::Mat4d) = Mat4f(M)
@@ -80,7 +90,11 @@ function patch_model(ls::LinearScaling, M::Mat4d)
     return Mat4f(f32_convert_matrix(inv(ls)) * M * f32_convert_matrix(ls))
 end
 
-# Float32Convert
+
+################################################################################
+### Float32Convert
+################################################################################
+
 
 function Float32Convert()
     scaling = LinearScaling(Vec{3, Float64}(1.0), Vec{3, Float64}(0.0))
@@ -135,6 +149,18 @@ end
 @inline f32_convert(c::Nothing, data, dim::Integer, ::Symbol) = f32_convert(c, data, dim)
 
 @inline f32_convert(c::Float32Convert, args...) = f32_convert(c.scaling[], args...)
+@inline f32_convert(x::SceneLike, args...) = f32_convert(f32_conversion(x), args...)
+
+@inline inv_f32_convert(c::Nothing, args...) = f32_convert(c, args...)
+@inline inv_f32_convert(c::Float32Convert, x::Real) = inv(c.scaling[])(Float64(x))
+@inline inv_f32_convert(c::Float32Convert, x::VecTypes{N}) where N = inv(c.scaling[])(to_ndim(Point{N, Float64}, x, 0))
+@inline inv_f32_convert(c::Float32Convert, x::AbstractArray) = inv_f32_convert.((c,), x)
+@inline inv_f32_convert(x::SceneLike, args...) = inv_f32_convert(f32_conversion(x), args...)
+
+@inline inv_f32_scale(c::Nothing, v::VecTypes{3}) = Vec3d(v)
+@inline inv_f32_scale(c::Float32Convert, v::VecTypes{3}) = inv_f32_scale(c.scaling[], v)
+@inline inv_f32_scale(x::SceneLike, args...) = inv_f32_scale(f32_conversion(x), args...)
+
 
 # For CairoMakie & project
 f32_convert_matrix(::Nothing, ::Symbol) = Mat4d(I)
