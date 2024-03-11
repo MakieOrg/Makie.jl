@@ -474,7 +474,7 @@ end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
-    return (x, y, z, el32convert(data))
+    return (el32convert(x), el32convert(y), el32convert(z), el32convert(data))
 end
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
@@ -484,7 +484,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, x::RealVector, y::AbstractVector, z::RealVector, i::RealArray{3})
-    (x, y, z, el32convert(i))
+    (el32convert(x), el32convert(y), el32convert(z), el32convert(i))
 end
 
 ################################################################################
@@ -663,7 +663,7 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
         A = (x, y, z)[i]
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
-    return (x, y, z, el32convert(f.(_x, _y, _z)))
+    return (el32convert(x), el32convert(y), el32convert(z), el32convert(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
@@ -735,6 +735,7 @@ float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::AbstractArray{T}) where T = float32type(T)
 float32type(::T) where {T} = float32type(T)
 
+el32convert(x::ClosedInterval) = Float32(minimum(x)) .. Float32(maximum(x))
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{<:Union{Missing, T}}) where {T<:Real} = elconvert(float32type(T), x)
 el32convert(x::AbstractArray{Float32}) = x
