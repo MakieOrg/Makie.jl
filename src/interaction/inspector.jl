@@ -455,16 +455,18 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
     if a.enable_indicators[]
         translation = apply_transform_and_model(plot, plot[1][][idx])
-        rotation = _to_rotation(plot.rotations[], idx)
+        rotation = to_rotation(_to_rotation(plot.rotations[], idx))
         scale = inv_f32_scale(plot, _to_scale(plot.markersize[], idx))
-        model = transformationmatrix(translation, scale, rotation)
 
         bbox = Rect3d(convert_attribute(
             plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
         ))
 
         ps = convert_arguments(LineSegments, bbox)[1]
-        ps = map(p -> (model * to_ndim(Point4d, to_ndim(Point3d, p, 0), 1))[Vec(1,2,3)], ps)
+        ps = map(ps) do p
+            p3d = to_ndim(Point3d, p, 0)
+            return rotation * (scale .* p3d) + translation
+        end
 
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
