@@ -721,7 +721,7 @@ function elconvert(::Type{T}, x::AbstractArray{<: Union{Missing, <:Real}}) where
 end
 
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
-float_type(a::AbstractArray, rest::AbstractArray...) = float_type(eltype(a), map(eltype, rest)...)
+float_type(a::AbstractArray, rest::AbstractArray...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::Type, rest::Type...) = float_type(promote_type(a, rest...))
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
