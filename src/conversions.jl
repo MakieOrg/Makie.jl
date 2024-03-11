@@ -723,7 +723,6 @@ end
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
 float_type(a::AbstractArray, rest::AbstractArray...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::Type, rest::Type...) = float_type(promote_type(a, rest...))
-float_type(a::Tuple) = promote_type(float_type.(a)...)
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
 float_type(::Type{<:Real}) = Float64
@@ -732,6 +731,8 @@ float_type(::Type{<:Union{Float16}}) = Float32
 float_type(::Type{Point{N,T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float_type(T)}
 float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
+float_type(::Type{Tuple{T1, T2}}) where {T1,T2} = Point2{promote_type(float_type(T1), float_type(T2))}
+float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(float_type(T1), float_type(T2), float_type(T3))}
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 
 float_convert(x) = convert(float_type(x), x)
