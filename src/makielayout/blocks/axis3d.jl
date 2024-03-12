@@ -840,6 +840,10 @@ function zautolimits(ax::Axis3)
     zlims
 end
 
+Makie.xlims!(ax::Axis3, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
+Makie.ylims!(ax::Axis3, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
+Makie.zlims!(ax::Axis3, zlims::Interval) = Makie.zlims!(ax, endpoints(zlims))
+
 function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")

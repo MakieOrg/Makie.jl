@@ -166,6 +166,10 @@ end
     @test ax.limits[] == ((100,400),(1,13))
     limits!(ax, 1..3, 1..2)
     @test ax.limits[] == ((1,3),(1,2))
+    ax3 = Axis3(fig[1,1],limits=(0..1,0..2,0..3))
+    xlims!(ax3, 10..20)
+    zlims!(ax3, 1..2)
+    @test ax3.limits[] == ((10,20),(0,2),(1,2))
 end
 
 @testset "Colorbar plot object kwarg clash" begin

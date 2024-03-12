@@ -1222,7 +1222,6 @@ end
 
 Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
 Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
-Makie.zlims!(ax::Axis, zlims::Interval) = Makie.zlims!(ax, endpoints(zlims))
 
 function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
