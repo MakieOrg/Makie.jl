@@ -32,16 +32,21 @@ By default each label is rotated parallel to the line between the bracket points
     style = :curly
 end
 
-Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes, point2::VecTypes) = ([(Point2f(point1), Point2f(point2))],)
-Makie.convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real) = ([(Point2f(x1, y1), Point2f(x2, y2))],)
-function Makie.convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
+    return ([(Point2{float_type(T1)}(point1), Point2{float_type(T2)}(point2))],)
+end
+function convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)
+    return ([(Point2{float_type(x1, y1)}(x1, y1), Point2{float_type(x2, y2)}(x2, y2))],)
+end
+function convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+    T1 = float_type(x1, y1); T2 = float_type(x2, y2)
     points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
-        (Point2f(x1, y1), Point2f(x2, y2))
+        (Point2{T1}(x1, y1), Point2{T2}(x2, y2))
     end
     return (points,)
 end
 
-function Makie.plot!(pl::Bracket)
+function plot!(pl::Bracket)
 
     points = pl[1]
 

@@ -39,6 +39,7 @@ using Logging
     - PointBased: SubArray{<: VecTypes, 1}
     - Mesh: AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     - GridBased: OffsetArray
+    - Axis3D: Rect
     =#
 
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -301,6 +302,16 @@ using Logging
                     @test convert_arguments(Arrows, xs, ys, zs, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
                     @test convert_arguments(Arrows, xs, ys, identity) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
                     @test convert_arguments(Arrows, xs, ys, zs, identity) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
+                end
+
+                @testset "Band" begin
+                    @test convert_arguments(Band, xs, ys, zs) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                end
+
+                @testset "Bracket" begin
+                    @test convert_arguments(Bracket, ps2[1], ps2[2])             isa Tuple{Vector{Tuple{Point2{T_out}, Point2{T_out}}}}
+                    @test convert_arguments(Bracket, xs[1], ys[1], xs[2], ys[2]) isa Tuple{Vector{Tuple{Point2{T_out}, Point2{T_out}}}}
+                    @test convert_arguments(Bracket, xs, ys, xs, ys)             isa Tuple{Vector{Tuple{Point2{T_out}, Point2{T_out}}}}
                 end
 
                 # TODO:

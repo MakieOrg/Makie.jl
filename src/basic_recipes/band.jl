@@ -10,7 +10,9 @@ between the points in `lower` and `upper`.
     shading = NoShading
 end
 
-convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
+function convert_arguments(::Type{<: Band}, x, ylower, yupper)
+    return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
+end
 
 function band_connect(n)
     ns = 1:n-1
