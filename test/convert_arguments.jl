@@ -294,6 +294,15 @@ using Logging
                     @test convert_arguments(Annotations, strings, ps2) isa Tuple{Vector{Tuple{String, Point{2, T_out}}}}
                     @test convert_arguments(Annotations, strings, ps3) isa Tuple{Vector{Tuple{String, Point{3, T_out}}}}
                 end
+
+                @testset "Arrows" begin
+                    @test convert_arguments(Arrows, xs, ys, xs, ys) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
+                    @test convert_arguments(Arrows, xs, ys, m, m) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
+                    @test convert_arguments(Arrows, xs, ys, zs, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
+                    @test convert_arguments(Arrows, xs, ys, identity) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
+                    @test convert_arguments(Arrows, xs, ys, zs, identity) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
+                end
+
                 # TODO:
                 # missing from conversions.jl: arrows 2x, GridBase OffsetArray, PointBase SUbarray
                 # everything else
