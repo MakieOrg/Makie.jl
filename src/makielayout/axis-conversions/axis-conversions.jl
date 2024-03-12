@@ -59,12 +59,12 @@ axis_conversion_type(argument_eltype::DataType) = nothing
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim converst
 # TODO, should a recipe always set the dim convert to it's parent?
-function get_axis_convert(plot::Plot, dim::Symbol)
-    if haskey(plot.kw, dim)
-        return to_value(plot.kw[dim])
+function get_axis_convert(plot::Plot)
+    if haskey(plot.kw, :dim_conversions)
+        return to_value(plot.kw[:dim_conversions])
     else
         for elem in plot.plots
-            x = get_axis_convert(elem, dim)
+            x = get_axis_convert(elem)
             isnothing(x) || return x
         end
     end
@@ -74,4 +74,12 @@ end
 
 function convert_from_args(values)
     return axis_conversion_type(MakieCore.get_element_type(values))
+end
+
+connect_conversion!(ax::AbstractAxis, obs::Observable, conversion, dim) = nothing
+
+function connect_conversion!(ax::AbstractAxis, conversions::AxisConversions)
+    for i in 1:3
+        connect_conversion!(ax, conversions[i], conversions[i], i)
+    end
 end

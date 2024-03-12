@@ -678,7 +678,8 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
 end
 
 function attribute_name_allowlist()
-    (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation, :x_dim_convert, :y_dim_convert, :z_dim_convert)
+    return (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
+            :dim_conversions)
 end
 
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})

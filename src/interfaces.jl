@@ -120,7 +120,7 @@ end
 
 
 function axis_convert(P, attributes::Dict, x::Observable, y::Observable)
-    converts = get!(attributes, :dim_convert, AxisConversions())
+    converts = get!(() -> AxisConversions(), attributes, :dim_conversions)
     x = convert_axis_dim(P, converts, 1, x)
     y = convert_axis_dim(P, converts, 2, y)
     return (x, y)
@@ -170,14 +170,13 @@ function conversion_pipeline(P, used_attrs, args_obs, args, user_attributes, plo
     kw_obs = get_kw_obs(used_attrs, user_attributes)
     kw = to_value(kw_obs)
     args_obs = axis_convert(P, user_attributes, args_obs...)
-    args = map(to_value, args_obs)
 
     converted, status = no_obs_conversion(P, args, kw)
 
     if status === :converted
         new_args_obs = map(Observable, converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
-            conv, status = no_obs_conversion(P, args, kw)
+            conv, _ = no_obs_conversion(P, args, kw)
             for (obs, arg) in zip(new_args_obs, conv)
                 obs[] = arg
             end
@@ -188,7 +187,7 @@ function conversion_pipeline(P, used_attrs, args_obs, args, user_attributes, plo
     elseif status === :needs_conversion
         new_args_obs = map(Observable, converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
-            conv, status = no_obs_conversion(P, args, kw)
+            conv, _ = no_obs_conversion(P, args, kw)
             for (obs, arg) in zip(new_args_obs, conv)
                 obs[] = arg
             end
@@ -202,7 +201,7 @@ function conversion_pipeline(P, used_attrs, args_obs, args, user_attributes, plo
         P, converted2 = apply_convert!(P, plot_attributes, converted)
         new_args_obs = map(Observable, converted2)
         fs = onany(kw_obs, args_obs...) do kw, args...
-            conv, status = no_obs_conversion(P, args, kw)
+            conv, _ = no_obs_conversion(P, args, kw)
             P, converted3 = apply_convert!(P, plot_attributes, conv)
             for (obs, arg) in zip(new_args_obs, converted3)
                 obs[] = arg
