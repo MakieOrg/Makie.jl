@@ -31,12 +31,19 @@ using Logging
     =#
 
     #=
-    Maybe Problem:
-    - PointBased() fails for Vector{Union{T, Missing}}
-    - Vector{Int}, Vector{Float32} -> Float32
+    TODO:
+    - consider implementing the commented out conversions
+    - consider normalizing the conversions with branches here
+
+    Skipped/Missing:
+    - PointBased: SubArray{<: VecTypes, 1}
+    - Mesh: AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
+    - GridBased: OffsetArray
     =#
 
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    str = "test"
+    strings = ["test" for _ in 1:10]
 
     @testset "input type -> output type" begin
         for (T_in, T_out) in [
@@ -86,6 +93,10 @@ using Logging
                 vol = rand(T_in, 10, 10, 10)
 
                 # COV_EXCL_STOP
+
+                ################################################################
+                ### primitives
+                ################################################################
 
                 # PointBased and Friends
 
@@ -178,7 +189,7 @@ using Logging
                     end
                 end
 
-                # ImageLike, GridBased, CellGrid, VertexGrid
+                # CellGrid & Heatmap
 
                 for CT in (CellGrid(), Heatmap)
                     @testset "$CT" begin
@@ -194,6 +205,8 @@ using Logging
                         # TODO OffsetArray
                     end
                 end
+
+                # VertexGrid
 
                 for CT in (VertexGrid(), Surface)
                     @testset "$CT" begin
@@ -216,6 +229,8 @@ using Logging
                     end
                 end
 
+                # ImageLike, Image
+
                 for CT in (ImageLike(), Image)
                     @testset "$CT" begin
                         @test convert_arguments(CT, img)        isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, Matrix{RGBf}}
@@ -233,7 +248,7 @@ using Logging
                     end
                 end
 
-                # VolumeLike
+                # VolumeLike, Volume
 
                 for CT in (VolumeLike(), Volume)
                     @testset "$CT" begin
@@ -269,6 +284,16 @@ using Logging
                     # Note: skipping AbstractVector{<: Union{AbstractMesh, AbstractPolygon}} conversion
                 end
 
+
+                ################################################################
+                ### recipes
+                ################################################################
+
+
+                @testset "Annotations" begin
+                    @test convert_arguments(Annotations, strings, ps2) isa Tuple{Vector{Tuple{String, Point{2, T_out}}}}
+                    @test convert_arguments(Annotations, strings, ps3) isa Tuple{Vector{Tuple{String, Point{3, T_out}}}}
+                end
                 # TODO:
                 # missing from conversions.jl: arrows 2x, GridBase OffsetArray, PointBase SUbarray
                 # everything else
