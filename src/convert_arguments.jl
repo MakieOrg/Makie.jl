@@ -4,7 +4,6 @@
 
 
 const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Any,Any}}
-
 # if no plot type based conversion is defined, we try using a trait
 function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T, args...)
@@ -16,19 +15,14 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                 convert_arguments_individually(T, args...)
             catch ee
                 if ee isa MethodError
-                    error(
-                        """
-                        `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
-
-                        The signature that could not be converted was:
-                        $(join("::" .* string.(typeof.(args)), ", "))
-
-                        Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
-
-                        Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
-                        """
-                    )
+                    error("""
+                          `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
+                          The signature that could not be converted was:
+                          $(join("::" .* string.(typeof.(args)), ", "))
+                          Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
+                          You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
+                          Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
+                          """)
                 else
                     rethrow(ee)
                 end
@@ -38,7 +32,6 @@ function convert_arguments(T::PlotFunc, args...; kw...)
         end
     end
 end
-
 # in case no trait matches we try to convert each individual argument
 # and reconvert the whole tuple in order to handle missings centrally, e.g.
 function convert_arguments_individually(T::PlotFunc, args...)
@@ -233,13 +226,13 @@ end
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString{N, T}}, MultiLineString{N, T}}) where {N, T}
+function convert_arguments(PB::PointBased, linestring::Union{<:AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}}) where {N, T}
     T_out = float_type(T)
     arr = Point{N, T_out}[]; n = length(linestring)
-    for idx in 2:n
+    for idx in 1:n
         append!(arr, convert_arguments(PB, linestring[idx])[1])
         if idx != n # don't add NaN at the end
-            push!(arr, Point2{T_out}(NaN))
+            push!(arr, Point{N, T_out}(NaN))
         end
     end
     return (arr,)

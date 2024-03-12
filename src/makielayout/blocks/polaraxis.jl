@@ -558,8 +558,9 @@ function draw_axis!(po::PolarAxis)
     rtick_align = Observable{Point2f}()
     rtick_offset = Observable{Point2f}()
     rtick_rotation = Observable{Float32}()
-    rgridpoints = Observable{Vector{GeometryBasics.LineString}}()
-    rminorgridpoints = Observable{Vector{GeometryBasics.LineString}}()
+    LSType = typeof(GeometryBasics.LineString(Point2f[]))
+    rgridpoints = Observable{Vector{LSType}}()
+    rminorgridpoints = Observable{Vector{LSType}}()
 
     function default_rtickangle(rtickangle, direction, thetalims)
         if rtickangle === automatic

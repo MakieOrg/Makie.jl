@@ -463,7 +463,7 @@ _bcast(x) = x
 # Calculates the scaling factor from unpadded size -> padded size
 # Here we assume the glyph to be representative of pix_per_glyph
 # regardless of its true size.
-function marker_scale_factor(atlas::TextureAtlas, char::Char, font)
+function marker_scale_factor(atlas::TextureAtlas, char::Char, font)::Vec2f
     lbrt = glyph_uv_width!(atlas, char, font)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width .* Vec2f(size(atlas))
@@ -483,7 +483,7 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     return full_pixel_size_in_atlas ./ maximum(unpadded_pixel_size)
 end
 
-function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
+function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)::Vec2f
     # See offset_bezierpath
     return bezierpath_pad_scale_factor(atlas, path) * maximum(widths(bbox(path)))
 end
@@ -508,7 +508,7 @@ function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
     return markersize .* factor
 end
 
-function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
+function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)::Vec2f
     # - wh = widths(bbox(bp)) is the untouched size of the given bezierpath
     # - full_pixel_size_in_atlas is the size of the signed distance field in the
     #   texture atlas. This includes glyph padding
@@ -530,7 +530,6 @@ function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2
     bb = bbox(bp)
     scaled_size = bezierpath_pad_scale_factor(atlas, bp) * maximum(widths(bb))
     return markersize * (origin(bb) .+ 0.5f0 * widths(bb) .- 0.5f0 .* scaled_size)
-
 end
 
 function offset_bezierpath(atlas::TextureAtlas, bp, scale, offset)
