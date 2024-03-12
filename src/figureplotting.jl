@@ -103,7 +103,7 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
         return nothing
     end
     bbox = pop!(axis_kw, :bbox, nothing)
-    set_axis_attributes!(axis_kw, plot)
+    set_axis_attributes!(AxType, axis_kw, plot)
     return _block(AxType, figure, [], axis_kw, bbox)
 end
 
@@ -293,23 +293,15 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
     return figurelike_return(ax, plot)
 end
 
-set_axis_attributes!(attributes::Dict, any) = nothing
-function set_axis_attributes!(attributes::Dict, ax::AbstractAxis)
-    for dim in [:x, :y, :z]
-        key = Symbol(dim, :_dim_convert)
-        if hasproperty(ax, key)
-            attributes[key] = getproperty(ax, key)
-        end
-    end
-    return
+function set_axis_attributes!(::Type{<:AbstractAxis}, attributes::Dict, plot::Plot)
 end
 
-function set_axis_attributes!(attributes::Dict, plot::Plot)
-    for dim in [:x, :y, :z]
+function set_axis_attributes!(::Type{<:Axis}, attributes::Dict, plot::Plot)
+    conversions = get(plot.kw, :dim_conversions, nothing)
+    isnothing(conversions) && return
+    for (i, dim) in enumerate([:x, :y])
         key = Symbol(dim, :_dim_convert)
-        if haskey(plot.kw, key)
-            attributes[key] = plot.kw[key]
-        end
+        attributes[key] = conversions[i]
     end
     return
 end
@@ -352,8 +344,9 @@ const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
     # For axis specific converts.
     ax = create_axis_like!(figkws, figarg)
 
-    # inserts global state from axis into attributes if they exist
-    set_axis_attributes!(attributes, ax)
+    # inserts global state from axis into plot attributes if they exist
+    get!(attributes, :dim_conversions, get_conversions(ax))
+
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     if ax isa Figure && !(plot isa PlotSpecPlot)
         error("You cannot plot into a figure without an axis. Use `plot(fig[1, 1], ...)` instead.")
@@ -382,21 +375,14 @@ end
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
-connect_conversion!(ax::AbstractAxis, obs::Observable, conversion, dim) = nothing
 
 
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
-    plot_x_dim = get_axis_convert(plot, :x_dim_convert)
-    if !isnothing(plot_x_dim) && hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] != plot_x_dim
-        ax.x_dim_convert[] = plot_x_dim
-        connect_conversion!(ax, ax.x_dim_convert, ax.x_dim_convert[], 1)
-    end
-    plot_y_dim = get_axis_convert(plot, :y_dim_convert)
-    if !isnothing(plot_y_dim) && hasproperty(ax, :y_dim_convert) && ax.y_dim_convert[] != plot_y_dim
-        ax.y_dim_convert[] = plot_y_dim
-        connect_conversion!(ax, ax.y_dim_convert, ax.y_dim_convert[], 2)
-    end
+
+    merge_conversions!(ax.scene.conversions, get_conversions(plot))
+    connect_conversion!(ax, ax.scene.conversions)
+
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(ax)

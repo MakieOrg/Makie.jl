@@ -17,9 +17,9 @@ struct Test
     value
 end
 
-xticks = CategoricalConversion(sortby=x->x.value)
+conversion = CategoricalConversion(sortby=x->x.value)
 xtickformat = x-> string.(getfield.(x, :value)) .* " val"
-barplot(Test.([:a, :b, :c]), rand(3), axis=(xticks=xticks, xtickformat=xtickformat))
+barplot(Test.([:a, :b, :c]), rand(3), axis=(x_dim_conversion=conversion, xtickformat=xtickformat))
 ```
 """
 struct CategoricalConversion <: AxisConversion
@@ -31,12 +31,12 @@ end
 
 function CategoricalConversion(; sortby=nothing)
     return CategoricalConversion(Dict{Observable,Set{Any}}(),
-                              Observable(Dict{Any,Int}()),
+                              Observable(Dict{Any,Int}(); ignore_equal_values=true),
                               Pair{Int,Any}[],
                               sortby)
 end
 
-
+needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
 MakieCore.can_axis_convert_type(::Type{Categorical}) = true
 axis_conversion_type(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
 

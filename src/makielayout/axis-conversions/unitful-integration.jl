@@ -166,7 +166,9 @@ function UnitfulConversion(unit=automatic; units_in_label=false, short_label=fal
     return UnitfulConversion(unit, unit isa Automatic, conversion, units_in_label, short_label)
 end
 
-function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::UnitfulConversion, dim)
+needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
+
+function connect_conversion!(ax::AbstractAxis, conversion::UnitfulConversion, dim)
     if conversion.automatic_units
         on(ax.blockscene, ax.finallimits) do limits
             unit = conversion.unit[]
@@ -177,8 +179,6 @@ function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::U
                 new_unit = best_unit(t(mini), t(maxi))
                 if new_unit != unit
                     conversion.unit[] = new_unit
-                    # Make sure conversion get rerendered
-                    notify(conversion_obs)
                 end
             end
         end

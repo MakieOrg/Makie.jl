@@ -89,7 +89,7 @@ mutable struct Scene <: AbstractScene
     deregister_callbacks::Vector{Observables.ObserverFunction}
     cycler::Cycler
 
-    converts::AxisConversions
+    conversions::AxisConversions
 
     function Scene(
             parent::Union{Nothing, Scene},

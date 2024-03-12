@@ -417,9 +417,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     tickvalues = Observable(Float32[]; ignore_equal_values=true)
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float32},Vector{Any}}}()
-    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, dim_convert, limits, ticks, tickformat,
-         attrs.scale) do (position, extents, horizontal),
-                         dim_convert, limits, ticks, tickformat, scale
+    dim_convert = to_value(dim_convert) # observable because of Attributes
+    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
+    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
+         attrs.scale) do (position, extents, horizontal), _, limits, ticks, tickformat, scale
         return get_ticks(dim_convert, ticks, scale, tickformat, limits...)
     end
 
@@ -541,7 +542,8 @@ function Base.delete!(la::LineAxis)
     end
 end
 
-function get_ticks(::Automatic, ticks, scale, formatter, vmin, vmax)
+# For now AxisConversion
+function get_ticks(::Nothing, ticks, scale, formatter, vmin, vmax)
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
 

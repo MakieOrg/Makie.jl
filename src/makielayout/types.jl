@@ -215,11 +215,11 @@ end
         """
         Global state for the x dimension conversion.
         """
-        x_dim_convert = automatic
+        x_dim_convert = nothing
         """
         Global state for the y dimension conversion.
         """
-        y_dim_convert = automatic
+        y_dim_convert = nothing
 
         """
         The content of the x axis label.
@@ -1277,15 +1277,15 @@ end
         """
         Global state for the x dimension conversion.
         """
-        x_dim_convert = automatic
+        x_dim_convert = nothing
         """
         Global state for the y dimension conversion.
         """
-        y_dim_convert = automatic
+        y_dim_convert = nothing
         """
         Global state for the z dimension conversion.
         """
-        z_dim_convert = automatic
+        z_dim_convert = nothing
 
         "The height setting of the scene."
         height = nothing
@@ -1388,15 +1388,15 @@ end
         """
         Global state for the x dimension conversion.
         """
-        x_dim_convert = automatic
+        x_dim_convert = nothing
         """
         Global state for the y dimension conversion.
         """
-        y_dim_convert = automatic
+        y_dim_convert = nothing
         """
         Global state for the z dimension conversion.
         """
-        z_dim_convert = automatic
+        z_dim_convert = nothing
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1688,11 +1688,11 @@ end
         """
         Global state for the x dimension conversion.
         """
-        x_dim_convert = automatic
+        x_dim_convert = nothing
         """
         Global state for the y dimension conversion.
         """
-        y_dim_convert = automatic
+        y_dim_convert = nothing
 
 
         "The height setting of the scene."

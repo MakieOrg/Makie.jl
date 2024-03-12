@@ -120,7 +120,7 @@ end
 
 
 function axis_convert(P, attributes::Dict, x::Observable, y::Observable)
-    converts = get!(() -> AxisConversions(), attributes, :dim_conversions)
+    converts = to_value(get!(() -> AxisConversions(), attributes, :dim_conversions))
     x = convert_axis_dim(P, converts, 1, x)
     y = convert_axis_dim(P, converts, 2, y)
     return (x, y)
@@ -170,7 +170,7 @@ function conversion_pipeline(P, used_attrs, args_obs, args, user_attributes, plo
     kw_obs = get_kw_obs(used_attrs, user_attributes)
     kw = to_value(kw_obs)
     args_obs = axis_convert(P, user_attributes, args_obs...)
-
+    args = map(to_value, args_obs)
     converted, status = no_obs_conversion(P, args, kw)
 
     if status === :converted

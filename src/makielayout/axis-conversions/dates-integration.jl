@@ -94,7 +94,7 @@ yticks = DateTimeConversion(Time)
 scatter(1:4, (1:4) .* u"s", axis=(yticks=yticks,))
 ```
 """
-struct DateTimeConversion
+struct DateTimeConversion <: AxisConversion
     # first element in tuple is the time type we converted from, which can be:
     # Time, Date, DateTime
     # Second entry in tuple is a value we use to normalize the number range,
@@ -109,7 +109,7 @@ struct DateTimeConversion
         return new(obs, k_min, k_max, k_ideal)
     end
 end
-
+needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
 axis_conversion_type(::Type{<:Dates.TimeType}) = DateTimeConversion()
 MakieCore.can_axis_convert_type(::Type{<:Dates.TimeType}) = true
 
@@ -143,7 +143,7 @@ function convert_axis_dim(conversion::DateTimeConversion, values::Observable)
     end
 end
 
-function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::DateTimeConversion, dim)
+function connect_conversion!(ax::AbstractAxis, conversion::DateTimeConversion, dim)
     on(ax.blockscene, ax.finallimits) do limits
         # Don't update if nothing plotted yet
         if isempty(ax.scene.plots)
@@ -157,7 +157,6 @@ function connect_conversion!(ax::Axis, conversion_obs::Observable, conversion::D
         if new_scaling != scaling
             # Only update if the scaling changed
             conversion.type[] = (T, new_scaling)
-            notify(conversion_obs)
         end
     end
 end

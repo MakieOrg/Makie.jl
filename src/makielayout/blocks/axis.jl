@@ -158,7 +158,9 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
+
     blockscene = ax.blockscene
+
 
     elements = Dict{Symbol, Any}()
     ax.elements = elements
@@ -184,6 +186,12 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
+    conversions = scene.conversions
+    # transfer conversions from axis to scene if there are any
+    merge_conversions!(conversions, ax.x_dim_convert[], ax.y_dim_convert[])
+    # now transfer conversions to axis, if there were any in scene
+    ax.x_dim_convert = conversions[1]
+    ax.y_dim_convert = conversions[2]
 
     if !isnothing(palette)
         # Backwards compatibility for when palette was part of axis!
