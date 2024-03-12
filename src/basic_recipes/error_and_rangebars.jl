@@ -41,6 +41,7 @@ end
 
 Plots rangebars at `val` in one dimension, extending from `low` to `high` in the other dimension
 given the chosen `direction`.
+The `low_high` argument can be a vector of tuples or intervals.
 
 If you want to plot errors relative to a reference value, use `errorbars`.
 

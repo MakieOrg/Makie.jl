@@ -1,10 +1,12 @@
 """
     hspan(ys_low, ys_high; xmin = 0.0, xmax = 1.0, attrs...)
+    hspan(ys_lowhigh; xmin = 0.0, xmax = 1.0, attrs...)
 
 Create horizontal bands spanning across a `Scene` with 2D projection.
 The bands will be placed from `ys_low` to `ys_high` in data coordinates and `xmin` to `xmax`
 in scene coordinates (0 to 1). All four of these can have single or multiple values because
 they are broadcast to calculate the final spans.
+Both bounds can be passed together as an interval `ys_lowhigh`.
 
 All style attributes are the same as for `Poly`.
 """
@@ -20,11 +22,13 @@ All style attributes are the same as for `Poly`.
 
 """
     vspan(xs_low, xs_high; ymin = 0.0, ymax = 1.0, attrs...)
+    vspan(xs_lowhigh; ymin = 0.0, ymax = 1.0, attrs...)
 
 Create vertical bands spanning across a `Scene` with 2D projection.
 The bands will be placed from `xs_low` to `xs_high` in data coordinates and `ymin` to `ymax`
 in scene coordinates (0 to 1). All four of these can have single or multiple values because
 they are broadcast to calculate the final spans.
+Both bounds can be passed together as an interval `xs_lowhigh`.
 
 All style attributes are the same as for `Poly`.
 """

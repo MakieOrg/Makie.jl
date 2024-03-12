@@ -1,9 +1,11 @@
 """
     band(x, ylower, yupper; kwargs...)
     band(lower, upper; kwargs...)
+    band(x, lowerupper; kwargs...)
 
 Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
 between the points in `lower` and `upper`.
+Both bounds can be passed together as `lowerupper`, a vector of intervals.
 
 ## Attributes
 $(ATTRIBUTES)
