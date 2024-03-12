@@ -739,7 +739,8 @@ float32type(::T) where {T} = float32type(T)
 
 el32convert(x::ClosedInterval) = Float32(minimum(x)) .. Float32(maximum(x))
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
-el32convert(x::AbstractArray{<:Union{Missing, T}}) where {T<:Real} = elconvert(float32type(T), x)
+el32convert(x::AbstractArray{T}) where {T<:Real} = elconvert(float32type(T), x)
+el32convert(x::AbstractArray{<:Union{Missing,T}}) where {T<:Real} = elconvert(float32type(T), x)
 el32convert(x::AbstractArray{Float32}) = x
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
