@@ -55,64 +55,73 @@ end
 
 ### conversions for errorbars
 
-function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_both)
+function convert_arguments(::Type{<:Errorbars}, x, y, error_both)
+    T = float_type(x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
-        Vec4f(x, y, e, e)
+        Vec4{T}(x, y, e, e)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
-    xyerr = broadcast(Vec4f, x, y, error_low, error_high)
+function convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
+    T = float_type(x, y, error_low, error_high)
+    xyerr = broadcast(Vec4{T}, x, y, error_low, error_high)
     (xyerr,)
 end
 
 
-function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2, T}}) where T
+    T_out = float_type(float_type(x, y), T)
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
-        Vec4f(x, y, el, eh)
+        Vec4{T_out}(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_both)
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_both) where T
+    T_out = float_type(T, float_type(error_both))
     xyerr = broadcast(xy, error_both) do (x, y), e
-        Vec4f(x, y, e, e)
+        Vec4{T_out}(x, y, e, e)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low, error_high)
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low, error_high) where T
+    T_out = float_type(T, float_type(error_low, error_high))
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
-        Vec4f(x, y, el, eh)
+        Vec4{T_out}(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low_high::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1, T2}
+    T_out = float_type(T1, T2)
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
-        Vec4f(x, y, el, eh)
+        Vec4{T_out}(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3}})
+function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where T
+    T_out = float_type(T)
     xyerr = broadcast(xy_error_both) do (x, y, e)
-        Vec4f(x, y, e, e)
+        Vec4{T_out}(x, y, e, e)
     end
     (xyerr,)
 end
 
 ### conversions for rangebars
 
-function Makie.convert_arguments(::Type{<:Rangebars}, val, low, high)
-    val_low_high = broadcast(Vec3f, val, low, high)
+function convert_arguments(::Type{<:Rangebars}, val, low, high)
+    T = float_type(val, low, high)
+    val_low_high = broadcast(Vec3{T}, val, low, high)
     (val_low_high,)
 end
 
-function Makie.convert_arguments(::Type{<:Rangebars}, val, low_high)
+function convert_arguments(::Type{<:Rangebars}, val, low_high::AbstractVector{<:VecTypes{2, T}}) where T
+    T_out = float_type(float_type(val), T)
     val_low_high = broadcast(val, low_high) do val, (low, high)
-        Vec3f(val, low, high)
+        Vec3{T_out}(val, low, high)
     end
     (val_low_high,)
 end

@@ -40,6 +40,7 @@ using Logging
     - Mesh: AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     - GridBased: OffsetArray
     - Axis3D: Rect
+    - datashader
     =#
 
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -312,6 +313,19 @@ using Logging
                     @test convert_arguments(Bracket, ps2[1], ps2[2])             isa Tuple{Vector{Tuple{Point2{T_out}, Point2{T_out}}}}
                     @test convert_arguments(Bracket, xs[1], ys[1], xs[2], ys[2]) isa Tuple{Vector{Tuple{Point2{T_out}, Point2{T_out}}}}
                     @test convert_arguments(Bracket, xs, ys, xs, ys)             isa Tuple{Vector{Tuple{Point2{T_out}, Point2{T_out}}}}
+                end
+
+                @testset "Errorbars & Rangebars" begin
+                    @test convert_arguments(Errorbars, xs, ys, zs)      isa Tuple{Vector{Vec4{T_out}}}
+                    @test convert_arguments(Errorbars, xs, ys, xs, ys)  isa Tuple{Vector{Vec4{T_out}}}
+                    @test convert_arguments(Errorbars, xs, ys, ps2)     isa Tuple{Vector{Vec4{T_out}}}
+                    @test convert_arguments(Errorbars, ps2, zs)         isa Tuple{Vector{Vec4{T_out}}}
+                    @test convert_arguments(Errorbars, ps2, xs, ys)     isa Tuple{Vector{Vec4{T_out}}}
+                    @test convert_arguments(Errorbars, ps2, ps2)        isa Tuple{Vector{Vec4{T_out}}}
+                    @test convert_arguments(Errorbars, ps3)             isa Tuple{Vector{Vec4{T_out}}}
+
+                    @test convert_arguments(Rangebars, xs, ys, zs)      isa Tuple{Vector{Vec3{T_out}}}
+                    @test convert_arguments(Rangebars, xs, ps2)         isa Tuple{Vector{Vec3{T_out}}}
                 end
 
                 # TODO:
