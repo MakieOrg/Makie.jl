@@ -41,6 +41,7 @@ using Logging
     - GridBased: OffsetArray
     - Axis3D: Rect
     - datashader
+    - rainclouds
     =#
 
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -326,6 +327,33 @@ using Logging
 
                     @test convert_arguments(Rangebars, xs, ys, zs)      isa Tuple{Vector{Vec3{T_out}}}
                     @test convert_arguments(Rangebars, xs, ps2)         isa Tuple{Vector{Vec3{T_out}}}
+                end
+
+                @testset "Poly" begin
+                    # TODO: Are these ok? All of these are just reflection...
+                    @test convert_arguments(Poly, ps2)          isa Tuple{Vector{Point2{T_in}}}
+                    @test convert_arguments(Poly, ps3)          isa Tuple{Vector{Point3{T_in}}}
+                    @test convert_arguments(Poly, [polygon])    isa Tuple{Vector{typeof(polygon)}}
+                    @test convert_arguments(Poly, [rect2])      isa Tuple{Vector{typeof(rect2)}}
+                    @test convert_arguments(Poly, polygon)      isa Tuple{typeof(polygon)}
+                    @test convert_arguments(Poly, rect2)        isa Tuple{typeof(rect2)}
+
+                    # And these aren't mesh-like
+                    @test convert_arguments(Poly, xs, ys)        isa Tuple{Vector{Point2{T_out}}}
+                    # Vector{Vector{...}} ?
+                    @test convert_arguments(Poly, xs, ys, zs)    isa Tuple{Vector{Vector{Point3{T_out}}}}
+
+                    @test convert_arguments(Poly, ps2, indices)  isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
+                    @test convert_arguments(Poly, ps3, indices)  isa Tuple{<: GeometryBasics.Mesh{3, T_out}}
+                end
+
+                @testset "Series" begin
+                    @test convert_arguments(Series, m)          isa Tuple{Vector{Vector{Point2{Float64}}}}
+                    @test convert_arguments(Series, xs, m)      isa Tuple{Vector{Vector{Point2{T_out}}}}
+                    @test convert_arguments(Series, miss, m)    isa Tuple{Vector{Vector{Point2{T_out}}}}
+                    @test convert_arguments(Series, [(xs, ys)]) isa Tuple{Vector{Vector{Point2{T_out}}}}
+                    @test convert_arguments(Series, (xs, ys))   isa Tuple{Vector{Vector{Point2{T_out}}}}
+                    @test convert_arguments(Series, [ps2, ps2]) isa Tuple{Vector{Vector{Point2{T_out}}}}
                 end
 
                 # TODO:

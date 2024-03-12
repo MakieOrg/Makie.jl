@@ -716,6 +716,8 @@ float_type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float_type(T)}
 float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::Type{Tuple{T1, T2}}) where {T1,T2} = Point2{promote_type(float_type(T1), float_type(T2))}
 float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(float_type(T1), float_type(T2), float_type(T3))}
+float_type(::Type{Union{Missing, T}}) where {T} = float_type(T)
+float_type(::Type{Union{Nothing, T}}) where {T} = float_type(T)
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 
