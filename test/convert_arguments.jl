@@ -36,6 +36,8 @@ using Logging
     - Vector{Int}, Vector{Float32} -> Float32
     =#
 
+    indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
     @testset "input type -> output type" begin
         for (T_in, T_out) in [
                 Float32 => Float32, Float64 => Float64,
@@ -73,9 +75,16 @@ using Logging
                     ClosePath()
                 ])
 
+                xgridvec = [x for x in T_in(1):T_in(3) for y in T_in(1):T_in(3)]
+                ygridvec = [y for x in T_in(1):T_in(3) for y in T_in(1):T_in(3)]
+
                 m = rand(T_in, 10, 10)
                 m2 = rand(T_in, 2, 10)
                 m3 = rand(T_in, 10, 3)
+
+                img = rand(RGBf, 10, 10)
+                vol = rand(T_in, 10, 10, 10)
+
                 # COV_EXCL_STOP
 
                 # PointBased and Friends
@@ -171,9 +180,6 @@ using Logging
 
                 # ImageLike, GridBased, CellGrid, VertexGrid
 
-                xgridvec = [x for x in T_in(1):T_in(3) for y in T_in(1):T_in(3)]
-                ygridvec = [y for x in T_in(1):T_in(3) for y in T_in(1):T_in(3)]
-
                 for CT in (CellGrid(), Heatmap)
                     @testset "$CT" begin
                         @test convert_arguments(CT, m)          isa Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}
@@ -210,8 +216,6 @@ using Logging
                     end
                 end
 
-                img = rand(RGBf, 10, 10)
-
                 for CT in (ImageLike(), Image)
                     @testset "$CT" begin
                         @test convert_arguments(CT, img)        isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, Matrix{RGBf}}
@@ -219,7 +223,7 @@ using Logging
                         @test convert_arguments(CT, i, i, m)    isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
 
                         # deprecated
-                        Logging.disable_logging(Logging.Warn)
+                        Logging.disable_logging(Logging.Warn) # skip warnings
                         @test convert_arguments(CT, xs, ys, m)  isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
                         @test convert_arguments(CT, xs, r, m)   isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
                         @test convert_arguments(CT, i, r, m)    isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
@@ -231,7 +235,6 @@ using Logging
 
                 # VolumeLike
 
-                vol = rand(T_in, 10, 10, 10)
                 for CT in (VolumeLike(), Volume)
                     @testset "$CT" begin
                         # TODO: Should these be normalized more?
@@ -249,8 +252,26 @@ using Logging
                     end
                 end
 
-                # TODO:
                 # Mesh
+
+                @testset "Mesh" begin
+                    @test convert_arguments(Makie.Mesh, xs, ys, zs) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
+                    @test convert_arguments(Makie.Mesh, ps3) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
+                    # not NormalMesh? Many of these do have normals
+                    @test convert_arguments(Makie.Mesh, _mesh) isa Tuple{<: GeometryBasics.Mesh{3, T_out}}
+                    @test convert_arguments(Makie.Mesh, polygon) isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
+                    @test convert_arguments(Makie.Mesh, ps2) isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
+                    @test convert_arguments(Makie.Mesh, geom) isa Tuple{<: GeometryBasics.Mesh{3, T_out}}
+                    @test convert_arguments(Makie.Mesh, ps2, indices) isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
+
+                    @test convert_arguments(Makie.Mesh, xs, ys, zs, indices) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
+                    @test convert_arguments(Makie.Mesh, ps3, indices) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
+                    # Note: skipping AbstractVector{<: Union{AbstractMesh, AbstractPolygon}} conversion
+                end
+
+                # TODO:
+                # missing from conversions.jl: arrows 2x, GridBase OffsetArray, PointBase SUbarray
+                # everything else
                 # Voxel?
                 # Arrows
                 # recipes

@@ -540,6 +540,7 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) where {N, T}
+    T_out = float_type(T)
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
         n = normals(metafree(decompose(Point, mesh)), faces(mesh))
@@ -549,12 +550,11 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
         end
     end
     # If already correct eltypes for GL, we can pass the mesh through as is
-    # if eltype(metafree(coordinates(mesh))) == Point{N, Float32} && eltype(faces(mesh)) == GLTriangleFace
-    if eltype(faces(mesh)) == GLTriangleFace
+    if eltype(metafree(coordinates(mesh))) == Point{N, T_out} && eltype(faces(mesh)) == GLTriangleFace
         return (mesh,)
     else
         # Else, we need to convert it!
-        return (GeometryBasics.mesh(mesh, pointtype=Point{N, T}, facetype=GLTriangleFace),)
+        return (GeometryBasics.mesh(mesh, pointtype=Point{N, T_out}, facetype=GLTriangleFace),)
     end
 end
 
@@ -565,18 +565,25 @@ function convert_arguments(
     return (meshes,)
 end
 
+function convert_arguments(MT::Type{<:Mesh}, xyz::AbstractPolygon)
+    m = GeometryBasics.mesh(xyz; pointtype=float_type(xyz), facetype=GLTriangleFace)
+    return convert_arguments(MT, m)
+end
+
+# TODO GeometryBasics can't deal with this directly for Integer Points?
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
+        xyz::AbstractVector{<: AbstractPoint{2}}
     )
-    m = GeometryBasics.mesh(xyz; pointtype=float_type(xyz), facetype=GLTriangleFace)
+    ps = float_convert(xyz)
+    m = GeometryBasics.mesh(ps; pointtype=eltype(ps), facetype=GLTriangleFace)
     return convert_arguments(MT, m)
 end
 
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    m = GeometryBasics.mesh(geom; pointtype=Point{N,T}, uv=Vec2f, normaltype=Vec3f, facetype=GLTriangleFace)
+    m = GeometryBasics.mesh(geom; pointtype=Point{N,float_type(T)}, uv=Vec2f, normaltype=Vec3f, facetype=GLTriangleFace)
     return (m,)
 end
 
@@ -697,6 +704,7 @@ end
 
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
 float_type(a::AbstractArray, rest::AbstractArray...) = float_type(float_type(a), map(float_type, rest)...)
+float_type(a::AbstractPolygon, rest::AbstractPolygon...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::Type, rest::Type...) = float_type(promote_type(a, rest...))
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
@@ -709,6 +717,7 @@ float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::Type{Tuple{T1, T2}}) where {T1,T2} = Point2{promote_type(float_type(T1), float_type(T2))}
 float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(float_type(T1), float_type(T2), float_type(T3))}
 float_type(::AbstractArray{T}) where {T} = float_type(T)
+float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 
 float_convert(x) = convert(float_type(x), x)
 float_convert(x::AbstractArray{Float32}) = x
