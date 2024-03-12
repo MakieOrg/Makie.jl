@@ -387,7 +387,6 @@ connect_conversion!(ax::AbstractAxis, obs::Observable, conversion, dim) = nothin
 
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
-
     plot_x_dim = get_axis_convert(plot, :x_dim_convert)
     if !isnothing(plot_x_dim) && hasproperty(ax, :x_dim_convert) && ax.x_dim_convert[] != plot_x_dim
         ax.x_dim_convert[] = plot_x_dim

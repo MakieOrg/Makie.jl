@@ -109,11 +109,6 @@ const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
 
 
-convert_from_args(conversion, values) = conversion
-
-function convert_from_args(::Automatic, values)
-    return axis_conversion_type(MakieCore.get_element_type(values))
-end
 
 # single arguments gets ignored for now
 # TODO: add similar overloads as convert_arguments for the most common ones that work with units
@@ -123,22 +118,11 @@ function axis_convert(P, attr::Dict, x::Observable, y::Observable, z::Observable
     return (axis_convert(P, attr, x, y)..., z, args...)
 end
 
-convert_axis_dim(convert, value) = value
 
 function axis_convert(P, attributes::Dict, x::Observable, y::Observable)
-    if MakieCore.can_axis_convert(P, x[]) || haskey(attributes, :x_dim_convert)
-        xconvert = to_value(get(attributes, :x_dim_convert, automatic))
-        xconvert_new = convert_from_args(xconvert, x[])
-        attributes[:x_dim_convert] = xconvert_new
-        x = convert_axis_dim(xconvert_new, x)
-    end
-    if MakieCore.can_axis_convert(P, y[]) || haskey(attributes, :y_dim_convert)
-        yconvert = to_value(get(attributes, :y_dim_convert, automatic))
-        yconvert_new = convert_from_args(yconvert, y[])
-        attributes[:y_dim_convert] = yconvert_new
-        y = convert_axis_dim(yconvert_new, y)
-    end
-
+    converts = get!(attributes, :dim_convert, AxisConversions())
+    x = convert_axis_dim(P, converts, 1, x)
+    y = convert_axis_dim(P, converts, 2, y)
     return (x, y)
 end
 
@@ -160,8 +144,6 @@ function no_obs_conversion(P, args, kw)
         end
     end
 end
-
-apply_axis_conversion(P, args...) = false
 
 function get_kw_values(func, names, kw)
     return NamedTuple([Pair{Symbol,Any}(k, func(kw[k]))

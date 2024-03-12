@@ -122,6 +122,12 @@ include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
+
+include("makielayout/axis-conversions/axis-conversions.jl")
+include("makielayout/axis-conversions/unitful-integration.jl")
+include("makielayout/axis-conversions/categorical-integration.jl")
+include("makielayout/axis-conversions/dates-integration.jl")
+
 include("scenes.jl")
 
 include("interfaces.jl")
@@ -356,10 +362,6 @@ export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
-include("makielayout/axis-conversions/axis-conversions.jl")
-include("makielayout/axis-conversions/unitful-integration.jl")
-include("makielayout/axis-conversions/categorical-integration.jl")
-include("makielayout/axis-conversions/dates-integration.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
