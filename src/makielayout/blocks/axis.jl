@@ -1262,7 +1262,8 @@ end
 """
     xlims!(ax, low, high)
     xlims!(ax; low = nothing, high = nothing)
-    xlims!(ax, xlims)
+    xlims!(ax, (low, high))
+    xlims!(ax, low..high)
 
 Set the x-axis limits of axis `ax` to `low` and `high` or a tuple
 `xlims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1273,7 +1274,8 @@ Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
 """
     ylims!(ax, low, high)
     ylims!(ax; low = nothing, high = nothing)
-    ylims!(ax, ylims)
+    ylims!(ax, (low, high))
+    ylims!(ax, low..high)
 
 Set the y-axis limits of axis `ax` to `low` and `high` or a tuple
 `ylims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1284,7 +1286,8 @@ Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
 """
     zlims!(ax, low, high)
     zlims!(ax; low = nothing, high = nothing)
-    zlims!(ax, zlims)
+    zlims!(ax, (low, high))
+    zlims!(ax, low..high)
 
 Set the z-axis limits of axis `ax` to `low` and `high` or a tuple
 `zlims = (low,high)`. If the limits are ordered high-low, the axis orientation
