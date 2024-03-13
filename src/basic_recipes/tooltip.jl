@@ -51,8 +51,13 @@ Creates a tooltip pointing at `position` displaying the given `string
     inspectable = false
 end
 
-convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString) = (Point2f(x, y), str)
-convert_arguments(::Type{<: Tooltip}, x::Real, y::Real) = (Point2f(x, y),)
+function convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString)
+    return (Point2{float_type(x, y)}(x, y), str)
+end
+function convert_arguments(::Type{<: Tooltip}, x::Real, y::Real)
+    return (Point2{float_type(x, y)}(x, y),)
+end
+
 function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
     plot.attributes[:text]  = plot[2]
     tooltip!(plot, plot[1]; plot.attributes...)

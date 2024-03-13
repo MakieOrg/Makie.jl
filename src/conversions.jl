@@ -694,7 +694,9 @@ to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), le
 """
 Converts the elemen array type to `T1` without making a copy if the element type matches
 """
-elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N} = convert(AbstractArray{T1, N}, x)
+function elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N}
+    return convert(AbstractArray{T1, N}, x)
+end
 
 function elconvert(::Type{T}, x::AbstractArray{<: Union{Missing, <:Real}}) where {T}
     return map(x) do elem

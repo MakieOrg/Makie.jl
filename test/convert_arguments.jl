@@ -9,28 +9,6 @@ using Logging
 
 @testset "convert_arguments" begin
     #=
-    @testset "NoConversion" begin
-        # NoConversion
-        struct NoConversionTestType end
-        conversion_trait(::NoConversionTestType) = NoConversion()
-
-        let nctt = NoConversionTestType(),
-            ncttt = conversion_trait(nctt)
-            @test convert_arguments(ncttt, 1, 2, 3) == (1, 2, 3)
-        end
-    end
-
-    # generates 12% test coverage by testing barely anything
-    @testset "changing input types" begin
-        input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
-        f, ax, pl = mesh(input)
-        m = Makie.triangle_mesh(Circle(Point2f(0), 1f0))
-        input[] = m
-        @test pl[1][] == m
-    end
-    =#
-
-    #=
     TODO:
     - consider implementing the commented out conversions
     - consider normalizing the conversions with branches here
@@ -42,6 +20,7 @@ using Logging
     - Axis3D: Rect
     - datashader
     - rainclouds
+    - stats plots
     =#
 
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -94,6 +73,7 @@ using Logging
 
                 img = rand(RGBf, 10, 10)
                 vol = rand(T_in, 10, 10, 10)
+                sparse = Makie.SparseArrays.SparseMatrixCSC(m)
 
                 # COV_EXCL_STOP
 
@@ -287,11 +267,19 @@ using Logging
                     # Note: skipping AbstractVector{<: Union{AbstractMesh, AbstractPolygon}} conversion
                 end
 
+                # internally converted
+                @testset "Text" begin
+                    @test convert_arguments(Makie.Text, tuple.(strings, ps2)) isa Tuple{Vector{Tuple{String, Point2{T_in}}}}
+                    @test convert_arguments(Makie.Text, tuple.(strings, ps3)) isa Tuple{Vector{Tuple{String, Point3{T_in}}}}
+                end
+
 
                 ################################################################
                 ### recipes
                 ################################################################
 
+                # If a recipe transforms its input arguments it is fine for it
+                # to keep T_in in convert_arguments.
 
                 @testset "Annotations" begin
                     @test convert_arguments(Annotations, strings, ps2) isa Tuple{Vector{Tuple{String, Point{2, T_out}}}}
@@ -356,15 +344,66 @@ using Logging
                     @test convert_arguments(Series, [ps2, ps2]) isa Tuple{Vector{Vector{Point2{T_out}}}}
                 end
 
-                # TODO:
-                # missing from conversions.jl: arrows 2x, GridBase OffsetArray, PointBase SUbarray
-                # everything else
-                # Voxel?
-                # Arrows
-                # recipes
+                @testset "Spy" begin
+                    # TODO: assuming internal processing
+                    @test convert_arguments(Spy, sparse)            isa Tuple{ClosedInterval{Int}, ClosedInterval{Int}, typeof(sparse)}
+                    @test convert_arguments(Spy, xs, ys, sparse)    isa Tuple{typeof(xs), typeof(ys), typeof(sparse)}
+                end
+
+                @testset "StreamPlot" begin
+                    # TODO: these have a different argument order than other Function plots...
+                    @test convert_arguments(StreamPlot, identity, xs, ys)       isa Tuple{typeof(identity), Rect2{T_in}}
+                    @test convert_arguments(StreamPlot, identity, i, r)         isa Tuple{typeof(identity), Rect2{T_in}}
+                    @test convert_arguments(StreamPlot, identity, xs, ys, zs)   isa Tuple{typeof(identity), Rect3{T_in}}
+                    @test convert_arguments(StreamPlot, identity, r, i, zs)     isa Tuple{typeof(identity), Rect3{T_in}}
+                    @test convert_arguments(StreamPlot, identity, rect2)        isa Tuple{typeof(identity), Rect2{T_in}}
+                    @test convert_arguments(StreamPlot, identity, rect3)        isa Tuple{typeof(identity), Rect3{T_in}}
+                end
+
+                @testset "Tooltip" begin
+                    @test convert_arguments(Tooltip, xs[1], ys[1], str) isa Tuple{Point2{T_out}, String}
+                    @test convert_arguments(Tooltip, xs[1], ys[1])      isa Tuple{Point2{T_out}}
+                end
+
+                @testset "Tricontourf" begin
+                    @test convert_arguments(Tricontourf, xs, ys, zs) isa Tuple{<: Makie.DelTri.Triangulation{Matrix{T_out}}, Vector{T_out}}
+                end
+
+                @testset "Triplot" begin
+                    @test convert_arguments(Triplot, ps2)       isa Tuple{Vector{Point2{T_out}}}
+                    @test convert_arguments(Triplot, xs, ys)    isa Tuple{Vector{Point2{T_out}}}
+                    # TODO: DelTri.Triangulation
+                end
+
+                @testset "Voronoiplot" begin
+                    @test convert_arguments(Voronoiplot, m)             isa Tuple{Vector{Point3{Float64}}}
+                    @test convert_arguments(Voronoiplot, xs, ys, zs)    isa Tuple{Vector{Point3{T_out}}}
+                    @test convert_arguments(Voronoiplot, xs, ys)        isa Tuple{Vector{Point2{T_out}}}
+                    @test convert_arguments(Voronoiplot, ps2)           isa Tuple{Vector{Point2{T_out}}}
+                    @test convert_arguments(Voronoiplot, ps3)           isa Tuple{Vector{Point3{T_out}}}
+                    # TODO: VoronoiTessellation
+                end
+
+                # pure 3D plots don't implement Float64 -> Float32 rescaling yet
+                @testset "Voxels" begin
+                    @test convert_arguments(Voxels, vol)                isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{UInt8, 3}}
+                    @test convert_arguments(Voxels, xs, ys, zs, vol)    isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{UInt8, 3}}
+                    @test convert_arguments(Voxels, i, i, i, vol)       isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{UInt8, 3}}
+                end
+
+                @testset "Wireframe" begin
+                    @test convert_arguments(Wireframe, xs, ys, zs) isa Tuple{Vector{T_in}, Vector{T_in}, Vector{T_in}}
+                end
 
             end
 
+        end
+
+        # These have nothing to do with Numeric types...
+        @testset "Text" begin
+            @test convert_arguments(Makie.Text, str) isa Tuple{String}
+            @test convert_arguments(Makie.Text, strings) isa Tuple{Vector{String}}
+            # TODO glyphcollection
         end
     end
 

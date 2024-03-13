@@ -167,6 +167,7 @@ function get_triangulation_constrained_edges!(constrained_edges, tri)
     return constrained_edges
 end
 
+# TODO: restrict to Point2?
 Makie.convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(), ps)
 Makie.convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
 Makie.convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
