@@ -116,13 +116,17 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
     @assert all(low .<= high) # TODO: Axis probably does that
 
     delta = high - low
-    max_eps = eps(Float32) * max.(abs.(low), abs.(high))
+    max_eps = Float64(eps(Float32)) * max.(abs.(low), abs.(high))
     min_resolved = delta ./ max_eps
+    f32min = Float64(floatmin(Float32)) * c.resolution
+    f32max = Float64(floatmax(Float32)) / c.resolution
 
     # Could we have less than c.resolution floats in the given range?
     needs_update = any(min_resolved .< c.resolution)
     # Are we outside the range (floatmin, floatmax) that Float32 can resolve?
-    needs_update = needs_update || any(delta .< 1e-35) || any(delta .> 1e35)
+    needs_update = needs_update ||
+        any(abs.(low) .< f32min .&& abs.(high) .< f32min) ||
+        any(abs.(low) .> f32max .&& abs.(high) .> f32max)
 
     if needs_update
         # Vec{N}(+1) = scale * maxi + offset
