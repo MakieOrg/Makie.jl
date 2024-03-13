@@ -87,7 +87,7 @@ inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(in
 # returns Matrix R such that M * ls = ls * R
 patch_model(::Nothing, M::Mat4d) = Mat4f(M)
 function patch_model(ls::LinearScaling, M::Mat4d)
-    return Mat4f(f32_convert_matrix(inv(ls)) * M * f32_convert_matrix(ls))
+    return Mat4f(f32_convert_matrix(ls) * M * f32_convert_matrix(inv(ls)))
 end
 
 
