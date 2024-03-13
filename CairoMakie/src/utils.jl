@@ -79,13 +79,12 @@ function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
 end
 
 function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, model) where {N, T}
-    ET = Makie.float_type(T)
-    ext = decompose(Point2{ET}, poly.exterior)
-    interiors = decompose.(Point2{ET}, poly.interiors)
-    Polygon(
-        Point2{ET}.(project_position.(Ref(scenelike), space, ext, Ref(model))),
-        Vector{Point2{ET}}[Point2{ET}.(project_position.(Ref(scenelike), space, interior, Ref(model))) for interior in interiors],
-    )
+    PT = Point{N, Makie.float_type(T)}
+    ext = decompose(PT, poly.exterior)
+    project(p) = PT(project_position(scenelike, space, p, model))
+    ext_proj = PT[project(p) for p in ext]
+    interiors_proj = Vector{PT}[PT[project(p) for p in decompose(PT, points)] for points in poly.interiors]
+    return Polygon(ext_proj, interiors_proj)
 end
 
 function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, model) where MP <: MultiPolygon
