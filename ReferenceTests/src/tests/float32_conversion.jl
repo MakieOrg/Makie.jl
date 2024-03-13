@@ -1,9 +1,3 @@
-# Tests for plots relying on Float32Convert
-# - values outside -3.4e38 .. 3.4e38 (floatmax)
-# - value ranges ⪅ 1e-7 * values
-# - currently only applies to Axis
-# - need to test primitives and everything using project
-
 @reference_test "Value range < eps(Float32)" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
@@ -27,6 +21,29 @@
 
     fig
 end
+
+# TODO: PlotUtils tick finding fails with these ranges (and still fails with
+# e40/e-40), resulting in only 3 ticks for the x axis and lots of warnings.
+@reference_test "Below floatmin, above floatmax" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    # scatter + lines
+    scatterlines!(1e-100 .* (1:10), 1e100 .* (1:10))
+    linesegments!(1e-100 .* (2:11), 1e100 .* (1:10))
+    # meshscatter!( 1e-100 .* (3:12), 1e100 .* (1:10)) # markersize does not match scales
+    text!(Point2(1e-100, 6e100), text = "Test", fontsize = 20, align = (:left, :center))
+
+    image!(ax,    1e-100 .. 3e-100,  (7e100) .. (10e100), [1 2; 3 4])
+    heatmap!(ax, 10e-100 .. 11e-100, (2e100) .. (3e100),  [1 2; 3 4])
+    surface!(ax, 10e-100 .. 11e-100, (4e100) .. (5e100),  [1 2; 3 4]; shading=NoShading)
+
+    mesh!(ax, Rect2d(Point2(5e-100, 8.5e100), Vec2d(1e-100, 1e100)); color=:red, shading=NoShading)
+    poly!(ax, 1e-100 .* [7, 9, 8], 1e100 .* [2, 2, 3]; strokewidth=2)
+
+    fig
+end
+
 
 @reference_test "Model application with Float32 scaling" begin
     fig = Figure()
