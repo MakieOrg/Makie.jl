@@ -225,9 +225,9 @@ function bezier_star(n, inner_radius, outer_radius, angle)
     ])
 end
 
-function BezierPath(poly::Polygon)
+function BezierPath(poly::Polygon{N, T}) where {N, T}
     commands = Makie.PathCommand[]
-    points = reinterpret(Point2d, poly.exterior)
+    points = reinterpret(Point{N, T}, poly.exterior)
     ext_direction = sign(area(points)) #signed area gives us clockwise / anti-clockwise
     push!(commands, MoveTo(points[1]))
     for i in 2:length(points)
@@ -235,7 +235,7 @@ function BezierPath(poly::Polygon)
     end
 
     for inter in poly.interiors
-        points = reinterpret(Point2d, inter)
+        points = reinterpret(Point{N, T}, inter)
         # holes, in bezierpath, always need to have the opposite winding order
         if sign(area(points)) == ext_direction
             points = reverse(points)
