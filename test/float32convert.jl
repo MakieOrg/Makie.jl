@@ -2,8 +2,8 @@
 # - test that none of the plot! functions drops precision (i.e. converts to Float32)
 #   unless they apply float32convert themselves (e.g. convert to pixel space)
 
-using Makie: Float32Convert, LinearScaling, f32_convert, update_limits!, f32_convert_matrix
-    patch_model, transformationmatrix
+using Makie: Float32Convert, LinearScaling, f32_convert, update_limits!,
+    f32_convert_matrix, patch_model, transformationmatrix
 
 @testset "float32convert" begin
     f32c = Float32Convert()
