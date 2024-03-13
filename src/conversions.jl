@@ -616,7 +616,7 @@ function convert_arguments(
     vs = to_vertices(vertices)
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
-        ns = normals(vs, fs)
+        ns = Vec3f.(normals(vs, fs))
         m = GeometryBasics.Mesh(meta(vs; normals=ns), fs)
     else
         # TODO, we don't need to add normals here, but maybe nice for type stability?
