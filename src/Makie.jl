@@ -23,7 +23,6 @@ using MathTeXEngine
 using Random
 using FFMPEG_jll # get FFMPEG on any system!
 using Observables
-using GeometryBasics
 using PlotUtils
 using ColorBrewer
 using ColorTypes
@@ -96,6 +95,40 @@ export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
+
+# Place geometry types in a dedicated module to
+# avoid namespace pollution and name conflicts
+# with other geometry/plotting packages
+"""
+    Makie.Geom
+    
+Module with all geometry types used internally by Makie, currently developed in
+[`GeometryBasics.jl`](https://github.com/JuliaGeometry/GeometryBasics.jl)
+
+Advanced users can load the module explicitly to get access to these geometries
+like in newer versions of Makie:
+
+```julia
+using Makie.Geom
+
+Point, Rect, Sphere
+```
+"""
+module Geom
+    using GeometryBasics
+    export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
+    export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
+    export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
+    export Sphere, Circle, Pyramid, Polygon
+    export Mesh
+end
+
+# Load GeometryBasics as a temporary workaround.
+# Ideally, Makie would only depend on the .Geom
+# module above, which encapsulates internal
+# geometries for developers
+using GeometryBasics
+# using .Geom
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 const RGBAf = RGBA{Float32}
@@ -281,11 +314,7 @@ export NoShading, FastShading, MultiLightShading
 export Quaternion, Quaternionf, qrotation
 export RGBAf, RGBf, VecTypes, RealVector
 export Transformation
-export Sphere, Circle
-export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
-export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..)
-export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
 export widths, decompose
 
 # building blocks for series recipes

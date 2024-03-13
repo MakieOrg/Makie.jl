@@ -1,4 +1,4 @@
-using GeometryBasics, Makie
+using Makie, Makie.Geom
 using FileIO, Colors
 using RPRMakie
 RPRMakie.activate!(iterations=200)

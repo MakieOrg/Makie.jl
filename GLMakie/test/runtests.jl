@@ -1,7 +1,7 @@
 using Makie
 using GLMakie, Test
 using FileIO
-using GeometryBasics
+using Makie.Geom
 using GeometryBasics: origin
 using Random
 using ReferenceTests
