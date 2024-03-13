@@ -41,6 +41,7 @@ const IGNORE_KEYS = Set([
     :light_direction, :light_color,
     :cycle, :label, :inspector_clear, :inspector_hover,
     :inspector_label, :axis_cycler
+    # TODO add model here since we generally need to apply patch_model?
 ])
 
 function create_shader(scene::Scene, plot::MeshScatter)
@@ -92,6 +93,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
     uniform_dict[:shading] = map(x -> x != NoShading, plot.shading)
+
+    uniform_dict[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
