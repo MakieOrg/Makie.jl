@@ -99,9 +99,12 @@ end
     fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1])
     p = text!(ax, Point2f(10), text = "test", fontsize = 20)
-    bb = boundingbox(p)
+    bb = Makie.text_boundingbox(p)
     @test bb.origin ≈ Point3f(343.0, 345.0, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)
+    bb = Makie._boundingbox(p)
+    @test bb.origin ≈ Point3f(10, 10, 0)
+    @test bb.widths ≈ Vec3f(0)
 end
 
 @testset "invalid contour bounding box" begin

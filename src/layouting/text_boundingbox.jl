@@ -5,6 +5,7 @@ function boundingbox(plot::Text)
     `boundingbox(plot)` functions. The new functionality is currently available
     as `Makie._boundingbox(plot::Text)`.
     """
+    Base.show_backtrace(stderr, backtrace())
     return text_boundingbox(plot)
 end
 
