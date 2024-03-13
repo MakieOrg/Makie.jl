@@ -23,16 +23,6 @@ function Base.setindex!(conversions::AxisConversions, value, i::Int)
     end
 end
 
-function convert_axis_value(conversions::AxisConversions, values...)
-    return map(enumerate(values)) do (i, value)
-        conversion = conversions[i]
-        if isnothing(conversion)
-            return value
-        end
-        return convert_axis_value(conversion, value)
-    end
-end
-
 function convert_axis_dim(P, conversions::AxisConversions, dim::Int, value::Observable)
     conversion = conversions[dim]
     if !isnothing(conversion)
@@ -48,6 +38,26 @@ function convert_axis_dim(P, conversions::AxisConversions, dim::Int, value::Obse
 end
 
 ## Interface to be overloaded for any AxisConversion type
+function convert_axis_value(conversions::AxisConversions, dim::Int, value)
+    if isnothing(conversions[dim])
+        return value
+    end
+    return convert_axis_value(conversions[dim], value)
+end
+
+function convert_axis_value(conversions::AxisConversions, values...)
+    return map(enumerate(values)) do (i, value)
+        conversion = conversions[i]
+        if isnothing(conversion)
+            return value
+        end
+        return convert_axis_value(conversion, value)
+    end
+end
+
+function convert_axis_value(axislike::AbstractAxis, dim::Int, value)
+    return convert_axis_value(get_conversions(axislike), dim, value)
+end
 
 function convert_axis_value(conversion::AxisConversion, value)
     error("AxisConversion $(typeof(conversion)) not supported for value of type $(typeof(value))")

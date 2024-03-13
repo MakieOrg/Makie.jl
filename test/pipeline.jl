@@ -194,3 +194,13 @@ end
     @test pl_conversion[2] isa Makie.DateTimeConversion
     @test pl[1][] == Point{2,Float32}[[1.0, -5.0], [2.0, -2.5], [3.0, 0.0], [4.0, 2.5], [5.0, 5.0]]
 end
+
+@testset "Categorical ylims!" begin
+    f, ax, p = scatter(1:4, Categorical(["a", "b", "c", "a"]))
+    scatter!(ax, 1:4, Categorical(["b", "d", "a", "c"]))
+    ylims!(ax, "0", "x")
+    Makie.update_state_before_display!(ax)
+    lims = Makie.convert_axis_value.(Ref(ax), 2, ["0", "x"])
+    (xmin, ymin), (xmax, ymax) = extrema(ax.finallimits[])
+    @test [ymin, ymax] == lims
+end

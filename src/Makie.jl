@@ -245,6 +245,7 @@ export xtickrange, ytickrange, ztickrange
 export xticks!, yticks!, zticks!
 export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
+export Categorical
 
 # Observable/Signal related
 export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!

@@ -63,3 +63,10 @@ end
     barplot!(ax, SomeStruct.([:a, :b, :c]), rand(3))
     f
 end
+
+@reference_test "Categorical xticks yticks" begin
+    f, ax, p = scatter(Categorical(["a", "b", "c", "d"]), Categorical(["a", "a", "c", "x"]))
+    ax.xticks = ["a", "d"]
+    ax.yticks = ["a", "b", "d", "x"]
+    f
+end

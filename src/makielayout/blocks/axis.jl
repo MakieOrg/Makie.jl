@@ -1239,13 +1239,14 @@ function Makie.xlims!(ax::Axis, xlims)
     end
 
     mlims = convert_limit_attribute(ax.limits[])
-
+    xlims = map(x-> convert_axis_value(ax, 1, x), xlims)
     ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
     nothing
 end
 
 function Makie.ylims!(ax::Axis, ylims)
+    ylims = map(x -> convert_axis_value(ax, 2, x), ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2] && ylims[1] !== nothing
@@ -1258,7 +1259,6 @@ function Makie.ylims!(ax::Axis, ylims)
     end
 
     mlims = convert_limit_attribute(ax.limits[])
-
     ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
     nothing

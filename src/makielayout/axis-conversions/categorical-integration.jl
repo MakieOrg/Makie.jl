@@ -64,6 +64,12 @@ function convert_axis_value(conversion::CategoricalConversion, value::Categorica
 end
 
 function convert_axis_value(conversion::CategoricalConversion, value)
+    if !haskey(conversion.category_to_int[], value)
+        set = get!(() -> Set(), conversion.sets, Observable(nothing))
+        push!(set, value)
+        recalculate_categories!(conversion)
+        notify(conversion.category_to_int)
+    end
     return conversion.category_to_int[][value]
 end
 
@@ -104,10 +110,15 @@ end
 
 function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, vmin, vmax)
     scale != identity && error("Scale $(scale) not supported for categorical conversion")
-    # TODO, do we want to support leaving out conversion? Right now, every category will become a tick
-    # Maybe another function like filter?
-    numbers = first.(conversion.int_to_category)
-    labels = last.(conversion.int_to_category)
+    labels = if ticks isa Automatic
+        # TODO, do we want to support leaving out conversion? Right now, every category will become a tick
+        # Maybe another function like filter?
+        last.(conversion.int_to_category)
+    else
+        ticks
+    end
+    # TODO filter out ticks greater vmin vmax?
+    numbers = convert_axis_value.(Ref(conversion), labels)
     labels_str = formatter isa Automatic ? string.(labels) : get_ticklabels(formatter, labels)
     return numbers, labels_str
 end
