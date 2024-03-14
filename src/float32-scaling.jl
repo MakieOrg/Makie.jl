@@ -125,8 +125,8 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
     needs_update = any(min_resolved .< c.resolution)
     # Are we outside the range (floatmin, floatmax) that Float32 can resolve?
     needs_update = needs_update ||
-        any(abs.(low) .< f32min .&& abs.(high) .< f32min) ||
-        any(abs.(low) .> f32max .&& abs.(high) .> f32max)
+        any((abs.(low) .< f32min) .& (abs.(high) .< f32min)) ||
+        any((abs.(low) .> f32max) .& (abs.(high) .> f32max))
 
     if needs_update
         # Vec{N}(+1) = scale * maxi + offset
