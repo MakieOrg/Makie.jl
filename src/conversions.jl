@@ -722,7 +722,6 @@ float_type(::Type{Union{Missing, T}}) where {T} = float_type(T)
 float_type(::Type{Union{Nothing, T}}) where {T} = float_type(T)
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
-float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 
 float_convert(x) = convert(float_type(x), x)
 float_convert(x::AbstractArray{Float32}) = x
