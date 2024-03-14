@@ -23,6 +23,17 @@ using Logging
     - stats plots
     =#
 
+    function test_mesh_result(mesh_convert, dim, eltype, assert_normals = false)
+        @test mesh_convert isa Tuple{<: GeometryBasics.Mesh{dim, eltype}}
+        if assert_normals || !isnothing(normals(mesh_convert))
+            @test normals(mesh_convert[1]) isa Vector{Vec3f}
+        end
+        if !isnothing(texturecoordinates(mesh_convert[1]))
+            @test texturecoordinates(mesh_convert[1]) isa Vector{Vec2f}
+        end
+        return
+    end
+
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     str = "test"
     strings = ["test" for _ in 1:10]
@@ -253,18 +264,16 @@ using Logging
                 # Mesh
 
                 @testset "Mesh" begin
-                    @test convert_arguments(Makie.Mesh, xs, ys, zs) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
-                    @test convert_arguments(Makie.Mesh, ps3) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
-                    # not NormalMesh? Many of these do have normals
-                    @test convert_arguments(Makie.Mesh, _mesh) isa Tuple{<: GeometryBasics.Mesh{3, T_out}}
-                    @test convert_arguments(Makie.Mesh, polygon) isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
-                    @test convert_arguments(Makie.Mesh, ps2) isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
-                    @test convert_arguments(Makie.Mesh, geom) isa Tuple{<: GeometryBasics.Mesh{3, T_out}}
-                    @test convert_arguments(Makie.Mesh, ps2, indices) isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
+                    test_mesh_result(convert_arguments(Makie.Mesh, xs, ys, zs), 3, T_out, true)
+                    test_mesh_result(convert_arguments(Makie.Mesh, ps3), 3, T_out, true)
+                    test_mesh_result(convert_arguments(Makie.Mesh, _mesh), 3, T_out, true)
+                    test_mesh_result(convert_arguments(Makie.Mesh, geom), 3, T_out, true)
+                    test_mesh_result(convert_arguments(Makie.Mesh, xs, ys, zs, indices), 3, T_out, true)
+                    test_mesh_result(convert_arguments(Makie.Mesh, ps3, indices), 3, T_out, true)
 
-                    @test convert_arguments(Makie.Mesh, xs, ys, zs, indices) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
-                    @test convert_arguments(Makie.Mesh, ps3, indices) isa Tuple{<: GeometryBasics.NormalMesh{3, T_out}}
-                    # Note: skipping AbstractVector{<: Union{AbstractMesh, AbstractPolygon}} conversion
+                    test_mesh_result(convert_arguments(Makie.Mesh, polygon), 2, T_out)
+                    test_mesh_result(convert_arguments(Makie.Mesh, ps2), 2, T_out)
+                    test_mesh_result(convert_arguments(Makie.Mesh, ps2, indices), 2, T_out)
                 end
 
                 # internally converted
