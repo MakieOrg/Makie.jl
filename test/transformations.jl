@@ -89,7 +89,7 @@ end
 
 @testset "Polar Transform" begin
     function periodic_approx(a::VecTypes{2}, b::VecTypes{2})
-        return all(((a .≈ b) .|| (abs.(a .- b) .≈ 2.0 * pi)))
+        return all(((a .≈ b) .| (abs.(a .- b) .≈ 2.0 * pi)))
     end
     periodic_approx(as, bs) = all(periodic_approx.(as, bs))
 
