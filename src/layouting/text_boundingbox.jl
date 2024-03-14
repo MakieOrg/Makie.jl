@@ -118,6 +118,15 @@ function gl_bboxes(gl::GlyphCollection)
     end
 end
 
+# tested but not used?
+function height_insensitive_boundingbox(ext::GlyphExtent)
+    l = ext.ink_bounding_box.origin[1]
+    w = ext.ink_bounding_box.widths[1]
+    b = ext.descender
+    h = ext.ascender
+    return Rect2d((l, b), (w, h - b))
+end
+
 function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     l = 0.0
     r = ext.hadvance

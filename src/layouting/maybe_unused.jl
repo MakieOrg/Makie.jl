@@ -76,14 +76,6 @@ function project_widths(matrix, vec)
     return pr - zero
 end
 
-function height_insensitive_boundingbox(ext::GlyphExtent)
-    l = ext.ink_bounding_box.origin[1]
-    w = ext.ink_bounding_box.widths[1]
-    b = ext.descender
-    h = ext.ascender
-    return Rect2d((l, b), (w, h - b))
-end
-
 _inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
 
 _is_latex_string(x::AbstractVector{<:LaTeXString}) = true
