@@ -88,6 +88,11 @@ end
 end
 
 @testset "Polar Transform" begin
+    function periodic_approx(a::VecTypes{2}, b::VecTypes{2})
+        return all(((a .≈ b) .|| (abs.(a .- b) .≈ 2.0 * pi)))
+    end
+    periodic_approx(as, bs) = all(periodic_approx.(as, bs))
+
     tf = Makie.Polar()
     @test tf.theta_as_x == true
     @test tf.clip_r == true
@@ -99,43 +104,38 @@ end
     output = [r * Point2(cos(phi), sin(phi)) for (phi, r) in input]
     inv = Point2.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
     @test apply_transform(tf, input) ≈ output
-    # @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(pi/2, 1, 0, false)
     input = Point2.(1:6, [0, pi/3, pi/2, pi, 2pi, 3pi])
     output = [r * Point2(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
     inv = Point2.(1:6, mod.([0, pi/3, pi/2, pi, 2pi, 3pi], Ref(0..2pi)))
     @test apply_transform(tf, input) ≈ output
-    # TODO, Huh!?
-    # @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(pi/2, -1, 0, false)
     output = [r * Point2(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
-    # TODO
-    # @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(pi/2, -1, 0.5, false)
     output = [(r - 0.5) * Point2(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
-    # TODO
-    # @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(0, 1, 0, true)
     input = Point2.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
     output = [r * Point2(cos(phi), sin(phi)) for (phi, r) in input]
     inv = Point2.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
     @test apply_transform(tf, input) ≈ output
-    # TODO
-    # @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(0, 1, 0, true, false)
     input = Point2.([0, pi/3, pi/2, pi, 2pi, 3pi], -6:-1)
     output = [r * Point2(cos(phi), sin(phi)) for (phi, r) in input]
     inv = Point2.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi] .+ pi, (0..2pi,)), 6:-1:1)
     @test apply_transform(tf, input) ≈ output
-    # TODO
-    # @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 end
 
 @testset "Coordinate Systems" begin
