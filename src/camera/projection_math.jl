@@ -240,20 +240,22 @@ end
 
 function to_world(scene::Scene, point::T) where T <: StaticVector
     cam = scene.camera
-    x = to_world(
+    x = _to_world(
         point,
         inv(transformationmatrix(scene)[]) *
         inv(cam.view[]) *
         inv(cam.projection[]),
         T(size(scene))
     )
-    Point2f(x[1], x[2])
+    return inv_f32_convert(scene, Point2f(x[1], x[2]))
 end
 
 w_component(x::Point) = 1.0
 w_component(x::Vec) = 0.0
 
-function to_world(
+@deprecate to_world(p::VecTypes, M::Mat4, res::Vec2) to_world(scene::Scene, p::VecTypes) false
+
+function _to_world(
         p::StaticVector{N, T},
         prj_view_inv::Mat4,
         cam_res::StaticVector
@@ -269,7 +271,7 @@ function to_world(
     ws ./ ws[4]
 end
 
-function to_world(
+function _to_world(
         p::Vec{N, T},
         prj_view_inv::Mat4,
         cam_res::StaticVector

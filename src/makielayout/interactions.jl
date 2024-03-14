@@ -122,7 +122,7 @@ function _chosen_limits(rz, ax)
 end
 
 function _selection_vertices(ax_scene, outer, inner)
-    _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
+    _clamp(p, plow, phigh) = Point2(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
     proj(point) = project(ax_scene, point) .+ minimum(ax_scene.viewport[])
     transf = Makie.transform_func(ax_scene)
     outer = positivize(Makie.apply_transform(transf, outer))
