@@ -10,7 +10,7 @@
     scatterlines!(1:10, 1e9 .+ (1:10))
     linesegments!(2:11, 1e9 .+ (1:10))
     meshscatter!(3:12, 1e9 .+ (1:10))
-    text!(Point2(1, 1e9 + 6), text = "Test", fontsize = 20, align = (:left, :center))
+    text!(Point2(1, 1e9 + 6), text = L"\frac{\sqrt{1+x}}{2}", fontsize = 20, align = (:left, :center))
 
     image!(ax, 0 .. 3, (1e9 + 7) .. (1e9 + 10), [1 2; 3 4])
     heatmap!(ax, 10 .. 11, (1e9 + 2) .. (1e9 + 3), [1 2; 3 4])
