@@ -5,8 +5,6 @@ Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Scene
 You can pass one or multiple intercepts or slopes.
 """
 @recipe ABLines begin
-    xautolimits = false
-    yautolimits = false
     MakieCore.documented_attributes(LineSegments)...
 end
 

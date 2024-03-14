@@ -202,6 +202,9 @@ f32_conversion_obs(plot::AbstractPlot) = f32_conversion_obs(parent_scene(plot))
 f32_conversion(plot::AbstractPlot) = f32_conversion(parent_scene(plot))
 f32_conversion(scene::Scene) = scene.float32convert
 
+patch_model(scene::SceneLike, M::Mat4d) = patch_model(f32_conversion(scene), M)
+
+
 # TODO consider mirroring f32convert to plot attributes
 function apply_transform_and_f32_conversion(
         scene::Scene, plot::AbstractPlot, data,

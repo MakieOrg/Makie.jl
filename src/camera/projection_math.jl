@@ -238,14 +238,14 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
-function to_world(scene::Scene, point::T) where T <: StaticVector
-    cam = scene.camera
+function to_world(scene::SceneLike, point::T) where T <: StaticVector
+    cam = camera(scene)
     x = _to_world(
         point,
         inv(transformationmatrix(scene)[]) *
         inv(cam.view[]) *
         inv(cam.projection[]),
-        T(size(scene))
+        T(cam.resolution)
     )
     return inv_f32_convert(scene, Point2f(x[1], x[2]))
 end
