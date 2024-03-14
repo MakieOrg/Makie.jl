@@ -32,20 +32,22 @@ they are broadcast to calculate the final line segments.
     cycle = [:color]
 end
 
-function projview_to_2d_limits(pv)
-    xmin, xmax = minmax((((-1, 1) .- pv[1, 4]) ./ pv[1, 1])...)
-    ymin, ymax = minmax((((-1, 1) .- pv[2, 4]) ./ pv[2, 2])...)
-    origin = Vec2f(xmin, ymin)
-    return Rect2f(origin, Vec2f(xmax, ymax) - origin)
+function projview_to_2d_limits(plot::AbstractPlot)
+    scene = parent_scene(plot)
+    lift(plot, f32_conversion_obs(scene), scene.camera.projectionview) do f32c, pv
+        xmin, xmax = minmax((((-1, 1) .- pv[1, 4]) ./ pv[1, 1])...)
+        ymin, ymax = minmax((((-1, 1) .- pv[2, 4]) ./ pv[2, 2])...)
+        origin = Vec2d(xmin, ymin)
+        return inv_f32_convert(f32c, Rect2d(origin, Vec2d(xmax, ymax) - origin))
+    end
 end
 
 function Makie.plot!(p::Union{HLines, VLines})
     scene = parent_scene(p)
     transf = transform_func_obs(scene)
+    limits = projview_to_2d_limits(p)
 
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
-
-    points = Observable(Point2f[])
+    points = Observable(Point2d[])
 
     mi = p isa HLines ? p.xmin : p.ymin
     ma = p isa HLines ? p.xmax : p.ymax
@@ -59,14 +61,14 @@ function Makie.plot!(p::Union{HLines, VLines})
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
                 val = _apply_y_transform(transf, val)
-                push!(points[], Point2f(x_mi, val))
-                push!(points[], Point2f(x_ma, val))
+                push!(points[], Point2d(x_mi, val))
+                push!(points[], Point2d(x_ma, val))
             elseif p isa VLines
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
                 val = _apply_x_transform(transf, val)
-                push!(points[], Point2f(val, y_mi))
-                push!(points[], Point2f(val, y_ma))
+                push!(points[], Point2d(val, y_mi))
+                push!(points[], Point2d(val, y_ma))
             end
         end
         notify(points)
@@ -83,21 +85,13 @@ function Makie.plot!(p::Union{HLines, VLines})
 end
 
 function data_limits(p::HLines)
-    scene = parent_scene(p)
-    limits = projview_to_2d_limits(scene.camera.projectionview[])
-    itf = inverse_transform(p.transformation.transform_func[])
-    xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
     ymin, ymax = extrema(p[1][])
-    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(NaN, ymin, 0), Vec3d(NaN, ymax - ymin, 0))
 end
 
 function data_limits(p::VLines)
-    scene = parent_scene(p)
-    limits = projview_to_2d_limits(scene.camera.projectionview[])
-    itf = inverse_transform(p.transformation.transform_func[])
     xmin, xmax = extrema(p[1][])
-    ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
-    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(xmin, NaN, 0), Vec3d(xmax - xmin, NaN, 0))
 end
 
 boundingbox(p::Union{HLines, VLines}) = transform_bbox(p, data_limits(p))

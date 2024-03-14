@@ -705,8 +705,8 @@ function elconvert(::Type{T}, x::AbstractArray{<: Union{Missing, <:Real}}) where
 end
 
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
-float_type(a::AbstractArray, rest::AbstractArray...) = float_type(float_type(a), map(float_type, rest)...)
-float_type(a::AbstractPolygon, rest::AbstractPolygon...) = float_type(float_type(a), map(float_type, rest)...)
+float_type(a::AbstractArray, rest...) = float_type(float_type(a), map(float_type, rest)...)
+float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::Type, rest::Type...) = float_type(promote_type(a, rest...))
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
@@ -721,6 +721,7 @@ float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(flo
 float_type(::Type{Union{Missing, T}}) where {T} = float_type(T)
 float_type(::Type{Union{Nothing, T}}) where {T} = float_type(T)
 float_type(::AbstractArray{T}) where {T} = float_type(T)
+float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 
 float_convert(x) = convert(float_type(x), x)

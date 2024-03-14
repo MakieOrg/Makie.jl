@@ -49,6 +49,13 @@ function inv_f32_scale(ls::LinearScaling, v::VecTypes{3})
     return Vec3d(v) ./ ls.scale
 end
 
+@inline function inv_f32_convert(ls::LinearScaling, r::Rect{N}) where {N}
+    ils = inv(ls)
+    mini = ils(Vec{N, Float64}(minimum(r)))
+    maxi = ils(Vec{N, Float64}(maximum(r)))
+    return Rect{N, Float64}(mini, maxi - mini)
+end
+
 # For CairoMakie
 function f32_convert_matrix(ls::LinearScaling)
     scale = to_ndim(Vec3d, ls.scale, 1)
@@ -165,6 +172,7 @@ end
 @inline inv_f32_convert(c::Float32Convert, x::Real) = inv(c.scaling[])(Float64(x))
 @inline inv_f32_convert(c::Float32Convert, x::VecTypes{N}) where N = inv(c.scaling[])(to_ndim(Point{N, Float64}, x, 0))
 @inline inv_f32_convert(c::Float32Convert, x::AbstractArray) = inv_f32_convert.((c,), x)
+@inline inv_f32_convert(ls::Float32Convert, r::Rect) = inv_f32_convert(ls.scaling[], r)
 @inline inv_f32_convert(x::SceneLike, args...) = inv_f32_convert(f32_conversion(x), args...)
 
 @inline inv_f32_scale(c::Nothing, v::VecTypes{3}) = Vec3d(v)

@@ -144,12 +144,12 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
     end
 
     linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
-        output = sizehint!(Point2f[], 2length(x_y_low_high))
+        output = sizehint!(Point2d[], 2length(x_y_low_high))
         for (x, y, l, h) in x_y_low_high
             if in_y
-                push!(output, Point2f(x, y - l), Point2f(x, y + h))
+                push!(output, Point2d(x, y - l), Point2d(x, y + h))
             else
-                push!(output, Point2f(x - l, y), Point2f(x + h, y))
+                push!(output, Point2d(x - l, y), Point2d(x + h, y))
             end
         end
         return output
@@ -174,12 +174,12 @@ function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTy
     end
 
     linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
-        output = sizehint!(Point2f[], 2length(vlh))
+        output = sizehint!(Point2d[], 2length(vlh))
         for (v, l, h) in vlh
             if in_y
-                push!(output, Point2f(v, l), Point2f(v, h))
+                push!(output, Point2d(v, l), Point2d(v, h))
             else
-                push!(output, Point2f(l, v), Point2f(h, v))
+                push!(output, Point2d(l, v), Point2d(h, v))
             end
         end
         return output

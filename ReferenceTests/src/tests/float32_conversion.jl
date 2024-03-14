@@ -69,3 +69,19 @@ end
 
     fig
 end
+
+@reference_test "Float64 h/vspan + h/vlines + error/rangebars" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    hspan!(ax, [1e9 + 4.5], [1e9 + 5.5], color = :yellow)
+    vspan!(ax, [1e9 + 4.5], [1e9 + 5.5], color = :yellow)
+
+    hlines!(ax, [1e9 + 4.5, 1e9 + 5.5], color = :red, linewidth = 4)
+    vlines!(ax, [1e9 + 4.5, 1e9 + 5.5], color = :red, linewidth = 4)
+
+    errorbars!(ax, 1e9 .+ (1:9), 1e9 .+ (1:9), 0.3, whiskerwidth = 10, direction = :x)
+    rangebars!(ax, 1e9 .+ (1:9), 1e9 .+ (0.7:8.7), 1e9 .+ (1.3:9.3), whiskerwidth = 10)
+
+    fig
+end
