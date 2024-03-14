@@ -639,7 +639,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     end
 
     tlims = if ax isa Axis
-        BBox(xlims..., ylims...)
+        Rect2d(xlims[1], ylims[1], xlims[2] - xlims[1], ylims[2] - ylims[1])
     elseif ax isa Axis3
         Rect3f(
             Vec3f(xlims[1], ylims[1], zlims[1]),
@@ -1413,7 +1413,7 @@ defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
     xl = Float64.(defaultlimits(userlimits[1], xscale))
     yl = Float64.(defaultlimits(userlimits[2], yscale))
-    BBox(xl..., yl...)
+    return Rect2d(xl[1], yl[1], xl[2] - xl[1], yl[2] - yl[1])
 end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)
