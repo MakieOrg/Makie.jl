@@ -52,7 +52,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
     end
 
     per_instance[:offset] = apply_transform_and_f32_conversion(scene, plot, plot[1])
-    # lift(apply_transform, plot, transform_func_obs(plot), plot[1], plot.space)
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -222,7 +221,6 @@ function create_shader(scene::Scene, plot::Scatter)
     space = get(attributes, :space, :data)
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
     attributes[:pos] = apply_transform_and_f32_conversion(scene, plot, plot[1], space)
-    # lift(apply_transform, plot, transform_func_obs(plot),  plot[1], space)
 
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)

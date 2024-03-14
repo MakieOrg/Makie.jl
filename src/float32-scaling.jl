@@ -1,34 +1,12 @@
-#=
-TODO: remove this and add some cleaner documentation
-
-# Notes
-Conversion chain:
-
-| from        | using             | to           | change in data                   |
-| ----------- | ----------------- | ------------ | -------------------------------- |
-| input       | convert_arguments | converted    | structure normalization          |
-| converted   | transform_func    | transformed  | apply generic transformation     |
-| transformed | float32scaling    | f32scaled    | Float32 convert + scaling        |
-| f32scaled   | model             | world space  | placement in world               |
-| world space | view              | view space   | to camera coordinate system      |
-| view space  | projection        | clip space   | to -1..1 space (+ projection)    |
-| clip space  | (viewport)        | screen space | to pixel units (OpenGL internal) |
-
-- model, view, projection should be FLoat32 on GPU, so:
-    - input, converted, transformed can be whatever type
-    - f32scaled needs to be Float32
-    - float32scaling needs to make f32scaled, model, view, projection float save
-    - this requires translations and scaling to be extracted from at least projectionview
-- when float32scaling applies convert_arguments should have been handled, so
-  splitting dimensions is extra work
-- -1..1 = -1e0 .. 1e0 is equally far from -floatmax and +floatmax, and also
-  exponentially the same distance from floatmin and floatmax, so it should be
-  a good target range to avoid frequent updates
-=#
-
 ################################################################################
 ### LinearScaling
 ################################################################################
+
+# For reference:
+# struct LinearScaling
+#     scale::Vec{3, Float64}
+#     offset::Vec{3, Float64}
+# end
 
 # muladd is no better than a * b + c etc
 # Don't apply Float32 here so we can still work with full precision by calling these directly
@@ -95,10 +73,25 @@ end
 ### Float32Convert
 ################################################################################
 
+# For reference:
+# struct Float32Convert
+#     scaling::Observable{LinearScaling}
+#     resolution::Float32
+# end
 
-function Float32Convert()
+"""
+    Float32Convert([resolution = 1e4])
+
+Creates a Float32Convert which acts as an additional conversion step when
+attached to a `scene` as `scene.float32convert`. The optional `resolution`
+controls the minimum number of individual values that the conversion keeps
+available. I.e. the conversion ensures that
+`(max - min) > resolution * max(eps(min), eps(max))` whenever `update_limits!`
+is called. Note that resolution must be smaller than `1 / eps(Float32)`.
+"""
+function Float32Convert(resolution = 1e4)
     scaling = LinearScaling(Vec{3, Float64}(1.0), Vec{3, Float64}(0.0))
-    return Float32Convert(Observable(scaling), 1e4)
+    return Float32Convert(Observable(scaling), resolution)
 end
 
 # transformed space limits
@@ -108,6 +101,19 @@ function update_limits!(c::Float32Convert, lims::Rect)
     maxi = to_ndim(Vec3d, maximum(lims), +1)
     return update_limits!(c, mini, maxi)
 end
+
+"""
+    update_limits!(c::Union{Float32Convert, Nothing}, lims::Rect)
+    update_limits!(c::Union{Float32Convert, Nothing}, min::VecTypes{3, Float64}, max::VecTypes{3, Float64})
+
+This function is used to report a limit update to `Float32Convert`. If the
+conversion applied to the given limits results in a range not representable
+with Float32 to high enough precision, the conversion will update. After the
+update update the converted range will be -1 .. 1.
+
+The function returns true if an update has occured. If `Nothing` is passed, the
+function always returns false.
+"""
 function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::VecTypes{3, Float64})
     linscale = c.scaling[]
 

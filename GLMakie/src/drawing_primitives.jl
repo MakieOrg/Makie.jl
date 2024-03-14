@@ -153,7 +153,6 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
 
     # for lighting
     get!(gl_attributes, :world_normalmatrix) do
-        # NOTE: not sure if this should ignore float32converts
         return lift(plot, gl_attributes[:model]) do m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(m[i, i])))
@@ -162,7 +161,6 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
 
     # for SSAO
     get!(gl_attributes, :view_normalmatrix) do
-        # NOTE: not sure if this should ignore float32converts
         return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(v[i, i] * m[i, i])))
@@ -497,7 +495,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
     end
 end
 
-# TODO: Float32 convert
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     return cached_robj!(screen, scene, plot) do gl_attributes
@@ -840,7 +837,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         end
 
         # color attribute adjustments
-        # TODO:
         pop!(gl_attributes, :lowclip, nothing)
         pop!(gl_attributes, :highclip, nothing)
         # Invalid:

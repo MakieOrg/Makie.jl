@@ -909,11 +909,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
-    # TODO: decompose to type used in mesh
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, decompose(Point2d, mesh), model)
+    vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]

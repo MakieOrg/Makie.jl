@@ -92,8 +92,6 @@ end
 ################################################################################
 
 
-# TODO should Float32 conversions apply here?
-
 @inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
 
 function iterate_transformed(plot, points::AbstractArray{<: VecTypes})
