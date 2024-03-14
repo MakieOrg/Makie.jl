@@ -16,9 +16,9 @@ function Makie.plot!(p::ABLines)
 
     is_identity_transform(transf) || throw(ArgumentError("ABLines is only defined for the identity transform, not $(typeof(transf))."))
 
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
+    limits = projview_to_2d_limits(p)
 
-    points = Observable(Point2f[])
+    points = Observable(Point2d[])
 
     onany(p, limits, p[1], p[2]) do lims, intercept, slope
         empty!(points[])
@@ -26,8 +26,8 @@ function Makie.plot!(p::ABLines)
         broadcast_foreach(intercept, slope) do intercept, slope
             f(x) = intercept + slope * x
             xmin, xmax = first.(extrema(lims))
-            push!(points[], Point2f(xmin, f(xmin)))
-            push!(points[], Point2f(xmax, f(xmax)))
+            push!(points[], Point2d(xmin, f(xmin)))
+            push!(points[], Point2d(xmax, f(xmax)))
         end
         notify(points)
     end
@@ -37,6 +37,9 @@ function Makie.plot!(p::ABLines)
     linesegments!(p, points; p.attributes...)
     p
 end
+
+data_limits(::ABLines) = Rect3f(Point3f(NaN), Vec3f(NaN))
+boundingbox(::ABLines) = Rect3f(Point3f(NaN), Vec3f(NaN))
 
 function abline!(args...; kwargs...)
     Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead." , :abline!, force = true)
