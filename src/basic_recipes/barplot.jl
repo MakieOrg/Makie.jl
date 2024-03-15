@@ -91,7 +91,7 @@ function bar_rectangle(x, y, width, fillto, in_y_direction)
     ymin = min(fillto, y)
     ymax = max(fillto, y)
     w = abs(width)
-    rect = Rectf(x - (w / 2f0), ymin, w, ymax - ymin)
+    rect = Rectd(x - (w / 2f0), ymin, w, ymax - ymin)
     return in_y_direction ? rect : flip(rect)
 end
 
@@ -173,8 +173,8 @@ end
 
 function text_attributes(values, in_y_direction, flip_labels_at, color_over_background, color_over_bar,
                          label_offset, label_rotation, label_align)
-    aligns = Vec2f[]
-    offsets = Vec2f[]
+    aligns = Vec2d[]
+    offsets = Vec2d[]
     text_colors = RGBAf[]
     swap(x, y) = in_y_direction ? (x, y) : (y, x)
     geti(x::AbstractArray, i) = x[i]
@@ -225,8 +225,10 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background,
                                          color_over_bar, label_offset, label_rotation, label_align)
             label_pos = map(xpositions, ypositions, bar_labels) do x, y, l
-                return (string(l), in_y_direction ? Point2f(x, y) : Point2f(y, x))
+                return (string(l), in_y_direction ? Point2d(x, y) : Point2d(y, x))
             end
+            @info xpositions, ypositions
+            @info label_pos
             return (label_pos, attributes...)
         else
             error("Labels and bars need to have same length. Found: $(length(xpositions)) bars with these labels: $(bar_labels)")
@@ -241,9 +243,9 @@ function Makie.plot!(p::BarPlot)
     if !(eltype(bar_points[]) <: Point2)
         error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`.")
     end
-    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2f}[])
-    label_aligns = Observable(Vec2f[])
-    label_offsets = Observable(Vec2f[])
+    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2d}[])
+    label_aligns = Observable(Vec2d[])
+    label_offsets = Observable(Vec2d[])
     label_colors = Observable(RGBAf[])
     function calculate_bars(xy, fillto, offset, transformation, width, dodge, n_dodge, gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,

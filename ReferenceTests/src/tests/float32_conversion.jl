@@ -87,3 +87,14 @@ end
 
     fig
 end
+
+@reference_test "Float64 hist" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    ylims!(ax, -1, 23)
+    p = hist!(
+        ax, 1e9 .+ cos.(range(0, pi, length = 100)),
+        strokewidth = 2, bins = 10, bar_labels = :y
+    )
+    fig
+end
