@@ -8,24 +8,17 @@ macro ctime(x)
 end
 t_using = @ctime @eval using $Package
 
-function get_colorbuffer(fig)
-    # We need to handle old versions of Makie
-    if isdefined(Makie, :CURRENT_BACKEND) # new version after display refactor
-        return Makie.colorbuffer(fig) # easy :)
-    else
-        Makie.inline!(false)
-        screen = display(fig; visible=false)
-        return Makie.colorbuffer(screen)
-    end
-end
-
 if Package === :WGLMakie
     import Electron
-    WGLMakie.JSServe.use_electron_display()
+    # Backwards compatibility for master
+    Bonito = isdefined(WGLMakie, :Bonito) ? WGLMakie.Bonito : WGLMakie.JSServe
+    Bonito.use_electron_display()
 end
 
+set_theme!(size=(800, 600))
+
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-display_time = @ctime get_colorbuffer(fig)
+display_time = @ctime colorbuffer(fig; px_per_unit=1)
 
 using BenchmarkTools
 using BenchmarkTools.JSON
@@ -39,7 +32,7 @@ old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 push!.(old[1:3], [t_using, create_time, display_time])
 
 b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-b2 = @benchmark get_colorbuffer(fig) setup=(fig=scatter(1:4))
+b2 = @benchmark colorbuffer(fig; px_per_unit=1)
 
 using Statistics
 

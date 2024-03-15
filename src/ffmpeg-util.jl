@@ -17,18 +17,21 @@
     higher numbers giving lower quality and smaller file sizes (higher compression). The
     minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
-    `profile = high444`.
+    `profile = "high444"`.
     - For `webm`, `63` is the maximum.
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
 you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
+applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+- `loop = 0`: Number of times the video is repeated, for a `gif`. Defaults to `0`, which
+means infinite looping. A value of `-1` turns off looping, and a value of `n > 0` and above
+means `n` repetitions (i.e. the video is played `n+1` times).
 
     !!! warning
     `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
     is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
-    valid when `format` is `"mp4"` or `"webm"`.
+    valid when `format` is `"mp4"` or `"webm"`, and `loop` is only valid when `format` is `"gif"`.
 """
 struct VideoStreamOptions
     format::String
@@ -36,14 +39,20 @@ struct VideoStreamOptions
     compression::Union{Nothing,Int}
     profile::Union{Nothing,String}
     pixel_format::Union{Nothing,String}
+    loop::Union{Nothing,Int}
 
     loglevel::String
     input::String
     rawvideo::Bool
 
     function VideoStreamOptions(
-            format::AbstractString, framerate::Integer, compression, profile,
-            pixel_format, loglevel::String, input::String, rawvideo::Bool=true)
+            format::AbstractString, framerate::Real, compression, profile,
+            pixel_format, loop, loglevel::String, input::String, rawvideo::Bool=true)
+
+        if !isa(framerate, Integer)
+            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
+            framerate = round(Int, framerate)
+        end
 
         if format == "mp4"
             (profile === nothing) && (profile = "high422")
@@ -54,10 +63,15 @@ struct VideoStreamOptions
             (compression === nothing) && (compression = 20)
         end
 
+        if format == "gif"
+            (loop === nothing) && (loop = 0)
+        end
+
         # items are name, value, allowed_formats
         allowed_kwargs = [("compression", compression, ("mp4", "webm")),
                           ("profile", profile, ("mp4",)),
-                          ("pixel_format", pixel_format, ("mp4",))]
+                          ("pixel_format", pixel_format, ("mp4",)),
+                          ("loop", loop, ("gif",))]
 
         for (name, value, allowed_formats) in allowed_kwargs
             if !(format in allowed_formats) && value !== nothing
@@ -87,12 +101,12 @@ struct VideoStreamOptions
         if !(loglevel in loglevels)
             error("loglevel needs to be one of $(loglevels)")
         end
-        return new(format, framerate, compression, profile, pixel_format, loglevel, input, rawvideo)
+        return new(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
     end
 end
 
-function VideoStreamOptions(; format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet", input="pipe:0", rawvideo=true)
-    return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loglevel, input, rawvideo)
+function VideoStreamOptions(; format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing, loglevel="quiet", input="pipe:0", rawvideo=true)
+    return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
 end
 
 function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0)
@@ -112,11 +126,11 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
     # -pix_fmt: (mp4 only) the output pixel format
     # -profile:v: (mp4 only) the output video profile
     # -an: no audio in output
-    (format, framerate, compression, profile, pixel_format) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format)
+    # -loop: (gif only) number of times to loop
+    (format, framerate, compression, profile, pixel_format, loop) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format, vso.loop)
 
     cpu_cores = length(Sys.cpu_info())
     ffmpeg_prefix = `
-        $(FFMPEG.ffmpeg)
         -y
         -loglevel $(vso.loglevel)
         -threads $(cpu_cores)`
@@ -155,9 +169,9 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
         # from https://superuser.com/a/556031
         # avoids creating a PNG file of the palette
         if vso.rawvideo
-            `-vf "vflip,fps=$(framerate),scale=$(xdim):-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"`
+            `-vf "vflip,fps=$(framerate),scale=$(xdim):-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop $(loop)`
         else
-            `-vf "fps=$(framerate),scale=$(xdim):-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"`
+            `-vf "fps=$(framerate),scale=$(xdim):-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop $(loop)`
         end
     else
         error("Video type $(format) not known")
@@ -178,8 +192,8 @@ end
 
 """
     VideoStream(fig::FigureLike;
-            format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet",
-            visible=false, connect=false, backend=current_backend(),
+            format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
+            loglevel="quiet", visible=false, connect=false, backend=current_backend(),
             screen_config...)
 
 Returns a `VideoStream` which can pipe new frames into the ffmpeg process with few allocations via [`recordframe!(stream)`](@ref).
@@ -199,22 +213,25 @@ $(Base.doc(VideoStreamOptions))
 * `screen_config...`: See `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options that can be passed and forwarded to the backend.
 """
 function VideoStream(fig::FigureLike;
-        format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet",
-        visible=false, connect=false, backend=current_backend(),
+        format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
+        loglevel="quiet", visible=false, update=true, backend=current_backend(),
         screen_config...)
 
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
-    update_state_before_display!(fig)
-    screen = getscreen(backend, scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
+    update && update_state_before_display!(fig)
+    config = Dict{Symbol,Any}(screen_config)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    screen = getscreen(backend, scene, config, GLNative)
     _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
-    vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loglevel, "pipe:0", true)
+    vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
-    process = @ffmpeg_env open(`$cmd $path`, "w")
+    process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
     return VideoStream(process.in, process, screen, buffer, abspath(path), vso)
 end
 
@@ -262,10 +279,10 @@ function convert_video(input_path, output_path; video_options...)
     format = lstrip(typ, '.')
     vso = VideoStreamOptions(; format=format, input=input_path, rawvideo=false, video_options...)
     cmd = to_ffmpeg_cmd(vso)
-    @ffmpeg_env run(`$cmd $output_path`)
+    return run(`$(FFMPEG_jll.ffmpeg()) $cmd $output_path`)
 end
 
 function extract_frames(video, frame_folder; loglevel="quiet")
     path = joinpath(frame_folder, "frame%04d.png")
-    FFMPEG.ffmpeg_exe(`-loglevel $(loglevel) -i $video -y $path`)
+    run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end

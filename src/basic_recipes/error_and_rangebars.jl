@@ -25,9 +25,11 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         inspectable = theme(scene, :inspectable),
-        transparency = false
+        transparency = false,
+        cycle = [:color]
     )
 end
 
@@ -53,9 +55,11 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         inspectable = theme(scene, :inspectable),
-        transparency = false
+        transparency = false,
+        cycle = [:color]
     )
 end
 
@@ -130,7 +134,7 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
 
     x_y_low_high = plot[1]
 
-    is_in_y_direction = lift(plot.direction) do dir
+    is_in_y_direction = lift(plot, plot.direction) do dir
         if dir === :y
             true
         elseif dir === :x
@@ -140,13 +144,16 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
         end
     end
 
-    linesegpairs = lift(x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
-
-        map(x_y_low_high) do (x, y, l, h)
-            in_y ?
-                (Point2f(x, y - l), Point2f(x, y + h)) :
-                (Point2f(x - l, y), Point2f(x + h, y))
+    linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
+        output = sizehint!(Point2f[], 2length(x_y_low_high))
+        for (x, y, l, h) in x_y_low_high
+            if in_y
+                push!(output, Point2f(x, y - l), Point2f(x, y + h))
+            else
+                push!(output, Point2f(x - l, y), Point2f(x + h, y))
+            end
         end
+        return output
     end
 
     _plot_bars!(plot, linesegpairs, is_in_y_direction)
@@ -157,23 +164,26 @@ function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTy
 
     val_low_high = plot[1]
 
-    is_in_y_direction = lift(plot.direction) do dir
+    is_in_y_direction = lift(plot, plot.direction) do dir
         if dir === :y
-            true
+            return true
         elseif dir === :x
-            false
+            return false
         else
             error("Invalid direction $dir. Options are :x and :y.")
         end
     end
 
-    linesegpairs = lift(val_low_high, is_in_y_direction) do vlh, in_y
-
-        map(vlh) do (v, l, h)
-            in_y ?
-                (Point2f(v, l), Point2f(v, h)) :
-                (Point2f(l, v), Point2f(h, v))
+    linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
+        output = sizehint!(Point2f[], 2length(vlh))
+        for (v, l, h) in vlh
+            if in_y
+                push!(output, Point2f(v, l), Point2f(v, h))
+            else
+                push!(output, Point2f(l, v), Point2f(h, v))
+            end
         end
+        return output
     end
 
     _plot_bars!(plot, linesegpairs, is_in_y_direction)
@@ -185,26 +195,24 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    @extract plot (whiskerwidth, color, linewidth, visible, colormap, colorrange, inspectable, transparency)
+    @extract plot (whiskerwidth, color, linewidth, visible, colormap, colorscale, colorrange, inspectable, transparency)
 
     scene = parent_scene(plot)
 
-    whiskers = lift(linesegpairs, scene.camera.projectionview,
-        scene.camera.pixel_space, whiskerwidth) do pairs, _, _, whiskerwidth
+    whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
+        scene.viewport, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
 
-        endpoints = [p for pair in pairs for p in pair]
-
-        screenendpoints = scene_to_screen(endpoints, scene)
+        screenendpoints = plot_to_screen(plot, endpoints)
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
             (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
-             sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
+            sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
         end
 
-        screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
+        return [p for pair in screenendpoints_shifted_pairs for p in pair]
     end
     whiskercolors = Observable{RGBColors}()
-    map!(whiskercolors, color) do color
+    map!(plot, whiskercolors, color) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
@@ -214,7 +222,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         end
     end
     whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
-    map!(whiskerlinewidths, linewidth) do linewidth
+    map!(plot, whiskerlinewidths, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
             return repeat(convert(Vector{Float32}, linewidth), inner = 2)::Vector{Float32}
@@ -225,45 +233,60 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     linesegments!(
         plot, linesegpairs, color = color, linewidth = linewidth, visible = visible,
-        colormap = colormap, colorrange = colorrange, inspectable = inspectable,
+        colormap = colormap, colorscale = colorscale, colorrange = colorrange, inspectable = inspectable,
         transparency = transparency
     )
     linesegments!(
         plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
-        visible = visible, colormap = colormap, colorrange = colorrange,
-        inspectable = inspectable, transparency = transparency
+        visible = visible, colormap = colormap, colorscale = colorscale, colorrange = colorrange,
+        inspectable = inspectable, transparency = transparency, space = :pixel,
+        model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
     )
     plot
 end
 
-function scene_to_screen(pts, scene)
-    p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
-    p1m1 = Ref(scene.camera.projectionview[]) .* p4
-    projected = Ref(inv(scene.camera.pixel_space[])) .* p1m1
-    [Point2.(p[Vec(1, 2)]...) for p in projected]
+function plot_to_screen(plot, points::AbstractVector)
+    cam = parent_scene(plot).camera
+    space = to_value(get(plot, :space, :data))
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
+
+    return map(points) do p
+        transformed = apply_transform(transform_func(plot), p, space)
+        p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+        return Point2f(p4d) / p4d[4]
+    end
 end
 
-function screen_to_scene(pts, scene)
-    p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
-    p1m1 = Ref(scene.camera.pixel_space[]) .* p4
-    projected = Ref(inv(scene.camera.projectionview[])) .* p1m1
-    [Point2.(p[Vec(1, 2)]...) for p in projected]
+function plot_to_screen(plot, p::VecTypes)
+    cam = parent_scene(plot).camera
+    space = to_value(get(plot, :space, :data))
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
+    transformed = apply_transform(transform_func(plot), p, space)
+    p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+    return Point2f(p4d) / p4d[4]
 end
 
-function scene_to_screen(p::T, scene) where T <: Point
-    p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-    p1m1 = scene.camera.projectionview[] * p4
-    projected = inv(scene.camera.pixel_space[]) * p1m1
-    T(projected[Vec(1, 2)]...)
+function screen_to_plot(plot, points::AbstractVector)
+    cam = parent_scene(plot).camera
+    space = to_value(get(plot, :space, :data))
+    mvps = inv(transformationmatrix(plot)[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    itf = inverse_transform(transform_func(plot))
+
+    return map(points) do p
+        pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
+        p3 = Point3f(pre_transform) / pre_transform[4]
+        return apply_transform(itf, p3, space)
+    end
 end
 
-function screen_to_scene(p::T, scene) where T <: Point
-    p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-    p1m1 = scene.camera.pixel_space[] * p4
-    projected = inv(scene.camera.projectionview[]) * p1m1
-    T(projected[Vec(1, 2)]...)
+function screen_to_plot(plot, p::VecTypes)
+    cam = parent_scene(plot).camera
+    space = to_value(get(plot, :space, :data))
+    mvps = inv(transformationmatrix(plot)[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
+    p3 = Point3f(pre_transform) / pre_transform[4]
+    return apply_transform(itf, p3, space)
 end
-
 
 # ignore whiskers when determining data limits
 function data_limits(bars::Union{Errorbars, Rangebars})

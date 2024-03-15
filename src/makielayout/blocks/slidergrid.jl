@@ -7,7 +7,7 @@ function block_docs(::Type{SliderGrid})
     and `label`, and optionally a `format` for the value label. Beyond that, you can set
     any keyword that `Slider` takes, such as `startvalue`.
 
-    The `format` keyword can be a `String` with Formatting.jl style, such as "{:.2f}Hz", or
+    The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
     a function.
 
     ## Constructors
@@ -35,6 +35,13 @@ function block_docs(::Type{SliderGrid})
     end
     ```
     """
+end
+
+function free(sg::SliderGrid)
+    foreach(delete!, sg.sliders)
+    foreach(delete!, sg.valuelabels)
+    foreach(delete!, sg.labels)
+    return
 end
 
 function initialize_block!(sg::SliderGrid, nts::NamedTuple...)

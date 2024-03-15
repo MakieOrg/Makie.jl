@@ -32,6 +32,7 @@ $(ATTRIBUTES)
         levels = 10,
         mode = :normal,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         extendlow = nothing,
         extendhigh = nothing,
         # TODO, Isoband doesn't seem to support nans?
@@ -47,9 +48,7 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-function _get_isoband_levels(levels::Int, mi, ma)
-    edges = Float32.(LinRange(mi, ma, levels+1))
-end
+_get_isoband_levels(levels::Int, mi, ma) = Float32.(LinRange(mi, ma, levels+1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
@@ -57,42 +56,40 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges
 end
 
-conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
+conversion_trait(::Type{<:Contourf}) = VertexGrid()
 
 function _get_isoband_levels(::Val{:normal}, levels, values)
-    _get_isoband_levels(levels, extrema_nan(values)...)
+    return _get_isoband_levels(levels, extrema_nan(values)...)
 end
 
 function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     mi, ma = extrema_nan(values)
-    Float32.(levels .* (ma - mi) .+ mi)
+    return Float32.(levels .* (ma - mi) .+ mi)
 end
-
 
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
-    c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
+    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
         _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c._computed_levels) do levels
+    colorrange = lift(c, c._computed_levels) do levels
         minimum(levels), maximum(levels)
     end
-    computed_colormap = lift(compute_contourf_colormap, c._computed_levels, c.colormap, c.extendlow,
+    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
-    map!(compute_lowcolor, lowcolor, c.extendlow, c.colormap)
+    map!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, lowcolor)
+    is_extended_low = lift(!isnothing, c, lowcolor)
 
     highcolor = Observable{RGBAf}()
-    map!(compute_highcolor, highcolor, c.extendhigh, c.colormap)
+    map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, highcolor)
-
+    is_extended_high = lift(!isnothing, c, highcolor)
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
     polys = Observable(PolyType[])
@@ -129,7 +126,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
+    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
     # onany doesn't get called without a push, so we call
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
@@ -144,7 +141,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = false,
+        shading = NoShading,
         inspectable = c.inspectable,
         transparency = c.transparency
     )
@@ -160,9 +157,7 @@ inner polygons which are holes in the outer polygon. It is possible that one
 group has multiple outer polygons with multiple holes each.
 """
 function _group_polys(points, ids)
-
     polys = [points[ids .== i] for i in unique(ids)]
-    npolys = length(polys)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 
