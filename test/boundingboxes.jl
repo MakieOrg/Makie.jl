@@ -1,6 +1,7 @@
 function Base.isapprox(r1::Rect{D}, r2::Rect{D}; kwargs...) where D
-    return isapprox(minimum(r1), minimum(r2); kwargs...) &&
-            isapprox(widths(r1), widths(r2); kwargs...)
+    left  = vcat(minimum(r1), widths(r1))
+    right = vcat(minimum(r2), widths(r2))
+    return all((isnan.(left) .& isnan.(right)) .| (left .≈ right))
 end
 
 @testset "data_limits(plot)" begin
@@ -23,15 +24,11 @@ end
     p2 = hlines!(ax, [0.5])
     p3 = vspan!(ax, [0.25], [0.75])
     p4 = hspan!(ax, [0.25], [0.75])
-    Makie.reset_limits!(ax)
 
-    lims = ax.finallimits[]
-    x, y = minimum(lims); w, h = widths(lims)
-
-    @test data_limits(p1) ≈ Rect3f(Point3f(0.5, y, 0), Vec3f(0, h, 0))
-    @test data_limits(p2) ≈ Rect3f(Point3f(x, 0.5, 0), Vec3f(w, 0, 0))
-    @test data_limits(p3) ≈ Rect3f(Point3f(0.25, y, 0), Vec3f(0.5, h, 0))
-    @test data_limits(p4) ≈ Rect3f(Point3f(x, 0.25, 0), Vec3f(w, 0.5, 0))
+    @test data_limits(p1) ≈ Rect3f(Point3f(0.5, NaN, 0), Vec3f(0, NaN, 0))
+    @test data_limits(p2) ≈ Rect3f(Point3f(NaN, 0.5, 0), Vec3f(NaN, 0, 0))
+    @test data_limits(p3) ≈ Rect3f(Point3f(0.25, NaN, 0), Vec3f(0.5, NaN, 0))
+    @test data_limits(p4) ≈ Rect3f(Point3f(NaN, 0.25, 0), Vec3f(NaN, 0.5, 0))
 end
 
 @testset "boundingbox(plot)" begin

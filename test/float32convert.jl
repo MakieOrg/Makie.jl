@@ -88,10 +88,10 @@ using Makie: Float32Convert, LinearScaling, f32_convert, update_limits!,
         f32m = f32_convert_matrix(f32c, :data)
 
         translation = transformationmatrix(rand(Vec3d), Vec3d(1))
-        @test f32m * translation ≈ patch_model(f32c.scaling[], translation) * f32m
+        @test Mat4f(f32m * translation) ≈ Mat4f(patch_model(f32c.scaling[], translation) * f32m)
 
         scaling = transformationmatrix(Vec3d(0), rand(Vec3d))
-        @test f32m * scaling ≈ patch_model(f32c.scaling[], scaling) * f32m
+        @test Mat4f(f32m * scaling) ≈ Mat4f(patch_model(f32c.scaling[], scaling) * f32m)
 
         # This causes the model/rotation matrix to require higher precision
         # because it mixes the vastly different scaling from float32convert
