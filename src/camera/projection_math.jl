@@ -245,7 +245,7 @@ function to_world(scene::SceneLike, point::T) where T <: StaticVector
         inv(transformationmatrix(scene)[]) *
         inv(cam.view[]) *
         inv(cam.projection[]),
-        T(cam.resolution)
+        T(cam.resolution[])
     )
     return inv_f32_convert(scene, Point2f(x[1], x[2]))
 end
