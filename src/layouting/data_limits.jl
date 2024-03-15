@@ -84,6 +84,30 @@ function data_limits(plot::Text)
     end
 end
 
+function data_limits(plot::Scatter)
+    if plot.space[] == plot.markerspace[]
+        scale, offset = marker_attributes(
+            get_texture_atlas(),
+            plot.marker[],
+            plot.markersize[],
+            get(plot.attributes, :font, Observable(Makie.defaultfont())),
+            plot.marker_offset[],
+            plot
+        )
+
+        bb_ref = Base.RefValue(Rect3d())
+        for (i, p) in enumerate(point_iterator(plot))
+            origin = to_ndim(Point3d, p, 0) + to_ndim(Vec3d, sv_getindex(offset[], i), 0)
+            size = to_ndim(Vec3d, Vec2d(sv_getindex(scale[], i)), 0)
+            bb = Rect3d(origin, size)
+            update_boundingbox!(bb_ref, bb)
+        end
+        return bb_ref[]
+    else
+        return Rect3d(point_iterator(plot))
+    end
+end
+
 function data_limits(plot::Voxels)
     xyz = to_value.(plot.converted[1:3])
     return Rect3d(minimum.(xyz), maximum.(xyz) .- minimum.(xyz))
