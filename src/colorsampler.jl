@@ -244,6 +244,28 @@ colormapping_type(@nospecialize(colormap)) = continuous
 colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
 colormapping_type(::Categorical) = categorical
 
+"""
+    evaluate_colorrange(colorrange, color)::Vec2{Float64}
+
+This function must return a `Vec2{Float64}` of the colorrange as `(low, high)`.
+Add additional dispatches to this function for your own custom colorrange objects!
+
+The catch-all definition for this function is to convert any provided `colorrange` into 
+a `Vec2{Float64}`.  By default, two more dispatches are defined for `Makie.automatic` 
+and for `Function`s (but not all callables, since that's not possible to define on).
+
+You can define your method like so:
+
+```julia
+Makie.evaluate_colorrange(colorrange::MyCustomType, color) = ...
+```
+
+and `color` is always an array of numbers.  Be warned that the vector may have only one element.
+"""
+evaluate_colorrange(colorrange, color) = Vec2{Float64}(colorrange)
+evaluate_colorrange(colorrange::Automatic, color) = Vec2{Float64}(Makie.distinct_extrema_nan(color))
+evaluate_colorrange(colorrange::Function, color) = Vec2{Float64}(colorrange(color))
+
 
 function _colormapping(
         color_tight::Observable{V},
@@ -292,7 +314,7 @@ function _colormapping(
     end
 
     colorrange = lift(color_tight, colorrange; ignore_equal_values=true) do color, crange
-        return crange isa Automatic ? Vec2{Float64}(distinct_extrema_nan(color)) : Vec2{Float64}(crange)
+        return evaluate_colorrange(crange, color)
     end
 
     colorrange_scaled = lift(colorrange, colorscale; ignore_equal_values=true) do range, scale
