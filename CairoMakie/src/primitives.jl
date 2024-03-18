@@ -257,6 +257,13 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                 end
             else
                 prev_continued = false
+
+                # finish previous line segment
+                Cairo.set_line_width(ctx, prev_linewidth)
+                !isnothing(dash) && Cairo.set_dash(ctx, dash .* prev_linewidth)
+                Cairo.set_source_rgba(ctx, red(prev_color), green(prev_color), blue(prev_color), alpha(prev_color))
+                Cairo.stroke(ctx)
+
                 if !this_nan
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     # this is not nan
