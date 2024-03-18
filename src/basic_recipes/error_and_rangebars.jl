@@ -55,64 +55,73 @@ end
 
 ### conversions for errorbars
 
-function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_both)
+function convert_arguments(::Type{<:Errorbars}, x, y, error_both)
+    T = float_type(x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
-        Vec4f(x, y, e, e)
+        Vec4{T}(x, y, e, e)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
-    xyerr = broadcast(Vec4f, x, y, error_low, error_high)
+function convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
+    T = float_type(x, y, error_low, error_high)
+    xyerr = broadcast(Vec4{T}, x, y, error_low, error_high)
     (xyerr,)
 end
 
 
-function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2, T}}) where T
+    T_out = float_type(float_type(x, y), T)
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
-        Vec4f(x, y, el, eh)
+        Vec4{T_out}(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_both)
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_both) where T
+    T_out = float_type(T, float_type(error_both))
     xyerr = broadcast(xy, error_both) do (x, y), e
-        Vec4f(x, y, e, e)
+        Vec4{T_out}(x, y, e, e)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low, error_high)
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low, error_high) where T
+    T_out = float_type(T, float_type(error_low, error_high))
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
-        Vec4f(x, y, el, eh)
+        Vec4{T_out}(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low_high::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1, T2}
+    T_out = float_type(T1, T2)
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
-        Vec4f(x, y, el, eh)
+        Vec4{T_out}(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function Makie.convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3}})
+function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where T
+    T_out = float_type(T)
     xyerr = broadcast(xy_error_both) do (x, y, e)
-        Vec4f(x, y, e, e)
+        Vec4{T_out}(x, y, e, e)
     end
     (xyerr,)
 end
 
 ### conversions for rangebars
 
-function Makie.convert_arguments(::Type{<:Rangebars}, val, low, high)
-    val_low_high = broadcast(Vec3f, val, low, high)
+function convert_arguments(::Type{<:Rangebars}, val, low, high)
+    T = float_type(val, low, high)
+    val_low_high = broadcast(Vec3{T}, val, low, high)
     (val_low_high,)
 end
 
-function Makie.convert_arguments(::Type{<:Rangebars}, val, low_high)
+function convert_arguments(::Type{<:Rangebars}, val, low_high::AbstractVector{<:VecTypes{2, T}}) where T
+    T_out = float_type(float_type(val), T)
     val_low_high = broadcast(val, low_high) do val, (low, high)
-        Vec3f(val, low, high)
+        Vec3{T_out}(val, low, high)
     end
     (val_low_high,)
 end
@@ -135,12 +144,12 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
     end
 
     linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
-        output = sizehint!(Point2f[], 2length(x_y_low_high))
+        output = sizehint!(Point2d[], 2length(x_y_low_high))
         for (x, y, l, h) in x_y_low_high
             if in_y
-                push!(output, Point2f(x, y - l), Point2f(x, y + h))
+                push!(output, Point2d(x, y - l), Point2d(x, y + h))
             else
-                push!(output, Point2f(x - l, y), Point2f(x + h, y))
+                push!(output, Point2d(x - l, y), Point2d(x + h, y))
             end
         end
         return output
@@ -165,12 +174,12 @@ function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTy
     end
 
     linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
-        output = sizehint!(Point2f[], 2length(vlh))
+        output = sizehint!(Point2d[], 2length(vlh))
         for (v, l, h) in vlh
             if in_y
-                push!(output, Point2f(v, l), Point2f(v, h))
+                push!(output, Point2d(v, l), Point2d(v, h))
             else
-                push!(output, Point2f(l, v), Point2f(h, v))
+                push!(output, Point2d(l, v), Point2d(h, v))
             end
         end
         return output
@@ -238,11 +247,12 @@ end
 function plot_to_screen(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
+        f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
 
     return map(points) do p
         transformed = apply_transform(transform_func(plot), p, space)
-        p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+        p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         return Point2f(p4d) / p4d[4]
     end
 end
@@ -250,21 +260,23 @@ end
 function plot_to_screen(plot, p::VecTypes)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) * transformationmatrix(plot)[]
+    spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
+        f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
     transformed = apply_transform(transform_func(plot), p, space)
-    p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
+    p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
     return Point2f(p4d) / p4d[4]
 end
 
 function screen_to_plot(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
+        clip_to_space(cam, space) * space_to_clip(cam, :pixel)
     itf = inverse_transform(transform_func(plot))
 
     return map(points) do p
-        pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-        p3 = Point3f(pre_transform) / pre_transform[4]
+        pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
+        p3 = Point3d(pre_transform) / pre_transform[4]
         return apply_transform(itf, p3, space)
     end
 end
@@ -272,13 +284,13 @@ end
 function screen_to_plot(plot, p::VecTypes)
     cam = parent_scene(plot).camera
     space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * clip_to_space(cam, space) * space_to_clip(cam, :pixel)
-    pre_transform = mvps * to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
-    p3 = Point3f(pre_transform) / pre_transform[4]
+    mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
+        clip_to_space(cam, space) * space_to_clip(cam, :pixel)
+    pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
+    p3 = Point3d(pre_transform) / pre_transform[4]
     return apply_transform(itf, p3, space)
 end
 
 # ignore whiskers when determining data limits
-function data_limits(bars::Union{Errorbars, Rangebars})
-    data_limits(bars.plots[1])
-end
+data_limits(bars::Union{Errorbars, Rangebars}) = data_limits(bars.plots[1])
+boundingbox(bars::Union{Errorbars, Rangebars}) = transform_bbox(bars, data_limits(bars))

@@ -33,8 +33,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # Standard transform from input space to clip space
         points = Makie.apply_transform(Makie.transform_func(primitive), positions, space)
         res = scene.camera.resolution[]
-        transform = Makie.space_to_clip(scene.camera, space) * model
-        clip_points = map(p -> transform * to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0), points)
+        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+        transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        clip_points = map(p -> transform * to_ndim(Vec4d, to_ndim(Vec3d, p, 0), 1), points)
 
         # yflip and clip -> screen/pixel coords
         function clip2screen(res, p)
@@ -374,7 +375,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     model = primitive.model[]
     positions = primitive[1][]
     isempty(positions) && return
-    size_model = transform_marker ? model : Mat4f(I)
+    size_model = transform_marker ? model : Mat4d(I)
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
 
@@ -390,6 +391,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
 end
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+    # TODO Optimization:
+    # avoid calling project functions per element as they recalculate the
+    # combined projection matrix for each element like this
     broadcast_foreach(positions, colors, markersize, strokecolor,
             strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
@@ -630,16 +634,20 @@ function draw_glyph_collection(
     strokecolors = glyph_collection.strokecolors
 
     model = _deref(_model)
-    model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3f(I)
+    model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
     id = Mat4f(I)
 
     glyph_pos = let
+        # TODO: f32convert may run into issues here if markerspace is :data or
+        #       :transformed (repeated application in glyphpos etc)
         transform_func = transformation.transform_func[]
         p = Makie.apply_transform(transform_func, position, space)
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
-        model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
+        Makie.f32_convert_matrix(scene.float32convert, space) *
+        model *
+        to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
     end
 
     Cairo.save(ctx)
@@ -674,8 +682,8 @@ function draw_glyph_collection(
         # origin. The resulting vectors give the directions in which the character
         # needs to be stretched in order to match the 3D projection
 
-        xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
-        yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
+        xvec = rotation * (scale3[1] * Point3d(1, 0, 0))
+        yvec = rotation * (scale3[2] * Point3d(0, -1, 0))
 
         glyphpos = _project_position(scene, markerspace, gp3, id, true)
         xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
@@ -767,7 +775,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     else
         ys = regularly_spaced_array_to_range(ys)
     end
-    model = primitive.model[]::Mat4f
+    model = primitive.model[]::Mat4d
     interpolate = to_value(primitive.interpolate)
 
     # Debug attribute we can set to disable fastpath
@@ -804,8 +812,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
     space = to_value(get(primitive, :space, :data))
-    xy = project_position(primitive, space, Point2f(first.(imsize)), model)
-    xymax = project_position(primitive, space, Point2f(last.(imsize)), model)
+    xy = project_position(primitive, space, Point2(first.(imsize)), model)
+    xymax = project_position(primitive, space, Point2(last.(imsize)), model)
     w, h = xymax .- xy
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
@@ -835,7 +843,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))
-        xys = project_position.(scene, (Makie.transform_func(primitive),), space, [Point2f(x, y) for x in xs, y in ys], (model,))
+        xys = project_position(scene, Makie.transform_func(primitive), space, [Point2(x, y) for x in xs, y in ys], model)
         colors = to_color(primitive.calculated_colors[])
 
         # Note: xs and ys should have size ni+1, nj+1
@@ -901,27 +909,25 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
-    vs =  decompose(Point2f, mesh)::Vector{Point2f}
-    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
-    model = plot.model[]::Mat4f
-    color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
-    cols = per_face_colors(color, nothing, fs, nothing, uv)
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
-    return draw_mesh2D(scene, screen, cols, space, transform_func, vs, fs, model)
+    model = plot.model[]::Mat4d
+    vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
+    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+    color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
+    cols = per_face_colors(color, nothing, fs, nothing, uv)
+    return draw_mesh2D(screen, cols, vs, fs)
 end
 
-function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func,
-        vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
+function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
 
     ctx = screen.context
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
-
-        t1, t2, t3 =  project_position.(scene, (transform_func,), space, vs[f], (model,)) #triangle points
+        t1, t2, t3 =  vs[f] #triangle points
 
         # don't draw any mesh faces with NaN components.
         if isnan(t1) || isnan(t2) || isnan(t3)
@@ -971,7 +977,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
 
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
-    model = attributes.model[]::Mat4f
+    model = attributes.model[]::Mat4d
     space = to_value(get(attributes, :space, :data))::Symbol
     func = Makie.transform_func(attributes)
 
@@ -1003,14 +1009,15 @@ function draw_mesh3D(
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(model[i, i]))
 
-    local_model = rotation * Makie.scalematrix(Vec3f(scale))
+    local_model = rotation * Makie.scalematrix(Vec3d(scale))
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
+    model_f32 = model * Makie.f32_convert_matrix(scene.float32convert, space)
     vs = broadcast(meshpoints, (transform_func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
-        p4d = to_ndim(Vec4f, to_ndim(Vec3f, v, 0f0), 1f0)
-        model * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0))
+        p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
+        return to_ndim(Vec4f, model_f32 * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0)), NaN32)
     end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
@@ -1167,9 +1174,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     view = scene.camera.view[]
 
     zorder = sortperm(pos, by = p -> begin
-        p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
-        cam_pos = view * model * p4d
-        cam_pos[3] / cam_pos[4]
+        p4d = to_ndim(Vec4d, to_ndim(Vec3d, p, 0), 1)
+        cam_pos = (view * model)[Vec(3,4), Vec(1,2,3,4)] * p4d
+        cam_pos[1] / cam_pos[2]
     end, rev=false)
 
     color = to_color(primitive.calculated_colors[])

@@ -9,9 +9,9 @@ end
 
 function convert_arguments(::Type{<: Annotations},
                            strings::AbstractVector{<: AbstractString},
-                           text_positions::AbstractVector{<: Point{N}}) where N
+                           text_positions::AbstractVector{<: Point{N, T}}) where {N, T}
     return (map(strings, text_positions) do str, pos
-        (String(str), Point{N, Float32}(pos))
+        (String(str), Point{N, float_type(T)}(pos))
     end,)
 end
 

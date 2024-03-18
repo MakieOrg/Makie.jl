@@ -32,14 +32,17 @@ function convert_arguments(T::Type{<: Series}, y::AbstractMatrix)
 end
 
 function convert_arguments(::Type{<: Series}, x::AbstractVector, ys::AbstractMatrix)
+    T = float_type(x, ys)
     return (map(1:size(ys, 1)) do i
-        Point2f.(replace_missing.(x), replace_missing.(view(ys, i, :)))
+        Point2{T}.(replace_missing.(x), replace_missing.(view(ys, i, :)))
     end,)
 end
 
 function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}}) where {X, Y}
+    # TODO: is this problematic with varying tuple types?
     return (map(arg) do (x, y)
-        Point2f.(replace_missing.(x), replace_missing.(y))
+        T = float_type(x, y)
+        Point2{T}.(replace_missing.(x), replace_missing.(y))
     end,)
 end
 
@@ -49,7 +52,8 @@ end
 
 function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVector{<:Point2}})
     return (map(arg) do points
-        Point2f.(replace_missing.(first.(points)), replace_missing.(last.(points)))
+        T = float_type(points)
+        T.(replace_missing.(first.(points)), replace_missing.(last.(points)))
     end,)
 end
 

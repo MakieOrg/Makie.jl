@@ -266,18 +266,19 @@ $(TYPEDFIELDS)
 """
 struct Transformation <: Transformable
     parent::RefValue{Transformation}
-    translation::Observable{Vec3f}
-    scale::Observable{Vec3f}
+    translation::Observable{Vec3d}
+    scale::Observable{Vec3d}
     rotation::Observable{Quaternionf}
-    model::Observable{Mat4f}
-    parent_model::Observable{Mat4f}
+    model::Observable{Mat4d}
+    parent_model::Observable{Mat4d}
     # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
+
     function Transformation(translation, scale, rotation, transform_func)
-        translation_o = convert(Observable{Vec3f}, translation)
-        scale_o = convert(Observable{Vec3f}, scale)
+        translation_o = convert(Observable{Vec3d}, translation)
+        scale_o = convert(Observable{Vec3d}, scale)
         rotation_o = convert(Observable{Quaternionf}, rotation)
-        parent_model = Observable(Mat4f(I))
+        parent_model = Observable(Mat4d(I))
         model = map(translation_o, scale_o, rotation_o, parent_model) do t, s, r, p
             return p * transformationmatrix(t, s, r)
         end
@@ -288,18 +289,15 @@ struct Transformation <: Transformable
 end
 
 function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
+                        scale=Vec3d(1),
+                        translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1))
-    return Transformation(translation,
-                          scale,
-                          rotation,
-                          transform_func)
+    return Transformation(translation, scale, rotation, transform_func)
 end
 
 function Transformation(parent::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
+                        scale=Vec3d(1),
+                        translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1),
                         transform_func=nothing)
     connect_func = isnothing(transform_func)
@@ -461,3 +459,14 @@ struct Cycler
 end
 
 Cycler() = Cycler(IdDict{Type,Int}())
+
+
+# Float32 conversions
+struct LinearScaling
+    scale::Vec{3, Float64}
+    offset::Vec{3, Float64}
+end
+struct Float32Convert
+    scaling::Observable{LinearScaling}
+    resolution::Float32
+end

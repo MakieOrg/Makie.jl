@@ -1,3 +1,4 @@
+# COV_EXCL_START
 using Test
 using Makie
 using Makie.Observables
@@ -8,6 +9,7 @@ using Makie.IntervalSets
 using GeometryBasics: Pyramid
 
 using Makie: volume
+# COV_EXCL_STOP
 
 @testset "Unit tests" begin
     @testset "#659 Volume errors if data is not a cube" begin
@@ -24,7 +26,6 @@ using Makie: volume
     include("pipeline.jl")
     include("record.jl")
     include("scenes.jl")
-    include("conversions.jl")
     include("quaternions.jl")
     include("projection_math.jl")
     include("observables.jl")
@@ -39,4 +40,11 @@ using Makie: volume
     include("barplot.jl")
     include("bezier.jl")
     include("hist.jl")
+
+    # TODO: move some things in here
+    include("convert_arguments.jl")
+    # from here
+    include("conversions.jl")
+
+    include("float32convert.jl")
 end
