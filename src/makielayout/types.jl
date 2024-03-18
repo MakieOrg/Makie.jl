@@ -1189,7 +1189,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         framewidth = 1f0
         "Controls if the legend border is visible."
         framevisible = true
-        "The size of the rectangles containing the legend markers."
+        "The size of the rectangles containing the legend markers. It can help to increase the width if line patterns are not clearly visible with the default size."
         patchsize = (20f0, 20f0)
         "The color of the border of the patches containing the legend markers."
         patchstrokecolor = :transparent
@@ -1346,7 +1346,7 @@ end
         cornerradius = 5
         "Corner segments of one rounded corner."
         cornersegments = 20
-        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."
+        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(T, string)`."
         validator = str -> true
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing

@@ -94,27 +94,7 @@ end
 f
 ```
 \end{examplefigure}
-## Multi-Bank Legend
 
-You can control the number of banks with the `nbanks` attribute. Banks are columns
-when in vertical mode, and rows when in horizontal mode.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-
-f = Figure()
-
-Axis(f[1, 1])
-
-xs = 0:0.1:10
-lins = [lines!(xs, sin.(xs .+ 3v), color = RGBf(v, 0, 1-v)) for v in 0:0.1:1]
-
-Legend(f[1, 2], lins, string.(1:length(lins)), nbanks = 3)
-
-f
-```
-\end{examplefigure}
 ## Legend Inside An Axis
 
 The `axislegend` function is a quick way to add a legend to an Axis.
@@ -235,35 +215,7 @@ Legend(f[1, 2],
 f
 ```
 \end{examplefigure}
-## Horizontal Legend
 
-In case you want the legend entries to be listed horizontally, set the `orientation`
-attribute to `:horizontal`. In this case the `nbanks` attribute refers to the
-number of rows instead of columns. To keep an adjacent axis from potentially shrinking to
-the width of the horizontal legend, set `tellwidth = false` and `tellheight = true`
-if you place the legend below or above the axis.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-
-f = Figure()
-
-Axis(f[1, 1])
-
-xs = 0:0.5:10
-ys = sin.(xs)
-lin = lines!(xs, ys, color = :blue)
-sca = scatter!(xs, ys, color = :red, markersize = 15)
-
-Legend(f[1, 2], [lin, sca, lin], ["a line", "some dots", "line again"])
-
-Legend(f[2, 1], [lin, sca, lin], ["a line", "some dots", "line again"],
-    orientation = :horizontal, tellwidth = false, tellheight = true)
-
-f
-```
-\end{examplefigure}
 ## Multi-Group Legends
 
 Sometimes a legend consists of multiple groups, for example in a plot where both

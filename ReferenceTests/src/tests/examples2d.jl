@@ -1393,6 +1393,18 @@ end
     fig
 end
 
+@reference_test "contourf bug #3683" begin
+    x = y = LinRange(0, 1, 4)
+    ymin, ymax = 0.4, 0.6
+    steepness = 0.1
+    f(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
+    z = [f(_x, _y) for _x in x, _y in y]
+
+    fig, ax, cof = contourf(x, y, z, levels = 2)
+    Colorbar(fig[1, 2], cof)
+    fig
+end
+
 @reference_test "Violin plots differently scaled" begin
     fig = Figure() 
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
