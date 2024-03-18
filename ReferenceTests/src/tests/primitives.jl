@@ -36,6 +36,10 @@ end
     s
 end
 
+@reference_test "lines issue #3704" begin
+    lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
+end
+
 @reference_test "scatters" begin
     s = Scene(size = (800, 800), camera = campixel!)
 

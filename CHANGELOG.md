@@ -1,8 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-- Added supported markers hint to unsupported marker warn message.
-
+- Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
+- Fixed bug in CairoMakie line drawing when multiple successive points had the same color [#3712](https://github.com/MakieOrg/Makie.jl/pull/3712).
 - Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 - Fixed `contourf` bug where n levels would sometimes miss the uppermost value, causing gaps [#3713](https://github.com/MakieOrg/Makie.jl/pull/3713).
 
