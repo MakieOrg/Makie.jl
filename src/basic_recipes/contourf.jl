@@ -48,7 +48,7 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), levels+1))
+_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels+1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
