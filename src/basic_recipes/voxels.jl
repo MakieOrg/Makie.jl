@@ -1,14 +1,14 @@
-function convert_arguments(T::Type{<:Voxels}, chunk::Array)
+function convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
     X, Y, Z = to_ndim(Vec3{Int}, size(chunk), 1)
     return convert_arguments(T, -0.5X..0.5X, -0.5Y..0.5Y, -0.5Z..0.5Z, chunk)
 end
-function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array)
+function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
     xi = Float32(minimum(xs))..Float32(maximum(xs))
     yi = Float32(minimum(ys))..Float32(maximum(ys))
     zi = Float32(minimum(zs))..Float32(maximum(zs))
     return convert_arguments(T, xi, yi, zi, chunk)
 end
-function convert_arguments(::Type{<:Voxels}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array)
+function convert_arguments(::Type{<:Voxels}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array{<: Real, 3})
     return (xs, ys, zs, Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...))
 end
 function convert_arguments(::Type{<:Voxels}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array{UInt8, 3})

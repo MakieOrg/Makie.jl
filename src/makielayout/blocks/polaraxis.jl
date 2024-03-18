@@ -60,11 +60,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
         for gc in thetaticklabelplot.plots[1].plots[1][1][]
-            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            bbox = text_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
         for gc in rticklabelplot.plots[1].plots[1][1][]
-            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            bbox = text_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
 
@@ -558,8 +558,9 @@ function draw_axis!(po::PolarAxis)
     rtick_align = Observable{Point2f}()
     rtick_offset = Observable{Point2f}()
     rtick_rotation = Observable{Float32}()
-    rgridpoints = Observable{Vector{GeometryBasics.LineString}}()
-    rminorgridpoints = Observable{Vector{GeometryBasics.LineString}}()
+    LSType = typeof(GeometryBasics.LineString(Point2f[]))
+    rgridpoints = Observable{Vector{LSType}}()
+    rminorgridpoints = Observable{Vector{LSType}}()
 
     function default_rtickangle(rtickangle, direction, thetalims)
         if rtickangle === automatic

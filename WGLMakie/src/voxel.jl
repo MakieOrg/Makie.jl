@@ -21,7 +21,7 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
         # should be fine to ignore placement matrix here because
         # translation is ignored and scale shouldn't matter
         i = Vec(1, 2, 3)
-        return transpose(inv(m[i, i]))
+        return Mat3f(transpose(inv(m[i, i])))
     end
     uniform_dict[:shading] = to_value(get(plot, :shading, NoShading)) != NoShading
     uniform_dict[:gap] = lift(x -> convert_attribute(x, Key{:gap}(), Key{:voxels}()), plot.gap)
@@ -49,7 +49,8 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
         ) do xs, ys, zs, chunk, model
         mini = minimum.((xs, ys, zs))
         width = maximum.((xs, ys, zs)) .- mini
-        return model *
+        # with f32convert applying to 3D plots patch_model should apply to all of this
+        return Mat4f(model) *
             Makie.scalematrix(Vec3f(width ./ size(chunk))) *
             Makie.translationmatrix(Vec3f(mini))
     end

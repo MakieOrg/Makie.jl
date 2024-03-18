@@ -64,7 +64,7 @@ function Makie.plot!(plot::StepHist)
         edges = vcat(edges, phantomedge)
         z = zero(eltype(weights))
         heights = vcat(z, weights, z)
-        return Point2f.(edges, heights)
+        return Point2.(edges, heights)
     end
     color = lift(plot, plot.color) do color
         if color === :values
@@ -90,12 +90,12 @@ Plot a histogram of `values`.
 """
 @recipe Hist values begin
     """
-    Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges. 
+    Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges.
     """
     bins = 15
     """
     Allows to normalize the histogram. Possible values are:
-    
+
     *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
        has norm 1 and represents a PDF.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
@@ -163,7 +163,7 @@ function Makie.plot!(plot::Hist)
     points = lift(plot, edges, plot.normalization, plot.scale_to,
                   plot.weights) do edges, normalization, scale_to, wgts
         centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
-        return Point2f.(centers, weights)
+        return Point2.(centers, weights)
     end
     widths = lift(diff, plot, edges)
     color = lift(plot, plot.color) do color

@@ -59,8 +59,8 @@ function plot!(plot::Text)
 
     sc = parent_scene(plot)
 
-    onany(plot, linesegs, positions, sc.camera.projectionview, sc.viewport,
-            transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
+    onany(plot, linesegs, positions, sc.camera.projectionview, sc.viewport, f32_conversion_obs(sc),
+            transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, _, transf, space
         pos_transf = plot_to_screen(plot, pos)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
             seg + attr_broadcast_getindex(pos_transf, index)
@@ -158,7 +158,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
     strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
 
     positions = Observable(
-        Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
+        Point3d[to_ndim(Point3d, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
     )
 
     attrs = plot.attributes
@@ -171,7 +171,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
     # update both text and positions together
     on(plot, strings_and_positions) do str_pos
         strs = first.(str_pos)
-        poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
+        poss = to_ndim.(Ref(Point3d), last.(str_pos), 0)
 
         strings_unequal = strings.val != strs
         pos_unequal = positions.val != poss

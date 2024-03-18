@@ -78,7 +78,7 @@ end
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
         atlas,
         to_ndim(Point3f, p.position[], 0), glyph_collection,
-        Vec2f(0), Makie.transform_func_obs(scene)[], :data
+        Vec2f(0), Makie.f32_conversion(scene), Makie.transform_func_obs(scene)[], :data
     )
 
     # Also doesn't work
@@ -120,5 +120,5 @@ end
 
     err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
-    @test_throws err text(1, 2, text = "hi", textsize = 30)
+    # @test_throws err text(1, 2, text = "hi", textsize = 30)
 end

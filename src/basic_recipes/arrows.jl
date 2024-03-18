@@ -103,11 +103,15 @@ function _circle(origin, r, normal, N)
     GeometryBasics.Mesh(meta(coords; normals=normals), faces)
 end
 
-convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
+function convert_arguments(::Type{<: Arrows}, x, y, u, v)
+    return (Point2{float_type(x, y)}.(x, y), Vec2{float_type(u, v)}.(u, v))
 end
-convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    return (vec(Point2{float_type(x, y)}.(x, y')), vec(Vec2{float_type(u, v)}.(u, v)))
+end
+function convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w)
+    return (Point3{float_type(x, y, z)}.(x, y, z), Vec3{float_type(u, v, w)}.(u, v, w))
+end
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (

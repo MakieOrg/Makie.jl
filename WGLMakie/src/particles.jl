@@ -41,6 +41,7 @@ const IGNORE_KEYS = Set([
     :light_direction, :light_color,
     :cycle, :label, :inspector_clear, :inspector_hover,
     :inspector_label, :axis_cycler
+    # TODO add model here since we generally need to apply patch_model?
 ])
 
 function create_shader(scene::Scene, plot::MeshScatter)
@@ -50,7 +51,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
 
-    per_instance[:offset] = lift(apply_transform, plot, transform_func_obs(plot), plot[1], plot.space)
+    per_instance[:offset] = apply_transform_and_f32_conversion(scene, plot, plot[1])
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -91,6 +92,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
     uniform_dict[:shading] = map(x -> x != NoShading, plot.shading)
+
+    uniform_dict[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
@@ -193,7 +196,7 @@ function scatter_shader(scene::Scene, attributes, plot)
         to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
     end
 
-    instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
+    instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1f0, 1f0))
     # Don't send obs, since it's overwritten in JS to be updated by the camera
     uniform_dict[:resolution] = to_value(scene.camera.resolution)
     uniform_dict[:px_per_unit] = 1f0
@@ -217,13 +220,13 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes = copy(plot.attributes.attributes)
     space = get(attributes, :space, :data)
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    attributes[:pos] = lift(apply_transform, plot, transform_func_obs(plot),  plot[1], space)
+    attributes[:pos] = apply_transform_and_f32_conversion(scene, plot, plot[1], space)
 
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotations)
-    attributes[:model] = plot.model
+    attributes[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
     delete!(attributes, :uv_offset_width)
@@ -238,14 +241,15 @@ value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
-    transfunc = Makie.transform_func_obs(plot)
+    f32c = f32_conversion_obs(plot)
+    transfunc = transform_func_obs(plot)
     pos = plot.position
     space = plot.space
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
-    glyph_data = lift(plot, pos, glyphcollection, offset, transfunc, space; ignore_equal_values=true) do pos, gc, offset, transfunc, space
-        Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
+    glyph_data = lift(plot, pos, glyphcollection, offset, f32c, transfunc, space; ignore_equal_values=true) do pos, gc, offset, f32c, transfunc, space
+        Makie.text_quads(atlas, pos, to_value(gc), offset, f32c, transfunc, space)
     end
 
     # unpack values from the one signal:
@@ -274,7 +278,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     plot_attributes = copy(plot.attributes)
     plot_attributes.attributes[:calculated_colors] = uniform_color
     uniforms = Dict(
-        :model => plot.model,
+        :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :shape_type => Observable(Cint(3)),
         :rotations => uniform_rotation,
         :pos => positions,

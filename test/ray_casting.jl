@@ -8,7 +8,7 @@
         for set_cam! in (cam2d!, cam_relative!, campixel!, cam3d!, orthographic_cam3d!)
             @testset "$set_cam!" begin
                 set_cam!(scene)
-                ray = Makie.Ray(scene, xy)
+                ray = convert(Makie.Ray{Float32}, Makie.Ray(scene, xy))
                 ref_ray = Makie.ray_from_projectionview(scene, xy)
                 # Direction matches and is normalized
                 @test ref_ray.direction ≈ ray.direction

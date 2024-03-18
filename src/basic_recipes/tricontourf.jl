@@ -59,8 +59,9 @@ end
 
 function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
     triangulation=DelaunayTriangulation())
-    z = elconvert(Float32, z)
-    points = [x'; y']
+    T = float_type(x, y, z)
+    z = elconvert(T, z)
+    points = [elconvert(T, x)'; elconvert(T, y)']
     if triangulation isa DelaunayTriangulation
         tri = DelTri.triangulate(points)
     elseif !(triangulation isa DelTri.Triangulation)

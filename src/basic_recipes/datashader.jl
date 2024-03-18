@@ -377,7 +377,7 @@ end
 
 function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
+    limits = projview_to_2d_limits(p)
     viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
     canvas = canvas_obs(limits, viewport, p.agg, p.binsize)
     p._boundingbox = lift(fast_bb, p.points, p.point_transform)
@@ -432,7 +432,7 @@ end
 
 function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
     scene = parent_scene(p)
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
+    limits = projview_to_2d_limits(p)
     viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
     canvas = canvas_obs(limits, viewport, Observable(AggCount{Float32}()), p.binsize)
     p._boundingbox = lift(p.points, p.point_transform) do cats, func
@@ -469,6 +469,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
 end
 
 data_limits(p::DataShader) =  p._boundingbox[]
+boundingbox(p::DataShader) =  transform_bbox(p, p._boundingbox[])
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)
     pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)

@@ -35,10 +35,9 @@ end
 function Makie.plot!(p::Union{HSpan, VSpan})
     scene = Makie.parent_scene(p)
     transf = transform_func_obs(scene)
+    limits = projview_to_2d_limits(p)
 
-    limits = lift(projview_to_2d_limits, scene.camera.projectionview)
-
-    rects = Observable(Rect2f[])
+    rects = Observable(Rect2d[])
 
     mi = p isa HSpan ? p.xmin : p.ymin
     ma = p isa HSpan ? p.xmax : p.ymax
@@ -53,13 +52,13 @@ function Makie.plot!(p::Union{HSpan, VSpan})
                 x_ma = min_x + (max_x - min_x) * ma
                 low  = _apply_y_transform(transf, low)
                 high = _apply_y_transform(transf, high)
-                push!(rects[], Rect2f(Point2f(x_mi, low), Vec2f(x_ma - x_mi, high - low)))
+                push!(rects[], Rect2d(Point2(x_mi, low), Vec2(x_ma - x_mi, high - low)))
             elseif p isa VSpan
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
                 low  = _apply_x_transform(transf, low)
                 high = _apply_x_transform(transf, high)
-                push!(rects[], Rect2f(Point2f(low, y_mi), Vec2f(high - low, y_ma - y_mi)))
+                push!(rects[], Rect2d(Point2(low, y_mi), Vec2(high - low, y_ma - y_mi)))
             end
         end
         notify(rects)
@@ -85,21 +84,15 @@ _apply_y_transform(::typeof(identity), v) = v
 
 
 function data_limits(p::HSpan)
-    scene = parent_scene(p)
-    limits = projview_to_2d_limits(scene.camera.projectionview[])
-    itf = inverse_transform(p.transformation.transform_func[])
-    xmin, xmax = apply_transform.(itf[1], first.(extrema(limits)))
     ymin = minimum(p[1][])
     ymax = maximum(p[2][])
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(NaN, ymin, 0), Vec3d(NaN, ymax - ymin, 0))
 end
 
 function data_limits(p::VSpan)
-    scene = parent_scene(p)
-    limits = projview_to_2d_limits(scene.camera.projectionview[])
-    itf = inverse_transform(p.transformation.transform_func[])
     xmin = minimum(p[1][])
     xmax = maximum(p[2][])
-    ymin, ymax = apply_transform.(itf[2], getindex.(extrema(limits), 2))
-    return Rect3f(Point3f(xmin, ymin, 0), Vec3f(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(Point3d(xmin, NaN, 0), Vec3d(xmax - xmin, NaN, 0))
 end
+
+boundingbox(p::Union{HSpan, VSpan}) = transform_bbox(p, data_limits(p))

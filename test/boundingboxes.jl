@@ -1,6 +1,7 @@
 function Base.isapprox(r1::Rect{D}, r2::Rect{D}; kwargs...) where D
-    return isapprox(minimum(r1), minimum(r2); kwargs...) &&
-            isapprox(widths(r1), widths(r2); kwargs...)
+    left  = vcat(minimum(r1), widths(r1))
+    right = vcat(minimum(r2), widths(r2))
+    return all((isnan.(left) .& isnan.(right)) .| (left .≈ right))
 end
 
 @testset "data_limits(plot)" begin
@@ -23,15 +24,11 @@ end
     p2 = hlines!(ax, [0.5])
     p3 = vspan!(ax, [0.25], [0.75])
     p4 = hspan!(ax, [0.25], [0.75])
-    Makie.reset_limits!(ax)
 
-    lims = ax.finallimits[]
-    x, y = minimum(lims); w, h = widths(lims)
-
-    @test data_limits(p1) ≈ Rect3f(Point3f(0.5, y, 0), Vec3f(0, h, 0))
-    @test data_limits(p2) ≈ Rect3f(Point3f(x, 0.5, 0), Vec3f(w, 0, 0))
-    @test data_limits(p3) ≈ Rect3f(Point3f(0.25, y, 0), Vec3f(0.5, h, 0))
-    @test data_limits(p4) ≈ Rect3f(Point3f(x, 0.25, 0), Vec3f(w, 0.5, 0))
+    @test data_limits(p1) ≈ Rect3f(Point3f(0.5, NaN, 0), Vec3f(0, NaN, 0))
+    @test data_limits(p2) ≈ Rect3f(Point3f(NaN, 0.5, 0), Vec3f(NaN, 0, 0))
+    @test data_limits(p3) ≈ Rect3f(Point3f(0.25, NaN, 0), Vec3f(0.5, NaN, 0))
+    @test data_limits(p4) ≈ Rect3f(Point3f(NaN, 0.25, 0), Vec3f(NaN, 0.5, 0))
 end
 
 @testset "boundingbox(plot)" begin
@@ -99,9 +96,12 @@ end
     fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1])
     p = text!(ax, Point2f(10), text = "test", fontsize = 20)
-    bb = boundingbox(p)
+    bb = Makie.text_boundingbox(p)
     @test bb.origin ≈ Point3f(343.0, 345.0, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)
+    bb = Makie._boundingbox(p)
+    @test bb.origin ≈ Point3f(10, 10, 0)
+    @test bb.widths ≈ Vec3f(0)
 end
 
 @testset "invalid contour bounding box" begin

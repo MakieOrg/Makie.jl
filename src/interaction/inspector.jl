@@ -167,7 +167,7 @@ function shift_project(scene, pos)
     project(
         camera(scene).projectionview[],
         Vec2f(size(scene)),
-        pos
+        f32_convert(scene, pos),
     ) .+ Vec2f(origin(viewport(scene)[]))
 end
 
@@ -455,8 +455,18 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
     if a.enable_indicators[]
         translation = apply_transform_and_model(plot, plot[1][][idx])
-        rotation = _to_rotation(plot.rotations[], idx)
-        scale = _to_scale(plot.markersize[], idx)
+        rotation = to_rotation(_to_rotation(plot.rotations[], idx))
+        scale = inv_f32_scale(plot, _to_scale(plot.markersize[], idx))
+
+        bbox = Rect3d(convert_attribute(
+            plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
+        ))
+
+        ps = convert_arguments(LineSegments, bbox)[1]
+        ps = map(ps) do p
+            p3d = to_ndim(Point3d, p, 0)
+            return rotation * (scale .* p3d) + translation
+        end
 
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
@@ -468,15 +478,9 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
                 upvector = cc.upvector[]
             end
 
-            bbox = Rect{3, Float32}(convert_attribute(
-                plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
-            ))
-            T = Transformation(
-                identity; translation = translation, rotation = rotation, scale = scale
-            )
-
-            p = wireframe!(
-                scene, bbox, transformation = T, color = a.indicator_color,
+            T = Transformation(identity)
+            p = linesegments!(
+                scene, ps, transformation = T, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
@@ -486,8 +490,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
             cc isa Camera3D && update_cam!(scene, eyeposition, lookat, upvector)
 
         elseif !isempty(inspector.temp_plots)
-            p = inspector.temp_plots[1]
-            transform!(p, translation = translation, scale = scale, rotation = rotation)
+            inspector.temp_plots[1][1][] = ps
         end
 
 
@@ -542,14 +545,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    # Manual boundingbox including transfunc
-    bbox = let
-        points = point_iterator(plot)
-        trans_func = transform_func(plot)
-        model = plot.model[]
-        iter = iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
-        limits_from_transformed_points(iter)
-    end
+    bbox = boundingbox(plot)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -705,7 +701,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 clear_temporary_plots!(inspector, plot)
                 p = wireframe!(
                     scene, bbox, color = a.indicator_color, model = plot.model,
-                    strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                    linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                     visible = a.indicator_visible, inspectable = false,
                     depth_shift = -1f-3
                 )
@@ -777,11 +773,11 @@ function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer, edge_based)
     x0, x1 = extrema(xs)
     y0, y1 = extrema(ys)
     nw, nh = ((x1 - x0), (y1 - y0)) ./ size(img)
-    Rect2f(x0 + nw * (i-1), y0 + nh * (j-1), nw, nh)
+    Rect2d(x0 + nw * (i-1), y0 + nh * (j-1), nw, nh)
 end
 function _pixelated_image_bbox(xs::Vector, ys::Vector, img, i::Integer, j::Integer, edge_based)
     if edge_based
-        Rect2f(xs[i], ys[j], xs[i+1] - xs[i], ys[j+1] - ys[j])
+        Rect2d(xs[i], ys[j], xs[i+1] - xs[i], ys[j+1] - ys[j])
     else
         _pixelated_image_bbox(
             minimum(xs)..maximum(xs), minimum(ys)..maximum(ys),

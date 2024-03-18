@@ -46,8 +46,8 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, z
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
     zmin, zmax = extrema(zrange)
-    mini = Vec3f(xmin, ymin, zmin)
-    maxi = Vec3f(xmax, ymax, zmax)
+    mini = Vec3(xmin, ymin, zmin)
+    maxi = Vec3(xmax, ymax, zmax)
     return (f, Rect(mini, maxi .- mini))
 end
 
