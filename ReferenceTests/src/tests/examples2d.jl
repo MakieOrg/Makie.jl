@@ -1408,7 +1408,7 @@ end
 @reference_test "Violin plots differently scaled" begin
     fig = Figure() 
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
-    ys = vcat(randn(6000), randn(4000) * 2)
+    ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
     for (i, scale) in enumerate([:area, :count, :width])
         ax = Axis(fig[i, 1])
         violin!(ax, xs, ys; scale, show_median=true)
