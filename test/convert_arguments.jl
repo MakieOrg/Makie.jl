@@ -36,7 +36,7 @@ using Logging
 
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     str = "test"
-    strings = ["test" for _ in 1:10]
+    strings = fill(str, 10)
 
     @testset "input type -> output type" begin
         for (T_in, T_out) in [
@@ -249,6 +249,7 @@ using Logging
                         # TODO: Should these be normalized more?
                         convert_arguments(CT, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
                         @test convert_arguments(CT, i, i, i, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
+                        Logging.disable_logging(Logging.Warn) # skip warnings
                         @test convert_arguments(CT, xs, ys, zs, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
                         @test convert_arguments(CT, xs, ys, zs, +) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
                         if T_in == Float32
@@ -258,6 +259,7 @@ using Logging
                             @test convert_arguments(CT, r, r, r, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
                             @test convert_arguments(CT, xs, r, i, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
                         end
+                        Logging.disable_logging(Logging.Debug)
                     end
                 end
 

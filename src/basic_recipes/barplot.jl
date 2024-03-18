@@ -227,8 +227,6 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
             label_pos = map(xpositions, ypositions, bar_labels) do x, y, l
                 return (string(l), in_y_direction ? Point2d(x, y) : Point2d(y, x))
             end
-            @info xpositions, ypositions
-            @info label_pos
             return (label_pos, attributes...)
         else
             error("Labels and bars need to have same length. Found: $(length(xpositions)) bars with these labels: $(bar_labels)")
