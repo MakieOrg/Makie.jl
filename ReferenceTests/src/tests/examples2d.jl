@@ -1404,3 +1404,16 @@ end
     Colorbar(fig[1, 2], cof)
     fig
 end
+
+@reference_test "Violin plots differently scaled" begin
+    fig = Figure() 
+    xs = vcat([fill(i, i * 1000) for i in 1:4]...)
+    ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
+    for (i, scale) in enumerate([:area, :count, :width])
+        ax = Axis(fig[i, 1])
+        violin!(ax, xs, ys; scale, show_median=true)
+        Makie.xlims!(0.2, 4.8)
+        ax.title = "scale=:$(scale)"
+    end
+    fig
+end
