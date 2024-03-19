@@ -1,6 +1,6 @@
-function bar_label_formatter(value::Number)
-    return string(round(value; digits=3))
-end
+bar_label_formatter(value::Number) = string(round(value; digits=3))
+bar_label_formatter(label::String) = label
+bar_label_formatter(label::LaTeXString) = label
 
 """
     bar_default_fillto(tf, ys, offset)::(ys, offset)
