@@ -118,7 +118,7 @@ function initialize_block!(m::Menu; default = 1)
     )
 
     onany(blockscene, selected_text, m.fontsize, m.textpadding) do _, _, (l, r, b, t)
-        bb = text_boundingbox(selectiontext)
+        bb = boundingbox(selectiontext, :data)
         m.layoutobservables.autosize[] = width(bb) + l + r, height(bb) + b + t
     end
     notify(selected_text)
@@ -162,7 +162,7 @@ function initialize_block!(m::Menu; default = 1)
 
     onany(blockscene, optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
-        bbs = map(x -> text_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
+        bbs = map(x -> string_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
         heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
         heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         h = sum(heights)

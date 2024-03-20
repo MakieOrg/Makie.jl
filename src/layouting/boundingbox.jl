@@ -13,11 +13,11 @@ the `model` matrix. Plots with `exclude(plot) == true` are excluded.
 
 See also: [`data_limits`](@ref)
 """
-function boundingbox(scenelike, exclude = (p)-> false)
+function boundingbox(scenelike, exclude = (p)-> false, space = :world)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
-            update_boundingbox!(bb_ref, future_boundingbox(plot))
+            update_boundingbox!(bb_ref, boundingbox(plot, space))
         end
     end
     return bb_ref[]
@@ -31,35 +31,19 @@ i.e. the `transform_func` and the `model` matrix.
 
 See also: [`data_limits`](@ref)
 """
-boundingbox(plot::AbstractPlot) = _boundingbox(plot)
-
-# TODO: This only exists to deprecate boundingbox(::Text) more smoothly. Once
-#       that is fully removed this should be boundingbox(plot).
-function _boundingbox(plot::AbstractPlot)
+function boundingbox(plot::AbstractPlot, space::Symbol = :world)
     # Assume primitive plot
     if isempty(plot.plots)
         return Rect3d(iterate_transformed(plot))
     end
 
     # Assume combined plot
-    bb_ref = Base.RefValue(future_boundingbox(plot.plots[1]))
+    bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
     for i in 2:length(plot.plots)
-        update_boundingbox!(bb_ref, future_boundingbox(plot.plots[i]))
+        update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
     end
 
     return bb_ref[]
-end
-# Replace future_boundingbox with just boundingbox once boundingbox(::Text) is
-# no longer in pixel space
-@inline future_boundingbox(plot::AbstractPlot) = boundingbox(plot)
-@inline future_boundingbox(plot::Text) = _boundingbox(plot)
-
-function _boundingbox(plot::Text)
-    if plot.space[] == plot.markerspace[]
-        return transform_bbox(plot, text_boundingbox(plot))
-    else
-        return Rect3d(iterate_transformed(plot))
-    end
 end
 
 # for convenience
