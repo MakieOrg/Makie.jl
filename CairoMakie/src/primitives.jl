@@ -1198,7 +1198,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
             submesh[:calculated_colors] = color[i]
         end
         scale = markersize isa Vector ? markersize[i] : markersize
-        rotation = if rotation isa Vector
+        _rotation = if rotation isa Vector
             Makie.rotationmatrix4(to_rotation(rotation[i]))
         else
             Makie.rotationmatrix4(to_rotation(rotation))
@@ -1207,7 +1207,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         draw_mesh3D(
             scene, screen, submesh, marker, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
-            rotation = rotation
+            rotation = _rotation
         )
     end
 
