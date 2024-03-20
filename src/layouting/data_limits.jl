@@ -75,10 +75,9 @@ function data_limits(x::Volume)
     return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
 end
 
-# We don't want pixel space line segments to be considered...
 function data_limits(plot::Text)
     if plot.space[] == plot.markerspace[]
-        return text_boundingbox(plot)
+        return string_boundingbox(plot)
     else
         return Rect3d(point_iterator(plot))
     end
