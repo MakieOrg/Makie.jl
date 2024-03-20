@@ -1167,7 +1167,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, marker, markersize, rotations))
+    @get_attribute(primitive, (model, marker, markersize, rotation))
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(model)
@@ -1198,10 +1198,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
             submesh[:calculated_colors] = color[i]
         end
         scale = markersize isa Vector ? markersize[i] : markersize
-        rotation = if rotations isa Vector
-            Makie.rotationmatrix4(to_rotation(rotations[i]))
+        rotation = if rotation isa Vector
+            Makie.rotationmatrix4(to_rotation(rotation[i]))
+        elseif rotation isa Mat4
+            rotation
         else
-            Makie.rotationmatrix4(to_rotation(rotations))
+            Makie.rotationmatrix4(to_rotation(rotation))
         end
 
         draw_mesh3D(
