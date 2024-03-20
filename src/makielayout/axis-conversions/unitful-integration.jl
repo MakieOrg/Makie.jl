@@ -1,6 +1,6 @@
 using Dates, Observables
 import Unitful
-using Unitful: Quantity, @u_str, uconvert, ustrip, upreferred
+using Unitful: Quantity, @u_str, uconvert, ustrip
 
 const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.Units}
 
@@ -15,6 +15,7 @@ base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
 base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
 base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
 base_unit(x::Unitful.Unit) = x
+base_unit(x::Period) = base_unit(Quantity(x))
 
 unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
 unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
@@ -83,13 +84,11 @@ function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
     return getfield.((Unitful,), TIME_UNIT_NAMES)
 end
 
-ustrip_to_unit(unit, value) = Float64(ustrip(uconvert(unit, value)))
-
 function best_unit(min, max)
     middle = (min + max) / 2.0
     all_units = get_all_base10_units(middle)
     _, index = findmin(all_units) do unit
-        raw_value = abs(ustrip(uconvert(to_free_unit(unit, middle), middle)))
+        raw_value = abs(unit_convert(unit, middle))
         # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
         # So, for fractions between 0..1, we use inv to penalize really small fractions
         positive = raw_value < 1.0 ? (inv(raw_value) + 100) : raw_value
@@ -110,25 +109,11 @@ function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQu
     return Float64(ustrip(conv))
 end
 
-convert_from_preferred(::Automatic, value) = value
-
-function convert_from_preferred(unit, value)
-    unitful = to_free_unit(unit) * value
-    return unitful
-end
-
-function convert_from_preferred_striped(unit, value)
-    unitful = convert_from_preferred(unit, value)
-    return Float64(ustrip(unitful))
-end
-
-convert_to_preferred(::Automatic, value) = value
-convert_to_preferred(unit, value) = ustrip(to_free_unit(unit) * value)
 
 # Overload conversion functions for Axis, to properly display units
 
 """
-    UnitfulConversion(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
+    UnitfulConversion(unit=automatic; units_in_label=false)
 
 Allows to plot arrays of unitful objects into an axis.
 
@@ -154,60 +139,52 @@ struct UnitfulConversion <: AxisConversion
     unit::Observable{Any}
     automatic_units::Bool
     units_in_label::Observable{Bool}
-    extrema::Dict{UInt64, Tuple{Any, Any}}
+    extrema::Dict{String, Tuple{Any, Any}}
 end
 
 function UnitfulConversion(unit=automatic; units_in_label=false)
-    extrema = Dict{UInt64, Tuple{Any, Any}}()
+    extrema = Dict{String,Tuple{Any,Any}}()
     return UnitfulConversion(unit, unit isa Automatic, units_in_label, extrema)
+end
+
+function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
+    conversion.automatic_units || return
+    eltype, extrema = eltype_extrema(value_obs[])
+    conversion.extrema[value_obs.id] = promote(Quantity.(extrema)...)
+    imini, imaxi = extrema
+    for (mini, maxi) in values(conversion.extrema)
+        imini = min(imini, mini)
+        imaxi = max(imaxi, maxi)
+    end
+    new_unit = best_unit(imini, imaxi)
+    if new_unit != conversion.unit[]
+        conversion.unit[] = new_unit
+    end
 end
 
 needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
 
-function connect_conversion!(ax::AbstractAxis, conversion::UnitfulConversion, dim)
-    if conversion.automatic_units
-        on(ax.blockscene, ax.finallimits) do limits
-            unit = conversion.unit[]
-            # Only time & length units are tested/supported right now
-            if !(unit isa Automatic) && Unitful.dimension(unit) in (Unitful.𝐓, Unitful.𝐋)
-                mini, maxi = getindex.(extrema(limits), dim)
-                t(v) = to_free_unit(unit) * v
-                new_unit = best_unit(t(mini), t(maxi))
-                if new_unit != unit
-                    conversion.unit[] = new_unit
-                end
-            end
-        end
-    end
-end
-
 function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax)
     unit = conversion.unit[]
     unit isa Automatic && return [], []
-    vmin_tu = convert_from_preferred_striped(unit, vmin)
-    vmax_tu = convert_from_preferred_striped(unit, vmax)
     unit_str = unit_string(unit)
-    tick_vals = get_tickvalues(ticks, scale, vmin_tu, vmax_tu)
-    tick_vals_preferred = convert_to_preferred.((unit,), tick_vals)
-
+    tick_vals = get_tickvalues(ticks, scale, vmin, vmax)
     labels = get_ticklabels(formatter, tick_vals)
     if !conversion.units_in_label[]
         labels = labels .* unit_str
     end
-    return tick_vals_preferred, labels
+    return tick_vals, labels
 end
 
-function convert_axis_dim(conversion::UnitfulConversion, values::Observable)
-    if conversion.unit[] isa Automatic
-        unit = new_unit(conversion.unit[], values[])
-        conversion.unit[] = unit
-    end
-    return map(conversion.unit, values) do unit, values
-        if conversion.automatic_units
-            unit = new_unit(unit, values)
-            conversion.unit[] = unit
+function convert_axis_dim(conversion::UnitfulConversion, value_obs::Observable)
+    return map(conversion.unit, value_obs; ignore_equal_values=true) do unit, values
+        if !isempty(values)
+            # try if conversion works, to through error if not!
+            # Is there a function for this to check in Unitful?
+            unit_convert(unit, values[1])
         end
-        unit_convert(unit, values)
+        update_extrema!(conversion, value_obs)
+        return unit_convert(conversion.unit[], values)
     end
 end
 

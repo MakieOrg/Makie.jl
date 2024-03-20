@@ -1,52 +1,3 @@
-struct Float32Scaling{TargetType}
-    scale::Base.TwicePrecision{Float64}
-    offset::Base.TwicePrecision{Float64}
-end
-function Float32Scaling{TargetType}(s::Real, o::Real) where {TargetType}
-    return Float32Scaling{TargetType}(Base.TwicePrecision(s), Base.TwicePrecision(o))
-end
-"""
-    update_scaling_factors(scaling::Float32Scaling, scaled_min::Real, scaled_max::Real)
-Returns a new scaling if the scaled values fall outside the desired range.
-Gets called with already scaled values, to be easily used with `finallimits`.
-"""
-function update_scaling_factors(scaling::Float32Scaling{T}, scaled_min::Real, scaled_max::Real) where {T}
-    TW = Base.TwicePrecision{Float64}
-    max_range = 100
-    min_r, max_r = -max_range / 2, max_range / 2
-    if (scaled_min > min_r) && (scaled_max < max_r)
-        return scaling
-    end
-    # Recalculate the scale and offset to ensure the scaled values fall within the desired range
-    mini, maxi = unscale_value(scaling, scaled_min), unscale_value(scaling, scaled_max)
-    # The desired range is 100, but we always convert to a smaller target range
-    # to less often change the scaling
-    desired_range = TW(max_range / 10)
-    offset = TW(mini) + (TW(maxi - mini) / TW(2))
-    # Adjust the scale
-    scale = TW(maxi - mini) / desired_range
-    return Float32Scaling{T}(scale, offset)
-end
-function scale_value(scaling::Float32Scaling, value::Real)
-    return Float32((value - scaling.offset) / scaling.scale)
-end
-function convert_to_target(::Type{T}, x::Base.TwicePrecision) where {T}
-    return convert(T, x)
-end
-function convert_to_target(::Type{T}, x::Base.TwicePrecision) where {T<:Integer}
-    return round(T, Float64(x))
-end
-function unscale_value(scaling::Float32Scaling{T}, value::Real) where {T}
-    # TODO, this should maybe not return Float64
-    # The big question is, how do we make a lossless conversion from TwicePrecision back to Int64
-    # But otherwise it will return TwicePrecision, which doesn't work well
-    # since lots of math functions are not defined for it
-    return convert_to_target(T, (value * scaling.scale) + scaling.offset)
-end
-struct Float32Conversion{T}
-    scaling::Observable{Float32Scaling{T}}
-end
-
 """
     number_to_date(::Type{T}, i::Int)
 
@@ -100,15 +51,15 @@ struct DateTimeConversion <: AxisConversion
     # Second entry in tuple is a value we use to normalize the number range,
     # so that they fit into float32
     type::Observable{DataType}
-    function DateTimeConversion(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
+    function DateTimeConversion(type=Automatic)
         obs = Observable{DataType}(type; ignore_equal_values=true)
         return new(obs)
     end
 end
 
 needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
-axis_conversion_type(::Type{<:Dates.TimeType}) = DateTimeConversion()
-MakieCore.can_axis_convert_type(::Type{<:Dates.TimeType}) = true
+axis_conversion_type(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
+MakieCore.can_axis_convert_type(::Type{<:Dates.AbstractTime}) = true
 
 
 function convert_axis_value(conversion::DateTimeConversion, value::Dates.TimeType)

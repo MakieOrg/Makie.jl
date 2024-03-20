@@ -162,29 +162,31 @@ end
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
+using Makie.Unitful
 using Makie.Dates
 
-@recipe(DatePlot, x) do scene
+@recipe(UnitfulPlot, x) do scene
     return Attributes()
 end
 
-function Makie.plot!(plot::DatePlot)
-    return scatter!(plot, plot.x, map(x -> Time.(x), plot.x))
+function Makie.plot!(plot::UnitfulPlot)
+    return scatter!(plot, plot.x, map(x -> x .* u"s", plot.x))
 end
+
 @testset "dates in recipe" begin
-    f, ax, pl = dateplot(1:5)
+    f, ax, pl = unitfulplot(1:5)
     pl_conversion = Makie.get_conversions(pl)
     ax_conversion = Makie.get_conversions(ax)
-    @test pl_conversion[2] isa Makie.DateTimeConversion
-    @test ax_conversion[2] isa Makie.DateTimeConversion
-    @test pl.plots[1][1][] == Point{2,Float32}[[1.0, -5.0], [2.0, -2.5], [3.0, 0.0], [4.0, 2.5], [5.0, 5.0]]
+    @test pl_conversion[2] isa Makie.UnitfulConversion
+    @test ax_conversion[2] isa Makie.UnitfulConversion
+    @test pl.plots[1][1][] == Point{2,Float32}.(1:5, 1:5)
 end
 
 
 struct DateStruct end
 
 function Makie.convert_arguments(::PointBased, ::DateStruct)
-    return (1:5, Time.(1:5))
+    return (1:5, DateTime.(1:5))
 end
 @testset "dates in convert_arguments" begin
     f, ax, pl = scatter(DateStruct())
@@ -192,7 +194,8 @@ end
     ax_conversion = Makie.get_conversions(ax)
     @test pl_conversion[2] isa Makie.DateTimeConversion
     @test pl_conversion[2] isa Makie.DateTimeConversion
-    @test pl[1][] == Point{2,Float32}[[1.0, -5.0], [2.0, -2.5], [3.0, 0.0], [4.0, 2.5], [5.0, 5.0]]
+
+    @test pl[1][] == Point.(1:5, Float64.(Makie.date_to_number.(DateTime.(1:5))))
 end
 
 @testset "Categorical ylims!" begin
