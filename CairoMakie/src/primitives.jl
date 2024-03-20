@@ -932,9 +932,9 @@ function draw_mesh3D(
     projectionview = Makie.space_to_clip(scene.camera, space, true)
     eyeposition = scene.camera.eyeposition[]
     i = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(model[i, i] * Diagonal(Vec3f(scale)))) # see issue #3702
 
     local_model = rotation * Makie.scalematrix(Vec3f(scale))
+    normalmatrix = transpose(inv(model[i, i] * local_model[1:3, 1:3])) # see issue #3702
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
     vs = broadcast(meshpoints, (transform_func,)) do v, f
