@@ -3,7 +3,7 @@ using Makie.Dates, Makie.Unitful, Test
 @reference_test "combining units, error for numbers" begin
     f, ax, pl = scatter(rand(Second(1):Second(60):Second(20*60), 10), 1:10)
     scatter!(ax, rand(Hour(1):Hour(1):Hour(20), 10), 1:10)
-    # @test_throws Unitful.DimensionError scatter!(ax, rand(10), 1:10) # should error!
+    @test_throws Unitful.DimensionError scatter!(ax, rand(10), 1:10) # should error!
     f
 end
 
