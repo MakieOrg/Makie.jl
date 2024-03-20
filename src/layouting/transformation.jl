@@ -204,11 +204,12 @@ function apply_transform_and_model(model::Mat4, f, pos::VecTypes, space = :data,
         p4d = p4d ./ p4d[4]
         return to_ndim(output_type, p4d, NaN)
     else
-        return transformed
+        return to_ndim(output_type, transformed, NaN)
     end
 end
 function apply_transform_and_model(model::Mat4, f, positions::AbstractArray, space = :data, output_type = Point3d)
-    return map(positions) do pos
+    output = similar(positions, output_type)
+    return map!(output, positions) do pos
         apply_transform_and_model(model, f, pos, space, output_type)
     end
 end
