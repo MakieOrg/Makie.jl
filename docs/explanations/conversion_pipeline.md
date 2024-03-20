@@ -5,7 +5,7 @@
 The following graphic sketches out the conversion pipeline of data given to a plot with `space = :data` for GL backends.
 
 \begin{examplefigure}{}
-```
+```julia
 #hideall
 using GLMakie, LinearAlgebra
 
