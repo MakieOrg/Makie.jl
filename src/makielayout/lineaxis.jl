@@ -37,7 +37,7 @@ function calculate_protrusion(
     real_labelsize::Float32 = if label_is_empty
         0f0
     else
-        boundingbox(labeltext, :pixel).widths[horizontal[] ? 2 : 1]
+        boundingbox(labeltext, :data).widths[horizontal[] ? 2 : 1]
     end
 
     labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0

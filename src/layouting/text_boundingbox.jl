@@ -18,7 +18,7 @@ function boundingbox(plot::Text, target_space::Symbol)
     elseif target_space == plot.markerspace[]
         return string_boundingbox(plot)
     else
-        error("$target_space must be either :world or markerspace = $(plot.markerspace[])")
+        error("`target_space = :$target_space` must be either :world or markerspace = :$(plot.markerspace[])")
     end
 end
 
