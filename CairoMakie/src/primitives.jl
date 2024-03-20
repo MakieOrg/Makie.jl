@@ -369,7 +369,7 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
-    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotations, transform_marker))
+    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotation, transform_marker))
 
     ctx = screen.context
     model = primitive.model[]
@@ -386,16 +386,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     transfunc = Makie.transform_func(primitive)
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotations, model, positions, size_model, font, markerspace,
+                               marker_offset, rotation, model, positions, size_model, font, markerspace,
                                space)
 end
 
-function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotation, model, positions, size_model, font, markerspace, space)
     # TODO Optimization:
     # avoid calling project functions per element as they recalculate the
     # combined projection matrix for each element like this
     broadcast_foreach(positions, colors, markersize, strokecolor,
-            strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            strokewidth, marker, marker_offset, remove_billboard(rotation)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)

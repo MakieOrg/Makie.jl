@@ -455,7 +455,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
     if a.enable_indicators[]
         translation = apply_transform_and_model(plot, plot[1][][idx])
-        rotation = to_rotation(_to_rotation(plot.rotations[], idx))
+        rotation = to_rotation(_to_rotation(plot.rotation[], idx))
         scale = inv_f32_scale(plot, _to_scale(plot.markersize[], idx))
 
         bbox = Rect3d(convert_attribute(

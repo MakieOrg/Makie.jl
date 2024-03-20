@@ -919,11 +919,11 @@ function to_color(c::Tuple{<: Any,  <: Number})
     return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
-convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
-convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotations") = to_rotation.(b.rotation)
-convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
-convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
-convert_attribute(r, ::key"rotations") = to_rotation(r)
+convert_attribute(b::Billboard{Float32}, ::key"rotation") = to_rotation(b.rotation)
+convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotation") = to_rotation.(b.rotation)
+convert_attribute(r::AbstractArray, ::key"rotation") = to_rotation.(r)
+convert_attribute(r::StaticVector, ::key"rotation") = to_rotation(r)
+convert_attribute(r, ::key"rotation") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
 convert_attribute(c, ::key"markersize", ::key"meshscatter") = to_3d_scale(c)
