@@ -884,7 +884,6 @@ convert_attribute(x, key::Key) = x
 convert_attribute(color, ::key"color") = to_color(color)
 
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
-convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
 convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
