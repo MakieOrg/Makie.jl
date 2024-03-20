@@ -140,7 +140,7 @@ end
     @test boundingbox(p) ≈ bb2
 
     # further model transformations should (only) affect boundingbox
-    rotate!(p, pi/4)
+    Makie.rotate!(p, pi/4)
     bb3 = Rect3{Float64}([-1.5309311648155406, -1.5309311648155406, 0.0], [3.061862329631081, 3.061862329631081, 0.0])
     @test data_limits(p) ≈ bb1
     @test boundingbox(p) ≈ bb3

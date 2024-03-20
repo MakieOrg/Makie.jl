@@ -98,8 +98,8 @@ function data_limits(plot::Scatter)
 
         bb = Rect3d()
         for (i, p) in enumerate(point_iterator(plot))
-            marker_pos = to_ndim(Point3d, p, NaN)
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), NaN)
+            marker_pos = to_ndim(Point3d, p, 0)
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
             quad_size = Vec2d(sv_getindex(scale[], i))
             quad_rotation = sv_getindex(rotations, i)
 
@@ -107,10 +107,10 @@ function data_limits(plot::Scatter)
             quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
             quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
 
-            bb = _update_rect(bb, quad_origin)
-            bb = _update_rect(bb, quad_origin + quad_v1)
-            bb = _update_rect(bb, quad_origin + quad_v2)
-            bb = _update_rect(bb, quad_origin + quad_v1 + quad_v2)
+            bb = _update_rect(bb, marker_pos + quad_origin)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v2)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
         end
         return bb
     else
