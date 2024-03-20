@@ -932,7 +932,7 @@ function draw_mesh3D(
     projectionview = Makie.space_to_clip(scene.camera, space, true)
     eyeposition = scene.camera.eyeposition[]
     i = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(model[i, i]))
+    normalmatrix = transpose(inv(model[i, i] * Diagonal(Vec3f(scale)))) # see issue #3702
 
     local_model = rotation * Makie.scalematrix(Vec3f(scale))
     # pass transform_func as argument to function, so that we get a function barrier
