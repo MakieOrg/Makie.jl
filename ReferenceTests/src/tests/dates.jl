@@ -7,24 +7,6 @@ time_range = some_time .+ range(Second(0); step=Second(5), length=10)
 date_range = range(date, step=Day(5), length=10)
 date_time_range = range(date_time, step=Week(5), length=10)
 
-function test_conversion(range)
-    T = eltype(range)
-    init_vals = Makie.date_to_number.(T, range)
-    scaling = Makie.update_scaling_factors(Makie.Float32Scaling{Float64}(1.0, 0.0), extrema(init_vals)...)
-    scaled = Makie.scale_value.(Ref(scaling), init_vals)
-    vals = Makie.unscale_value.(Ref(scaling), scaled)
-    @test all(init_vals .≈ Float64.(vals))
-    # Currently this isn'some_time lossless
-    # time_vals = Makie.number_to_date.(T, vals)
-    # @test all(time_vals .= range)
-end
-
-@testset "date/time conversion" begin
-    test_conversion(time_range)
-    test_conversion(date_range)
-    test_conversion(date_time_range)
-end
-
 @reference_test "time_range" scatter(time_range, 1:10)
 @reference_test "date_range" scatter(date_range, 1:10)
 @reference_test "date_time_range" scatter(date_time_range, 1:10)

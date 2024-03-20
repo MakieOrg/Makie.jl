@@ -93,8 +93,7 @@ function best_unit(min, max)
         # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
         # So, for fractions between 0..1, we use inv to penalize really small fractions
         positive = raw_value < 1.0 ? (inv(raw_value) + 100) : raw_value
-        # I think values are easiest to read between 0-100, so we want values close to 50
-        return abs(positive - 50)
+        return positive
     end
     return all_units[index]
 end
@@ -102,21 +101,20 @@ end
 unit_convert(::Automatic, x) = x
 
 function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
-    return map(unit_convert, Ref(unit), x)
+    return unit_convert.(Ref(unit), x)
 end
 
 # We always convert to preferred unit!
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     conv = uconvert(to_free_unit(unit, value), value)
-    return Float64(ustrip(Unitful.upreferred(conv)))
+    return Float64(ustrip(conv))
 end
 
 convert_from_preferred(::Automatic, value) = value
 
 function convert_from_preferred(unit, value)
-    uf = to_free_unit(unit)
-    unitful = upreferred(uf) * value
-    return uconvert(uf, unitful)
+    unitful = to_free_unit(unit) * value
+    return unitful
 end
 
 function convert_from_preferred_striped(unit, value)
@@ -125,7 +123,7 @@ function convert_from_preferred_striped(unit, value)
 end
 
 convert_to_preferred(::Automatic, value) = value
-convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value))
+convert_to_preferred(unit, value) = ustrip(to_free_unit(unit) * value)
 
 # Overload conversion functions for Axis, to properly display units
 
@@ -138,8 +136,6 @@ Allows to plot arrays of unitful objects into an axis.
 
 - `unit=automatic`: sets the unit as conversion target. If left at automatic, the best unit will be chosen for all plots + values plotted to the axis (e.g. years for long periods, or km for long distances, or nanoseconds for short times).
 - `units_in_label=false`: controls, whether plots are shown in the label_prefix of the axis labels, or in the tick labels
-- `short_label=false`: uses short or long label in axis label (when appended to conversion, short form is always used)
-- `conversion=automatic`: per default, Makie.automatic conversion are used (Which fallback to [`WilkinsonTicks`](@ref)). One can pass Another algorithm here explicitely (e.g. `WilkinsonTicks(3; k_min=2)`, [`LinearTicks`](@ref) etc)
 
 # Examples
 
@@ -150,20 +146,20 @@ using Unitful, CairoMakie
 scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 
 # fix unit to always use Meter & display unit in the xlabel postfix
-yticks = UnitfulConversion(u"m"; units_in_label=true)
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(yticks=yticks,))
+convert = UnitfulConversion(u"m"; units_in_label=true)
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(y_dim_convert=convert,))
 ```
 """
 struct UnitfulConversion <: AxisConversion
     unit::Observable{Any}
     automatic_units::Bool
-    tickformatter
     units_in_label::Observable{Bool}
-    short_label::Observable{Bool}
+    extrema::Dict{UInt64, Tuple{Any, Any}}
 end
 
-function UnitfulConversion(unit=automatic; units_in_label=false, short_label=false, conversion=Makie.automatic)
-    return UnitfulConversion(unit, unit isa Automatic, conversion, units_in_label, short_label)
+function UnitfulConversion(unit=automatic; units_in_label=false)
+    extrema = Dict{UInt64, Tuple{Any, Any}}()
+    return UnitfulConversion(unit, unit isa Automatic, units_in_label, extrema)
 end
 
 needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
@@ -175,7 +171,7 @@ function connect_conversion!(ax::AbstractAxis, conversion::UnitfulConversion, di
             # Only time & length units are tested/supported right now
             if !(unit isa Automatic) && Unitful.dimension(unit) in (Unitful.𝐓, Unitful.𝐋)
                 mini, maxi = getindex.(extrema(limits), dim)
-                t(v) = upreferred(to_free_unit(unit)) * v
+                t(v) = to_free_unit(unit) * v
                 new_unit = best_unit(t(mini), t(maxi))
                 if new_unit != unit
                     conversion.unit[] = new_unit
@@ -188,11 +184,10 @@ end
 function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax)
     unit = conversion.unit[]
     unit isa Automatic && return [], []
-
     vmin_tu = convert_from_preferred_striped(unit, vmin)
     vmax_tu = convert_from_preferred_striped(unit, vmax)
     unit_str = unit_string(unit)
-    tick_vals = get_tickvalues(conversion.tickformatter, scale, vmin_tu, vmax_tu)
+    tick_vals = get_tickvalues(ticks, scale, vmin_tu, vmax_tu)
     tick_vals_preferred = convert_to_preferred.((unit,), tick_vals)
 
     labels = get_ticklabels(formatter, tick_vals)
@@ -207,7 +202,13 @@ function convert_axis_dim(conversion::UnitfulConversion, values::Observable)
         unit = new_unit(conversion.unit[], values[])
         conversion.unit[] = unit
     end
-    return map(unit_convert, conversion.unit, values)
+    return map(conversion.unit, values) do unit, values
+        if conversion.automatic_units
+            unit = new_unit(unit, values)
+            conversion.unit[] = unit
+        end
+        unit_convert(unit, values)
+    end
 end
 
 function convert_axis_value(conversion::UnitfulConversion, value::SupportedUnits)

@@ -99,97 +99,66 @@ struct DateTimeConversion <: AxisConversion
     # Time, Date, DateTime
     # Second entry in tuple is a value we use to normalize the number range,
     # so that they fit into float32
-    type::Observable{Tuple{DataType,Float32Scaling{Int64}}}
-    k_min::Union{Automatic,Int}
-    k_max::Union{Automatic,Int}
-    k_ideal::Union{Automatic,Int}
+    type::Observable{DataType}
     function DateTimeConversion(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
-        F32S = Float32Scaling{Int64}
-        obs = Observable{Tuple{DataType,F32S}}((type, F32S(1.0, 0.0)); ignore_equal_values=true)
-        return new(obs, k_min, k_max, k_ideal)
+        obs = Observable{DataType}(type; ignore_equal_values=true)
+        return new(obs)
     end
 end
+
 needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
 axis_conversion_type(::Type{<:Dates.TimeType}) = DateTimeConversion()
 MakieCore.can_axis_convert_type(::Type{<:Dates.TimeType}) = true
 
 
 function convert_axis_value(conversion::DateTimeConversion, value::Dates.TimeType)
-    T, scaling = conversion.type[]
-    return scale_value(scaling, date_to_number(T, value))
+    return date_to_number(conversion.type[], value)
 end
 
 function convert_axis_value(conversion::DateTimeConversion, value::AbstractArray)
-    T, scaling = conversion.type[]
-    return scale_value.(Ref(scaling), date_to_number.(T, value))
+    return date_to_number.(conversion.type[], value)
 end
 
 function convert_axis_dim(conversion::DateTimeConversion, values::Observable)
+    T = conversion.type[]
     eltype = MakieCore.get_element_type(values[])
-    T, scaling = conversion.type[]
     if T <: Automatic
         new_type = eltype
-        init_vals = date_to_number.(T, values[])
-        # TODO update minimum in connect! on limit change!
-        scaling = update_scaling_factors(scaling, extrema(init_vals)...)
-        conversion.type[] = (new_type, scaling)
+        conversion.type[] = new_type
     elseif T != eltype
         if !(T <: Time && eltype <: Unitful.Quantity)
             error("Plotting unit $(eltype) into axis with type $(T) not supported.")
         end
     end
-    return map(values, conversion.type) do vals, (T, scaling)
-        return scale_value.(Ref(scaling), date_to_number.(T, vals))
-    end
-end
-
-function connect_conversion!(ax::AbstractAxis, conversion::DateTimeConversion, dim)
-    on(ax.blockscene, ax.finallimits) do limits
-        # Don't update if nothing plotted yet
-        if isempty(ax.scene.plots)
-            return
-        end
-        T, scaling = conversion.type[]
-        # Get scaled extrema of the limits of the dimension
-        mini, maxi = getindex.(extrema(limits), dim)
-        # Calculate new scaling
-        new_scaling = update_scaling_factors(scaling, mini, maxi)
-        if new_scaling != scaling
-            # Only update if the scaling changed
-            conversion.type[] = (T, new_scaling)
-        end
+    return map(values, conversion.type) do vals, T
+        return date_to_number.(T, vals)
     end
 end
 
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
-    if !(formatter isa Automatic)
-        error("You can't use a formatter with DateTime conversion")
-    end
 
     if scale != identity
         error("$(scale) scale not supported for DateTimeConversion")
     end
-
-    T, f32scaling = conversion.type[]
-
+    T = conversion.type[]
     # When automatic, we haven't actually plotted anything yet, so no unit chosen
     # in that case, we can't really have any conversion
     T <: Automatic && return [], []
-    umin = unscale_value(f32scaling, vmin)
-    umax = unscale_value(f32scaling, vmax)
+
     if T <: DateTime
-        k_min = conversion.k_min isa Automatic ? 2 : conversion.k_min
-        k_max = conversion.k_max isa Automatic ? 3 : conversion.k_max
-        conversion, dates = PlotUtils.optimize_datetime_ticks(umin, umax; k_min=k_min, k_max=k_max)
-        return scale_value.(Ref(f32scaling), conversion), dates
+        if ticks isa WilkinsonTicks
+            k_min = formatter.k_min
+            k_max = formatter.k_max
+        else
+            k_min = 2
+            k_max = 3
+        end
+        conversion, dates = PlotUtils.optimize_datetime_ticks(vmin, vmax; k_min=k_min, k_max=k_max)
+        return conversion, dates
     else
-        # TODO implement proper conversion for Time Date
-        k_min = conversion.k_min isa Automatic ? 3 : conversion.k_min
-        k_max = conversion.k_max isa Automatic ? 6 : conversion.k_max
-        k_ideal = conversion.k_ideal isa Automatic ? 4 : conversion.k_ideal
-        formatter = WilkinsonTicks(k_ideal; k_min=k_min, k_max=k_max)
-        tickvalues = get_tickvalues(formatter, scale, umin, umax)
+        # TODO implement proper ticks for Time Date
+        tickvalues = get_tickvalues(formatter, scale, vmin, vmax)
         dates = number_to_date.(T, round.(Int64, tickvalues))
-        return scale_value.(Ref(f32scaling), tickvalues), string.(dates)
+        return tickvalues, string.(dates)
     end
 end
