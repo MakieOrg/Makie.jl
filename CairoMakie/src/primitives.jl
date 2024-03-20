@@ -1200,8 +1200,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         scale = markersize isa Vector ? markersize[i] : markersize
         rotation = if rotation isa Vector
             Makie.rotationmatrix4(to_rotation(rotation[i]))
-        elseif rotation isa Mat4
-            rotation
         else
             Makie.rotationmatrix4(to_rotation(rotation))
         end
