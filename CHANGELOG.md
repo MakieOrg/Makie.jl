@@ -8,7 +8,7 @@
 - Fixed `contourf` bug where n levels would sometimes miss the uppermost value, causing gaps [#3713](https://github.com/MakieOrg/Makie.jl/pull/3713).
 - Added `scale` attribute to `violin` [#3352](https://github.com/MakieOrg/Makie.jl/pull/3352).
 - Use label formatter in barplot [#3718](https://github.com/MakieOrg/Makie.jl/pull/3718).
-- Fix the incorrect shading of markers' ellipsoid surfaces [#3722](https://github.com/MakieOrg/Makie.jl/pull/3722)
+- Fix the incorrect shading with non uniform markerscale in meshscatter [#3722](https://github.com/MakieOrg/Makie.jl/pull/3722)
 
 ## [0.20.8] - 2024-02-22
 
