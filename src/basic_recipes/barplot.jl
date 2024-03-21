@@ -239,7 +239,7 @@ end
 function Makie.plot!(p::BarPlot)
     bar_points = p[1]
     if !(eltype(bar_points[]) <: Point2)
-        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`.")
+        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`. Found: $(bar_points[])")
     end
     labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2d}[])
     label_aligns = Observable(Vec2d[])

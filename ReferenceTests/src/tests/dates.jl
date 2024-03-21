@@ -20,7 +20,7 @@ end
 
 @reference_test "Force Unitful to be rendered as Time" begin
     yconversion = Makie.DateTimeConversion(Time)
-    scatter(1:4, (1:4) .* u"s"; axis=(x_dim_convert=yconversion,))
+    scatter(1:4, (1:4) .* u"s"; axis=(convert_dim_2=yconversion,))
 end
 
 @reference_test "Time Observable" begin

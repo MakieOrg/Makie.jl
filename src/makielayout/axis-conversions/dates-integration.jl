@@ -45,7 +45,7 @@ yticks = DateTimeConversion(Time)
 scatter(1:4, (1:4) .* u"s", axis=(yticks=yticks,))
 ```
 """
-struct DateTimeConversion <: AxisConversion
+struct DateTimeConversion <: AbstractDimConversion
     # first element in tuple is the time type we converted from, which can be:
     # Time, Date, DateTime
     # Second entry in tuple is a value we use to normalize the number range,
@@ -58,15 +58,15 @@ struct DateTimeConversion <: AxisConversion
 end
 
 needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
-axis_conversion_type(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
-MakieCore.can_axis_convert_type(::Type{<:Dates.AbstractTime}) = true
+create_dim_conversion(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
+MakieCore.should_dim_convert(::Type{<:Dates.AbstractTime}) = true
 
 
-function convert_axis_value(conversion::DateTimeConversion, value::Dates.TimeType)
+function convert_dim_value(conversion::DateTimeConversion, value::Dates.TimeType)
     return date_to_number(conversion.type[], value)
 end
 
-function convert_axis_value(conversion::DateTimeConversion, value::AbstractArray)
+function convert_dim_value(conversion::DateTimeConversion, value::AbstractArray)
     return date_to_number.(conversion.type[], value)
 end
 

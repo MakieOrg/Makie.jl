@@ -120,7 +120,7 @@ end
 
 
 function axis_convert(P, attributes::Dict, x::Observable, y::Observable)
-    converts = to_value(get!(() -> AxisConversions(), attributes, :dim_conversions))
+    converts = to_value(get!(() -> DimConversions(), attributes, :dim_conversions))
     x = convert_axis_dim(P, converts, 1, x)
     y = convert_axis_dim(P, converts, 2, y)
     return (x, y)
@@ -163,7 +163,7 @@ function get_kw_obs(names, kw)
     return obs
 end
 
-function conversion_pipeline(P, used_attrs, args_obs, args, user_attributes, plot_attributes, deregister, recursion=1)
+function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attributes, deregister, recursion=1)
     if recursion == 3
         return P, args_obs
     end
@@ -195,7 +195,7 @@ function conversion_pipeline(P, used_attrs, args_obs, args, user_attributes, plo
         end
         append!(deregister, fs)
         # return P, axis_convert(P, user_attributes, new_args_obs...)
-        return conversion_pipeline(P, used_attrs, new_args_obs, args, user_attributes, plot_attributes, deregister,
+        return conversion_pipeline(P, used_attrs, new_args_obs, user_attributes, plot_attributes, deregister,
                                    recursion + 1)
     else
         P, converted2 = apply_convert!(P, plot_attributes, converted)
@@ -226,7 +226,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     args_obs = map(x -> x isa Observable ? x : Observable{Any}(x), user_args)
     plot_attributes = Attributes()
     deregister = Observables.ObserverFunction[]
-    PNew, converted_obs = conversion_pipeline(P, attr, args_obs, args, user_attributes, plot_attributes, deregister)
+    PNew, converted_obs = conversion_pipeline(P, attr, args_obs, user_attributes, plot_attributes, deregister)
     args = map(to_value, converted_obs)
     ArgTyp = MakieCore.argtypes((args...,))
     FinalPlotFunc = plotfunc(plottype(PNew, args...))
@@ -315,8 +315,8 @@ end
 
 function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.parent = parent
-
-    apply_theme!(parent_scene(parent), plot)
+    scene = parent_scene(parent)
+    apply_theme!(scene, plot)
     t_user = to_value(get(attributes(plot), :transformation, automatic))
     if t_user isa Transformation
         plot.transformation = t_user
@@ -337,6 +337,10 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
     plot!(plot)
+    conversions = get_conversions(plot)
+    if !isnothing(conversions)
+        merge_conversions!(scene.conversions, conversions)
+    end
     return plot
 end
 

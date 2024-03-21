@@ -92,7 +92,7 @@ mutable struct Scene <: AbstractScene
     deregister_callbacks::Vector{Observables.ObserverFunction}
     cycler::Cycler
 
-    conversions::AxisConversions
+    conversions::DimConversions
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -130,7 +130,7 @@ mutable struct Scene <: AbstractScene
             convert(Vector{AbstractLight}, lights),
             Observables.ObserverFunction[],
             Cycler(),
-            AxisConversions()
+            DimConversions()
         )
         finalizer(free, scene)
         return scene

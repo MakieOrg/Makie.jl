@@ -9,20 +9,19 @@ One can use `CategoricalConversion(sortby=func)`, to change the sorting, or make
 
 ```julia
 # Ticks get chosen automatically as categorical
-scatter(1:4, ["a", "b", "c", "a"])
+scatter(1:4, Categorical(["a", "b", "c", "a"]))
 
 # Explicitely set them for other types:
 
-struct Test
+struct Named
     value
 end
 
-conversion = CategoricalConversion(sortby=x->x.value)
-xtickformat = x-> string.(getfield.(x, :value)) .* " val"
-barplot(Test.([:a, :b, :c]), rand(3), axis=(x_dim_conversion=conversion, xtickformat=xtickformat))
+conversion = Makie.CategoricalConversion(sortby=x->x.value)
+barplot(Named.([:a, :b, :c]), 1:3, axis=(convert_dim_1=conversion,))
 ```
 """
-struct CategoricalConversion <: AxisConversion
+struct CategoricalConversion <: AbstractDimConversion
     # TODO, use ordered sets/dicts?
     # I've run into problems with OrderedCollections.jl
     # Which seems to be the only ordered set/dict implementation
@@ -41,8 +40,8 @@ function CategoricalConversion(; sortby=nothing)
 end
 
 needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
-MakieCore.can_axis_convert_type(::Type{Categorical}) = true
-axis_conversion_type(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
+MakieCore.should_dim_convert(::Type{Categorical}) = true
+create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
 
 function recalculate_categories!(conversion::CategoricalConversion)
     all_categories = []
@@ -64,7 +63,7 @@ end
 get_values(x) = x
 get_values(x::Categorical) = x.values
 
-function convert_axis_value(conversion::CategoricalConversion, value::Categorical)
+function convert_dim_value(conversion::CategoricalConversion, value::Categorical)
     return getindex.(Ref(conversion.category_to_int[]), get_values(value))
 end
 
@@ -89,7 +88,7 @@ function dict_setindex!(dict, key, value)
     end
 end
 
-function convert_axis_value(conversion::CategoricalConversion, value)
+function convert_dim_value(conversion::CategoricalConversion, value)
     if !haskey(conversion.category_to_int[], value)
         set = dict_get!(() -> [], conversion.sets, "")
         push!(set, value)
@@ -152,7 +151,7 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
         categories = ticks
     end
     # TODO filter out ticks greater vmin vmax?
-    numbers = convert_axis_value.(Ref(conversion), categories)
+    numbers = convert_dim_value.(Ref(conversion), categories)
     labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
     return numbers, labels_str
 end

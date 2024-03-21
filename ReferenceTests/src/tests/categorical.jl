@@ -15,8 +15,8 @@ end
     # we can combine all objects:
     f = Figure()
     ax = Axis(f[1, 1];
-        x_dim_convert=Makie.CategoricalConversion(; sortby=nothing),
-        y_dim_convert=Makie.CategoricalConversion(; sortby=nothing))
+        convert_dim_1=Makie.CategoricalConversion(; sortby=nothing),
+        convert_dim_2=Makie.CategoricalConversion(; sortby=nothing))
 
     p = scatter!(ax, 1:4, Categorical(["a", "b", "c", "a"]); color=1:4, colormap=:viridis, markersize=20)
     sp = scatter!(ax, 1:4, 1:4; color=1:4, colormap=:reds, markersize=20)
@@ -57,7 +57,7 @@ end
     f = Figure()
     conversion = Makie.CategoricalConversion(sortby=x->x.value)
     xtickformat = x-> string.(getfield.(x, :value)) .* " val"
-    ax = Axis(f[1, 1]; x_dim_convert=conversion, xtickformat=xtickformat)
+    ax = Axis(f[1, 1]; convert_dim_1=conversion, xtickformat=xtickformat)
     barplot!(ax, SomeStruct.([:a, :b, :c]), 1:3)
     f
 end

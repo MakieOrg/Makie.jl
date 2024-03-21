@@ -287,21 +287,32 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
 @noinline function MakieCore._create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
+    if haskey(figkws, :axis)
+        ax_kw = figkws[:axis]
+        _validate_nt_like_keyword(ax_kw, :axis)
+        if any(x-> x in [:convert_dim_1, :convert_dim_2, :convert_dim_3], keys(ax_kw))
+            conversions = get_conversions(ax_kw)
+            if haskey(attributes, :dim_conversions)
+                merge_conversions!(attributes[:dim_conversions], conversions)
+            else
+                attributes[:dim_conversions] = conversions
+            end
+        end
+    end
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return(ax, plot)
 end
 
-function set_axis_attributes!(::Type{<:AbstractAxis}, attributes::Dict, plot::Plot)
-end
-
-function set_axis_attributes!(::Type{<:Axis}, attributes::Dict, plot::Plot)
+function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::Plot)
     conversions = get(plot.kw, :dim_conversions, nothing)
     isnothing(conversions) && return
-    for (i, dim) in enumerate([:x, :y])
-        key = Symbol(dim, :_dim_convert)
-        attributes[key] = conversions[i]
+    for i in 1:3
+        key = Symbol("convert_dim_$i")
+        if hasfield(T, key)
+            attributes[key] = conversions[i]
+        end
     end
     return
 end
@@ -343,7 +354,6 @@ const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
     # we need to see if we plot into an existing axis before creating the plot
     # For axis specific converts.
     ax = create_axis_like!(figkws, figarg)
-
     # inserts global state from axis into plot attributes if they exist
     get!(attributes, :dim_conversions, get_conversions(ax))
 
@@ -356,6 +366,10 @@ const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
 end
 
 @noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
+    conversion = get_conversions(scene)
+    if !isnothing(conversion)
+        get!(attributes, :dim_conversions, conversion)
+    end
     plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)
     return plot
@@ -379,9 +393,9 @@ plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
-
-    merge_conversions!(ax.scene.conversions, get_conversions(plot))
-    connect_conversion!(ax, ax.scene.conversions)
+    if !isnothing(get_conversions(plot))
+        merge_conversions!(ax.scene.conversions, get_conversions(plot))
+    end
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.

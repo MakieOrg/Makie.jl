@@ -4,8 +4,8 @@ using Unitful: Quantity, @u_str, uconvert, ustrip
 
 const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.Units}
 
-axis_conversion_type(::Type{<:SupportedUnits}) = UnitfulConversion()
-MakieCore.can_axis_convert_type(::Type{<:SupportedUnits}) = true
+create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
+MakieCore.should_dim_convert(::Type{<:SupportedUnits}) = true
 
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
@@ -132,10 +132,10 @@ scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 
 # fix unit to always use Meter & display unit in the xlabel postfix
 convert = UnitfulConversion(u"m"; units_in_label=true)
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(y_dim_convert=convert,))
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(convert_dim_2=convert,))
 ```
 """
-struct UnitfulConversion <: AxisConversion
+struct UnitfulConversion <: AbstractDimConversion
     unit::Observable{Any}
     automatic_units::Bool
     units_in_label::Observable{Bool}
@@ -188,6 +188,6 @@ function convert_axis_dim(conversion::UnitfulConversion, value_obs::Observable)
     end
 end
 
-function convert_axis_value(conversion::UnitfulConversion, value::SupportedUnits)
+function convert_dim_value(conversion::UnitfulConversion, value::SupportedUnits)
     return unit_convert(conversion.unit[], value)
 end

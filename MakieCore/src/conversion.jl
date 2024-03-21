@@ -137,7 +137,7 @@ end
 function Base.show(io::IO, ce::ConversionError)
     println(io, """
        Can't convert argument $(ce.name)::$(typeof(ce.arg)) to target type $(ce.type).
-    Either define:
+        Either define:
 
     """)
 end
@@ -151,12 +151,29 @@ function get_element_type(arr::AbstractArray{T}) where {T}
     end
 end
 
-can_axis_convert_type(::Type) = false
+should_dim_convert(::Type) = false
 has_typed_convert(::Type) = false
 
-function can_axis_convert(P::Type{<: Plot}, argtype)
+"""
+    MakieCore.should_dim_convert(::Type{<: Plot}, args)::Bool
+    MakieCore.should_dim_convert(eltype::DataType)::Bool
+
+Returns `true` if the plot type should convert its arguments via DimConversions.
+Needs to be overloaded for recipes that want to use DimConversions.
+Also needs to be overloaded for DimConversions, e.g. for CategoricalConversion:
+```julia
+    MakieCore.should_dim_convert(::Type{Categorical}) = true
+```
+`should_dim_convert(::Type{<: Plot}, args)` falls back to check if `has_typed_convert` is true (so that we now the proper conversion target type for a plot) and `should_dim_convert(get_element_type(args))`.
+So dim conversions only get applied if both are true.
+If a recipe wants to use dim conversions, it should overload this function:
+```julia
+    MakieCore.should_dim_convert(::Type{<:MyPlotType}, args) = should_dim_convert(get_element_type(args))
+``
+"""
+function should_dim_convert(P::Type{<: Plot}, args)
     typed_convert = has_typed_convert(P) || has_typed_convert(typeof(conversion_trait(P)))
-    ax_convert = can_axis_convert_type(get_element_type(argtype))
+    ax_convert = should_dim_convert(get_element_type(args))
     return typed_convert && ax_convert
 end
 

@@ -203,7 +203,16 @@ end
     scatter!(ax, 1:4, Categorical(["b", "d", "a", "c"]))
     ylims!(ax, "0", "x")
     Makie.update_state_before_display!(ax)
-    lims = Makie.convert_axis_value.(Ref(ax), 2, ["0", "x"])
+    lims = Makie.convert_dim_value.(Ref(ax), 2, ["0", "x"])
     (xmin, ymin), (xmax, ymax) = extrema(ax.finallimits[])
     @test [ymin, ymax] == lims
+end
+
+@testset "Conversion with implicit axis" begin
+    conversion = Makie.CategoricalConversion(sortby=identity)
+    f, ax, pl = barplot([:a, :b, :c], 1:3, axis=(convert_dim_1=conversion,))
+    @test ax.convert_dim_1[] == Makie.get_conversions(pl)[1]
+    @test conversion == Makie.get_conversions(pl)[1]
+    @test ax.scene.conversions[1] == Makie.get_conversions(pl)[1]
+    @test pl[1][] == Point.(1:3, 1:3)
 end
