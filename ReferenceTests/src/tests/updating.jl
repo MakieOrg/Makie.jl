@@ -1,3 +1,5 @@
+using Makie.Geom
+
 @reference_test "updating 2d primitives" begin
     fig = Figure()
     t = Observable(1)

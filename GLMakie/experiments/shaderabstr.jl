@@ -1,5 +1,7 @@
 using ShaderAbstractions: Buffer, Sampler, VertexArray
 
+using Makie.Geom
+
 # Mesh
 mesh(Sphere(Point3f(0), 1f0)) |> display
 mesh(Sphere(Point3f(0), 1f0), color=:red, ambient=Vec3f(0.9))

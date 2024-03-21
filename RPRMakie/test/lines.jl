@@ -1,4 +1,5 @@
-using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
+using GLMakie, RPRMakie, RadeonProRender
+using Makie.Geom
 using Colors, FileIO
 using Colors: N0f8
 RPR = RadeonProRender

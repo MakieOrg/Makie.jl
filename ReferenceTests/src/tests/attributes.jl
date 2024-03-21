@@ -1,3 +1,5 @@
+using Makie.Geom
+
 @reference_test "glowcolor, glowwidth" begin
     scatter(RNG.randn(10), color=:blue, glowcolor=:orange, glowwidth=10)
 end

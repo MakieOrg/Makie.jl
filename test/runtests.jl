@@ -5,7 +5,7 @@ using Makie.GeometryBasics
 using Makie.PlotUtils
 using Makie.FileIO
 using Makie.IntervalSets
-using GeometryBasics: Pyramid
+using Makie.Geom
 
 using Makie: volume
 

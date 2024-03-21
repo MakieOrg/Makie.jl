@@ -1,3 +1,4 @@
+using Makie.Geom
 
 @reference_test "Test heatmap + image overlap" begin
     heatmap(RNG.rand(32, 32))

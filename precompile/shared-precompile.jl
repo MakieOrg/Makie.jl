@@ -1,5 +1,5 @@
 # File to run to snoop/trace all functions to compile
-using GeometryBasics
+using Makie.Geom
 
 @compile scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 

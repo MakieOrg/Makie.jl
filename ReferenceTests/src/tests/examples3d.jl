@@ -1,3 +1,4 @@
+using Makie.Geom
 
 @reference_test "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")

@@ -1,3 +1,5 @@
+using Makie.Geom
+
 @reference_test "lines and linestyles" begin
     # For now disabled until we fix GLMakie linestyle
     s = Scene(size = (800, 800), camera = campixel!)

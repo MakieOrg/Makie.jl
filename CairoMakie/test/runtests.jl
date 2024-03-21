@@ -1,6 +1,7 @@
 using Test
 using CairoMakie
 using Makie.FileIO
+using Makie.Geom
 using ReferenceTests
 
 # Before changing Pkg environment, try the test in #864
