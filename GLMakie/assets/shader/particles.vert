@@ -100,7 +100,7 @@ void main(){
     o_id = uvec2(objectid, index+1);
     vec3 s = _scale(scale, index);
     vec3 V = vertices * s;
-    vec3 N = normals;
+    vec3 N = normals / s; // see issue #3702
     vec3 pos;
     {{position_calc}}
     o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
