@@ -280,7 +280,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     uniforms = Dict(
         :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :shape_type => Observable(Cint(3)),
-        :rotations => uniform_rotation,
+        :rotation => uniform_rotation,
         :pos => positions,
         :marker_offset => char_offset,
         :quad_offset => quad_offset,
