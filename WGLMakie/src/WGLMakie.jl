@@ -59,6 +59,12 @@ function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config.
     Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
+
+    # If we are inside of VSCode, default `resize_to` to `:body`
+    screen_config = Dict(screen_config...)
+    if !isempty(filter(m -> m.name == "VSCodeServer", keys(Base.loaded_modules)))
+        screen_config[:resize_to] = get(screen_config, :resize_to, :body)
+    end
     Makie.set_screen_config!(WGLMakie, screen_config)
     if !Bonito.has_html_display()
         Bonito.browser_display()
