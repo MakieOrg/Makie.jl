@@ -95,7 +95,7 @@ function boundingbox(plot::Scatter)
             plot.marker_offset[],
             plot
         )
-        rotations = convert_attribute(to_value(get(plot, :rotations, 0)), key"rotations"())
+        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
         model = plot.model[]
         model33 = model[Vec(1,2,3), Vec(1,2,3)]
         transform_marker = to_value(get(plot, :transform_marker, false))::Bool

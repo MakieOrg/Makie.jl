@@ -94,7 +94,7 @@ function data_limits(plot::Scatter)
             plot.marker_offset[],
             plot
         )
-        rotations = convert_attribute(to_value(get(plot, :rotations, 0)), key"rotations"())
+        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
 
         bb = Rect3d()
         for (i, p) in enumerate(point_iterator(plot))
