@@ -14,7 +14,7 @@ Draw a violin plot.
     "Specify `:left` or `:right` to only plot the violin on one side."
     side = :both
     "Scale density by area (`:area`), count (`:count`), or width (`:width`)."
-    scale = :area,
+    scale = :area
     "Orientation of the violins (`:vertical` or `:horizontal`)"
     orientation = :vertical
     "Width of the box before shrinking."

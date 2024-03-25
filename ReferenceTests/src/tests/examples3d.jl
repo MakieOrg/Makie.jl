@@ -131,8 +131,8 @@ end
 @reference_test "Ellipsoid marker sizes" begin # see PR #3722
     pts = Point3f[[0, 0, 0], [1, 0, 0]]
     markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
-    rotations = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
-    meshscatter(pts; markersize, rotations, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
+    rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
+    meshscatter(pts; markersize, rotation, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
 end
 
 @reference_test "Record Video" begin
