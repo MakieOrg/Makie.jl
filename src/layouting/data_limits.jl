@@ -137,10 +137,10 @@ function limits_with_marker_transforms(positions, scales, rotations, element_bbo
 
     first_scale = attr_broadcast_getindex(scales, 1)
     first_rot = attr_broadcast_getindex(rotations, 1)
-    full_bbox = Ref(first_rot * (element_bbox * first_scale) + first(positions))
+    full_bbox = Ref(first_rot * (element_bbox * first_scale) + to_ndim(Point3d, first(positions), 0))
     for (i, pos) in enumerate(positions)
         scale, rot = attr_broadcast_getindex(scales, i), attr_broadcast_getindex(rotations, i)
-        transformed_bbox = rot * (element_bbox * scale) + pos
+        transformed_bbox = rot * (element_bbox * scale) + to_ndim(Point3d, pos, 0)
         update_boundingbox!(full_bbox, transformed_bbox)
     end
 
