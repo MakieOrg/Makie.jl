@@ -680,7 +680,7 @@ end
 function attribute_name_allowlist()
     (
         :xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model,
-        :transformation, :inspector_label
+        :transformation, :inspector_label, :inspector_clear, :inspector_hover
     )
 end
 
