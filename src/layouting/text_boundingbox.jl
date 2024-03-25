@@ -80,7 +80,8 @@ function unchecked_boundingbox(glyphcollection::GlyphCollection, rotation::Quate
 
     bb = Rect3d()
     for (charo, glyphbb) in zip(glyphorigins, glyphbbs)
-        charbb = rotate_bbox(Rect3d(glyphbb), rotation) + charo
+        glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
+        charbb = rotate_bbox(glyphbb3, rotation) + charo
         if !isfinite_rect(bb)
             bb = charbb
         else
