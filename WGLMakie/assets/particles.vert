@@ -31,7 +31,7 @@ void main(){
     // those functions will get inserted by the shader creation pipeline
     vec3 vertex_position = get_markersize() * to_vec3(get_position());
     vec3 N = get_normals();
-    rotate(get_rotations(), vertex_position, N);
+    rotate(get_rotation(), vertex_position, N);
     vertex_position = to_vec3(get_offset()) + vertex_position;
     vec4 position_world = model * vec4(vertex_position, 1);
     frag_normal = N;

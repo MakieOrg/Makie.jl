@@ -36,7 +36,7 @@ function handle_color_getter!(uniform_dict, per_instance)
 end
 
 const IGNORE_KEYS = Set([
-    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
+    :shading, :overdraw, :distancefield, :space, :markerspace, :fxaa,
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
     :light_direction, :light_color,
     :cycle, :label, :inspector_clear, :inspector_hover,
