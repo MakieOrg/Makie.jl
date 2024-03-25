@@ -181,7 +181,8 @@ function scatter_shader(scene::Scene, attributes, plot)
 
     if uniform_dict[:shape_type][] == 3
         atlas = wgl_texture_atlas()
-        uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
+        # uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
+        uniform_dict[:distancefield] = Sampler(map(x -> wgl_texture_atlas().data, TEXTURE_ATLAS))
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
         uniform_dict[:atlas_texture_size] = 0f0
