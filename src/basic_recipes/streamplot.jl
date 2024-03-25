@@ -223,7 +223,7 @@ function plot!(p::StreamPlot)
     scatterfun(N)(
         p,
         lift(first, p, data);
-        markersize=arrow_size, rotations=rotations,
+        markersize=arrow_size, rotation=rotations,
         color=lift(x -> x[4], p, data),
         marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
         colormap_args...,

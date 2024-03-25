@@ -334,6 +334,13 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                 end
             else
                 prev_continued = false
+
+                # finish previous line segment
+                Cairo.set_line_width(ctx, prev_linewidth)
+                !isnothing(dash) && Cairo.set_dash(ctx, dash .* prev_linewidth)
+                Cairo.set_source_rgba(ctx, red(prev_color), green(prev_color), blue(prev_color), alpha(prev_color))
+                Cairo.stroke(ctx)
+
                 if !this_nan
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     # this is not nan
@@ -369,7 +376,7 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
-    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotations, transform_marker))
+    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotation, transform_marker))
 
     ctx = screen.context
     model = primitive.model[]
@@ -386,16 +393,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     transfunc = Makie.transform_func(primitive)
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotations, model, positions, size_model, font, markerspace,
+                               marker_offset, rotation, model, positions, size_model, font, markerspace,
                                space)
 end
 
-function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotation, model, positions, size_model, font, markerspace, space)
     # TODO Optimization:
     # avoid calling project functions per element as they recalculate the
     # combined projection matrix for each element like this
     broadcast_foreach(positions, colors, markersize, strokecolor,
-            strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            strokewidth, marker, marker_offset, remove_billboard(rotation)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)
@@ -1006,10 +1013,11 @@ function draw_mesh3D(
     ctx = screen.context
     projectionview = Makie.space_to_clip(scene.camera, space, true)
     eyeposition = scene.camera.eyeposition[]
-    i = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(model[i, i]))
 
+    i = Vec(1, 2, 3)
     local_model = rotation * Makie.scalematrix(Vec3d(scale))
+    normalmatrix = transpose(inv(model[i, i] * local_model[i, i])) # see issue #3702
+
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
     model_f32 = model * Makie.f32_convert_matrix(scene.float32convert, space)
@@ -1167,7 +1175,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, marker, markersize, rotations))
+    @get_attribute(primitive, (model, marker, markersize, rotation))
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(model)
@@ -1198,16 +1206,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
             submesh[:calculated_colors] = color[i]
         end
         scale = markersize isa Vector ? markersize[i] : markersize
-        rotation = if rotations isa Vector
-            Makie.rotationmatrix4(to_rotation(rotations[i]))
+        _rotation = if rotation isa Vector
+            Makie.rotationmatrix4(to_rotation(rotation[i]))
         else
-            Makie.rotationmatrix4(to_rotation(rotations))
+            Makie.rotationmatrix4(to_rotation(rotation))
         end
 
         draw_mesh3D(
             scene, screen, submesh, marker, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
-            rotation = rotation
+            rotation = _rotation
         )
     end
 
