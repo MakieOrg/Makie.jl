@@ -177,7 +177,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             lift(x-> last.(x), arrowplot, headstart),
             marker=marker_head,
             markersize = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize),
-            color = arrow_c, rotations = rotations, strokewidth = 0.0,
+            color = arrow_c, rotation = rotations, strokewidth = 0.0,
                  colormap=colormap, markerspace=arrowplot.markerspace, colorrange=arrowplot.colorrange,
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible
@@ -211,7 +211,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
         meshscatter!(
             arrowplot,
-            start, rotations = directions, markersize = msize,
+            start, rotation = directions, markersize = msize,
             marker = marker_tail,
             color = line_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,
@@ -220,7 +220,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         )
         meshscatter!(
             arrowplot,
-            start, rotations = directions, markersize = markersize,
+            start, rotation = directions, markersize = markersize,
             marker = marker_head,
             color = arrow_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,

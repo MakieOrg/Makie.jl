@@ -37,7 +37,7 @@ end
     end
 
     fig, ax, p = meshscatter(pos,
-        rotations=rot,
+        rotation=rot,
         color=color,
         markersize=size,
         axis = (; scenekw = (;limits=Rect3f(Point3(0), Point3(1))))

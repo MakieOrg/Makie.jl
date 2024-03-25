@@ -29,7 +29,7 @@ function myarrows!(scene, ps; kwargs...)
     lines!(scene, ps; kwargs...)
     scatter!(
         scene, endpoints, marker = Makie.BezierUTriangle, color = cols,
-        rotations = dirs
+        rotation = dirs
     )
 end
 
