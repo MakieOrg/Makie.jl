@@ -220,7 +220,7 @@ macro DocumentedAttributes(expr::Expr)
 
     for arg in expr.args
         arg isa LineNumberNode && continue
-        
+
         has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
 
         if has_docs
@@ -243,7 +243,7 @@ macro DocumentedAttributes(expr::Expr)
             if !(sym isa Symbol)
                 error("$sym should be a symbol")
             end
-            
+
             push!(metadata_exprs, quote
                 am = AttributeMetadata(; docstring = $docs, default_expr = $(_default_expr_string(default)))
                 if haskey(d, $(QuoteNode(sym)))
@@ -410,7 +410,7 @@ macro recipe(Tsym::Symbol, args...)
         function $(MakieCore).attribute_names(T::Type{<:$(PlotType)})
             keys(documented_attributes(T).d)
         end
-        
+
         function $(MakieCore).default_theme(scene, T::Type{<:$(PlotType)})
             Attributes(documented_attributes(T).closure(scene))
         end
@@ -678,7 +678,10 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
 end
 
 function attribute_name_allowlist()
-    (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation)
+    (
+        :xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model,
+        :transformation, :inspector_label
+    )
 end
 
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
