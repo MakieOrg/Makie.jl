@@ -56,7 +56,7 @@ end
         [Point3f(0) for _ in 1:3],
         marker = Rect3f(Point3f(-0.1, -0.1, -0.1), Vec3f(0.2, 0.2, 1.2)),
         markersize = Vec3f(1, 1, 2),
-        rotations = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)])
+        rotation = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)])
     )
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(-0.2)

@@ -385,7 +385,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     glowwidth = 0.0
 
     "Sets the rotation of the marker. A `Billboard` rotation is always around the depth axis."
-    rotations = Billboard()
+    rotation = Billboard()
     "The offset of the marker from the given position in `markerspace` units. Default is centered around the position (markersize * -0.5)."
     marker_offset = automatic
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
@@ -404,6 +404,12 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     fxaa = false
 end
 
+function deprecated_attributes(::Type{<:Scatter})
+    (
+        (; attribute = :rotations, message = "`rotations` has been renamed to `rotation` for consistency in Makie v0.21.", error = true),
+    )
+end
+
 """
     meshscatter(positions)
     meshscatter(x, y)
@@ -420,11 +426,17 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     "Sets the scale of the mesh. This can be given as a `Vector` to apply to each scattered mesh individually."
     markersize = 0.1
     "Sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually."
-    rotations = 0.0
+    rotation = 0.0
     cycle = [:color]
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
+end
+
+function deprecated_attributes(::Type{<:MeshScatter})
+    (
+        (; attribute = :rotations, message = "`rotations` has been renamed to `rotation` for consistency in Makie v0.21.", error = true),
+    )
 end
 
 """

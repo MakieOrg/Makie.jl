@@ -55,7 +55,7 @@ end
     rot = qrotation(Vec3f(1, 0, 0), 0.5pi) * qrotation(Vec3f(0, 1, 0), 0.7pi)
     meshscatter(
         1:3, 1:3, fill(0, 3, 3),
-        marker=catmesh, color=img, markersize=1, rotations=rot,
+        marker=catmesh, color=img, markersize=1, rotation=rot,
         axis=(type=LScene, show_axis=false)
     )
 end
@@ -126,6 +126,13 @@ end
 @reference_test "Marker sizes" begin
     colors = Makie.resample(to_colormap(:Spectral), 20)
     scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
+end
+
+@reference_test "Ellipsoid marker sizes" begin # see PR #3722
+    pts = Point3f[[0, 0, 0], [1, 0, 0]]
+    markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
+    rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
+    meshscatter(pts; markersize, rotation, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
 end
 
 @reference_test "Record Video" begin
@@ -348,7 +355,7 @@ end
     fig, ax, meshplot = meshscatter(
         pG[edges[:, 1]],
         color=colorsC, marker=meshC,
-        markersize=sizesC,  rotations=rotationsC,
+        markersize=sizesC,  rotation=rotationsC,
     )
     meshscatter!(
         ax, pG,
@@ -373,7 +380,7 @@ end
 @reference_test "image scatter" begin
     scatter(
         1:10, 1:10, RNG.rand(10, 10) .* 10,
-        rotations=normalize.(RNG.rand(Quaternionf, 10 * 10)),
+        rotation=normalize.(RNG.rand(Quaternionf, 10 * 10)),
         markersize=20,
         # can also be an array of images for each point
         # need to be the same size for best performance, though

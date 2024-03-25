@@ -19,6 +19,25 @@ violin(categories, values)
 
 \begin{examplefigure}{}
 ```julia
+using Makie, CairoMakie
+CairoMakie.activate!() # hide
+
+
+fig = Figure()
+xs = vcat([fill(i, i * 1000) for i in 1:4]...)
+ys = vcat(randn(6000), randn(4000) * 2)
+for (i, scale) in enumerate([:area, :count, :width])
+    ax = Axis(fig[i, 1])
+    violin!(ax, xs, ys; scale, show_median=true)
+    Makie.xlims!(0.2, 4.8)
+    ax.title = "scale=:$(scale)"
+end
+fig
+```
+\end{examplefigure}
+
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 

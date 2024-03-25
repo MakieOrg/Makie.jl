@@ -48,7 +48,7 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-_get_isoband_levels(levels::Int, mi, ma) = Float32.(LinRange(mi, ma, levels+1))
+_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels+1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
@@ -84,12 +84,12 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     lowcolor = Observable{RGBAf}()
     map!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, lowcolor)
+    is_extended_low = lift(!isnothing, c, c.extendlow)
 
     highcolor = Observable{RGBAf}()
     map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, highcolor)
+    is_extended_high = lift(!isnothing, c, c.extendhigh)
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
     polys = Observable(PolyType[])

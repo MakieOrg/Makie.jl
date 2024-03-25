@@ -54,18 +54,18 @@ end
 # same as data_limits except using iterate_transformed
 function boundingbox(plot::MeshScatter)
     # TODO: avoid mesh generation here if possible
-    @get_attribute plot (marker, markersize, rotations)
+    @get_attribute plot (marker, markersize, rotation)
     marker_bb = Rect3d(marker)
     positions = iterate_transformed(plot)
     scales = markersize
     # fast path for constant markersize
-    if scales isa VecTypes{3} && rotations isa Quaternion
+    if scales isa VecTypes{3} && rotation isa Quaternion
         bb = Rect3d(positions)
-        marker_bb = rotations * (marker_bb * scales)
+        marker_bb = rotation * (marker_bb * scales)
         return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
     else
         # TODO: optimize const scale, var rot and var scale, const rot
-        return limits_with_marker_transforms(positions, scales, rotations, marker_bb)
+        return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
     end
 end
 
