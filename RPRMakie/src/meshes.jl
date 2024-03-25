@@ -112,7 +112,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         markersize
     end
 
-    rotations = Makie.to_rotation(plot.rotations[])
+    rotations = Makie.to_rotation(plot.rotation[])
 
     rotations = if rotations isa Makie.Quaternion
         Iterators.repeated(rotations, n_instances)

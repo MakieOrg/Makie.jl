@@ -369,7 +369,7 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
-    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotations, transform_marker))
+    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotation, transform_marker))
 
     ctx = screen.context
     model = primitive.model[]
@@ -386,16 +386,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     transfunc = Makie.transform_func(primitive)
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotations, model, positions, size_model, font, markerspace,
+                               marker_offset, rotation, model, positions, size_model, font, markerspace,
                                space)
 end
 
-function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotation, model, positions, size_model, font, markerspace, space)
     # TODO Optimization:
     # avoid calling project functions per element as they recalculate the
     # combined projection matrix for each element like this
     broadcast_foreach(positions, colors, markersize, strokecolor,
-            strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            strokewidth, marker, marker_offset, remove_billboard(rotation)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)
@@ -1167,7 +1167,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, marker, markersize, rotations))
+    @get_attribute(primitive, (model, marker, markersize, rotation))
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(model)
@@ -1198,16 +1198,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
             submesh[:calculated_colors] = color[i]
         end
         scale = markersize isa Vector ? markersize[i] : markersize
-        rotation = if rotations isa Vector
-            Makie.rotationmatrix4(to_rotation(rotations[i]))
+        _rotation = if rotation isa Vector
+            Makie.rotationmatrix4(to_rotation(rotation[i]))
         else
-            Makie.rotationmatrix4(to_rotation(rotations))
+            Makie.rotationmatrix4(to_rotation(rotation))
         end
 
         draw_mesh3D(
             scene, screen, submesh, marker, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
-            rotation = rotation
+            rotation = _rotation
         )
     end
 
