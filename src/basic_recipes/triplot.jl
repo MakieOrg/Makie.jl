@@ -244,4 +244,4 @@ function data_limits(p::Triplot{<:Tuple{<:Vector{<:Point}}})
         return data_limits(p.plots[1])
     end
 end
-boundingbox(p::Triplot{<:Tuple{<:Vector{<:Point}}}) = transform_bbox(p, data_limits(p))
+boundingbox(p::Triplot{<:Tuple{<:Vector{<:Point}}}, space::Symbol = :data) = transform_bbox(p, data_limits(p))

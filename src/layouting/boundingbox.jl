@@ -13,7 +13,7 @@ the `model` matrix. Plots with `exclude(plot) == true` are excluded.
 
 See also: [`data_limits`](@ref)
 """
-function boundingbox(scenelike, exclude = (p)-> false, space = :world)
+function boundingbox(scenelike, exclude = (p)-> false, space = :data)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
@@ -31,7 +31,7 @@ i.e. the `transform_func` and the `model` matrix.
 
 See also: [`data_limits`](@ref)
 """
-function boundingbox(plot::AbstractPlot, space::Symbol = :world)
+function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     # Assume primitive plot
     if isempty(plot.plots)
         return Rect3d(iterate_transformed(plot))
@@ -52,7 +52,7 @@ function transform_bbox(scenelike, lims::Rect)
 end
 
 # same as data_limits except using iterate_transformed
-function boundingbox(plot::MeshScatter)
+function boundingbox(plot::MeshScatter, space::Symbol = :data)
     # TODO: avoid mesh generation here if possible
     @get_attribute plot (marker, markersize, rotation)
     marker_bb = Rect3d(marker)
