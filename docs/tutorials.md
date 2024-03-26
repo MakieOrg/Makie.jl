@@ -58,6 +58,19 @@
     @@
     ~~~</a>~~~
   @@
+  @@box
+    ~~~<a class="boxlink" href="wrap-existing-recipe/">~~~
+    @@title Wrapping Recipe Tutorial @@
+    @@box-content
+      @@description
+      How to reuse existing recipes in non-trivial ways.
+      @@
+      ~~~
+      <img src="/assets/tutorials/wrap-existing-recipe/code/output/final_result.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
 @@
 
 ## Videos
