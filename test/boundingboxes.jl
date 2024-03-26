@@ -99,7 +99,7 @@ end
     bb = boundingbox(p, :pixel)
     @test bb.origin ≈ Point3f(343.0, 345.0, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)
-    bb = boundingbox(p, :world)
+    bb = boundingbox(p, :data)
     @test bb.origin ≈ Point3f(10, 10, 0)
     @test bb.widths ≈ Vec3f(0)
 end
