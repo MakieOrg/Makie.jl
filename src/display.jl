@@ -66,14 +66,13 @@ function set_screen_config!(backend::Module, new_values)
     return backend_defaults
 end
 
-function merge_screen_config(::Type{Config}, screen_config_kw) where Config
+function merge_screen_config(::Type{Config}, config::Dict) where Config
     backend = parentmodule(Config)
     key = nameof(backend)
     backend_defaults = CURRENT_DEFAULT_THEME[key]
-    kw_nt = values(screen_config_kw)
     arguments = map(fieldnames(Config)) do name
-        if haskey(kw_nt, name)
-            return getfield(kw_nt, name)
+        if haskey(config, name)
+            return config[name]
         else
             return to_value(backend_defaults[name])
         end
@@ -110,9 +109,9 @@ end
 
 can_show_inline(::Missing) = false # no backend
 function can_show_inline(Backend)
-    for mime in [MIME"juliavscode/html"(), MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"()]
-        if backend_showable(Backend.Screen, mime)
-            return has_mime_display(mime)
+    for mime in (MIME"juliavscode/html"(), MIME"text/html"(), MIME"image/png"(), MIME"image/svg+xml"())
+        if backend_showable(Backend.Screen, mime) && has_mime_display(mime)
+            return true
         end
     end
     return false
@@ -130,6 +129,7 @@ see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 """
 function Base.display(figlike::FigureLike; backend=current_backend(),
                       inline=ALWAYS_INLINE_PLOTS[], update = true, screen_config...)
+    config = Dict{Symbol, Any}(screen_config)
     if ismissing(backend)
         error("""
         No backend available!
@@ -141,10 +141,15 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
     end
 
     # We show inline if explicitely requested or if automatic and we can actually show something inline!
+    scene = get_scene(figlike)
     if (inline === true || inline === automatic) && can_show_inline(backend)
+        # We can't forward the screenconfig to show, but show uses the current screen if there is any
+        # We use that, to create a screen before show and rely on show picking up that screen
+        screen = getscreen(backend, scene, config)
+        push_screen!(scene, screen)
         Core.invoke(display, Tuple{Any}, figlike)
         # In WGLMakie, we need to wait for the display being done
-        screen = getscreen(get_scene(figlike))
+        screen = getscreen(scene)
         wait_for_display(screen)
         return screen
     else
@@ -156,9 +161,8 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
                 If this wasn't set on purpose, call `Makie.inline!()` to restore the default.
             """
         end
-        scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
-        screen = getscreen(backend, scene; screen_config...)
+        screen = getscreen(backend, scene, config)
         display(screen, scene)
         return screen
     end
@@ -204,8 +208,15 @@ end
 
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 
-# need to define this to resolve ambiguoity issue
+# need to define this to resolve ambiguity issue
 Base.showable(mime::MIME"application/json", fig::FigureLike) = _backend_showable(mime)
+
+const WEB_MIMES = (
+    MIME"text/html",
+    MIME"application/vnd.webio.application+html",
+    MIME"application/prs.juno.plotpane+html",
+    MIME"juliavscode/html")
+
 
 backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
@@ -244,7 +255,7 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
     update_state_before_display!(figlike)
-    screen = getscreen(backend, scene, io, m; visible=false)
+    screen = getscreen(backend, scene, Dict(:visible=>false), io, m)
     backend_show(screen, io, m, scene)
     return screen
 end
@@ -263,7 +274,7 @@ filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
 
 """
-    FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
+    FileIO.save(filename, scene; size = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
 
 Save a `Scene` with the specified filename and format.
 
@@ -277,7 +288,7 @@ Save a `Scene` with the specified filename and format.
 
 ## All Backends
 
-- `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+- `size`: `(width::Int, height::Int)` of the scene in dimensionless units.
 - `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
 - `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
 - Further keywords will be forwarded to the screen.
@@ -296,14 +307,19 @@ end
 
 function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
-        resolution = size(get_scene(fig)),
+        size = Base.size(get_scene(fig)),
+        resolution = nothing,
         backend = current_backend(),
         update = true,
         screen_config...
     )
     scene = get_scene(fig)
-    if resolution != size(scene)
-        resize!(scene, resolution)
+    if resolution !== nothing
+        @warn "The keyword argument `resolution` for `save()` has been deprecated. Use `size` instead, which better reflects that this is a unitless size and not a pixel resolution."
+        size = resolution
+    end
+    if size != Base.size(scene)
+        resize!(scene, size)
     end
     filename = FileIO.filename(file)
     # Delete previous file if it exists and query only the file string for type.
@@ -315,13 +331,16 @@ function FileIO.save(
     # query the filetype only from the file extension
     F = filetype(file)
     mime = format2mime(F)
+
     try
         return open(filename, "w") do io
             # If the scene already got displayed, we get the current screen its displayed on
             # Else, we create a new scene and update the state of the fig
             update && update_state_before_display!(fig)
-            visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
-            screen = getscreen(backend, scene, io, mime; visible=visible, screen_config...)
+            visible = isvisible(getscreen(scene)) # if already has a screen, don't hide it!
+            config = Dict{Symbol, Any}(screen_config)
+            get!(config, :visible, visible)
+            screen = getscreen(backend, scene, config, io, mime)
             backend_show(screen, io, mime, scene)
         end
     catch e
@@ -388,9 +407,9 @@ end
 
 getscreen(scene::SceneLike, backend=current_backend()) = getscreen(get_scene(scene), backend)
 
-function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; screen_config...)
+function getscreen(backend::Union{Missing, Module}, scene::Scene, _config::Dict, args...)
     screen = getscreen(scene, backend)
-    config = Makie.merge_screen_config(backend.ScreenConfig, screen_config)
+    config = merge_screen_config(backend.ScreenConfig, _config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
         new_screen = apply_screen_config!(screen, config, scene, args...)
         if new_screen !== screen
@@ -410,12 +429,16 @@ function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; scree
 end
 
 function get_sub_picture(image, format::ImageStorageFormat, rect)
-    xmin, ymin = minimum(rect) .- (1, 0)
+    xmin, ymin = minimum(rect) .- Vec(1, 0)
     xmax, ymax = maximum(rect)
     start = size(image, 1) - ymax
     stop = size(image, 1) - ymin
     return image[start:stop, xmin:xmax]
 end
+
+# Needs to be overloaded by backends, with fallback true
+isvisible(screen::MakieScreen) = true
+isvisible(::Nothing) = false
 
 """
     colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
@@ -434,25 +457,39 @@ or RGBA.
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
     update && update_state_before_display!(fig)
-    visible = !isnothing(getscreen(scene)) # if already has a screen, don't hide it!
-    screen = getscreen(backend, scene; start_renderloop=false, visible=visible, screen_config...)
+    # if already has a screen, use their visibility value, if no screen, returns false
+    visible = isvisible(getscreen(scene))
+    config = Dict{Symbol,Any}(screen_config)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    screen = getscreen(backend, scene, config)
     img = colorbuffer(screen, format)
     if !isroot(scene)
-        return get_sub_picture(img, format, pixelarea(scene)[])
+        return get_sub_picture(img, format, viewport(scene)[])
     else
         return img
     end
 end
 
 # Fallback for any backend that will just use colorbuffer to write out an image
-function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene)
     img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
-    img = colorbuffer(scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene)
+    img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
+    return
+end
+
+function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene)
+    w, h = size(scene)
+    png_io = IOBuffer()
+    backend_show(screen, png_io, MIME"image/png"(), scene)
+    b64 = Base64.base64encode(String(take!(png_io)))
+    style = "object-fit: contain; height: auto;"
+    print(io, "<img width=$w height=$h style='$style' src=\"data:image/png;base64, $(b64)\"/>")
     return
 end

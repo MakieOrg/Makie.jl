@@ -17,9 +17,9 @@
 [![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/Makie&label=Downloads)](https://pkgs.genieframework.com?packages=Makie)
 
 [![JOSS][joss-img]][joss-url]
-[![Citation Badge](https://api.juleskreuer.eu/citation-badge.php?doi=10.21105/joss.03349)](https://juleskreuer.eu/projekte/citation-badge)
 
-[![](https://img.shields.io/badge/Twitter-@MakiePlots-1DA1F2?&logo=twitter&logoColor=white)](https://twitter.com/MakiePlots)
+[![Mastodon](https://img.shields.io/badge/-mastodon-%232B90D9?style=for-the-badge&logo=mastodon&logoColor=white)](https://julialang.social/@makie)
+
 [![chat][discord-img]][discord-url]
 
 </div>
@@ -136,7 +136,7 @@ The following examples are supposed to be self-explanatory. For further informat
 x = 1:0.1:10
 fig = lines(x, x.^2; label = "Parabola",
     axis = (; xlabel = "x", ylabel = "y", title ="Title"),
-    figure = (; resolution = (800,600), fontsize = 22))
+    figure = (; size = (800,600), fontsize = 22))
 axislegend(; position = :lt)
 save("./assets/parabola.png", fig)
 fig
@@ -168,7 +168,7 @@ with_theme(palette = (; patchcolor = cgrad(cmap, alpha=0.45))) do
     band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
     limits!(-3.8, 3.8, -1.5, 1.5)
     axislegend(; position = :ct, backgroundcolor = (:white, 0.75), framecolor = :orange)
-    save("./assets/approxsin.png", fig, resolution = (800, 600))
+    save("./assets/approxsin.png", fig, size = (800, 600))
     fig
 end
 ```
@@ -215,10 +215,6 @@ Example from [InteractiveChaos.jl](https://github.com/JuliaDynamics/InteractiveC
 
 [![interactive chaos](https://user-images.githubusercontent.com/1010467/81500069-ea005f80-92cf-11ea-81db-2b7bcbfea297.gif)
 ](https://github.com/JuliaDynamics/InteractiveChaos.jl)
-
-
-You can follow Makie on [twitter](https://twitter.com/MakiePlots) to get the latest, outstanding examples:
-[![image](https://user-images.githubusercontent.com/1010467/81500210-e7523a00-92d0-11ea-9849-1240f165e0f8.png)](https://twitter.com/MakiePlots)
 
 
 ## Sponsors

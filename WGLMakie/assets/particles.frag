@@ -1,23 +1,34 @@
 in vec4 frag_color;
 in vec3 frag_normal;
 in vec3 frag_position;
-in vec3 frag_lightdir;
+in vec3 o_camdir;
+
+// Smoothes out edge around 0 light intensity, see GLMakie
+float smooth_zero_max(float x) {
+    const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
+    const float shift = 1.0 + xswap - yswap;
+    float pow8 = x + shift;
+    pow8 = pow8 * pow8; pow8 = pow8 * pow8; pow8 = pow8 * pow8;
+    return x < yswap ? c * pow8 : x;
+}
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
+    float backlight = get_backlight();
+    float diff_coeff = smooth_zero_max(dot(L, -N)) +
+        backlight * smooth_zero_max(dot(L, N));
 
     // specular coefficient
-    vec3 H = normalize(L+V);
+    vec3 H = normalize(L + V);
 
-    float spec_coeff = pow(max(dot(H, N), 0.0), 8.0);
+    float spec_coeff = pow(max(dot(H, -N), 0.0), get_shininess()) +
+        backlight * pow(max(dot(H, N), 0.0), get_shininess());
     if (diff_coeff <= 0.0)
         spec_coeff = 0.0;
 
     // final lighting model
-    return vec3(
-        vec3(0.1) * vec3(0.3)  +
-        vec3(0.9) * color * diff_coeff +
-        vec3(0.3) * spec_coeff
+    return get_light_color() * vec3(
+        get_diffuse() * diff_coeff * color +
+        get_specular() * spec_coeff
     );
 }
 
@@ -32,13 +43,12 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-    vec3 L, N, light1, light2, color;
+    vec3 L, N, light, color;
     if (get_shading()) {
-        L = normalize(frag_lightdir);
+        L = get_light_direction();
         N = normalize(frag_normal);
-        light1 = blinnphong(N, frag_position, L, frag_color.rgb);
-        light2 = blinnphong(N, frag_position, -L, frag_color.rgb);
-        color = get_ambient() * frag_color.rgb + light1 + get_backlight() * light2;
+        light = blinnphong(N, normalize(o_camdir), L, frag_color.rgb);
+        color = get_ambient() * frag_color.rgb + light;
     } else {
         color = frag_color.rgb;
     }

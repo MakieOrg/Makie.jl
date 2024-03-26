@@ -18,6 +18,8 @@ using Makie: volume
         @test all(hi .>= (8,8,10))
     end
 
+    include("deprecated.jl")
+    include("specapi.jl")
     include("primitives.jl")
     include("pipeline.jl")
     include("record.jl")
@@ -25,7 +27,7 @@ using Makie: volume
     include("conversions.jl")
     include("quaternions.jl")
     include("projection_math.jl")
-    include("liftmacro.jl")
+    include("observables.jl")
     include("makielayout.jl")
     include("figures.jl")
     include("transformations.jl")

@@ -46,12 +46,14 @@ function old_cam3d_cad!(scene::Scene; kw_args...)
     add_translation!(scene, cam, cam.pan_button, cam.move_key, false)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, false)
     cameracontrols!(scene, cam)
-    on(camera(scene), scene.px_area) do area
+    on(camera(scene), scene.viewport) do area
         # update cam when screen ratio changes
         update_cam!(scene, cam)
     end
     cam
 end
+
+get_space(::OldCamera3D) = :data
 
 """
     old_cam3d_turntable!(scene; kw_args...)
@@ -82,7 +84,7 @@ function old_cam3d_turntable!(scene::Scene; kw_args...)
     add_translation!(scene, cam, cam.pan_button, cam.move_key, true)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, true)
     cameracontrols!(scene, cam)
-    on(camera(scene), scene.px_area) do area
+    on(camera(scene), scene.viewport) do area
         # update cam when screen ratio changes
         update_cam!(scene, cam)
     end
@@ -96,7 +98,12 @@ An alias to [`old_cam3d_turntable!`](@ref).
 Creates a 3D camera for `scene`, which rotates around
 the plot's axis.
 """
-const old_cam3d! = old_cam3d_turntable!
+old_cam3d!(scene::Scene; kwargs...) = old_cam3d_turntable!(scene; kwargs...)
+
+@deprecate old_cam3d! cam3d!
+@deprecate old_cam3d_turntable! cam3d!
+@deprecate old_cam3d_cad! cam3d_cad!
+
 
 function projection_switch(
         wh::Rect2,
@@ -171,7 +178,7 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
 
     on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
-            cam_res = Vec2f(widths(scene.px_area[]))
+            cam_res = Vec2f(widths(scene))
             mouse_pos_normalized = mouseposition_px(scene) ./ cam_res
             mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
             zoom_step = scroll[2]
@@ -232,7 +239,7 @@ function translate_cam!(scene::Scene, cam::OldCamera3D, _translation::VecTypes)
 
     dir = eyeposition - lookat
     dir_len = norm(dir)
-    cam_res = Vec2f(widths(scene.px_area[]))
+    cam_res = Vec2f(widths(scene))
     z, x, y = translation
     z *= 0.1f0 * dir_len
 
@@ -323,7 +330,7 @@ function update_cam!(scene::Scene, cam::OldCamera3D)
     # TODO this means you can't set FarClip... SAD!
     # TODO use boundingbox(scene) for optimal far/near
     far = max(zoom * 5f0, 30f0)
-    proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
+    proj = projection_switch(scene.viewport[], fov, near, far, projectiontype, zoom)
     view = Makie.lookat(eyeposition, lookat, upvector)
     set_proj_view!(camera(scene), proj, view)
     scene.camera.eyeposition[] = cam.eyeposition[]
@@ -351,7 +358,9 @@ end
 
 Updates the camera's controls to point to the specified location.
 """
-update_cam!(scene::Scene, eyeposition, lookat, up = Vec3f(0, 0, 1)) = update_cam!(scene, cameracontrols(scene), eyeposition, lookat, up)
+function update_cam!(scene::Scene, eyeposition::VecTypes{3}, lookat::VecTypes{3}, up::VecTypes{3} = Vec3f(0, 0, 1))
+    return update_cam!(scene, cameracontrols(scene), eyeposition, lookat, up)
+end
 
 function update_cam!(scene::Scene, camera::OldCamera3D, eyeposition, lookat, up = Vec3f(0, 0, 1))
     camera.lookat[] = Vec3f(lookat)

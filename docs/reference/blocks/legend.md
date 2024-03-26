@@ -94,27 +94,7 @@ end
 f
 ```
 \end{examplefigure}
-## Multi-Bank Legend
 
-You can control the number of banks with the `nbanks` attribute. Banks are columns
-when in vertical mode, and rows when in horizontal mode.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-
-f = Figure()
-
-Axis(f[1, 1])
-
-xs = 0:0.1:10
-lins = [lines!(xs, sin.(xs .+ 3v), color = RGBf(v, 0, 1-v)) for v in 0:0.1:1]
-
-Legend(f[1, 2], lins, string.(1:length(lins)), nbanks = 3)
-
-f
-```
-\end{examplefigure}
 ## Legend Inside An Axis
 
 The `axislegend` function is a quick way to add a legend to an Axis.
@@ -235,35 +215,7 @@ Legend(f[1, 2],
 f
 ```
 \end{examplefigure}
-## Horizontal Legend
 
-In case you want the legend entries to be listed horizontally, set the `orientation`
-attribute to `:horizontal`. In this case the `nbanks` attribute refers to the
-number of rows instead of columns. To keep an adjacent axis from potentially shrinking to
-the width of the horizontal legend, set `tellwidth = false` and `tellheight = true`
-if you place the legend below or above the axis.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-
-f = Figure()
-
-Axis(f[1, 1])
-
-xs = 0:0.5:10
-ys = sin.(xs)
-lin = lines!(xs, ys, color = :blue)
-sca = scatter!(xs, ys, color = :red, markersize = 15)
-
-Legend(f[1, 2], [lin, sca, lin], ["a line", "some dots", "line again"])
-
-Legend(f[2, 1], [lin, sca, lin], ["a line", "some dots", "line again"],
-    orientation = :horizontal, tellwidth = false, tellheight = true)
-
-f
-```
-\end{examplefigure}
 ## Multi-Group Legends
 
 Sometimes a legend consists of multiple groups, for example in a plot where both
@@ -279,14 +231,8 @@ using CairoMakie
 
 f = Figure()
 
-Axis(f[1, 1])
-
 markersizes = [5, 10, 15, 20]
 colors = [:red, :green, :blue, :orange]
-
-for ms in markersizes, color in colors
-    scatter!(randn(5, 2), markersize = ms, color = color)
-end
 
 group_size = [MarkerElement(marker = :circle, color = :black,
     strokecolor = :transparent,
@@ -298,23 +244,28 @@ group_color = [PolyElement(color = color, strokecolor = :transparent)
 legends = [Legend(f,
     [group_size, group_color],
     [string.(markersizes), string.(colors)],
-    ["Size", "Color"]) for _ in 1:6]
+    ["Size", "Color"], tellheight = true) for _ in 1:4]
 
-f[1, 2:4] = legends[1:3]
-f[2:4, 2] = legends[4:6]
+f[1, 1:2] = legends[1:2]
+f[2, :] = legends[3]
+f[3, :] = legends[4]
 
-for l in legends[4:6]
+for l in legends[3:4]
     l.orientation = :horizontal
     l.tellheight = true
     l.tellwidth = false
 end
 
 legends[2].titleposition = :left
-legends[5].titleposition = :left
+legends[4].titleposition = :left
 
-legends[3].nbanks = 2
-legends[5].nbanks = 2
-legends[6].nbanks = 2
+legends[1].nbanks = 2
+legends[4].nbanks = 2
+
+Label(f[1, 1, Left()], "titleposition = :top\norientation = :vertical\nnbanks = 2", font = :italic, padding = (0, 10, 0, 0))
+Label(f[1, 2, Right()], "titleposition = :left\norientation = :vertical\nnbanks = 1", font = :italic, padding = (10, 0, 0, 0))
+Label(f[2, 1:2, Top()], "titleposition = :top, orientation = :horizontal\nnbanks = 1", font = :italic)
+Label(f[3, 1:2, Top()], "titleposition = :left, orientation = :horizontal\nnbanks = 2", font = :italic)
 
 f
 ```

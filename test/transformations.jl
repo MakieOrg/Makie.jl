@@ -88,37 +88,47 @@ end
 end
 
 @testset "Polar Transform" begin
-    tf = Makie.Polar(false)
-    @test tf.theta_as_x == false
+    tf = Makie.Polar()
+    @test tf.theta_as_x == true
+    @test tf.clip_r == true
     @test tf.theta_0 == 0.0
     @test tf.direction == 1
     @test tf.r0 == 0.0
 
+    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
+    output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
+    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
+    @test apply_transform(tf, input) ≈ output
+    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+
+    tf = Makie.Polar(pi/2, 1, 0, false)
     input = Point2f.(1:6, [0, pi/3, pi/2, pi, 2pi, 3pi])
-    output = [r * Point2f(cos(phi), sin(phi)) for (r, phi) in input]
+    output = [r * Point2f(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
     inv = Point2f.(1:6, mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)))
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(false, pi/2)
-    output = [r * Point2f(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
-    @test apply_transform(tf, input) ≈ output
-    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
-
-    tf = Makie.Polar(false, pi/2, -1)
+    tf = Makie.Polar(pi/2, -1, 0, false)
     output = [r * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(false, pi/2, -1, 0.5)
+    tf = Makie.Polar(pi/2, -1, 0.5, false)
     output = [(r - 0.5) * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(true)
+    tf = Makie.Polar(0, 1, 0, true)
     input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
     output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
     inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
+    @test apply_transform(tf, input) ≈ output
+    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+
+    tf = Makie.Polar(0, 1, 0, true, false)
+    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], -6:-1)
+    output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
+    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi] .+ pi, (0..2pi,)), 6:-1:1)
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 end

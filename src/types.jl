@@ -1,4 +1,6 @@
 abstract type AbstractCamera end
+abstract type Block end
+abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
@@ -194,6 +196,14 @@ function Base.empty!(events::Events)
     return
 end
 
+abstract type BooleanOperator end
+
+"""
+    IsPressedInputType
+
+Union containing possible input types for `ispressed`.
+"""
+const IsPressedInputType = Union{Bool,BooleanOperator,Mouse.Button,Keyboard.Button,Set,Vector,Tuple}
 
 """
     Camera(pixel_area)
@@ -231,7 +241,12 @@ struct Camera
     resolution::Observable{Vec2f}
 
     """
-    Eye position of the camera, sued for e.g. ray tracing.
+    Focal point of the camera, used for e.g. camera synchronized light direction.
+    """
+    lookat::Observable{Vec3f}
+
+    """
+    Eye position of the camera, used for e.g. ray tracing.
     """
     eyeposition::Observable{Vec3f}
 
@@ -240,6 +255,8 @@ struct Camera
     We need to keep track of them, so, that we can connect and disconnect them.
     """
     steering_nodes::Vector{ObserverFunction}
+
+    calculated_values::Dict{Symbol, Observable}
 end
 
 """
@@ -253,41 +270,48 @@ struct Transformation <: Transformable
     scale::Observable{Vec3f}
     rotation::Observable{Quaternionf}
     model::Observable{Mat4f}
+    parent_model::Observable{Mat4f}
     # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
-    function Transformation(translation, scale, rotation, model, transform_func)
-        return new(
-            RefValue{Transformation}(),
-            translation, scale, rotation, model, transform_func
-        )
+    function Transformation(translation, scale, rotation, transform_func)
+        translation_o = convert(Observable{Vec3f}, translation)
+        scale_o = convert(Observable{Vec3f}, scale)
+        rotation_o = convert(Observable{Quaternionf}, rotation)
+        parent_model = Observable(Mat4f(I))
+        model = map(translation_o, scale_o, rotation_o, parent_model) do t, s, r, p
+            return p * transformationmatrix(t, s, r)
+        end
+        transform_func_o = convert(Observable{Any}, transform_func)
+        return new(RefValue{Transformation}(),
+                   translation_o, scale_o, rotation_o, model, parent_model, transform_func_o)
     end
 end
 
-"""
-`PlotSpec{P<:AbstractPlot}(args...; kwargs...)`
-
-Object encoding positional arguments (`args`), a `NamedTuple` of attributes (`kwargs`)
-as well as plot type `P` of a basic plot.
-"""
-struct PlotSpec{P<:AbstractPlot}
-    args::Tuple
-    kwargs::NamedTuple
-    PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot} = new{P}(args, values(kwargs))
+function Transformation(transform_func=identity;
+                        scale=Vec3f(1),
+                        translation=Vec3f(0),
+                        rotation=Quaternionf(0, 0, 0, 1))
+    return Transformation(translation,
+                          scale,
+                          rotation,
+                          transform_func)
 end
 
-PlotSpec(args...; kwargs...) = PlotSpec{Combined{Any}}(args...; kwargs...)
+function Transformation(parent::Transformable;
+                        scale=Vec3f(1),
+                        translation=Vec3f(0),
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        transform_func=nothing)
+    connect_func = isnothing(transform_func)
+    trans = isnothing(transform_func) ? identity : transform_func
 
-Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
-Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
-
-to_plotspec(::Type{P}, args; kwargs...) where {P} =
-    PlotSpec{P}(args...; kwargs...)
-
-to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P, S} =
-    PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
-
-plottype(::PlotSpec{P}) where {P} = P
-
+    trans = Transformation(translation,
+                           scale,
+                           rotation,
+                           trans)
+    connect!(transformation(parent), trans; connect_func=connect_func)
+    return trans
+end
 
 struct ScalarOrVector{T}
     sv::Union{T, Vector{T}}
@@ -430,3 +454,10 @@ end
 (s::ReversibleScale)(args...) = s.forward(args...) # functor
 Base.show(io::IO, s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
 Base.show(io::IO, ::MIME"text/plain", s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
+
+
+struct Cycler
+    counters::IdDict{Type,Int}
+end
+
+Cycler() = Cycler(IdDict{Type,Int}())

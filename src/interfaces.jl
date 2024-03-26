@@ -1,9 +1,28 @@
+
+function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))
+    cycler = scene.cycler
+    palette = scene.theme.palette
+    add_cycle_attributes!(plot, cycle, cycler, palette)
+    return
+end
+
 function color_and_colormap!(plot, colors = plot.color)
+    scene = parent_scene(plot)
+    if !isnothing(scene) && haskey(plot, :cycle)
+        add_cycle_attribute!(plot, scene)
+    end
     colors = assemble_colors(colors[], colors, plot)
     attributes(plot.attributes)[:calculated_colors] = colors
 end
 
-function calculated_attributes!(T::Type{<: Mesh}, plot)
+function calculated_attributes!(::Type{<: AbstractPlot}, plot)
+    scene = parent_scene(plot)
+    if !isnothing(scene) && haskey(plot, :cycle)
+        add_cycle_attribute!(plot, scene)
+    end
+end
+
+function calculated_attributes!(::Type{<: Mesh}, plot)
     mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
     color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
     color_and_colormap!(plot, color)
@@ -69,7 +88,8 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
         for attr in [:color, :linewidth]
             # taken from @edljk  in PR #77
             if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
-                plot[attr] = lift(plot, plot[attr]) do cols
+                # TODO, this is actually buggy for `plot.color = new_colors`, since we're overwriting the origin color input
+                attributes(plot.attributes)[attr] = lift(plot, plot[attr]) do cols
                     map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
                 end
             end
@@ -79,16 +99,61 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
     return
 end
 
-const atomic_function_symbols = (
-    :text, :meshscatter, :scatter, :mesh, :linesegments,
-    :lines, :surface, :volume, :heatmap, :image
+const atomic_functions = (
+    text, meshscatter, scatter, mesh, linesegments,
+    lines, surface, volume, heatmap, image
 )
+const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
-const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
-const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
+function convert_arguments!(plot::Plot{F}) where {F}
+    P = Plot{F,Any}
+    function on_update(kw, args...)
+        nt = convert_arguments(P, args...; kw...)
+        pnew, converted = apply_convert!(P, plot.attributes, nt)
+        @assert plotfunc(pnew) === F "Changed the plot type in convert_arguments. This isn't allowed!"
+        for (obs, new_val) in zip(plot.converted, converted)
+            obs[] = new_val
+        end
+    end
+    used_attrs = used_attributes(P, to_value.(plot.args)...)
+    convert_keys = intersect(used_attrs, keys(plot.attributes))
+    kw_signal = if isempty(convert_keys)
+        # lift(f) isn't supported so we need to catch the empty case
+        Observable(())
+    else
+        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
+        lift((args...) -> Pair.(convert_keys, args), plot, pop!.(plot.attributes, convert_keys)...)
+    end
+    onany(on_update, plot, kw_signal, plot.args...)
+    return
+end
 
-function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
-    PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
+function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
+    if !isempty(args) && first(args) isa Attributes
+        merge!(plot_attributes, attributes(first(args)))
+        return Plot{Func}(Base.tail(args), plot_attributes)
+    end
+    P = Plot{Func}
+    used_attrs = used_attributes(P, to_value.(args)...)
+    if used_attrs === ()
+        args_converted = convert_arguments(P, map(to_value, args)...)
+    else
+        kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
+        args_converted = convert_arguments(P, map(to_value, args)...; kw...)
+    end
+    preconvert_attr = Attributes()
+    PNew, converted = apply_convert!(P, preconvert_attr, args_converted)
+
+    obs_args = Any[convert(Observable, x) for x in args]
+
+    ArgTyp = MakieCore.argtypes(converted)
+    converted_obs = map(Observable, converted)
+    FinalPlotFunc = plotfunc(plottype(PNew, converted...))
+    plot = Plot{FinalPlotFunc,ArgTyp}(plot_attributes, obs_args, converted_obs)
+    for (k, v) in preconvert_attr
+        attributes(plot.attributes)[k] = v
+    end
+    return plot
 end
 
 """
@@ -113,107 +178,32 @@ Usage:
     end
 ```
 """
-used_attributes(PlotType, args...) = ()
+used_attributes(::Type{<:Plot}, args...) = used_attributes(args...)
+used_attributes(args...) = ()
 
-"""
-apply for return type
-    (args...,)
-"""
-function apply_convert!(P, attributes::Attributes, x::Tuple)
-    return (plottype(P, x...), x)
-end
-
-"""
-apply for return type PlotSpec
-"""
-function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
-    args, kwargs = x.args, x.kwargs
-    # Note that kw_args in the plot spec that are not part of the target plot type
-    # will end in the "global plot" kw_args (rest)
-    for (k, v) in pairs(kwargs)
-        attributes[k] = v
-    end
-    return (plottype(S, P), args)
-end
-
-function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
-    ntuple(N) do i
-        lift(args) do x
-            if i <= length(x)
-                x[i]
-            else
-                error("You changed the number of arguments. This isn't allowed!")
-            end
-        end
-    end
-end
-
-function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args) where Typ
-    input = convert.(Observable, args)
-    aconvert(args...) = convert_arguments(PlotType, args...)
-    argnodes = lift(aconvert, input...)
-    plot = PlotType(scene, attributes, input, argnodes)
-    # Manually register obsfuncs, since we can't do lift(aconvert, plot, input...)
-    for arg in input
-        push!(plot.deregister_callbacks, Observables.ObserverFunction(aconvert, arg, false))
-    end
-    return plot
-end
-
-function plot(scene::Scene, plot::AbstractPlot)
-    # plot object contains local theme (default values), and user given values (from constructor)
-    # fill_theme now goes through all values that are missing from the user, and looks if the scene
-    # contains any theming values for them (via e.g. css rules). If nothing founds, the values will
-    # be taken from local theme! This will connect any values in the scene's theme
-    # with the plot values and track those connection, so that we can separate them
-    # when doing delete!(scene, plot)!
-    complete_theme!(scene, plot)
-    # we just return the plot... whoever calls plot (our pipeline usually)
-    # will need to push!(scene, plot) etc!
-    return plot
-end
-
-function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, input, args) where Typ
-    # The argument type of the final plot object is the assumened to stay constant after
-    # argument conversion. This might not always hold, but it simplifies
-    # things quite a bit
-    ArgTyp = typeof(to_value(args))
-    # construct the fully qualified plot type, from the possible incomplete (abstract)
-    # PlotType
-
-    FinalType = Combined{Typ, ArgTyp}
-    plot_attributes = merged_get!(
-        ()-> default_theme(scene, FinalType),
-        plotsym(FinalType), scene, attributes
-    )
-
-    # Transformation is a field of the plot type, but can be given as an attribute
-    trans = get(plot_attributes, :transformation, automatic)
-    transval = to_value(trans)
-    transformation = if transval === automatic
-        Transformation(scene)
-    elseif isa(transval, Transformation)
-        transval
-    else
-        t = Transformation(scene)
-        transform!(t, transval)
-        t
-    end
-    replace_automatic!(plot_attributes, :model) do
-        transformation.model
-    end
-    # create the plot, with the full attributes, the input signals, and the final signals.
-    plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
-    calculated_attributes!(plot_obj)
-    plot_obj
-end
 
 ## generic definitions
-# If the Combined has no plot func, calculate them
-plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
-plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
-# If it has something more concrete than Any, use it directly
-plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
+# Chose the more specific plot type from arguments or input type
+# Note the plottype(Scatter, Plot{plot}) will return Scatter
+# And plottype(args...) falls back to Plot{plot}
+plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argvalues...))
+plottype(P::Type{<:Plot{T}}) where {T} = P
+plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
+plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
+"""
+    plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
+
+Chooses the more concrete plot type
+```julia
+function convert_arguments(P::PlotFunc, args...)
+    ptype = plottype(P, Lines)
+    ...
+end
+```
+"""
+plottype(::Type{Plot{plot}}, P::Type{<:Plot{T}}) where {T} = P
+plottype(P::Type{<:Plot{T}}, ::Type{Plot{plot}}) where {T} = P
+
 
 ## specialized definitions for types
 plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
@@ -232,180 +222,65 @@ plottype(::GeometryBasics.AbstractPolygon) = Poly
 plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
-"""
-    plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})
 
-Chooses the more concrete plot type
-```julia
-function convert_arguments(P::PlotFunc, args...)
-    ptype = plottype(P, Lines)
-    ...
-end
-```
-"""
-plottype(P1::Type{<: Combined{Any}}, P2::Type{<: Combined{T}}) where T = P2
-plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
 
 # all the plotting functions that get a plot type
-const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
+const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
 
-
-######################################################################
-# In this section, the plotting functions have P as the first argument
-# These are called from type recipes
-
-function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
-    attributes = Attributes(kw_attributes)
-    plot!(scene, P, attributes, args...)
+function plot!(::Plot{F}) where {F}
+    if !(F in atomic_functions)
+        error("No recipe for $(F)")
+    end
 end
 
-# with positional attributes
+function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
+    plot.parent = parent
 
-function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attrs)
-    plot!(scene, P, attributes, args...)
-end
-######################################################################
-
-# plots to scene
-
-"""
-Main plotting signatures that plot/plot! route to if no Plot Type is given
-"""
-function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attributes)
-    argvalues = to_value.(args)
-    pre_type_no_args = plottype(P, argvalues...)
-    # plottype will lose the argument types, so we just extract the plot func
-    # type and recreate the type with the argument type
-    PreType = Combined{plotfunc(pre_type_no_args), typeof(argvalues)}
-    used_attrs = used_attributes(PreType, argvalues...)
-    convert_keys = intersect(used_attrs, keys(attributes))
-    kw_signal = if isempty(convert_keys)
-        # lift(f) isn't supported so we need to catch the empty case
-        Observable(())
+    apply_theme!(parent_scene(parent), plot)
+    t_user = to_value(get(attributes(plot), :transformation, automatic))
+    if t_user isa Transformation
+        plot.transformation = t_user
     else
-        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
-        lift((args...) -> Pair.(convert_keys, args), scene, pop!.(attributes, convert_keys)...)
-    end
-    # call convert_arguments for a first time to get things started
-    converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
-    # convert_arguments can return different things depending on the recipe type
-    # apply_conversion deals with that!
-
-    FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
-    converted_node = Observable(argsconverted)
-    input_nodes = convert.(Observable, args)
-    obs_funcs = onany(kw_signal, input_nodes...) do kwargs, args...
-        # do the argument conversion inside a lift
-        result = convert_arguments(FinalType, args...; kwargs...)
-        finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
-        if finaltype != FinalType
-            error("Plot type changed from $FinalType to $finaltype after conversion.
-                Changing the plot type based on values in convert_arguments is not allowed"
-            )
+        if t_user isa Automatic
+            plot.transformation = Transformation()
+        else
+            t = Transformation()
+            transform!(t, t_user)
+            plot.transformation = t
         end
-        converted_node[] = argsconverted_
-    end
-    plot_object = plot!(scene, FinalType, attributes, input_nodes, converted_node)
-    # bind observable clean up to plot object:
-    append!(plot_object.deregister_callbacks, obs_funcs)
-    return plot_object
-end
-
-plot!(p::Combined) = _plot!(p)
-
-_plot!(p::Atomic{T}) where T = p
-
-function _plot!(p::Combined{fn, T}) where {fn, T}
-    throw(PlotMethodError(fn, T))
-end
-
-struct PlotMethodError <: Exception
-    fn
-    T
-end
-
-function Base.showerror(io::IO, err::PlotMethodError)
-    fn = err.fn
-    T = err.T
-    args = (T.parameters...,)
-    typed_args = join(string.("::", args), ", ")
-
-    print(io, "PlotMethodError: no ")
-    printstyled(io, fn == Any ? "plot" : fn; color=:cyan)
-    print(io, " method for arguments ")
-    printstyled(io, "($typed_args)"; color=:cyan)
-    print(io, ". To support these arguments, define\n  ")
-    printstyled(io, "plot!(::$(Combined{fn,S} where {S<:T}))"; color=:cyan)
-    print(io, "\nAvailable methods are:\n")
-    for m in methods(plot!)
-        if m.sig <: Tuple{typeof(plot!), Combined{fn}}
-            println(io, "  ", m)
+        if is_space_compatible(plot, parent)
+            obsfunc = connect!(transformation(parent), transformation(plot))
+            append!(plot.deregister_callbacks, obsfunc)
         end
     end
+    plot.model = transformationmatrix(plot)
+    convert_arguments!(plot)
+    calculated_attributes!(Plot{F}, plot)
+    default_shading!(plot, parent_scene(parent))
+    plot!(plot)
+    return plot
 end
 
-function show_attributes(attributes)
-    for (k, v) in attributes
-        println("    ", k, ": ", v[] == nothing ? "nothing" : v[])
-    end
+function plot!(scene::SceneLike, plot::Plot)
+    connect_plot!(scene, plot)
+    push!(scene, plot)
+    return plot
 end
 
-"""
-    extract_scene_attributes!(attributes)
-
-removes all scene attributes from `attributes` and returns them in a new
-Attribute dict.
-"""
-function extract_scene_attributes!(attributes)
-    scene_attributes = (
-        :backgroundcolor,
-        :resolution,
-        :show_axis,
-        :show_legend,
-        :scale_plot,
-        :center,
-        :axis,
-        :axis2d,
-        :axis3d,
-        :legend,
-        :camera,
-        :limits,
-        :padding,
-        :raw,
-        :SSAO
-    )
-    result = Attributes()
-    for k in scene_attributes
-        haskey(attributes, k) && (result[k] = pop!(attributes, k))
+function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
+    raw_attr = attributes(plot.attributes)
+    plot_theme = default_theme(scene, P)
+    plot_sym = plotsym(P)
+    if haskey(theme(scene), plot_sym)
+        merge_without_obs_reverse!(plot_theme, theme(scene, plot_sym))
     end
-    return result
-end
 
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
-    # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    scene_attributes = extract_scene_attributes!(attributes)
-    if haskey(attributes, :textsize)
-        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+    for (k, v) in plot.kw
+        if v isa NamedTuple
+            raw_attr[k] = Attributes(v)
+        else
+            raw_attr[k] = convert(Observable{Any}, v)
+        end
     end
-    plot_object = P(scene, attributes, input, args)
-    # transfer the merged attributes from theme and user defined to the scene
-    for (k, v) in scene_attributes
-        error("setting $k for scene via plot attribute not supported anymore")
-    end
-    # call user defined recipe overload to fill the plot type
-    plot!(plot_object)
-    push!(scene, plot_object)
-    return plot_object
-end
-
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::Observable) where {N}
-    # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-
-    plot_object = P(scene, attributes, input, args)
-    # call user defined recipe overload to fill the plot type
-    plot!(plot_object)
-    push!(scene.plots, plot_object)
-    plot_object
+    return merge!(plot.attributes, plot_theme)
 end

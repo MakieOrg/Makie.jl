@@ -8,7 +8,7 @@
 end
 
 @reference_test "Figure with Blocks" begin
-    fig = Figure(resolution = (900, 900))
+    fig = Figure(size = (900, 900))
     ax, sc = scatter(fig[1, 1][1, 1], RNG.randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
     sc2 = scatter!(ax, RNG.randn(100, 2) .+ 2, color = :red)
     ll = fig[1, 1][1, 2] = Legend(fig, [sc, sc2], ["Scatter", "Other"])
@@ -26,7 +26,7 @@ end
 end
 
 @reference_test "Figure with boxes" begin
-    fig = Figure(resolution = (900, 900))
+    fig = Figure(size = (900, 900))
     Box(fig[1,1], color = :red, strokewidth = 3, linestyle = :solid, strokecolor = :black)
     Box(fig[1,2], color = (:red, 0.5), strokewidth = 3, linestyle = :dash, strokecolor = :red)
     Box(fig[1,3], color = :white, strokewidth = 3, linestyle = :dot, strokecolor = (:black, 0.5))
@@ -61,8 +61,8 @@ end
 
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-    fig = Figure(resolution = (1000, 660))
-    m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=false)
+    fig = Figure(size = (1000, 660))
+    m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=NoShading)
     lbl1 = Label(fig[1, 1:2], "HEADER "^10, fontsize = 40, word_wrap = true)
     m!(fig, lbl1)
 
@@ -119,6 +119,20 @@ end
     f
 end
 
+# https://github.com/MakieOrg/Makie.jl/issues/3579
+@reference_test "Axis yticksmirrored" begin
+    f = Figure(size = (200, 200))
+    Axis(f[1, 1], yticksmirrored = true, yticksize = 10, ytickwidth = 4, spinewidth = 5)
+    Colorbar(f[1, 2])
+    f
+end
+@reference_test "Axis xticksmirrored" begin
+    f = Figure(size = (200, 200))
+    Axis(f[1, 1], xticksmirrored = true, xticksize = 10, xtickwidth = 4, spinewidth = 5)
+    Colorbar(f[0, 1], vertical = false)
+    f
+end
+
 @reference_test "Legend draw order" begin
     with_theme(Lines = (linewidth = 10,)) do
         f = Figure()
@@ -131,6 +145,25 @@ end
         Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), backgroundcolor = :gray50);
         f
     end
+end
+
+@reference_test "Legend with scalar colors" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    for i in 1:3
+        lines!(ax, (1:3) .+ i, color = i, colorrange = (0, 4), colormap = :Blues, label = "Line $i", linewidth = 3)
+    end
+    for i in 1:3
+        scatter!(ax, (1:3) .+ i .+ 3, color = i, colorrange = (0, 4), colormap = :plasma, label = "Scatter $i", markersize = 15)
+    end
+    for i in 1:3
+        barplot!(ax, (1:3) .+ i .+ 8, fillto = (1:3) .+ i .+ 7.5, color = i, colorrange = (0, 4), colormap = :tab10, label = "Barplot $i")
+    end
+    for i in 1:3
+        poly!(ax, [Rect2f((j, i .+ 12 + j), (0.5, 0.5)) for j in 1:3], color = i, colorrange = (0, 4), colormap = :heat, label = "Poly $i")
+    end
+    Legend(f[1, 2], ax)
+    f
 end
 
 @reference_test "LaTeXStrings in Axis3 plots" begin
@@ -152,7 +185,7 @@ end
     f = Figure()
     ax = PolarAxis(f[1, 1])
     zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
-    p = surface!(ax, 0..2pi, 0..10, zs, shading = false, colormap = :coolwarm, colorrange=(-2, 2))
+    p = surface!(ax, 0..2pi, 0..10, zs, shading = NoShading, colormap = :coolwarm, colorrange=(-2, 2))
     rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
     translate!(p, 0, 0, -200)
     Colorbar(f[1, 2], p)
@@ -161,7 +194,7 @@ end
 
 # may fail in WGLMakie due to missing dashes
 @reference_test "PolarAxis scatterlines spine" begin
-    f = Figure(resolution = (800, 400))
+    f = Figure(size = (800, 400))
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false, theta_as_x = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
@@ -176,7 +209,7 @@ end
 # may fail in CairoMakie due to different text stroke handling
 # and in WGLMakie due to missing stroke
 @reference_test "PolarAxis decorations" begin
-    f = Figure(resolution = (400, 400), backgroundcolor = :black)
+    f = Figure(size = (400, 400), backgroundcolor = :black)
     ax = PolarAxis(
         f[1, 1],
         backgroundcolor = :black,
@@ -190,12 +223,14 @@ end
         rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
+        thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
+        rticks = ([0.0, 2.5, 5.0, 7.5, 10.0], ["0.0", "2.5", "5.0", "7.5", rich("10.0", color = :orange)])
     )
     f
 end
 
 @reference_test "PolarAxis limits" begin
-    f = Figure(resolution = (800, 600))
+    f = Figure(size = (800, 600))
     for (i, theta_0) in enumerate((0, -pi/6, pi/2))
         for (j, thetalims) in enumerate(((0, 2pi), (-pi/2, pi/2), (0, pi/12)))
             po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (1 + 2(j-1), 7))
@@ -211,8 +246,25 @@ end
     f
 end
 
+@reference_test "PolarAxis radial shift and clip" begin
+    phis = range(pi/4, 9pi/4, length=201)
+    rs = 1.0 ./ sin.(range(pi/4, 3pi/4, length=51)[1:end-1])
+    rs = vcat(rs, rs, rs, rs, rs[1])
+
+    fig = Figure(size = (900, 300))
+    ax1 = PolarAxis(fig[1, 1], clip_r = false, radius_at_origin = -2)  # red square, black, blue bulging
+    ax2 = PolarAxis(fig[1, 2], clip_r = false, radius_at_origin = 0)   # red flower, black square, blue bulging
+    ax3 = PolarAxis(fig[1, 3], clip_r = false, radius_at_origin = 0.5) # red large flower, black star, blue square
+    for ax in (ax1, ax2, ax3)
+        lines!(ax, phis, rs .- 2, color = :red, linewidth = 4)
+        lines!(ax, phis, rs, color = :black, linewidth = 4)
+        lines!(ax, phis, rs .+ 0.5, color = :blue, linewidth = 4)
+    end
+    fig
+end
+
 @reference_test "Axis3 axis reversal" begin
-    f = Figure(resolution = (1000, 1000))
+    f = Figure(size = (1000, 1000))
     revstr(dir, rev) = rev ? "$dir rev" : ""
     for (i, (x, y, z)) in enumerate(Iterators.product(fill((false, true), 3)...))
         Axis3(f[fldmod1(i, 3)...], title = "$(revstr("x", x)) $(revstr("y", y)) $(revstr("z", z))", xreversed = x, yreversed = y, zreversed = z)
@@ -222,7 +274,7 @@ end
 end
 
 @reference_test "Colorbar for recipes" begin
-    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;resolution=(800, 800)))
+    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;size=(800, 800)))
     Colorbar(fig[1, 2], pl; size=100)
     x = LinRange(-1, 1, 20)
     y = LinRange(-1, 1, 20)
@@ -274,3 +326,4 @@ end
     axislegend(ax)
     fig
 end
+

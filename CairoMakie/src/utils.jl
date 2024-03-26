@@ -24,7 +24,7 @@ function _project_position(scene::Scene, space, point, model, yflip::Bool)
     return p_0_to_1 .* res
 end
 
-function project_position(scenelike, space, point, model, yflip::Bool = true)
+function project_position(@nospecialize(scenelike), space, point, model, yflip::Bool = true)
     scene = Makie.get_scene(scenelike)
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
@@ -47,13 +47,13 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     end
 end
 
-function project_shape(scenelike, space, rect::Rect, model)
+function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
     mini = project_position(scenelike, space, minimum(rect), model)
     maxi = project_position(scenelike, space, maximum(rect), model)
     return Rect(mini, maxi .- mini)
 end
 
-function project_polygon(scenelike, space, poly::P, model) where P <: Polygon
+function project_polygon(@nospecialize(scenelike), space, poly::P, model) where P <: Polygon
     ext = decompose(Point2f, poly.exterior)
     interiors = decompose.(Point2f, poly.interiors)
     Polygon(
@@ -62,7 +62,7 @@ function project_polygon(scenelike, space, poly::P, model) where P <: Polygon
     )
 end
 
-function project_multipolygon(scenelike, space, multipoly::MP, model) where MP <: MultiPolygon
+function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, model) where MP <: MultiPolygon
     return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(model)))
 end
 
@@ -117,6 +117,15 @@ function rgbatuple(c)
 end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
+
+# handle patterns
+function Cairo.CairoPattern(color::Makie.AbstractPattern)
+    # the Cairo y-coordinate are fliped
+    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
+    cairoimage = Cairo.CairoImageSurface(bitmappattern)
+    cairopattern = Cairo.CairoPattern(cairoimage)
+    return cairopattern
+end
 
 ########################################
 #        Common color utilities        #
@@ -217,7 +226,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         wsize = reverse(size(color))
         wh = wsize .- 1
         cvec = map(uv) do uv
-            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wsize)
             return color[end - (y - 1), x]
         end
         # TODO This is wrong and doesn't actually interpolate
@@ -231,14 +240,10 @@ function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
 end
 
-# not piracy
-function Cairo.CairoPattern(color::Makie.AbstractPattern)
-    # the Cairo y-coordinate are fliped
-    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
-    cairoimage = Cairo.CairoImageSurface(bitmappattern)
-    cairopattern = Cairo.CairoPattern(cairoimage)
-    return cairopattern
-end
+################################################################################
+#                                Font handling                                 #
+################################################################################
+
 
 """
 Finds a font that can represent the unicode character!

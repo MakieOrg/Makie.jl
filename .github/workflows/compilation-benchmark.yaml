@@ -6,7 +6,9 @@ on:
       - '*.md'
     branches:
       - master
-      - sd/beta-20
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 jobs:
   benchmark:
     name: ${{ matrix.package }}

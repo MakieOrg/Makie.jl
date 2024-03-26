@@ -17,7 +17,7 @@ CairoMakie.activate!() # hide
 using Random
 Random.seed!(1234)
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 x = rand(300)
 y = rand(300)
@@ -43,7 +43,7 @@ CairoMakie.activate!() # hide
 using Random
 Random.seed!(1234)
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 x = rand(300)
 y = rand(300)
@@ -75,7 +75,7 @@ CairoMakie.activate!() # hide
 using Random
 Random.seed!(1234)
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 x = rand(300)
 y = rand(300)
@@ -103,7 +103,7 @@ CairoMakie.activate!() # hide
 using Random
 Random.seed!(1234)
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 x = rand(300)
 y = rand(300)
@@ -131,7 +131,7 @@ CairoMakie.activate!() # hide
 using Random
 Random.seed!(1234)
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 x = randn(100000)
 y = randn(100000)
@@ -216,7 +216,7 @@ CairoMakie.activate!() # hide
 using Random
 Random.seed!(1234)
 
-f = Figure(resolution = (800, 800))
+f = Figure(size = (800, 800))
 
 x = 1:100
 y = 1:100

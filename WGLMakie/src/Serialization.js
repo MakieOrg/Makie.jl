@@ -1,5 +1,6 @@
+import * as THREE from "./THREE.js";
 import * as Camera from "./Camera.js";
-import * as THREE from "https://cdn.esm.sh/v66/three@0.157/es2021/three.js";
+import { create_line, create_linesegments } from "./Lines.js";
 
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
@@ -20,6 +21,7 @@ export function delete_scene(scene_id) {
     if (!scene) {
         return;
     }
+    delete_three_scene(scene);
     while (scene.children.length > 0) {
         scene.remove(scene.children[0]);
     }
@@ -39,7 +41,10 @@ export function find_plots(plot_uuids) {
 
 export function delete_scenes(scene_uuids, plot_uuids) {
     plot_uuids.forEach((plot_id) => {
-        delete plot_cache[plot_id];
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
+        }
     });
     scene_uuids.forEach((scene_id) => {
         delete_scene(scene_id);
@@ -53,14 +58,9 @@ export function insert_plot(scene_id, plot_data) {
     });
 }
 
-export function delete_plots(scene_id, plot_uuids) {
-    console.log(`deleting plots!: ${plot_uuids}`)
-    const scene = find_scene(scene_id);
+export function delete_plots(plot_uuids) {
     const plots = find_plots(plot_uuids);
-    plots.forEach((p) => {
-        scene.remove(p);
-        delete plot_cache[p];
-    });
+    plots.forEach(delete_plot);
 }
 
 function convert_texture(data) {
@@ -120,7 +120,7 @@ function to_uniform(data) {
     return data;
 }
 
-function deserialize_uniforms(data) {
+export function deserialize_uniforms(data) {
     const result = {};
     // Deno may change constructor names..so...
 
@@ -141,7 +141,16 @@ function deserialize_uniforms(data) {
 
 export function deserialize_plot(data) {
     let mesh;
-    if ("instance_attributes" in data) {
+    const update_visible = (v) => {
+        mesh.visible = v;
+        // don't return anything, since that will disable on_update callback
+        return;
+    };
+    if (data.plot_type === "lines") {
+        mesh = create_line(data);
+    } else if (data.plot_type === "linesegments") {
+        mesh = create_linesegments(data);
+    } else if ("instance_attributes" in data) {
         mesh = create_instanced_mesh(data);
     } else {
         mesh = create_mesh(data);
@@ -150,15 +159,12 @@ export function deserialize_plot(data) {
     mesh.frustumCulled = false;
     mesh.matrixAutoUpdate = false;
     mesh.plot_uuid = data.uuid;
-    const update_visible = (v) => {
-        mesh.visible = v;
-        // don't return anything, since that will disable on_update callback
-        return;
-    };
     update_visible(data.visible.value);
     data.visible.on(update_visible);
     connect_uniforms(mesh, data.uniform_updater);
-    connect_attributes(mesh, data.attribute_updater);
+    if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
+        connect_attributes(mesh, data.attribute_updater);
+    }
     return mesh;
 }
 
@@ -172,7 +178,6 @@ export function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
     const identity = new THREE.Uniform(new THREE.Matrix4());
-
     if (plot_data.cam_space == "data") {
         plot_data.uniforms.view = cam.view;
         plot_data.uniforms.projection = cam.projection;
@@ -192,8 +197,9 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-
+    const { px_per_unit } = scene.screen;
     plot_data.uniforms.resolution = cam.resolution;
+    plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
     if (plot_data.uniforms.preprojection) {
         const { space, markerspace } = plot_data;
@@ -202,8 +208,25 @@ export function add_plot(scene, plot_data) {
             markerspace.value
         );
     }
+
+    if (scene.camera_relative_light) {
+        plot_data.uniforms.light_direction = cam.light_direction;
+        scene.light_direction.on((value) => {
+            cam.update_light_dir(value);
+        });
+    } else {
+        // TODO how update?
+        const light_dir = new THREE.Vector3().fromArray(
+            scene.light_direction.value
+        );
+        plot_data.uniforms.light_direction = new THREE.Uniform(light_dir);
+        scene.light_direction.on((value) => {
+            plot_data.uniforms.light_direction.value.fromArray(value);
+        });
+    }
+
     const p = deserialize_plot(plot_data);
-    plot_cache[plot_data.uuid] = p;
+    plot_cache[p.plot_uuid] = p;
     scene.add(p);
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy
@@ -252,7 +275,6 @@ function convert_RGB_to_RGBA(rgbArray) {
 
     return rgbaArray;
 }
-
 
 function create_texture(data) {
     const buffer = data.data;
@@ -304,17 +326,17 @@ function re_create_texture(old_texture, buffer, size) {
             old_texture.type
         );
     }
-    tex.minFilter = old_texture.minFilter
-    tex.magFilter = old_texture.magFilter
-    tex.anisotropy = old_texture.anisotropy
-    tex.wrapS = old_texture.wrapS
+    tex.minFilter = old_texture.minFilter;
+    tex.magFilter = old_texture.magFilter;
+    tex.anisotropy = old_texture.anisotropy;
+    tex.wrapS = old_texture.wrapS;
     if (size.length > 1) {
-        tex.wrapT = old_texture.wrapT
+        tex.wrapT = old_texture.wrapT;
     }
     if (size.length > 2) {
-        tex.wrapR = old_texture.wrapR
+        tex.wrapR = old_texture.wrapR;
     }
-    return tex
+    return tex;
 }
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);
@@ -523,41 +545,59 @@ export function deserialize_scene(data, screen) {
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
-    scene.pixelarea = data.pixelarea;
+    scene.viewport = data.viewport;
     scene.backgroundcolor = data.backgroundcolor;
+    scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
+    scene.camera_relative_light = data.camera_relative_light;
+    scene.light_direction = data.light_direction;
 
     const camera = new Camera.MakieCamera();
 
     scene.wgl_camera = camera;
 
-    function update_cam(camera_matrices) {
+    function update_cam(camera_matrices, force) {
+        if (!force) {
+            // we use the threejs orbit controls, if the julia connection is gone
+            // at least for 3d ... 2d is still a todo, and will stay static right now
+            if (!(Bonito.can_send_to_julia && Bonito.can_send_to_julia())) {
+                return;
+            }
+        }
         const [view, projection, resolution, eyepos] = camera_matrices;
         camera.update_matrices(view, projection, resolution, eyepos);
     }
 
-    update_cam(data.camera.value);
-
     if (data.cam3d_state) {
-        Camera.attach_3d_camera(canvas, camera, data.cam3d_state, scene);
-    } else {
-        data.camera.on(update_cam);
+        Camera.attach_3d_camera(
+            canvas,
+            camera,
+            data.cam3d_state,
+            data.light_direction,
+            scene
+        );
     }
+
+    update_cam(data.camera.value, true); // force update on first call
+    camera.update_light_dir(data.light_direction.value);
+    data.camera.on(update_cam);
+
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
-    scene.scene_children = data.children.map((child) =>
-        deserialize_scene(child, screen)
-    );
+    scene.scene_children = data.children.map((child) => {
+        const childscene = deserialize_scene(child, screen);
+        return childscene;
+    });
     return scene;
 }
 
 export function delete_plot(plot) {
     delete plot_cache[plot.plot_uuid];
-    const {parent} = plot
+    const { parent } = plot;
     if (parent) {
-        parent.remove(plot)
+        parent.remove(plot);
     }
     plot.geometry.dispose();
     plot.material.dispose();
@@ -566,8 +606,8 @@ export function delete_plot(plot) {
 export function delete_three_scene(scene) {
     delete scene_cache[scene.scene_uuid];
     scene.scene_children.forEach(delete_three_scene);
-    while(scene.children.length > 0) {
-        delete_plot(scene.children[0])
+    while (scene.children.length > 0) {
+        delete_plot(scene.children[0]);
     }
 }
 

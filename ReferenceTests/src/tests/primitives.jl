@@ -1,6 +1,6 @@
 @reference_test "lines and linestyles" begin
     # For now disabled until we fix GLMakie linestyle
-    s = Scene(resolution = (800, 800), camera = campixel!)
+    s = Scene(size = (800, 800), camera = campixel!)
     scalar = 30
     points = Point2f[(1, 1), (1, 2), (2, 3), (2, 1)]
     linestyles = [
@@ -13,6 +13,7 @@
                 scalar .* (points .+ Point2f(linewidth*2, i * 3.25)),
                 linewidth = linewidth,
                 linestyle = linestyle,
+                color=:black
             )
         end
     end
@@ -20,7 +21,7 @@
 end
 
 @reference_test "lines with gaps" begin
-    s = Scene(resolution = (800, 800), camera = campixel!)
+    s = Scene(size = (800, 800), camera = campixel!)
     points = [
         Point2f[(1, 0), (2, 0.5), (NaN, NaN), (4, 0.5), (5, 0)],
         Point2f[(NaN, NaN), (2, 0.5), (3, 0), (4, 0.5), (5, 0)],
@@ -35,8 +36,12 @@ end
     s
 end
 
+@reference_test "lines issue #3704" begin
+    lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
+end
+
 @reference_test "scatters" begin
-    s = Scene(resolution = (800, 800), camera = campixel!)
+    s = Scene(size = (800, 800), camera = campixel!)
 
     markersizes = 0:2:30
     markers = [:circle, :rect, :cross, :utriangle, :dtriangle,
@@ -49,6 +54,7 @@ end
                 Point2f(i, j) .* 45,
                 marker = m,
                 markersize = ms,
+                color=:black
             )
         end
     end
@@ -56,7 +62,7 @@ end
 end
 
 @reference_test "scatter rotations" begin
-    s = Scene(resolution = (800, 800), camera = campixel!)
+    s = Scene(size = (800, 800), camera = campixel!)
 
     rotations = range(0, 2pi, length = 15)
     markers = [:circle, :rect, :cross, :utriangle, :dtriangle,
@@ -71,6 +77,7 @@ end
                 marker = m,
                 markersize = 30,
                 rotations = rot,
+                color=:black
             )
             scatter!(s, p, color = :red, markersize = 6)
         end
@@ -79,7 +86,7 @@ end
 end
 
 @reference_test "scatter with stroke" begin
-    s = Scene(resolution = (350, 700), camera = campixel!)
+    s = Scene(size = (350, 700), camera = campixel!)
 
     # half stroke, half glow
     strokes = range(1, 4, length=7)
@@ -112,7 +119,7 @@ end
 end
 
 @reference_test "scatter with glow" begin
-    s = Scene(resolution = (350, 700), camera = campixel!)
+    s = Scene(size = (350, 700), camera = campixel!)
 
     # half stroke, half glow
     glows = range(4, 1, length=7)
@@ -148,7 +155,7 @@ end
 @reference_test "scatter image markers" begin
     pixel_types = [ RGBA, RGBAf, RGBA{Float16}, ARGB, ARGB{Float16}, RGB, RGBf, RGB{Float16} ]
     rotations = [ 2pi/3 * (i-1) for i = 1:length(pixel_types) ]
-    s = Scene(resolution = (100+100*length(pixel_types), 400), camera = campixel!)
+    s = Scene(size = (100+100*length(pixel_types), 400), camera = campixel!)
     filename = Makie.assetpath("icon_transparent.png")
     marker_image = load(filename)
     for (i, (rot, pxtype)) in enumerate(zip(rotations, pixel_types))
@@ -166,7 +173,7 @@ end
 
 
 @reference_test "basic polygon shapes" begin
-    s = Scene(resolution = (800, 800), camera = campixel!)
+    s = Scene(size = (800, 800), camera = campixel!)
     scalefactor = 70
     Pol = Makie.GeometryBasics.Polygon
     polys = [
@@ -219,7 +226,7 @@ end
 
 
 @reference_test "BezierPath markers" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
     ax = Axis(f[1, 1])
 
     markers = [
@@ -255,7 +262,7 @@ end
         #     bb = Makie.bbox(Makie.DEFAULT_MARKER_MAP[marker])
         #     w, h = widths(bb)
         #     ox, oy = origin(bb)
-        #     xy = map(pv -> Makie.project(pv, Vec2f(widths(pixelarea(scene)[])), Point2f(5, i)), scene.camera.projectionview)
+        #     xy = map(pv -> Makie.project(pv, Vec2f(widths(viewport(scene)[])), Point2f(5, i)), scene.camera.projectionview)
         #     bb = map(xy -> Rect2f(xy .+ 30 * Vec2f(ox, oy), 30 * Vec2f(w, h)), xy)
         #     lines!(bb, linewidth = 1, color = :orange, space = :pixel, linestyle = :dash)
         # end
@@ -265,7 +272,7 @@ end
 end
 
 @reference_test "BezierPath marker stroke" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
     ax = Axis(f[1, 1])
 
     # Same as above
@@ -287,7 +294,7 @@ end
 
 
 @reference_test "complex_bezier_markers" begin
-    f = Figure(resolution = (800, 800))
+    f = Figure(size = (800, 800))
     ax = Axis(f[1, 1])
 
     arrow = BezierPath([
@@ -401,7 +408,7 @@ end
 
 function draw_marker_test!(scene, marker, center; markersize=300)
     # scatter!(scene, center, distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=600)
-    scatter!(scene, center, marker=marker, markersize=markersize, markerspace=:pixel)
+    scatter!(scene, center, color=:black, marker=marker, markersize=markersize, markerspace=:pixel)
 
     font = Makie.defaultfont()
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
@@ -422,7 +429,7 @@ function draw_marker_test!(scene, marker, center; markersize=300)
 end
 
 @reference_test "marke glyph alignment" begin
-    scene = Scene(resolution=(1200, 1200))
+    scene = Scene(size=(1200, 1200))
     campixel!(scene)
     # marker is in front, so it should not be smaller than the background rectangle
     plot_row!(scene, 0, false)
@@ -446,14 +453,55 @@ end
     scene
 end
 
+@reference_test "Surface with NaN points" begin
+    # prepare surface data
+    zs = [x^2 + y^2 for x in range(-2, 0, length=10), y in range(-2, 0, length=10)]
+    ns = copy(zs)
+    ns[4, 3:6] .= NaN
+    # plot surface
+    f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
+    # plot a wireframe so we can see what's going on, and in which cells.
+    m = Makie.surface2mesh(to_value.(p.converted)...)
+    scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
+    wireframe!(a, m, depth_shift = -1f-3, color = :black)
+    f
+end
+
 @reference_test "barplot with TeX-ed labels" begin
-    fig = Figure(resolution = (800, 800))
+    fig = Figure(size = (800, 800))
     lab1 = L"\int f(x) dx"
     lab2 = lab1
     # lab2 = L"\frac{a}{b} - \sqrt{b}" # this will not work until #2667 is fixed
 
     barplot(fig[1,1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction=:x)
     barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
+
+    fig
+end
+
+@reference_test "Plot transform overwrite" begin
+    # Tests that (primitive) plots can have different transform function to their
+    # parent scene (identity in this case)
+    fig = Figure()
+
+    ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
+    xlims!(ax, 1, 10)
+    ylims!(ax, 1, 10)
+    empty!(ax.scene.lights)
+    hidedecorations!(ax)
+
+    heatmap!(ax, 0..0.5, 0..0.5, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    image!(ax, 0..0.5, 0.5..1, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    mesh!(ax, Rect2f(0.5, 0.0, 1.0, 0.25), transformation = Transformation(), color = :green)
+    p = surface!(ax, 0.5..1, 0.25..0.75, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    translate!(p, Vec3f(0, 0, -20))
+    poly!(ax, Rect2f(0.5, 0.75, 1.0, 1.0), transformation = Transformation(), color = :blue)
+
+    lines!(ax, [0, 1], [0, 0.1], linewidth = 10, color = :red, transformation = Transformation())
+    linesegments!(ax, [0, 1], [0.2, 0.3], linewidth = 10, color = :red, transformation = Transformation())
+    scatter!(ax, [0.1, 0.9], [0.4, 0.5], markersize = 50, color = :red, transformation = Transformation())
+    text!(ax, Point2f(0.5, 0.45), text = "Test", fontsize = 50, color = :red, align = (:center, :center), transformation = Transformation())
+    meshscatter!(ax, [0.1, 0.9], [0.6, 0.7], markersize = 0.05, color = :red, transformation = Transformation())
 
     fig
 end

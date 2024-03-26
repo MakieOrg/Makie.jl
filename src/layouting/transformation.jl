@@ -1,49 +1,20 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
-function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    model = map(transformationmatrix, translation_o, scale_o, rotation_o)
-    return Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-end
-
-function Transformation(transformable::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1),
-                        transform_func = copy(transformation(transformable).transform_func))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    parent_transform = transformation(transformable)
-
-    pmodel = parent_transform.model
-    model = map(translation_o, scale_o, rotation_o, pmodel) do t, s, r, p
-        return p * transformationmatrix(t, s, r)
+function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
+    tfuncs = []
+    obsfunc = on(parent.model; update=true) do m
+        return child.parent_model[] = m
     end
-
-    trans = Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-
-    trans.parent[] = parent_transform
-    return trans
+    push!(tfuncs, obsfunc)
+    if connect_func
+        t2 = on(parent.transform_func; update=true) do f
+            child.transform_func[] = f
+            return
+        end
+        push!(tfuncs, t2)
+    end
+    child.parent[] = parent
+    return tfuncs
 end
 
 function free(transformation::Transformation)
@@ -69,24 +40,24 @@ end
 function translated(scene::Scene; kw_args...)
     tscene = Scene(scene, transformation = Transformation())
     transform!(tscene; kw_args...)
-    tscene
+     tscene
 end
 
 function transform!(
-        scene::Transformable;
+        t::Transformable;
         translation = Vec3f(0),
         scale = Vec3f(1),
         rotation = 0.0,
     )
-    translate!(scene, to_value(translation))
-    scale!(scene, to_value(scale))
-    rotate!(scene, to_value(rotation))
+    translate!(t, to_value(translation))
+    scale!(t, to_value(scale))
+    rotate!(t, to_value(rotation))
 end
 
 function transform!(
-        scene::Transformable, attributes::Union{Attributes, AbstractDict}
+        t::Transformable, attributes::Union{Attributes, AbstractDict, NamedTuple}
     )
-    transform!(scene; attributes...)
+    transform!(t; attributes...)
 end
 
 transformation(t::Scene) = t.transformation
@@ -109,39 +80,39 @@ This is an absolute scaling, and there is no option to perform relative scaling.
 """
 scale!(t::Transformable, xyz...) = scale!(t, xyz)
 
-rotation(scene::Transformable) = transformation(scene).rotation
+rotation(t::Transformable) = transformation(t).rotation
 
-function rotate!(::Type{T}, scene::Transformable, q) where T
+function rotate!(::Type{T}, t::Transformable, q) where T
     rot = convert_attribute(q, key"rotation"())
     if T === Accum
-        rot1 = rotation(scene)[]
-        rotation(scene)[] = rot1 * rot
+        rot1 = rotation(t)[]
+        rotation(t)[] = rot1 * rot
     elseif T == Absolute
-        rotation(scene)[] = rot
+        rotation(t)[] = rot
     else
         error("Unknown transformation: $T")
     end
 end
 
 """
-    rotate!(Accum, scene::Transformable, axis_rot...)
+    rotate!(Accum, t::Transformable, axis_rot...)
 
-Apply a relative rotation to the Scene, by multiplying by the current rotation.
+Apply a relative rotation to the transformable, by multiplying by the current rotation.
 """
-rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
+rotate!(::Type{T}, t::Transformable, axis_rot...) where T = rotate!(T, t, axis_rot)
 
 """
     rotate!(t::Transformable, axis_rot::Quaternion)
     rotate!(t::Transformable, axis_rot::AbstractFloat)
     rotate!(t::Transformable, axis_rot...)
 
-Apply an absolute rotation to the Scene. Rotations are all internally converted to `Quaternion`s.
+Apply an absolute rotation to the transformable. Rotations are all internally converted to `Quaternion`s.
 """
-rotate!(scene::Transformable, axis_rot...) = rotate!(Absolute, scene, axis_rot)
-rotate!(scene::Transformable, axis_rot::Quaternion) = rotate!(Absolute, scene, axis_rot)
-rotate!(scene::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, scene, axis_rot)
+rotate!(t::Transformable, axis_rot...) = rotate!(Absolute, t, axis_rot)
+rotate!(t::Transformable, axis_rot::Quaternion) = rotate!(Absolute, t, axis_rot)
+rotate!(t::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, t, axis_rot)
 
-translation(scene::Transformable) = transformation(scene).translation
+translation(t::Transformable) = transformation(t).translation
 
 """
     Accum
@@ -156,49 +127,49 @@ This is the default setting.
 """
 struct Absolute end
 
-function translate!(::Type{T}, scene::Transformable, t) where T
-    offset = to_ndim(Vec3f, Float32.(t), 0)
+function translate!(::Type{T}, t::Transformable, trans) where T
+    offset = to_ndim(Vec3f, Float32.(trans), 0)
     if T === Accum
-        translation(scene)[] = translation(scene)[] .+ offset
+        translation(t)[] = translation(t)[] .+ offset
     elseif T === Absolute
-        translation(scene)[] = offset
+        translation(t)[] = offset
     else
         error("Unknown translation type: $T")
     end
 end
 """
-    translate!(scene::Transformable, xyz::VecTypes)
-    translate!(scene::Transformable, xyz...)
+    translate!(t::Transformable, xyz::VecTypes)
+    translate!(t::Transformable, xyz...)
 
-Apply an absolute translation to the Scene, translating it to `x, y, z`.
+Apply an absolute translation to the given `Transformable` (a Scene or Plot), translating it to `x, y, z`.
 """
-translate!(scene::Transformable, xyz::VecTypes) = translate!(Absolute, scene, xyz)
-translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
+translate!(t::Transformable, xyz::VecTypes) = translate!(Absolute, t, xyz)
+translate!(t::Transformable, xyz...) = translate!(Absolute, t, xyz)
 
 """
-    translate!(Accum, scene::Transformable, xyz...)
+    translate!(Accum, t::Transformable, xyz...)
 
-Translate the scene relative to its current position.
+Translate the given `Transformable` (a Scene or Plot), relative to its current position.
 """
-translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
+translate!(::Type{T}, t::Transformable, xyz...) where T = translate!(T, t, xyz)
 
-function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
+function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
     plane, dimval = string(x[1]), Float32(x[2])
     if length(plane) != 2 || (!all(x-> x in ('x', 'y', 'z'), plane))
         error("plane needs to define a 2D plane in xyz. It should only contain 2 symbols out of (:x, :y, :z). Found: $plane")
     end
     if all(x-> x in ('x', 'y'), plane) # xy plane
-        translate!(scene, 0, 0, dimval)
+        translate!(t, 0, 0, dimval)
     elseif all(x-> x in ('x', 'z'), plane) # xz plane
-        rotate!(scene, Vec3f(1, 0, 0), 0.5pi)
-        translate!(scene, 0, dimval, 0)
+        rotate!(t, Vec3f(1, 0, 0), 0.5pi)
+        translate!(t, 0, dimval, 0)
     else #yz plane
         r1 = qrotation(Vec3f(0, 1, 0), 0.5pi)
         r2 = qrotation(Vec3f(1, 0, 0), 0.5pi)
-        rotate!(scene,  r2 * r1)
-        translate!(scene, dimval, 0, 0)
+        rotate!(t,  r2 * r1)
+        translate!(t, dimval, 0, 0)
     end
-    scene
+    t
 end
 
 transformationmatrix(x) = transformation(x).model
@@ -407,26 +378,36 @@ end
 ################################################################################
 
 """
-    Polar(theta_0::Float64 = 0.0, direction::Int = +1, r0::Float64 = 0)
+    Polar(theta_as_x = true, clip_r = true, theta_0::Float64 = 0.0, direction::Int = +1, r0::Float64 = 0)
 
-This struct defines a general polar-to-cartesian transformation, i.e.,
+This struct defines a general polar-to-cartesian transformation, i.e.
+
 ```math
 (r, θ) -> ((r - r₀) ⋅ \\cos(direction ⋅ (θ + θ₀)), (r - r₀) ⋅ \\sin(direction \\cdot (θ + θ₀)))
 ```
 
-where theta is assumed to be in radians.
+where θ is assumed to be in radians.
 
-`direction` should be either -1 or +1, `r0` should be positive and `theta_0` may be any value.
-
-Note that for `r0 != 0` the inversion may return wrong results.
+Controls:
+- `theta_as_x = true` controls the order of incoming arguments. If true, a `Point2f`
+is interpreted as `(θ, r)`, otherwise `(r, θ)`.
+- `clip_r = true` controls whether negative radii are clipped. If true, `r < 0`
+produces `NaN`, otherwise they simply enter in the formula above as is. Note that
+the inversion only returns `r ≥ 0`
+- `theta_0 = 0` offsets angles by the specified amount.
+- `direction = +1` inverts the direction of θ.
+- `r0 = 0` offsets radii by the specified amount. Not that this will affect the
+shape of transformed objects.
 """
 struct Polar
     theta_as_x::Bool
+    clip_r::Bool
     theta_0::Float64
     direction::Int
     r0::Float64
-    function Polar(theta_as_x = true, theta_0 = 0.0, direction = +1, r0 = 0)
-        return new(theta_as_x, theta_0, direction, r0)
+
+    function Polar(theta_0::Real = 0.0, direction::Int = +1, r0::Real = 0, theta_as_x::Bool = true, clip_r::Bool = true)
+        return new(theta_as_x, clip_r, theta_0, direction, r0)
     end
 end
 
@@ -434,12 +415,15 @@ Base.broadcastable(x::Polar) = (x,)
 
 function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
     if trans.theta_as_x
-        r = max(0.0, point[2] - trans.r0)
-        θ = trans.direction * (point[1] + trans.theta_0)
+        θ, r = point
     else
-        r = max(0.0, point[1] - trans.r0)
-        θ = trans.direction * (point[2] + trans.theta_0)
+        r, θ = point
     end
+    r = r - trans.r0
+    if trans.clip_r && (r < 0.0)
+        return Point2{T}(NaN)
+    end
+    θ = trans.direction * (θ + trans.theta_0)
     y, x = r .* sincos(θ)
     return Point2{T}(x, y)
 end

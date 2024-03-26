@@ -113,7 +113,7 @@ maybefit(x, _) = x
 function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
     x = maybefit(x′, y)
     points, line = fit_qqplot(x, y; qqline = qqline)
-    return PlotSpec{QQPlot}(points, line)
+    return PlotSpec(:QQPlot, points, line)
 end
 
 convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =

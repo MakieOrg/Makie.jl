@@ -46,9 +46,9 @@ This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/Makie.
 
 ## WGLMakie
 
-For WGLMakie, you can setup a server with JSServe and serve the content from a remote server.
+For WGLMakie, you can setup a server with Bonito and serve the content from a remote server.
 This also works for creating interactive plots with Documenter.
-Check out the [docs](/documentation/backends/wglmakie) for more details about this.
+Check out the [docs](/explanations/backends/wglmakie) for more details about this.
 
 If you want to use WGLMakie in VS Code on a remote server, you will have to forward the port
 used by WGLMakie in order for the plot pane integration to work.
@@ -56,16 +56,16 @@ If you don't need to change the port, you will just have to [forward](https://co
 
 If you want to change the port on which WGLMakie runs on the remote, say `8081`, you will have to use the following
 ```julia
-using JSServe
+using Bonito
 
-JSServe.configure_server!(listen_port=8081)
+Bonito.configure_server!(listen_port=8081)
 ```
 before any plotting commands with WGLMakie.
 
 If you also need to use a different port than `8081` on the _local_ machine, say `8080`,
 you will also need to set the `forwarded_port` like this:
 ```julia
-using JSServe
+using Bonito
 
-JSServe.configure_server!(listen_port=8081, forwarded_port=8080)
+Bonito.configure_server!(listen_port=8081, forwarded_port=8080)
 ```

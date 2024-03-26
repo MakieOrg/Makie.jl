@@ -16,7 +16,7 @@ CairoMakie.activate!() # hide
 
 set_theme!(backgroundcolor = :gray90)
 
-f = Figure(resolution = (800, 500))
+f = Figure(size = (800, 500))
 ax = Axis(f[1, 1], aspect = 1)
 Colorbar(f[1, 2])
 f
@@ -61,7 +61,7 @@ Let's try the example from above again, but this time we force the column of the
 
 \begin{examplefigure}{svg = true}
 ```julia
-f = Figure(resolution = (800, 500))
+f = Figure(size = (800, 500))
 ax = Axis(f[1, 1])
 Colorbar(f[1, 2])
 colsize!(f.layout, 1, Aspect(1, 1.0))
@@ -113,7 +113,7 @@ Let's return to our previous state with a square axis:
 \begin{examplefigure}{svg = true}
 ```julia
 # hide
-f = Figure(resolution = (800, 500))
+f = Figure(size = (800, 500))
 ax = Axis(f[1, 1])
 Colorbar(f[1, 2])
 colsize!(f.layout, 1, Aspect(1, 1.0))

@@ -1,6 +1,6 @@
-function bar_label_formatter(value::Number)
-    return string(round(value; digits=3))
-end
+bar_label_formatter(value::Number) = string(round(value; digits=3))
+bar_label_formatter(label::String) = label
+bar_label_formatter(label::LaTeXString) = label
 
 """
     bar_default_fillto(tf, ys, offset)::(ys, offset)
@@ -226,7 +226,7 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background,
                                          color_over_bar, label_offset, label_rotation, label_align)
             label_pos = map(xpositions, ypositions, bar_labels) do x, y, l
-                return (string(l), in_y_direction ? Point2f(x, y) : Point2f(y, x))
+                return (string(label_formatter(l)), in_y_direction ? Point2f(x, y) : Point2f(y, x))
             end
             return (label_pos, attributes...)
         else
@@ -238,7 +238,10 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
 end
 
 function Makie.plot!(p::BarPlot)
-
+    bar_points = p[1]
+    if !(eltype(bar_points[]) <: Point2)
+        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`.")
+    end
     labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2f}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])

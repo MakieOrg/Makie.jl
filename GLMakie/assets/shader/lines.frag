@@ -14,6 +14,7 @@ flat in vec2 f_uv_minmax;
 {{pattern_type}} pattern;
 
 uniform float pattern_length;
+uniform bool fxaa;
 
 // Half width of antialiasing smoothstep
 #define ANTIALIAS_RADIUS 0.8
@@ -60,15 +61,22 @@ void main(){
     vec4 color = vec4(f_color.rgb, 0.0);
     vec2 xy = get_sd(pattern, f_uv);
 
-    float alpha = aastep(0.0, xy.x);
-    float alpha2 = aastep(-f_thickness, f_thickness, xy.y);
-    float alpha3 = aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x);
+    float alpha, alpha2, alpha3;
+    if (!fxaa) {
+        alpha = aastep(0.0, xy.x);
+        alpha2 = aastep(-f_thickness, f_thickness, xy.y);
+        alpha3 = aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x);
+    } else {
+        alpha = step(0.0, xy.x);
+        alpha2 = step(-f_thickness, xy.y) - step(f_thickness, xy.y);
+        alpha3 = step(f_uv_minmax.x, f_uv.x) - step(f_uv_minmax.y, f_uv.x);
+    }
 
     color = vec4(f_color.rgb, f_color.a * alpha * alpha2 * alpha3);
 
     // Debug: Show uv values in line direction (repeating)
     // color = vec4(mod(f_uv.x, 1.0), 0, 0, 1);
-    
+
     // Debug: Show uv values in line direction with pattern
     // color.r = 0.5;
     // color.g = mod(f_uv.x, 1.0);
@@ -79,6 +87,5 @@ void main(){
     // color.r = 1 - color.a;
     // color.a = 0.5 + 0.5 * color.a;
 
-    
     write2framebuffer(color, f_id);
 }
