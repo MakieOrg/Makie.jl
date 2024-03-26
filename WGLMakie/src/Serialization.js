@@ -301,13 +301,21 @@ function create_texture(data) {
             tex_data = convert_RGB_to_RGBA(tex_data);
             format = THREE.RGBAFormat;
         }
-        return new THREE.DataTexture(
+        const texi = new THREE.DataTexture(
             tex_data,
             data.size[0],
             data.size[1],
             format,
             THREE[data.three_type]
         );
+        if (buffer == "texture_atlas") {
+            TEXTURE_ATLAS[0].on((x) => {
+                texi.image.data.set(x);
+                texi.needsUpdate = true;
+                return
+            })
+        }
+        return texi;
     }
 }
 

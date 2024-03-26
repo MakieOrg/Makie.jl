@@ -21697,7 +21697,15 @@ function create_texture(data) {
             tex_data = convert_RGB_to_RGBA(tex_data);
             format = mod.RGBAFormat;
         }
-        return new mod.DataTexture(tex_data, data.size[0], data.size[1], format, mod[data.three_type]);
+        const texi = new mod.DataTexture(tex_data, data.size[0], data.size[1], format, mod[data.three_type]);
+        if (buffer == "texture_atlas") {
+            TEXTURE_ATLAS[0].on((x)=>{
+                texi.image.data.set(x);
+                texi.needsUpdate = true;
+                return;
+            });
+        }
+        return texi;
     }
 }
 function re_create_texture(old_texture, buffer, size) {
