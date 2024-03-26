@@ -123,10 +123,6 @@ const Mat4d = Mat4{Float64}
 export Point2d, Point3d, Point4d, Vec2d, Vec3d, Vec4d, Rect2d, Rect3d
 
 # TODO: move to GeometryBasics?
-function GeometryBasics.Rect3{T}(r::Rect2) where {T} # used in text boundingbox
-    return Rect3{T}(Vec3{T}(origin(r)..., zero(T)), Vec3{T}(widths(r)..., zero(T)))
-end
-
 function Base.convert(::Type{Rect{N, T}}, r::Rect{N}) where {N, T}
     return Rect{N, T}(r)
 end
