@@ -112,3 +112,36 @@ end
     c = [0 1 2; 1 2 3; 4 5 Inf]
     contour(a, b, c; levels, labels = true)
 end
+
+# Testing mostly how it interacts with marker transforms
+@testset "scatter boundingbox & data_limits" begin
+    f, a, p = scatter(
+        Point2f(0), markersize = 5, markerspace = :data,
+        marker = Rect, rotation = 0, transform_marker = false
+    )
+    @test data_limits(p) ≈ Rect3f(Point3d(-2.5, -2.5, 0), Vec3d(5, 5, 0))
+    @test boundingbox(p) ≈ Rect3f(Point3d(-2.5, -2.5, 0), Vec3d(5, 5, 0))
+
+    # model should not affect either with transform_marker = false
+    scale!(p, Vec3d(0.5))
+    @test data_limits(p) ≈ Rect3f(Point3d(-2.5, -2.5, 0), Vec3d(5, 5, 0))
+    @test boundingbox(p) ≈ Rect3f(Point3d(-2.5, -2.5, 0), Vec3d(5, 5, 0))
+
+    # rotation should affect both, always
+    p.rotation = pi/6
+    bb1 = Rect3{Float64}([-3.4150635094610964, -3.4150635094610964, 0.0], [6.830127018922193, 6.830127018922193, 0.0])
+    @test data_limits(p) ≈ bb1
+    @test boundingbox(p) ≈ bb1
+
+    # with transform_marker = true both should apply to boundingbox, only p.rotation to data_limits
+    p.transform_marker = true
+    bb2 = Rect3{Float64}([-1.7075317547305482, -1.7075317547305482, 0.0], [3.4150635094610964, 3.4150635094610964, 0.0])
+    @test data_limits(p) ≈ bb1
+    @test boundingbox(p) ≈ bb2
+
+    # further model transformations should (only) affect boundingbox
+    Makie.rotate!(p, pi/4)
+    bb3 = Rect3{Float64}([-1.5309311648155406, -1.5309311648155406, 0.0], [3.061862329631081, 3.061862329631081, 0.0])
+    @test data_limits(p) ≈ bb1
+    @test boundingbox(p) ≈ bb3
+end

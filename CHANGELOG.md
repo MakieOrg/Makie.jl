@@ -11,6 +11,7 @@
   - `data_limits` now only considers plot positions, completely ignoring transformations
   - `boundingbox(::Text)` is deprecated in favor of `text_boundingbox(::Text)`
   - `boundingbox` now always consider `transform_func` and `model` (except for Text for the time being)
+  - `data_limits(::Scatter)` and `boundingbox(::Scatter)` now consider marker transformations [#3716](https://github.com/MakieOrg/Makie.jl/pull/3716)
 - **Breaking** Improved Float64 compatability of Axis [#3681](https://github.com/MakieOrg/Makie.jl/pull/3681)
   - This added an extra conversion step which only takes effect when Float32 precision becomes relevant. In those cases code using `project()` functions will be wrong as the transformation is not applied. Use `project(plot_or_scene, ...)` or apply the conversion yourself beforehand with `Makie.f32_convert(plot_or_scene, transformed_point)` and use `patched_model = Makie.patch_model(plot_or_scene, model)`.
   - `Makie.to_world(point, matrix, resolution)` has been deprecated in favor of `Makie.to_world(scene_or_plot, point)` to include float32 conversions.
