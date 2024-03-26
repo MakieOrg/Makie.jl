@@ -22,7 +22,7 @@ a plot and thus does not include any transformations.
 
 See also: [`boundingbox`](@ref)
 """
-function data_limits(scenelike, exclude=(p)-> false)
+function data_limits(scenelike, exclude::Function = (p)-> false)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
@@ -75,10 +75,9 @@ function data_limits(x::Volume)
     return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
 end
 
-# We don't want pixel space line segments to be considered...
 function data_limits(plot::Text)
     if plot.space[] == plot.markerspace[]
-        return text_boundingbox(plot)
+        return string_boundingbox(plot)
     else
         return Rect3d(point_iterator(plot))
     end
@@ -94,15 +93,25 @@ function data_limits(plot::Scatter)
             plot.marker_offset[],
             plot
         )
+        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
 
-        bb_ref = Base.RefValue(Rect3d())
+        bb = Rect3d()
         for (i, p) in enumerate(point_iterator(plot))
-            origin = to_ndim(Point3d, p, 0) + to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            size = to_ndim(Vec3d, Vec2d(sv_getindex(scale[], i)), 0)
-            bb = Rect3d(origin, size)
-            update_boundingbox!(bb_ref, bb)
+            marker_pos = to_ndim(Point3d, p, 0)
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
+            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_rotation = sv_getindex(rotations, i)
+
+            quad_origin = quad_rotation * quad_origin
+            quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
+            quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
+
+            bb = _update_rect(bb, marker_pos + quad_origin)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v2)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
         end
-        return bb_ref[]
+        return bb
     else
         return Rect3d(point_iterator(plot))
     end

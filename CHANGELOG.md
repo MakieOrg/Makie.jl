@@ -1,18 +1,18 @@
 # Changelog
 
-## [Unreleased]
-
-- Added supported markers hint to unsupported marker warn message.
-- Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527)
-
 ## [0.21.0] - 2024-03-0X
 
+- Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527)
+- Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
+- Fixed bug in CairoMakie line drawing when multiple successive points had the same color [#3712](https://github.com/MakieOrg/Makie.jl/pull/3712).
 - Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 - **Breaking (sort of)** Added a new `@recipe` variant which allows documenting attributes directly where they are defined and validating that all attributes are known whenever a plot is created. This is not breaking in the sense that the API changes, but user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed.
 - **Breaking** Streamlined `data_limits` and `boundingbox` [#3671](https://github.com/MakieOrg/Makie.jl/pull/3671)
   - `data_limits` now only considers plot positions, completely ignoring transformations
-  - `boundingbox(::Text)` is deprecated in favor of `text_boundingbox(::Text)`
+  - `boundingbox(p::Text)` is deprecated in favor of `boundingbox(p::Text, p.markerspace[])`. The more internal methods use `string_boundingbox(p)`. [#3723](https://github.com/MakieOrg/Makie.jl/pull/3723)
+  - `boundingbox` overwrites must now include a secondary space argument to work `boundingbox(plot, space::Symbol = :data)` [#3723](https://github.com/MakieOrg/Makie.jl/pull/3723)
   - `boundingbox` now always consider `transform_func` and `model` (except for Text for the time being)
+  - `data_limits(::Scatter)` and `boundingbox(::Scatter)` now consider marker transformations [#3716](https://github.com/MakieOrg/Makie.jl/pull/3716)
 - **Breaking** Improved Float64 compatability of Axis [#3681](https://github.com/MakieOrg/Makie.jl/pull/3681)
   - This added an extra conversion step which only takes effect when Float32 precision becomes relevant. In those cases code using `project()` functions will be wrong as the transformation is not applied. Use `project(plot_or_scene, ...)` or apply the conversion yourself beforehand with `Makie.f32_convert(plot_or_scene, transformed_point)` and use `patched_model = Makie.patch_model(plot_or_scene, model)`.
   - `Makie.to_world(point, matrix, resolution)` has been deprecated in favor of `Makie.to_world(scene_or_plot, point)` to include float32 conversions.
@@ -27,7 +27,10 @@
   - Both: Adjusted handling of thin lines which may result in different color intensities
 - Fixed an issue with lines being drawn in the wrong direction in 3D (with perspective projection) [#3651](https://github.com/MakieOrg/Makie.jl/pull/3651).
 - **Breaking** Renamed attribute `rotations` to `rotation` for `scatter` and `meshscatter` which had been inconsistent with the otherwise singular naming scheme and other plots like `text` [#3724](https://github.com/MakieOrg/Makie.jl/pull/3724).
-
+- Fixed `contourf` bug where n levels would sometimes miss the uppermost value, causing gaps [#3713](https://github.com/MakieOrg/Makie.jl/pull/3713).
+- Added `scale` attribute to `violin` [#3352](https://github.com/MakieOrg/Makie.jl/pull/3352).
+- Use label formatter in barplot [#3718](https://github.com/MakieOrg/Makie.jl/pull/3718).
+- Fix the incorrect shading with non uniform markerscale in meshscatter [#3722](https://github.com/MakieOrg/Makie.jl/pull/3722)
 
 ## [0.20.8] - 2024-02-22
 

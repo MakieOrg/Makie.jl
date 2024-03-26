@@ -1,19 +1,33 @@
-function boundingbox(plot::Text)
-    @warn """
-    `boundingbox(::Text)` has been deprecated in favor of `Makie.text_boundingbox(::Text)`.
-    In the future `boundingbox(::Text)` will be adjusted to match the other
-    `boundingbox(plot)` functions. The new functionality is currently available
-    as `Makie._boundingbox(plot::Text)`.
-    """
-    Base.show_backtrace(stderr, backtrace())
-    return text_boundingbox(plot)
+@deprecate boundingbox(plot::Text) boundingbox(plot, plot.markerspace[])
+
+function boundingbox(plot::Text, target_space::Symbol)
+    # TODO:
+    # This is temporary prep work for the future. We should actually consider
+    # plot.space, markerspace, textsize, etc when computing the boundingbox in
+    # the target_space given to the function.
+    # We may also want a cheap version that only considers forward
+    # transformations (i.e. drops textsize etc when markerspace is not part of
+    # the plot.space -> target_space conversion chain)
+    if target_space == :data
+        if plot.space[] == plot.markerspace[]
+            # probably shouldn't transform...
+            return transform_bbox(plot, string_boundingbox(plot))
+        else
+            return Rect3d(iterate_transformed(plot))
+        end
+    elseif target_space == plot.markerspace[]
+        return string_boundingbox(plot)
+    else
+        error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
+    end
 end
 
+
 # TODO: Naming: not px, it's whatever markerspace is...
-function text_boundingbox(plot::Text)
+function string_boundingbox(plot::Text)
     bb = Rect3d()
     for p in plot.plots
-        _bb = text_boundingbox(p)
+        _bb = string_boundingbox(p)
         if !isfinite_rect(bb)
             bb = _bb
         elseif isfinite_rect(_bb)
@@ -25,9 +39,9 @@ end
 
 # Text can contain linesegments. Use data_limits to avoid transformations as
 # they are already in markerspace
-text_boundingbox(x::LineSegments) = data_limits(x)
+string_boundingbox(x::LineSegments) = data_limits(x)
 
-function text_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
+function string_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
     if x.space[] == x.markerspace[]
         pos = to_ndim(Point3d, x.position[], 0)
     else
@@ -35,10 +49,10 @@ function text_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
         pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
     end
-    return text_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
+    return string_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
-function text_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
+function string_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     if x.space[] == x.markerspace[]
         pos = to_ndim.(Point3d, x.position[], 0)
     else
@@ -46,10 +60,10 @@ function text_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
         pos = Makie.project.(cam, x.space[], x.markerspace[], transformed) # TODO: vectorized project
     end
-    return text_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
+    return string_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
-function text_boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
+function string_boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
     bb = unchecked_boundingbox(x, args...)
     isfinite_rect(bb) || error("Invalid text boundingbox")
     return bb
@@ -62,7 +76,7 @@ function text_bb(str, font, size)
     layout = layout_text(
         str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
         RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
-    return text_boundingbox(layout, Point3d(0), rot)
+    return string_boundingbox(layout, Point3d(0), rot)
 end
 
 
@@ -97,9 +111,9 @@ function unchecked_boundingbox(layouts::AbstractArray{<:GlyphCollection}, positi
     bb = Rect3d()
     broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
         if !isfinite_rect(bb)
-            bb = text_boundingbox(layout, pos, rot)
+            bb = string_boundingbox(layout, pos, rot)
         else
-            bb = union(bb, text_boundingbox(layout, pos, rot))
+            bb = union(bb, string_boundingbox(layout, pos, rot))
         end
     end
     return bb

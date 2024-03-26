@@ -77,7 +77,7 @@ function serve_update_page_from_dir(folder)
 end
 
 function serve_update_page(; commit = nothing, pr = nothing)
-    authget(url) = HTTP.get(url, Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
+    authget(url) = HTTP.get(url, Dict("Authorization" => "token $(github_token())"))
 
     commit !== nothing && pr !== nothing && error("Keyword arguments `commit` and `pr` can't be set at once.")
     if pr !== nothing
@@ -132,7 +132,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
             download_url = a["archive_download_url"]
             if !haskey(URL_CACHE, download_url)
                 @info "Downloading artifact from $download_url"
-                filepath = Downloads.download(download_url, headers = Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
+                filepath = Downloads.download(download_url, headers = Dict("Authorization" => "token $(github_token())"))
                 @info "Download successful"
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)

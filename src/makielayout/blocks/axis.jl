@@ -110,7 +110,7 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
     end
 
     local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
-        text_boundingbox(subtitlet).widths[2] + subtitlegap
+        boundingbox(subtitlet, :data).widths[2] + subtitlegap
     else
         0f0
     end
@@ -135,8 +135,8 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
         top = xaxisprotrusion
     end
 
-    titleheight = text_boundingbox(titlet).widths[2] + titlegap
-    subtitleheight = text_boundingbox(subtitlet).widths[2] + subtitlegap
+    titleheight = boundingbox(titlet, :data).widths[2] + titlegap
+    subtitleheight = boundingbox(subtitlet, :data).widths[2] + subtitlegap
 
     titlespace = if !titlevisible || iswhitespace(title)
         0f0

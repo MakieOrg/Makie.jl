@@ -40,7 +40,7 @@ function initialize_block!(b::Button)
     translate!(labeltext, 0, 0, 1)
 
     onany(scene, b.label, b.fontsize, b.font, b.padding) do label, fontsize, font, padding
-        textbb = Rect2f(text_boundingbox(labeltext))
+        textbb = Rect2f(boundingbox(labeltext, :data))
         autowidth = width(textbb) + padding[1] + padding[2]
         autoheight = height(textbb) + padding[3] + padding[4]
         b.layoutobservables.autosize[] = (autowidth, autoheight)

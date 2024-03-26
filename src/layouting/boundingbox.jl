@@ -3,7 +3,8 @@
 ### boundingbox
 ################################################################################
 
-
+# TODO: differentiate input space (plot.converted) and :world space (after
+# transform_func and model) more clearly.
 """
     boundingbox(scenelike[, exclude = plot -> false])
 
@@ -13,11 +14,11 @@ the `model` matrix. Plots with `exclude(plot) == true` are excluded.
 
 See also: [`data_limits`](@ref)
 """
-function boundingbox(scenelike, exclude = (p)-> false)
+function boundingbox(scenelike, exclude::Function = (p)-> false, space::Symbol = :data)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
-            update_boundingbox!(bb_ref, future_boundingbox(plot))
+            update_boundingbox!(bb_ref, boundingbox(plot, space))
         end
     end
     return bb_ref[]
@@ -31,35 +32,19 @@ i.e. the `transform_func` and the `model` matrix.
 
 See also: [`data_limits`](@ref)
 """
-boundingbox(plot::AbstractPlot) = _boundingbox(plot)
-
-# TODO: This only exists to deprecate boundingbox(::Text) more smoothly. Once
-#       that is fully removed this should be boundingbox(plot).
-function _boundingbox(plot::AbstractPlot)
+function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     # Assume primitive plot
     if isempty(plot.plots)
         return Rect3d(iterate_transformed(plot))
     end
 
     # Assume combined plot
-    bb_ref = Base.RefValue(future_boundingbox(plot.plots[1]))
+    bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
     for i in 2:length(plot.plots)
-        update_boundingbox!(bb_ref, future_boundingbox(plot.plots[i]))
+        update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
     end
 
     return bb_ref[]
-end
-# Replace future_boundingbox with just boundingbox once boundingbox(::Text) is
-# no longer in pixel space
-@inline future_boundingbox(plot::AbstractPlot) = boundingbox(plot)
-@inline future_boundingbox(plot::Text) = _boundingbox(plot)
-
-function _boundingbox(plot::Text)
-    if plot.space[] == plot.markerspace[]
-        return transform_bbox(plot, text_boundingbox(plot))
-    else
-        return Rect3d(iterate_transformed(plot))
-    end
 end
 
 # for convenience
@@ -68,7 +53,7 @@ function transform_bbox(scenelike, lims::Rect)
 end
 
 # same as data_limits except using iterate_transformed
-function boundingbox(plot::MeshScatter)
+function boundingbox(plot::MeshScatter, space::Symbol = :data)
     # TODO: avoid mesh generation here if possible
     @get_attribute plot (marker, markersize, rotation)
     marker_bb = Rect3d(marker)
@@ -82,6 +67,51 @@ function boundingbox(plot::MeshScatter)
     else
         # TODO: optimize const scale, var rot and var scale, const rot
         return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+    end
+end
+
+function boundingbox(plot::Scatter)
+    if plot.space[] == plot.markerspace[]
+        scale, offset = marker_attributes(
+            get_texture_atlas(),
+            plot.marker[],
+            plot.markersize[],
+            get(plot.attributes, :font, Observable(Makie.defaultfont())),
+            plot.marker_offset[],
+            plot
+        )
+        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
+        model = plot.model[]
+        model33 = model[Vec(1,2,3), Vec(1,2,3)]
+        transform_marker = to_value(get(plot, :transform_marker, false))::Bool
+
+        bb = Rect3d()
+        for (i, p) in enumerate(point_iterator(plot))
+            marker_pos = apply_transform_and_model(plot, p)
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
+            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_rotation = sv_getindex(rotations, i)
+
+            if transform_marker
+                p4d = model * to_ndim(Point4d, quad_origin, 1)
+                quad_origin = quad_rotation * p4d[Vec(1,2,3)] / p4d[4]
+                quad_v1 = quad_rotation * (model33 * Vec3d(quad_size[1], 0, 0))
+                quad_v2 = quad_rotation * (model33 * Vec3d(0, quad_size[2], 0))
+            else
+                quad_origin = quad_rotation * quad_origin
+                quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
+                quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
+            end
+
+            bb = _update_rect(bb, marker_pos + quad_origin)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v2)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
+        end
+        return bb
+
+    else
+        return Rect3d(iterate_transformed(plot))
     end
 end
 
