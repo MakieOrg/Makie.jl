@@ -37,7 +37,7 @@ function calculate_protrusion(
     real_labelsize::Float32 = if label_is_empty
         0f0
     else
-        text_boundingbox(labeltext).widths[horizontal[] ? 2 : 1]
+        boundingbox(labeltext, :data).widths[horizontal[] ? 2 : 1]
     end
 
     labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
@@ -300,10 +300,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     map!(parent, ticklabel_ideal_space, ticklabel_annotation_obs, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
                 # height
-                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : height(Rect2f(text_boundingbox(ticklabels)))) : 0f0
+                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : height(Rect2f(boundingbox(ticklabels, :data)))) : 0f0
             else
                 # width
-                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : width(Rect2f(text_boundingbox(ticklabels)))) : 0f0
+                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : width(Rect2f(boundingbox(ticklabels, :data)))) : 0f0
         end
         # in case there is no string in the annotations and the boundingbox comes back all NaN
         if !isfinite(maxwidth)
@@ -401,7 +401,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         xs::Float32, ys::Float32 = if labelrotation isa Automatic
             0f0, 0f0
         else
-            wx, wy = widths(text_boundingbox(labeltext))
+            wx, wy = widths(boundingbox(labeltext, :data))
             sign::Int = flipped ? 1 : -1
             if horizontal
                 0f0, Float32(sign * 0.5f0 * wy)
@@ -519,10 +519,10 @@ function tight_ticklabel_spacing!(la::LineAxis)
     tls = la.elements[:ticklabels]
     maxwidth = if horizontal
             # height
-            tls.visible[] ? height(Rect2f(text_boundingbox(tls))) : 0f0
+            tls.visible[] ? height(Rect2f(boundingbox(tls, :data))) : 0f0
         else
             # width
-            tls.visible[] ? width(Rect2f(text_boundingbox(tls))) : 0f0
+            tls.visible[] ? width(Rect2f(boundingbox(tls, :data))) : 0f0
     end
     la.attributes.ticklabelspace = maxwidth
     return Float64(maxwidth)

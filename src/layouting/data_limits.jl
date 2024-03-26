@@ -22,7 +22,7 @@ a plot and thus does not include any transformations.
 
 See also: [`boundingbox`](@ref)
 """
-function data_limits(scenelike, exclude=(p)-> false)
+function data_limits(scenelike, exclude::Function = (p)-> false)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
@@ -75,10 +75,9 @@ function data_limits(x::Volume)
     return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
 end
 
-# We don't want pixel space line segments to be considered...
 function data_limits(plot::Text)
     if plot.space[] == plot.markerspace[]
-        return text_boundingbox(plot)
+        return string_boundingbox(plot)
     else
         return Rect3d(point_iterator(plot))
     end
