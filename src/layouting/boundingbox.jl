@@ -69,6 +69,51 @@ function boundingbox(plot::MeshScatter, space::Symbol = :data)
     end
 end
 
+function boundingbox(plot::Scatter)
+    if plot.space[] == plot.markerspace[]
+        scale, offset = marker_attributes(
+            get_texture_atlas(),
+            plot.marker[],
+            plot.markersize[],
+            get(plot.attributes, :font, Observable(Makie.defaultfont())),
+            plot.marker_offset[],
+            plot
+        )
+        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
+        model = plot.model[]
+        model33 = model[Vec(1,2,3), Vec(1,2,3)]
+        transform_marker = to_value(get(plot, :transform_marker, false))::Bool
+
+        bb = Rect3d()
+        for (i, p) in enumerate(point_iterator(plot))
+            marker_pos = apply_transform_and_model(plot, p)
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
+            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_rotation = sv_getindex(rotations, i)
+
+            if transform_marker
+                p4d = model * to_ndim(Point4d, quad_origin, 1)
+                quad_origin = quad_rotation * p4d[Vec(1,2,3)] / p4d[4]
+                quad_v1 = quad_rotation * (model33 * Vec3d(quad_size[1], 0, 0))
+                quad_v2 = quad_rotation * (model33 * Vec3d(0, quad_size[2], 0))
+            else
+                quad_origin = quad_rotation * quad_origin
+                quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
+                quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
+            end
+
+            bb = _update_rect(bb, marker_pos + quad_origin)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v2)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
+        end
+        return bb
+
+    else
+        return Rect3d(iterate_transformed(plot))
+    end
+end
+
 
 
 ################################################################################
