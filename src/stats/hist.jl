@@ -14,7 +14,7 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     weights = h_norm.weights
     centers = edges[1:end-1] .+ (diff(edges) ./ 2)
     if scale_to === :flip
-        weights = -weights
+        weights .= -weights
     elseif !isnothing(scale_to)
         max = maximum(weights)
         weights .= weights ./ max .* scale_to
