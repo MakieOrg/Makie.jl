@@ -22,7 +22,7 @@ a plot and thus does not include any transformations.
 
 See also: [`boundingbox`](@ref)
 """
-function data_limits(scenelike::SceneLike, exclude::Function = (p)-> false)
+function data_limits(scenelike, exclude::Function = (p)-> false)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
