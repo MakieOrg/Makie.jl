@@ -8,7 +8,7 @@ function boundingbox(plot::Text, target_space::Symbol)
     # We may also want a cheap version that only considers forward
     # transformations (i.e. drops textsize etc when markerspace is not part of
     # the plot.space -> target_space conversion chain)
-    if target_space == :world
+    if target_space == :data
         if plot.space[] == plot.markerspace[]
             # probably shouldn't transform...
             return transform_bbox(plot, string_boundingbox(plot))
@@ -18,7 +18,7 @@ function boundingbox(plot::Text, target_space::Symbol)
     elseif target_space == plot.markerspace[]
         return string_boundingbox(plot)
     else
-        error("`target_space = :$target_space` must be either :world or markerspace = :$(plot.markerspace[])")
+        error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
     end
 end
 
