@@ -69,8 +69,8 @@ hist(h; color=:red, direction=:x)
 \end{examplefigure}
 
 This almost works, but we see that the keyword arguments are not passed to the `barplot!` function.
-To handle these attributes properly, we need to override/merge the user-passed attributes with the
-default attributes of the underlying plot type (in this case, `BarPlot`):
+To handle these attributes properly, we need to override/merge the
+default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes:
 
 \begin{examplefigure}{name = "final_result"}
 ```julia
