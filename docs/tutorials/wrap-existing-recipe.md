@@ -57,7 +57,7 @@ data as input, but we already have the binned data in our `MyHist` type.
 
 The first thing one might try is to override the `plot!` method for `Hist` recipe:
 
-\begin{examplefigure}
+\begin{examplefigure}{svg}
 ```julia
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
     barplot!(plot, plot[1])
