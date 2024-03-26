@@ -13,7 +13,7 @@ the `model` matrix. Plots with `exclude(plot) == true` are excluded.
 
 See also: [`data_limits`](@ref)
 """
-function boundingbox(scenelike, exclude = (p)-> false, space = :data)
+function boundingbox(scenelike::SceneLike, exclude::Function = (p)-> false, space::Symbol = :data)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
