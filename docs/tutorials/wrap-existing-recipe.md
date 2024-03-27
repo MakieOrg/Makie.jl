@@ -70,17 +70,13 @@ hist(h; color=:red, direction=:x)
 
 This almost works, but we see that the keyword arguments are not passed to the `barplot!` function.
 To handle these attributes properly, we need to override/merge the
-default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes:
+default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes, since Makie 0.21, it is handled automatically:
 
 \begin{examplefigure}{name = "final_result"}
 ```julia
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
     scene = Makie.parent_scene(plot)
-    attributes = Makie.default_theme(scene, Makie.BarPlot)
-    for key in keys(attributes)
-        attributes[key] = get(plot.attributes, key, attributes[key])
-    end
-    barplot!(plot, attributes, plot[1])
+    barplot!(plot, plot.attributes, plot[1])
     plot
 end
 h = MyHist([1, 10, 100], 1:3)
