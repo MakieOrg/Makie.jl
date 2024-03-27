@@ -30,7 +30,15 @@ end
 
 @convert_target struct PointBased{N} # We can use the traits as well for conversion targers
     # all position based traits get converted to a simple vector of points
-    positions::AbstractVector{Point{N,<: FloatType}}
+    positions::AbstractVector{<:Point}
+end
+
+function MakieCore.makie_convert(X::Type{<:AbstractVector{<:Point}}, x::AbstractVector)
+    return float_convert(x)
+end
+
+function MakieCore.makie_convert(X::Type{<:ClosedInterval}, x)
+    return float_convert(x)
 end
 
 @convert_target struct Mesh
@@ -41,9 +49,9 @@ end
 @convert_target struct Volume
     # Volumes also are just defined on a cube, so we only accept intervals.
     # convert_arguments will convert from ranges etc to intervals
-    x::ClosedInterval
-    y::ClosedInterval
-    z::ClosedInterval
+    x::ClosedInterval{Float32}
+    y::ClosedInterval{Float32}
+    z::ClosedInterval{Float32}
     volume::AbstractArray{Float32,3}
 end
 
@@ -389,6 +397,7 @@ function adjust_axes(::CellGrid, x::RealVector, y::RealVector, z::AbstractMatrix
 end
 
 adjust_axes(::VertexGrid, x, y, z) = x, y, z
+
 
 """
     convert_arguments(ct::GridBased, x::VecOrMat, y::VecOrMat, z::Matrix)
@@ -754,6 +763,7 @@ function elconvert(::Type{T}, x::AbstractArray{<: Union{Missing, <:Real}}) where
     end
 end
 
+float_type(args::Type) = error("Type $(args) not supported")
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
 float_type(a::AbstractArray, rest...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_type, rest)...)
@@ -769,7 +779,9 @@ float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::Type{Tuple{T1, T2}}) where {T1,T2} = Point2{promote_type(float_type(T1), float_type(T2))}
 float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(float_type(T1), float_type(T2), float_type(T3))}
 float_type(::Type{Union{Missing, T}}) where {T} = float_type(T)
-float_type(::Type{Union{Nothing, T}}) where {T} = float_type(T)
+float_type(::Type{Union{Nothing,T}}) where {T} = float_type(T)
+float_type(::Type{ClosedInterval{T}}) where {T} = ClosedInterval{T}
+float_type(::Type{ClosedInterval}) where {T} = ClosedInterval{Float32}
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 

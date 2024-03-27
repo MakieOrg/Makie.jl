@@ -115,6 +115,9 @@ Returns:
 """
 function convert_arguments_typed end
 
+function convert_arguments_typed(::P, @nospecialize(args...)) where {P<:ConversionTrait}
+    return convert_arguments_typed(P, args...)
+end
 function convert_arguments_typed(P::Type{<:AbstractPlot}, @nospecialize(args...))
     return convert_arguments_typed(typeof(conversion_trait(P, args...)), args...)
 end
@@ -178,6 +181,10 @@ function should_dim_convert(P::Type{<: Plot}, args)
 end
 
 
+function makie_convert(::Type{T}, x) where T
+    convert(T, x)
+end
+
 """
     @convert_target(expr)
 Allows to define a conversion target for a plot type, so that `convert_arguments` can be checked properly, if it converts to the correct types.
@@ -227,14 +234,10 @@ macro convert_target(struct_expr)
 
             expr = quote
                 # Unions etc don't work well with `convert(T, x)`, so we try not to convert if already the right type!
-                if $name isa $TargetType
-                    $conv_name = $name
-                else
-                    $conv_name = if hasmethod(convert, Tuple{Type{<:$TargetType}, typeof($name)})
-                        convert($TargetType, $name)
-                    else
-                        return MakieCore.ConversionError($(target_name), $(string(name)), $name)
-                    end
+                $conv_name = try
+                    MakieCore.makie_convert($TargetType, $name)
+                catch e
+                    return MakieCore.ConversionError($(string(TargetType)), $(string(name)), $name)
                 end
             end
             push!(convert_expr, expr)
@@ -242,10 +245,10 @@ macro convert_target(struct_expr)
 
         expr = quote
             # Fallback for args missmatch, which should also return an error instead of NoConversion
-            function MakieCore.convert_arguments_typed(::Type{<:$(target_name)}, args...)
+            function MakieCore.convert_arguments_typed(TTT::Type{<:$(target_name)}, args...)
                 return MakieCore.ConversionError($(target_name), "Args dont match", "Args don't match")
             end
-            function MakieCore.convert_arguments_typed(::Type{<:$(target_name)}, $(names...))
+            function MakieCore.convert_arguments_typed(TTT::Type{<:$(target_name)}, $(names...))
                 $(convert_expr...)
                 return NamedTuple{($(QuoteNode.(names)...),)}(($(converted...),))
             end

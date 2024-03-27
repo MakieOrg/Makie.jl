@@ -136,7 +136,7 @@ function no_obs_conversion(P, args, kw)
         if typed isa NamedTuple
             return values(typed), :converted
         elseif typed isa MakieCore.ConversionError
-            return converted, :needs_conversion
+            return converted, typed
         elseif typed isa NoConversion
             return converted, :no_typed_conversion
         else
@@ -184,7 +184,7 @@ function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attr
         end
         append!(deregister, fs)
         return P, new_args_obs
-    elseif status === :needs_conversion
+    elseif status isa MakieCore.ConversionError && recursion == 1
         new_args_obs = map(Observable, converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
             conv, _ = no_obs_conversion(P, args, kw)
@@ -197,6 +197,8 @@ function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attr
         # return P, axis_convert(P, user_attributes, new_args_obs...)
         return conversion_pipeline(P, used_attrs, new_args_obs, user_attributes, plot_attributes, deregister,
                                    recursion + 1)
+    elseif status isa MakieCore.ConversionError && recursion == 2 && MakieCore.has_typed_convert(P)
+        throw(status)
     else
         P, converted2 = apply_convert!(P, plot_attributes, converted)
         new_args_obs = map(Observable, converted2)
