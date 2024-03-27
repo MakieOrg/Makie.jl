@@ -105,55 +105,137 @@ const atomic_functions = (
 )
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
-function convert_arguments!(plot::Plot{F}) where {F}
-    P = Plot{F,Any}
-    function on_update(kw, args...)
-        nt = convert_arguments(P, args...; kw...)
-        pnew, converted = apply_convert!(P, plot.attributes, nt)
-        @assert plotfunc(pnew) === F "Changed the plot type in convert_arguments. This isn't allowed!"
-        for (obs, new_val) in zip(plot.converted, converted)
-            obs[] = new_val
-        end
-    end
-    used_attrs = used_attributes(P, to_value.(plot.args)...)
-    convert_keys = intersect(used_attrs, keys(plot.attributes))
-    kw_signal = if isempty(convert_keys)
-        # lift(f) isn't supported so we need to catch the empty case
-        Observable(())
-    else
-        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
-        lift((args...) -> Pair.(convert_keys, args), plot, pop!.(plot.attributes, convert_keys)...)
-    end
-    onany(on_update, plot, kw_signal, plot.args...)
-    return
+
+
+
+
+
+# single arguments gets ignored for now
+# TODO: add similar overloads as convert_arguments for the most common ones that work with units
+axis_convert(P, ::Dict, args::Observable...) = args
+# we leave Z + n alone for now!
+function axis_convert(P, attr::Dict, x::Observable, y::Observable, z::Observable, args...)
+    return (axis_convert(P, attr, x, y)..., z, args...)
 end
 
-function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
-    if !isempty(args) && first(args) isa Attributes
-        merge!(plot_attributes, attributes(first(args)))
-        return Plot{Func}(Base.tail(args), plot_attributes)
+
+function axis_convert(P, attributes::Dict, x::Observable, y::Observable)
+    converts = to_value(get!(() -> DimConversions(), attributes, :dim_conversions))
+    x = convert_axis_dim(P, converts, 1, x)
+    y = convert_axis_dim(P, converts, 2, y)
+    return (x, y)
+end
+
+function no_obs_conversion(P, args, kw)
+    converted = convert_arguments(P, args...; kw...)
+    if !(converted isa Tuple)
+        # SpecPlot/Vector{SpecPlot}/GridLayoutSpec
+        return converted, :half_converted
+    else
+        typed = convert_arguments_typed(P, converted...)
+        if typed isa NamedTuple
+            return values(typed), :converted
+        elseif typed isa MakieCore.ConversionError
+            return converted, typed
+        elseif typed isa NoConversion
+            return converted, :no_typed_conversion
+        else
+            error("convert_arguments_typed returned an invalid type: $(typed)")
+        end
+    end
+end
+
+function get_kw_values(func, names, kw)
+    return NamedTuple([Pair{Symbol,Any}(k, func(kw[k]))
+            for k in names if haskey(kw, k)])
+end
+
+function get_kw_obs(names, kw)
+    isempty(names) && return Observable((;))
+    kw_copy = copy(kw)
+    init = get_kw_values(to_value, names, kw_copy)
+    obs = Observable(init; ignore_equal_values=true)
+    in_obs = [kw_copy[k] for k in names if haskey(kw_copy, k)]
+    onany(in_obs...) do args...
+        obs[] = get_kw_values(to_value, names, kw_copy)
+        return
+    end
+    return obs
+end
+
+function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attributes, deregister, recursion=1)
+    if recursion == 3
+        return P, args_obs
+    end
+    kw_obs = get_kw_obs(used_attrs, user_attributes)
+    kw = to_value(kw_obs)
+    args_obs = axis_convert(P, user_attributes, args_obs...)
+    args = map(to_value, args_obs)
+    converted, status = no_obs_conversion(P, args, kw)
+
+    if status === :converted
+        new_args_obs = map(Observable, converted)
+        fs = onany(kw_obs, args_obs...) do kw, args...
+            conv, _ = no_obs_conversion(P, args, kw)
+            for (obs, arg) in zip(new_args_obs, conv)
+                obs[] = arg
+            end
+            return
+        end
+        append!(deregister, fs)
+        return P, new_args_obs
+    elseif status isa MakieCore.ConversionError && recursion == 1
+        new_args_obs = map(Observable, converted)
+        fs = onany(kw_obs, args_obs...) do kw, args...
+            conv, _ = no_obs_conversion(P, args, kw)
+            for (obs, arg) in zip(new_args_obs, conv)
+                obs[] = arg
+            end
+            return
+        end
+        append!(deregister, fs)
+        # return P, axis_convert(P, user_attributes, new_args_obs...)
+        return conversion_pipeline(P, used_attrs, new_args_obs, user_attributes, plot_attributes, deregister,
+                                   recursion + 1)
+    elseif status isa MakieCore.ConversionError && recursion == 2 && MakieCore.has_typed_convert(P)
+        throw(status)
+    else
+        P, converted2 = apply_convert!(P, plot_attributes, converted)
+        new_args_obs = map(Observable, converted2)
+        fs = onany(kw_obs, args_obs...) do kw, args...
+            conv, _ = no_obs_conversion(P, args, kw)
+            P, converted3 = apply_convert!(P, plot_attributes, conv)
+            for (obs, arg) in zip(new_args_obs, converted3)
+                obs[] = arg
+            end
+            return
+        end
+        append!(deregister, fs)
+        return P, new_args_obs
+    end
+end
+
+
+function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
+    # Handle plot!(plot, attributes::Attributes, args...) here
+    if !isempty(user_args) && first(user_args) isa Attributes
+        merge!(user_attributes, attributes(first(user_args)))
+        return Plot{Func}(Base.tail(user_args), user_attributes)
     end
     P = Plot{Func}
-    used_attrs = used_attributes(P, to_value.(args)...)
-    if used_attrs === ()
-        args_converted = convert_arguments(P, map(to_value, args)...)
-    else
-        kw = [Pair(k, to_value(pop!(plot_attributes, k))) for k in used_attrs if haskey(plot_attributes, k)]
-        args_converted = convert_arguments(P, map(to_value, args)...; kw...)
-    end
-    preconvert_attr = Attributes()
-    PNew, converted = apply_convert!(P, preconvert_attr, args_converted)
-
-    obs_args = Any[convert(Observable, x) for x in args]
-
-    ArgTyp = MakieCore.argtypes(converted)
-    converted_obs = map(Observable, converted)
-    FinalPlotFunc = plotfunc(plottype(PNew, converted...))
-    plot = Plot{FinalPlotFunc,ArgTyp}(plot_attributes, obs_args, converted_obs)
-    for (k, v) in preconvert_attr
-        attributes(plot.attributes)[k] = v
-    end
-    return plot
+    args = map(to_value, user_args)
+    attr = used_attributes(P, args...)
+    args_obs = map(x -> x isa Observable ? x : Observable{Any}(x), user_args)
+    plot_attributes = Attributes()
+    deregister = Observables.ObserverFunction[]
+    PNew, converted_obs = conversion_pipeline(P, attr, args_obs, user_attributes, plot_attributes, deregister)
+    args = map(to_value, converted_obs)
+    ArgTyp = MakieCore.argtypes((args...,))
+    FinalPlotFunc = plotfunc(plottype(PNew, args...))
+    foreach(x -> delete!(user_attributes, x), attr)
+    foreach(x -> delete!(plot_attributes, x), attr)
+    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], converted_obs, plot_attributes,
+                                      deregister)
 end
 
 """
@@ -181,7 +263,6 @@ Usage:
 used_attributes(::Type{<:Plot}, args...) = used_attributes(args...)
 used_attributes(args...) = ()
 
-
 ## generic definitions
 # Chose the more specific plot type from arguments or input type
 # Note the plottype(Scatter, Plot{plot}) will return Scatter
@@ -190,6 +271,7 @@ plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argva
 plottype(P::Type{<:Plot{T}}) where {T} = P
 plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
 plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
+
 """
     plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
 
@@ -225,7 +307,7 @@ plottype(::MultiPolygon) = Lines
 
 
 # all the plotting functions that get a plot type
-const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
+const PlotFunc = Type{<:AbstractPlot}
 
 function plot!(::Plot{F}) where {F}
     if !(F in atomic_functions)
@@ -235,8 +317,8 @@ end
 
 function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.parent = parent
-
-    apply_theme!(parent_scene(parent), plot)
+    scene = parent_scene(parent)
+    apply_theme!(scene, plot)
     t_user = to_value(get(attributes(plot), :transformation, automatic))
     if t_user isa Transformation
         plot.transformation = t_user
@@ -254,10 +336,13 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
         end
     end
     plot.model = transformationmatrix(plot)
-    convert_arguments!(plot)
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
     plot!(plot)
+    conversions = get_conversions(plot)
+    if !isnothing(conversions)
+        merge_conversions!(scene.conversions, conversions)
+    end
     return plot
 end
 

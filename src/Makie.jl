@@ -45,7 +45,9 @@ using MakieCore
 using OffsetArrays
 using Downloads
 using ShaderAbstractions
+using Dates
 
+import Unitful
 import UnicodeFun
 import RelocatableFolders
 import StatsBase
@@ -90,7 +92,8 @@ import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, cal
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
-import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
+import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait, @convert_target,
+                  convert_arguments_typed
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
@@ -153,6 +156,12 @@ include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
+
+include("makielayout/axis-conversions/axis-conversions.jl")
+include("makielayout/axis-conversions/unitful-integration.jl")
+include("makielayout/axis-conversions/categorical-integration.jl")
+include("makielayout/axis-conversions/dates-integration.jl")
+
 include("scenes.jl")
 include("float32-scaling.jl")
 
@@ -273,6 +282,7 @@ export xtickrange, ytickrange, ztickrange
 export xticks!, yticks!, zticks!
 export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
+export Categorical
 
 # Observable/Signal related
 export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
@@ -395,8 +405,8 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe,  Voxels
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe,  voxels
+export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
+export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
 export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO

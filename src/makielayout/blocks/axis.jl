@@ -161,8 +161,8 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-    blockscene = ax.blockscene
 
+    blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
@@ -187,6 +187,9 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
+    # transfer conversions from axis to scene if there are any
+    # or the other way around
+    merge_conversions!(scene.conversions, ax)
 
     setfield!(scene, :float32convert, Float32Convert())
 
@@ -325,26 +328,29 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values=true)
     ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values=true)
-
+    convert_dim_1 = dim_observable(ax.scene.conversions, 1)
     xaxis = LineAxis(blockscene, endpoints = xaxis_endpoints, limits = xlims,
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
         label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
-        ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
+        ticklabelspace = ax.xticklabelspace, dim_convert = convert_dim_1, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         )
+
     ax.xaxis = xaxis
+
+    convert_dim_2 = dim_observable(ax.scene.conversions, 2)
 
     yaxis = LineAxis(blockscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
         label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
-        ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
+        ticklabelspace = ax.yticklabelspace, dim_convert = convert_dim_2, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
             tickcolor = ax.ytickcolor,
@@ -1242,6 +1248,7 @@ function Base.show(io::IO, ax::Axis)
 end
 
 function Makie.xlims!(ax::Axis, xlims)
+    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2] && xlims[1] !== nothing
@@ -1252,6 +1259,7 @@ function Makie.xlims!(ax::Axis, xlims)
     else
         ax.xreversed[] = false
     end
+
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
@@ -1259,6 +1267,7 @@ function Makie.xlims!(ax::Axis, xlims)
 end
 
 function Makie.ylims!(ax::Axis, ylims)
+    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2] && ylims[1] !== nothing

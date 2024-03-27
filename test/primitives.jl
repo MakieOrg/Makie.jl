@@ -8,7 +8,6 @@
     @test points[] == [Point2f(5), Point2f(15)]
 end
 
-
 @testset "arrows" begin
     # Test for:
     # https://github.com/MakieOrg/Makie.jl/issues/3273

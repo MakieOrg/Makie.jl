@@ -103,9 +103,86 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
         return nothing
     end
     bbox = pop!(axis_kw, :bbox, nothing)
+    set_axis_attributes!(AxType, axis_kw, plot)
     return _block(AxType, figure, [], axis_kw, bbox)
 end
 
+const PlotOrNot = Union{AbstractPlot, Nothing}
+
+# For recipes (plot!(plot_object, ...)))
+MakieCore.create_axis_like!(::Dict, s::Union{Plot, Scene}) = s
+
+# For plotspec
+# MakieCore.create_axis_like!(::PlotSpecPlot, ::Dict, fig::Figure) = fig
+MakieCore.create_axis_like!(::Dict, f::Figure) = f
+
+"""
+    create_axis_like!(attributes::Dict, ax::AbstractAxis)
+
+Method for e.g.: `plot!(ax, 1:4)`, which plots into an existing axis.
+"""
+function create_axis_like!(attributes::Dict, ax::AbstractAxis)
+    _disallow_keyword(:axis, attributes)
+    return ax
+end
+
+"""
+    create_axis_like!(attributes::Dict, gsp::GridSubposition)
+
+method to create an axis for e.g.: `plot!(fig[1, 1][1, 1], 1:4)`, which needs an axis in f[1, 1][1, 1].
+"""
+function MakieCore.create_axis_like!(attributes::Dict, gsp::GridSubposition)
+    _disallow_keyword(:figure, attributes)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
+    gp = layout[gsp.rows, gsp.cols, gsp.side]
+    c = contents(gp; exact=true)
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
+        error("There is not just one axis at $(gp).")
+    end
+    _disallow_keyword(:axis, attributes)
+    return first(c)
+end
+
+"""
+    create_axis_like!(attributes::Dict, ::Nothing)
+
+method to create an axis for e.g.: `plot!(1:4)`, which requires a current figure and axis.
+"""
+function MakieCore.create_axis_like!(attributes::Dict, ::Nothing)
+    figure = current_figure()
+    isnothing(figure) && error("There is no current figure to plot into.")
+    _disallow_keyword(:figure, attributes)
+    ax = current_axis(figure)
+    isnothing(ax) && error("There is no current axis to plot into.")
+    _disallow_keyword(:axis, attributes)
+    return ax
+end
+
+"""
+    create_axis_like!(attributes::Dict, gp::GridPosition)
+
+method to create an axis for e.g.: `plot!(fig[1, 1], 1:4)`, which requires an axis to be in `f[1, 1]`.
+"""
+function MakieCore.create_axis_like!(attributes::Dict, gp::GridPosition)
+    _disallow_keyword(:figure, attributes)
+    c = contents(gp; exact=true)
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
+        error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
+    end
+    ax = first(c)
+    _disallow_keyword(:axis, attributes)
+    return ax
+end
+
+function create_axis_like(::AbstractPlot, ::Dict, ::Union{Scene,AbstractAxis})
+    return error("Plotting into an axis without `!` (e.g. `scatter` instead of `scatter!`)")
+end
+
+"""
+    create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
+
+method to create an axis for e.g.: `plot(1:4)`, which has no axis nor a figure yet.
+"""
 function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     figure_kw = extract_attributes(attributes, :figure)
     figure = Figure(; figure_kw...)
@@ -118,31 +195,13 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     end
 end
 
-MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Plot, Scene}) = s
+"""
+    create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition)
 
-function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ::Nothing)
-    figure = current_figure()
-    isnothing(figure) && error("There is no current figure to plot into.")
-    _disallow_keyword(:figure, attributes)
-    ax = current_axis(figure)
-    isnothing(ax) && error("There is no current axis to plot into.")
-    _disallow_keyword(:axis, attributes)
-    return ax
-end
-
-
-function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gp::GridPosition)
-    _disallow_keyword(:figure, attributes)
-    c = contents(gp; exact=true)
-    if !(length(c) == 1 && can_be_current_axis(c[1]))
-        error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
-    end
-    ax = first(c)
-    _disallow_keyword(:axis, attributes)
-    return ax
-end
-
+method to create an axis for e.g.: `plot(fig[1, 1], 1:4)`, which creates a new axis in f[1, 1].
+"""
 function create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition)
+    isnothing(plot) && return nothing
     _disallow_keyword(:figure, attributes)
     figure = get_top_parent(gp)
     c = contents(gp; exact=true)
@@ -163,19 +222,13 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition
     end
 end
 
-function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gsp::GridSubposition)
-    _disallow_keyword(:figure, attributes)
-    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
-    gp = layout[gsp.rows, gsp.cols, gsp.side]
-    c = contents(gp; exact=true)
-    if !(length(c) == 1 && can_be_current_axis(c[1]))
-        error("There is not just one axis at $(gp).")
-    end
-    _disallow_keyword(:axis, attributes)
-    return first(c)
-end
+"""
+    create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposition)
 
+method to create an axis for e.g.: `plot(fig[1, 1][1, 1], 1:4)`, which creates an axis in f[1, 1][1, 1].
+"""
 function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposition)
+    isnothing(plot) && return nothing
     _disallow_keyword(:figure, attributes)
     GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
     c = contents(gsp; exact=true)
@@ -196,15 +249,6 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposi
     return ax
 end
 
-function create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ax::AbstractAxis)
-    _disallow_keyword(:axis, attributes)
-    return ax
-end
-
-function create_axis_like(@nospecialize(::AbstractPlot), ::Dict, ::Union{Scene,AbstractAxis})
-    return error("Plotting into an axis without !")
-end
-
 figurelike_return(fa::FigureAxis, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.axis, plot)
 figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
 figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
@@ -218,8 +262,6 @@ function update_state_before_display!(f::Figure)
     end
     return
 end
-
-
 
 @inline plot_args(args...) = (nothing, args)
 @inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Plot,GridSubposition,GridPosition},
@@ -245,11 +287,41 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
 @noinline function MakieCore._create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
+    if haskey(figkws, :axis)
+        ax_kw = figkws[:axis]
+        _validate_nt_like_keyword(ax_kw, :axis)
+        if any(x-> x in [:convert_dim_1, :convert_dim_2, :convert_dim_3], keys(ax_kw))
+            conversions = get_conversions(ax_kw)
+            if haskey(attributes, :dim_conversions)
+                merge_conversions!(attributes[:dim_conversions], conversions)
+            else
+                attributes[:dim_conversions] = conversions
+            end
+        end
+    end
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return(ax, plot)
 end
+
+function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::Plot)
+    conversions = get(plot.kw, :dim_conversions, nothing)
+    isnothing(conversions) && return
+    for i in 1:3
+        key = Symbol("convert_dim_$i")
+        if hasfield(T, key)
+            attributes[key] = conversions[i]
+        end
+    end
+    return
+end
+
+
+# This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
+# Which skips axis creation
+# TODO, what to return for the dynamically created axes?
+const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
 
 @noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
     if length(args) > 0
@@ -258,9 +330,9 @@ end
             Tried plotting with `$(F)!` into a `FigureAxisPlot` object, this is not allowed.
 
             The `FigureAxisPlot` object is returned by plotting functions not ending in `!` like `lines(...)` or `scatter(...)`.
-            
+
             It contains the new `Figure`, the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. It exists just as a convenience because returning it displays the contained figure. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-            
+
             You can do this with the destructuring syntax `fig, ax, plt = some_plot(...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
@@ -270,36 +342,41 @@ end
 
             The `AxisPlot` object is returned by plotting functions not ending in `!` with
             a `GridPosition` as the first argument, like `lines(fig[1, 2], ...)` or `scatter(fig[1, 2], ...)`.
-            
+
             It contains the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-            
+
             You can do this with the destructuring syntax `ax, plt = some_plot(fig[1, 2], ...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
     end
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
+    # we need to see if we plot into an existing axis before creating the plot
+    # For axis specific converts.
+    ax = create_axis_like!(figkws, figarg)
+    # inserts global state from axis into plot attributes if they exist
+    get!(attributes, :dim_conversions, get_conversions(ax))
+
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
-    ax = create_axis_like!(plot, figkws, figarg)
+    if ax isa Figure && !(plot isa PlotSpecPlot)
+        error("You cannot plot into a figure without an axis. Use `plot(fig[1, 1], ...)` instead.")
+    end
     plot!(ax, plot)
     return figurelike_return!(ax, plot)
 end
 
 @noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
+    conversion = get_conversions(scene)
+    if !isnothing(conversion)
+        get!(attributes, :dim_conversions, conversion)
+    end
     plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)
     return plot
 end
 
-# This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
-# Which skips axis creation
-# TODO, what to return for the dynamically created axes?
-const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
-
 figurelike_return(f::GridPosition, p::PlotSpecPlot) = p
 figurelike_return(f::Figure, p::PlotSpecPlot) = FigureAxisPlot(f, nothing, p)
-MakieCore.create_axis_like!(::PlotSpecPlot, attributes::Dict, fig::Figure) = fig
-MakieCore.create_axis_like!(::AbstractPlot, attributes::Dict, fig::Figure) = nothing
 
 # Axis interface
 
@@ -312,8 +389,14 @@ end
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 
+
+
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
+    if !isnothing(get_conversions(plot))
+        merge_conversions!(ax.scene.conversions, get_conversions(plot))
+    end
+
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(ax)

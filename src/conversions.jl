@@ -1,57 +1,102 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
+const RangeLike = Union{AbstractVector,ClosedInterval,Tuple{Real,Real}}
+const FloatType = Union{Float32, Float64}
 
-
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Any,Any}}
-# if no plot type based conversion is defined, we try using a trait
-function convert_arguments(T::PlotFunc, args...; kw...)
-    ct = conversion_trait(T, args...)
-    try
-        convert_arguments(ct, args...; kw...)
-    catch e
-        if e isa MethodError
-            try
-                convert_arguments_individually(T, args...)
-            catch ee
-                if ee isa MethodError
-                    error("""
-                          `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
-                          The signature that could not be converted was:
-                          $(join("::" .* string.(typeof.(args)), ", "))
-                          Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                          You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
-                          Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
-                          """)
-                else
-                    rethrow(ee)
-                end
-            end
-        else
-            rethrow(e)
-        end
-    end
-end
-# in case no trait matches we try to convert each individual argument
-# and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments_individually(T::PlotFunc, args...)
-    # convert each single argument until it doesn't change type anymore
-    single_converted = map(recursively_convert_argument, args)
-    # if the type of args hasn't changed this function call didn't help and we error
-    if typeof(single_converted) == typeof(args)
-        throw(MethodError(convert_arguments, (T, args...)))
-    end
-    # otherwise we try converting our newly single-converted args again because
-    # now a normal conversion method might work again
-    convert_arguments(T, single_converted...)
+@convert_target struct Surface{N}
+    # Surfaces allow unstructured grids via matrices for x/y
+    # But also allow vectors or ClosedInterval for just ranges.
+    x::AbstractArray{<:FloatType,N}
+    y::AbstractArray{<:FloatType,N}
+    z::AbstractMatrix{<:FloatType}
 end
 
-function recursively_convert_argument(x)
-    newx = convert_single_argument(x)
-    if typeof(newx) == typeof(x)
-        return x
+@convert_target struct Heatmap
+    # Heatmap needs to have x/y on a grid.
+    # Also intervals get converted, since we need for every bin an exact location
+    x::RealVector
+    y::RealVector
+    data::AbstractMatrix{<:Union{FloatType,Colorant}}
+end
+
+@convert_target struct Image
+    # Images are defined as just 2D quads, so for x/y we just accept an interval.
+    # Heatmap/Surface should be used for irregularly gridded images
+    x::ClosedInterval{<:FloatType}
+    y::ClosedInterval{<:FloatType}
+    image::AbstractMatrix{<:Union{FloatType,Colorant}}
+end
+
+@convert_target struct PointBased{N} # We can use the traits as well for conversion targers
+    # all position based traits get converted to a simple vector of points
+    positions::AbstractVector{<:Point}
+end
+
+function MakieCore.makie_convert(X::Type{<:AbstractVector{<:Point}}, x::AbstractVector)
+    return float_convert(x)
+end
+
+function MakieCore.makie_convert(X::Type{<:ClosedInterval}, x)
+    return float_convert(x)
+end
+
+@convert_target struct Mesh
+    # We currently allow Mesh and vector of meshes for the Mesh type.
+    mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh}
+end
+
+@convert_target struct Volume
+    # Volumes also are just defined on a cube, so we only accept intervals.
+    # convert_arguments will convert from ranges etc to intervals
+    x::ClosedInterval{Float32}
+    y::ClosedInterval{Float32}
+    z::ClosedInterval{Float32}
+    volume::AbstractArray{Float32,3}
+end
+
+function got_converted(@nospecialize(result), @nospecialize(args))
+    if result === args
+        return false
+    elseif result isa NoConversion
+        return false
     else
-        return recursively_convert_argument(newx)
+        return true
+    end
+end
+
+convert_arguments(T::Type{<: AbstractPlot}, args...; kw...) = recursive_convert_arguments(T, args...; kw...)
+
+convert_arguments(::ConversionTrait, args...) = args
+
+function recursive_convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
+    return recursive_convert_arguments(0, T, args...; kw...)
+end
+
+function recursive_convert_arguments(iterations, T::Type{<:AbstractPlot}, args...; kw...)
+    iterations == 2 && return args # we only want to recurse up to 2 times
+
+    CT = conversion_trait(T, args...)
+    # First, try conversion trait, but only in first recursion, since we apply trait conversion manually from here on
+    if iterations == 0
+        trait_converted = convert_arguments(CT, args...; kw...)
+        got_converted(trait_converted, args) && return trait_converted
+    end
+
+    # Try single argument convert
+    arguments_converted = map(convert_single_argument, args)
+    if arguments_converted === args
+        # Single convert didn't change anything,
+        # So next we try convert arguments without trait
+        return recursive_convert_arguments(iterations + 1, T, args...; kw...)
+    else
+        # We could recurse since we need to apply the steps above one more time, but we want to
+        # Execute this exactly once, so we just repeat the calls here
+        #return recursive_convert_arguments(T, converted2; kw...)
+        trait_converted = convert_arguments(CT, arguments_converted...; kw...)
+        got_converted(trait_converted, arguments_converted) && return trait_converted
+        # Finally we just try the non-trait conversion directly
+        return recursive_convert_arguments(iterations + 1, T, arguments_converted...; kw...)
     end
 end
 
@@ -60,7 +105,7 @@ end
 ################################################################################
 
 # if no specific conversion is defined, we don't convert
-convert_single_argument(x) = x
+convert_single_argument(@nospecialize(x)) = x
 
 # replace missings with NaNs
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
@@ -72,6 +117,12 @@ function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N, PT
     T = float_type(PT)
     return Point{N,T}[ismissing(x) ? Point{N,T}(NaN) : Point{N,T}(x) for x in a]
 end
+
+convert_single_argument(a::AbstractArray{Any}) = convert_single_argument([x for x in a])
+# Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
+convert_single_argument(a::AbstractArray{T}) where {T<:Real} = a
+convert_single_argument(a::AbstractArray{<:Point{N, T}}) where {N, T} = a
+
 
 ################################################################################
 #                                  PointBased                                  #
@@ -107,7 +158,7 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::RealArray, y::RealVector, z::RealArray)
+function convert_arguments(::PointBased, x::RealArray, y::RealVector, z::RealMatrix)
     T = float_type(x, y, z)
     (vec(Point{3, T}.(x, y', z)),)
 end
@@ -118,7 +169,7 @@ function convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVe
 end
 
 
-function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::RealArray)
+function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::RealMatrix)
     return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
@@ -129,7 +180,7 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::PointBased, x::RealArray, y::RealMatrix, z::RealArray)
+function convert_arguments(::PointBased, x::RealArray, y::RealMatrix, z::RealMatrix)
     T = float_type(x, y, z)
     (vec(Point{3, T}.(x, y, z)),)
 end
@@ -149,7 +200,7 @@ function convert_arguments(p::PointBased, x::GeometryPrimitive{Dim, T}) where {D
     return convert_arguments(p, decompose(Point{Dim, float_type(T)}, x))
 end
 
-function convert_arguments(::PointBased, pos::AbstractMatrix{<: Real})
+function convert_arguments(::PointBased, pos::RealMatrix)
     (to_vertices(pos),)
 end
 
@@ -338,7 +389,7 @@ function edges(v::AbstractVector{T}) where T
     end
 end
 
-function adjust_axes(::CellGrid, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
+function adjust_axes(::CellGrid, x::RealVector, y::RealVector, z::AbstractMatrix)
     x̂, ŷ = map((x, y), size(z)) do v, sz
         return length(v) == sz ? edges(v) : v
     end
@@ -346,6 +397,7 @@ function adjust_axes(::CellGrid, x::AbstractVector{<:Number}, y::AbstractVector{
 end
 
 adjust_axes(::VertexGrid, x, y, z) = x, y, z
+
 
 """
     convert_arguments(ct::GridBased, x::VecOrMat, y::VecOrMat, z::Matrix)
@@ -361,7 +413,7 @@ function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::Abstra
     return (float_convert(nx), float_convert(ny), el32convert(nz))
 end
 
-convert_arguments(ct::VertexGrid, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
+convert_arguments(ct::VertexGrid, x::RealMatrix, y::RealMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x::RangeLike, y::RangeLike, z::AbstractMatrix)
@@ -373,6 +425,25 @@ function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::Abstract
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
+function print_range_warning(side::String, value)
+    @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait.
+        Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop.
+        Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
+end
+
+to_interval(x::Tuple{<: Real, <: Real}) = float_convert(x[1]) .. float_convert(x[2])
+function to_interval(x::Union{Interval,AbstractVector,ClosedInterval})
+    return float_convert(minimum(x)) .. float_convert(maximum(x))
+end
+
+
+function to_interval(x, dim)
+    # having minimum and maximum here actually invites bugs
+    x isa AbstractVector && print_range_warning(dim, x)
+    return to_interval(x)
+end
+
+
 """
     convert_arguments(::ImageLike, mat::AbstractMatrix)
 
@@ -383,23 +454,11 @@ function convert_arguments(::ImageLike, data::AbstractMatrix{<: Union{Real, Colo
     return (Float32(0) .. n, Float32(0) .. m, el32convert(data))
 end
 
-function print_range_warning(side::String, value)
-    @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait. Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop. Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
-end
 
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
                            data::AbstractMatrix{<:Union{Real,Colorant}})
-    if xs isa AbstractVector
-        print_range_warning("x", xs)
-    end
-    if ys isa AbstractVector
-        print_range_warning("y", ys)
-    end
-    # having minimum and maximum here actually invites bugs
-    _interval(v::Union{Interval,AbstractVector}) = float_convert(minimum(v)) .. float_convert(maximum(v))
-    _interval(t::Tuple{Any, Any}) = float_convert(t[1]) .. float_convert(t[2])
-    x = _interval(xs)
-    y = _interval(ys)
+    x = to_interval(xs, "x")
+    y = to_interval(ys, "y")
     return (x, y, el32convert(data))
 end
 
@@ -432,7 +491,6 @@ function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealV
     end
     return convert_arguments(ct, x_centers, y_centers, zs)
 end
-
 
 """
     convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
@@ -467,7 +525,7 @@ end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
-    return (el32convert(x), el32convert(y), el32convert(z), el32convert(data))
+    return (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(data))
 end
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
@@ -476,8 +534,8 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, x::RealVector, y::AbstractVector, z::RealVector, i::RealArray{3})
-    (el32convert(x), el32convert(y), el32convert(z), el32convert(i))
+function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::RealArray{3})
+    (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(i))
 end
 
 ################################################################################
@@ -634,13 +692,13 @@ end
 # Allow the user to pass a function to `arrows` which determines the direction
 # and magnitude of the arrows.  The function must accept `Point2f` as input.
 # and return Point2f or Vec2f or some array like structure as output.
-function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, f::Function)
     points = Point2{float_type(x, y)}.(x, y')
     f_out = Vec2{float_type(x, y)}.(f.(points))
     return (vec(points), vec(f_out))
 end
 
-function convert_arguments(::Type{<:Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector,
+function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::RealVector,
                            f::Function)
     points = [Point3{float_type(x, y, z)}(x, y, z) for x in x, y in y, z in z]
     f_out = Vec3{float_type(x, y, z)}.(f.(points))
@@ -655,7 +713,7 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
@@ -663,14 +721,15 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
         A = (x, y, z)[i]
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
-    return (el32convert(x), el32convert(y), el32convert(z), el32convert(f.(_x, _y, _z)))
+    # TODO only allow  unitranges to map over since we dont support irregular x/y/z values
+    return (map(to_interval, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
     return convert_arguments(P, r, map(f, r))
 end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
 end
@@ -704,6 +763,7 @@ function elconvert(::Type{T}, x::AbstractArray{<: Union{Missing, <:Real}}) where
     end
 end
 
+float_type(args::Type) = error("Type $(args) not supported")
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
 float_type(a::AbstractArray, rest...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_type, rest)...)
@@ -719,7 +779,9 @@ float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
 float_type(::Type{Tuple{T1, T2}}) where {T1,T2} = Point2{promote_type(float_type(T1), float_type(T2))}
 float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(float_type(T1), float_type(T2), float_type(T3))}
 float_type(::Type{Union{Missing, T}}) where {T} = float_type(T)
-float_type(::Type{Union{Nothing, T}}) where {T} = float_type(T)
+float_type(::Type{Union{Nothing,T}}) where {T} = float_type(T)
+float_type(::Type{ClosedInterval{T}}) where {T} = ClosedInterval{T}
+float_type(::Type{ClosedInterval}) where {T} = ClosedInterval{Float32}
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 
@@ -806,7 +868,7 @@ function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
     return map(Point{N, float_type(T)}, verts)
 end
 
-function to_vertices(verts::AbstractMatrix{<: Number})
+function to_vertices(verts::AbstractMatrix{<: Real})
     if size(verts, 1) in (2, 3)
         to_vertices(verts, Val(1))
     elseif size(verts, 2) in (2, 3)

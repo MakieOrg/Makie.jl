@@ -12,6 +12,9 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[]; ignore_equal_values=true)
     linecolors = Observable(RGBAf[]; ignore_equal_values=true)
     lineindices = Ref(Int[])
+    if !haskey(plot, :text)
+        plot.text = plot[2]
+    end
 
     onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,
@@ -71,13 +74,13 @@ function plot!(plot::Text)
 
     attrs = copy(plot.attributes)
     # remove attributes that are already in the glyphcollection
-    pop!(attrs, :position)
+    attributes(attrs)[:position] = positions
     pop!(attrs, :text)
     pop!(attrs, :align)
     pop!(attrs, :color)
     pop!(attrs, :calculated_colors)
 
-    t = text!(plot, glyphcollections; attrs..., position = positions)
+    t = text!(plot, attrs, glyphcollections)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)

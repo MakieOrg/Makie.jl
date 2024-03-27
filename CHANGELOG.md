@@ -1,12 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+- Added supported markers hint to unsupported marker warn message.
+- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
+
 ## [0.21.0] - 2024-03-0X
 
-- Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527)
+- Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527).
 - Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
 - Fixed bug in CairoMakie line drawing when multiple successive points had the same color [#3712](https://github.com/MakieOrg/Makie.jl/pull/3712).
 - Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
 - **Breaking (sort of)** Added a new `@recipe` variant which allows documenting attributes directly where they are defined and validating that all attributes are known whenever a plot is created. This is not breaking in the sense that the API changes, but user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed.
+- Add axis converts, enabling unit/categorical support and more [#3226](https://github.com/MakieOrg/Makie.jl/pull/3226).
 - **Breaking** Streamlined `data_limits` and `boundingbox` [#3671](https://github.com/MakieOrg/Makie.jl/pull/3671)
   - `data_limits` now only considers plot positions, completely ignoring transformations
   - `boundingbox(p::Text)` is deprecated in favor of `boundingbox(p::Text, p.markerspace[])`. The more internal methods use `string_boundingbox(p)`. [#3723](https://github.com/MakieOrg/Makie.jl/pull/3723)
@@ -38,6 +44,7 @@
 - Fixed bugs with format strings and add new features by switching to Format.jl [#3633](https://github.com/MakieOrg/Makie.jl/pull/3633).
 - Fixed an issue where CairoMakie would unnecessarily rasterize polygons [#3605](https://github.com/MakieOrg/Makie.jl/pull/3605).
 - Added `PointBased` conversion trait to `scatterlines` recipe [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603).
+- Added Axis converts (dim_convert), for unit/categorical and dates support [#3226](https://github.com/MakieOrg/Makie.jl/pull/3226).
 - Multiple small fixes for `map_latest`, `WGLMakie` picking and `PlotSpec` [#3637](https://github.com/MakieOrg/Makie.jl/pull/3637).
 - Fixed PolarAxis `rticks` being incompatible with rich text. [#3615](https://github.com/MakieOrg/Makie.jl/pull/3615)
 - Fixed an issue causing lines, scatter and text to not scale with resolution after deleting plots in GLMakie. [#3649](https://github.com/MakieOrg/Makie.jl/pull/3649)

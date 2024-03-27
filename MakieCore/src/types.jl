@@ -10,6 +10,7 @@ abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
+
 """
 Screen constructors implemented by all backends:
 
@@ -78,10 +79,13 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Plot}
 
-    function Plot{Typ,T}(kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable}) where {Typ,T,N}
+    function Plot{Typ,T}(
+            kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable},
+            attributes::Attributes=Attributes(),
+            deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
+            ) where {Typ,T,N}
         validate_attribute_keys(Plot{Typ}, kw)
-        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[],
-                   Observables.ObserverFunction[])
+        return new{Typ,T}(nothing, kw, args, converted, attributes, Plot[], deregister_callbacks)
     end
 end
 
