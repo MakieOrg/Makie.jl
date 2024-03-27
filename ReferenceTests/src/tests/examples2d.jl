@@ -1068,7 +1068,7 @@ end
     f
 end
 
-@reference_test "Histogram bins" begin
+@reference_test "Histogram" begin
     data = sin.(1:1000)
 
     fig = Figure(size = (900, 900))
