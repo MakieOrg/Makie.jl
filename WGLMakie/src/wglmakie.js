@@ -23,7 +23,16 @@ export function render_scene(scene, picking = false) {
     const { camera, renderer, px_per_unit } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
-        console.log("EXITING WGL");
+        console.log("removing WGL context, canvas is not in the DOM anymore!");
+        if (scene.screen.texture_atlas) {
+            // we need a better observable API to deregister callbacks,
+            // Right now one can only deregister a callback from within the callback by returning false.
+            // So we notify the whole texture atlas with the texture that needs to go & deregister.
+            const data = TEXTURE_ATLAS[0].value;
+            TEXTURE_ATLAS[0].notify(scene.screen.texture_atlas, true);
+            TEXTURE_ATLAS[0].value = data;
+            scene.screen.texture_atlas = undefined;
+        }
         delete_three_scene(scene);
         renderer.state.reset();
         renderer.dispose();
@@ -442,6 +451,7 @@ function create_scene(
         px_per_unit,
         scalefactor,
         winscale,
+        texture_atlas: undefined
     };
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
@@ -628,7 +638,6 @@ export function pick_sorted(scene, xy, range) {
             if (plot_index >= 0 && d < distances[plot_index]) {
                 distances[plot_index] = d;
             }
-
         }
     }
 
@@ -704,6 +713,7 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
+    TEXTURE_ATLAS,
 };
 
 export {
