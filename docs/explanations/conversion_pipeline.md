@@ -29,7 +29,7 @@ function myarrows!(scene, ps; kwargs...)
     lines!(scene, ps; kwargs...)
     scatter!(
         scene, endpoints, marker = Makie.BezierUTriangle, color = cols,
-        rotations = dirs
+        rotation = dirs
     )
 end
 
@@ -59,7 +59,7 @@ map!(ps, p.plots[1][1]) do gcs
     xcenters = Float64[]
 
     for gc in gcs
-        bb = Makie.text_boundingbox(gc, Quaternionf(0,0,0,1))
+        bb = Makie.string_boundingbox(gc, Quaternionf(0,0,0,1))
         left = spacing + edge - minimum(bb)[1]
         push!(xvals, left)
         push!(xcenters, left + 0.5 * widths(bb)[1])

@@ -84,6 +84,10 @@ end
     fig
 end
 
+@reference_test "lines issue #3704" begin
+    lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
+end
+
 @reference_test "scatters" begin
     s = Scene(size = (800, 800), camera = campixel!)
 
@@ -120,7 +124,7 @@ end
                 p,
                 marker = m,
                 markersize = 30,
-                rotations = rot,
+                rotation = rot,
                 color=:black
             )
             scatter!(s, p, color = :red, markersize = 6)
@@ -209,7 +213,7 @@ end
             p,
             marker = marker,
             markersize = 75,
-            rotations = rot,
+            rotation = rot,
         )
     end
     s

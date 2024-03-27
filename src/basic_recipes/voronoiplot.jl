@@ -166,7 +166,7 @@ function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}})
         return data_limits(p.plots[1])
     end
 end
-boundingbox(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}}) = transform_bbox(p, data_limits(p))
+boundingbox(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}}, space::Symbol = :data) = transform_bbox(p, data_limits(p))
 
 function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     generators_2f = Observable(Point2f[])

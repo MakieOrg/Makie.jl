@@ -37,7 +37,7 @@ function Makie.plot!(p::ABLines)
 end
 
 data_limits(::ABLines) = Rect3f(Point3f(NaN), Vec3f(NaN))
-boundingbox(::ABLines) = Rect3f(Point3f(NaN), Vec3f(NaN))
+boundingbox(::ABLines, space::Symbol = :data) = Rect3f(Point3f(NaN), Vec3f(NaN))
 
 function abline!(args...; kwargs...)
     Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead." , :abline!, force = true)

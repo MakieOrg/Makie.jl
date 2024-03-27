@@ -115,7 +115,7 @@ for ((justification, halign), point) in zip(Iterators.product(symbols, symbols),
         align = (halign, :center),
         justification = justification)
 
-    bb = boundingbox(t)
+    bb = boundingbox(t, :pixel)
     wireframe!(scene, bb, color = (:red, 0.2))
 end
 

@@ -36,7 +36,7 @@ function handle_color_getter!(uniform_dict, per_instance)
 end
 
 const IGNORE_KEYS = Set([
-    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
+    :shading, :overdraw, :distancefield, :space, :markerspace, :fxaa,
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
     :light_direction, :light_color,
     :cycle, :label, :inspector_clear, :inspector_hover,
@@ -46,7 +46,7 @@ const IGNORE_KEYS = Set([
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
-    per_instance_keys = (:rotations, :markersize, :intensity)
+    per_instance_keys = (:rotation, :markersize, :intensity)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
@@ -126,7 +126,7 @@ end
 
 function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
-    per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
+    per_instance_keys = (:pos, :rotation, :markersize, :color, :intensity,
                          :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
@@ -225,7 +225,7 @@ function create_shader(scene::Scene, plot::Scatter)
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
-    attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotations)
+    attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
     attributes[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
@@ -280,7 +280,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     uniforms = Dict(
         :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :shape_type => Observable(Cint(3)),
-        :rotations => uniform_rotation,
+        :rotation => uniform_rotation,
         :pos => positions,
         :marker_offset => char_offset,
         :quad_offset => quad_offset,

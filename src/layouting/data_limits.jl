@@ -22,7 +22,7 @@ a plot and thus does not include any transformations.
 
 See also: [`boundingbox`](@ref)
 """
-function data_limits(scenelike, exclude=(p)-> false)
+function data_limits(scenelike, exclude::Function = (p)-> false)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
@@ -75,10 +75,9 @@ function data_limits(x::Volume)
     return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
 end
 
-# We don't want pixel space line segments to be considered...
 function data_limits(plot::Text)
     if plot.space[] == plot.markerspace[]
-        return text_boundingbox(plot)
+        return string_boundingbox(plot)
     else
         return Rect3d(point_iterator(plot))
     end
@@ -94,15 +93,25 @@ function data_limits(plot::Scatter)
             plot.marker_offset[],
             plot
         )
+        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
 
-        bb_ref = Base.RefValue(Rect3d())
+        bb = Rect3d()
         for (i, p) in enumerate(point_iterator(plot))
-            origin = to_ndim(Point3d, p, 0) + to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            size = to_ndim(Vec3d, Vec2d(sv_getindex(scale[], i)), 0)
-            bb = Rect3d(origin, size)
-            update_boundingbox!(bb_ref, bb)
+            marker_pos = to_ndim(Point3d, p, 0)
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
+            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_rotation = sv_getindex(rotations, i)
+
+            quad_origin = quad_rotation * quad_origin
+            quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
+            quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
+
+            bb = _update_rect(bb, marker_pos + quad_origin)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v2)
+            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
         end
-        return bb_ref[]
+        return bb
     else
         return Rect3d(point_iterator(plot))
     end
@@ -116,31 +125,31 @@ end
 # includes markersize and rotation
 function data_limits(plot::MeshScatter)
     # TODO: avoid mesh generation here if possible
-    @get_attribute plot (marker, markersize, rotations)
+    @get_attribute plot (marker, markersize, rotation)
     marker_bb = Rect3d(marker)
     positions = point_iterator(plot)
     scales = markersize
     # fast path for constant markersize
-    if scales isa VecTypes{3} && rotations isa Quaternion
+    if scales isa VecTypes{3} && rotation isa Quaternion
         bb = Rect3d(positions)
-        marker_bb = rotations * (marker_bb * scales)
+        marker_bb = rotation * (marker_bb * scales)
         return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
     else
         # TODO: optimize const scale, var rot and var scale, const rot
-        return limits_with_marker_transforms(positions, scales, rotations, marker_bb)
+        return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
     end
 end
 
 # include bbox from scaled markers
-function limits_with_marker_transforms(positions, scales, rotations, element_bbox)
+function limits_with_marker_transforms(positions, scales, rotation, element_bbox)
     isempty(positions) && return Rect3d()
 
     first_scale = attr_broadcast_getindex(scales, 1)
-    first_rot = attr_broadcast_getindex(rotations, 1)
-    full_bbox = Ref(first_rot * (element_bbox * first_scale) + first(positions))
+    first_rot = attr_broadcast_getindex(rotation, 1)
+    full_bbox = Ref(first_rot * (element_bbox * first_scale) + to_ndim(Point3d, first(positions), 0))
     for (i, pos) in enumerate(positions)
-        scale, rot = attr_broadcast_getindex(scales, i), attr_broadcast_getindex(rotations, i)
-        transformed_bbox = rot * (element_bbox * scale) + pos
+        scale, rot = attr_broadcast_getindex(scales, i), attr_broadcast_getindex(rotation, i)
+        transformed_bbox = rot * (element_bbox * scale) + to_ndim(Point3d, pos, 0)
         update_boundingbox!(full_bbox, transformed_bbox)
     end
 

@@ -693,10 +693,11 @@ function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
     end
     for (deprecated, message, should_error) in deprecations
         if haskey(kw, deprecated)
+            full_message = "Keyword `$deprecated` is deprecated for plot type $P. $message"
             if should_error
-                throw(ArgumentError(message))
+                throw(ArgumentError(full_message))
             else
-                @warn message
+                @warn full_message
             end
         end
     end

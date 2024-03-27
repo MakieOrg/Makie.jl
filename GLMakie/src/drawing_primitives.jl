@@ -395,7 +395,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             end
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
-                gl_attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotations)
+                gl_attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
                 atlas = gl_texture_atlas()
                 isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
                 shape = lift(m -> Cint(Makie.marker_to_sdf_shape(m)), plot, marker)
