@@ -1068,6 +1068,34 @@ end
     f
 end
 
+@reference_test "Histogram bins" begin
+    data = sin.(1:1000)
+
+    fig = Figure(size = (900, 900))
+    hist(fig[1, 1], data)
+    hist(fig[1, 2], data, bins = 30, color = :orange)
+    a, p = hist(fig[1, 3], data, bins = 10, color = :transparent, strokecolor = :red, strokewidth = 4.0)
+    a.xgridcolor[] = RGBAf(0,0,0,1); a.ygridcolor[] = RGBAf(0,0,0,1)
+
+    hist(fig[2, 1], data, normalization = :pdf)
+    hist(fig[2, 2], data, normalization = :density, color = 1:15)
+    hist(fig[2, 3], data, normalization = :probability)
+
+    hist(fig[3, 1], data, offset = 20.0)
+    hlines!(0.0, color = :black, linewidth = 3)
+    hist(fig[3, 2], data, fillto = -20.0)
+    hlines!(0.0, color = :black, linewidth = 3)
+    hist(fig[3, 3], data, bar_labels = :y, label_size = 10, bins = 10)
+
+    hist(fig[4, 1], data, scale_to = 1.0, direction = :x)
+    hist(fig[4, 2], data, scale_to = :flip, bins = 10,
+        bar_labels = :x, label_size = 12, label_color = RGBf(1,1,0.5), label_offset = -20
+    )
+    hist(fig[4, 3], data, weights = 1.0 ./ (2.0 .+ data))
+
+    fig
+end
+
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
@@ -1406,7 +1434,7 @@ end
 end
 
 @reference_test "Violin plots differently scaled" begin
-    fig = Figure() 
+    fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
     ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
     for (i, scale) in enumerate([:area, :count, :width])
