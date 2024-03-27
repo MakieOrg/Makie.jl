@@ -13,7 +13,9 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     h_norm = StatsBase.normalize(h; mode = normalization)
     weights = h_norm.weights
     centers = edges[1:end-1] .+ (diff(edges) ./ 2)
-    if !isnothing(scale_to)
+    if scale_to === :flip
+        weights .= -weights
+    elseif !isnothing(scale_to)
         max = maximum(weights)
         weights .= weights ./ max .* scale_to
     end
@@ -106,13 +108,17 @@ The following attributes can move the histogram around,
 which comes in handy when placing multiple histograms into one plot:
 * `offset = 0.0`: adds an offset to every value
 * `fillto = 0.0`: defines where the bar starts
-* `scale_to = nothing`: allows to scale all values to a certain height
-* `flip = false`: flips all values
+* `scale_to = nothing`: allows to scale all values to a certain height. This
+can also be set to `:flip` to flip the direction of histogram bars without
+scaling them to a common height.
 
 Color can either be:
 * a vector of `bins` colors
 * a single color
 * `:values`, to color the bars with the values from the histogram
+
+You can also draw a histogram in x-direction rather than y-direction by setting
+`direction = :x`.
 
 ## Attributes
 $(ATTRIBUTES)
