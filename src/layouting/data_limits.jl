@@ -106,10 +106,10 @@ function data_limits(plot::Scatter)
             quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
             quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
 
-            bb = _update_rect(bb, marker_pos + quad_origin)
-            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1)
-            bb = _update_rect(bb, marker_pos + quad_origin + quad_v2)
-            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
+            bb = update_boundingbox(bb, marker_pos + quad_origin)
+            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1)
+            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v2)
+            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
         end
         return bb
     else
@@ -187,8 +187,28 @@ point_iterator(bbox::Rect) = unique(decompose(Point3d, bbox))
 
 
 isfinite_rect(x::Rect) = all(isfinite, x.origin) &&  all(isfinite, x.widths)
+function isfinite_rect(x::Rect{N}, dim::Int) where N
+    if 0 < dim <= N
+        return isfinite(origin(x)[dim]) && isfinite(widths(x)[dim])
+    else
+        return false
+    end
+end
 _isfinite(x) = isfinite(x)
 _isfinite(x::VecTypes) = all(isfinite, x)
+
+finite_min(a, b) = isfinite(a) ? (isfinite(b) ? min(a, b) : a) : (isfinite(b) ? b : a)
+finite_min(a, b, c) = finite_min(finite_min(a, b), c)
+finite_min(a, b, rest...) = finite_min(finite_min(a, b), rest...)
+
+finite_max(a, b) = isfinite(a) ? (isfinite(b) ? max(a, b) : a) : (isfinite(b) ? b : a)
+finite_max(a, b, c) = finite_max(finite_max(a, b), c)
+finite_max(a, b, rest...) = finite_max(finite_max(a, b), rest...)
+
+finite_minmax(a, b) = isfinite(a) ? (isfinite(b) ? minmax(a, b) : (a, a)) : (isfinite(b) ? (b, b) : (a, b))
+finite_minmax(a, b, c) = finite_minmax(finite_minmax(a, b), c)
+finite_minmax(a, b, rest...) = finite_minmax(finite_minmax(a, b), rest...)
+
 scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
 scalarmax(x, y) = max(x, y)
 scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)
@@ -223,39 +243,27 @@ function distinct_extrema_nan(x)
     lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
 end
 
-function update_boundingbox!(bb_ref, point)
-    if all(isfinite, point)
-        vec = to_ndim(Vec3d, point, 0.0)
-        bb_ref[] = update(bb_ref[], vec)
-    end
+# TODO: Consider deprecating Ref versions (performance is the same)
+function update_boundingbox!(bb_ref::Base.RefValue, point)
+    bb_ref[] = update_boundingbox(bb_ref[], point)
+end
+function update_boundingbox(bb::Rect{N, T1}, point::VecTypes{M, T2}) where {N, T1, M, T2}
+    p = to_ndim(Vec{N, promote_type(T1, T2)}, point, 0.0)
+    mini = finite_min.(minimum(bb), p)
+    maxi = finite_max.(maximum(bb), p)
+    return Rect{N}(mini, maxi - mini)
 end
 
-function update_boundingbox!(bb_ref, bb::Rect)
-    # ref is uninitialized, so just set it to the first bb
-    if !isfinite_rect(bb_ref[])
-        bb_ref[] = bb
-        return
-    end
-    # don't update if not finite
-    !isfinite_rect(bb) && return
-    # ok, update!
-    bb_ref[] = union(bb_ref[], bb)
-    return
+function update_boundingbox!(bb_ref::Base.RefValue, bb::Rect)
+    bb_ref[] = update_boundingbox(bb_ref[], bb)
+end
+function update_boundingbox(a::Rect{N}, b::Rect{N}) where N
+    mini = finite_min.(minimum(a), minimum(b))
+    maxi = finite_max.(maximum(a), maximum(b))
+    return Rect{N}(mini, maxi - mini)
 end
 
-# used in PolarAxis
-function _update_rect(rect::Rect{N, T}, point::VecTypes{N, T}) where {N, T}
-    mi = minimum(rect)
-    ma = maximum(rect)
-    mis_mas = map(mi, ma, point) do _mi, _ma, _p
-        (isnan(_mi) ? _p : _p < _mi ? _p : _mi), (isnan(_ma) ? _p : _p > _ma ? _p : _ma)
-    end
-    new_o = map(first, mis_mas)
-    new_w = map(mis_mas) do (mi, ma)
-        ma - mi
-    end
-    typeof(rect)(new_o, new_w)
-end
+@deprecate _update_rect(rect, point) update_boundingbox(rect, point) false
 
 
 foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
