@@ -41,13 +41,13 @@ ps = rand(Point3f, 500)
 cs = rand(500)
 f = Figure(size = (600, 650))
 Label(f[1, 1], "base", tellwidth = false)
-linesegments(f[2, 1], ps, color = cs, markersize = 20, fxaa = false)
+linesegments(f[2, 1], ps, color = cs, fxaa = false)
 Label(f[1, 2], "fxaa = true", tellwidth = false)
-linesegments(f[2, 2], ps, color = cs, markersize = 20, fxaa = true)
+linesegments(f[2, 2], ps, color = cs, fxaa = true)
 Label(f[3, 1], "transparency = true", tellwidth = false)
-linesegments(f[4, 1], ps, color = cs, markersize = 20, transparency = true)
+linesegments(f[4, 1], ps, color = cs, transparency = true)
 Label(f[3, 2], "overdraw = true", tellwidth = false)
-linesegments(f[4, 2], ps, color = cs, markersize = 20, overdraw = true)
+linesegments(f[4, 2], ps, color = cs, overdraw = true)
 f
 ```
 \end{examplefigure}

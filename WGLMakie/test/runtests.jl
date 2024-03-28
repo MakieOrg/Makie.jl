@@ -19,17 +19,7 @@ import Electron
 end
 
 excludes = Set([
-    "Streamplot animation",
-    "Transforming lines",
     "image scatter",
-    "Line GIF",
-    "surface + contour3d",
-    # Hm weird, looks like some internal Bonito error missing an Observable:
-    "Errorbars x y low high",
-    "Rangebars x y low high",
-    # These are a bit sad, since it's just missing interpolations
-    "FEM mesh 2D",
-    "FEM polygon 2D",
     # missing transparency & image
     "Image on Surface Sphere",
     # Marker size seems wrong in some occasions:
@@ -39,14 +29,11 @@ excludes = Set([
     "Test heatmap + image overlap",
     # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
     "Order Independent Transparency",
-    "Record Video",
     "fast pixel marker",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "lines and linestyles",
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
-    "colorscale (lines)", # also z-fighting
 ])
 Makie.inline!(Makie.automatic)
 

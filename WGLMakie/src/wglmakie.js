@@ -354,6 +354,9 @@ function threejs_module(canvas) {
         canvas: canvas,
         context: context,
         powerPreference: "high-performance",
+        precision: "highp",
+        alpha: true,
+        logarithmicDepthBuffer: true
     });
 
     renderer.debug.onShaderError = on_shader_error;

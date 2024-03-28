@@ -268,8 +268,8 @@ _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
-function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection, offset, transfunc, space)
-    p = apply_transform(transfunc, position, space)
+function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection, offset, f32c, transfunc, space)
+    p = f32_convert(f32c, apply_transform(transfunc, position, space), space)
     pos = [to_ndim(Point3f, p, 0) for _ in gc.origins]
 
     pad = atlas.glyph_padding / atlas.pix_per_glyph
@@ -301,8 +301,8 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
     return pos, char_offsets, quad_offsets, uvs, scales
 end
 
-function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc, space)
-    ps = apply_transform(transfunc, position, space)
+function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphCollection}, offset, f32c, transfunc, space)
+    ps = f32_convert(f32c, apply_transform(transfunc, position, space), space)
     pos = [to_ndim(Point3f, p, 0) for (p, gc) in zip(ps, gcs) for _ in gc.origins]
 
     pad = atlas.glyph_padding / atlas.pix_per_glyph

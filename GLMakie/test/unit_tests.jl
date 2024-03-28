@@ -8,7 +8,7 @@ end
 
 @testset "shader cache" begin
     GLMakie.closeall()
-    screen = display(Figure())
+    screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
     # Postprocessing shaders
     @test length(cache.shader_cache) == 5
@@ -140,7 +140,7 @@ end
     heatmap!(ax, rand(4, 4))
     lines!(ax, 1:5, rand(5); linewidth=3)
     text!(ax, [Point2f(2)], text=["hi"])
-    screen = display(fig)
+    screen = display(GLMakie.Screen(visible = false), fig)
     empty!(fig)
     @test screen in fig.scene.current_screens
     @test length(fig.scene.current_screens) == 1
@@ -179,7 +179,7 @@ end
     hmp = heatmap!(ax, rand(4, 4))
     lp = lines!(ax, 1:5, rand(5); linewidth=3)
     tp = text!(ax, [Point2f(2)], text=["hi"])
-    screen = display(fig)
+    screen = display(GLMakie.Screen(visible = false), fig)
 
     @test ax.scene.plots == [hmp, lp, tp]
 
@@ -222,9 +222,9 @@ end
         fig = Figure()
         ax = Axis(fig[1,1]) # only happens with axis
         # lines!(ax, 1:5, rand(5); linewidth=5) # but doesn't need a plot
-        screen = display(fig)
+        screen = display(GLMakie.Screen(visible = false), fig)
         GLMakie.closeall()
-        display(fig)
+        display(GLMakie.Screen(visible = false), fig)
         @test true # test for no errors for now
     end
 
@@ -232,9 +232,9 @@ end
         GLMakie.closeall()
         fig = Figure()
         ax = Axis(fig[1,1]) # only happens with axis
-        screen = display(fig)
+        screen = display(GLMakie.Screen(visible = false), fig)
         close(screen)
-        screen = display(fig)
+        screen = display(GLMakie.Screen(visible = false), fig)
         resize!(fig, 800,601)
         @test true # test for no errors for now
         # GLMakie.destroy!(screen)
@@ -242,9 +242,9 @@ end
 end
 
 @testset "destroying singleton screen" begin
-    screen = display(scatter(1:4))
+    screen = display(GLMakie.Screen(visible = false), scatter(1:4))
     GLMakie.destroy!(screen)
-    screen = display(scatter(1:4))
+    screen = display(GLMakie.Screen(visible = false), scatter(1:4))
     @test isopen(screen) # shouldn't run into double closing a destroyed window
     GLMakie.destroy!(screen)
 end
@@ -437,7 +437,7 @@ end
 @testset "image size changes" begin
     s = Scene()
     im = image!(s, 0..10, 0..10, zeros(RGBf, 10, 20))
-    display(s)
+    display(GLMakie.Screen(visible = false), s)
     im[3][] = zeros(RGBf, 20, 10) # same length, different size
     im[3][] = zeros(RGBf, 15, 5) # smaller size
     im[3][] = zeros(RGBf, 25, 15) # larger size

@@ -3,21 +3,17 @@
 
 Plot a stair function.
 
-The `step` parameter can take the following values:
-- `:pre`: horizontal part of step extends to the left of each value in `xs`.
-- `:post`: horizontal part of step extends to the right of each value in `xs`.
-- `:center`: horizontal part of step extends halfway between the two adjacent values of `xs`.
-
-The conversion trait of stem is `PointBased`.
-
-## Attributes
-$(ATTRIBUTES)
+The conversion trait of `stairs` is `PointBased`.
 """
-@recipe(Stairs) do scene
-    a = Attributes(
-        step = :pre, # :center :post
-    )
-    merge(a, default_theme(scene, Lines))
+@recipe Stairs begin
+    """
+    The `step` parameter can take the following values:
+    - `:pre`: horizontal part of step extends to the left of each value in `xs`.
+    - `:post`: horizontal part of step extends to the right of each value in `xs`.
+    - `:center`: horizontal part of step extends halfway between the two adjacent values of `xs`.
+    """
+    step = :pre
+    MakieCore.documented_attributes(Lines)...
 end
 
 conversion_trait(::Type{<:Stairs}) = PointBased()

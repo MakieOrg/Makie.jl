@@ -38,6 +38,7 @@ function cam2d!(scene::SceneLike; kw_args...)
     cam = from_dict(Camera2D, cam_attributes)
     # remove previously connected camera
     disconnect!(camera(scene))
+    camera(scene).view_direction[] = Vec3f(0, 0, -1)
     add_zoom!(scene, cam)
     add_pan!(scene, cam)
     correct_ratio!(scene, cam)
@@ -343,6 +344,7 @@ controls.
 """
 function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     disconnect!(camera(scene))
+    camera(scene).view_direction[] = Vec3f(0, 0, -1)
     update_once = Observable(false)
     closure = UpdatePixelCam(camera(scene), nearclip, farclip)
     on(closure, camera(scene), viewport(scene))
@@ -364,6 +366,8 @@ Creates a camera for the given `scene` which maps the scene area to a 0..1 by
 0..1 range. This camera does not feature controls.
 """
 function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+    disconnect!(camera(scene))
+    camera(scene).view_direction[] = Vec3f(0, 0, -1)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
     set_proj_view!(camera(scene), projection, Mat4f(I))
     cam = RelativeCamera()

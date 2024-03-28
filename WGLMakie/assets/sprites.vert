@@ -76,7 +76,7 @@ void main(){
     data_point = pview * data_point;
 
     // Compute transform for the offset vectors from the central point
-    trans = (get_billboard() ? projection : pview) * qmat(get_rotations()) * trans;
+    trans = (get_billboard() ? projection : pview) * qmat(get_rotation()) * trans;
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
 
     vec4 vclip = data_point + sprite_center;

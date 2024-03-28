@@ -55,10 +55,10 @@ Fields:
 struct MouseEvent
     type::MouseEventType
     t::Float64
-    data::Point2f
+    data::Point2d
     px::Point2f
     prev_t::Float64
-    prev_data::Point2f
+    prev_data::Point2d
     prev_px::Point2f
 end
 
@@ -190,7 +190,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     dblclick_max_interval = 0.2
 
     mouseevent = Observable{MouseEvent}(
-        MouseEvent(MouseEventTypes.out, 0.0, Point2f(0, 0), Point2f(0, 0), 0.0, Point2f(0, 0), Point2f(0, 0))
+        MouseEvent(MouseEventTypes.out, 0.0, Point2d(0, 0), Point2f(0, 0), 0.0, Point2d(0, 0), Point2f(0, 0))
     )
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
@@ -210,7 +210,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         consumed = false
         t = time()
         data = mouseposition(scene)
-        px = Makie.mouseposition_px(scene)
+        px = mouseposition_px(scene)
         mouse_inside = is_mouse_over_relevant_area()
 
         # last_mouseevent can only be up or down

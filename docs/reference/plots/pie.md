@@ -2,27 +2,6 @@
 
 {{doc pie}}
 
-
-
-## Attributes
-
-### Generic
-
-- `normalize = true` sets whether the data will be normalized to the range [0, 2π].
-- `color` sets the color of the pie segments. It can be given as a single named color or a vector of the same length as the input data
-- `strokecolor = :black` sets the color of the outline around the segments.
-- `strokewidth = 1` sets the width of the outline around the segments.
-- `vertex_per_deg = 1` defines the number of vertices per degree that are used to create the pie plot with polys. Increase if smoother circles are needed.
-- `radius = 1` sets the radius for the pie plot.
-- `inner_radius = 0` sets the inner radius of the plot. Choose as a value between 0 and `radius` to create a donut chart.
-- `offset = 0` rotates the pie plot counterclockwise as given in radians.
-- `transparency = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
-- `inspectable = true` sets whether this plot should be seen by `DataInspector`.
-
-### Other
-
-Set the axis properties `autolimitaspect = 1` or `aspect = DataAspect()` to ensure that the pie chart looks like a circle and not an ellipsoid.
-
 ## Examples
 
 \begin{examplefigure}{}

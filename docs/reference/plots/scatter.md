@@ -206,7 +206,7 @@ arrow_path = BezierPath([
 scatter(1:5,
     marker = arrow_path,
     markersize = range(20, 50, length = 5),
-    rotations = range(0, 2pi, length = 6)[1:end-1],
+    rotation = range(0, 2pi, length = 6)[1:end-1],
 )
 ```
 \end{examplefigure}
@@ -287,7 +287,7 @@ scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color
 
 ### Marker rotation
 
-Markers can be rotated using the `rotations` attribute, which also allows to pass a vector.
+Markers can be rotated using the `rotation` attribute, which also allows to pass a vector.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -298,7 +298,7 @@ CairoMakie.activate!() # hide
 points = [Point2f(x, y) for y in 1:10 for x in 1:10]
 rotations = range(0, 2pi, length = length(points))
 
-scatter(points, rotations = rotations, markersize = 20, marker = '↑')
+scatter(points, rotation = rotations, markersize = 20, marker = '↑')
 ```
 \end{examplefigure}
 

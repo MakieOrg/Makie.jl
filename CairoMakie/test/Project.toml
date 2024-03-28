@@ -1,6 +1,5 @@
 [deps]
 GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
-GeoInterfaceMakie = "0edc0954-3250-4c18-859d-ec71c1660c08"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 ReferenceTests = "d37af2e0-5618-4e00-9939-d430db56ee94"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

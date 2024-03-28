@@ -88,8 +88,8 @@ using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
                   get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
-import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
-import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
+import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
+import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 
 export @L_str, @colorant_str
@@ -97,10 +97,45 @@ export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGri
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
-const RealVector{T} = AbstractVector{T} where T <: Number
+const RealArray{T, N} = AbstractArray{T, N} where {T<:Real}
+const RealVector{T} = RealArray{1}
+const RealMatrix{T} = RealArray{2}
+
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
+
+################################################################################
+
+# TODO: remove after GeometryBasics#214
+const Point2d = Point2{Float64}
+const Point3d = Point3{Float64}
+const Point4d = Point4{Float64}
+const Vec2d = Vec2{Float64}
+const Vec3d = Vec3{Float64}
+const Vec4d = Vec4{Float64}
+const Rect2d = Rect2{Float64}
+const Rect3d = Rect3{Float64}
+const Rectd = Rect{N, Float64} where N
+const Mat2d = Mat2{Float64}
+const Mat3d = Mat3{Float64}
+const Mat4d = Mat4{Float64}
+export Point2d, Point3d, Point4d, Vec2d, Vec3d, Vec4d, Rect2d, Rect3d
+
+# TODO: move to GeometryBasics?
+function Base.convert(::Type{Rect{N, T}}, r::Rect{N}) where {N, T}
+    return Rect{N, T}(r)
+end
+
+# TODO: patch GridLayoutBase, probably to use Float64 consistently?
+function GridLayoutBase.BBox(left::T1, right::T2, bottom::T3, top::T4) where {T1 <: Real, T2 <: Real, T3 <: Real, T4 <: Real}
+    mini = (left, bottom)
+    maxi = (right, top)
+    T = promote_type(T1, T2, T3, T4, Float32) # Float32 to skip Int outputs
+    return Rect2{T}(mini, maxi .- mini)
+end
+
+################################################################################
 
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
@@ -119,6 +154,7 @@ include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
+include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("conversions.jl")
@@ -168,6 +204,7 @@ include("basic_recipes/tricontourf.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
+include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
@@ -175,8 +212,10 @@ include("basic_recipes/tooltip.jl")
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
-include("layouting/layouting.jl")
+include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")
+include("layouting/text_boundingbox.jl")
+include("layouting/maybe_unused.jl")
 
 # Declaritive SpecApi
 include("specapi.jl")
@@ -356,9 +395,9 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
-export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
+export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe,  Voxels
+export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe,  voxels
+export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 

@@ -1,10 +1,10 @@
-function vertexbuffer(x, trans, space)
+function vertexbuffer(x, f32c, trans, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos, space)
+    return apply_transform_and_f32_conversion(f32c, trans, pos, space)
 end
 
 function vertexbuffer(x::Observable, @nospecialize(p))
-    return Buffer(lift(vertexbuffer, p, x, transform_func_obs(p), get(p, :space, :data)))
+    return Buffer(lift(vertexbuffer, p, x, f32_conversion_obs(p), transform_func_obs(p), get(p, :space, :data)))
 end
 
 facebuffer(x) = faces(x)
@@ -63,18 +63,19 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
     get!(uniforms, :pattern, false)
-    get!(uniforms, :model, plot.model)
     get!(uniforms, :ambient, Vec3f(1))
     get!(uniforms, :light_direction, Vec3f(1))
     get!(uniforms, :light_color, Vec3f(1))
+
+    uniforms[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
     get!(uniforms, :shading, to_value(get(plot, :shading, NoShading)) != NoShading)
 
-    uniforms[:normalmatrix] = map(plot.model) do m
+    uniforms[:normalmatrix] = map(uniforms[:model]) do m
         i = Vec(1, 2, 3)
-        return transpose(inv(m[i, i]))
+        return Mat3f(transpose(inv(m[i, i])))
     end
 
 

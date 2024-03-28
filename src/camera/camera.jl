@@ -18,8 +18,8 @@ function Base.show(io::IO, camera::Camera)
     println(io, "  projection: ", camera.projection[])
     println(io, "  projectionview: ", camera.projectionview[])
     println(io, "  resolution: ", camera.resolution[])
-    println(io, "  lookat: ", camera.lookat[])
     println(io, "  eyeposition: ", camera.eyeposition[])
+    println(io, "  view direction: ", camera.view_direction[])
 end
 
 function disconnect!(c::Camera)
@@ -84,7 +84,7 @@ function Camera(viewport)
         proj,
         proj_view,
         lift(a-> Vec2f(widths(a)), viewport),
-        Observable(Vec3f(0)),
+        Observable(Vec3f(0, 0, -1)),
         Observable(Vec3f(1)),
         ObserverFunction[],
         Dict{Symbol, Observable}()

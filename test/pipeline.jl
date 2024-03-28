@@ -147,3 +147,17 @@ end
     plots = test_default(rand(4, 4, 4))
     @test all(x -> x isa Volume, plots)
 end
+
+@testset "validated attributes" begin
+    InvalidAttributeError = Makie.MakieCore.InvalidAttributeError
+    @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
+    @test_throws InvalidAttributeError image(zeros(10, 10); does_not_exist = 123)
+    @test_throws InvalidAttributeError scatter(1:10; does_not_exist = 123)
+    @test_throws InvalidAttributeError lines(1:10; does_not_exist = 123)
+    @test_throws InvalidAttributeError linesegments(1:10; does_not_exist = 123)
+    @test_throws InvalidAttributeError text(1:10; does_not_exist = 123)
+    @test_throws InvalidAttributeError volume(zeros(3, 3, 3); does_not_exist = 123)
+    @test_throws InvalidAttributeError meshscatter(1:10; does_not_exist = 123)
+    @test_throws InvalidAttributeError poly(Point2f[]; does_not_exist = 123)
+    @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
+end

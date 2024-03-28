@@ -41,6 +41,22 @@ is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
 
+intensity_convert(intensity, verts) = intensity
+function intensity_convert(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        GLBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        TextureBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+
 
 
 @nospecialize
@@ -58,6 +74,7 @@ function draw_mesh_particle(screen, p, data)
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
     end
+
 
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin

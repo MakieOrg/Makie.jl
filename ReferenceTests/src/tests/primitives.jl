@@ -36,6 +36,54 @@ end
     s
 end
 
+# A test case for wide lines and mitering at joints
+@reference_test "Miter Joints for line rendering" begin
+    scene = Scene()
+    cam2d!(scene)
+    r = 4
+    sep = 4*r
+    scatter!(scene, (sep+2*r)*[-1,-1,1,1], (sep+2*r)*[-1,1,-1,1])
+
+    for i=-1:1
+        for j=-1:1
+            angle = pi/2 + pi/4*i
+            x = r*[-cos(angle/2),0,-cos(angle/2)]
+            y = r*[-sin(angle/2),0,sin(angle/2)]
+
+            linewidth = 40 * 2.0^j
+            lines!(scene, x .+ sep*i, y .+ sep*j, color=RGBAf(0,0,0,0.5), linewidth=linewidth)
+            lines!(scene, x .+ sep*i, y .+ sep*j, color=:red)
+        end
+    end
+    center!(scene)
+    scene
+end
+
+@reference_test "Lines from outside" begin
+    # This tests that lines that start or end in clipped regions are still
+    # rendered correctly. For perspective projections this can be tricky as
+    # points behind the camera get projected beyond far.
+    lps = let
+        ps1 = [Point3f(x, 0.2 * (z+1), z) for x in (-8, 0, 8) for z in (-9, -1, -1, 7)]
+        ps2 = [Point3f(x, 0.2 * (z+1), z) for z in (-9, -1, 7) for x in (-8, 0, 0, 8)]
+        vcat(ps1, ps2)
+    end
+    cs = [i for i in (1, 12, 2, 11, 3, 10, 4, 9, 5, 8, 6, 7) for _ in 1:2]
+
+    fig = Figure()
+
+    for (i, func) in enumerate((lines, linesegments))
+        for (j, ls) in enumerate((:solid, :dot))
+            a, p = func(fig[i, j], lps, color = cs, linewidth = 5, linestyle = ls)
+            cameracontrols(a).settings.center[] = false # avoid recenter on display
+            a.show_axis[] = false
+            update_cam!(a.scene, Vec3f(-0.2, 0.5, 0), Vec3f(-0.2, 0.2, -1), Vec3f(0, 1, 0))
+        end
+    end
+
+    fig
+end
+
 @reference_test "lines issue #3704" begin
     lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
 end
@@ -76,7 +124,7 @@ end
                 p,
                 marker = m,
                 markersize = 30,
-                rotations = rot,
+                rotation = rot,
                 color=:black
             )
             scatter!(s, p, color = :red, markersize = 6)
@@ -165,7 +213,7 @@ end
             p,
             marker = marker,
             markersize = 75,
-            rotations = rot,
+            rotation = rot,
         )
     end
     s
@@ -477,6 +525,83 @@ end
     barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
 
     fig
+end
+
+@reference_test "Voxel - texture mapping" begin
+    texture = let
+        w = RGBf(1, 1, 1)
+        r = RGBf(1, 0, 0)
+        g = RGBf(0, 1, 0)
+        b = RGBf(0, 0, 1)
+        o = RGBf(1, 1, 0)
+        c = RGBf(0, 1, 1)
+        m = RGBf(1, 0, 1)
+        k = RGBf(0, 0, 0)
+        [r w g w b w k w;
+         w w w w w w w w;
+         r k g k b k w k;
+         k k k k k k k k]
+    end
+
+    # Use same uvs/texture-sections for every side of one voxel id
+    flat_uv_map = [Vec4f(x, x + 1 / 2, y, y + 1 / 4)
+                   for x in range(0.0, 1.0; length=3)[1:(end - 1)]
+                   for y in range(0.0, 1.0; length=5)[1:(end - 1)]]
+
+    flat_voxels = UInt8[1, 0, 3,
+                        0, 0, 0,
+                        2, 0, 4,
+                        0, 0, 0,
+                        0, 0, 0,
+                        0, 0, 0,
+                        5, 0, 7,
+                        0, 0, 0,
+                        6, 0, 8]
+
+    # Reshape the flat vector into a 3D array of dimensions 3x3x3.
+    voxels_3d = reshape(flat_voxels, (3, 3, 3))
+
+    fig = Figure(; size=(800, 400))
+    a1 = LScene(fig[1, 1]; show_axis=false)
+    p1 = voxels!(a1, voxels_3d; uvmap=flat_uv_map, color=texture)
+
+    # Use red for x, green for y, blue for z
+    sided_uv_map = Matrix{Vec4f}(undef, 1, 6)
+    sided_uv_map[1, 1:3] .= flat_uv_map[1:3]
+    sided_uv_map[1, 4:6] .= flat_uv_map[5:7]
+
+    sided_voxels = reshape(UInt8[1], 1, 1, 1)
+    a2 = LScene(fig[1, 2]; show_axis=false)
+    p2 = voxels!(a2, sided_voxels; uvmap=sided_uv_map, color=texture)
+
+    fig
+end
+
+@reference_test "Voxel - colors and colormap" begin
+    # test direct mapping of ids to colors & upsampling of vector colormap
+    fig = Figure(size = (800, 400))
+    chunk = reshape(UInt8[1, 0, 2, 0, 0, 0, 3, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 6, 0, 0, 0, 7, 0, 8],
+                    (3, 3, 3))
+
+    cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
+    voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
+    a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
+    fig
+end
+
+@reference_test "Voxel - lowclip and highclip" begin
+    # test that lowclip and highclip are visible for values just outside the colorrange
+    fig = Figure(size = (800, 400))
+    chunk = reshape(collect(1:900), 30, 30, 1)
+    a1, _ = voxels(fig[1,1], chunk, lowclip = :red, highclip = :red, colorrange = (1.0, 900.0), shading = NoShading)
+    a2, _ = voxels(fig[1,2], chunk, lowclip = :red, highclip = :red, colorrange = (1.1, 899.9), shading = NoShading)
+    foreach(a -> update_cam!(a.scene, Vec3f(0, 0, 40), Vec3f(0), Vec3f(0,1,0)), (a1, a2))
+    fig
+end
+
+@reference_test "Voxel - gap attribute" begin
+    # test direct mapping of ids to colors & upsampling of vector colormap
+    voxels(RNG.rand(3,3,3), gap = 0.3)
 end
 
 @reference_test "Plot transform overwrite" begin

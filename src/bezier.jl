@@ -1,5 +1,3 @@
-const Point2d = Point2{Float64}
-
 struct MoveTo
     p::Point2d
 end
@@ -63,18 +61,18 @@ function elliptical_arc_to_beziers(arc::EllipticalArc)
     n_beziers = ceil(Int, delta_a / 0.5pi)
     angles = range(arc.a1, arc.a2; length=n_beziers + 1)
 
-    startpoint = Point2f(cos(arc.a1), sin(arc.a1))
+    startpoint = Point2d(cos(arc.a1), sin(arc.a1))
     curves = map(angles[1:(end - 1)], angles[2:end]) do start, stop
         theta = stop - start
         kappa = 4 / 3 * tan(theta / 4)
-        c1 = Point2f(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
-        c2 = Point2f(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
-        b = Point2f(cos(stop), sin(stop))
+        c1 = Point2d(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
+        c2 = Point2d(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
+        b = Point2d(cos(stop), sin(stop))
         return CurveTo(c1, c2, b)
     end
 
     path = BezierPath([LineTo(startpoint), curves...])
-    path = scale(path, Vec2{Float64}(arc.r1, arc.r2))
+    path = scale(path, Vec2d(arc.r1, arc.r2))
     path = rotate(path, arc.angle)
     return translate(path, arc.c)
 end
@@ -94,21 +92,21 @@ end
 function point_at_angle(e::EllipticalArc, theta)
     M = abs(e.r1) * cos(theta)
     N = abs(e.r2) * sin(theta)
-    return Point2f(e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
+    return Point2d(e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
                    e.c[2] + sin(e.angle) * M + cos(e.angle) * N)
 end
 
-function cleanup_bbox(bb::Rect2f)
+function cleanup_bbox(bb::Rect2)
     if any(x -> x < 0, bb.widths)
         p = bb.origin .+ (bb.widths .< 0) .* bb.widths
-        return Rect2f(p, abs.(bb.widths))
+        return Rect2d(p, abs.(bb.widths))
     end
     return bb
 end
 
 struct BezierPath
     commands::Vector{PathCommand}
-    boundingbox::Rect2f
+    boundingbox::Rect2d
     hash::UInt32
     function BezierPath(commands::Vector)
         c = convert(Vector{PathCommand}, commands)
@@ -129,7 +127,7 @@ function Base.:+(pc::P, p::Point2) where P <: PathCommand
     return P(map(f -> getfield(pc, f) + p, fnames)...)
 end
 
-scale(bp::BezierPath, s::Real) = BezierPath([scale(x, Vec2{Float64}(s, s)) for x in bp.commands])
+scale(bp::BezierPath, s::Real) = BezierPath([scale(x, Vec2d(s, s)) for x in bp.commands])
 scale(bp::BezierPath, v::VecTypes{2}) = BezierPath([scale(x, v) for x in bp.commands])
 translate(bp::BezierPath, v::VecTypes{2}) = BezierPath([translate(x, v) for x in bp.commands])
 
@@ -206,7 +204,7 @@ Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 
 
 function bezier_ngon(n, radius, angle)
-    points = [radius * Point2f(cos(a + angle), sin(a + angle))
+    points = [radius * Point2d(cos(a + angle), sin(a + angle))
         for a in range(0, 2pi, length = n+1)[1:end-1]]
     BezierPath([
         MoveTo(points[1]);
@@ -218,7 +216,7 @@ end
 function bezier_star(n, inner_radius, outer_radius, angle)
     points = [
         (isodd(i) ? outer_radius : inner_radius) *
-            Point2f(cos(a + angle), sin(a + angle))
+            Point2d(cos(a + angle), sin(a + angle))
         for (i, a) in enumerate(range(0, 2pi, length = 2n+1)[1:end-1])]
     BezierPath([
         MoveTo(points[1]);
@@ -227,9 +225,9 @@ function bezier_star(n, inner_radius, outer_radius, angle)
     ])
 end
 
-function BezierPath(poly::Polygon)
+function BezierPath(poly::Polygon{N, T}) where {N, T}
     commands = Makie.PathCommand[]
-    points = reinterpret(Point2f, poly.exterior)
+    points = reinterpret(Point{N, T}, poly.exterior)
     ext_direction = sign(area(points)) #signed area gives us clockwise / anti-clockwise
     push!(commands, MoveTo(points[1]))
     for i in 2:length(points)
@@ -237,7 +235,7 @@ function BezierPath(poly::Polygon)
     end
 
     for inter in poly.interiors
-        points = reinterpret(Point2f, inter)
+        points = reinterpret(Point{N, T}, inter)
         # holes, in bezierpath, always need to have the opposite winding order
         if sign(area(points)) == ext_direction
             points = reverse(points)
@@ -262,7 +260,7 @@ function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = fa
     end
     if fit
         if bbox === nothing
-            p = fit_to_bbox(p, Rect2f((-0.5, -0.5), (1.0, 1.0)), keep_aspect = keep_aspect)
+            p = fit_to_bbox(p, Rect2d((-0.5, -0.5), (1.0, 1.0)), keep_aspect = keep_aspect)
         else
             p = fit_to_bbox(p, bbox, keep_aspect = keep_aspect)
         end
@@ -518,9 +516,9 @@ function render_path(path, bitmap_size_px = 256)
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))
     w = ceil(Int, 64 * path_size[1])
     h = ceil(Int, 64 * path_size[2])
-    path_size = Vec2f(w, h) / 64f0
+    path_size = Vec2d(w, h) / 64.0
 
-    path_unit_rect = fit_to_bbox(path_replaced, Rect2f(Point2f(0), path_size))
+    path_unit_rect = fit_to_bbox(path_replaced, Rect2d(Point2d(0), path_size))
 
     path_transformed = Makie.scale(path_unit_rect, scale_factor)
 
@@ -585,20 +583,20 @@ Makie.convert_attribute(b::BezierPath, ::key"marker", ::key"scatter") = b
 Makie.convert_attribute(ab::AbstractVector{<:BezierPath}, ::key"marker", ::key"scatter") = ab
 
 struct BezierSegment
-    from::Point2f
-    c1::Point2f
-    c2::Point2f
-    to::Point2f
+    from::Point2d
+    c1::Point2d
+    c2::Point2d
+    to::Point2d
 end
 
 struct LineSegment
-    from::Point2f
-    to::Point2f
+    from::Point2d
+    to::Point2d
 end
 
 
 function bbox(ls::LineSegment)
-    return Rect2f(ls.from, ls.to - ls.from)
+    return Rect2d(ls.from, ls.to - ls.from)
 end
 
 function bbox(b::BezierSegment)
@@ -652,7 +650,7 @@ function bbox(b::BezierSegment)
         end
     end
 
-    return Rect2f(Point(mi...), Point(ma...) - Point(mi...))
+    return Rect2d(Point(mi...), Point(ma...) - Point(mi...))
 end
 
 segment(p, l::LineTo) = LineSegment(p, l.p)
@@ -701,7 +699,7 @@ const BezierCross = let
 
     first_three = Point2d[(r, ri), (ri, ri), (ri, r)]
     all = (x -> reduce(vcat, x))(map(0:(pi / 2):(3pi / 2)) do a
-                                   m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
+                                   m = Mat2d(sin(a), cos(a), cos(a), -sin(a))
                                    return Ref(m) .* first_three
                                end)
 

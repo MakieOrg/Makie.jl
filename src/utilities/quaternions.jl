@@ -84,12 +84,11 @@ end
 
 function Base.:(*)(quat::Quaternion, bb::Rect3{T}) where {T}
     points = corners(bb)
-    first = points[1]
-    bb = Ref(Rect3{T}(quat * first, zero(first)))
-    for i in 2:length(points)
-        bb[] = _update_rect(bb[], Point3{T}(quat * points[i]))
+    bb = Rect3{T}()
+    for i in eachindex(points)
+        bb = update_boundingbox(bb, Point3{T}(quat * points[i]))
     end
-    return bb[]
+    return bb
 end
 
 Base.conj(q::Quaternion) = Quaternion(-q[1], -q[2], -q[3], q[4])

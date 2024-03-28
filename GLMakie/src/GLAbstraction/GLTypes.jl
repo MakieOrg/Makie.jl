@@ -385,6 +385,7 @@ function RenderObject(
                 try
                     data[k] = gl_convert(v)
                 catch e
+                    @error "gl_convert for key `$k` failed"
                     rethrow(e)
                 end
 
