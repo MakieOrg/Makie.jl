@@ -1,0 +1,824 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+<url>
+    <loc>https://docs.makie.org/stable/404.html</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/api/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/animation/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/backends/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/backends/cairomakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/backends/glmakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/backends/rprmakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/backends/wglmakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/blocks/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/cameras/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/colors/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/events/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/faq/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/figure/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/fonts/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/headless/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/inspector/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/latex/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/layouting/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/nodes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/plot_method_signatures/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/recipes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/scenes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/specapi/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/theming/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/theming/predefined_themes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/documentation/transparency/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/axis/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/axis3/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/box/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/button/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/colorbar/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/gridlayout/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/intervalslider/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/label/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/legend/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/lscene/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/menu/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/polaraxis/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/slider/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/slidergrid/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/textbox/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/blocks/toggle/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/ablines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/arc/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/arrows/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/band/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/barplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/boxplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/bracket/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/contour/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/contour3d/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/contourf/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/crossbar/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/datashader/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/density/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/ecdf/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/errorbars/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/heatmap/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/hexbin/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/hist/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/hvlines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/hvspan/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/image/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/lines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/linesegments/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/mesh/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/meshscatter/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/pie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/poly/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/qqplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/rainclouds/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/rangebars/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/scatter/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/scatterlines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/series/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/spy/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/stairs/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/stem/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/stephist/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/streamplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/surface/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/text/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/tooltip/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/tricontourf/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/triplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/violin/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/volume/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/volumeslices/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/voronoiplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/waterfall/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/examples/plotting_functions/wireframe/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/animation/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/backends/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/backends/cairomakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/backends/glmakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/backends/rprmakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/backends/wglmakie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/blocks/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/cameras/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/colors/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/events/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/faq/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/figure/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/fonts/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/headless/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/inspector/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/latex/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/layouting/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/nodes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/plot_method_signatures/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/recipes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/scenes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/specapi/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/theming/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/theming/predefined_themes/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/explanations/transparency/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/how-to/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/how-to/draw-boxes-around-subfigures/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/how-to/save-figure-with-transparency/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/news/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/axis/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/axis3/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/box/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/button/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/colorbar/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/gridlayout/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/intervalslider/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/label/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/legend/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/lscene/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/menu/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/polaraxis/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/slider/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/slidergrid/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/textbox/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/blocks/toggle/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/ablines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/arc/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/arrows/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/band/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/barplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/boxplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/bracket/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/contour/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/contour3d/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/contourf/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/crossbar/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/datashader/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/density/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/ecdf/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/errorbars/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/heatmap/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/hexbin/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/hist/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/hvlines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/hvspan/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/image/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/lines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/linesegments/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/mesh/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/meshscatter/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/pie/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/poly/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/qqplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/rainclouds/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/rangebars/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/scatter/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/scatterlines/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/series/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/spy/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/stairs/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/stem/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/stephist/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/streamplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/surface/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/text/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/tooltip/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/tricontourf/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/triplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/violin/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/volume/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/volumeslices/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/voronoiplot/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/waterfall/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/plots/wireframe/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/scene/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/scene/SSAO/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/scene/lighting/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/reference/scene/matcap/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/search/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/tutorials/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/tutorials/aspect-tutorial/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/tutorials/basic-tutorial/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/tutorials/layout-tutorial/</loc>
+</url>
+
+<url>
+    <loc>https://docs.makie.org/stable/tutorials/scenes/</loc>
+</url>
+
+</urlset>
