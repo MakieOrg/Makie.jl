@@ -992,36 +992,36 @@ Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x</code></pre><p><strong><
      @ ~/work/Makie.jl/Makie.jl/MakieCore/src/basic_plots.jl:1
  [61] default_theme(scene, T)
      @ ~/work/Makie.jl/Makie.jl/MakieCore/src/recipes.jl:62</code></pre></div></div><div class="docstring"><div class="doc-header" id="density"><a href="#density">density</a></div><div class="doc-content"><pre><code>density(values)</code></pre><p>Plot a kernel density estimate of <code>values</code>.</p><h2>Plot type</h2><p>The plot type alias for the <code>density</code> function is <code>Density</code>.</p><h2>Attributes</h2><p><strong><code>bandwidth</code></strong> =  <code>automatic</code>  — Kernel density bandwidth, determined automatically if <code>automatic</code>.</p><p><strong><code>boundary</code></strong> =  <code>automatic</code>  — Boundary of the density estimation, determined automatically if <code>automatic</code>.</p><p><strong><code>color</code></strong> =  <code>@inherit patchcolor</code>  — Usually set to a single color, but can also be set to <code>:x</code> or <code>:y</code> to color with a gradient. If you use <code>:y</code> when <code>direction = :x</code> (or vice versa), note that only 2-element colormaps can work correctly.</p><p><strong><code>colormap</code></strong> =  <code>@inherit colormap</code>  — <em>No docs available.</em></p><p><strong><code>colorrange</code></strong> =  <code>Makie.automatic</code>  — <em>No docs available.</em></p><p><strong><code>colorscale</code></strong> =  <code>identity</code>  — <em>No docs available.</em></p><p><strong><code>cycle</code></strong> =  <code>[:color =&gt; :patchcolor]</code>  — <em>No docs available.</em></p><p><strong><code>direction</code></strong> =  <code>:x</code>  — The dimension along which the <code>values</code> are distributed. Can be <code>:x</code> or <code>:y</code>.</p><p><strong><code>inspectable</code></strong> =  <code>@inherit inspectable</code>  — <em>No docs available.</em></p><p><strong><code>linestyle</code></strong> =  <code>nothing</code>  — <em>No docs available.</em></p><p><strong><code>npoints</code></strong> =  <code>200</code>  — The resolution of the estimated curve along the dimension set in <code>direction</code>.</p><p><strong><code>offset</code></strong> =  <code>0.0</code>  — Shift the density baseline, for layering multiple densities on top of each other.</p><p><strong><code>strokearound</code></strong> =  <code>false</code>  — <em>No docs available.</em></p><p><strong><code>strokecolor</code></strong> =  <code>@inherit patchstrokecolor</code>  — <em>No docs available.</em></p><p><strong><code>strokewidth</code></strong> =  <code>@inherit patchstrokewidth</code>  — <em>No docs available.</em></p><p><strong><code>weights</code></strong> =  <code>automatic</code>  — Assign a vector of statistical weights to <code>values</code>.</p></div></div><div class="docstring"><div class="doc-header" id="density!"><a href="#density!">density!</a></div><div class="doc-content"><p><code>density!</code> is the mutating variant of plotting function <code>density</code>. Check the docstring for <code>density</code> for further information.</p></div></div><div class="docstring"><div class="doc-header" id="deregister_interaction!"><a href="#deregister_interaction!">deregister_interaction!</a></div><div class="doc-content"><pre><code>deregister_interaction!(parent, name::Symbol)</code></pre><p>Deregister the interaction named <code>name</code> registered in <code>parent</code>.</p></div></div><div class="docstring"><div class="doc-header" id="disconnect!"><a href="#disconnect!">disconnect!</a></div><div class="doc-content"><p>No documentation found.</p><p><code>Makie.disconnect!</code> is a <code>Function</code>.</p><pre><code># 16 methods for generic function "disconnect!" from Makie:
-  [1] disconnect!(::GLFW.Window, ::typeof(window_area))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:86
-  [2] disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:108
+  [1] disconnect!(window::GLFW.Window, ::typeof(window_open))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:36
+  [2] disconnect!(window::GLFW.Window, ::typeof(hasfocus))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:272
   [3] disconnect!(window::GLFW.Window, ::typeof(mouse_position))
      @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:218
-  [4] disconnect!(window::GLFW.Window, ::typeof(scroll))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:249
-  [5] disconnect!(window::GLFW.Window, ::typeof(window_open))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:36
-  [6] disconnect!(window::GLFW.Window, ::typeof(unicode_input))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:167
-  [7] disconnect!(window::GLFW.Window, ::typeof(dropped_files))
+  [4] disconnect!(window::GLFW.Window, ::typeof(dropped_files))
      @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:144
-  [8] disconnect!(window::GLFW.Window, ::typeof(keyboard_buttons))
+  [5] disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:108
+  [6] disconnect!(window::GLFW.Window, ::typeof(keyboard_buttons))
      @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:123
-  [9] disconnect!(window::GLFW.Window, ::typeof(hasfocus))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:272
- [10] disconnect!(window::GLFW.Window, ::typeof(entered_window))
+  [7] disconnect!(::GLFW.Window, ::typeof(window_area))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:86
+  [8] disconnect!(window::GLFW.Window, ::typeof(entered_window))
      @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:294
+  [9] disconnect!(window::GLFW.Window, ::typeof(unicode_input))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:167
+ [10] disconnect!(window::GLFW.Window, ::typeof(scroll))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:249
  [11] disconnect!(c::EmptyCamera)
      @ ~/work/Makie.jl/Makie.jl/src/camera/camera.jl:33
  [12] disconnect!(c::Camera)
      @ ~/work/Makie.jl/Makie.jl/src/camera/camera.jl:25
- [13] disconnect!(screen::GLMakie.Screen, ::typeof(window_area))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:80
- [14] disconnect!(screen::GLMakie.Screen, ::typeof(mouse_position))
-     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:214
- [15] disconnect!(observables::Vector)
+ [13] disconnect!(observables::Vector)
      @ ~/work/Makie.jl/Makie.jl/src/camera/camera.jl:37
+ [14] disconnect!(screen::GLMakie.Screen, ::typeof(window_area))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:80
+ [15] disconnect!(screen::GLMakie.Screen, ::typeof(mouse_position))
+     @ GLMakie ~/work/Makie.jl/Makie.jl/GLMakie/src/events.jl:214
  [16] disconnect!(window::MakieScreen, signal)
      @ ~/work/Makie.jl/Makie.jl/src/interaction/events.jl:35</code></pre></div></div><div class="docstring"><div class="doc-header" id="dropped_files"><a href="#dropped_files">dropped_files</a></div><div class="doc-content"><p>Registers a callback for drag and drop of files. returns <code>Observable{Vector{String}}</code>, which are absolute file paths <a href="http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd">GLFW Docs</a></p></div></div><div class="docstring"><div class="doc-header" id="ecdfplot"><a href="#ecdfplot">ecdfplot</a></div><div class="doc-content"><pre><code>ecdfplot(values; npoints=10_000[, weights])</code></pre><p>Plot the empirical cumulative distribution function (ECDF) of <code>values</code>.</p><p><code>npoints</code> controls the resolution of the plot. If <code>weights</code> for the values are provided, a weighted ECDF is plotted.</p><h2>Plot type</h2><p>The plot type alias for the <code>ecdfplot</code> function is <code>ECDFPlot</code>.</p><h2>Attributes</h2><p><strong><code>alpha</code></strong> =  <code>1.0</code>  — The alpha value of the colormap or color attribute. Multiple alphas like in <code>plot(alpha=0.2, color=(:red, 0.5)</code>, will get multiplied.</p><p><strong><code>color</code></strong> =  <code>@inherit linecolor</code>  — The color of the line.</p><p><strong><code>colormap</code></strong> =  <code>@inherit colormap :viridis</code>  — Sets the colormap that is sampled for numeric <code>color</code>s. <code>PlotUtils.cgrad(...)</code>, <code>Makie.Reverse(any_colormap)</code> can be used as well, or any symbol from ColorBrewer or PlotUtils. To see all available color gradients, you can call <code>Makie.available_gradients()</code>.</p><p><strong><code>colorrange</code></strong> =  <code>automatic</code>  — The values representing the start and end points of <code>colormap</code>.</p><p><strong><code>colorscale</code></strong> =  <code>identity</code>  — The color transform function. Can be any function, but only works well together with <code>Colorbar</code> for <code>identity</code>, <code>log</code>, <code>log2</code>, <code>log10</code>, <code>sqrt</code>, <code>logit</code>, <code>Makie.pseudolog10</code> and <code>Makie.Symlog10</code>.</p><p><strong><code>cycle</code></strong> =  <code>[:color]</code>  — Sets which attributes to cycle when creating multiple plots.</p><p><strong><code>depth_shift</code></strong> =  <code>0.0</code>  — adjusts the depth value of a plot after all other transformations, i.e. in clip space, where <code>0 &lt;= depth &lt;= 1</code>. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).</p><p><strong><code>fxaa</code></strong> =  <code>false</code>  — adjusts whether the plot is rendered with fxaa (anti-aliasing, GLMakie only).</p><p><strong><code>highclip</code></strong> =  <code>automatic</code>  — The color for any value above the colorrange.</p><p><strong><code>inspectable</code></strong> =  <code>true</code>  — sets whether this plot should be seen by <code>DataInspector</code>.</p><p><strong><code>inspector_clear</code></strong> =  <code>automatic</code>  — Sets a callback function <code>(inspector, plot) -&gt; ...</code> for cleaning up custom indicators in DataInspector.</p><p><strong><code>inspector_hover</code></strong> =  <code>automatic</code>  — Sets a callback function <code>(inspector, plot, index) -&gt; ...</code> which replaces the default <code>show_data</code> methods.</p><p><strong><code>inspector_label</code></strong> =  <code>automatic</code>  — Sets a callback function <code>(plot, index, position) -&gt; string</code> which replaces the default label generated by DataInspector.</p><p><strong><code>linestyle</code></strong> =  <code>nothing</code>  — Sets the pattern of the line e.g. <code>:solid</code>, <code>:dot</code>, <code>:dashdot</code>. For custom patterns look at <code>Linestyle(Number[...])</code></p><p><strong><code>linewidth</code></strong> =  <code>@inherit linewidth</code>  — Sets the width of the line in screen units</p><p><strong><code>lowclip</code></strong> =  <code>automatic</code>  — The color for any value below the colorrange.</p><p><strong><code>model</code></strong> =  <code>automatic</code>  — Sets a model matrix for the plot. This overrides adjustments made with <code>translate!</code>, <code>rotate!</code> and <code>scale!</code>.</p><p><strong><code>nan_color</code></strong> =  <code>:transparent</code>  — The color for NaN values.</p><p><strong><code>overdraw</code></strong> =  <code>false</code>  — Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends</p><p><strong><code>space</code></strong> =  <code>:data</code>  — sets the transformation space for box encompassing the plot. See <code>Makie.spaces()</code> for possible inputs.</p><p><strong><code>ssao</code></strong> =  <code>false</code>  — Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with <code>fxaa = true</code>.</p><p><strong><code>step</code></strong> =  <code>:pre</code>  — The <code>step</code> parameter can take the following values:</p><ul><li><p><code>:pre</code>: horizontal part of step extends to the left of each value in <code>xs</code>.</p></li><li><p><code>:post</code>: horizontal part of step extends to the right of each value in <code>xs</code>.</p></li><li><p><code>:center</code>: horizontal part of step extends halfway between the two adjacent values of <code>xs</code>.</p></li></ul><p><strong><code>transformation</code></strong> =  <code>automatic</code>  — <em>No docs available.</em></p><p><strong><code>transparency</code></strong> =  <code>false</code>  — Adjusts how the plot deals with transparency. In GLMakie <code>transparency = true</code> results in using Order Independent Transparency.</p><p><strong><code>visible</code></strong> =  <code>true</code>  — Controls whether the plot will be rendered or not.</p></div></div><div class="docstring"><div class="doc-header" id="ecdfplot!"><a href="#ecdfplot!">ecdfplot!</a></div><div class="doc-content"><p><code>ecdfplot!</code> is the mutating variant of plotting function <code>ecdfplot</code>. Check the docstring for <code>ecdfplot</code> for further information.</p></div></div><div class="docstring"><div class="doc-header" id="entered_window"><a href="#entered_window">entered_window</a></div><div class="doc-content"><p>Registers a callback for if the mouse has entered the window. returns an <code>Observable{Bool}</code>, which is true whenever the cursor enters the window. <a href="http://www.glfw.org/docs/latest/group__input.html#ga762d898d9b0241d7e3e3b767c6cf318f">GLFW Docs</a></p></div></div><div class="docstring"><div class="doc-header" id="errorbars"><a href="#errorbars">errorbars</a></div><div class="doc-content"><pre><code>errorbars(x, y, error_both; kwargs...)
 errorbars(x, y, error_low, error_high; kwargs...)
@@ -1157,132 +1157,132 @@ hi</code></pre><pre><code>on(f, c::Camera, observables::Observable...)</code></p
      @ deprecated.jl:113</code></pre></div></div><div class="docstring"><div class="doc-header" id="plot"><a href="#plot">plot</a></div><div class="doc-content"><p>No documentation found.</p><p><code>MakieCore.plot</code> is a <code>Function</code>.</p><pre><code># 1 method for generic function "plot" from MakieCore:
  [1] plot(args...; kw...)
      @ ~/work/Makie.jl/Makie.jl/MakieCore/src/recipes.jl:39</code></pre></div></div><div class="docstring"><div class="doc-header" id="plot!"><a href="#plot!">plot!</a></div><div class="doc-content"><p>No documentation found.</p><p><code>MakieCore.plot!</code> is a <code>Function</code>.</p><pre><code># 66 methods for generic function "plot!" from MakieCore:
-  [1] plot!(ax::Axis, P::Type{&lt;:Plot{Makie.rainclouds}}, allattrs::Attributes, category_labels, data_array)
-     @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/raincloud.jl:155
+  [1] plot!(plot::Plot{MakieCore.plot, Tuple{Makie.GridLayoutSpec}})
+     @ Makie ~/work/Makie.jl/Makie.jl/src/specapi.jl:730
   [2] plot!(fa::Makie.FigureAxis, plot)
      @ Makie ~/work/Makie.jl/Makie.jl/src/figureplotting.jl:313
-  [3] plot!(plot::Plot{MakieCore.plot, Tuple{Makie.GridLayoutSpec}})
-     @ Makie ~/work/Makie.jl/Makie.jl/src/specapi.jl:730
-  [4] plot!(ax::Makie.AbstractAxis, plot::AbstractPlot)
-     @ Makie ~/work/Makie.jl/Makie.jl/src/figureplotting.jl:315
-  [5] plot!(sc::Plot{Main.FD_SANDBOX_12283929528957551597.stockchart, &lt;:Tuple{AbstractVector{&lt;:Real}, AbstractVector{&lt;:Main.FD_SANDBOX_12283929528957551597.StockValue}}})
+  [3] plot!(ax::Axis, P::Type{&lt;:Plot{Makie.rainclouds}}, allattrs::Attributes, category_labels, data_array)
+     @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/raincloud.jl:155
+  [4] plot!(sc::Plot{Main.FD_SANDBOX_12283929528957551597.stockchart, &lt;:Tuple{AbstractVector{&lt;:Real}, AbstractVector{&lt;:Main.FD_SANDBOX_12283929528957551597.StockValue}}})
      @ Main.FD_SANDBOX_12283929528957551597 none:1
-  [6] plot!(plot::Plot{RPRMakie.matball})
+  [5] plot!(plot::Plot{RPRMakie.matball})
      @ RPRMakie ~/work/Makie.jl/Makie.jl/RPRMakie/src/meshes.jl:206
-  [7] plot!(plot::Plot{Makie.band})
+  [6] plot!(plot::Plot{Makie.band})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/band.jl:23
-  [8] plot!(axis::Plot{Makie.axis3d})
+  [7] plot!(axis::Plot{Makie.axis3d})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/axis.jl:320
-  [9] plot!(p::Plot{Makie.ablines})
+  [8] plot!(p::Plot{Makie.ablines})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/ablines.jl:11
- [10] plot!(plot::Plot{Makie.annotations})
+  [9] plot!(plot::Plot{Makie.annotations})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/annotations.jl:18
- [11] plot!(p::Plot{Makie.arc})
+ [10] plot!(p::Plot{Makie.arc})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/arc.jl:20
- [12] plot!(arrowplot::Arrows{&lt;:Tuple{AbstractVector{&lt;:Point{N}}, V}}) where {N, V}
+ [11] plot!(arrowplot::Arrows{&lt;:Tuple{AbstractVector{&lt;:Point{N}}, V}}) where {N, V}
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/arrows.jl:116
- [13] plot!(p::Plot{Makie.barplot})
+ [12] plot!(p::Plot{Makie.barplot})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/barplot.jl:239
- [14] plot!(pl::Plot{Makie.bracket})
+ [13] plot!(pl::Plot{Makie.bracket})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/bracket.jl:49
- [15] plot!(plot::Plot{Makie.contour, &lt;:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+ [14] plot!(plot::Plot{Makie.contour, &lt;:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/contours.jl:116
- [16] plot!(plot::T) where T&lt;:Union{Plot{Makie.contour}, Plot{Makie.contour3d}}
+ [15] plot!(plot::T) where T&lt;:Union{Plot{Makie.contour}, Plot{Makie.contour3d}}
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/contours.jl:205
- [17] plot!(c::Plot{Makie.contourf, &lt;:Tuple{var"#s898", var"#s897", var"#s896"} where {var"#s898"&lt;:(AbstractVector{&lt;:Real}), var"#s897"&lt;:(AbstractVector{&lt;:Real}), var"#s896"&lt;:(AbstractMatrix{&lt;:Real})}})
+ [16] plot!(c::Plot{Makie.contourf, &lt;:Tuple{var"#s898", var"#s897", var"#s896"} where {var"#s898"&lt;:(AbstractVector{&lt;:Real}), var"#s897"&lt;:(AbstractVector{&lt;:Real}), var"#s896"&lt;:(AbstractMatrix{&lt;:Real})}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/contourf.jl:70
- [18] plot!(p::Plot{Makie.datashader, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector{&lt;:Point})})
+ [17] plot!(p::Plot{Makie.datashader, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector{&lt;:Point})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/datashader.jl:378
- [19] plot!(p::Plot{Makie.datashader, &lt;:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
+ [18] plot!(p::Plot{Makie.datashader, &lt;:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/datashader.jl:433
- [20] plot!(plot::Plot{Makie.errorbars, T}) where T&lt;:Tuple{AbstractVector{&lt;:Union{NTuple{4, T}, StaticArraysCore.StaticArray{Tuple{4}, T, 1}} where T}}
+ [19] plot!(plot::Plot{Makie.errorbars, T}) where T&lt;:Tuple{AbstractVector{&lt;:Union{NTuple{4, T}, StaticArraysCore.StaticArray{Tuple{4}, T, 1}} where T}}
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/error_and_rangebars.jl:132
- [21] plot!(plot::Plot{Makie.rangebars, T}) where T&lt;:Tuple{AbstractVector{&lt;:Union{Tuple{T, T, T}, StaticArraysCore.StaticArray{Tuple{3}, T, 1}} where T}}
+ [20] plot!(plot::Plot{Makie.rangebars, T}) where T&lt;:Tuple{AbstractVector{&lt;:Union{Tuple{T, T, T}, StaticArraysCore.StaticArray{Tuple{3}, T, 1}} where T}}
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/error_and_rangebars.jl:162
- [22] plot!(p::Union{Plot{Makie.hlines}, Plot{Makie.vlines}})
+ [21] plot!(p::Union{Plot{Makie.hlines}, Plot{Makie.vlines}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/hvlines.jl:46
- [23] plot!(p::Union{Plot{Makie.hspan}, Plot{Makie.vspan}})
+ [22] plot!(p::Union{Plot{Makie.hspan}, Plot{Makie.vspan}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/hvspan.jl:35
- [24] plot!(plot::Plot{Makie.pie})
+ [23] plot!(plot::Plot{Makie.pie})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/pie.jl:23
- [25] plot!(plot::Poly{&lt;:Tuple{Union{GeometryBasics.GeometryPrimitive, GeometryBasics.Mesh}}})
+ [24] plot!(plot::Poly{&lt;:Tuple{Union{GeometryBasics.GeometryPrimitive, GeometryBasics.Mesh}}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/poly.jl:18
- [26] plot!(plot::Poly{&lt;:Tuple{var"#s898"} where var"#s898"&lt;:Union{GeometryBasics.Polygon, AbstractVector{&lt;:Union{AbstractVector{&lt;:Union{Tuple{Vararg{T, N}}, StaticArraysCore.StaticArray{Tuple{N}, T, 1}} where {N, T}}, Tuple{Vararg{T, N}} where {N, T}, GeometryBasics.AbstractMesh, GeometryBasics.HyperRectangle, GeometryBasics.MultiPolygon, GeometryBasics.Polygon, StaticArraysCore.StaticArray{Tuple{N}, T, 1} where {N, T}, Circle}}}})
+ [25] plot!(plot::Poly{&lt;:Tuple{var"#s898"} where var"#s898"&lt;:Union{GeometryBasics.Polygon, AbstractVector{&lt;:Union{AbstractVector{&lt;:Union{Tuple{Vararg{T, N}}, StaticArraysCore.StaticArray{Tuple{N}, T, 1}} where {N, T}}, Tuple{Vararg{T, N}} where {N, T}, GeometryBasics.AbstractMesh, GeometryBasics.HyperRectangle, GeometryBasics.MultiPolygon, GeometryBasics.Polygon, StaticArraysCore.StaticArray{Tuple{N}, T, 1} where {N, T}, Circle}}}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/poly.jl:129
- [27] plot!(plot::Mesh{&lt;:Tuple{var"#s898"} where var"#s898"&lt;:AbstractVector{P}}) where P&lt;:Union{GeometryBasics.AbstractMesh, GeometryBasics.Polygon}
+ [26] plot!(plot::Mesh{&lt;:Tuple{var"#s898"} where var"#s898"&lt;:AbstractVector{P}}) where P&lt;:Union{GeometryBasics.AbstractMesh, GeometryBasics.Polygon}
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/poly.jl:176
- [28] plot!(p::Plot{Makie.scatterlines, &lt;:Tuple{Vararg{Any, N}}}) where N
+ [27] plot!(p::Plot{Makie.scatterlines, &lt;:Tuple{Vararg{Any, N}}}) where N
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/scatterlines.jl:32
- [29] plot!(p::Plot{Makie.spy})
+ [28] plot!(p::Plot{Makie.spy})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/spy.jl:33
- [30] plot!(p::Plot{Makie.stairs, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector{&lt;:Point2})})
+ [29] plot!(p::Plot{Makie.stairs, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector{&lt;:Point2})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/stairs.jl:21
- [31] plot!(s::Plot{Makie.stem, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector{&lt;:Point})})
+ [30] plot!(s::Plot{Makie.stem, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector{&lt;:Point})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/stem.jl:47
- [32] plot!(p::Plot{Makie.streamplot})
+ [31] plot!(p::Plot{Makie.streamplot})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/streamplot.jl:164
- [33] plot!(plot::Plot{Makie.timeseries})
+ [32] plot!(plot::Plot{Makie.timeseries})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/timeseries.jl:36
- [34] plot!(c::Plot{Makie.tricontourf, &lt;:Tuple{var"#s898", var"#s897"} where {var"#s898"&lt;:DelaunayTriangulation.Triangulation, var"#s897"&lt;:(AbstractVector{&lt;:Real})}})
+ [33] plot!(c::Plot{Makie.tricontourf, &lt;:Tuple{var"#s898", var"#s897"} where {var"#s898"&lt;:DelaunayTriangulation.Triangulation, var"#s897"&lt;:(AbstractVector{&lt;:Real})}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/tricontourf.jl:122
- [35] plot!(p::Plot{Makie.triplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(Vector{&lt;:Point})})
+ [34] plot!(p::Plot{Makie.triplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(Vector{&lt;:Point})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/triplot.jl:175
- [36] plot!(p::Plot{Makie.triplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:DelaunayTriangulation.Triangulation})
+ [35] plot!(p::Plot{Makie.triplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:DelaunayTriangulation.Triangulation})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/triplot.jl:189
- [37] plot!(plot::Plot{Makie.volumeslices})
+ [36] plot!(plot::Plot{Makie.volumeslices})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/volumeslices.jl:15
- [38] plot!(p::Plot{Makie.voronoiplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(Vector{&lt;:Point{N}})}) where N
+ [37] plot!(p::Plot{Makie.voronoiplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(Vector{&lt;:Point{N}})}) where N
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/voronoiplot.jl:121
- [39] plot!(p::Plot{Makie.voronoiplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:DelaunayTriangulation.VoronoiTessellation})
+ [38] plot!(p::Plot{Makie.voronoiplot, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:DelaunayTriangulation.VoronoiTessellation})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/voronoiplot.jl:171
- [40] plot!(plot::Voxels)
+ [39] plot!(plot::Voxels)
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/voxels.jl:139
- [41] plot!(p::Plot{Makie.waterfall})
+ [40] plot!(p::Plot{Makie.waterfall})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/waterfall.jl:29
- [42] plot!(plot::Wireframe{&lt;:Tuple{var"#s898", var"#s897", var"#s896"} where {var"#s898", var"#s897", var"#s896"&lt;:(AbstractMatrix)}})
+ [41] plot!(plot::Wireframe{&lt;:Tuple{var"#s898", var"#s897", var"#s896"} where {var"#s898", var"#s897", var"#s896"&lt;:(AbstractMatrix)}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/wireframe.jl:12
- [43] plot!(plot::Plot{MakieCore.wireframe, Tuple{T}}) where T
+ [42] plot!(plot::Plot{MakieCore.wireframe, Tuple{T}}) where T
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/wireframe.jl:24
- [44] plot!(p::Plot{Makie.tooltip, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(Union{Tuple{Vararg{T, N}}, StaticArraysCore.StaticArray{Tuple{N}, T, 1}} where {N, T})})
+ [43] plot!(p::Plot{Makie.tooltip, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(Union{Tuple{Vararg{T, N}}, StaticArraysCore.StaticArray{Tuple{N}, T, 1}} where {N, T})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/tooltip.jl:68
- [45] plot!(plot::Plot{Makie.tooltip, &lt;:Tuple{var"#s898", var"#s897"} where {var"#s898"&lt;:(Union{Tuple{Vararg{T, N}}, StaticArraysCore.StaticArray{Tuple{N}, T, 1}} where {N, T}), var"#s897"&lt;:AbstractString}})
+ [44] plot!(plot::Plot{Makie.tooltip, &lt;:Tuple{var"#s898", var"#s897"} where {var"#s898"&lt;:(Union{Tuple{Vararg{T, N}}, StaticArraysCore.StaticArray{Tuple{N}, T, 1}} where {N, T}), var"#s897"&lt;:AbstractString}})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/tooltip.jl:61
- [46] plot!(p::Plot{Makie.plotlist, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractArray{PlotSpec})})
+ [45] plot!(p::Plot{Makie.plotlist, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractArray{PlotSpec})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/specapi.jl:486
- [47] plot!(plot::Plot{Makie.stephist})
+ [46] plot!(plot::Plot{Makie.stephist})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/hist.jl:57
- [48] plot!(plot::Plot{Makie.hist})
+ [47] plot!(plot::Plot{Makie.hist})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/hist.jl:164
- [49] plot!(plot::Plot{Makie.density, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector)})
+ [48] plot!(plot::Plot{Makie.density, &lt;:Tuple{var"#s898"} where var"#s898"&lt;:(AbstractVector)})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/density.jl:54
- [50] plot!(p::Plot{Makie.qqplot})
+ [49] plot!(p::Plot{Makie.qqplot})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/distributions.jl:112
- [51] plot!(plot::Plot{Makie.crossbar})
+ [50] plot!(plot::Plot{Makie.crossbar})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/crossbar.jl:50
- [52] plot!(plot::Plot{Makie.boxplot})
+ [51] plot!(plot::Plot{Makie.boxplot})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/boxplot.jl:78
- [53] plot!(plot::Plot{Makie.violin})
+ [52] plot!(plot::Plot{Makie.violin})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/violin.jl:53
- [54] plot!(hb::Plot{Makie.hexbin, &lt;:Tuple{var"#s2269"} where var"#s2269"&lt;:(AbstractVector{&lt;:Point2})})
+ [53] plot!(hb::Plot{Makie.hexbin, &lt;:Tuple{var"#s2267"} where var"#s2267"&lt;:(AbstractVector{&lt;:Point2})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/stats/hexbin.jl:65
- [55] plot!(plot::Plot{Makie.series})
+ [54] plot!(plot::Plot{Makie.series})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/series.jl:60
- [56] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2269"} where var"#s2269"&lt;:(AbstractArray{&lt;:Tuple{var"#s2267", var"#s2266"} where {var"#s2267", var"#s2266"&lt;:Point}})})
-     @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/text.jl:155
- [57] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2269"} where var"#s2269"&lt;:(AbstractArray{&lt;:AbstractString})})
+ [55] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2267"} where var"#s2267"&lt;:(AbstractArray{&lt;:AbstractString})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/text.jl:147
- [58] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2269"} where var"#s2269"&lt;:(AbstractArray{&lt;:Makie.GlyphCollection})})
+ [56] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2267"} where var"#s2267"&lt;:(AbstractArray{&lt;:Tuple{var"#s2265", var"#s2264"} where {var"#s2265", var"#s2264"&lt;:Point}})})
+     @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/text.jl:155
+ [57] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2267"} where var"#s2267"&lt;:(AbstractArray{&lt;:Makie.GlyphCollection})})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/text.jl:145
- [59] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2269"} where var"#s2269"&lt;:Makie.GlyphCollection})
+ [58] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2267"} where var"#s2267"&lt;:Makie.GlyphCollection})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/text.jl:144
- [60] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2269"} where var"#s2269"&lt;:AbstractString})
+ [59] plot!(plot::MakieCore.Text{&lt;:Tuple{var"#s2267"} where var"#s2267"&lt;:AbstractString})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/text.jl:127
- [61] plot!(plot::Plot{Makie.rainclouds})
+ [60] plot!(plot::Plot{Makie.rainclouds})
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/raincloud.jl:211
- [62] plot!(plot::MakieCore.Text)
+ [61] plot!(plot::MakieCore.Text)
      @ Makie ~/work/Makie.jl/Makie.jl/src/basic_recipes/text.jl:7
- [63] plot!(::Plot{F}) where F
+ [62] plot!(::Plot{F}) where F
      @ Makie ~/work/Makie.jl/Makie.jl/src/interfaces.jl:230
+ [63] plot!(ax::Makie.AbstractAxis, plot::AbstractPlot)
+     @ Makie ~/work/Makie.jl/Makie.jl/src/figureplotting.jl:315
  [64] plot!(scene::Union{AbstractScene, MakieCore.ScenePlot}, plot::Plot)
      @ Makie ~/work/Makie.jl/Makie.jl/src/interfaces.jl:264
  [65] plot!(fig::Union{GridPosition, Figure}, plot::Plot{MakieCore.plot, Tuple{Makie.GridLayoutSpec}})
@@ -1428,12 +1428,12 @@ display(scene)
     sleep(1/30)
 end
 </code></pre><h2>Plot type</h2><p>The plot type alias for the <code>timeseries</code> function is <code>TimeSeries</code>.</p><h2>Attributes</h2><p><strong><code>alpha</code></strong> =  <code>1.0</code>  — The alpha value of the colormap or color attribute. Multiple alphas like in <code>plot(alpha=0.2, color=(:red, 0.5)</code>, will get multiplied.</p><p><strong><code>color</code></strong> =  <code>@inherit linecolor</code>  — The color of the line.</p><p><strong><code>colormap</code></strong> =  <code>@inherit colormap :viridis</code>  — Sets the colormap that is sampled for numeric <code>color</code>s. <code>PlotUtils.cgrad(...)</code>, <code>Makie.Reverse(any_colormap)</code> can be used as well, or any symbol from ColorBrewer or PlotUtils. To see all available color gradients, you can call <code>Makie.available_gradients()</code>.</p><p><strong><code>colorrange</code></strong> =  <code>automatic</code>  — The values representing the start and end points of <code>colormap</code>.</p><p><strong><code>colorscale</code></strong> =  <code>identity</code>  — The color transform function. Can be any function, but only works well together with <code>Colorbar</code> for <code>identity</code>, <code>log</code>, <code>log2</code>, <code>log10</code>, <code>sqrt</code>, <code>logit</code>, <code>Makie.pseudolog10</code> and <code>Makie.Symlog10</code>.</p><p><strong><code>cycle</code></strong> =  <code>[:color]</code>  — Sets which attributes to cycle when creating multiple plots.</p><p><strong><code>depth_shift</code></strong> =  <code>0.0</code>  — adjusts the depth value of a plot after all other transformations, i.e. in clip space, where <code>0 &lt;= depth &lt;= 1</code>. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).</p><p><strong><code>fxaa</code></strong> =  <code>false</code>  — adjusts whether the plot is rendered with fxaa (anti-aliasing, GLMakie only).</p><p><strong><code>highclip</code></strong> =  <code>automatic</code>  — The color for any value above the colorrange.</p><p><strong><code>history</code></strong> =  <code>100</code>  — <em>No docs available.</em></p><p><strong><code>inspectable</code></strong> =  <code>true</code>  — sets whether this plot should be seen by <code>DataInspector</code>.</p><p><strong><code>inspector_clear</code></strong> =  <code>automatic</code>  — Sets a callback function <code>(inspector, plot) -&gt; ...</code> for cleaning up custom indicators in DataInspector.</p><p><strong><code>inspector_hover</code></strong> =  <code>automatic</code>  — Sets a callback function <code>(inspector, plot, index) -&gt; ...</code> which replaces the default <code>show_data</code> methods.</p><p><strong><code>inspector_label</code></strong> =  <code>automatic</code>  — Sets a callback function <code>(plot, index, position) -&gt; string</code> which replaces the default label generated by DataInspector.</p><p><strong><code>linestyle</code></strong> =  <code>nothing</code>  — Sets the pattern of the line e.g. <code>:solid</code>, <code>:dot</code>, <code>:dashdot</code>. For custom patterns look at <code>Linestyle(Number[...])</code></p><p><strong><code>linewidth</code></strong> =  <code>@inherit linewidth</code>  — Sets the width of the line in screen units</p><p><strong><code>lowclip</code></strong> =  <code>automatic</code>  — The color for any value below the colorrange.</p><p><strong><code>model</code></strong> =  <code>automatic</code>  — Sets a model matrix for the plot. This overrides adjustments made with <code>translate!</code>, <code>rotate!</code> and <code>scale!</code>.</p><p><strong><code>nan_color</code></strong> =  <code>:transparent</code>  — The color for NaN values.</p><p><strong><code>overdraw</code></strong> =  <code>false</code>  — Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends</p><p><strong><code>space</code></strong> =  <code>:data</code>  — sets the transformation space for box encompassing the plot. See <code>Makie.spaces()</code> for possible inputs.</p><p><strong><code>ssao</code></strong> =  <code>false</code>  — Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with <code>fxaa = true</code>.</p><p><strong><code>transformation</code></strong> =  <code>automatic</code>  — <em>No docs available.</em></p><p><strong><code>transparency</code></strong> =  <code>false</code>  — Adjusts how the plot deals with transparency. In GLMakie <code>transparency = true</code> results in using Order Independent Transparency.</p><p><strong><code>visible</code></strong> =  <code>true</code>  — Controls whether the plot will be rendered or not.</p></div></div><div class="docstring"><div class="doc-header" id="timeseries!"><a href="#timeseries!">timeseries!</a></div><div class="doc-content"><p><code>timeseries!</code> is the mutating variant of plotting function <code>timeseries</code>. Check the docstring for <code>timeseries</code> for further information.</p></div></div><div class="docstring"><div class="doc-header" id="to_align"><a href="#to_align">to_align</a></div><div class="doc-content"><pre><code>to_align(align[, error_prefix])</code></pre><p>Converts the given align to a <code>Vec2f</code>. Can convert <code>VecTypes{2}</code> and two component <code>Tuple</code>s with <code>Real</code> and <code>Symbol</code> elements.</p><p>To specify a custom error message you can add an <code>error_prefix</code> or use <code>halign2num(value, error_msg)</code> and <code>valign2num(value, error_msg)</code> respectively.</p></div></div><div class="docstring"><div class="doc-header" id="to_color"><a href="#to_color">to_color</a></div><div class="doc-content"><p>No documentation found.</p><p><code>Makie.to_color</code> is a <code>Function</code>.</p><pre><code># 13 methods for generic function "to_color" from Makie:
-  [1] to_color(scene::Scene, attribute_name, cycled::Cycled)
-     @ ~/work/Makie.jl/Makie.jl/src/makielayout/blocks/axis.jl:700
-  [2] to_color(c::Symbol)
+  [1] to_color(c::Symbol)
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:911
-  [3] to_color(p::Makie.Palette)
+  [2] to_color(p::Makie.Palette)
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:902
+  [3] to_color(scene::Scene, attribute_name, cycled::Cycled)
+     @ ~/work/Makie.jl/Makie.jl/src/makielayout/blocks/axis.jl:700
   [4] to_color(c::String)
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:912
   [5] to_color(c::Nothing)
@@ -1444,16 +1444,16 @@ end
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:909
   [8] to_color(sampler::Sampler)
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:1795
-  [9] to_color(p::Makie.AbstractPattern)
+  [9] to_color(c::Makie.ColorMapping)
+     @ ~/work/Makie.jl/Makie.jl/src/colorsampler.jl:344
+ [10] to_color(p::Makie.AbstractPattern)
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:915
- [10] to_color(c::AbstractArray{&lt;:ColorTypes.Colorant, N}) where N
+ [11] to_color(c::AbstractArray{&lt;:ColorTypes.Colorant, N}) where N
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:914
- [11] to_color(c::AbstractArray)
+ [12] to_color(c::AbstractArray)
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:913
- [12] to_color(c::ColorTypes.Colorant)
-     @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:910
- [13] to_color(c::Makie.ColorMapping)
-     @ ~/work/Makie.jl/Makie.jl/src/colorsampler.jl:344</code></pre></div></div><div class="docstring"><div class="doc-header" id="to_colormap"><a href="#to_colormap">to_colormap</a></div><div class="doc-content"><pre><code>to_colormap(b::AbstractVector)</code></pre><p>An <code>AbstractVector{T}</code> with any object that <a href="@ref"><code>to_color</code></a> accepts.</p><pre><code>to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}</code></pre><p>A Symbol/String naming the gradient. For more on what names are available please see: <code>available_gradients()</code>. For now, we support gradients from <code>PlotUtils</code> natively.</p></div></div><div class="docstring"><div class="doc-header" id="to_font"><a href="#to_font">to_font</a></div><div class="doc-content"><pre><code>to_font(str::String)</code></pre><p>Loads a font specified by <code>str</code> and returns a <code>NativeFont</code> object storing the font handle. A font can either be specified by a file path, such as "folder/with/fonts/font.otf", or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.</p></div></div><div class="docstring"><div class="doc-header" id="to_fontsize"><a href="#to_fontsize">to_fontsize</a></div><div class="doc-content"><p>No documentation found.</p><p><code>Makie.to_fontsize</code> is a <code>Function</code>.</p><pre><code># 4 methods for generic function "to_fontsize" from Makie:
+ [13] to_color(c::ColorTypes.Colorant)
+     @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:910</code></pre></div></div><div class="docstring"><div class="doc-header" id="to_colormap"><a href="#to_colormap">to_colormap</a></div><div class="doc-content"><pre><code>to_colormap(b::AbstractVector)</code></pre><p>An <code>AbstractVector{T}</code> with any object that <a href="@ref"><code>to_color</code></a> accepts.</p><pre><code>to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}</code></pre><p>A Symbol/String naming the gradient. For more on what names are available please see: <code>available_gradients()</code>. For now, we support gradients from <code>PlotUtils</code> natively.</p></div></div><div class="docstring"><div class="doc-header" id="to_font"><a href="#to_font">to_font</a></div><div class="doc-content"><pre><code>to_font(str::String)</code></pre><p>Loads a font specified by <code>str</code> and returns a <code>NativeFont</code> object storing the font handle. A font can either be specified by a file path, such as "folder/with/fonts/font.otf", or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.</p></div></div><div class="docstring"><div class="doc-header" id="to_fontsize"><a href="#to_fontsize">to_fontsize</a></div><div class="doc-content"><p>No documentation found.</p><p><code>Makie.to_fontsize</code> is a <code>Function</code>.</p><pre><code># 4 methods for generic function "to_fontsize" from Makie:
  [1] to_fontsize(x::Vec2)
      @ ~/work/Makie.jl/Makie.jl/src/conversions.jl:1252
  [2] to_fontsize(x::AbstractVector{T}) where T&lt;:(Vec2)
