@@ -368,3 +368,15 @@ end
     ax.zlabel[] = L"\sum_{n=1}^{\infty} 2^{-n} = 1"
     fig
 end
+
+# test #3232
+@reference_test "texture atlas update" begin
+    scene = Scene(size = (250, 100))
+    campixel!(scene)
+    p = text!(scene, "test", fontsize = 85)
+    st = Stepper(scene)
+    Makie.step!(st)
+    p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
+    Makie.step!(st)
+    st
+end
