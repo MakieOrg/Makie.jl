@@ -103,10 +103,10 @@ function boundingbox(plot::Scatter)
                 quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
             end
 
-            bb = _update_rect(bb, marker_pos + quad_origin)
-            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1)
-            bb = _update_rect(bb, marker_pos + quad_origin + quad_v2)
-            bb = _update_rect(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
+            bb = update_boundingbox(bb, marker_pos + quad_origin)
+            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1)
+            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v2)
+            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
         end
         return bb
 

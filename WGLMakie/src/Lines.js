@@ -889,8 +889,8 @@ function lines_fragment_shader(uniforms, attributes) {
     `;
 }
 
-function create_line_material(uniforms, attributes, is_linesegments) {
-    const uniforms_des = deserialize_uniforms(uniforms);
+function create_line_material(scene, uniforms, attributes, is_linesegments) {
+    const uniforms_des = deserialize_uniforms(scene, uniforms);
     const mat = new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
         glslVersion: THREE.GLSL3,
@@ -1004,8 +1004,8 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
     }
 }
 
-export function _create_line(line_data, is_segments) {
-    const geometry = create_line_instance_geometry(); // generate quad for segment
+export function _create_line(scene, line_data, is_segments) {
+    const geometry = create_line_instance_geometry();
     const buffers = {};
     create_line_buffers(
         geometry,
@@ -1014,6 +1014,7 @@ export function _create_line(line_data, is_segments) {
         is_segments
     );
     const material = create_line_material(
+        scene,
         line_data.uniforms,
         geometry.attributes,
         is_segments
@@ -1030,11 +1031,10 @@ export function _create_line(line_data, is_segments) {
     return mesh;
 }
 
-// entrypoints
-export function create_line(line_data) {
-    return _create_line(line_data, false)
+export function create_line(scene, line_data) {
+    return _create_line(scene, line_data, false)
 }
 
-export function create_linesegments(line_data) {
-    return _create_line(line_data, true)
+export function create_linesegments(scene, line_data) {
+    return _create_line(scene, line_data, true)
 }

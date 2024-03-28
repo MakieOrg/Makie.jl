@@ -13,7 +13,9 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     h_norm = StatsBase.normalize(h; mode = normalization)
     weights = h_norm.weights
     centers = edges[1:end-1] .+ (diff(edges) ./ 2)
-    if !isnothing(scale_to)
+    if scale_to === :flip
+        weights .= -weights
+    elseif !isnothing(scale_to)
         max = maximum(weights)
         weights .= weights ./ max .* scale_to
     end
@@ -123,7 +125,11 @@ Plot a histogram of `values`.
     offset = 0.0
     "Defines where the bars start."
     fillto = automatic
-    "Allows to scale all values to a certain height."
+    """
+    Allows to scale all values to a certain height. This can also be set to
+    `:flip` to flip the direction of histogram bars without scaling them to a
+    common height.
+    """
     scale_to = nothing
     bar_labels = nothing
     flip_labels_at = Inf
