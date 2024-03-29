@@ -35,7 +35,7 @@ function calculated_attributes!(::Type{<:Voxels}, plot)
                 end
             else
                 c = to_color(color)
-                output .= RGBAf(Colors.color(c), Colors.alpha(c) * a)
+                output = [RGBAf(Colors.color(c), Colors.alpha(c) * a) for _ in 1:255]
             end
             return output
         end
@@ -137,6 +137,11 @@ Base.@propagate_inbounds function _update_voxel(
 end
 
 function plot!(plot::Voxels)
+    # Internal attribute for keeping track of `extrema(chunk)`.
+    plot.attributes[:_limits] = Observable((0.0, 1.0))
+    # Internal attribute for communicating updates to the backend.
+    plot.attributes[:_local_update] = Observable((0:0, 0:0, 0:0))
+
     # Disconnect automatic mapping
     # I want to avoid recalculating limits every time the input is updated.
     # Maybe this can be done with conversion kwargs...?
