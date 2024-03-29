@@ -35,7 +35,7 @@ function calculated_attributes!(::Type{<:Voxels}, plot)
                 end
             else
                 c = to_color(color)
-                output .= RGBAf(Colors.color(c), Colors.alpha(c) * a)
+                output = [RGBAf(Colors.color(c), Colors.alpha(c) * a) for _ in 1:255]
             end
             return output
         end
