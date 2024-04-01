@@ -97,7 +97,7 @@ function get_triangulation_triangles!(triangles, tri)
     empty!(triangles)
     sizehint!(triangles, DelTri.num_solid_triangles(tri))
     for T in DelTri.each_solid_triangle(tri)
-        i, j, k = DelTri.indices(T)
+        i, j, k = DelTri.geti(T), DelTri.getj(T), DelTri.getk(T)
         push!(triangles, TriangleFace(i, j, k))
     end
     return triangles
