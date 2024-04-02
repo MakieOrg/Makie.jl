@@ -162,13 +162,19 @@ has_typed_convert(::Type) = false
     MakieCore.should_dim_convert(eltype::DataType)::Bool
 
 Returns `true` if the plot type should convert its arguments via DimConversions.
-Needs to be overloaded for recipes that want to use DimConversions.
-Also needs to be overloaded for DimConversions, e.g. for CategoricalConversion:
+Needs to be overloaded for recipes that want to use DimConversions. Also needs
+to be overloaded for DimConversions, e.g. for CategoricalConversion:
+
 ```julia
     MakieCore.should_dim_convert(::Type{Categorical}) = true
 ```
-`should_dim_convert(::Type{<: Plot}, args)` falls back to check if `has_typed_convert` is true (so that we now the proper conversion target type for a plot) and `should_dim_convert(get_element_type(args))`.
-So dim conversions only get applied if both are true.
+
+`should_dim_convert(::Type{<: Plot}, args)` falls back on checking if
+`has_typed_convert(plot_or_trait)` and `should_dim_convert(get_element_type(args))`
+ are true. The former is defined as true by `@convert_target`, i.e. when
+`convert_arguments_typed` is defined for the given plot type or conversion trait.
+The latter marks specific types as convertable.
+
 If a recipe wants to use dim conversions, it should overload this function:
 ```julia
     MakieCore.should_dim_convert(::Type{<:MyPlotType}, args) = should_dim_convert(get_element_type(args))
@@ -186,23 +192,32 @@ function makie_convert(::Type{T}, x) where T
 end
 
 """
-    @convert_target(expr)
-Allows to define a conversion target for a plot type, so that `convert_arguments` can be checked properly, if it converts to the correct types.
+    @convert_target struct ...
+        ...
+    end
+
+Allows to define a conversion target for a plot type so that `convert_arguments`
+can properly check if it converts to the correct types.
+
 Usage:
 ```Julia
-@convert_target struct PointBased{N} # Can be the Plot type or a ConversionTrait
+@convert_target struct PointBased{N} # Plot Type or Conversion Trait
+    # one or multiple fields defining the target data structure (can be abstract)
     positions::AbstractVector{Point{N, Float32}}
 end
 ```
-This defines an overload of `convert_arguments_typed` pretty much in this way (error handling etc omitted):
+
+Skipping error handling, this defines an overload of `convert_arguments_typed`
+which produces a `NamedTuple` corresponding to the layout of the struct:
 ```Julia
 function convert_arguments_typed(ct::Type{<: PointBased}, positions)
-    converted_positions = convert(AbstractVector{Point{N, Float32}} where N, positions)
-    return (positions = converted_positions,) # returns a NamedTuple corresponding to the layout of the struct
+    converted_positions = makie_convert(AbstractVector{Point{N, Float32}} where N, positions)
+    return (positions = converted_positions,)
 end
 ```
-This way, we can throw nice errors, if `convert_arguments` doesn't convert to `AbstractVector{Point{N, Float32}}`.
-Take a look at Makie/src/conversions.jl, to see a few of the core conversion targets.
+This way we can throw a nice error if `convert_arguments` doesn't convert to
+an `AbstractVector{Point{N, Float32}}`. Take a look at Makie/src/conversions.jl
+to see the core conversion targets.
 """
 macro convert_target(struct_expr)
     if !Meta.isexpr(struct_expr, :struct)
