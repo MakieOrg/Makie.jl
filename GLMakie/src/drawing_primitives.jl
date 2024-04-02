@@ -831,9 +831,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             ) do xs, ys, zs, chunk, model
             mini = minimum.((xs, ys, zs))
             width = maximum.((xs, ys, zs)) .- mini
-            return model *
-                Makie.translationmatrix(Vec3f(mini)) *
-                Makie.scalematrix(Vec3f(width ./ size(chunk)))
+            return Mat4f(model *
+                Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
+            )
         end
 
         # color attribute adjustments
