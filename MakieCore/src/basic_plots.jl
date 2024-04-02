@@ -383,7 +383,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
   Otherwise, one can set one color per point by passing a `Vector{<:Colorant}`, or one colorant for the whole scatterplot. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `marker::Union{Symbol, Char, Matrix{<:Colorant}, BezierPath, Polygon}` sets the scatter marker.
-- `markersize::Union{<:Real, Vec2f} = 9` sets the size of the marker.
+- `markersize::Union{<:Real, Vec2f} = 9` sets the size of the marker (twice the `markersize` is approximately four times as large).
 - `markerspace::Symbol = :pixel` sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.

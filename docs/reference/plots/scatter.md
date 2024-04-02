@@ -109,8 +109,10 @@ f
 
 #### Markersize
 
-The `markersize` attribute scales the scatter size relative to the scatter marker's base size.
-Therefore, `markersize` cannot be directly understood in terms of a unit like `px`, it depends on _what_ is scaled.
+The `markersize` attribute scales the scatter size relative to the scatter marker's base size along one of its dimensions. Two things to note as a result:
+
+1. `markersize` cannot be directly understood in terms of a unit like `px`, it depends on _what_ is scaled.
+2. A `markersize` of, e.g. `20` will appear to have roughly four times as much area as a markersize of `10` (since the `20` will be twice as large as `10` in two dimensions).
 
 For `Char` markers, `markersize` is equivalent to the font size when displaying the same characters using `text`.
 
