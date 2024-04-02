@@ -863,15 +863,20 @@ function getlimits(la::Axis, dim)
     for plot in la.scene
         if !exclude(plot)
             bb = data_limits(plot)
+            # Limits can be one dimensional (partially NaN) e.g. for hlines
+            # which results in every model * point to become NaN. For now we skip
+            # model application if the model matrix is identity to avoid this...
             model = plot.model[][Vec(1,2,3), Vec(1,2,3)]
-            bb = Rect3d(map(p -> model * to_ndim(Point3d, p, 0), coordinates(bb)))
+            if !(model ≈ I)
+                bb = Rect3d(map(p -> model * to_ndim(Point3d, p, 0), coordinates(bb)))
+            end
             update_boundingbox!(bb_ref, bb)
         end
     end
     boundingbox = bb_ref[]
 
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    Makie.isfinite_rect(boundingbox) || return nothing
+    isfinite_rect(boundingbox, dim) || return nothing
 
     # otherwise start with the first box
     mini, maxi = minimum(boundingbox), maximum(boundingbox)

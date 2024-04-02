@@ -41,7 +41,8 @@ hist(data, normalization = :pdf, bar_labels = :values,
 
 With `scale_to`, and `offset`, one can put multiple histograms into the same plot.
 Note, that offset automatically sets fillto, to move the whole barplot.
-Also, one can use a negative `scale_to` amount to flip the histogram.
+Also, one can use a negative `scale_to` amount to flip the histogram,
+or `scale_to=:flip` to flip the direction of the bars without changing their height.
 
 \begin{examplefigure}{}
 ```julia

@@ -186,22 +186,22 @@ function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
     # Initial bbox from corners
     p = polar2cartesian(rmin, thetamin)
     bb = Rect2f(p, Vec2f(0))
-    bb = _update_rect(bb, polar2cartesian(rmax, thetamin))
-    bb = _update_rect(bb, polar2cartesian(rmin, thetamax))
-    bb = _update_rect(bb, polar2cartesian(rmax, thetamax))
+    bb = update_boundingbox(bb, polar2cartesian(rmax, thetamin))
+    bb = update_boundingbox(bb, polar2cartesian(rmin, thetamax))
+    bb = update_boundingbox(bb, polar2cartesian(rmax, thetamax))
 
     # only outer circle can update bb
     if thetamin < -3pi/2 < thetamax || thetamin < pi/2 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, pi/2))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, pi/2))
     end
     if thetamin < -pi < thetamax || thetamin < pi < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, pi))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, pi))
     end
     if thetamin < -pi/2 < thetamax || thetamin < 3pi/2 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, 3pi/2))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, 3pi/2))
     end
     if thetamin < 0 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, 0))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, 0))
     end
 
     return bb
