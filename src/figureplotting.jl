@@ -119,7 +119,9 @@ MakieCore.create_axis_like!(::Dict, f::Figure) = f
 """
     create_axis_like!(attributes::Dict, ax::AbstractAxis)
 
-Method for e.g.: `plot!(ax, 1:4)`, which plots into an existing axis.
+Method to plot to an existing axis.
+
+E.g.: `plot!(ax, 1:4)` which plots to `ax`.
 """
 function create_axis_like!(attributes::Dict, ax::AbstractAxis)
     _disallow_keyword(:axis, attributes)
@@ -129,7 +131,9 @@ end
 """
     create_axis_like!(attributes::Dict, gsp::GridSubposition)
 
-method to create an axis for e.g.: `plot!(fig[1, 1][1, 1], 1:4)`, which needs an axis in f[1, 1][1, 1].
+Method to plot to an axis defined at a given sub-grid position.
+
+E.g.: `plot!(fig[1, 1][1, 1], 1:4)` which needs an axis to exist at f[1, 1][1, 1].
 """
 function MakieCore.create_axis_like!(attributes::Dict, gsp::GridSubposition)
     _disallow_keyword(:figure, attributes)
@@ -146,7 +150,9 @@ end
 """
     create_axis_like!(attributes::Dict, ::Nothing)
 
-method to create an axis for e.g.: `plot!(1:4)`, which requires a current figure and axis.
+Method to plot to the last created axis.
+
+E.g.: `plot!(1:4)` which requires a current figure and axis.
 """
 function MakieCore.create_axis_like!(attributes::Dict, ::Nothing)
     figure = current_figure()
@@ -161,7 +167,9 @@ end
 """
     create_axis_like!(attributes::Dict, gp::GridPosition)
 
-method to create an axis for e.g.: `plot!(fig[1, 1], 1:4)`, which requires an axis to be in `f[1, 1]`.
+Method to plot to an axis defined at a given grid position.
+
+E.g.: `plot!(fig[1, 1], 1:4)` which requires an axis to exist at `f[1, 1]`.
 """
 function MakieCore.create_axis_like!(attributes::Dict, gp::GridPosition)
     _disallow_keyword(:figure, attributes)
@@ -181,7 +189,9 @@ end
 """
     create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
 
-method to create an axis for e.g.: `plot(1:4)`, which has no axis nor a figure yet.
+Method to create a default Figure and Axis from a plot function.
+
+E.g.: `plot(1:4)` which requires a new Figure and Axis to be created.
 """
 function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     figure_kw = extract_attributes(attributes, :figure)
@@ -198,7 +208,9 @@ end
 """
     create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition)
 
-method to create an axis for e.g.: `plot(fig[1, 1], 1:4)`, which creates a new axis in f[1, 1].
+Method to create an Axis at a grid position given int a plot call.
+
+E.g.: `plot(fig[1, 1], 1:4)` which requires and Axis to be created at f[1, 1].
 """
 function create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition)
     isnothing(plot) && return nothing
@@ -225,7 +237,9 @@ end
 """
     create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposition)
 
-method to create an axis for e.g.: `plot(fig[1, 1][1, 1], 1:4)`, which creates an axis in f[1, 1][1, 1].
+Method to create an Axis at a sub-grid position given in a plot.
+
+E.g.: `plot(fig[1, 1][1, 1], 1:4)` which creates an Axis at f[1, 1][1, 1].
 """
 function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposition)
     isnothing(plot) && return nothing
