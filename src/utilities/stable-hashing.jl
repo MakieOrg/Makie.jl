@@ -1,7 +1,7 @@
 using CRC32c
 
 # Seems like crc32c is slow enough, that it's worthwhile to memoize the hashes
-const MEMOIZED_HASHES = Dict{Any,UInt32}()
+const MEMOIZED_HASHES = WeakKeyDict{Any,UInt32}()
 
 function fast_stable_hash(x)
     return get!(MEMOIZED_HASHES, x) do
