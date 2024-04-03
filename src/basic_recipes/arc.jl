@@ -11,7 +11,7 @@ Examples:
 `arc(Point2f(0), 1, 0.0, π)`
 `arc(Point2f(1, 2), 0.3. π, -π)`
 """
-@recipe Arc origin radius start_angle stop_angle begin
+@recipe Arc (origin, radius, start_angle, stop_angle) begin
     MakieCore.documented_attributes(Lines)...
     "The number of line points approximating the arc."
     resolution = 361

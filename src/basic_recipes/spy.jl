@@ -11,7 +11,7 @@ spy(x)
 spy(0..1, 0..1, x)
 ```
 """
-@recipe Spy x y z begin
+@recipe Spy (x, y, z) begin
     marker = automatic
     markersize = automatic
     framecolor = :black

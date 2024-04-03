@@ -3,7 +3,7 @@
 
 Plots an array of texts at each position in `positions`.
 """
-@recipe Annotations text position begin
+@recipe Annotations (text, position) begin
     MakieCore.documented_attributes(Text)...
 end
 

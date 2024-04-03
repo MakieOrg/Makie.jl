@@ -339,20 +339,46 @@ function _attribute_docs(T::Type{<:Plot})
     Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
 end
 
+types_for_plot_arguments(trait) = nothing
+types_for_plot_arguments(::Type{T}) where {T<:Plot} = types_for_plot_arguments(conversion_trait(T))
 
-macro recipe(Tsym::Symbol, args...)
 
-    funcname_sym = to_func_name(Tsym)
+function create_args_type_expr(PlotType, args)
+    if Meta.isexpr(args, :tuple)
+        all_fields = args.args
+    else
+        throw(ArgumentError("Recipe arguments need to be a tuple of the form (name::OptionalType, name,). Found: $(args)"))
+    end
+    if any(x -> !(Meta.isexpr(x, :(::)) || x isa Symbol), all_fields)
+        throw(ArgumentError("All fields need to be of type `name::Type` or `name`. Found: $(all_fields)"))
+    end
+    types = []; names = Symbol[]
+    for field in all_fields
+        push!(names, field isa Symbol ? field : field.args[1])
+        push!(types, field isa Symbol ? Any : field.args[2])
+    end
+    expr = quote
+        MakieCore.types_for_plot_arguments(::Type{<:$(PlotType)}) = ($(types...),)
+    end
+    return names, expr
+end
+
+macro recipe(Tsym::Symbol, attrblock)
+    return create_recipe_expr(Tsym, Expr(:tuple, :args), attrblock)
+end
+
+macro recipe(Tsym::Symbol, args, attrblock)
+    return create_recipe_expr(Tsym, args, attrblock)
+end
+
+function create_recipe_expr(Tsym, args, attrblock)
+      funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)
 
-    syms = args[1:end-1]
-    for sym in syms
-        sym isa Symbol || throw(ArgumentError("Found argument that is not a symbol in the position where optional argument names should appear: $sym"))
-    end
-    attrblock = args[end]
+    syms, arg_type_func = create_args_type_expr(PlotType, args)
     if !(attrblock isa Expr && attrblock.head === :block)
         throw(ArgumentError("Last argument is not a begin end block"))
     end
@@ -360,7 +386,6 @@ macro recipe(Tsym::Symbol, args...)
     # attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
     docs_placeholder = gensym()
-
     attr_placeholder = gensym()
 
     q = quote
@@ -414,6 +439,7 @@ macro recipe(Tsym::Symbol, args...)
         function $(MakieCore).default_theme(scene, T::Type{<:$(PlotType)})
             Attributes(documented_attributes(T).closure(scene))
         end
+        $(arg_type_func)
 
         docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)),user_docstring)
         @doc docstring_modified $funcname_sym
@@ -432,7 +458,7 @@ macro recipe(Tsym::Symbol, args...)
         )
     end
 
-    q
+    return q
 end
 
 function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)

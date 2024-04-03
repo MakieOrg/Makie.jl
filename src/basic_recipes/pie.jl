@@ -3,7 +3,7 @@
 
 Creates a pie chart from the given `values`.
 """
-@recipe Pie values begin
+@recipe Pie (values,) begin
     "If `true`, the sum of all values is normalized to 2π (a full circle)."
     normalize = true
     color = :gray

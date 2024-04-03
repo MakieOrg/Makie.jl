@@ -7,8 +7,7 @@ using Makie:
 using Logging
 
 function apply_conversion(trait, args...)
-    result, status = Makie.no_obs_conversion(trait, args, (;))
-    return result
+    return Makie.convert_arguments(trait, args...)
 end
 
 @testset "apply_conversion" begin

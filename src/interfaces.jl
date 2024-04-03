@@ -112,37 +112,17 @@ const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
 # single arguments gets ignored for now
 # TODO: add similar overloads as convert_arguments for the most common ones that work with units
-axis_convert(P, ::Dict, args::Observable...) = args
+apply_dim_convert!(P, ::Dict, args::Observable...) = args
 # we leave Z + n alone for now!
-function axis_convert(P, attr::Dict, x::Observable, y::Observable, z::Observable, args...)
-    return (axis_convert(P, attr, x, y)..., z, args...)
+function apply_dim_convert!(P, attr::Dict, x::Observable, y::Observable, z::Observable, args...)
+    return (apply_dim_convert!(P, attr, x, y)..., z, args...)
 end
 
-
-function axis_convert(P, attributes::Dict, x::Observable, y::Observable)
+function apply_dim_convert!(P, attributes::Dict, x::Observable, y::Observable)
     converts = to_value(get!(() -> DimConversions(), attributes, :dim_conversions))
     x = convert_axis_dim(P, converts, 1, x)
     y = convert_axis_dim(P, converts, 2, y)
     return (x, y)
-end
-
-function no_obs_conversion(P, args, kw)
-    converted = convert_arguments(P, args...; kw...)
-    if !(converted isa Tuple)
-        # SpecPlot/Vector{SpecPlot}/GridLayoutSpec
-        return converted, :half_converted
-    else
-        typed = convert_arguments_typed(P, converted...)
-        if typed isa NamedTuple
-            return values(typed), :converted
-        elseif typed isa MakieCore.ConversionError
-            return converted, typed
-        elseif typed isa NoConversion
-            return converted, :no_typed_conversion
-        else
-            error("convert_arguments_typed returned an invalid type: $(typed)")
-        end
-    end
 end
 
 function get_kw_values(func, names, kw)
@@ -163,38 +143,47 @@ function get_kw_obs(names, kw)
     return obs
 end
 
+function try_dim_convert(P, user_attributes, arg_obs)
+    if MakieCore.should_dim_convert(P, map(to_value, arg_obs))
+        return apply_dim_convert!(P, user_attributes, arg_obs...)
+    end
+    return arg_obs
+end
+
 function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attributes, deregister, recursion=1)
     if recursion == 3
         return P, args_obs
     end
     kw_obs = get_kw_obs(used_attrs, user_attributes)
     kw = to_value(kw_obs)
-    args_obs = axis_convert(P, user_attributes, args_obs...)
+    args_obs = try_dim_convert(P, user_attributes, args_obs)
     args = map(to_value, args_obs)
-    converted, status = no_obs_conversion(P, args, kw)
-
-    if status === :converted
+    converted = convert_arguments(P, args...; kw...)
+    status = got_converted(P, args)
+    if status === true
+        # Fully converted arguments to target type for Plot
         new_args_obs = map(Observable, converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
-            conv, _ = no_obs_conversion(P, args, kw)
+            conv = convert_arguments(P, args...; kw...)
             for (obs, arg) in zip(new_args_obs, conv)
-                obs[] = arg
+                obs.val = arg
             end
+            foreach(notify, new_args_obs)
             return
         end
         append!(deregister, fs)
         return P, new_args_obs
-    elseif status isa MakieCore.ConversionError && recursion == 1
+    elseif isnothing(status) && recursion == 1
         new_args_obs = map(Observable, converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
-            conv, _ = no_obs_conversion(P, args, kw)
+            conv = convert_arguments(P, args...; kw...)
             for (obs, arg) in zip(new_args_obs, conv)
                 obs[] = arg
             end
             return
         end
         append!(deregister, fs)
-        # return P, axis_convert(P, user_attributes, new_args_obs...)
+        # return P, apply_dim_convert!(P, user_attributes, new_args_obs...)
         return conversion_pipeline(P, used_attrs, new_args_obs, user_attributes, plot_attributes, deregister,
                                    recursion + 1)
     elseif status isa MakieCore.ConversionError && recursion == 2 && MakieCore.has_typed_convert(P)
@@ -203,7 +192,7 @@ function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attr
         P, converted2 = apply_convert!(P, plot_attributes, converted)
         new_args_obs = map(Observable, converted2)
         fs = onany(kw_obs, args_obs...) do kw, args...
-            conv, _ = no_obs_conversion(P, args, kw)
+            conv = convert_arguments(P, args...; kw...)
             P, converted3 = apply_convert!(P, plot_attributes, conv)
             for (obs, arg) in zip(new_args_obs, converted3)
                 obs[] = arg

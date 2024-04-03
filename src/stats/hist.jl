@@ -25,7 +25,7 @@ end
 
 Plot a step histogram of `values`.
 """
-@recipe StepHist values begin
+@recipe StepHist (values,) begin
     "Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges."
     bins = 15 # Int or iterable of edges
     """Allows to apply a normalization to the histogram.
@@ -88,7 +88,7 @@ end
 
 Plot a histogram of `values`.
 """
-@recipe Hist values begin
+@recipe Hist (values,) begin
     """
     Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges.
     """

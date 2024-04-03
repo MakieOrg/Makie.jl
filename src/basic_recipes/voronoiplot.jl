@@ -9,7 +9,7 @@ Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
 The tessellation can also be passed directly as a `VoronoiTessellation` from
 DelaunayTriangulation.jl.
 """
-@recipe Voronoiplot vorn begin
+@recipe Voronoiplot (vorn,) begin
     "Determines whether to plot the individual generators."
     show_generators=true
     smooth=false

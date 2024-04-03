@@ -2,67 +2,22 @@
 #                               Type Conversions                               #
 ################################################################################
 const RangeLike = Union{AbstractVector,ClosedInterval,Tuple{Real,Real}}
-const FloatType = Union{Float32, Float64}
 
-@convert_target struct Surface{N}
-    # Surfaces allow unstructured grids via matrices for x/y
-    # But also allow vectors or ClosedInterval for just ranges.
-    x::AbstractArray{<:FloatType,N}
-    y::AbstractArray{<:FloatType,N}
-    z::AbstractMatrix{<:FloatType}
+function MakieCore.types_for_plot_arguments(::PointBased)
+    return (AbstractVector{<:Point},)
 end
 
-@convert_target struct Heatmap
-    # Heatmap needs to have x/y on a grid.
-    # Also intervals get converted, since we need for every bin an exact location
-    x::RealVector
-    y::RealVector
-    data::AbstractMatrix{<:Union{FloatType,Colorant}}
-end
-
-@convert_target struct Image
-    # Images are defined as just 2D quads, so for x/y we just accept an interval.
-    # Heatmap/Surface should be used for irregularly gridded images
-    x::ClosedInterval{<:FloatType}
-    y::ClosedInterval{<:FloatType}
-    image::AbstractMatrix{<:Union{FloatType,Colorant}}
-end
-
-@convert_target struct PointBased{N} # We can use the traits as well for conversion targers
-    # all position based traits get converted to a simple vector of points
-    positions::AbstractVector{<:Point}
-end
-
-function MakieCore.makie_convert(X::Type{<:AbstractVector{<:Point}}, x::AbstractVector)
-    return float_convert(x)
-end
-
-function MakieCore.makie_convert(X::Type{<:ClosedInterval}, x)
-    return float_convert(x)
-end
-
-@convert_target struct Mesh
-    # We currently allow Mesh and vector of meshes for the Mesh type.
-    mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh}
-end
-
-@convert_target struct Volume
-    # Volumes also are just defined on a cube, so we only accept intervals.
-    # convert_arguments will convert from ranges etc to intervals
-    x::ClosedInterval{Float32}
-    y::ClosedInterval{Float32}
-    z::ClosedInterval{Float32}
-    volume::AbstractArray{Float32,3}
-end
-
-function got_converted(@nospecialize(result), @nospecialize(args))
-    if result === args
-        return false
-    elseif result isa NoConversion
-        return false
-    else
-        return true
+got_converted(result, args) = result !== args
+function got_converted(P, result, args)
+    types = MakieCore.types_for_plot_arguments(P)
+    if !isnothing(types)
+        if length(result) == length(types)
+            return all((arg, T)-> arg isa T, zip(result, types))
+        else
+            return false
+        end
     end
+    return nothing
 end
 
 convert_arguments(T::Type{<: AbstractPlot}, args...; kw...) = recursive_convert_arguments(T, args...; kw...)
@@ -781,7 +736,7 @@ float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(flo
 float_type(::Type{Union{Missing, T}}) where {T} = float_type(T)
 float_type(::Type{Union{Nothing,T}}) where {T} = float_type(T)
 float_type(::Type{ClosedInterval{T}}) where {T} = ClosedInterval{T}
-float_type(::Type{ClosedInterval}) where {T} = ClosedInterval{Float32}
+float_type(::Type{ClosedInterval}) = ClosedInterval{Float32}
 float_type(::AbstractArray{T}) where {T} = float_type(T)
 float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
 

@@ -200,7 +200,7 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
 
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 """
-@recipe Image x y image begin
+@recipe Image (x::ClosedInterval{<:FloatType}, y::ClosedInterval{<:FloatType}, image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
     mixin_generic_plot_attributes()...
@@ -238,7 +238,7 @@ If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(
 
 Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
 """
-@recipe Heatmap x y values begin
+@recipe Heatmap (x::RealVector, y::RealVector, values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated"
     interpolate = false
     mixin_generic_plot_attributes()...
@@ -258,7 +258,12 @@ Available algorithms are:
 * `:additive` => AdditiveRGBA
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
-@recipe Volume x y z volume begin
+@recipe Volume (
+        x::ClosedInterval{Float32},
+        y::ClosedInterval{Float32},
+        z::ClosedInterval{Float32},
+        volume::AbstractArray{Float32,3}
+    ) begin
     "Sets the volume algorithm that is used."
     algorithm = :mip
     "Sets the range of values picked up by the IsoValue algorithm."
@@ -276,6 +281,8 @@ Available algorithms are:
     mixin_colormap_attributes()...
 end
 
+const VecOrMat{T} = Union{AbstractVector{T}, AbstractMatrix{T}}
+
 """
     surface(x, y, z)
     surface(z)
@@ -283,7 +290,7 @@ end
 Plots a surface, where `(x, y)` define a grid whose heights are the entries in `z`.
 `x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
 """
-@recipe Surface x y z begin
+@recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
     "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`."
     color = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
@@ -302,7 +309,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 
 `NaN` values are displayed as gaps in the line.
 """
-@recipe Lines positions begin
+@recipe Lines (positions,) begin
     "The color of the line."
     color = @inherit linecolor
     "Sets the width of the line in screen units"
@@ -338,7 +345,7 @@ $(Base.Docs.doc(colormap_attributes!))
 
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe LineSegments positions begin
+@recipe LineSegments (positions,) begin
     "The color of the line."
     color = @inherit linecolor
     "Sets the width of the line in pixel units"
@@ -361,7 +368,7 @@ end
 
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 """
-@recipe Mesh mesh begin
+@recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh},) begin
     "Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates."
     color = @inherit patchcolor
     "sets whether colors should be interpolated"
@@ -380,7 +387,7 @@ end
 
 Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 """
-@recipe Scatter positions begin
+@recipe Scatter (positions,) begin
     "Sets the color of the marker. If no color is set, multiple calls to `scatter!` will cycle through the axis color palette."
     color = @inherit markercolor
     "Sets the scatter marker."
@@ -430,7 +437,7 @@ end
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
 `markersize` is a scaling applied to the primitive passed as `marker`.
 """
-@recipe MeshScatter positions begin
+@recipe MeshScatter (positions,) begin
     "Sets the color of the marker."
     color = @inherit markercolor
     "Sets the scattered mesh."
@@ -459,7 +466,7 @@ end
 Plots one or multiple texts passed via the `text` keyword.
 `Text` uses the `PointBased` conversion trait.
 """
-@recipe Text positions begin
+@recipe Text (positions,) begin
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
     "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}`, or one colorant for the whole text. If color is a vector of numbers, the colormap args are used to map the numbers to colors."
@@ -624,7 +631,7 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
     depth_shift = -1f-5
 end
 
-@recipe Arrows points directions begin
+@recipe Arrows (points, directions) begin
     "Sets the color of arrowheads and lines. Can be overridden separately using `linecolor` and `arrowcolor`."
     color = :black
     """Scales the size of the arrow head. This defaults to

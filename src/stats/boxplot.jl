@@ -17,7 +17,7 @@ The boxplot has 3 components:
 - `x`: positions of the categories
 - `y`: variables within the boxes
 """
-@recipe BoxPlot x y begin
+@recipe BoxPlot (x, y) begin
     "Vector of statistical weights (length of data). By default, each observation has weight `1`."
     weights = automatic
     color = @inherit patchcolor

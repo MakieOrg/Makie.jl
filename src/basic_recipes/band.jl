@@ -5,7 +5,7 @@
 Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
 between the points in `lower` and `upper`.
 """
-@recipe Band lowerpoints upperpoints begin
+@recipe Band (lowerpoints, upperpoints) begin
     MakieCore.documented_attributes(Mesh)...
     shading = NoShading
 end

@@ -36,7 +36,7 @@ between each.
 - `jitter_width=0.05`: Determines the width of the scatter-plot bar in category x-axis
   absolute terms.
 """
-@recipe RainClouds category_labels data_array begin
+@recipe RainClouds (category_labels, data_array) begin
     """
     Can take values of `:left`, `:right`, determines where the violin plot will be,
     relative to the scatter points
