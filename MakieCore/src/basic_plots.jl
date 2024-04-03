@@ -44,7 +44,8 @@ function generic_plot_attributes(attr)
         space = attr[:space],
         inspector_label = attr[:inspector_label],
         inspector_clear = attr[:inspector_clear],
-        inspector_hover = attr[:inspector_hover]
+        inspector_hover = attr[:inspector_hover],
+        userdata = attr[:userdata]
     )
 end
 
