@@ -12,6 +12,7 @@ default_theme(scene) = generic_plot_attributes!(Attributes())
 - `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `space::Symbol = :data` sets the transformation space for box encompassing the volume plot. See `Makie.spaces()` for possible inputs.
+- `userdata = Attributes()` allows for data to be attached to a plot without validation.
 """
 function generic_plot_attributes!(attr)
     attr[:transformation] = automatic
@@ -26,6 +27,7 @@ function generic_plot_attributes!(attr)
     attr[:inspector_label] = automatic
     attr[:inspector_clear] = automatic
     attr[:inspector_hover] = automatic
+    attr[:userdata] = Attributes()
     return attr
 end
 
@@ -73,6 +75,8 @@ function mixin_generic_plot_attributes()
         inspector_clear = automatic
         "Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods."
         inspector_hover = automatic
+        "Allows for users to attach any data to a plot without validation."
+        userdata = Attributes()
     end
 end
 
