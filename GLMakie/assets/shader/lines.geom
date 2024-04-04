@@ -33,6 +33,7 @@ flat out {{stripped_color_type}} f_color1;
 flat out {{stripped_color_type}} f_color2;
 flat out float f_alpha_weight;
 flat out float f_cumulative_length;
+flat out ivec2 f_capmode;
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -40,6 +41,9 @@ out vec3 o_view_normal;
 {{pattern_type}} pattern;
 uniform float pattern_length;
 uniform vec2 resolution;
+
+uniform int capstyle;
+uniform int jointstyle;
 
 // Constants
 const float MITER_LIMIT = -0.4;
@@ -372,8 +376,8 @@ void main(void)
     // if joint skipped   elongate to new length
     // if normal joint    elongate a lot to let discard/truncation handle joint
     f_extrusion = vec2(
-        !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0][0])),
-        !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1][0]))
+        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0][0])),
+        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1][0]))
     );
 
     // used to compute width sdf
@@ -389,6 +393,12 @@ void main(void)
     // for uv's
     f_cumulative_length = g_lastlen[1];
 
+    // 0 :butt/normal cap or joint | 1 :square cap | 2 rounded cap/joint
+    f_capmode = ivec2(
+        isvalid[0] ? jointstyle : capstyle,
+        isvalid[3] ? jointstyle : capstyle
+    );
+
     // Generate interpolated/varying outputs:
 
     LineVertex vertex;
@@ -403,7 +413,7 @@ void main(void)
                 if (is_truncated[x] || !isvalid[3*x]) {
                     // handle overlap in fragment shader via SDF comparison
                     offset = shape_factor[y] * (
-                        (halfwidth * extrusion[x][y] + (2 * x - 1) * AA_THICKNESS) * v1 +
+                        (halfwidth * max(1.0, abs(extrusion[x][y])) + AA_THICKNESS) * (2 * x - 1) * v1 +
                         vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0)
                     );
                 } else {

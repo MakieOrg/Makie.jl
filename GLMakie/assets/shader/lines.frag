@@ -18,7 +18,7 @@ in vec2 f_truncation;
 in float f_linestart;
 in float f_linelength;
 
-flat in float f_linewidth;
+flat in float f_linewidth; // half the real linewidth here because we count from center
 flat in vec4 f_pattern_overwrite;
 flat in vec2 f_extrusion;
 flat in vec2 f_discard_limit;
@@ -27,6 +27,7 @@ flat in {{stripped_color_type}} f_color2;
 flat in float f_alpha_weight;
 flat in uvec2 f_id;
 flat in float f_cumulative_length;
+flat in ivec2 f_capmode;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;
@@ -149,14 +150,35 @@ if (!debug) {
 
     // SDF for inside vs outside along the line direction. extrusion adjusts
         // the distance from p1/p2 for joints etc
-    float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
+    float sdf;
+
+    if (f_capmode.x == 2) { // rounded joint or cap
+        sdf = min(sqrt(f_quad_sdf1.x * f_quad_sdf1.x + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.x);
+    } else if (f_capmode.x == 1) { // :square cap
+        sdf = f_quad_sdf1.x - f_linewidth;
+    } else // default miter joint / :butt cap
+        sdf = f_quad_sdf1.x - f_extrusion.x;
+
+    if (f_capmode.y == 2) { // rounded joint or cap
+        sdf = max(sdf,
+            min(sqrt(f_quad_sdf1.y * f_quad_sdf1.y + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.y)
+        );
+    } else if (f_capmode.y == 1) { // :square cap
+        sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
+    } else // default miter joint / :butt cap
+        sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);
+
+
+
 
     // distance in linewidth direction
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
 
     // outer truncation of truncated joints (smooth outside edge)
-    sdf = max(sdf, f_truncation.x);
-    sdf = max(sdf, f_truncation.y);
+    if (f_capmode.x != 2)
+        sdf = max(sdf, f_truncation.x);
+    if (f_capmode.y != 2)
+        sdf = max(sdf, f_truncation.y);
 
     // inner truncation (AA for overlapping parts)
     // min(a, b) keeps what is inside a and b

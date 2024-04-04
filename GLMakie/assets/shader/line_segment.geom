@@ -32,6 +32,7 @@ flat out {{stripped_color_type}} f_color1;
 flat out {{stripped_color_type}} f_color2;
 flat out float f_alpha_weight;
 flat out float f_cumulative_length;
+flat out ivec2 f_capmode;
 
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 2.0 * AA_RADIUS;
@@ -93,6 +94,7 @@ void main(void)
     f_linestart = 0;                // no corners so no joint extrusion to consider
     f_linelength = segment_length;  // and also no changes in line length
     f_cumulative_length = 0.0;      // resets for each new segment
+    f_capmode = ivec2(0,0); // TODO
 
     // Generate vertices
 

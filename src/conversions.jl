@@ -1072,16 +1072,16 @@ function convert_gaps(gaps::GapType)
     return (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
-function convert_attribute(value::Symbol, k::key"capstyle")
+function convert_attribute(value::Symbol, ::key"capstyle")
     # TODO: make this an enum?
     vals = Dict(:butt => 0, :square => 1, :round => 2)
     return get(vals, value) do
         error("$value is not a valid cap style. It must be one of $(keys(vals)).")
     end
 end
-function convert_attribute(value::Symbol, k::key"capstyle")
+function convert_attribute(value::Symbol, ::key"jointstyle")
     # TODO: make this an enum?
-    vals = Dict(:auto => 0, :round => 1)
+    vals = Dict(:miter => 0, :round => 2) # 0 and 2 are shared between this and capstyle. 1 has no equivalent here
     return get(vals, value) do
         error("$value is not a valid joint style. It must be one of $(keys(vals)).")
     end
