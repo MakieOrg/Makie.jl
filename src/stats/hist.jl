@@ -13,7 +13,9 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     h_norm = StatsBase.normalize(h; mode = normalization)
     weights = h_norm.weights
     centers = edges[1:end-1] .+ (diff(edges) ./ 2)
-    if !isnothing(scale_to)
+    if scale_to === :flip
+        weights .= -weights
+    elseif !isnothing(scale_to)
         max = maximum(weights)
         weights .= weights ./ max .* scale_to
     end
@@ -86,7 +88,39 @@ end
 """
     hist(values)
 
-Plot a histogram of `values`.
+Plot a histogram of `values`. `bins` can be an `Int` to create that
+number of equal-width bins over the range of `values`.
+Alternatively, it can be a sorted iterable of bin edges. The histogram
+can be normalized by setting `normalization`. Possible values are:
+
+*  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
+   has norm 1 and represents a PDF.
+* `:density`: Normalize by bin sizes only. Resulting histogram represents
+   count density of input and does not have norm 1. Will not modify the
+   histogram if it already represents a density (`h.isdensity == 1`).
+* `:probability`: Normalize by sum of weights only. Resulting histogram
+   represents the fraction of probability mass for each bin and does not have
+   norm 1.
+*  `:none`: Do not normalize.
+
+Statistical weights can be provided via the `weights` keyword argument.
+
+The following attributes can move the histogram around,
+which comes in handy when placing multiple histograms into one plot:
+* `offset = 0.0`: adds an offset to every value
+* `fillto = 0.0`: defines where the bar starts
+* `scale_to = nothing`: allows to scale all values to a certain height. This
+can also be set to `:flip` to flip the direction of histogram bars without
+scaling them to a common height.
+
+Color can either be:
+* a vector of `bins` colors
+* a single color
+* `:values`, to color the bars with the values from the histogram
+
+You can also draw a histogram in x-direction rather than y-direction by setting
+`direction = :x`.
+
 """
 @recipe Hist (values,) begin
     """
