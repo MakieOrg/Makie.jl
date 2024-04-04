@@ -81,11 +81,10 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
 
     function Plot{Typ,T}(
             kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable},
-            attributes::Attributes=Attributes(),
             deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
             ) where {Typ,T,N}
         validate_attribute_keys(Plot{Typ}, kw)
-        return new{Typ,T}(nothing, kw, args, converted, attributes, Plot[], deregister_callbacks)
+        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[], deregister_callbacks)
     end
 end
 

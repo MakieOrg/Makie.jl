@@ -195,14 +195,7 @@ end
 GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
 
 function apply_typed_convert(P, @nospecialize(args::Tuple))
-    converted = convert_arguments_typed(P, args...)
-    if converted isa NoConversion || converted isa MakieCore.ConversionError
-        return args
-    elseif converted isa NamedTuple
-        return values(converted)
-    else
-        return converted
-    end
+    return convert_arguments(P, args...)
 end
 
 """
@@ -390,6 +383,33 @@ plots[] = [
     Attributes()
 end
 
+function Base.propertynames(pl::PlotList)
+    if length(pl.plots) == 1
+        return Base.propertynames(pl.plots[1])
+    else
+        return ()
+    end
+end
+
+function Base.getproperty(pl::PlotList, property::Symbol)
+    hasfield(typeof(pl), property) && return getfield(pl, property)
+    if length(pl.plots) == 1
+        return getproperty(pl.plots[1], property)
+    else
+        error("Can't get property $property on PlotList with multiple plots.")
+    end
+end
+
+function Base.setproperty!(pl::PlotList, property::Symbol, value)
+    hasfield(typeof(pl), property) && return setfield!(pl, property, value)
+    property === :model && return setproperty!(pl.attributes, property, value)
+    if length(pl.plots) == 1
+        setproperty!(pl.plots[1], property, value)
+    else
+        error("Can't set property $property on PlotList with multiple plots.")
+    end
+end
+
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
 plottype(::AbstractVector{PlotSpec}) = PlotList
 
@@ -501,6 +521,9 @@ function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
     update_plotspecs!(scene, p[1], p)
     return
 end
+
+plottype(::Type{<:Plot{T}}, ::AbstractVector{PlotSpec}) where {T} = PlotList
+
 
 ## BlockSpec
 

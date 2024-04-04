@@ -7,12 +7,23 @@ function MakieCore.types_for_plot_arguments(::PointBased)
     return (AbstractVector{<:Point},)
 end
 
-got_converted(result, args) = result !== args
-function got_converted(P, result, args)
+got_converted(result::Tuple, args::Tuple) = result !== args
+function got_converted(P::Type, PTrait::ConversionTrait, result)
+    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec}
+        return SpecApi
+    end
     types = MakieCore.types_for_plot_arguments(P)
-    if !isnothing(types)
+    if !isnothing(types) && !any(isnothing, types)
         if length(result) == length(types)
-            return all((arg, T)-> arg isa T, zip(result, types))
+            return all(((arg, T),)-> arg isa T, zip(result, types))
+        else
+            return false
+        end
+    end
+    types = MakieCore.types_for_plot_arguments(PTrait)
+    if !isnothing(types) && !any(isnothing, types)
+        if length(result) == length(types)
+            return all(((arg, T),) -> arg isa T, zip(result, types))
         else
             return false
         end
@@ -397,7 +408,6 @@ function to_interval(x, dim)
     x isa AbstractVector && print_range_warning(dim, x)
     return to_interval(x)
 end
-
 
 """
     convert_arguments(::ImageLike, mat::AbstractMatrix)

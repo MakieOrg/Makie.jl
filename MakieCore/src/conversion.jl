@@ -148,8 +148,7 @@ If a recipe wants to use dim conversions, it should overload this function:
     MakieCore.should_dim_convert(::Type{<:MyPlotType}, args) = should_dim_convert(get_element_type(args))
 ``
 """
-function should_dim_convert(P::Type{<: Plot}, args)
-    typed_convert = !isnothing(types_for_plot_arguments(P)) || !isnothing(types_for_plot_arguments(conversion_trait(P, args...)))
-    typed_convert || return false
-    return should_dim_convert(get_element_type(args))
+function should_dim_convert(P, arg)
+    isnothing(types_for_plot_arguments(P)) && return false
+    return should_dim_convert(get_element_type(arg))
 end

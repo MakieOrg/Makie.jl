@@ -343,6 +343,9 @@ types_for_plot_arguments(trait) = nothing
 types_for_plot_arguments(::Type{T}) where {T<:Plot} = types_for_plot_arguments(conversion_trait(T))
 
 
+function create_args_type_expr(PlotType, args::Nothing)
+    return [], :()
+end
 function create_args_type_expr(PlotType, args)
     if Meta.isexpr(args, :tuple)
         all_fields = args.args
@@ -355,7 +358,7 @@ function create_args_type_expr(PlotType, args)
     types = []; names = Symbol[]
     for field in all_fields
         push!(names, field isa Symbol ? field : field.args[1])
-        push!(types, field isa Symbol ? Any : field.args[2])
+        push!(types, field isa Symbol ? nothing : field.args[2])
     end
     expr = quote
         MakieCore.types_for_plot_arguments(::Type{<:$(PlotType)}) = ($(types...),)
@@ -364,7 +367,7 @@ function create_args_type_expr(PlotType, args)
 end
 
 macro recipe(Tsym::Symbol, attrblock)
-    return create_recipe_expr(Tsym, Expr(:tuple, :args), attrblock)
+    return create_recipe_expr(Tsym, nothing, attrblock)
 end
 
 macro recipe(Tsym::Symbol, args, attrblock)

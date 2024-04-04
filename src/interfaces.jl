@@ -105,26 +105,6 @@ const atomic_functions = (
 )
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
-
-
-
-
-
-# single arguments gets ignored for now
-# TODO: add similar overloads as convert_arguments for the most common ones that work with units
-apply_dim_convert!(P, ::Dict, args::Observable...) = args
-# we leave Z + n alone for now!
-function apply_dim_convert!(P, attr::Dict, x::Observable, y::Observable, z::Observable, args...)
-    return (apply_dim_convert!(P, attr, x, y)..., z, args...)
-end
-
-function apply_dim_convert!(P, attributes::Dict, x::Observable, y::Observable)
-    converts = to_value(get!(() -> DimConversions(), attributes, :dim_conversions))
-    x = convert_axis_dim(P, converts, 1, x)
-    y = convert_axis_dim(P, converts, 2, y)
-    return (x, y)
-end
-
 function get_kw_values(func, names, kw)
     return NamedTuple([Pair{Symbol,Any}(k, func(kw[k]))
             for k in names if haskey(kw, k)])
@@ -142,25 +122,48 @@ function get_kw_obs(names, kw)
     end
     return obs
 end
+import MakieCore: should_dim_convert
 
-function try_dim_convert(P, user_attributes, arg_obs)
-    if MakieCore.should_dim_convert(P, map(to_value, arg_obs))
-        return apply_dim_convert!(P, user_attributes, arg_obs...)
+function try_dim_convert(P, PTrait, user_attributes, arg_obs)
+    if length(arg_obs) !== 2
+        return arg_obs
     end
-    return arg_obs
+    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
+    return map(enumerate(arg_obs)) do (i, arg)
+        val = to_value(arg)
+        if !isnothing(converts[i]) || should_dim_convert(P, val) || should_dim_convert(PTrait, val)
+            return convert_axis_dim(converts, i, arg)
+        end
+        return arg
+    end
 end
 
-function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attributes, deregister, recursion=1)
+function conversion_pipeline(P, PTrait, used_attrs, args_obs, user_attributes, deregister, recursion=1)
     if recursion == 3
+        return P, args_obs
+    end
+
+    args = map(to_value, args_obs)
+    status = got_converted(P, PTrait, args)
+    if status == true && recursion == 2
         return P, args_obs
     end
     kw_obs = get_kw_obs(used_attrs, user_attributes)
     kw = to_value(kw_obs)
-    args_obs = try_dim_convert(P, user_attributes, args_obs)
+    args_obs = try_dim_convert(P, PTrait, user_attributes, args_obs)
     args = map(to_value, args_obs)
     converted = convert_arguments(P, args...; kw...)
-    status = got_converted(P, args)
-    if status === true
+    status = got_converted(P, PTrait, converted)
+    if status === SpecApi
+        new_args_obs = Observable{Any}([converted])
+        fs = onany(kw_obs, args_obs...) do kw, args...
+            conv = convert_arguments(P, args...; kw...)
+            new_args_obs[] = [conv]
+            return
+        end
+        append!(deregister, fs)
+        return P, (new_args_obs,)
+    elseif status === true
         # Fully converted arguments to target type for Plot
         new_args_obs = map(Observable, converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
@@ -173,7 +176,7 @@ function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attr
         end
         append!(deregister, fs)
         return P, new_args_obs
-    elseif isnothing(status) && recursion == 1
+    elseif status == false && recursion == 1
         new_args_obs = map(Observable, converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
             conv = convert_arguments(P, args...; kw...)
@@ -183,17 +186,14 @@ function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attr
             return
         end
         append!(deregister, fs)
-        # return P, apply_dim_convert!(P, user_attributes, new_args_obs...)
-        return conversion_pipeline(P, used_attrs, new_args_obs, user_attributes, plot_attributes, deregister,
+        return conversion_pipeline(P, PTrait, used_attrs, new_args_obs, user_attributes, deregister,
                                    recursion + 1)
-    elseif status isa MakieCore.ConversionError && recursion == 2 && MakieCore.has_typed_convert(P)
-        throw(status)
     else
-        P, converted2 = apply_convert!(P, plot_attributes, converted)
+        P, converted2 = apply_convert!(P, Attributes(), converted)
         new_args_obs = map(Observable, converted2)
         fs = onany(kw_obs, args_obs...) do kw, args...
             conv = convert_arguments(P, args...; kw...)
-            P, converted3 = apply_convert!(P, plot_attributes, conv)
+            P, converted3 = apply_convert!(P, Attributes(), conv)
             for (obs, arg) in zip(new_args_obs, converted3)
                 obs[] = arg
             end
@@ -202,6 +202,7 @@ function conversion_pipeline(P, used_attrs, args_obs, user_attributes, plot_attr
         append!(deregister, fs)
         return P, new_args_obs
     end
+    # throw(ArgumentError("Conversion failed for $(P) with args: $(typeof.(args)) and kw: $(typeof(kw))"))
 end
 
 
@@ -215,15 +216,14 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     args = map(to_value, user_args)
     attr = used_attributes(P, args...)
     args_obs = map(x -> x isa Observable ? x : Observable{Any}(x), user_args)
-    plot_attributes = Attributes()
     deregister = Observables.ObserverFunction[]
-    PNew, converted_obs = conversion_pipeline(P, attr, args_obs, user_attributes, plot_attributes, deregister)
+    PTrait = conversion_trait(P, args...)
+    PNew, converted_obs = conversion_pipeline(P, PTrait, attr, args_obs, user_attributes, deregister)
     args = map(to_value, converted_obs)
     ArgTyp = MakieCore.argtypes((args...,))
     FinalPlotFunc = plotfunc(plottype(PNew, args...))
     foreach(x -> delete!(user_attributes, x), attr)
-    foreach(x -> delete!(plot_attributes, x), attr)
-    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], converted_obs, plot_attributes,
+    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], converted_obs,
                                       deregister)
 end
 

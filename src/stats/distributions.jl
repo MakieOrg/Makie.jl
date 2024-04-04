@@ -97,10 +97,15 @@ end
 maybefit(D::Type{<:Distribution}, y) = Distributions.fit(D, y)
 maybefit(x, _) = x
 
+function convert_arguments(::Type{<:QQPlot}, points::AbstractVector{<:Point2},
+                           lines::AbstractVector{<:Point2}; qqline = :none)
+    return (points, lines)
+end
+
 function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
     x = maybefit(x′, y)
     points, line = fit_qqplot(x, y; qqline = qqline)
-    return PlotSpec(:QQPlot, points, line)
+    return (points, line)
 end
 
 convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =

@@ -34,18 +34,14 @@ function Base.setindex!(conversions::DimConversions, value, i::Int)
     end
 end
 
-function convert_axis_dim(P, conversions::DimConversions, dim::Int, value::Observable)
+function convert_axis_dim(conversions::DimConversions, dim::Int, value::Observable)
     conversion = conversions[dim]
     if !isnothing(conversion)
         return convert_axis_dim(conversion, value)
     end
-    can_convert = MakieCore.should_dim_convert(P, value[])
-    if can_convert
-        c = dim_conversion_from_args(value[])
-        conversions[dim] = c
-        return convert_axis_dim(c, value)
-    end
-    return value
+    c = dim_conversion_from_args(value[])
+    conversions[dim] = c
+    return convert_axis_dim(c, value)
 end
 
 ## Interface to be overloaded for any AbstractDimConversion type

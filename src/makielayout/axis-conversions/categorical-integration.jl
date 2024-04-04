@@ -117,7 +117,6 @@ function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observa
     # so we introduce a placeholder observable that gets triggered when an update is needed
     # outside of category_to_int updating
     update_needed = Observable(nothing)
-
     on(values_obs; update=true) do values
         new_values = unique!(Any[get_values(values)...])
         if new_values != prev_values

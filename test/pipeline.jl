@@ -188,6 +188,7 @@ struct DateStruct end
 function Makie.convert_arguments(::PointBased, ::DateStruct)
     return (1:5, DateTime.(1:5))
 end
+
 @testset "dates in convert_arguments" begin
     f, ax, pl = scatter(DateStruct())
     pl_conversion = Makie.get_conversions(pl)
