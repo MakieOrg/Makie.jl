@@ -328,13 +328,13 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values=true)
     ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values=true)
-    convert_dim_1 = dim_observable(ax.scene.conversions, 1)
+
     xaxis = LineAxis(blockscene, endpoints = xaxis_endpoints, limits = xlims,
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
         label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
-        ticklabelspace = ax.xticklabelspace, dim_convert = convert_dim_1, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
+        ticklabelspace = ax.xticklabelspace, dim_convert = ax.convert_dim_1, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
@@ -343,14 +343,12 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.xaxis = xaxis
 
-    convert_dim_2 = dim_observable(ax.scene.conversions, 2)
-
     yaxis = LineAxis(blockscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
         label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
-        ticklabelspace = ax.yticklabelspace, dim_convert = convert_dim_2, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
+        ticklabelspace = ax.yticklabelspace, dim_convert = ax.convert_dim_2, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
             tickcolor = ax.ytickcolor,
@@ -863,15 +861,20 @@ function getlimits(la::Axis, dim)
     for plot in la.scene
         if !exclude(plot)
             bb = data_limits(plot)
+            # Limits can be one dimensional (partially NaN) e.g. for hlines
+            # which results in every model * point to become NaN. For now we skip
+            # model application if the model matrix is identity to avoid this...
             model = plot.model[][Vec(1,2,3), Vec(1,2,3)]
-            bb = Rect3d(map(p -> model * to_ndim(Point3d, p, 0), coordinates(bb)))
+            if !(model ≈ I)
+                bb = Rect3d(map(p -> model * to_ndim(Point3d, p, 0), coordinates(bb)))
+            end
             update_boundingbox!(bb_ref, bb)
         end
     end
     boundingbox = bb_ref[]
 
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    Makie.isfinite_rect(boundingbox) || return nothing
+    isfinite_rect(boundingbox, dim) || return nothing
 
     # otherwise start with the first box
     mini, maxi = minimum(boundingbox), maximum(boundingbox)

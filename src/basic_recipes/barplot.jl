@@ -225,7 +225,7 @@ function barplot_labels(xpositions, ypositions, offset, bar_labels, in_y_directi
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background,
                                          color_over_bar, label_offset, label_rotation, label_align)
             label_pos = broadcast(xpositions, ypositions, offset, bar_labels) do x, y, off, l
-                return (string(label_formatter(l)), in_y_direction ? Point2f(x, y+off) : Point2f(y, x+off))
+                return (string(label_formatter(l)), in_y_direction ? Point2d(x, y+off) : Point2d(y, x+off))
             end
             return (label_pos, attributes...)
         else

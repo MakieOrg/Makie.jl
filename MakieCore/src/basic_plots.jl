@@ -522,58 +522,36 @@ Internally voxels are represented as 8 bit unsigned integer, with `0x00` always
 being an invisible "air" voxel. Passing a chunk with matching type will directly
 set those values. Note that color handling is specialized for the internal
 representation and may behave a bit differently than usual.
-
-## Attributes
-
-### Specific to `Voxel`
-
-- `color = nothing` sets colors per voxel id, skipping `0x00`. This means that a voxel with id 1 will grab `plot.colors[1]`
-  and so on up to id 255. This can also be set to a Matrix of colors, i.e. an image for texture mapping.
-- `is_air = x -> isnothing(x) || ismissing(x) || isnan(x)` controls which values in the input data are mapped to invisible
-  (air) voxels.
-- `depthsorting = false` controls the render order of voxels. If set to `false` voxels close to the viewer are rendered
-  first which should reduce overdraw and yield better performance. If set to `true` voxels are rendered back to front
-  enabling correct order for transparent voxels.
-- `uvmap = nothing` defines a map from voxel ids (and optionally sides) to uv coordinates. These uv coordinates are then
-  used to sample a 2D texture passed through `color` for texture mapping.
-- `interpolate = false` controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated).
-- `gap = 0.0` sets the gap between adjacent voxels in units of the voxel size. This needs to be larger than 0.01 to take effect.
-- `_limits`: Internal attribute for keeping track of `extrema(chunk)`.
-- `_local_update`: Internal attribute for communicating updates to the backend.
-
-$(Base.Docs.doc(shading_attributes!))
-
-### Color attributes
-
-- `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that voxels sample to get their color.
-  Internally the colormap is always represented by 253 colors, matching voxel ids 2..254. Ids 1 and 255 are reserved
-  for `lowclip` and `highclip`. `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any
-  symbol from ColorBrewer or PlotUtils. To see all available color gradients, you can call `Makie.available_gradients()`.
-- `colorscale::Function = identity` color transform function. Can be any function, but only works well together with
-  `Colorbar` for `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
-- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
-  Internally this effects the voxel ids generated from the input data so that the colormap resolution remains at 253 colors.
-- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange. (voxel id = 1)
-- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange. (voxel id = 255)
-- `alpha = 1.0` sets the alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)` will get multiplied.
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(Voxels, chunk) do scene
-    attr = Attributes(
-        color = nothing,
-        is_air = x -> isnothing(x) || ismissing(x) || isnan(x),
-        uvmap = nothing,
-        interpolate = false, # texture
-        depthsorting = false, # false = fast, true = correct transparency
-        gap = 0.0,
-        # Internal:
-        _limits = (0.0, 1.0),
-        _local_update = (0:0, 0:0, 0:0),
-    )
-    shading_attributes!(attr)
-    generic_plot_attributes!(attr)
-    return colormap_attributes!(attr, theme(scene, :colormap))
+@recipe Voxels begin
+    "A function that controls which values in the input data are mapped to invisible (air) voxels."
+    is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
+    """
+    Defines a map from voxel ids (and optionally sides) to uv coordinates. These uv coordinates
+    are then used to sample a 2D texture passed through `color` for texture mapping.
+    """
+    uvmap = nothing
+    "Controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated)."
+    interpolate = false
+    """
+    Controls the render order of voxels. If set to `false` voxels close to the viewer are
+    rendered first which should reduce overdraw and yield better performance. If set to
+    `true` voxels are rendered back to front enabling correct order for transparent voxels.
+    """
+    depthsorting = false
+    "Sets the gap between adjacent voxels in units of the voxel size. This needs to be larger than 0.01 to take effect."
+    gap = 0.0
+
+    mixin_generic_plot_attributes()...
+    mixin_shading_attributes()...
+    mixin_colormap_attributes()...
+
+    """
+    Sets colors per voxel id, skipping `0x00`. This means that a voxel with id 1 will grab
+    `plot.colors[1]` and so on up to id 255. This can also be set to a Matrix of colors,
+    i.e. an image for texture mapping.
+    """
+    color = nothing
 end
 
 

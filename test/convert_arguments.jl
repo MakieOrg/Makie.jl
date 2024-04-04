@@ -250,17 +250,18 @@ end
                 for CT in (VolumeLike(), Volume)
                     @testset "$CT" begin
                         # TODO: Should these be normalized more?
-                        apply_conversion(CT, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
-                        @test apply_conversion(CT, i, i, i, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
+                        @test apply_conversion(CT, vol)          isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{Float32,3}}
+                        @test apply_conversion(CT, i, i, i, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+
                         Logging.disable_logging(Logging.Warn) # skip warnings
-                        @test apply_conversion(CT, xs, ys, zs, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
-                        @test apply_conversion(CT, xs, ys, zs, +) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
+                        @test apply_conversion(CT, xs, ys, zs, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+                        @test apply_conversion(CT, xs, ys, zs, +)   isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
                         if T_in == Float32
-                            @test apply_conversion(CT, r, r, r, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
-                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
+                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
                         else
-                            @test apply_conversion(CT, r, r, r, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
-                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{ClosedInterval,ClosedInterval,ClosedInterval,Array{Float32,3}}
+                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
                         end
                         Logging.disable_logging(Logging.Debug)
                     end
