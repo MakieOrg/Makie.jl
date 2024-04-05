@@ -139,8 +139,11 @@ function polypath(ctx, polygon)
     ext = decompose(Point2f, polygon.exterior)
     Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_EVEN_ODD)
     Cairo.move_to(ctx, ext[1]...)
-    for point in ext[2:end]
-        Cairo.line_to(ctx, point...)
+    for i in Iterators.drop(eachindex(ext), 1)        
+        if !isfinite(ext[i-1]) || !isfinite(ext[i])
+            continue
+        end
+        Cairo.line_to(ctx, ext[i]...)
     end
     Cairo.close_path(ctx)
     interiors = decompose.(Point2f, polygon.interiors)
@@ -149,8 +152,10 @@ function polypath(ctx, polygon)
         n = length(interior)
         Cairo.move_to(ctx, interior[1]...)
         for idx in 2:n
-            point = interior[idx]
-            Cairo.line_to(ctx, point...)
+            if !isfinite(interior[idx-1]) || !isfinite(interior[idx])
+                continue
+            end
+            Cairo.line_to(ctx, interior[idx]...)
         end
         Cairo.close_path(ctx)
     end
