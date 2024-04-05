@@ -173,7 +173,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
 
                 // linecaps
-                f_capmode = ivec2(capstyle);
+                f_capmode = ivec2(linecap);
 
                 // Vertex position (padded for joint & anti-aliasing)
                 float v_offset = position.x * (0.5 * segment_length + halfwidth + AA_THICKNESS);
@@ -556,8 +556,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // linecap + jointstyle
                 f_capmode = ivec2(
-                    isvalid[0] ? jointstyle : capstyle,
-                    isvalid[3] ? jointstyle : capstyle
+                    isvalid[0] ? jointstyle : linecap,
+                    isvalid[3] ? jointstyle : linecap
                 );
 
 

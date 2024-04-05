@@ -11,7 +11,7 @@ layout(triangle_strip, max_vertices = 4) out;
 uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
-uniform int capstyle;
+uniform int linecap;
 
 in {{stripped_color_type}} g_color[];
 in uvec2 g_id[];
@@ -97,7 +97,7 @@ void main(void)
     f_cumulative_length = 0.0;      // resets for each new segment
 
     // linecaps
-    f_capmode = ivec2(capstyle);
+    f_capmode = ivec2(linecap);
 
     // Generate vertices
 

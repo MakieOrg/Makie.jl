@@ -1,11 +1,11 @@
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
-    Makie.@converted_attribute plot (linewidth, linestyle, capstyle, jointstyle)
+    Makie.@converted_attribute plot (linewidth, linestyle, linecap, jointstyle)
 
     uniforms = Dict(
         :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :depth_shift => plot.depth_shift,
         :picking => false,
-        :capstyle => capstyle,
+        :linecap => linecap,
     )
     if plot isa Lines
         uniforms[:jointstyle] = jointstyle

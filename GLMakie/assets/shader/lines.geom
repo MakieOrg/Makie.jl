@@ -42,7 +42,7 @@ out vec3 o_view_normal;
 uniform float pattern_length;
 uniform vec2 resolution;
 
-uniform int capstyle;
+uniform int linecap;
 uniform int jointstyle;
 uniform float miter_limit;
 
@@ -396,8 +396,8 @@ void main(void)
 
     // 0 :butt/normal cap or joint | 1 :square cap | 2 rounded cap/joint
     f_capmode = ivec2(
-        isvalid[0] ? jointstyle : capstyle,
-        isvalid[3] ? jointstyle : capstyle
+        isvalid[0] ? jointstyle : linecap,
+        isvalid[3] ? jointstyle : linecap
     );
 
     // Generate interpolated/varying outputs:

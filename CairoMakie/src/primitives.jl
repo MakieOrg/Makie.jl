@@ -125,10 +125,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     # linecap
-    capstyle = primitive.capstyle[]
-    if capstyle == :square
+    linecap = primitive.linecap[]
+    if linecap == :square
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
-    elseif capstyle == :round
+    elseif linecap == :round
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
     else # :butt
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
