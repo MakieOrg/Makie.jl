@@ -11,6 +11,7 @@ layout(triangle_strip, max_vertices = 4) out;
 uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
+uniform int capstyle;
 
 in {{stripped_color_type}} g_color[];
 in uvec2 g_id[];
@@ -80,8 +81,8 @@ void main(void)
     vec2 n1 = normal_vector(v1);
 
     // Set invalid / ignored outputs
-    f_quad_sdf0 = 10.0;             // no joint to previous segment
-    f_quad_sdf2 = 10.0;             // not joint to next segment
+    f_quad_sdf0 = 1e12;             // no joint to previous segment
+    f_quad_sdf2 = 1e12;             // not joint to next segment
     f_truncation = vec2(-10.0);     // no truncated joint
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0); // no joints to overwrite
     f_extrusion = vec2(0.5);        // no joints needing extrusion
@@ -94,15 +95,17 @@ void main(void)
     f_linestart = 0;                // no corners so no joint extrusion to consider
     f_linelength = segment_length;  // and also no changes in line length
     f_cumulative_length = 0.0;      // resets for each new segment
-    f_capmode = ivec2(0,0); // TODO
+
+    // linecaps
+    f_capmode = ivec2(capstyle);
 
     // Generate vertices
 
     for (int x = 0; x < 2; x++) {
-        // Get offset in line direction
-        float v_offset = (2 * x - 1) * AA_THICKNESS;
         // pass on linewidth and id (picking) for the current line vertex
         float halfwidth = 0.5 * max(AA_RADIUS, g_thickness[x]);
+        // Get offset in line direction
+        float v_offset = (2 * x - 1) * (halfwidth + AA_THICKNESS);
         // TODO: if we just make this a varying output we probably get var linewidths here
         f_linewidth = halfwidth;
         f_id = g_id[x];

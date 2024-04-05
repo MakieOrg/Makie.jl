@@ -349,6 +349,8 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     linewidth = @inherit linewidth
     "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
     linestyle = nothing
+    "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
+    capstyle = :butt
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
     mixin_generic_plot_attributes()...
