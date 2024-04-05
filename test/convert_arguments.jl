@@ -147,8 +147,8 @@ end
                         # @test apply_conversion(CT, Point.(miss, ys))   isa Tuple{Vector{Point2{T_out}}}
 
                         # TODO: Should this be Point?
-                        @test apply_conversion(CT, Vec.(xs, ys))     isa Tuple{Vector{Vec2{T_out}}}
-                        @test apply_conversion(CT, Vec.(xs, ys, zs)) isa Tuple{Vector{Vec3{T_out}}}
+                        @test apply_conversion(CT, Vec.(xs, ys))     isa Tuple{Vector{Point2{T_out}}}
+                        @test apply_conversion(CT, Vec.(xs, ys, zs)) isa Tuple{Vector{Point3{T_out}}}
                         # @test apply_conversion(CT, Vec.(miss, ys))   isa Tuple{Vector{Point2{T_out}}}
 
                         @test apply_conversion(CT, tuple.(xs, ys))      isa Tuple{Vector{Point2{T_out}}}

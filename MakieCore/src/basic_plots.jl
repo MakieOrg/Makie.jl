@@ -259,9 +259,9 @@ Available algorithms are:
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
 @recipe Volume (
-        x::ClosedInterval{Float32},
-        y::ClosedInterval{Float32},
-        z::ClosedInterval{Float32},
+        x::ClosedInterval,
+        y::ClosedInterval,
+        z::ClosedInterval,
         volume::AbstractArray{Float32,3}
     ) begin
     "Sets the volume algorithm that is used."

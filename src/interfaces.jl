@@ -138,14 +138,27 @@ function try_dim_convert(P, PTrait, user_attributes, arg_obs)
     end
 end
 
+function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
+    # Fully converted arguments to target type for Plot
+    new_args_obs = map(Observable, converted)
+    fs = onany(kw_obs, args_obs...) do kw, args...
+        conv = convert_arguments(P, args...; kw...)
+        if !(conv isa Tuple)
+            conv = (conv,) # for PlotSpec
+        end
+        for (obs, arg) in zip(new_args_obs, conv)
+            obs.val = arg
+        end
+        foreach(notify, new_args_obs)
+        return
+    end
+    append!(deregister, fs)
+    return new_args_obs
+end
+
 function conversion_pipeline(P, PTrait, used_attrs, args_obs, user_attributes, deregister, recursion=1)
     if recursion == 3
-        return P, args_obs
-    end
-
-    args = map(to_value, args_obs)
-    status = got_converted(P, PTrait, args)
-    if status == true && recursion == 2
+        error("Recursion limit reached. This should not happen, please open an issue with Makie.jl and provide a minimal working example.")
         return P, args_obs
     end
     kw_obs = get_kw_obs(used_attrs, user_attributes)
@@ -154,55 +167,34 @@ function conversion_pipeline(P, PTrait, used_attrs, args_obs, user_attributes, d
     args = map(to_value, args_obs)
     converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, PTrait, converted)
-    if status === SpecApi
-        new_args_obs = Observable(converted)
-        fs = onany(kw_obs, args_obs...) do kw, args...
-            conv = convert_arguments(P, args...; kw...)
-            new_args_obs[] = conv
-            return
-        end
-        append!(deregister, fs)
-        return P, (new_args_obs,)
-    elseif status === true
-        # Fully converted arguments to target type for Plot
-        new_args_obs = map(Observable, converted)
-        fs = onany(kw_obs, args_obs...) do kw, args...
-            conv = convert_arguments(P, args...; kw...)
-            for (obs, arg) in zip(new_args_obs, conv)
-                obs.val = arg
-            end
-            foreach(notify, new_args_obs)
-            return
-        end
-        append!(deregister, fs)
-        return P, new_args_obs
+    if status === true
+        # We're done convertin!
+        return P, convert_observable_args(P, args_obs, kw_obs, converted, deregister)
+    elseif status === SpecApi
+        return P, convert_observable_args(P, args_obs, kw_obs, (converted,), deregister)
     elseif status == false && recursion == 1
-        new_args_obs = map(Observable, converted)
-        fs = onany(kw_obs, args_obs...) do kw, args...
-            conv = convert_arguments(P, args...; kw...)
-            for (obs, arg) in zip(new_args_obs, conv)
-                obs[] = arg
-            end
-            return
-        end
-        append!(deregister, fs)
+        # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
+        # This is the case for e.g. convert_arguments returning types that need dim_convert
+        new_args_obs = convert_observable_args(P, args_obs, kw_obs, converted, deregister)
         return conversion_pipeline(P, PTrait, used_attrs, new_args_obs, user_attributes, deregister,
                                    recursion + 1)
+    elseif status == false && recursion == 2
+        kw_str = isempty(kw) ?  "" : " and kw: $(typeof(kw))"
+        kw_convert = isempty(kw) ? "" : "; kw..."
+        conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
+        types = MakieCore.types_for_plot_arguments(P, PTrait)
+        throw(ArgumentError("""
+            Conversion failed for $(P)$(conv_trait) with args: $(typeof.(args)) $(kw_str).
+            $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
+            To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
+        """))
+    elseif isnothing(status)
+        # No types_for_plot_arguments defined, so we don't know what we need to convert to.
+        # This is for backwards compatibility for recipes that don't define argument types
+        return P, convert_observable_args(P, args_obs, kw_obs, converted, deregister)
     else
-        P, converted2 = apply_convert!(P, Attributes(), converted)
-        new_args_obs = map(Observable, converted2)
-        fs = onany(kw_obs, args_obs...) do kw, args...
-            conv = convert_arguments(P, args...; kw...)
-            P, converted3 = apply_convert!(P, Attributes(), conv)
-            for (obs, arg) in zip(new_args_obs, converted3)
-                obs[] = arg
-            end
-            return
-        end
-        append!(deregister, fs)
-        return P, new_args_obs
+        error("Unknown status: $(status)")
     end
-    # throw(ArgumentError("Conversion failed for $(P) with args: $(typeof.(args)) and kw: $(typeof(kw))"))
 end
 
 

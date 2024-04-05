@@ -39,11 +39,6 @@ Plots with the `PointBased` trait convert their input data to a
 struct PointBased <: ConversionTrait end
 conversion_trait(::Type{<: XYBased}) = PointBased()
 
-conversion_trait(::Type{<:Text}) = PointBased()
-# Make sure we dont apply the PointBased conversion to the old text arguments
-conversion_trait(::Type{<:Text}, ::AbstractString) = NoConversion()
-conversion_trait(::Type{<:Text}, ::AbstractVector{<:AbstractString}) = NoConversion()
-
 """
     GridBased <: ConversionTrait
 
@@ -127,6 +122,13 @@ function get_element_type(arr::AbstractArray{T}) where {T}
     else
         return T
     end
+end
+
+types_for_plot_arguments(trait) = nothing
+function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
+    p = types_for_plot_arguments(P)
+    isnothing(p) || (p isa Tuple && any(isnothing, p)) || return p
+    return types_for_plot_arguments(Trait)
 end
 
 should_dim_convert(::Type) = false

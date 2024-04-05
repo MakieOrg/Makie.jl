@@ -339,9 +339,6 @@ function _attribute_docs(T::Type{<:Plot})
     Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
 end
 
-types_for_plot_arguments(trait) = nothing
-types_for_plot_arguments(::Type{T}) where {T<:Plot} = types_for_plot_arguments(conversion_trait(T))
-
 
 function create_args_type_expr(PlotType, args::Nothing)
     return [], :()
@@ -373,6 +370,8 @@ end
 macro recipe(Tsym::Symbol, args, attrblock)
     return create_recipe_expr(Tsym, args, attrblock)
 end
+
+function types_for_plot_arguments end
 
 function create_recipe_expr(Tsym, args, attrblock)
       funcname_sym = to_func_name(Tsym)

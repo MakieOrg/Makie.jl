@@ -9,21 +9,13 @@ end
 
 got_converted(result::Tuple, args::Tuple) = result !== args
 function got_converted(P::Type, PTrait::ConversionTrait, result)
-    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec}
+    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec, AbstractVector{PlotSpec}}
         return SpecApi
     end
-    types = MakieCore.types_for_plot_arguments(P)
+    types = MakieCore.types_for_plot_arguments(P, PTrait)
     if !isnothing(types) && !any(isnothing, types)
         if length(result) == length(types)
             return all(((arg, T),)-> arg isa T, zip(result, types))
-        else
-            return false
-        end
-    end
-    types = MakieCore.types_for_plot_arguments(PTrait)
-    if !isnothing(types) && !any(isnothing, types)
-        if length(result) == length(types)
-            return all(((arg, T),) -> arg isa T, zip(result, types))
         else
             return false
         end
@@ -112,7 +104,15 @@ function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <
 end
 
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
-    return (float_convert(positions),)
+    return (elconvert(Point{N, float_type(T)}, positions),)
+end
+
+# VecTypes{N, T} will have T undefined if tuple has different number types
+function convert_arguments(::PointBased, positions::AbstractVector{<:Tuple{A, B}}) where {A <: Real, B <: Real}
+    return (elconvert(Point{2,float_type(A, B)}, positions),)
+end
+function convert_arguments(::PointBased, positions::AbstractVector{<:Tuple{A, B, C}}) where {A <: Real, B <: Real, C <: Real}
+    return (elconvert(Point{3,float_type(A, B, C)}, positions),)
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -732,7 +732,7 @@ float_type(args::Type) = error("Type $(args) not supported")
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
 float_type(a::AbstractArray, rest...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_type, rest)...)
-float_type(a::Type, rest::Type...) = float_type(promote_type(a, rest...))
+float_type(a::Type, rest::Type...) = promote_type(float_type.((a, rest...))...)
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
 float_type(::Type{<:Real}) = Float64

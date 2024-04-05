@@ -4,6 +4,16 @@ function check_textsize_deprecation(@nospecialize(dictlike))
     end
 end
 
+# conversion stopper for previous methods
+convert_arguments(::Type{<:Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
+convert_arguments(::Type{<:Text}, gc::GlyphCollection) = (gc,)
+convert_arguments(::Type{<:Text}, vec::AbstractVector{<:Tuple{<:Any,<:Point}}) = (vec,)
+convert_arguments(::Type{<:Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
+convert_arguments(::Type{<:Text}, string::AbstractString) = (string,)
+# Fallback to PointBased
+convert_arguments(::Type{<:Text}, args...) = convert_arguments(PointBased(), args...)
+
+
 function plot!(plot::Text)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
@@ -134,12 +144,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractString}})
     plot
 end
 
-# conversion stopper for previous methods
-convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
-convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
-convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:Any, <:Point}}) = (vec,)
-convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
-convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
+
 
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging

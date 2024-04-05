@@ -773,7 +773,7 @@ plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
 function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
-    update_fig!(fig, plot[1])
+    update_fig!(fig, plot.converted[1])
     return fig
 end
 
