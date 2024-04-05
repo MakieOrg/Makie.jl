@@ -129,6 +129,11 @@ float get_pattern_sdf(Nothing _, vec2 uv){
 
 void write2framebuffer(vec4 color, uvec2 id);
 
+// General Notes on SDFs here:
+// < 0 is considered inside the shape, i.e. drawn
+// min(sdf1, sdf2) is the union shapes sdf1 and sdf2
+// max(sdf1, sdf2) is the intersection of sdf1 and sdf2
+
 void main(){
     vec4 color;
 
@@ -148,37 +153,44 @@ if (!debug) {
     if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
         discard;
 
-    // SDF for inside vs outside along the line direction. extrusion adjusts
-        // the distance from p1/p2 for joints etc
     float sdf;
 
+    // f_quad_sdf1.x includes everything from p1 in p2-p1 direction, i.e. >
+    // f_quad_sdf2.y includes everything from p2 in p1-p2 direction, i.e. <
+    // <   < | >    < >    < | >   >
+    // <   < 1->----<->----<-2 >   >
+    // <   < | >    < >    < | >   >
     if (f_capmode.x == 2) { // rounded joint or cap
+        // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
         sdf = min(sqrt(f_quad_sdf1.x * f_quad_sdf1.x + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.x);
     } else if (f_capmode.x == 1) { // :square cap
+        // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
         sdf = f_quad_sdf1.x - f_linewidth;
-    } else // default miter joint / :butt cap
+    } else { // default miter joint / :butt cap
+        // variable shift in -(p2-p1) direction to make space for joints
         sdf = f_quad_sdf1.x - f_extrusion.x;
+        // do truncate joints
+        sdf = max(sdf, f_truncation.x);
+    }
 
+    // Same as above but for p2
     if (f_capmode.y == 2) { // rounded joint or cap
         sdf = max(sdf,
             min(sqrt(f_quad_sdf1.y * f_quad_sdf1.y + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.y)
         );
     } else if (f_capmode.y == 1) { // :square cap
         sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
-    } else // default miter joint / :butt cap
+    } else { // default miter joint / :butt cap
         sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);
-
-
-
+        sdf = max(sdf, f_truncation.y);
+    }
 
     // distance in linewidth direction
+    // f_quad_sdf.z is 0 along the line connecting p1 and p2 and increases along line-normal direction
+    //  ^  |  ^      ^  | ^
+    //     1------------2
+    //  ^  |  ^      ^  | ^
     sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
-
-    // outer truncation of truncated joints (smooth outside edge)
-    if (f_capmode.x != 2)
-        sdf = max(sdf, f_truncation.x);
-    if (f_capmode.y != 2)
-        sdf = max(sdf, f_truncation.y);
 
     // inner truncation (AA for overlapping parts)
     // min(a, b) keeps what is inside a and b
