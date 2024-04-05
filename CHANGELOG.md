@@ -1,5 +1,7 @@
 # Changelog
 
+- Added `linecap` and `jointstyle` attributes for lines and linesegments [#3771](https://github.com/MakieOrg/Makie.jl/pull/3771)
+
 ## [0.21.0] - 2024-03-0X
 
 - Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527)
