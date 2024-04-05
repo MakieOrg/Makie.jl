@@ -58,7 +58,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
-
             out highp float f_quad_sdf0;        // invalid / not needed
             out highp vec3 f_quad_sdf1;
             out highp float f_quad_sdf2;        // invalid / not needed
@@ -75,6 +74,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
+            flat out ivec2 f_capmode;
 
             ${uniform_decl}
 
@@ -172,8 +172,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
+                // linecaps
+                f_capmode = ivec2(capstyle);
+
                 // Vertex position (padded for joint & anti-aliasing)
-                float v_offset = position.x * (0.5 * segment_length + AA_THICKNESS);
+                float v_offset = position.x * (0.5 * segment_length + halfwidth + AA_THICKNESS);
                 float n_offset = (halfwidth + AA_THICKNESS) * position.y;
                 vec3 point = 0.5 * (p1 + p2) + v_offset * v1 + n_offset * vec3(n1, 0);
 
@@ -182,7 +185,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec2 VP2 = point.xy - p2.xy;
 
                 // invalid - no joint to compute overlap with
-                f_quad_sdf0 = 10.0;
+                f_quad_sdf0 = 1e12;
 
                 // sdf of this segment
                 f_quad_sdf1.x = dot(VP1, -v1.xy);
@@ -190,10 +193,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_quad_sdf1.z = dot(VP1,  n1);
 
                 // invalid - no joint to compute overlap with
-                f_quad_sdf2 = 10.0;
+                f_quad_sdf2 = 1e12;
 
                 // invalid - no joint to truncate
-                f_truncation = vec2(-10.0);
+                f_truncation = vec2(-1e12);
 
                 // simplified - no extrusion or joints means we just have:
                 f_linestart = 0.0;
@@ -235,6 +238,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
+            flat out ivec2 f_capmode;
 
             ${uniform_decl}
 
@@ -550,6 +554,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 f_cumulative_length = lastlen_start;
 
+                // linecap + jointstyle
+                f_capmode = ivec2(
+                    isvalid[0] ? jointstyle : capstyle,
+                    isvalid[3] ? jointstyle : capstyle
+                );
+
 
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
@@ -562,7 +572,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if (is_truncated[x] || !isvalid[3 * x]) {
                         // handle overlap in fragment shader via SDF comparison
                         offset = shape_factor * (
-                            (halfwidth * extrusion[x] + position.x * AA_THICKNESS) * v1 +
+                            position.x * (halfwidth * max(1.0, abs(extrusion[x])) + AA_THICKNESS) * v1 +
                             vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0)
                         );
                     } else {
@@ -671,6 +681,7 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in float f_alpha_weight;
     flat in uint f_instance_id;
     flat in float f_cumulative_length;
+    flat in ivec2 f_capmode;
 
     uniform uint object_id;
     ${uniform_decl}
@@ -793,16 +804,44 @@ function lines_fragment_shader(uniforms, attributes) {
         if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
             discard;
 
-        // SDF for inside vs outside along the line direction. extrusion adjusts
-        // the distance from p1/p2 for joints etc
-        float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
+        float sdf;
+
+        // f_quad_sdf1.x includes everything from p1 in p2-p1 direction, i.e. >
+        // f_quad_sdf2.y includes everything from p2 in p1-p2 direction, i.e. <
+        // <   < | >    < >    < | >   >
+        // <   < 1->----<->----<-2 >   >
+        // <   < | >    < >    < | >   >
+        if (f_capmode.x == 2) { // rounded joint or cap
+            // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
+            sdf = min(sqrt(f_quad_sdf1.x * f_quad_sdf1.x + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.x);
+        } else if (f_capmode.x == 1) { // :square cap
+            // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
+            sdf = f_quad_sdf1.x - f_linewidth;
+        } else { // default miter joint / :butt cap
+            // variable shift in -(p2-p1) direction to make space for joints
+            sdf = f_quad_sdf1.x - f_extrusion.x;
+            // do truncate joints
+            sdf = max(sdf, f_truncation.x);
+        }
+
+        // Same as above but for p2
+        if (f_capmode.y == 2) { // rounded joint or cap
+            sdf = max(sdf,
+                min(sqrt(f_quad_sdf1.y * f_quad_sdf1.y + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.y)
+            );
+        } else if (f_capmode.y == 1) { // :square cap
+            sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
+        } else { // default miter joint / :butt cap
+            sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);
+            sdf = max(sdf, f_truncation.y);
+        }
 
         // distance in linewidth direction
+        // f_quad_sdf.z is 0 along the line connecting p1 and p2 and increases along line-normal direction
+        //  ^  |  ^      ^  | ^
+        //     1------------2
+        //  ^  |  ^      ^  | ^
         sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
-
-        // truncation of truncated joints (creates flat cap)
-        sdf = max(sdf, f_truncation.x);
-        sdf = max(sdf, f_truncation.y);
 
         // inner truncation (AA for overlapping parts)
         // min(a, b) keeps what is inside a and b

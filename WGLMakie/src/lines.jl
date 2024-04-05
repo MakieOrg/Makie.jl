@@ -1,11 +1,15 @@
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
-    Makie.@converted_attribute plot (linewidth, linestyle)
+    Makie.@converted_attribute plot (linewidth, linestyle, capstyle, jointstyle)
 
     uniforms = Dict(
         :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :depth_shift => plot.depth_shift,
-        :picking => false
+        :picking => false,
+        :capstyle => capstyle
     )
+    if plot isa Lines
+        uniforms[:jointstyle] = jointstyle
+    end
 
     # TODO: maybe convert nothing to Sampler([-1.0]) to allowed dynamic linestyles?
     if isnothing(to_value(linestyle))
