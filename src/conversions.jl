@@ -104,15 +104,9 @@ function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <
 end
 
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
-    return (elconvert(Point{N, float_type(T)}, positions),)
-end
-
-# VecTypes{N, T} will have T undefined if tuple has different number types
-function convert_arguments(::PointBased, positions::AbstractVector{<:Tuple{A, B}}) where {A <: Real, B <: Real}
-    return (elconvert(Point{2,float_type(A, B)}, positions),)
-end
-function convert_arguments(::PointBased, positions::AbstractVector{<:Tuple{A, B, C}}) where {A <: Real, B <: Real, C <: Real}
-    return (elconvert(Point{3,float_type(A, B, C)}, positions),)
+    # VecTypes{N, T} will have T undefined if tuple has different number types
+    _T = @isdefined(T) ? T : Float64
+    return (elconvert(Point{N, float_type(_T)}, positions),)
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})

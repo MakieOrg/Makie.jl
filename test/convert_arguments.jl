@@ -10,7 +10,11 @@ function apply_conversion(trait, args...)
     return Makie.convert_arguments(trait, args...)
 end
 
-@testset "apply_conversion" begin
+@testset "tuples" begin
+    @test convert_arguments(PointBased(), [(1, 2), (1.0, 1.0f0)]) == (Point{2,Float64}[[1.0, 2.0], [1.0, 1.0]],)
+end
+
+@testset "convert_arguments" begin
     #=
     TODO:
     - consider implementing the commented out conversions
