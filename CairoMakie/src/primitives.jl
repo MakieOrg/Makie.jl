@@ -124,6 +124,27 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         Cairo.set_dash(ctx, pattern)
     end
 
+    capstyle = primitive.capstyle[]
+    if capstyle == :square
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
+    elseif capstyle == :round
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
+    else # :butt
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
+    end
+
+    # TODO everywhere
+    # Cairo.set_miter_limit(...)
+    # "Cairo divides the length of the miter by the line width. If the result is greater than the miter limit, the style is converted to a bevel."
+    jointstyle = to_value(get(primitive, :jointstyle, :miter))
+    if jointstyle == :round
+        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
+    elseif jointstyle == :bevel # TODO in GL backends
+        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
+    else # :miter
+        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
+    end
+
     if primitive isa Lines && to_value(primitive.args[1]) isa BezierPath
         return draw_bezierpath_lines(ctx, to_value(primitive.args[1]), primitive, color, space, model, linewidth)
     end
@@ -131,11 +152,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
-
-        # Butted segments look the best for varying colors, at least when connection angles are small.
-        # While round style has nicer sharp joins, it looks bad with alpha colors (double paint) and
-        # also messes with dash patterns (they are too long because of the caps)
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
         draw_multi(
             primitive, ctx,
             projected_positions,
