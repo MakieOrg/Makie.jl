@@ -98,7 +98,7 @@ void main() {
     // plane placement
     // Figure out which plane to start with
     vec3 normal = get_normalmatrix() * unit_vecs[dim];
-    int dir = int(sign(dot(get_view_direction(), normal))), start;
+    int dir = dot(get_view_direction(), normal) < 0.0 ? -1 : 1, start;
     if (depthsorting) {
         // TODO: depthsorted should start far away from viewer so every plane draws
         start = int((0.5 + 0.5 * float(dir)) * float(size[dim]));
