@@ -44,9 +44,9 @@ uniform vec2 resolution;
 
 uniform int capstyle;
 uniform int jointstyle;
+uniform float miter_limit;
 
 // Constants
-const float MITER_LIMIT = -0.4;
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 4.0 * AA_RADIUS;
 // NOTE: if MITER_LIMIT becomes a variable AA_THICKNESS needs to scale with the joint extrusion
@@ -286,18 +286,18 @@ void main(void)
     vec2 n1 = normal_vector(v1);
     vec2 n2 = normal_vector(v2);
 
-    // Are we truncating the joint based on miter limit?
-    bvec2 is_truncated = bvec2(dot(v0, v1.xy) < MITER_LIMIT, dot(v1.xy, v2) < MITER_LIMIT);
-
     // Miter normals (normal of truncated edge / vector to sharp corner)
     // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
     //       same direction, but becomes vec(0) at 0°, so we can use it instead
-    vec2 miter_n1 = is_truncated[0] ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-    vec2 miter_n2 = is_truncated[1] ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+    vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
+    vec2 miter_n1 = miter.x < -0.4 ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+    vec2 miter_n2 = miter.y < -0.4 ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
-    // Are we truncating based on jointstyle? (bevel)
-    if (jointstyle == 3)
-        is_truncated = bvec2(isvalid[0], isvalid[1]);
+    // Are we truncating the joint based on miter limit or jointstyle?
+    bvec2 is_truncated = bvec2(
+        (jointstyle == 3) ? isvalid[0] : miter.x < miter_limit,
+        (jointstyle == 3) ? isvalid[3] : miter.y < miter_limit
+    );
 
     // miter vectors (line vector matching miter normal)
     vec2 miter_v1 = -normal_vector(miter_n1);

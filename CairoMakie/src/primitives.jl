@@ -124,6 +124,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         Cairo.set_dash(ctx, pattern)
     end
 
+    # linecap
     capstyle = primitive.capstyle[]
     if capstyle == :square
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
@@ -133,9 +134,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
     end
 
-    # TODO everywhere
-    # Cairo.set_miter_limit(...)
-    # "Cairo divides the length of the miter by the line width. If the result is greater than the miter limit, the style is converted to a bevel."
+    # joint style
+    # TODO: Cairo should have a function like this, but it's not available
+    # Cairo.set_miter_limit(ctx, plot.miter_limit[])
     jointstyle = to_value(get(primitive, :jointstyle, :miter))
     if jointstyle == :round
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)

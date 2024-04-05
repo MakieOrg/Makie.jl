@@ -5,10 +5,13 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :depth_shift => plot.depth_shift,
         :picking => false,
-        :capstyle => capstyle
+        :capstyle => capstyle,
     )
     if plot isa Lines
         uniforms[:jointstyle] = jointstyle
+        uniforms[:miter_limit] = map(plot, plot.miter_limit) do x
+            return cos(2 * (0.5pi - atan(1 / x)))
+        end
     end
 
     # TODO: maybe convert nothing to Sampler([-1.0]) to allowed dynamic linestyles?

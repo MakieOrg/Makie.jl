@@ -21506,7 +21506,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ${uniform_decl}
 
             // Constants
-            const float MITER_LIMIT = -0.4;
             const float AA_RADIUS = 0.8;
             const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
@@ -21705,21 +21704,18 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // joint information
 
-                // Are we truncating the joint based on miter limit?
-                bool[2] is_truncated = bool[2](
-                    dot(v0.xy, v1.xy) < MITER_LIMIT,
-                    dot(v1.xy, v2.xy) < MITER_LIMIT
-                );
-
                 // Miter normals (normal of truncated edge / vector to sharp corner)
                 // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
                 //       same direction, but becomes vec(0) at 0°, so we can use it instead
-                vec2 miter_n1 = is_truncated[0] ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-                vec2 miter_n2 = is_truncated[1] ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+                vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
+                vec2 miter_n1 = miter.x < -0.0 ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+                vec2 miter_n2 = miter.y < -0.0 ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
-                // Are we truncating based on jointstyle? (bevel)
-                if (int(jointstyle) == 3) // why int
-                    is_truncated = bool[2](isvalid[0], isvalid[3]);
+                // Are we truncating the joint based on miter limit or jointstyle?
+                bool[2] is_truncated = bool[2](
+                    (int(jointstyle) == 3) ? isvalid[0] : miter.x < miter_limit,
+                    (int(jointstyle) == 3) ? isvalid[3] : miter.y < miter_limit
+                );
 
                 // miter vectors (line vector matching miter normal)
                 vec2 miter_v1 = -normal_vector(miter_n1);
