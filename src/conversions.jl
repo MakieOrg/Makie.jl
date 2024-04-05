@@ -1081,7 +1081,8 @@ function convert_attribute(value::Symbol, ::key"capstyle")
 end
 function convert_attribute(value::Symbol, ::key"jointstyle")
     # TODO: make this an enum?
-    vals = Dict(:miter => 0, :round => 2) # 0 and 2 are shared between this and capstyle. 1 has no equivalent here
+    # 0 and 2 are shared between this and capstyle. 1 has no equivalent here
+    vals = Dict(:miter => 0, :round => 2, :bevel => 3)
     return get(vals, value) do
         error("$value is not a valid joint style. It must be one of $(keys(vals)).")
     end

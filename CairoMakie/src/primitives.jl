@@ -139,7 +139,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     jointstyle = to_value(get(primitive, :jointstyle, :miter))
     if jointstyle == :round
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
-    elseif jointstyle == :bevel # TODO in GL backends
+    elseif jointstyle == :bevel
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
     else # :miter
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)

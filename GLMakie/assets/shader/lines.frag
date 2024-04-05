@@ -166,7 +166,7 @@ if (!debug) {
     } else if (f_capmode.x == 1) { // :square cap
         // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
         sdf = f_quad_sdf1.x - f_linewidth;
-    } else { // default miter joint / :butt cap
+    } else { // miter or bevel joint or :butt cap
         // variable shift in -(p2-p1) direction to make space for joints
         sdf = f_quad_sdf1.x - f_extrusion.x;
         // do truncate joints
@@ -180,7 +180,7 @@ if (!debug) {
         );
     } else if (f_capmode.y == 1) { // :square cap
         sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
-    } else { // default miter joint / :butt cap
+    } else { // miter or bevel joint or :butt cap
         sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);
         sdf = max(sdf, f_truncation.y);
     }
@@ -196,7 +196,7 @@ if (!debug) {
     // min(a, b) keeps what is inside a and b
     // where a is the smoothly cut of part just before discard triggers (i.e. visible)
     // and b is the (smoothly) cut of part just after discard triggers (i.e not visible)
-    // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
+    // 100.0x sdf makes the sdf much more sharp, avoiding overdraw in the center
     sdf = max(sdf, min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0));
     sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
 

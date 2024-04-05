@@ -21705,7 +21705,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // joint information
 
-                // Are we truncating the joint?
+                // Are we truncating the joint based on miter limit?
                 bool[2] is_truncated = bool[2](
                     dot(v0.xy, v1.xy) < MITER_LIMIT,
                     dot(v1.xy, v2.xy) < MITER_LIMIT
@@ -21716,6 +21716,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 //       same direction, but becomes vec(0) at 0°, so we can use it instead
                 vec2 miter_n1 = is_truncated[0] ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
                 vec2 miter_n2 = is_truncated[1] ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+
+                // Are we truncating based on jointstyle? (bevel)
+                if (int(jointstyle) == 3) // why int
+                    is_truncated = bool[2](isvalid[0], isvalid[3]);
 
                 // miter vectors (line vector matching miter normal)
                 vec2 miter_v1 = -normal_vector(miter_n1);
@@ -22082,7 +22086,7 @@ function lines_fragment_shader(uniforms, attributes) {
         } else if (f_capmode.x == 1) { // :square cap
             // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
             sdf = f_quad_sdf1.x - f_linewidth;
-        } else { // default miter joint / :butt cap
+        } else { // miter or bevel joint or :butt cap
             // variable shift in -(p2-p1) direction to make space for joints
             sdf = f_quad_sdf1.x - f_extrusion.x;
             // do truncate joints
@@ -22096,7 +22100,7 @@ function lines_fragment_shader(uniforms, attributes) {
             );
         } else if (f_capmode.y == 1) { // :square cap
             sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
-        } else { // default miter joint / :butt cap
+        } else { // miter or bevel joint or :butt cap
             sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);
             sdf = max(sdf, f_truncation.y);
         }
@@ -22112,7 +22116,7 @@ function lines_fragment_shader(uniforms, attributes) {
         // min(a, b) keeps what is inside a and b
         // where a is the smoothly cut of part just before discard triggers (i.e. visible)
         // and b is the (smoothly) cut of part where the discard triggers
-        // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
+        // 100.0x sdf makes the sdf much more sharp, avoiding overdraw in the center
         sdf = max(sdf, min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0));
         sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
 
