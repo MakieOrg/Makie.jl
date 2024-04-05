@@ -393,6 +393,7 @@ end
 
 function Base.getproperty(pl::PlotList, property::Symbol)
     hasfield(typeof(pl), property) && return getfield(pl, property)
+    property === :model && return pl.attributes[:model]
     if length(pl.plots) == 1
         return getproperty(pl.plots[1], property)
     else
@@ -411,7 +412,10 @@ function Base.setproperty!(pl::PlotList, property::Symbol, value)
 end
 
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
-plottype(::AbstractVector{PlotSpec}) = PlotList
+
+plottype(::Type{<:Plot{F}}, ::Union{PlotSpec,AbstractVector{PlotSpec}}) where {F} = PlotList
+plottype(::Type{<:Plot{F}}, ::Union{GridLayoutSpec,BlockSpec}) where {F} = Plot{plot}
+plottype(::Type{<:Plot}, ::Union{GridLayoutSpec,BlockSpec}) = Plot{plot}
 
 # Since we directly plot into the parent scene (hacky), we need to overload these
 Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
@@ -481,6 +485,8 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     # and re-create it if it ever returns.
     unused_plots = IdDict{PlotSpec,Plot}()
     obs_to_notify = Observable[]
+
+    update_plotlist(spec::PlotSpec) = update_plotlist([spec])
     function update_plotlist(plotspecs)
         # Global list of observables that need updating
         # Updating them all at once in the end avoids problems with triggering updates while updating
@@ -516,13 +522,12 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     return
 end
 
-function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
+function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotSpec}}}})
     scene = Makie.parent_scene(p)
     update_plotspecs!(scene, p[1], p)
     return
 end
 
-plottype(::Type{<:Plot{T}}, ::AbstractVector{PlotSpec}) where {T} = PlotList
 
 
 ## BlockSpec

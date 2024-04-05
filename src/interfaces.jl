@@ -155,10 +155,10 @@ function conversion_pipeline(P, PTrait, used_attrs, args_obs, user_attributes, d
     converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, PTrait, converted)
     if status === SpecApi
-        new_args_obs = Observable{Any}([converted])
+        new_args_obs = Observable(converted)
         fs = onany(kw_obs, args_obs...) do kw, args...
             conv = convert_arguments(P, args...; kw...)
-            new_args_obs[] = [conv]
+            new_args_obs[] = conv
             return
         end
         append!(deregister, fs)
