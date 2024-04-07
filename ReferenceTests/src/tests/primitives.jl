@@ -71,7 +71,7 @@ end
     for i in 1:3, j in 1:3
         ax = Axis(fig[i, j], aspect = DataAspect())
         hidedecorations!(ax)
-        xlims!(-4.7, 3.7)
+        xlims!(-4.7, 4.2)
         ylims!(-1.0, 5.5)
         lines!(
             ax, ps, linewidth = 20,
