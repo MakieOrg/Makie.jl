@@ -245,6 +245,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Constants
             const float AA_RADIUS = 0.8;
             const float AA_THICKNESS = 2.0 * AA_RADIUS;
+            const int BUTT   = 0;
+            const int SQUARE = 1;
+            const int ROUND  = 2;
+            const int MITER  = 0;
+            const int BEVEL  = 3;
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -452,8 +457,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
                 // miter joints a when v1 ≈ v2 (v0)
                 bool[2] is_truncated = bool[2](
-                    (int(jointstyle) == 3) ? miter.x < 0.99 : miter.x < miter_limit,
-                    (int(jointstyle) == 3) ? miter.y < 0.99 : miter.y < miter_limit
+                    (int(jointstyle) == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
+                    (int(jointstyle) == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
                 );
 
                 // miter vectors (line vector matching miter normal)
@@ -694,6 +699,11 @@ function lines_fragment_shader(uniforms, attributes) {
     const float AA_RADIUS = 0.8;
     // space allocated for AA
     const float AA_THICKNESS = 2.0 * AA_RADIUS;
+    const int BUTT   = 0;
+    const int SQUARE = 1;
+    const int ROUND  = 2;
+    const int MITER  = 0;
+    const int BEVEL  = 3;
 
     float aastep(float threshold, float value) {
         return smoothstep(threshold-AA_RADIUS, threshold+AA_RADIUS, value);
@@ -813,10 +823,10 @@ function lines_fragment_shader(uniforms, attributes) {
         // <   < | >    < >    < | >   >
         // <   < 1->----<->----<-2 >   >
         // <   < | >    < >    < | >   >
-        if (f_capmode.x == 2) { // rounded joint or cap
+        if (f_capmode.x == ROUND) {
             // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
             sdf = min(sqrt(f_quad_sdf1.x * f_quad_sdf1.x + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.x);
-        } else if (f_capmode.x == 1) { // :square cap
+        } else if (f_capmode.x == SQUARE) {
             // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
             sdf = f_quad_sdf1.x - f_linewidth;
         } else { // miter or bevel joint or :butt cap
@@ -827,11 +837,11 @@ function lines_fragment_shader(uniforms, attributes) {
         }
 
         // Same as above but for p2
-        if (f_capmode.y == 2) { // rounded joint or cap
+        if (f_capmode.y == ROUND) {
             sdf = max(sdf,
                 min(sqrt(f_quad_sdf1.y * f_quad_sdf1.y + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.y)
             );
-        } else if (f_capmode.y == 1) { // :square cap
+        } else if (f_capmode.y == SQUARE) {
             sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
         } else { // miter or bevel joint or :butt cap
             sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);

@@ -50,6 +50,11 @@ uniform float miter_limit;
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 4.0 * AA_RADIUS;
 // NOTE: if MITER_LIMIT becomes a variable AA_THICKNESS needs to scale with the joint extrusion
+const int BUTT   = 0;
+const int SQUARE = 1;
+const int ROUND  = 2;
+const int MITER  = 0;
+const int BEVEL  = 3;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
@@ -297,8 +302,8 @@ void main(void)
     // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
     // miter joints a when v1 ≈ v2 (v0)
     bvec2 is_truncated = bvec2(
-        (jointstyle == 3) ? miter.x < 0.99 : miter.x < miter_limit,
-        (jointstyle == 3) ? miter.y < 0.99 : miter.y < miter_limit
+        (jointstyle == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
+        (jointstyle == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
     );
 
     // miter vectors (line vector matching miter normal)

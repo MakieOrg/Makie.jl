@@ -41,6 +41,11 @@ uniform vec4 nan_color;
 
 // Half width of antialiasing smoothstep
 const float AA_RADIUS = 0.8;
+const int BUTT   = 0;
+const int SQUARE = 1;
+const int ROUND  = 2;
+const int MITER  = 0;
+const int BEVEL  = 3;
 
 float aastep(float threshold1, float dist) {
     return smoothstep(threshold1-AA_RADIUS, threshold1+AA_RADIUS, dist);
@@ -160,10 +165,10 @@ if (!debug) {
     // <   < | >    < >    < | >   >
     // <   < 1->----<->----<-2 >   >
     // <   < | >    < >    < | >   >
-    if (f_capmode.x == 2) { // rounded joint or cap
+    if (f_capmode.x == ROUND) {
         // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
         sdf = min(sqrt(f_quad_sdf1.x * f_quad_sdf1.x + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.x);
-    } else if (f_capmode.x == 1) { // :square cap
+    } else if (f_capmode.x == SQUARE) {
         // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
         sdf = f_quad_sdf1.x - f_linewidth;
     } else { // miter or bevel joint or :butt cap
@@ -174,11 +179,11 @@ if (!debug) {
     }
 
     // Same as above but for p2
-    if (f_capmode.y == 2) { // rounded joint or cap
+    if (f_capmode.y == ROUND) { // rounded joint or cap
         sdf = max(sdf,
             min(sqrt(f_quad_sdf1.y * f_quad_sdf1.y + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.y)
         );
-    } else if (f_capmode.y == 1) { // :square cap
+    } else if (f_capmode.y == SQUARE) { // :square cap
         sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
     } else { // miter or bevel joint or :butt cap
         sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);
