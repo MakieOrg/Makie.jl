@@ -294,9 +294,11 @@ void main(void)
     vec2 miter_n2 = miter.y < -0.4 ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
     // Are we truncating the joint based on miter limit or jointstyle?
+    // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
+    // miter joints a when v1 ≈ v2 (v0)
     bvec2 is_truncated = bvec2(
-        (jointstyle == 3) ? isvalid[0] : miter.x < miter_limit,
-        (jointstyle == 3) ? isvalid[3] : miter.y < miter_limit
+        (jointstyle == 3) ? miter.x < 0.99 : miter.x < miter_limit,
+        (jointstyle == 3) ? miter.y < 0.99 : miter.y < miter_limit
     );
 
     // miter vectors (line vector matching miter normal)

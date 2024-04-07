@@ -449,9 +449,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec2 miter_n2 = miter.y < -0.0 ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
                 // Are we truncating the joint based on miter limit or jointstyle?
+                // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
+                // miter joints a when v1 ≈ v2 (v0)
                 bool[2] is_truncated = bool[2](
-                    (int(jointstyle) == 3) ? isvalid[0] : miter.x < miter_limit,
-                    (int(jointstyle) == 3) ? isvalid[3] : miter.y < miter_limit
+                    (int(jointstyle) == 3) ? miter.x < 0.99 : miter.x < miter_limit,
+                    (int(jointstyle) == 3) ? miter.y < 0.99 : miter.y < miter_limit
                 );
 
                 // miter vectors (line vector matching miter normal)

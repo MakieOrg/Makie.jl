@@ -60,7 +60,7 @@ end
 
 @reference_test "Linecaps and jointstyles" begin
     fig = Figure(size = (550, 450))
-    ps = [Point2f(0), Point2f(2, 0)]
+    ps = [Point2f(-2, 0), Point2f(0), Point2f(2, 0)]
     r = 2.0
     for phi in [130, -114, 113, 90, -60]
         R = Makie.Mat2f(cosd(phi), sind(phi), -sind(phi), cosd(phi))
