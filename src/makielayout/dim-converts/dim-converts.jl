@@ -52,15 +52,6 @@ function convert_dim_value(conversions::DimConversions, dim::Int, value)
     return convert_dim_value(conversions[dim], value)
 end
 
-function convert_dim_value(conversions::DimConversions, values...)
-    return map(enumerate(values)) do (i, value)
-        conversion = conversions[i]
-        if isnothing(conversion)
-            return value
-        end
-        return convert_dim_value(conversion, value)
-    end
-end
 
 function convert_dim_value(axislike::AbstractAxis, dim::Int, value)
     return convert_dim_value(get_conversions(axislike), dim, value)
@@ -74,16 +65,17 @@ end
 create_dim_conversion(argument_eltype::DataType) = nothing
 
 # The below is defined in MakieCore, to be accessible by `@recipe`
-# MakieCore.should_dim_convert(::) = true
+# MakieCore.should_dim_convert(eltype) = false
 
 
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim converst
 # TODO, should a recipe always set the dim convert to it's parent?
 get_conversions(any) = nothing
+
 function get_conversions(ax::AbstractAxis)
     if hasproperty(ax, :scene)
-        return ax.scene.conversions
+        return get_conversions(ax.scene)
     else
         return nothing
     end
@@ -100,6 +92,7 @@ function get_conversions(plot::Plot)
     return nothing
 end
 
+# For e.g. Axis attributes
 function get_conversions(attr::Union{Attributes, Dict, NamedTuple})
     conversions = DimConversions()
     for i in 1:3
@@ -115,7 +108,7 @@ function dim_conversion_from_args(values)
     return create_dim_conversion(MakieCore.get_element_type(values))
 end
 
-function merge_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
+function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
     for i in 1:3
         dim_sym = Symbol("convert_dim_$i")
         if hasproperty(ax, dim_sym)
@@ -135,7 +128,7 @@ function merge_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
     end
 end
 
-function merge_conversions!(conversions::DimConversions, new_conversions::DimConversions)
+function connect_conversions!(conversions::DimConversions, new_conversions::DimConversions)
     for i in 1:3
         conversions[i] = new_conversions.conversions[i]
     end

@@ -1,6 +1,9 @@
+# Dim Converts
 
-# Time axis
+Starting in Makie@0.21, dim conversions were introduced.
+They allow to convert types like units, categorical values or dates to be plotable and will set axis ticks accordingly.
 
+They offer an exten
 
 \begin{examplefigure}{}
 ```julia

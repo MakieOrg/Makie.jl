@@ -101,20 +101,6 @@ function convert_arguments end
 
 convert_arguments(::NoConversion, args...; kw...) = args
 
-struct ConversionError
-    type::Any
-    name::String
-    arg::Any
-end
-
-function Base.show(io::IO, ce::ConversionError)
-    println(io, """
-       Can't convert argument $(ce.name)::$(typeof(ce.arg)) to target type $(ce.type).
-        Either define:
-
-    """)
-end
-
 get_element_type(::T) where {T} = T
 function get_element_type(arr::AbstractArray{T}) where {T}
     if T == Any
@@ -127,7 +113,7 @@ end
 types_for_plot_arguments(trait) = nothing
 function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
     p = types_for_plot_arguments(P)
-    isnothing(p) || (p isa Tuple && any(isnothing, p)) || return p
+    isnothing(p) || return p
     return types_for_plot_arguments(Trait)
 end
 

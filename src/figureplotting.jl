@@ -82,14 +82,14 @@ function preferred_axis_type(p::Plot{F}) where F
     return result
 end
 
-to_dict(dict::Dict) = dict
+to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
 to_dict(nt::NamedTuple) = Dict{Symbol,Any}(pairs(nt))
 to_dict(attr::Attributes) = attributes(attr)
 
-function extract_attributes(dict, key)
-    attributes = pop!(dict, key, Dict{Symbol,Any}())
-    _validate_nt_like_keyword(attributes, key)
-    return to_dict(attributes)
+function extract_attributes(dictlike, key)
+    dictlike = pop!(dictlike, key, Dict{Symbol,Any}())
+    _validate_nt_like_keyword(dictlike, key)
+    return to_dict(dictlike)
 end
 
 function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Dict)
@@ -307,7 +307,7 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
         if any(x-> x in [:convert_dim_1, :convert_dim_2, :convert_dim_3], keys(ax_kw))
             conversions = get_conversions(ax_kw)
             if haskey(attributes, :dim_conversions)
-                merge_conversions!(attributes[:dim_conversions], conversions)
+                connect_conversions!(attributes[:dim_conversions], conversions)
             else
                 attributes[:dim_conversions] = conversions
             end
@@ -336,6 +336,9 @@ end
 # Which skips axis creation
 # TODO, what to return for the dynamically created axes?
 const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
+
+get_conversions(scene::Scene) = scene.conversions
+get_conversions(fig::Figure) = get_conversions(fig.scene)
 
 @noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
     if length(args) > 0
@@ -408,7 +411,7 @@ plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
     if !isnothing(get_conversions(plot))
-        merge_conversions!(ax.scene.conversions, get_conversions(plot))
+        connect_conversions!(ax.scene.conversions, get_conversions(plot))
     end
 
     # some area-like plots basically always look better if they cover the whole plot area.

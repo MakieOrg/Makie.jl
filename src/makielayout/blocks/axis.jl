@@ -189,7 +189,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.scene = scene
     # transfer conversions from axis to scene if there are any
     # or the other way around
-    merge_conversions!(scene.conversions, ax)
+    connect_conversions!(scene.conversions, ax)
 
     setfield!(scene, :float32convert, Float32Convert())
 

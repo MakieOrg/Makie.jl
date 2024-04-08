@@ -1,3 +1,4 @@
+using Makie
 using Makie:
     NoConversion,
     conversion_trait,

@@ -122,17 +122,65 @@ function get_kw_obs(names, kw)
     end
     return obs
 end
+
 import MakieCore: should_dim_convert
 
+"""
+    expand_dimensions(plottrait, plotargs...)
+
+Expands the dims for e.g. `scatter(1:4)` becoming `scatter(1:4, 1:4)` for 2D plots.
+We're separating this state from convert_arguments, to
+"""
+expand_dimensions(trait, args...) = nothing
+
+expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
+expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
+
+function expand_dimensions(::ImageLike, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
+    n, m = Float32.(size(data))
+    return (Float32(0) .. n, Float32(0) .. m, el32convert(data))
+end
+
+function expand_dimensions(::GridBased, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
+    n, m = Float32.(size(data))
+    return (1.0f0 .. n, 1.0f0 .. m, data)
+end
+
+function expand_dimensions(::VolumeLike, data::RealArray{3})
+    n, m, k = Float32.(size(data))
+    return (0.0f0 .. n, 0.0f0 .. m, 0.0f0 .. k, data)
+end
+
+function apply_expand_dimensions(trait, args, args_obs, deregister)
+    expanded = expand_dimensions(trait, args...)
+    if isnothing(expanded)
+        return args_obs
+    else
+        new_obs = map(Observable, expanded)
+        fs = onany(args_obs...) do args...
+            expanded = expand_dimensions(trait, args...)
+            for (obs, arg) in zip(new_obs, expanded)
+                obs.val = arg
+            end
+            foreach(notify, new_obs)
+            return
+        end
+        append!(deregister, fs)
+        return new_obs
+    end
+end
+
+
 function try_dim_convert(P, PTrait, user_attributes, arg_obs::Tuple)
-    if length(arg_obs) !== 2
+    # Only 2 and 3d conversions are supported, and only
+    if !(length(arg_obs) in (2, 3))
         return arg_obs
     end
     converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
     return ntuple(length(arg_obs)) do i
         arg = arg_obs[i]
-        val = to_value(arg)
-        if !isnothing(converts[i]) || should_dim_convert(P, val) || should_dim_convert(PTrait, val)
+        argval = to_value(arg)
+        if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
             return convert_axis_dim(converts, i, arg)
         end
         return arg
@@ -155,6 +203,17 @@ function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
     end
     append!(deregister, fs)
     return new_args_obs
+end
+
+function got_converted(P::Type, PTrait::ConversionTrait, result)
+    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+        return SpecApi
+    end
+    types = MakieCore.types_for_plot_arguments(P, PTrait)
+    if !isnothing(types)
+        return result isa types
+    end
+    return nothing
 end
 
 function conversion_pipeline(
@@ -217,7 +276,9 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     # And if they pass a value, they may want to change the type, so we need Observable{Any}
     args_obs = map(x -> x isa Observable ? x : Observable{Any}(x), user_args)
     deregister = Observables.ObserverFunction[]
-    converted_obs = conversion_pipeline(P, attr, args, args_obs, user_attributes, deregister)
+    PTrait = conversion_trait(P, args...)
+    expanded_args_obs = apply_expand_dimensions(PTrait, args, args_obs, deregister)
+    converted_obs = conversion_pipeline(P, attr, args, expanded_args_obs, user_attributes, deregister)
     args2 = map(to_value, converted_obs)
     ArgTyp = MakieCore.argtypes(args2)
     FinalPlotFunc = plotfunc(plottype(P, args2...))
@@ -329,7 +390,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot!(plot)
     conversions = get_conversions(plot)
     if !isnothing(conversions)
-        merge_conversions!(scene.conversions, conversions)
+        connect_conversions!(scene.conversions, conversions)
     end
     return plot
 end

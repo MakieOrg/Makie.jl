@@ -3,21 +3,15 @@
 ################################################################################
 const RangeLike = Union{AbstractVector,ClosedInterval,Tuple{Real,Real}}
 
-got_converted(result::Tuple, args::Tuple) = result !== args
-function got_converted(P::Type, PTrait::ConversionTrait, result)
-    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec, AbstractVector{PlotSpec}}
-        return SpecApi
-    end
-    types = MakieCore.types_for_plot_arguments(P, PTrait)
-    if !isnothing(types)
-        return result isa types
-    end
-    return nothing
-end
-
 convert_arguments(T::Type{<: AbstractPlot}, args...; kw...) = recursive_convert_arguments(T, args...; kw...)
 
-convert_arguments(::ConversionTrait, args...) = args
+function convert_arguments(CT::ConversionTrait, args...)
+    expanded = expand_dimensions(CT, args...)
+    if !isnothing(expanded)
+        return convert_arguments(CT, expanded...)
+    end
+    return args
+end
 
 function recursive_convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
     return recursive_convert_arguments(0, T, args...; kw...)
@@ -25,12 +19,16 @@ end
 
 function recursive_convert_arguments(iterations, T::Type{<:AbstractPlot}, args...; kw...)
     iterations == 2 && return args # we only want to recurse up to 2 times
-
     CT = conversion_trait(T, args...)
+    expanded = expand_dimensions(CT, args...)
+    if !isnothing(expanded)
+        return recursive_convert_arguments(iterations - 1, T, expanded...; kw...)
+    end
+
     # First, try conversion trait, but only in first recursion, since we apply trait conversion manually from here on
     if iterations == 0
         trait_converted = convert_arguments(CT, args...; kw...)
-        got_converted(trait_converted, args) && return trait_converted
+        trait_converted !== args && return trait_converted
     end
 
     # Try single argument convert
@@ -44,7 +42,7 @@ function recursive_convert_arguments(iterations, T::Type{<:AbstractPlot}, args..
         # Execute this exactly once, so we just repeat the calls here
         #return recursive_convert_arguments(T, converted2; kw...)
         trait_converted = convert_arguments(CT, arguments_converted...; kw...)
-        got_converted(trait_converted, arguments_converted) && return trait_converted
+        trait_converted !== arguments_converted && return trait_converted
         # Finally we just try the non-trait conversion directly
         return recursive_convert_arguments(iterations + 1, T, arguments_converted...; kw...)
     end
@@ -156,14 +154,6 @@ function convert_arguments(::PointBased, pos::RealMatrix)
     (to_vertices(pos),)
 end
 
-"""
-    convert_arguments(P, y)::Vector
-Takes vector `y` and generates a range from 1 to the length of `y`, for plotting on
-an arbitrary `x` axis.
-
-`P` is the plot Type (it is optional).
-"""
-convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -395,15 +385,6 @@ function to_interval(x, dim)
     return to_interval(x)
 end
 
-"""
-    convert_arguments(::ImageLike, mat::AbstractMatrix)
-
-Generates `ClosedInterval`s of size `0 .. size(mat, 1/2)` as x and y values.
-"""
-function convert_arguments(::ImageLike, data::AbstractMatrix{<: Union{Real, Colorant}})
-    n, m = Float32.(size(data))
-    return (Float32(0) .. n, Float32(0) .. m, el32convert(data))
-end
 
 
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
@@ -411,11 +392,6 @@ function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
     x = to_interval(xs, "x")
     y = to_interval(ys, "y")
     return (x, y, el32convert(data))
-end
-
-function convert_arguments(ct::GridBased, data::AbstractMatrix{<:Union{Real,Colorant}})
-    n, m = Float32.(size(data))
-    convert_arguments(ct, 1f0 .. n, 1f0 .. m, el32convert(data))
 end
 
 function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealVector)
@@ -461,18 +437,6 @@ end
 #                                  VolumeLike                                  #
 ################################################################################
 
-"""
-    convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
-
-Takes an array of `{T, 3} where T`, converts the dimesions `n`, `m` and `k` into `ClosedInterval`,
-and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, data::RealArray{3})
-    n, m, k = Float32.(size(data))
-    return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
-end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
