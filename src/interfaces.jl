@@ -124,12 +124,13 @@ function get_kw_obs(names, kw)
 end
 import MakieCore: should_dim_convert
 
-function try_dim_convert(P, PTrait, user_attributes, arg_obs)
+function try_dim_convert(P, PTrait, user_attributes, arg_obs::Tuple)
     if length(arg_obs) !== 2
         return arg_obs
     end
     converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
-    return map(enumerate(arg_obs)) do (i, arg)
+    return ntuple(length(arg_obs)) do i
+        arg = arg_obs[i]
         val = to_value(arg)
         if !isnothing(converts[i]) || should_dim_convert(P, val) || should_dim_convert(PTrait, val)
             return convert_axis_dim(converts, i, arg)
@@ -156,29 +157,33 @@ function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
     return new_args_obs
 end
 
-function conversion_pipeline(P, PTrait, used_attrs, args_obs, user_attributes, deregister, recursion=1)
-    if recursion == 3
+function conversion_pipeline(
+        P::Type{<:Plot}, used_attrs::Tuple, args::Tuple,
+        args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
+    if recursion === 3
         error("Recursion limit reached. This should not happen, please open an issue with Makie.jl and provide a minimal working example.")
         return P, args_obs
     end
     kw_obs = get_kw_obs(used_attrs, user_attributes)
     kw = to_value(kw_obs)
-    args_obs = try_dim_convert(P, PTrait, user_attributes, args_obs)
-    args = map(to_value, args_obs)
+    PTrait = conversion_trait(P, args...)
+    dim_converted = try_dim_convert(P, PTrait, user_attributes, args_obs)
+    args = map(to_value, dim_converted)
+
     converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, PTrait, converted)
     if status === true
         # We're done convertin!
-        return P, convert_observable_args(P, args_obs, kw_obs, converted, deregister)
+        return convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
     elseif status === SpecApi
-        return P, convert_observable_args(P, args_obs, kw_obs, (converted,), deregister)
-    elseif status == false && recursion == 1
+        return convert_observable_args(P, dim_converted, kw_obs, (converted,), deregister)
+    elseif status === false && recursion === 1
         # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
         # This is the case for e.g. convert_arguments returning types that need dim_convert
-        new_args_obs = convert_observable_args(P, args_obs, kw_obs, converted, deregister)
-        return conversion_pipeline(P, PTrait, used_attrs, new_args_obs, user_attributes, deregister,
+        new_args_obs = convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
+        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), new_args_obs, user_attributes, deregister,
                                    recursion + 1)
-    elseif status == false && recursion == 2
+    elseif status === false && recursion === 2
         kw_str = isempty(kw) ?  "" : " and kw: $(typeof(kw))"
         kw_convert = isempty(kw) ? "" : "; kw..."
         conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
@@ -191,7 +196,7 @@ function conversion_pipeline(P, PTrait, used_attrs, args_obs, user_attributes, d
     elseif isnothing(status)
         # No types_for_plot_arguments defined, so we don't know what we need to convert to.
         # This is for backwards compatibility for recipes that don't define argument types
-        return P, convert_observable_args(P, args_obs, kw_obs, converted, deregister)
+        return convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
     else
         error("Unknown status: $(status)")
     end
@@ -207,13 +212,15 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     P = Plot{Func}
     args = map(to_value, user_args)
     attr = used_attributes(P, args...)
+    # don't use convert(Observable{Any}, x) here,
+    # We assume if a user passes the observable, they type it correctly
+    # And if they pass a value, they may want to change the type, so we need Observable{Any}
     args_obs = map(x -> x isa Observable ? x : Observable{Any}(x), user_args)
     deregister = Observables.ObserverFunction[]
-    PTrait = conversion_trait(P, args...)
-    PNew, converted_obs = conversion_pipeline(P, PTrait, attr, args_obs, user_attributes, deregister)
-    args = map(to_value, converted_obs)
-    ArgTyp = MakieCore.argtypes((args...,))
-    FinalPlotFunc = plotfunc(plottype(PNew, args...))
+    converted_obs = conversion_pipeline(P, attr, args, args_obs, user_attributes, deregister)
+    args2 = map(to_value, converted_obs)
+    ArgTyp = MakieCore.argtypes(args2)
+    FinalPlotFunc = plotfunc(plottype(P, args2...))
     foreach(x -> delete!(user_attributes, x), attr)
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], Observable[converted_obs...],
                                       deregister)

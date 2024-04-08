@@ -3,22 +3,14 @@
 ################################################################################
 const RangeLike = Union{AbstractVector,ClosedInterval,Tuple{Real,Real}}
 
-function MakieCore.types_for_plot_arguments(::PointBased)
-    return (AbstractVector{<:Point},)
-end
-
 got_converted(result::Tuple, args::Tuple) = result !== args
 function got_converted(P::Type, PTrait::ConversionTrait, result)
     if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec, AbstractVector{PlotSpec}}
         return SpecApi
     end
     types = MakieCore.types_for_plot_arguments(P, PTrait)
-    if !isnothing(types) && !any(isnothing, types)
-        if length(result) == length(types)
-            return all(((arg, T),)-> arg isa T, zip(result, types))
-        else
-            return false
-        end
+    if !isnothing(types)
+        return result isa types
     end
     return nothing
 end
@@ -726,7 +718,7 @@ float_type(args::Type) = error("Type $(args) not supported")
 float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
 float_type(a::AbstractArray, rest...) = float_type(float_type(a), map(float_type, rest)...)
 float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_type, rest)...)
-float_type(a::Type, rest::Type...) = promote_type(float_type.((a, rest...))...)
+float_type(a::Type, rest::Type...) = promote_type(map(float_type, (a, rest...))...)
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
 float_type(::Type{<:Real}) = Float64

@@ -131,6 +131,10 @@ function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
     return types_for_plot_arguments(Trait)
 end
 
+function types_for_plot_arguments(::PointBased)
+    return Tuple{AbstractVector{<:Point}}
+end
+
 should_dim_convert(::Type) = false
 
 """

@@ -353,12 +353,18 @@ function create_args_type_expr(PlotType, args)
         throw(ArgumentError("All fields need to be of type `name::Type` or `name`. Found: $(all_fields)"))
     end
     types = []; names = Symbol[]
+    if all(x-> x isa Symbol, all_fields)
+        return all_fields, :()
+    end
     for field in all_fields
-        push!(names, field isa Symbol ? field : field.args[1])
-        push!(types, field isa Symbol ? nothing : field.args[2])
+        if  field isa Symbol
+            error("All fields need to be typed if one is. Please either type  all fields or none. Found: $(all_fields)")
+        end
+        push!(names, field.args[1])
+        push!(types, field.args[2])
     end
     expr = quote
-        MakieCore.types_for_plot_arguments(::Type{<:$(PlotType)}) = ($(types...),)
+        MakieCore.types_for_plot_arguments(::Type{<:$(PlotType)}) = Tuple{$(types...)}
     end
     return names, expr
 end
