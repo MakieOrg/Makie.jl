@@ -215,7 +215,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     ArgTyp = MakieCore.argtypes((args...,))
     FinalPlotFunc = plotfunc(plottype(PNew, args...))
     foreach(x -> delete!(user_attributes, x), attr)
-    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], converted_obs,
+    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], Observable[converted_obs...],
                                       deregister)
 end
 

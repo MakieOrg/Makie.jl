@@ -71,7 +71,7 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     kw::Dict{Symbol,Any}
     args::Vector{Any}
 
-    converted::NTuple{N,Observable} where {N}
+    converted::Vector{Observable}
     # Converted and processed arguments
     attributes::Attributes
 
@@ -80,7 +80,7 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     parent::Union{AbstractScene,Plot}
 
     function Plot{Typ,T}(
-            kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable},
+                         kw::Dict{Symbol,Any}, args::Vector{Any}, converted::Vector{Observable},
             deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
             ) where {Typ,T,N}
         validate_attribute_keys(Plot{Typ}, kw)

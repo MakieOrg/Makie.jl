@@ -374,7 +374,7 @@ end
 function types_for_plot_arguments end
 
 function create_recipe_expr(Tsym, args, attrblock)
-      funcname_sym = to_func_name(Tsym)
+    funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
     PlotType = esc(Tsym)
@@ -455,7 +455,7 @@ function create_recipe_expr(Tsym, args, attrblock)
             q.args,
             :(
                 $(esc(:($(MakieCore).argument_names)))(::Type{<:$PlotType}, len::Integer) =
-                    $syms
+                    ($(QuoteNode.(syms)...),)
             ),
         )
     end

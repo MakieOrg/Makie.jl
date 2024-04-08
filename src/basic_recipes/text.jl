@@ -23,7 +23,7 @@ function plot!(plot::Text)
     linecolors = Observable(RGBAf[]; ignore_equal_values=true)
     lineindices = Ref(Int[])
     if !haskey(plot, :text)
-        plot.text = plot[2]
+        attributes(plot)[:text] = plot[2]
     end
 
     onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
@@ -96,7 +96,6 @@ function plot!(plot::Text)
     pop!(t.attributes, :fonts)
     pop!(t.attributes, :text)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
-
     plot
 end
 

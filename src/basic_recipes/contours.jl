@@ -254,10 +254,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
-        pos = texts.positions.val; empty!(pos)
-        rot = texts.rotation.val; empty!(rot)
-        col = texts.color.val; empty!(col)
-        lbl = texts.text.val; empty!(lbl)
+        pos = texts.positions[]; empty!(pos)
+        rot = texts.rotation[]; empty!(rot)
+        col = texts.color[]; empty!(col)
+        lbl = texts.text[]; empty!(lbl)
         for (lev, (p1, p2, p3), color) in lev_pos_col
             px_pos1 = project(scene, apply_transform(transform_func(plot), p1, space))
             px_pos3 = project(scene, apply_transform(transform_func(plot), p3, space))
