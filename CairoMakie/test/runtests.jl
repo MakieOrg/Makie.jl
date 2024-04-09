@@ -186,8 +186,7 @@ excludes = Set([
     "heatmaps & surface",
     "Textured meshscatter", # not yet implemented
     "Voxel - texture mapping", # not yet implemented
-    "Miter Joints for line rendering", # CairoMakie does not show overlap here and extrudes lines a little more
-    "Miter Limit", # Cairo should support this but it's not available in Cairo.jl
+    "Miter Joints for line rendering", # CairoMakie does not show overlap here
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
