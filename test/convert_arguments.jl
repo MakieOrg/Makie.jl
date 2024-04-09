@@ -22,12 +22,31 @@ end
 
 Makie.convert_single_argument(c::CustomType) = c.v
 Makie.convert_single_argument(cs::AbstractArray{<:CustomType}) = [c.v for c in cs]
+# Example of the U type
+struct UnitSquare
+    origin::Point2
+end
+function Makie.convert_single_argument(ss::Vector{UnitSquare})
+    return map(ss) do s
+        return Rect(s.origin..., 1, 1)
+    end
+end
 
-@testset "single_convert_arguments for RangeBars" begin
+@testset "single_convert_arguments recursion" begin
     # issue https://github.com/MakieOrg/Makie.jl/issues/3655
     xs = 1:10
     ys = CustomType.(Float64.(1:10))
-    convert_arguments(Rangebars, ys, xs .- 1, xs .+ 1)[1] isa Vector{<:Vec4}
+    @test Makie.convert_arguments(Rangebars, ys, xs .- 1, xs .+ 1)[1] isa Vector{<:Vec3}
+    square = UnitSquare(Point2(0, 0))
+    data = [square]
+    after_conversion = Makie.convert_single_argument(data)
+    expected_conversion = [Rect(0, 0, 1, 1)]
+    # Although the types are the same
+    @test typeof(after_conversion) == typeof(expected_conversion)
+    @test expected_conversion == Makie.convert_arguments(Poly, data)[1]
+    m = Makie.to_spritemarker(:circle)
+    res = Makie.convert_arguments(Poly, m)[1]
+    @test res isa Vector{<:Point2}
 end
 
 
@@ -371,18 +390,11 @@ end
 
                 @testset "Poly" begin
                     # TODO: Are these ok? All of these are just reflection...
-                    @test apply_conversion(Poly, ps2)          isa Tuple{Vector{Point2{T_in}}}
-                    @test apply_conversion(Poly, ps3)          isa Tuple{Vector{Point3{T_in}}}
-                    @test apply_conversion(Poly, [polygon])    isa Tuple{Vector{typeof(polygon)}}
-                    @test apply_conversion(Poly, [rect2])      isa Tuple{Vector{typeof(rect2)}}
-                    @test apply_conversion(Poly, polygon)      isa Tuple{typeof(polygon)}
-                    @test apply_conversion(Poly, rect2)        isa Tuple{typeof(rect2)}
-
-                    # And these aren't mesh-like
-                    @test apply_conversion(Poly, xs, ys)        isa Tuple{Vector{Point2{T_out}}}
-                    # Vector{Vector{...}} ?
-                    @test apply_conversion(Poly, xs, ys, zs)    isa Tuple{Vector{Vector{Point3{T_out}}}}
-
+                    @test apply_conversion(Poly, ps2)           isa Tuple{Vector{Point2{T_out}}}
+                    @test apply_conversion(Poly, [polygon])     isa Tuple{Vector{typeof(polygon)}}
+                    @test apply_conversion(Poly, [rect2])       isa Tuple{Vector{typeof(rect2)}}
+                    @test apply_conversion(Poly, polygon)       isa Tuple{typeof(polygon)}
+                    @test apply_conversion(Poly, rect2)         isa Tuple{typeof(rect2)}
                     @test apply_conversion(Poly, ps2, indices)  isa Tuple{<: GeometryBasics.Mesh{2, T_out}}
                     @test apply_conversion(Poly, ps3, indices)  isa Tuple{<: GeometryBasics.Mesh{3, T_out}}
                 end

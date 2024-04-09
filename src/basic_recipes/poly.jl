@@ -3,20 +3,34 @@ const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, Ve
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
 convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
-convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
-function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray)
-    return convert_arguments(Mesh, vertices, indices)
+
+function convert_pointlike(args...)
+    return convert_arguments(PointBased(), args...)
 end
 
 function convert_arguments(::Type{<:Poly}, x::RealVector, y::RealVector)
-    return convert_arguments(PointBased(), x, y)
+    return convert_pointlike(x, y)
+end
+
+function convert_arguments(::Type{<:Poly}, path::AbstractVector{<:VecTypes})
+    return convert_pointlike(path)
+end
+
+function convert_arguments(::Type{<:Poly}, path::BezierPath)
+    return convert_pointlike(path)
+end
+
+
+function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray)
+    return convert_arguments(Mesh, vertices, indices)
 end
 
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
-function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
+Union{Polygon,AbstractVector{<:PolyElements},GeometryBasics.Mesh,GeometryPrimitive}
 
+function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
         color = plot.color,
