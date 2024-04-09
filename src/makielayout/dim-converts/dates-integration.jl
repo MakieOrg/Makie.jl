@@ -57,6 +57,7 @@ struct DateTimeConversion <: AbstractDimConversion
     end
 end
 
+expand_dimensions(::PointBased, y::AbstractVector{<:Dates.AbstractTime}) = (keys(y), y)
 needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
 create_dim_conversion(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
 MakieCore.should_dim_convert(::Type{<:Dates.AbstractTime}) = true

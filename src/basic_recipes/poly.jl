@@ -18,7 +18,7 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
 
     mesh!(
-        plot, lift(m -> convert_arguments(Mesh, m)[1], plot, plot[1]),
+        plot, plot[1],
         color = plot.color,
         colormap = plot.colormap,
         colorscale = plot.colorscale,

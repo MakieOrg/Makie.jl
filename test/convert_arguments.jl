@@ -15,6 +15,38 @@ end
     @test convert_arguments(PointBased(), [(1, 2), (1.0, 1.0f0)]) == (Point{2,Float64}[[1.0, 2.0], [1.0, 1.0]],)
 end
 
+
+struct CustomType
+    v::Float64
+end
+
+Makie.convert_single_argument(c::CustomType) = c.v
+Makie.convert_single_argument(cs::AbstractArray{<:CustomType}) = [c.v for c in cs]
+
+@testset "single_convert_arguments for RangeBars" begin
+    # issue https://github.com/MakieOrg/Makie.jl/issues/3655
+    xs = 1:10
+    ys = CustomType.(Float64.(1:10))
+    convert_arguments(Rangebars, ys, xs .- 1, xs .+ 1)[1] isa Vector{<:Vec4}
+end
+
+
+@testset "wrong arguments" begin
+    # Only works for recipes defined via the new recipe with typed arguments
+    @test_throws ArgumentError scatter(1im)
+    @test_throws ArgumentError scatter(1im, 1im)
+    @test_throws ArgumentError scatter(Figure(), 1im)
+    f = Figure()
+    ax = Axis(f[1, 1])
+    @test_throws ArgumentError scatter!(ax, 1im)
+    @test_throws ArgumentError scatter(rand(Point4f, 10))
+    @test_throws ArgumentError lines(1im)
+    @test_throws ArgumentError linesegments(1im)
+    @test_throws ArgumentError volume(1im)
+    @test_throws ArgumentError image(1im)
+    @test_throws ArgumentError heatmap(1im)
+end
+
 @testset "convert_arguments" begin
     #=
     TODO:

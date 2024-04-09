@@ -3,7 +3,7 @@
 Starting in Makie@0.21, dim conversions were introduced.
 They allow to convert types like units, categorical values or dates to be plotable and will set axis ticks accordingly.
 
-They offer an exten
+They offer an extendable interface which gets explained at the end of this page.
 
 \begin{examplefigure}{}
 ```julia
@@ -36,26 +36,20 @@ f
 
 \begin{examplefigure}{}
 ```julia
-f = Figure()
-scatter!(Axis(f[1,1]), u"ns" .* (1:10), u"d" .* rand(10) .* 10)
-f
+scatter(u"ns" .* (1:10), u"d" .* rand(10) .* 10)
 ```
 \end{examplefigure}
 
 
 \begin{examplefigure}{}
 ```julia
-f = Figure()
-scatter!(Axis(f[1,1]), u"cm" .* (1:10), u"d" .* rand(10) .* 10)
-f
+scatter(u"cm" .* (1:10), u"d" .* rand(10) .* 10)
 ```
 \end{examplefigure}
 
 
 \begin{examplefigure}{}
 ```julia
-f = Figure()
-linesegments!(Axis(f[1,1]), 1:10, Nanosecond.(round.(LinRange(0, 4599800000000, 10))))
-f
+linesegments(1:10, Nanosecond.(round.(LinRange(0, 4599800000000, 10))))
 ```
 \end{examplefigure}

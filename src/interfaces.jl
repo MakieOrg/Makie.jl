@@ -171,14 +171,14 @@ function apply_expand_dimensions(trait, args, args_obs, deregister)
 end
 
 
-function try_dim_convert(P, PTrait, user_attributes, arg_obs::Tuple)
+function try_dim_convert(P, PTrait, user_attributes, args_obs::Tuple)
     # Only 2 and 3d conversions are supported, and only
-    if !(length(arg_obs) in (2, 3))
-        return arg_obs
+    if !(length(args_obs) in (2, 3))
+        return args_obs
     end
     converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
-    return ntuple(length(arg_obs)) do i
-        arg = arg_obs[i]
+    return ntuple(length(args_obs)) do i
+        arg = args_obs[i]
         argval = to_value(arg)
         if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
             return convert_axis_dim(converts, i, arg)
@@ -228,7 +228,6 @@ function conversion_pipeline(
     PTrait = conversion_trait(P, args...)
     dim_converted = try_dim_convert(P, PTrait, user_attributes, args_obs)
     args = map(to_value, dim_converted)
-
     converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, PTrait, converted)
     if status === true

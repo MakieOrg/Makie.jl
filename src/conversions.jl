@@ -3,8 +3,6 @@
 ################################################################################
 const RangeLike = Union{AbstractVector,ClosedInterval,Tuple{Real,Real}}
 
-convert_arguments(T::Type{<: AbstractPlot}, args...; kw...) = recursive_convert_arguments(T, args...; kw...)
-
 function convert_arguments(CT::ConversionTrait, args...)
     expanded = expand_dimensions(CT, args...)
     if !isnothing(expanded)
@@ -13,39 +11,27 @@ function convert_arguments(CT::ConversionTrait, args...)
     return args
 end
 
-function recursive_convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
-    return recursive_convert_arguments(0, T, args...; kw...)
-end
 
-function recursive_convert_arguments(iterations, T::Type{<:AbstractPlot}, args...; kw...)
-    iterations == 2 && return args # we only want to recurse up to 2 times
+function convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
+    # landing here means, that there is no matching `convert_arguments` method for the plot type
+    # Meaning, it needs to be a conversion trait, or it needs single_convert_arguments or expand_dimensions
     CT = conversion_trait(T, args...)
+
+    # Try to expand dimensions first, as this is the most basic step!
     expanded = expand_dimensions(CT, args...)
-    if !isnothing(expanded)
-        return recursive_convert_arguments(iterations - 1, T, expanded...; kw...)
-    end
+    !isnothing(expanded) && return convert_arguments(T, expanded...; kw...)
 
-    # First, try conversion trait, but only in first recursion, since we apply trait conversion manually from here on
-    if iterations == 0
-        trait_converted = convert_arguments(CT, args...; kw...)
-        trait_converted !== args && return trait_converted
-    end
-
-    # Try single argument convert
+    # Try single argument convert after
     arguments_converted = map(convert_single_argument, args)
-    if arguments_converted === args
-        # Single convert didn't change anything,
-        # So next we try convert arguments without trait
-        return recursive_convert_arguments(iterations + 1, T, args...; kw...)
-    else
-        # We could recurse since we need to apply the steps above one more time, but we want to
-        # Execute this exactly once, so we just repeat the calls here
-        #return recursive_convert_arguments(T, converted2; kw...)
-        trait_converted = convert_arguments(CT, arguments_converted...; kw...)
-        trait_converted !== arguments_converted && return trait_converted
-        # Finally we just try the non-trait conversion directly
-        return recursive_convert_arguments(iterations + 1, T, arguments_converted...; kw...)
+    if arguments_converted !== args
+        # This changed something, so we start back with convert_arguments
+        return convert_arguments(T, arguments_converted...; kw...)
     end
+    # next we try to convert the arguments with the conversion trait
+    trait_converted = convert_arguments(CT, args...; kw...)
+    trait_converted !== args && return convert_arguments(T, trait_converted...; kw...)
+    # else we give up!
+    return args
 end
 
 ################################################################################
@@ -96,6 +82,9 @@ end
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
     # VecTypes{N, T} will have T undefined if tuple has different number types
     _T = @isdefined(T) ? T : Float64
+    if !(N in (2, 3))
+        throw(ArgumentError("Only 2D and 3D points are supported."))
+    end
     return (elconvert(Point{N, float_type(_T)}, positions),)
 end
 

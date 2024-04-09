@@ -118,7 +118,7 @@ function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
 end
 
 function types_for_plot_arguments(::PointBased)
-    return Tuple{AbstractVector{<:Point}}
+    return Tuple{AbstractVector{<:Union{Point2, Point3}}}
 end
 
 should_dim_convert(::Type) = false

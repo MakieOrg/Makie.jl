@@ -4,6 +4,7 @@ using Unitful: Quantity, @u_str, uconvert, ustrip
 
 const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.Units}
 
+expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y), y)
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
 MakieCore.should_dim_convert(::Type{<:SupportedUnits}) = true
 
