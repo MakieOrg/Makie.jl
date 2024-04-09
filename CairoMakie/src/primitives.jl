@@ -135,8 +135,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     # joint style
-    # TODO: Cairo should have a function like this, but it's not available
-    # Cairo.set_miter_limit(ctx, plot.miter_limit[])
+    set_miter_limit(ctx, sqrt(1.0 + to_value(get(primitive, :miter_limit, 1.5275252316519468))^2))
+
     jointstyle = to_value(get(primitive, :jointstyle, :miter))
     if jointstyle == :round
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
