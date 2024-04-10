@@ -57,7 +57,7 @@ you can access the conversion via ax.dim1_conversion and ax.dim2_conversion:
 And set them accordingly:
 ```julia
 f = Figure()
-ax = Axis(f[1, 1]; dim1_conversion=CategoricalConversion())
+ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```
 
 ### Current conversions in Makie
@@ -100,7 +100,7 @@ Makie.MakieCore.should_dim_convert(::Type{MyUnit}) = true
 
 # The non observable version of the actual conversion function
 # This is needed to convert axis limits, and should be a pure version of the below `convert_dim_observable`
-function Makie.convert_dim_value(conversion::MyDimConversion, values)
+function Makie.convert_dim_value(::MyDimConversion, values)
     return [v.value for v in values]
 end
 
@@ -109,7 +109,7 @@ function Makie.convert_dim_observable(conversion::MyDimConversion, values_obs::O
     # Most complex dim conversions need to operate on the observable (e.g. to create a Dict of all used categories), so `convert_dim_value` alone is not enough.
     result = Observable(Float64[])
     f = on(values_obs; update=true) do values
-        result[] = convert_dim_value(conversion, values)
+        result[] = Makie.convert_dim_value(conversion, values)
     end
     # any observable operation like `on` or `map` should be pushed to `deregister`, to clean up state properly if e.g. the plot gets destroyed.
     # for `result = map(func, values_obs)` one can use `append!(deregister, result.inputs)`
