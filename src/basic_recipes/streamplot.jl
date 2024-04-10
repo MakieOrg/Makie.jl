@@ -32,7 +32,7 @@ See the function `Makie.streamplot_impl` for implementation details.
 
     linewidth = @inherit linewidth
     linecap = @inherit linecap
-    jointstyle = @inherit jointstyle
+    joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
     linestyle = nothing
     MakieCore.mixin_colormap_attributes()...
@@ -182,7 +182,7 @@ function plot!(p::StreamPlot)
         color = lift(last, p, data),
         linestyle = p.linestyle,
         linecap = p.linecap,
-        jointstyle = p.jointstyle,
+        joinstyle = p.joinstyle,
         miter_limit = p.miter_limit,
         linewidth = p.linewidth;
         colormap_args...,

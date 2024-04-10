@@ -138,10 +138,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     miter_angle = to_value(get(primitive, :miter_limit, 2pi/3))
     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
 
-    jointstyle = to_value(get(primitive, :jointstyle, :miter))
-    if jointstyle == :round
+    joinstyle = to_value(get(primitive, :joinstyle, :miter))
+    if joinstyle == :round
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
-    elseif jointstyle == :bevel
+    elseif joinstyle == :bevel
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
     else # :miter
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)

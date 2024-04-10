@@ -26,7 +26,7 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     linewidth = 1.0
     linestyle = nothing
     linecap = @inherit linecap
-    jointstyle = @inherit jointstyle
+    joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
     enable_depth = true
     """
@@ -164,7 +164,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     pop!(attr, :linestyle)
     pop!(attr, :linewidth)
     pop!(attr, :linecap)
-    pop!(attr, :jointstyle)
+    pop!(attr, :joinstyle)
     pop!(attr, :miter_limit)
     volume!(plot, attr, x, y, z, volume)
 end
@@ -333,7 +333,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         linewidth = plot.linewidth,
         linestyle = plot.linestyle,
         linecap = plot.linecap,
-        jointstyle = plot.jointstyle,
+        joinstyle = plot.joinstyle,
         miter_limit = plot.miter_limit,
         visible=plot.visible,
         transparency=plot.transparency,

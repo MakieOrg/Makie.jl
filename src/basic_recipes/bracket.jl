@@ -29,7 +29,7 @@ By default each label is rotated parallel to the line between the bracket points
     linewidth = @inherit linewidth
     linestyle = :solid
     linecap = @inherit linecap
-    jointstyle = @inherit jointstyle
+    joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
     justification = automatic
     style = :curly
@@ -113,7 +113,7 @@ function plot!(pl::Bracket)
 
     # Avoid scale!() / translate!() / rotate!() to affect these
     series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
-        linestyle = pl.linestyle, linecap = pl.linecap, jointstyle = pl.jointstyle,
+        linestyle = pl.linestyle, linecap = pl.linecap, joinstyle = pl.joinstyle,
         miter_limit = pl.miter_limit, transformation = Transformation())
     text!(pl, text_tuples, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,

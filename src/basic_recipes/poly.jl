@@ -169,7 +169,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
         colormap = plot.strokecolormap,
         linewidth = plot.strokewidth, linecap = plot.linecap,
-        jointstyle = plot.jointstyle, miter_limit = plot.miter_limit,
+        joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5

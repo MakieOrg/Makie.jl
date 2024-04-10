@@ -312,7 +312,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
     linecap = @inherit linecap
     "Controls whether line joints are rounded (:round) or not (:miter)."
-    jointstyle = @inherit jointstyle
+    joinstyle = @inherit joinstyle
     "Sets the minimum inner joint angle below which miter joints truncate. See also `Makie.miter_distance_to_angle()`"
     miter_limit = @inherit miter_limit
     "Sets which attributes to cycle when creating multiple plots."
@@ -590,7 +590,7 @@ Plots polygons, which are defined by
     "Sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)"
     linestyle = nothing
     linecap = @inherit linecap
-    jointstyle = @inherit jointstyle
+    joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
 
     shading = NoShading

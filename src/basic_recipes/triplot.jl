@@ -34,7 +34,7 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
     "Sets the color of the triangles."
     triangle_color= :transparent
     linecap = @inherit linecap
-    jointstyle = @inherit jointstyle
+    joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
 
     # Convex hull settings
@@ -227,7 +227,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
                   linecap=p.linecap, linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
     lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
-           linecap = p.linecap, jointstyle = p.jointstyle, miter_limit = p.miter_limit,
+           linecap = p.linecap, joinstyle = p.joinstyle, miter_limit = p.miter_limit,
            linestyle=p.convex_hull_linestyle, depth_shift=-1.0f-5)
     linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift=-2.0f-5,
                   linecap=p.linecap, linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)

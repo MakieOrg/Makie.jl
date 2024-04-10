@@ -1080,7 +1080,7 @@ function convert_attribute(value::Symbol, ::key"linecap")
     end
 end
 
-function convert_attribute(value::Symbol, ::key"jointstyle")
+function convert_attribute(value::Symbol, ::key"joinstyle")
     # TODO: make this an enum?
     # 0 and 2 are shared between this and linecap. 1 has no equivalent here
     vals = Dict(:miter => 0, :round => 2, :bevel => 3)

@@ -68,7 +68,7 @@ for i in 1:3, j in 1:3
     lines!(
         ps .+ Point2f(i, -j), linewidth = 20,
         linecap = (:butt, :square, :round)[i],
-        jointstyle = (:miter, :bevel, :round)[j]
+        joinstyle = (:miter, :bevel, :round)[j]
     )
     scatterlines!(ps .+ Point2f(i, -j), color = :gray)
 end

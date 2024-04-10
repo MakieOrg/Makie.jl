@@ -1,5 +1,5 @@
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
-    Makie.@converted_attribute plot (linewidth, linestyle, linecap, jointstyle)
+    Makie.@converted_attribute plot (linewidth, linestyle, linecap, joinstyle)
 
     uniforms = Dict(
         :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
@@ -8,7 +8,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :linecap => linecap,
     )
     if plot isa Lines
-        uniforms[:jointstyle] = jointstyle
+        uniforms[:joinstyle] = joinstyle
         uniforms[:miter_limit] = map(x -> cos(pi - x), plot, plot.miter_limit)
     end
 

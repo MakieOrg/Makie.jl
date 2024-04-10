@@ -43,7 +43,7 @@ uniform float pattern_length;
 uniform vec2 resolution;
 
 uniform int linecap;
-uniform int jointstyle;
+uniform int joinstyle;
 uniform float miter_limit;
 
 // Constants
@@ -298,12 +298,12 @@ void main(void)
     vec2 miter_n1 = miter.x < -0.4 ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
     vec2 miter_n2 = miter.y < -0.4 ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
-    // Are we truncating the joint based on miter limit or jointstyle?
+    // Are we truncating the joint based on miter limit or joinstyle?
     // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
     // miter joints a when v1 ≈ v2 (v0)
     bvec2 is_truncated = bvec2(
-        (jointstyle == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
-        (jointstyle == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
+        (joinstyle == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
+        (joinstyle == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
     );
 
     // miter vectors (line vector matching miter normal)
@@ -403,8 +403,8 @@ void main(void)
 
     // 0 :butt/normal cap or joint | 1 :square cap | 2 rounded cap/joint
     f_capmode = ivec2(
-        isvalid[0] ? jointstyle : linecap,
-        isvalid[3] ? jointstyle : linecap
+        isvalid[0] ? joinstyle : linecap,
+        isvalid[3] ? joinstyle : linecap
     );
 
     // Generate interpolated/varying outputs:

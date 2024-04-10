@@ -58,7 +58,7 @@ end
     scene
 end
 
-@reference_test "Linecaps and jointstyles" begin
+@reference_test "Linecaps and joinstyles" begin
     fig = Figure(size = (550, 450))
     ps = [Point2f(-2, 0), Point2f(0), Point2f(2, 0)]
     r = 2.0
@@ -76,7 +76,7 @@ end
         p = lines!(
             ax, ps, linewidth = 20,
             linecap = (:butt, :square, :round)[i],
-            jointstyle = (:miter, :bevel, :round)[j]
+            joinstyle = (:miter, :bevel, :round)[j]
         )
         scatterlines!(ax, ps, color = :orange)
     end
@@ -100,11 +100,11 @@ begin
     ylims!(-2.5, 2.5)
     lines!(
         ax, ps .+ Point2f(-1.2, -1.2), linewidth = 20, miter_limit = 51pi/180, color = :black,
-        jointstyle = :round
+        joinstyle = :round
     )
     lines!(
         ax, ps .+ Point2f(+1.2, -1.2), linewidth = 20, miter_limit = 129pi/180, color = :black,
-        jointstyle = :bevel
+        joinstyle = :bevel
     )
     lines!(ax, ps .+ Point2f(-1.2, +1.2), linewidth = 20, miter_limit = 51pi/180, color = :black)
     lines!(ax, ps .+ Point2f(+1.2, +1.2), linewidth = 20, miter_limit = 129pi/180, color = :black)
