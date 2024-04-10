@@ -71,7 +71,7 @@ function convert_dim_value(conversion::DateTimeConversion, value::AbstractArray)
     return date_to_number.(conversion.type[], value)
 end
 
-function convert_axis_dim(conversion::DateTimeConversion, values::Observable)
+function convert_axis_dim(conversion::DateTimeConversion, values::Observable, deregister)
     T = conversion.type[]
     eltype = MakieCore.get_element_type(values[])
     if T <: Automatic
@@ -82,9 +82,11 @@ function convert_axis_dim(conversion::DateTimeConversion, values::Observable)
             error("Plotting unit $(eltype) into axis with type $(T) not supported.")
         end
     end
-    return map(values, conversion.type) do vals, T
+    result = map(values, conversion.type) do vals, T
         return date_to_number.(T, vals)
     end
+    append!(deregister, result.inputs)
+    return result
 end
 
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)

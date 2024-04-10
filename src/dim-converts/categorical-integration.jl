@@ -1,7 +1,8 @@
 """
     CategoricalConversion(; sortby=identity)
-Categorical conversion. Gets chosen automatically only for Strings right now.
-The categories work with any sortable value though, so one can always do `Axis(fig; xticks=CategoricalConversion())`,
+
+Categorical conversion. Gets chosen automatically only for `Categorical(array_of_objects)` right now.
+The categories work with any sortable value though, so one can always do `Axis(fig; convert_dim_1=CategoricalConversion())`,
 to use it for other categories.
 One can use `CategoricalConversion(sortby=func)`, to change the sorting, or make unsortable objects sortable.
 
@@ -10,12 +11,14 @@ One can use `CategoricalConversion(sortby=func)`, to change the sorting, or make
 ```julia
 # Ticks get chosen automatically as categorical
 scatter(1:4, Categorical(["a", "b", "c", "a"]))
+```
 
+```julia
 # Explicitely set them for other types:
-
 struct Named
     value
 end
+Base.show(io::IO, s::SomeStruct) = println(io, "[\$(s.value)]")
 
 conversion = Makie.CategoricalConversion(sortby=x->x.value)
 barplot(Named.([:a, :b, :c]), 1:3, axis=(convert_dim_1=conversion,))
@@ -108,7 +111,7 @@ function convert_categorical(conversion::CategoricalConversion, value::Integer)
     return conversion.category_to_int[][value]
 end
 
-function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observable)
+function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observable, deregister)
     prev_values = []
     # This is a bit tricky...
     # We need to recalculate the categories on each values_obs update,
@@ -118,7 +121,7 @@ function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observa
     # so we introduce a placeholder observable that gets triggered when an update is needed
     # outside of category_to_int updating
     update_needed = Observable(nothing)
-    on(values_obs; update=true) do values
+    f = on(values_obs; update=true) do values
         new_values = unique!(Any[get_values(values)...])
         if new_values != prev_values
             dict_setindex!(conversion.sets, values_obs.id, new_values)
@@ -133,7 +136,7 @@ function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observa
         end
         return
     end
-
+    push!(deregister, f)
     # So now we update when either category_to_int changes, or
     # when values changes and an update is needed
     return map(update_needed, conversion.category_to_int) do _, categories

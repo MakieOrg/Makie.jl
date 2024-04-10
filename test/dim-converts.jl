@@ -62,3 +62,32 @@ end
     @test ax.scene.conversions[1] == Makie.get_conversions(pl)[1]
     @test pl[1][] == Point.(1:3, 1:3)
 end
+
+@testset "unit switching" begin
+    f, ax, pl = scatter(rand(Hour(1):Hour(1):Hour(20), 10))
+    # Unitful works as well
+    scatter!(ax, LinRange(0u"yr", 0.1u"yr", 5))
+    @test_throws Unitful.DimensionError scatter!(ax, 1:4)
+    @test_throws ArgumentError scatter!(ax, Hour(1):Hour(1):Hour(4), 1:4)
+end
+
+function test_cleanup(arg)
+    obs = Observable(arg)
+    f, ax, pl = scatter(obs)
+    @test length(obs.listeners) == 1
+    delete!(ax, pl)
+    @test length(obs.listeners) == 0
+end
+
+@testset "clean up observables" begin
+    @testset "UnitfulConversion" begin
+        test_cleanup([0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"])
+    end
+    @testset "CategoricalConversion" begin
+        test_cleanup(Categorical(["a", "b", "c"]))
+    end
+    @testset "DateTimeConversion" begin
+        dates = now() .+ range(Second(0); step=Second(5), length=10)
+        test_cleanup(dates)
+    end
+end

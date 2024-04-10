@@ -11,7 +11,6 @@ function convert_arguments(CT::ConversionTrait, args...)
     return args
 end
 
-
 function convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
     # landing here means, that there is no matching `convert_arguments` method for the plot type
     # Meaning, it needs to be a conversion trait, or it needs single_convert_arguments or expand_dimensions

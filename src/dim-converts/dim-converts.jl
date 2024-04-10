@@ -1,5 +1,7 @@
 abstract type AbstractDimConversion end
 
+struct NoDimConversion <: AbstractDimConversion end
+
 struct DimConversions
     conversions::NTuple{3,Observable{Union{Nothing,AbstractDimConversion}}}
     function DimConversions()
@@ -25,24 +27,15 @@ end
 function Base.setindex!(conversions::DimConversions, value, i::Int)
     isnothing(value) && return # ignore no conversions
     conversions[i] === value && return # ignore same conversion
-    if conversions[i] === nothing
+    if isnothing(conversions[i])
         # only set new conversion if there is none yet
         conversions.conversions[i][] = value
         return
     else
-        error("Cannot set axis conversion for dimension $i, since it already has a conversion: $(conversions[i])")
+        throw(ArgumentError("Cannot change dim conversion for dimension $i, since it already is set to a conversion: $(conversions[i])."))
     end
 end
 
-function convert_axis_dim(conversions::DimConversions, dim::Int, value::Observable)
-    conversion = conversions[dim]
-    if !isnothing(conversion)
-        return convert_axis_dim(conversion, value)
-    end
-    c = dim_conversion_from_args(value[])
-    conversions[dim] = c
-    return convert_axis_dim(c, value)
-end
 
 ## Interface to be overloaded for any AbstractDimConversion type
 function convert_dim_value(conversions::DimConversions, dim::Int, value)
@@ -57,12 +50,25 @@ function convert_dim_value(axislike::AbstractAxis, dim::Int, value)
     return convert_dim_value(get_conversions(axislike), dim, value)
 end
 
-function convert_dim_value(conversion::AbstractDimConversion, value)
+convert_dim_value(::NoDimConversion, value) = value
+function convert_dim_value(conversion::AbstractDimConversion, value, deregister)
     error("AbstractDimConversion $(typeof(conversion)) not supported for value of type $(typeof(value))")
 end
 
+using MakieCore: should_dim_convert
+
 # Return instance of AbstractDimConversion for a given type
-create_dim_conversion(argument_eltype::DataType) = nothing
+create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
+MakieCore.should_dim_convert(::Type{<:Real}) = true
+function convert_axis_dim(::NoDimConversion, value::Observable, deregister)
+    return value
+end
+
+# get_ticks needs overloading for Dim Conversion
+# Which gets ignored for no conversion/nothing
+function get_ticks(::Union{Nothing,NoDimConversion}, ticks, scale, formatter, vmin, vmax)
+    return get_ticks(ticks, scale, formatter, vmin, vmax)
+end
 
 # The below is defined in MakieCore, to be accessible by `@recipe`
 # MakieCore.should_dim_convert(eltype) = false
@@ -154,7 +160,10 @@ function needs_tick_update_observable(conversion::Observable)
         deregister = nothing
         deregister = on(conversion) do conversion
             if !isnothing(conversion)
-                connect!(tick_update, needs_tick_update_observable(conversion))
+                obs = needs_tick_update_observable(conversion)
+                if !isnothing(obs)
+                    connect!(tick_update, obs)
+                end
                 # this one doesn't need to listen anymore, since this update can only happen once
                 off(deregister)
             end
@@ -163,4 +172,32 @@ function needs_tick_update_observable(conversion::Observable)
     else
         return needs_tick_update_observable(conversion[])
     end
+end
+
+function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)
+    # Only 2 and 3d conversions are supported, and only
+    if !(length(args_obs) in (2, 3))
+        return args_obs
+    end
+    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
+    return ntuple(length(args_obs)) do i
+        arg = args_obs[i]
+        argval = to_value(arg)
+        # We only convert if we have a conversion struct (which isn't NoDimConversion),
+        # or if we we should dim_convert
+        if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
+            return convert_axis_dim(converts, i, arg, deregister)
+        end
+        return arg
+    end
+end
+
+function convert_axis_dim(conversions::DimConversions, dim::Int, value::Observable, deregister)
+    conversion = conversions[dim]
+    if !(conversion isa Union{Nothing,NoDimConversion})
+        return convert_axis_dim(conversion, value, deregister)
+    end
+    c = dim_conversion_from_args(value[])
+    conversions[dim] = c
+    return convert_axis_dim(c, value, deregister)
 end

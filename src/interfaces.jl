@@ -123,13 +123,12 @@ function get_kw_obs(names, kw)
     return obs
 end
 
-import MakieCore: should_dim_convert
 
 """
     expand_dimensions(plottrait, plotargs...)
 
 Expands the dims for e.g. `scatter(1:4)` becoming `scatter(1:4, 1:4)` for 2D plots.
-We're separating this state from convert_arguments, to
+We're separating this state from convert_arguments, to better apply `dim_converts` before convert_arguments.
 """
 expand_dimensions(trait, args...) = nothing
 
@@ -171,22 +170,7 @@ function apply_expand_dimensions(trait, args, args_obs, deregister)
 end
 
 
-function try_dim_convert(P, PTrait, user_attributes, args_obs::Tuple)
-    # Only 2 and 3d conversions are supported, and only
-    if !(length(args_obs) in (2, 3))
-        return args_obs
-    end
-    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
-    return ntuple(length(args_obs)) do i
-        arg = args_obs[i]
-        argval = to_value(arg)
-        if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
-            return convert_axis_dim(converts, i, arg)
-        end
-        return arg
-    end
-end
-
+# Internal function to apply convert_arguments to observable arguments
 function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
     # Fully converted arguments to target type for Plot
     new_args_obs = map(Observable, converted)
@@ -216,6 +200,13 @@ function got_converted(P::Type, PTrait::ConversionTrait, result)
     return nothing
 end
 
+"""
+    conversion_pipeline(P::Type{<:Plot}, used_attrs::Tuple, args::Tuple,
+        args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
+
+The main conversion pipeline for converting arguments for a plot type.
+Applies dim_converts, expand_dimensions (in `try_dim_convert`), convert_arguments and checks if the conversion was successful.
+"""
 function conversion_pipeline(
         P::Type{<:Plot}, used_attrs::Tuple, args::Tuple,
         args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
@@ -226,12 +217,12 @@ function conversion_pipeline(
     kw_obs = get_kw_obs(used_attrs, user_attributes)
     kw = to_value(kw_obs)
     PTrait = conversion_trait(P, args...)
-    dim_converted = try_dim_convert(P, PTrait, user_attributes, args_obs)
+    dim_converted = try_dim_convert(P, PTrait, user_attributes, args_obs, deregister)
     args = map(to_value, dim_converted)
     converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, PTrait, converted)
     if status === true
-        # We're done convertin!
+        # We're done converting!
         return convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
     elseif status === SpecApi
         return convert_observable_args(P, dim_converted, kw_obs, (converted,), deregister)
@@ -259,7 +250,6 @@ function conversion_pipeline(
         error("Unknown status: $(status)")
     end
 end
-
 
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here

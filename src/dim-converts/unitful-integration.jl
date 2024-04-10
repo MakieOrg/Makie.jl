@@ -121,7 +121,7 @@ Allows to plot arrays of unitful objects into an axis.
 # Arguments
 
 - `unit=automatic`: sets the unit as conversion target. If left at automatic, the best unit will be chosen for all plots + values plotted to the axis (e.g. years for long periods, or km for long distances, or nanoseconds for short times).
-- `units_in_label=false`: controls, whether plots are shown in the label_prefix of the axis labels, or in the tick labels
+- `units_in_label=true`: controls, whether plots are shown in the label_prefix of the axis labels, or in the tick labels
 
 # Examples
 
@@ -130,10 +130,12 @@ using Unitful, CairoMakie
 
 # UnitfulConversion will get chosen automatically:
 scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
+```
 
-# fix unit to always use Meter & display unit in the xlabel postfix
-convert = UnitfulConversion(u"m"; units_in_label=true)
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(convert_dim_2=convert,))
+Fix unit to always use Meter & display unit in the xlabel:
+```julia
+uc = Makie.UnitfulConversion(u"m"; units_in_label=false)
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(convert_dim_2=uc, xlabel="x (km)"))
 ```
 """
 struct UnitfulConversion <: AbstractDimConversion
@@ -143,7 +145,7 @@ struct UnitfulConversion <: AbstractDimConversion
     extrema::Dict{String, Tuple{Any, Any}}
 end
 
-function UnitfulConversion(unit=automatic; units_in_label=false)
+function UnitfulConversion(unit=automatic; units_in_label=true)
     extrema = Dict{String,Tuple{Any,Any}}()
     return UnitfulConversion(unit, unit isa Automatic, units_in_label, extrema)
 end
@@ -171,14 +173,14 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     unit_str = unit_string(unit)
     tick_vals = get_tickvalues(ticks, scale, vmin, vmax)
     labels = get_ticklabels(formatter, tick_vals)
-    if !conversion.units_in_label[]
+    if conversion.units_in_label[]
         labels = labels .* unit_str
     end
     return tick_vals, labels
 end
 
-function convert_axis_dim(conversion::UnitfulConversion, value_obs::Observable)
-    return map(conversion.unit, value_obs; ignore_equal_values=true) do unit, values
+function convert_axis_dim(conversion::UnitfulConversion, value_obs::Observable, deregister)
+    result = map(conversion.unit, value_obs; ignore_equal_values=true) do unit, values
         if !isempty(values)
             # try if conversion works, to through error if not!
             # Is there a function for this to check in Unitful?
@@ -187,6 +189,8 @@ function convert_axis_dim(conversion::UnitfulConversion, value_obs::Observable)
         update_extrema!(conversion, value_obs)
         return unit_convert(conversion.unit[], values)
     end
+    append!(deregister, result.inputs)
+    return result
 end
 
 function convert_dim_value(conversion::UnitfulConversion, value::SupportedUnits)

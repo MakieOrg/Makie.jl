@@ -153,10 +153,10 @@ include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 
-include("makielayout/dim-converts/dim-converts.jl")
-include("makielayout/dim-converts/unitful-integration.jl")
-include("makielayout/dim-converts/categorical-integration.jl")
-include("makielayout/dim-converts/dates-integration.jl")
+include("dim-converts/dim-converts.jl")
+include("dim-converts/unitful-integration.jl")
+include("dim-converts/categorical-integration.jl")
+include("dim-converts/dates-integration.jl")
 
 include("scenes.jl")
 include("float32-scaling.jl")

@@ -541,11 +541,6 @@ function Base.delete!(la::LineAxis)
     end
 end
 
-# For now AbstractDimConversion
-function get_ticks(::Nothing, ticks, scale, formatter, vmin, vmax)
-    return get_ticks(ticks, scale, formatter, vmin, vmax)
-end
-
 """
     get_ticks(ticks, scale, formatter, vmin, vmax)
 
