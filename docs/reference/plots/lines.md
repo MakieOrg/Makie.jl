@@ -52,7 +52,7 @@ f
 ```
 \end{examplefigure}
 
-### Linecaps and Jointstyles
+### Linecaps and Joinstyles
 
 \begin{examplefigure}{svg = true}
 ```julia

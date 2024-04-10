@@ -1,6 +1,6 @@
 # Changelog
 
-- Added `linecap` and `jointstyle` attributes for lines and linesegments. Also normalized `miter_limit` to 60° across all backends. [#3771](https://github.com/MakieOrg/Makie.jl/pull/3771)
+- Added `linecap` and `joinstyle` attributes for lines and linesegments. Also normalized `miter_limit` to 60° across all backends. [#3771](https://github.com/MakieOrg/Makie.jl/pull/3771)
 
 ## [0.21.0] - 2024-03-0X
 

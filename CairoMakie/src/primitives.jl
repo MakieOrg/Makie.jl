@@ -134,7 +134,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
     end
 
-    # joint style
+    # joinstyle
     miter_angle = to_value(get(primitive, :miter_limit, 2pi/3))
     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
 
