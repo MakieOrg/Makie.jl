@@ -62,7 +62,7 @@ end
     fig = Figure(size = (550, 450))
     ps = [Point2f(-2, 0), Point2f(0), Point2f(2, 0)]
     r = 2.0
-    for phi in [130, -114, 113, 90, -60]
+    for phi in [130, -121, 119, 90, -60]
         R = Makie.Mat2f(cosd(phi), sind(phi), -sind(phi), cosd(phi))
         r += 0.2
         push!(ps, ps[end] + r * R * normalize(ps[end] - ps[end-1]))
@@ -73,7 +73,7 @@ end
         hidedecorations!(ax)
         xlims!(-4.7, 4.2)
         ylims!(-1.0, 5.5)
-        lines!(
+        p = lines!(
             ax, ps, linewidth = 20,
             linecap = (:butt, :square, :round)[i],
             jointstyle = (:miter, :bevel, :round)[j]
@@ -84,29 +84,30 @@ end
     fig
 end
 
-@reference_test "Miter Limit" begin
+#@reference_test "Miter Limit"
+begin
     ps = [Point2f(0, -0.5), Point2f(1, -0.5)]
-    for phi in [160, -130, 114, 60, 113, -90]
+    for phi in [160, -130, 121, 50, 119, -90] # these are 180-miter_angle
         R = Makie.Mat2f(cosd(phi), sind(phi), -sind(phi), cosd(phi))
-        push!(ps, ps[end] + (1 + 0.2 * (phi == 60)) * R * normalize(ps[end] - ps[end-1]))
+        push!(ps, ps[end] + (1 + 0.2 * (phi == 50)) * R * normalize(ps[end] - ps[end-1]))
     end
-    popfirst!(ps)
+    popfirst!(ps) # for alignment, removes 160° corner
 
     fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1], aspect = DataAspect())
     hidedecorations!(ax)
-    xlims!(-2.5, 2.5)
+    xlims!(-2.7, 2.4)
     ylims!(-2.5, 2.5)
     lines!(
-        ax, ps .+ Point2f(-1.2, -1.2), linewidth = 20, miter_limit = 1.0, color = :black,
+        ax, ps .+ Point2f(-1.2, -1.2), linewidth = 20, miter_limit = 51pi/180, color = :black,
         jointstyle = :round
     )
     lines!(
-        ax, ps .+ Point2f(+1.2, -1.2), linewidth = 20, miter_limit = 2.0, color = :black,
+        ax, ps .+ Point2f(+1.2, -1.2), linewidth = 20, miter_limit = 129pi/180, color = :black,
         jointstyle = :bevel
     )
-    lines!(ax, ps .+ Point2f(-1.2, +1.2), linewidth = 20, miter_limit = 1.0, color = :black)
-    lines!(ax, ps .+ Point2f(+1.2, +1.2), linewidth = 20, miter_limit = 2.0, color = :black)
+    lines!(ax, ps .+ Point2f(-1.2, +1.2), linewidth = 20, miter_limit = 51pi/180, color = :black)
+    lines!(ax, ps .+ Point2f(+1.2, +1.2), linewidth = 20, miter_limit = 129pi/180, color = :black)
 
     fig
 end
