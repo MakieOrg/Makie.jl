@@ -1,13 +1,12 @@
 # Dim Converts
 
-Starting in Makie@0.21, dim conversions were introduced.
-They allow to convert types like units, categorical values or dates to be plotable and will set axis ticks accordingly.
-
-They offer an extendable interface which gets explained at the end of this page.
+Starting with Makie@0.21, support for types like units, categorical values and Dates has been added.
+They are converted to a plotable representation by dim converts, which also take care of axis ticks.
+In the following sections we will explain their usage and how to extend the interface with your own types.
 
 ## Examples
 
-The basic usage is as easy as replacing numbers with any supported typ, e.g. Dates.Second:
+The basic usage is as easy as replacing numbers with any supported type, e.g. `Dates.Second`:
 
 \begin{examplefigure}{}
 ```julia
@@ -19,7 +18,7 @@ f, ax, pl = scatter(rand(Second(1):Second(60):Second(20*60), 10))
 ```
 \end{examplefigure}
 
-Once an axis dimension is set to a certain unit, one must plot into that axis only with a matching unit.
+Once an axis dimension is set to a certain unit, one must plot into that axis with compatible units.
 So e.g. hours work, since they're compatible with the unitful conversion:
 \begin{examplefigure}{}
 ```julia
@@ -29,10 +28,9 @@ scatter!(ax, LinRange(0u"yr", 0.1u"yr", 5))
 f
 ```
 \end{examplefigure}
-This will change the displayed unit depending on the range of values.
+Note that the units displayed in ticks will adjust to the given range of values.
 
-Going back to just numbers errors, since the axis is unitful now:
-scatter!(ax, LinRange(0u"yr", 0.1u"yr", 10), rand(Hour(1):Hour(1):Hour(20), 10))
+Going back to just numbers errors since the axis is unitful now:
 ```julia
 try
     scatter!(ax, 1:4)
@@ -43,7 +41,7 @@ end
 Similarly, trying to plot units into a unitless axis dimension errors too, since otherwise it would alter the meaning of the previous plotted values:
 ```julia
 try
-    scatter!(ax, Hour(1):Hour(1):Hour(4), 1:4)
+    scatter!(ax, LinRange(0u"yr", 0.1u"yr", 10), rand(Hour(1):Hour(1):Hour(20), 10))
 catch e
     return e
 end
@@ -94,6 +92,7 @@ end
 # The Type gets extracted via `Makie.get_element_type(plot_argument_for_dim_n)`
 # so e.g. `plot(1:10, ["a", "b", "c"])` would call `Makie.get_element_type(["a", "b", "c"])` and return `String` for axis dim 2.
 Makie.create_dim_conversion(::Type{MyUnit}) = MyDimConversion()
+
 # This function needs to be overloaded too, even though it's redundant to the above in a sense.
 # We did not want to use `hasmethod(MakieCore.should_dim_convert, (MyDimTypes,))` because it can be slow and error prown.
 Makie.MakieCore.should_dim_convert(::Type{MyUnit}) = true
@@ -111,6 +110,7 @@ function Makie.convert_dim_observable(conversion::MyDimConversion, values_obs::O
     f = on(values_obs; update=true) do values
         result[] = Makie.convert_dim_value(conversion, values)
     end
+
     # any observable operation like `on` or `map` should be pushed to `deregister`, to clean up state properly if e.g. the plot gets destroyed.
     # for `result = map(func, values_obs)` one can use `append!(deregister, result.inputs)`
     push!(deregister, f)
