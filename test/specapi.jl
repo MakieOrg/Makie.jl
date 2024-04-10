@@ -103,15 +103,3 @@ end
     @test ax.dim2_conversion[] isa Makie.CategoricalConversion
     f
 end
-
-#=
-struct CatSpec
-    catsies::Vector{String}
-end
-
-function Makie.convert_arguments(::Type{<:AbstractPlot}, obj::CatSpec)
-    return S.Scatter(1:4, Categorical(obj.catsies); markersize=20)
-end
-
-f, ax, pl = plot(CatSpec(["a", "b", "c", "d"]))
-=#

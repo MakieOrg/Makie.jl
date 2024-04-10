@@ -28,8 +28,6 @@ end
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
-Union{Polygon,AbstractVector{<:PolyElements},GeometryBasics.Mesh,GeometryPrimitive}
-
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
