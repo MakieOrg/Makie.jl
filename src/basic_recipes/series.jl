@@ -17,6 +17,9 @@ If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` 
     solid_color=nothing
     labels=nothing
     linestyle=:solid
+    linecap = @inherit linecap
+    jointstyle = @inherit jointstyle
+    miter_limit = @inherit miter_limit
     marker=nothing
     markersize=nothing
     markercolor=automatic
@@ -58,7 +61,7 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVec
 end
 
 function plot!(plot::Series)
-    @extract plot (curves, labels, linewidth, color, solid_color, space, linestyle)
+    @extract plot (curves, labels, linewidth, linecap, jointstyle, miter_limit, color, solid_color, space, linestyle)
     sargs = [:marker, :markersize, :strokecolor, :strokewidth]
     scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
     nseries = length(curves[])
@@ -79,11 +82,13 @@ function plot!(plot::Series)
             mcolor = plot.markercolor
             markercolor = lift((mc, sc)-> mc == automatic ? sc : mc, plot, mcolor, series_color)
             scatterlines!(plot, positions;
-                linewidth=linewidth, color=series_color, markercolor=series_color,
+                linewidth=linewidth, linecap = plot.linecap, jointstyle = jointstyle,
+                miter_limit = miter_limit, color=series_color, markercolor=series_color,
                 label=label[], scatter..., space = space, linestyle = series_linestyle)
         else
-            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label, space = space,
-                linestyle = series_linestyle)
+            lines!(plot, positions; linewidth=linewidth, linecap = plot.linecap,
+                jointstyle = jointstyle, miter_limit = miter_limit, color=series_color,
+                label=label, space = space, linestyle = series_linestyle)
         end
     end
 end

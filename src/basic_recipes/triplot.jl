@@ -33,6 +33,9 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
     linestyle=:solid
     "Sets the color of the triangles."
     triangle_color= :transparent
+    linecap = @inherit linecap
+    jointstyle = @inherit jointstyle
+    miter_limit = @inherit miter_limit
 
     # Convex hull settings
     "Sets the color of the convex hull."
@@ -222,11 +225,12 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     poly!(p, points_2f, triangles_3f; strokewidth=p.strokewidth, strokecolor=p.strokecolor,
           color=p.triangle_color)
     linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
-                  linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
+                  linecap=p.linecap, linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
     lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
+           linecap = p.linecap, jointstyle = p.jointstyle, miter_limit = p.miter_limit,
            linestyle=p.convex_hull_linestyle, depth_shift=-1.0f-5)
     linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift=-2.0f-5,
-                  linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
+                  linecap=p.linecap, linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
     scatter!(p, present_points_2f; markersize=p.markersize, color=p.markercolor,
              strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift=-3.0f-5)
     return p

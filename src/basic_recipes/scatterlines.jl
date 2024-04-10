@@ -10,6 +10,9 @@ Plots `scatter` markers and `lines` between them.
     linestyle = nothing
     "Sets the width of the line in screen units"
     linewidth = @inherit linewidth
+    linecap = @inherit linecap
+    jointstyle = @inherit jointstyle
+    miter_limit = @inherit miter_limit
     markercolor = automatic
     markercolormap = automatic
     markercolorrange = automatic
@@ -55,6 +58,9 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         color = p.color,
         linestyle = p.linestyle,
         linewidth = p.linewidth,
+        linecap = p.linecap,
+        jointstyle = p.jointstyle,
+        miter_limit = p.miter_limit,
         colormap = p.colormap,
         colorscale = p.colorscale,
         colorrange = p.colorrange,

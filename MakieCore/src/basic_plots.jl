@@ -310,11 +310,11 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
-    linecap = :butt
+    linecap = @inherit linecap
     "Controls whether line joints are rounded (:round) or not (:miter)."
-    jointstyle = :miter
+    jointstyle = @inherit jointstyle
     "Sets the minimum inner joint angle below which miter joints truncate. See also `Makie.miter_distance_to_angle()`"
-    miter_limit = pi/3
+    miter_limit = @inherit miter_limit
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
     mixin_generic_plot_attributes()...
@@ -352,7 +352,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
     "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
-    linecap = :butt
+    linecap = @inherit linecap
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
     mixin_generic_plot_attributes()...
@@ -589,6 +589,9 @@ Plots polygons, which are defined by
     strokewidth = @inherit patchstrokewidth
     "Sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)"
     linestyle = nothing
+    linecap = @inherit linecap
+    jointstyle = @inherit jointstyle
+    miter_limit = @inherit miter_limit
 
     shading = NoShading
 
