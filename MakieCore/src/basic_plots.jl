@@ -330,20 +330,6 @@ end
     linesegments(x, y, z)
 
 Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
-
-## Attributes
-
-### Specific to `LineSegments`
-
-- `color=theme(scene, :linecolor)` sets the color of the linesegments. If no color is set, multiple calls to `linesegments!` will cycle through the axis color palette.
-  Otherwise, one can set one color per line point or one color per linesegment by passing a `Vector{<:Colorant}`, or one colorant for the whole line. If color is a vector of numbers, the colormap args are used to map the numbers to colors.
-- `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
-- `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
-- `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
-
-$(Base.Docs.doc(colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe LineSegments (positions,) begin
     "The color of the line."

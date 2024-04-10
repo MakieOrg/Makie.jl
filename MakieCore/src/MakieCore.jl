@@ -10,11 +10,7 @@ using Observables: to_value
 using Base: RefValue
 using GeometryBasics
 using ColorTypes
-using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
-# Needing REPL for Base.Docs.doc on julia
-# https://github.com/MakieOrg/Makie.jl/issues/3276
-using REPL
-
+using IntervalSets: ClosedInterval, Interval
 
 include("types.jl")
 include("attributes.jl")

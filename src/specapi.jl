@@ -194,40 +194,6 @@ end
 
 GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
 
-function apply_typed_convert(P, @nospecialize(args::Tuple))
-    return convert_arguments(P, args...)
-end
-
-"""
-apply for return type PlotSpec
-"""
-function apply_convert!(P, attributes::Attributes, x::PlotSpec)
-    args, kwargs = x.args, x.kwargs
-    # Note that kw_args in the plot spec that are not part of the target plot type
-    # will end in the "global plot" kw_args (rest)
-    for (k, v) in pairs(kwargs)
-        attributes[k] = v
-    end
-    NP = plottype(plottype(x), P)
-    converted = apply_typed_convert(NP, (args...,))
-    return (NP, converted)
-end
-
-function apply_convert!(P, ::Attributes, x::AbstractVector{PlotSpec})
-    return (PlotList, (x,))
-end
-
-"""
-apply for return type
-    (args...,)
-"""
-apply_convert!(P, ::Attributes, args::Tuple) = (P, apply_typed_convert(P, args))
-
-function MakieCore.argtypes(plot::PlotSpec)
-    args_converted = recursive_convert_arguments(plottype(plot), plot.args...)
-    return MakieCore.argtypes(args_converted)
-end
-
 """
 See documentation for specapi.
 """
@@ -776,9 +742,3 @@ function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{Makie
     update_fig!(fig, plot.converted[1])
     return fig
 end
-
-function apply_convert!(P, ::Attributes, x::GridLayoutSpec)
-    return (Plot{plot}, (x,))
-end
-
-MakieCore.argtypes(::GridLayoutSpec) = Tuple{Nothing}
