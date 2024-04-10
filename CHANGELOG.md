@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-- Added Makie extension how to [#3779](https://github.com/MakieOrg/Makie.jl/pull/3779).
+- Added how to for Makie extensions [#3779](https://github.com/MakieOrg/Makie.jl/pull/3779).
+- Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
 
 ## [0.20.9] - 2024-03-29
 
