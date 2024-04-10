@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added Makie extension how to [#3779](https://github.com/MakieOrg/Makie.jl/pull/3779).
+
 ## [0.20.9] - 2024-03-29
 
 - Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
