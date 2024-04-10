@@ -257,6 +257,13 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
                 end
             else
                 prev_continued = false
+
+                # finish previous line segment
+                Cairo.set_line_width(ctx, prev_linewidth)
+                !isnothing(dash) && Cairo.set_dash(ctx, dash .* prev_linewidth)
+                Cairo.set_source_rgba(ctx, red(prev_color), green(prev_color), blue(prev_color), alpha(prev_color))
+                Cairo.stroke(ctx)
+
                 if !this_nan
                     this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     # this is not nan
@@ -924,10 +931,11 @@ function draw_mesh3D(
     ctx = screen.context
     projectionview = Makie.space_to_clip(scene.camera, space, true)
     eyeposition = scene.camera.eyeposition[]
-    i = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(model[i, i]))
 
+    i = Vec(1, 2, 3)
     local_model = rotation * Makie.scalematrix(Vec3f(scale))
+    normalmatrix = transpose(inv(model[i, i] * local_model[i, i])) # see issue #3702
+
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
     vs = broadcast(meshpoints, (transform_func,)) do v, f
