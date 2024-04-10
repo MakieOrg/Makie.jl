@@ -9,9 +9,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     )
     if plot isa Lines
         uniforms[:jointstyle] = jointstyle
-        uniforms[:miter_limit] = map(plot, plot.miter_limit) do x
-            return cos(2 * (0.5pi - atan(1 / x)))
-        end
+        uniforms[:miter_limit] = map(x -> cos(pi - x), plot, plot.miter_limit)
     end
 
     # TODO: maybe convert nothing to Sampler([-1.0]) to allowed dynamic linestyles?

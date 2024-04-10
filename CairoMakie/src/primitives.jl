@@ -135,7 +135,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     # joint style
-    set_miter_limit(ctx, sqrt(1.0 + to_value(get(primitive, :miter_limit, 1.5275252316519468))^2))
+    miter_angle = to_value(get(primitive, :miter_limit, 2pi/3))
+    set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
 
     jointstyle = to_value(get(primitive, :jointstyle, :miter))
     if jointstyle == :round

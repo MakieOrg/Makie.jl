@@ -1079,6 +1079,7 @@ function convert_attribute(value::Symbol, ::key"linecap")
         error("$value is not a valid cap style. It must be one of $(keys(vals)).")
     end
 end
+
 function convert_attribute(value::Symbol, ::key"jointstyle")
     # TODO: make this an enum?
     # 0 and 2 are shared between this and linecap. 1 has no equivalent here
@@ -1088,6 +1089,37 @@ function convert_attribute(value::Symbol, ::key"jointstyle")
     end
 end
 
+"""
+    miter_distance_to_angle(distance[, directed = false])
+
+Calculates the inner angle between two joined line segments corresponding to the
+distance between the line point (corner at linewidth → 0) and the outer corner.
+The distance is given in units of linewidth. If `directed = true` the distance
+in line direction is used instead.
+
+With respect to miter limits, a line joint gets truncated if the corner distance
+exceeds a given limit or analogously the angle falls below a certain limit. This
+function calculates the angle given a distance.
+"""
+function miter_distance_to_angle(distance, directed = false)
+    if directed
+        distance < 0.0 && error("The directed distance cannot be negative.")
+        return 2.0 * atan(0.5 / distance)
+    else # Cairo style
+        distance < 0.5 && error("The undirected distance cannot be smaller than 0.5 as the outer corner is always at least half a linewidth away from the line point.")
+        return 2.0 * asin(0.5 / distance)
+    end
+end
+
+"""
+    miter_angle_to_distance(angle, directed = false)
+
+Calculates the inverse of `miter_distance_to_angle` with an angle given in radians.
+"""
+function miter_angle_to_distance(angle, directed = false)
+    0.0 < angle < pi || error("Angle must be between 0 and pi.")
+    return directed ? 0.5 / tan(0.5 * angle) : 0.5 / sin(0.5 * angle)
+end
 
 
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])

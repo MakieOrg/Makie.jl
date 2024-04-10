@@ -445,7 +445,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         linestyle = pop!(gl_attributes, :linestyle)
         miter_limit = pop!(gl_attributes, :miter_limit)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:miter_limit] = map(x -> Float32(cos(2 * (0.5pi - atan(1 / x)))), plot, miter_limit)
+        data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
         positions = handle_view(plot[1], data)
 
         space = plot.space
