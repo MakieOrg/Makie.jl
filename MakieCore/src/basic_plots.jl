@@ -314,7 +314,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     "Controls whether line joints are rounded (:round) or not (:miter)."
     jointstyle = :miter
     "Sets the minimum inner joint angle below which miter joints truncate. See also `Makie.miter_distance_to_angle()`"
-    miter_limit = 2pi/3
+    miter_limit = pi/3
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
     mixin_generic_plot_attributes()...
