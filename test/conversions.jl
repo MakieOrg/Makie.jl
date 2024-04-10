@@ -5,7 +5,6 @@ using Makie:
     convert_single_argument,
     to_vertices,
     categorical_colors,
-    PointBased,
     (..)
 
 @testset "Conversions" begin
@@ -118,8 +117,6 @@ end
 @testset "intervals" begin
     x = [1, 5, 10]
     y = [1..2, 1..3, 2..3]
-    @test convert_arguments(PointBased(), x, y) == (Point2f.(x, [1.5, 2, 2.5]),)
-    @test convert_arguments(PointBased(), y, x) == (Point2f.([1.5, 2, 2.5], x),)
     @test convert_arguments(Band, x, y) == (Point2f.([1, 5, 10], [1, 1, 2]), Point2f.([1, 5, 10], [2, 3, 3]))
     @test convert_arguments(Rangebars, x, y) == (Vec3f.([1,5,10], [1,1,2], [2,3,3]),)
     @test convert_arguments(HSpan, 1..2) == (1f0, 2f0)

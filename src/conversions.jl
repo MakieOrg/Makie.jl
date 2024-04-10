@@ -146,14 +146,6 @@ convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:
 
 convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
 
-
-convert_arguments(P::PointBased, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
-    convert_arguments(P, x, mean.(y))
-
-convert_arguments(P::PointBased, x::AbstractVector{<:Interval}, y::AbstractVector{<:Number}) =
-    convert_arguments(P, mean.(x), y)
-
-
 """
     convert_arguments(P, y)::Vector
 Takes vector `y` and generates a range from 1 to the length of `y`, for plotting on
