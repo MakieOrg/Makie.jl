@@ -71,7 +71,7 @@ function convert_dim_value(conversion::DateTimeConversion, value::AbstractArray)
     return date_to_number.(conversion.type[], value)
 end
 
-function convert_axis_dim(conversion::DateTimeConversion, values::Observable, deregister)
+function convert_dim_observable(conversion::DateTimeConversion, values::Observable, deregister)
     T = conversion.type[]
     eltype = MakieCore.get_element_type(values[])
     if T <: Automatic

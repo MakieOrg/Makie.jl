@@ -56,8 +56,8 @@ end
 
 @testset "Conversion with implicit axis" begin
     conversion = Makie.CategoricalConversion(; sortby=identity)
-    f, ax, pl = barplot([:a, :b, :c], 1:3; axis=(convert_dim_1=conversion,))
-    @test ax.convert_dim_1[] == Makie.get_conversions(pl)[1]
+    f, ax, pl = barplot([:a, :b, :c], 1:3; axis=(dim1_conversion=conversion,))
+    @test ax.dim1_conversion[] == Makie.get_conversions(pl)[1]
     @test conversion == Makie.get_conversions(pl)[1]
     @test ax.scene.conversions[1] == Makie.get_conversions(pl)[1]
     @test pl[1][] == Point.(1:3, 1:3)

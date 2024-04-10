@@ -2,7 +2,7 @@
     CategoricalConversion(; sortby=identity)
 
 Categorical conversion. Gets chosen automatically only for `Categorical(array_of_objects)` right now.
-The categories work with any sortable value though, so one can always do `Axis(fig; convert_dim_1=CategoricalConversion())`,
+The categories work with any sortable value though, so one can always do `Axis(fig; dim1_conversion=CategoricalConversion())`,
 to use it for other categories.
 One can use `CategoricalConversion(sortby=func)`, to change the sorting, or make unsortable objects sortable.
 
@@ -21,7 +21,7 @@ end
 Base.show(io::IO, s::SomeStruct) = println(io, "[\$(s.value)]")
 
 conversion = Makie.CategoricalConversion(sortby=x->x.value)
-barplot(Named.([:a, :b, :c]), 1:3, axis=(convert_dim_1=conversion,))
+barplot(Named.([:a, :b, :c]), 1:3, axis=(dim1_conversion=conversion,))
 ```
 """
 struct CategoricalConversion <: AbstractDimConversion
@@ -111,7 +111,7 @@ function convert_categorical(conversion::CategoricalConversion, value::Integer)
     return conversion.category_to_int[][value]
 end
 
-function convert_axis_dim(conversion::CategoricalConversion, values_obs::Observable, deregister)
+function convert_dim_observable(conversion::CategoricalConversion, values_obs::Observable, deregister)
     prev_values = []
     # This is a bit tricky...
     # We need to recalculate the categories on each values_obs update,

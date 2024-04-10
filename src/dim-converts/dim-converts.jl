@@ -60,7 +60,7 @@ using MakieCore: should_dim_convert
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
 MakieCore.should_dim_convert(::Type{<:Real}) = true
-function convert_axis_dim(::NoDimConversion, value::Observable, deregister)
+function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end
 
@@ -102,7 +102,7 @@ end
 function get_conversions(attr::Union{Attributes, Dict, NamedTuple})
     conversions = DimConversions()
     for i in 1:3
-        dim_sym = Symbol("convert_dim_$i")
+        dim_sym = Symbol("dim$(i)_conversion")
         if haskey(attr, dim_sym)
             conversions[i] = to_value(attr[dim_sym])
         end
@@ -116,7 +116,7 @@ end
 
 function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
     for i in 1:3
-        dim_sym = Symbol("convert_dim_$i")
+        dim_sym = Symbol("dim$(i)_conversion")
         if hasproperty(ax, dim_sym)
             # merge
             ax_conversion = getproperty(ax, dim_sym)
@@ -186,18 +186,18 @@ function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attribut
         # We only convert if we have a conversion struct (which isn't NoDimConversion),
         # or if we we should dim_convert
         if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
-            return convert_axis_dim(converts, i, arg, deregister)
+            return convert_dim_observable(converts, i, arg, deregister)
         end
         return arg
     end
 end
 
-function convert_axis_dim(conversions::DimConversions, dim::Int, value::Observable, deregister)
+function convert_dim_observable(conversions::DimConversions, dim::Int, value::Observable, deregister)
     conversion = conversions[dim]
     if !(conversion isa Union{Nothing,NoDimConversion})
-        return convert_axis_dim(conversion, value, deregister)
+        return convert_dim_observable(conversion, value, deregister)
     end
     c = dim_conversion_from_args(value[])
     conversions[dim] = c
-    return convert_axis_dim(c, value, deregister)
+    return convert_dim_observable(c, value, deregister)
 end

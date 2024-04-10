@@ -100,7 +100,7 @@ end
 
     @test conversion == pconversion
     @test conversion[2] isa Makie.CategoricalConversion
-    @test ax.convert_dim_2[] isa Makie.CategoricalConversion
+    @test ax.dim2_conversion[] isa Makie.CategoricalConversion
     f
 end
 

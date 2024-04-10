@@ -304,7 +304,7 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
     if haskey(figkws, :axis)
         ax_kw = figkws[:axis]
         _validate_nt_like_keyword(ax_kw, :axis)
-        if any(x-> x in [:convert_dim_1, :convert_dim_2, :convert_dim_3], keys(ax_kw))
+        if any(x-> x in [:dim1_conversion, :dim2_conversion, :dim3_conversion], keys(ax_kw))
             conversions = get_conversions(ax_kw)
             if haskey(attributes, :dim_conversions)
                 connect_conversions!(attributes[:dim_conversions], conversions)
@@ -323,7 +323,7 @@ function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::P
     conversions = get(plot.kw, :dim_conversions, nothing)
     isnothing(conversions) && return
     for i in 1:3
-        key = Symbol("convert_dim_$i")
+        key = Symbol("dim$(i)_conversion")
         if hasfield(T, key)
             attributes[key] = conversions[i]
         end

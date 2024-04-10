@@ -27,7 +27,7 @@ function Makie.convert_dim_value(conversion::MyDimConversion, values)
     return [v.value for v in values]
 end
 
-function Makie.convert_axis_dim(conversion::MyDimConversion, values_obs::Observable, deregister)
+function Makie.convert_dim_observable(conversion::MyDimConversion, values_obs::Observable, deregister)
     # Do the actual conversion here
     # e.g. like this
     result = Observable(Float64[])
