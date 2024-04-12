@@ -56,7 +56,7 @@ it as normal because of the line `using Makie` and because `y` (data of type
 that Makie can visualise) and `x` (of type `MyType`) have different types.
 The above is an example, you have general freedom what to write into this
 module `MyPackageMakieExt` it will only be loaded when `using Makie`
-(see below in [Testing the extension](@ref)).
+(see below in "Testing the extension").
 
 Note that we have only extended Makie here, not any of its backends.
 While you can do that too to be more specific, the idea here is to
