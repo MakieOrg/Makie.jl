@@ -54,7 +54,7 @@ end
 """
     ticklabels(scene)
 
-Returns the all the axis tick labels.
+Returns all the axis tick labels.
 """
 function ticklabels(scene)
     axis = scene[OldAxis]
@@ -65,21 +65,21 @@ end
 """
     xticklabels(scene)
 
-Returns the all the x-axis tick labels. See also `ticklabels`.
+Returns all the x-axis tick labels. See also `ticklabels`.
 """
 xticklabels(scene) = ticklabels(scene)[1]
 
 """
     yticklabels(scene)
 
-Returns the all the y-axis tick labels. See also `ticklabels`.
+Returns all the y-axis tick labels. See also `ticklabels`.
 """
 yticklabels(scene) = ticklabels(scene)[2]
 
 """
     zticklabels(scene)
 
-Returns the all the z-axis tick labels. See also `ticklabels`.
+Returns all the z-axis tick labels. See also `ticklabels`.
 """
 function zticklabels(scene)
     @assert !is2d(scene)  "The Scene does not have a z-axis!"
@@ -141,7 +141,7 @@ end
 """
     xticks!([scene,]; xtickrange=xtickrange(scene), xticklabels=xticklabel(scene))
 
-Set the tick labels and range along the x-axes. See also `ticks!`.
+Set the tick labels and range along the x-axis. See also `ticks!`.
 """
 function xticks!(scene::Scene; xtickrange=xtickrange(scene), xticklabels=xticklabels(scene))
     ticks!(scene, tickranges=(xtickrange, tickranges(scene)[2:end]...), ticklabels=(xticklabels, ticklabels(scene)[2:end]...))
