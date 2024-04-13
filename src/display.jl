@@ -291,13 +291,13 @@ Save a `Scene` with the specified filename and format.
 - `size`: `(width::Int, height::Int)` of the scene in dimensionless units.
 - `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
 - `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
+- `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 - Further keywords will be forwarded to the screen.
 
 
 ## CairoMakie
 
 - `pt_per_unit`: The size of one scene unit in `pt` when exporting to a vector format.
-- `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
 function FileIO.save(
         filename::String, fig::FigureLike; args...
