@@ -63,8 +63,8 @@ export function delete_plots(plot_uuids) {
     plots.forEach(delete_plot);
 }
 
-function convert_texture(data) {
-    const tex = create_texture(data);
+function convert_texture(scene, data) {
+    const tex = create_texture(scene, data);
     tex.needsUpdate = true;
     tex.minFilter = THREE[data.minFilter];
     tex.magFilter = THREE[data.magFilter];
@@ -88,10 +88,10 @@ function is_three_fixed_array(value) {
     );
 }
 
-function to_uniform(data) {
+function to_uniform(scene, data) {
     if (data.type !== undefined) {
         if (data.type == "Sampler") {
-            return convert_texture(data);
+            return convert_texture(scene, data);
         }
         throw new Error(`Type ${data.type} not known`);
     }
@@ -120,7 +120,7 @@ function to_uniform(data) {
     return data;
 }
 
-export function deserialize_uniforms(data) {
+export function deserialize_uniforms(scene, data) {
     const result = {};
     // Deno may change constructor names..so...
 
@@ -132,14 +132,14 @@ export function deserialize_uniforms(data) {
             // nothing needs to be converted
             result[name] = value;
         } else {
-            const ser = to_uniform(value);
+            const ser = to_uniform(scene, value);
             result[name] = new THREE.Uniform(ser);
         }
     }
     return result;
 }
 
-export function deserialize_plot(data) {
+export function deserialize_plot(scene, data) {
     let mesh;
     const update_visible = (v) => {
         mesh.visible = v;
@@ -147,13 +147,13 @@ export function deserialize_plot(data) {
         return;
     };
     if (data.plot_type === "lines") {
-        mesh = create_line(data);
+        mesh = create_line(scene, data);
     } else if (data.plot_type === "linesegments") {
-        mesh = create_linesegments(data);
+        mesh = create_linesegments(scene, data);
     } else if ("instance_attributes" in data) {
-        mesh = create_instanced_mesh(data);
+        mesh = create_instanced_mesh(scene, data);
     } else {
-        mesh = create_mesh(data);
+        mesh = create_mesh(scene, data);
     }
     mesh.name = data.name;
     mesh.frustumCulled = false;
@@ -225,7 +225,7 @@ export function add_plot(scene, plot_data) {
         });
     }
 
-    const p = deserialize_plot(plot_data);
+    const p = deserialize_plot(scene, plot_data);
     plot_cache[p.plot_uuid] = p;
     scene.add(p);
     // execute all next insert callbacks
@@ -276,8 +276,8 @@ function convert_RGB_to_RGBA(rgbArray) {
     return rgbaArray;
 }
 
-function create_texture(data) {
-    const buffer = data.data;
+function create_texture_from_data(data) {
+    let buffer = data.data;
     if (data.size.length == 3) {
         const tex = new THREE.Data3DTexture(
             buffer,
@@ -289,25 +289,51 @@ function create_texture(data) {
         tex.type = THREE[data.three_type];
         return tex;
     } else {
-        // a little optimization to not send the texture atlas over & over again
-        let tex_data;
-        if (buffer == "texture_atlas") {
-            tex_data = TEXTURE_ATLAS[0].value;
-        } else {
-            tex_data = buffer;
-        }
         let format = THREE[data.three_format];
         if (data.three_format == "RGBFormat") {
-            tex_data = convert_RGB_to_RGBA(tex_data);
+            buffer = convert_RGB_to_RGBA(buffer);
             format = THREE.RGBAFormat;
         }
         return new THREE.DataTexture(
-            tex_data,
+            buffer,
             data.size[0],
             data.size[1],
             format,
             THREE[data.three_type]
         );
+    }
+}
+
+function create_texture(scene, data) {
+    const buffer = data.data;
+    // we allow to have a global texture atlas which gets only uploaded once to the browser
+    // it's not the nicest way, but by setting buffer to "texture_atlas" on the julia side
+    // instead of actual data, we just get the texture atlas from the global.
+    // Special care has to be taken to deregister the callback when the context gets destroyed
+    // Since TEXTURE_ATLAS uses "Bonito.Retain" and will live for the whole browser session.
+    if (buffer == "texture_atlas") {
+        const {texture_atlas} = scene.screen
+        if (texture_atlas) {
+            return texture_atlas;
+        } else {
+            data.data = TEXTURE_ATLAS[0].value
+            const texture = create_texture_from_data(data);
+            scene.screen.texture_atlas = texture;
+            TEXTURE_ATLAS[0].on((new_data) => {
+                if (new_data === texture) {
+                    // if the data is our texture, it means the WGL context got destroyed and we want to deregister
+                    // TODO, better Observables.js API for this
+                    return false; // deregisters the callback
+                } else {
+                    texture.image.data.set(new_data);
+                    texture.needsUpdate = true;
+                    return
+                }
+            });
+            return texture;
+        }
+    } else {
+        return create_texture_from_data(data);
     }
 }
 
@@ -417,10 +443,10 @@ function recreate_instanced_geometry(mesh) {
     mesh.needsUpdate = true;
 }
 
-function create_material(program) {
+function create_material(scene, program) {
     const is_volume = "volumedata" in program.uniforms;
     return new THREE.RawShaderMaterial({
-        uniforms: deserialize_uniforms(program.uniforms),
+        uniforms: deserialize_uniforms(scene, program.uniforms),
         vertexShader: program.vertex_source,
         fragmentShader: program.fragment_source,
         side: is_volume ? THREE.BackSide : THREE.DoubleSide,
@@ -431,11 +457,11 @@ function create_material(program) {
     });
 }
 
-function create_mesh(program) {
+function create_mesh(scene, program) {
     const buffer_geometry = new THREE.BufferGeometry();
     const faces = new THREE.BufferAttribute(program.faces.value, 1);
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
-    const material = create_material(program);
+    const material = create_material(scene, program);
     const mesh = new THREE.Mesh(buffer_geometry, material);
     program.faces.on((x) => {
         mesh.geometry.setIndex(new THREE.BufferAttribute(x, 1));
@@ -443,12 +469,12 @@ function create_mesh(program) {
     return mesh;
 }
 
-function create_instanced_mesh(program) {
+function create_instanced_mesh(scene, program) {
     const buffer_geometry = new THREE.InstancedBufferGeometry();
     const faces = new THREE.BufferAttribute(program.faces.value, 1);
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
     attach_instanced_geometry(buffer_geometry, program.instance_attributes);
-    const material = create_material(program);
+    const material = create_material(scene, program);
     const mesh = new THREE.Mesh(buffer_geometry, material);
     program.faces.on((x) => {
         mesh.geometry.setIndex(new THREE.BufferAttribute(x, 1));
