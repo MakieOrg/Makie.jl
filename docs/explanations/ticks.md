@@ -19,7 +19,7 @@ The default
 Note that `WilkinsonTicks` are the tick finder of choice for most plotting libraries.
 
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg}
 fig = Figure()
 axes = [Axis(fig[i, j]) for i in 1:2, j in 1:3]
 hideydecorations!.(axes)
