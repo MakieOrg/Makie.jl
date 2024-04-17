@@ -721,6 +721,7 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
 
         if zoom_target === :lookat
             cam.lookat[]      = lookat + scale * shift
+            cam.static_lookat[] = cam.lookat[]
             cam.eyeposition[] = lookat - zoom_step * viewdir + scale * shift
         else # TODO consider rotating rather than translating
             cam.lookat[]      = eyepos + zoom_step * viewdir + scale * shift
