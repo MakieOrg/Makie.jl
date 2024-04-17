@@ -20,6 +20,9 @@ struct Camera3D <: AbstractCamera3D
     fov::Observable{Float32}
     near::Observable{Float32}
     far::Observable{Float32}
+
+    # acts as rotation center if zooming affects lookat and lookat is the rotation center
+    static_lookat::Observable{Vec3f}
     bounding_sphere::Observable{Sphere{Float32}}
 end
 
@@ -36,7 +39,7 @@ The behavior of the camera can be adjusted via keyword arguments or the fields
 Settings include anything that isn't a mouse or keyboard button.
 
 - `projectiontype = Perspective` sets the type of the projection. Can be `Orthographic` or `Perspective`.
-- `rotation_center = :lookat` sets the default center for camera rotations. Currently allows `:lookat` or `:eyeposition`.
+- `rotation_center = :lookat` sets the initial center for camera rotations. Currently allows `:lookat` or `:eyeposition`.
 - `fixed_axis = true`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
 - `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
@@ -46,6 +49,7 @@ Settings include anything that isn't a mouse or keyboard button.
     - `:view_relative` scales `near` and `far` by `norm(eyeposition - lookat)`
     - `:bbox_relative` scales `near` and `far` to the scene bounding box as passed to the camera with `update_cam!(..., bbox)`. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
 - `center = true`: Controls whether the camera placement gets reset when calling `center!(scene)`, which is called when a new plot is added.
+- `zoom_target = :lookat`: Controls whether lookat or eyeposition remains static under zoom.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
 - `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
@@ -168,7 +172,8 @@ function Camera3D(scene::Scene; kwargs...)
         fixed_axis = true,
         cad = false,
         center = true,
-        clipping_mode = :adaptive # TODO: use bbox to adjust near/far automatically
+        clipping_mode = :adaptive, # TODO: use bbox to adjust near/far automatically
+        zoom_target = :lookat
     )
 
     replace!(settings, :Camera3D, scene, overwrites)
@@ -197,6 +202,8 @@ function Camera3D(scene::Scene; kwargs...)
         get(overwrites, :fov, Observable(45.0)),
         get(overwrites, :near, Observable(0.1)),
         get(overwrites, :far, Observable(far_default)),
+
+        get(overwrites, :lookat, Observable(Vec3f(0))),
         Sphere(Point3f(0), 1f0)
     )
 
@@ -562,8 +569,8 @@ is from the center of the scene. If `zoom_shift_lookat = true` and
 `projectiontype = Orthographic` zooming will keep the data under the cursor at
 the same screen space position.
 """
-function zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false)
-    _zoom!(scene, cam, zoom_step, cad, zoom_shift_lookat)
+function zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false, zoom_target = cam.settings.zoom_target[])
+    _zoom!(scene, cam, zoom_step, cad, zoom_shift_lookat, zoom_target)
     update_cam!(scene, cam)
     nothing
 end
@@ -593,6 +600,7 @@ function _translate_cam!(scene, cam::Camera3D, t)
 
     cam.eyeposition[] = eyepos + trans
     cam.lookat[] = lookat + trans
+    cam.static_lookat[] = cam.static_lookat[] + trans
     return
 end
 
@@ -603,7 +611,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
 
     # This applies rotations around the x/y/z axis of the camera coordinate system
     # x expands right, y expands up and z expands towards the screen
-    lookat = cam.lookat[]
+    lookat = cam.static_lookat[]
     eyepos = cam.eyeposition[]
     up = cam.upvector[]         # +y
     viewdir = lookat - eyepos   # -z
@@ -657,21 +665,24 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     # TODO maybe generalize this to arbitrary center?
     # calculate positions from rotated vectors
     if rotation_center === :lookat
-        cam.eyeposition[] = lookat - viewdir
+        cam.eyeposition[] = cam.static_lookat[] - viewdir
+        cam.lookat[] = cam.static_lookat[] + rotation * (cam.lookat[] - cam.static_lookat[])
     else
-        cam.lookat[] = eyepos + viewdir
+        cam.static_lookat[] = eyepos + viewdir
+        cam.lookat[] = cam.eyeposition[] + rotation * (cam.lookat[] - cam.eyeposition[])
     end
 
     return
 end
 
 
-function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false)
+function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false, zoom_target = :lookat)
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos   # -z
     vp = viewport(scene)[]
     scene_width = widths(vp)
+
     if cad
         # Rotate view based on offset from center
         u_z = normalize(viewdir)
@@ -682,7 +693,14 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
         shift = rel_pos[1] * u_x + rel_pos[2] * u_y
         shift *= 0.1 * sign(1 - zoom_step) * norm(viewdir)
 
-        cam.eyeposition[] = lookat - zoom_step * viewdir + shift
+        if zoom_target === :lookat
+            cam.eyeposition[] = lookat - zoom_step * viewdir + shift
+        else
+            fraction = zoom_step * norm(viewdir) / norm(cam.static_lookat[] - cam.eyeposition[])
+            cam.eyeposition[] = eyepos + shift
+            cam.lookat[] = cam.eyeposition[] + fraction * (cam.static_lookat[] - cam.eyeposition[])
+        end
+
     elseif zoom_shift_lookat
         # keep data under cursor
         u_z = normalize(viewdir)
@@ -701,11 +719,20 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
             scale = norm(viewdir) * tand(0.5 * cam.fov[])
         end
 
-        cam.lookat[]      = lookat + scale * shift
-        cam.eyeposition[] = lookat - zoom_step * viewdir + scale * shift
+        if zoom_target === :lookat
+            cam.lookat[]      = lookat + scale * shift
+            cam.eyeposition[] = lookat - zoom_step * viewdir + scale * shift
+        else # TODO consider rotating rather than translating
+            cam.lookat[]      = eyepos + zoom_step * viewdir + scale * shift
+            cam.eyeposition[] = eyepos + scale * shift
+        end
     else
         # just zoom in/out
-        cam.eyeposition[] = lookat - zoom_step * viewdir
+        if zoom_target === :lookat
+            cam.eyeposition[] = lookat - zoom_step * viewdir
+        else
+            cam.lookat[] = eyepos + zoom_step * viewdir
+        end
     end
 
     return
@@ -771,6 +798,7 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool =
     end
 
     if recenter
+        cam.static_lookat[] = center
         cam.lookat[] = center
         cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
         cam.upvector[] = normalize(cross(old_dir, cross(cam.upvector[], old_dir)))
@@ -791,6 +819,7 @@ end
 
 # Update camera position via camera Position & Orientation
 function update_cam!(scene::Scene, camera::Camera3D, eyeposition::VecTypes, lookat::VecTypes, up::VecTypes = camera.upvector[])
+    camera.static_lookat[] = Vec3f(lookat)
     camera.lookat[]      = Vec3f(lookat)
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[]    = Vec3f(up)
@@ -815,6 +844,7 @@ function update_cam!(
     sp, cp = sincos(phi)
     v = Vec3f(ct * cp, ct * sp, st)
     u = Vec3f(-st * cp, -st * sp, ct)
+    camera.static_lookat[] = center
     camera.lookat[]      = center
     camera.eyeposition[] = center .+ radius * v
     camera.upvector[]    = u
