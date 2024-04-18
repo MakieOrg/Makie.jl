@@ -1,6 +1,6 @@
 name = "GLMakie"
 uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-version = "0.9.9"
+version = "0.9.10"
 
 [deps]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
@@ -30,7 +30,7 @@ FreeTypeAbstraction = "0.10"
 GLFW = "3.3"
 GeometryBasics = "0.4.1"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.20.8"
+Makie = "=0.20.9"
 Markdown = "1.0, 1.6"
 MeshIO = "0.4"
 ModernGL = "1"

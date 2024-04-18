@@ -1,7 +1,7 @@
 # TODO move to something like FFMPEGUtil.jl ?
 
 """
-- `format = "mkv"`: The format of the video. If a path is present, will be inferred form the file extension.
+- `format = "mkv"`: The format of the video. If a path is present, will be inferred from the file extension.
     Can be one of the following:
     * `"mkv"`  (open standard, the default)
     * `"mp4"`  (good for Web, most supported format)
@@ -13,7 +13,7 @@
     as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
 - `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
-    smaller numbers giving higher quality and larger file sizes (lower compression), and and
+    smaller numbers giving higher quality and larger file sizes (lower compression), and
     higher numbers giving lower quality and smaller file sizes (higher compression). The
     minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if

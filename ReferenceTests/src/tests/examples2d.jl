@@ -1068,6 +1068,40 @@ end
     f
 end
 
+@reference_test "Histogram" begin
+    data = sin.(1:1000)
+
+    fig = Figure(size = (900, 900))
+    hist(fig[1, 1], data)
+    hist(fig[1, 2], data, bins = 30, color = :orange)
+    a, p = hist(fig[1, 3], data, bins = 10, color = :transparent, strokecolor = :red, strokewidth = 4.0)
+    a.xgridcolor[] = RGBAf(0,0,0,1); a.ygridcolor[] = RGBAf(0,0,0,1)
+
+    hist(fig[2, 1], data, normalization = :pdf, direction = :x)
+    hist(fig[2, 2], data, normalization = :density, color = 1:15)
+    hist(fig[2, 3], data, normalization = :probability, scale_to = :flip)
+
+    hist(fig[3, 1], data, offset = 20.0)
+    hlines!(0.0, color = :black, linewidth = 3)
+    hist(fig[3, 2], data, fillto = 1.0, scale_to = -5.0, direction = :x)
+    vlines!(0.0, color = :black, linewidth = 3)
+    hist(fig[3, 3], data, bar_labels = :y, label_size = 10, bins = 10)
+
+    hist(
+        fig[4, 1], data, scale_to = :flip, offset = 20,
+        bar_labels = :x, label_size = 12, label_color = :green
+    )
+    hlines!(0.0, color = :black, linewidth = 3)
+    i12 = mod1.(1:10, 2)
+    hist(fig[4, 2], data, scale_to = :flip, bins = 10, direction = :x,
+        bar_labels = :x, label_size = [14, 10][i12],
+        label_color = [:yellow, :blue][i12], label_offset = [-30, 10][i12]
+    )
+    hist(fig[4, 3], data, weights = 1.0 ./ (2.0 .+ data))
+
+    fig
+end
+
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
@@ -1390,5 +1424,30 @@ end
     fig = Figure(size=(227, 170))
     ax = Axis(fig[1, 1]; yticks = 0:.2:1, yminorticksvisible = true)
     ylims!(ax, 0, 1)
+    fig
+end
+
+@reference_test "contourf bug #3683" begin
+    x = y = LinRange(0, 1, 4)
+    ymin, ymax = 0.4, 0.6
+    steepness = 0.1
+    f(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
+    z = [f(_x, _y) for _x in x, _y in y]
+
+    fig, ax, cof = contourf(x, y, z, levels = 2)
+    Colorbar(fig[1, 2], cof)
+    fig
+end
+
+@reference_test "Violin plots differently scaled" begin
+    fig = Figure()
+    xs = vcat([fill(i, i * 1000) for i in 1:4]...)
+    ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
+    for (i, scale) in enumerate([:area, :count, :width])
+        ax = Axis(fig[i, 1])
+        violin!(ax, xs, ys; scale, show_median=true)
+        Makie.xlims!(0.2, 4.8)
+        ax.title = "scale=:$(scale)"
+    end
     fig
 end

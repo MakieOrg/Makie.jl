@@ -1,7 +1,7 @@
 name = "WGLMakie"
 uuid = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 authors = ["SimonDanisch <sdanisch@gmail.com>"]
-version = "0.9.8"
+version = "0.9.9"
 
 [deps]
 Bonito = "824d6782-a2ef-11e9-3a09-e5662e0c26f8"
@@ -27,7 +27,7 @@ FreeTypeAbstraction = "0.10"
 GeometryBasics = "0.4.1"
 Hyperscript = "0.0.3, 0.0.4, 0.0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.20.8"
+Makie = "=0.20.9"
 Observables = "0.5.1"
 PNGFiles = "0.3, 0.4"
 PrecompileTools = "1.0"
