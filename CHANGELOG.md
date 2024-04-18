@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
+- Added `loop` option support for HTML outputs when recording videos with `record` [#3697](https://github.com/MakieOrg/Makie.jl/pull/3697).
 
 ## [0.20.9] - 2024-03-29
 
