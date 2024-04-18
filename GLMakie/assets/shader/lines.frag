@@ -139,8 +139,7 @@ void main(){
 
 // #ifndef DEBUG
 if (!debug) {
-    // discard fragments that are "more inside" the other segment to remove
-    // overlap between adjacent line segments. (truncated joints)
+    // discard fragments that are other side of the truncated joint
     float discard_sdf1 = dot(gl_FragCoord.xy - f_linepoints.xy, f_miter_vecs.xy);
     float discard_sdf2 = dot(gl_FragCoord.xy - f_linepoints.zw, f_miter_vecs.zw);
     if ((f_quad_sdf.x > 0.0 && discard_sdf1 > 0.0) ||
@@ -223,9 +222,9 @@ if (!debug) {
 
     // and inner truncation as softer green
     if (min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0) > 0.0)
-        color.g += 1.2;
+        color.g += 0.2;
     if (min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0) > 0.0)
-        color.g += 1.2;
+        color.g += 0.2;
 
     // mark pattern in white
     color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
