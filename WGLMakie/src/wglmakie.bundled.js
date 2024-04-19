@@ -21780,8 +21780,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Static vertex data
                 ////////////////////////////////////////////////////////////////////
 
-
-
                 // For truncated miter joints we discard overlapping sections of the two
                 // involved line segments. To identify which sections overlap we calculate
                 // the signed distance in +- miter vector direction from the shared line
@@ -21797,14 +21795,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // because both of these values come from the same calculation between the
                 // two segments. I.e. (previous segment).p2 == (next segment).p1 and
                 // (previous segment).miter_v2 == (next segment).miter_v1 should be the case.
-                if (isvalid[0] && is_truncated[0]) {
+                if (isvalid[0] && is_truncated[0] && (adjustment[0] == 0.0)) {
                     f_linepoints.xy = p1.xy + px_per_unit * scene_origin;   // FragCoords are relative to the window
                     f_miter_vecs.xy = -miter_v1.xy;                         // but p1/p2 is relative to the scene origin
                 } else {
                     f_linepoints.xy = vec2(-1e12);          // FragCoord > 0
                     f_miter_vecs.xy = normalize(vec2(-1));
                 }
-                if (isvalid[3] && is_truncated[1]) {
+                if (isvalid[3] && is_truncated[1] && (adjustment[1] == 0.0)) {
                     f_linepoints.zw = p2.xy + px_per_unit * scene_origin;
                     f_miter_vecs.zw = miter_v2.xy;
                 } else {
