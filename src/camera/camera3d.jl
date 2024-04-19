@@ -49,7 +49,7 @@ Settings include anything that isn't a mouse or keyboard button.
     - `:view_relative` scales `near` and `far` by `norm(eyeposition - lookat)`
     - `:bbox_relative` scales `near` and `far` to the scene bounding box as passed to the camera with `update_cam!(..., bbox)`. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
 - `center = true`: Controls whether the camera placement gets reset when calling `center!(scene)`, which is called when a new plot is added.
-- `zoom_target = :lookat`: Controls whether lookat or eyeposition remains static under zoom.
+- `zoom_translates_lookat = false`: Controls whether lookat is moved towards the camera (true) or the camera moves towards lookat (false). The former avoids clipping from the camera moving into objects. Best used with `zoom_shift_lookat = false`.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
 - `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
@@ -173,7 +173,7 @@ function Camera3D(scene::Scene; kwargs...)
         cad = false,
         center = true,
         clipping_mode = :adaptive, # TODO: use bbox to adjust near/far automatically
-        zoom_target = :lookat
+        zoom_translates_lookat = false
     )
 
     replace!(settings, :Camera3D, scene, overwrites)
@@ -325,10 +325,11 @@ function on_pulse(scene, cam::Camera3D, timestep)
     @extractvalue cam.controls (
         right_key, left_key, up_key, down_key, backward_key, forward_key,
         tilt_up_key, tilt_down_key, pan_left_key, pan_right_key, roll_counterclockwise_key, roll_clockwise_key,
-        zoom_out_key, zoom_in_key, increase_fov_key, decrease_fov_key
+        zoom_out_key, zoom_in_key, increase_fov_key, decrease_fov_key,
     )
     @extractvalue cam.settings (
-        keyboard_translationspeed, keyboard_rotationspeed, keyboard_zoomspeed, projectiontype
+        keyboard_translationspeed, keyboard_rotationspeed, keyboard_zoomspeed, projectiontype,
+        zoom_translates_lookat
     )
 
     # translation
@@ -384,7 +385,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
 
     if zooming
         zoom_step = (1f0 + keyboard_zoomspeed * timestep) ^ (zoom_out - zoom_in)
-        _zoom!(scene, cam, zoom_step, false, false)
+        _zoom!(scene, cam, zoom_step, false, false, zoom_translates_lookat)
     end
 
     # fov
@@ -411,7 +412,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
     @extract cam.controls (translation_button, rotation_button, reposition_button, scroll_mod)
     @extract cam.settings (
         mouse_translationspeed, mouse_rotationspeed, mouse_zoomspeed,
-        cad, projectiontype, zoom_shift_lookat
+        cad, projectiontype, zoom_shift_lookat, zoom_translates_lookat
     )
 
     last_mousepos = RefValue(Vec2f(0, 0))
@@ -508,7 +509,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
     on(camera(scene), e.scroll) do scroll
         if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
             zoom_step = (1f0 + 0.1f0 * mouse_zoomspeed[]) ^ -scroll[2]
-            zoom!(scene, cam, zoom_step, cad[], zoom_shift_lookat[])
+            zoom!(scene, cam, zoom_step, cad[], zoom_shift_lookat[], zoom_translates_lookat[])
             return Consume(true)
         end
         return Consume(false)
@@ -569,8 +570,8 @@ is from the center of the scene. If `zoom_shift_lookat = true` and
 `projectiontype = Orthographic` zooming will keep the data under the cursor at
 the same screen space position.
 """
-function zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false, zoom_target = cam.settings.zoom_target[])
-    _zoom!(scene, cam, zoom_step, cad, zoom_shift_lookat, zoom_target)
+function zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false, zoom_translates_lookat = cam.settings[:zoom_translates_lookat][])
+    _zoom!(scene, cam, zoom_step, cad, zoom_shift_lookat, zoom_translates_lookat)
     update_cam!(scene, cam)
     nothing
 end
@@ -676,7 +677,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
 end
 
 
-function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false, zoom_target = :lookat)
+function _zoom!(scene, cam::Camera3D, zoom_step, cad, zoom_shift_lookat, zoom_translates_lookat)
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos   # -z
@@ -693,12 +694,12 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
         shift = rel_pos[1] * u_x + rel_pos[2] * u_y
         shift *= 0.1 * sign(1 - zoom_step) * norm(viewdir)
 
-        if zoom_target === :lookat
-            cam.eyeposition[] = lookat - zoom_step * viewdir + shift
-        else
+        if zoom_translates_lookat
             fraction = zoom_step * norm(viewdir) / norm(cam.static_lookat[] - cam.eyeposition[])
             cam.eyeposition[] = eyepos + shift
             cam.lookat[] = cam.eyeposition[] + fraction * (cam.static_lookat[] - cam.eyeposition[])
+        else
+            cam.eyeposition[] = lookat - zoom_step * viewdir + shift
         end
 
     elseif zoom_shift_lookat
@@ -719,20 +720,20 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
             scale = norm(viewdir) * tand(0.5 * cam.fov[])
         end
 
-        if zoom_target === :lookat
+        if zoom_translates_lookat # TODO consider rotating rather than translating
+            cam.lookat[]      = eyepos + zoom_step * viewdir + scale * shift
+            cam.eyeposition[] = eyepos + scale * shift
+        else
             cam.lookat[]      = lookat + scale * shift
             cam.static_lookat[] = cam.lookat[]
             cam.eyeposition[] = lookat - zoom_step * viewdir + scale * shift
-        else # TODO consider rotating rather than translating
-            cam.lookat[]      = eyepos + zoom_step * viewdir + scale * shift
-            cam.eyeposition[] = eyepos + scale * shift
         end
     else
         # just zoom in/out
-        if zoom_target === :lookat
-            cam.eyeposition[] = lookat - zoom_step * viewdir
-        else
+        if zoom_translates_lookat
             cam.lookat[] = eyepos + zoom_step * viewdir
+        else
+            cam.eyeposition[] = lookat - zoom_step * viewdir
         end
     end
 
