@@ -266,7 +266,7 @@ end
         end
         if args[1] isa AxisPlot
             throw(ArgumentError("""
-            Tried plotting with `$(F)!` into a `AxisPlot` object, this is not allowed.
+            Tried plotting with `$(F)!` into an `AxisPlot` object, this is not allowed.
 
             The `AxisPlot` object is returned by plotting functions not ending in `!` with
             a `GridPosition` as the first argument, like `lines(fig[1, 2], ...)` or `scatter(fig[1, 2], ...)`.

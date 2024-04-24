@@ -1,7 +1,10 @@
 # Changelog
 
-## [0.21.0] - 2024-03-0X
+## [0.20.9] - 2024-03-29
 
+- Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
+
+## [0.21.0] - 2024-03-0X
 
 - Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527)
 - Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
