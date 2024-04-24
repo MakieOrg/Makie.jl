@@ -181,7 +181,7 @@ end
 
 * categorical: there are n categories, and n colors are assigned to each category
 * banded: there are ranges edge_start..edge_end, inside which values are mapped to one color
-* continous: colors are mapped continuously to values
+* continuous: colors are mapped continuously to values
 """
 @enum ColorMappingType categorical banded continuous
 
