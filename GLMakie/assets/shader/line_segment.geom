@@ -33,7 +33,6 @@ flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
 flat out vec4 f_miter_vecs;
-flat out vec4 f_line_vec_normal;
 
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 2.0 * AA_RADIUS;
@@ -86,7 +85,6 @@ void main(void)
     f_extrusion = vec2(0.5);        // no joints needing extrusion
     f_linepoints = vec4(-1e12);
     f_miter_vecs = vec4(-1);
-    f_line_vec_normal = vec4(v1.xy, n1.xy);
 
     // constants
     f_color1 = g_color[0];

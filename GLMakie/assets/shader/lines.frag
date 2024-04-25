@@ -27,7 +27,6 @@ flat in float f_cumulative_length;
 flat in ivec2 f_capmode;
 flat in vec4 f_linepoints;
 flat in vec4 f_miter_vecs;
-flat in vec4 f_line_vec_normal;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;
@@ -158,7 +157,7 @@ if (!debug) {
         (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0))
         discard;
 
-    float sdf = -1e12;
+    float sdf;
 
     // f_quad_sdf.x includes everything from p1 in p2-p1 direction, i.e. >
     // f_quad_sdf.y includes everything from p2 in p1-p2 direction, i.e. <
@@ -196,17 +195,14 @@ if (!debug) {
     //     1------------2
     //  ^  |  ^      ^  | ^
     sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
-    // sdf = max(sdf, abs(f_quad_sdf.z) - 0.25 * AA_RADIUS);
-    // sdf = max(sdf, 0.5 * abs(dot(2 * gl_FragCoord.xy - f_linepoints.xy - f_linepoints.zw, f_line_vec_normal.zw)) - f_linewidth);
-    // sdf = max(sdf, abs(f_quad_sdf.z) - 1000.0 * f_linewidth);
 
     // inner truncation (AA for overlapping parts)
     // min(a, b) keeps what is inside a and b
     // where a is the smoothly cut of part just before discard triggers (i.e. visible)
     // and b is the (smoothly) cut of part just after discard triggers (i.e not visible)
     // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
-    sdf = max(sdf, min(f_quad_sdf.x + 1.0, 1000.0 * discard_sdf1 - 1.0));
-    sdf = max(sdf, min(f_quad_sdf.y + 1.0, 1000.0 * discard_sdf2 - 1.0));
+    sdf = max(sdf, min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0));
+    sdf = max(sdf, min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0));
 
     // pattern application
     sdf = max(sdf, get_pattern_sdf(pattern, uv));
@@ -228,7 +224,6 @@ if (!debug) {
     color.a *= f_alpha_weight;
 
     if (!fxaa) {
-        // color.a *= step(0.0, -sdf);
         color.a *= aastep(0.0, -sdf);
     } else {
         color.a *= step(0.0, -sdf);
@@ -243,28 +238,8 @@ if (!debug) {
     color.rgb += (2 * mod(f_id.y, 2) - 1) * 0.1;
 
     // mark "outside" define by quad_sdf in black
-    // float sdf = max(f_quad_sdf.x - f_extrusion.x, f_quad_sdf.y - f_extrusion.y);
-    // sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
-
-    float sdf = -1e12;
-    if (f_capmode.x == ROUND) {
-        sdf = min(sqrt(f_quad_sdf.x * f_quad_sdf.x + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.x);
-    } else if (f_capmode.x == SQUARE) {
-        sdf = f_quad_sdf.x - f_linewidth;
-    } else { // miter or bevel joint or :butt cap
-        sdf = f_quad_sdf.x - f_extrusion.x;
-    }
-    if (f_capmode.y == ROUND) { // rounded joint or cap
-        sdf = max(sdf,
-            min(sqrt(f_quad_sdf.y * f_quad_sdf.y + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.y)
-        );
-    } else if (f_capmode.y == SQUARE) { // :square cap
-        sdf = max(sdf, f_quad_sdf.y - f_linewidth);
-    } else { // miter or bevel joint or :butt cap
-        sdf = max(sdf, f_quad_sdf.y - f_extrusion.y);
-    }
+    float sdf = max(f_quad_sdf.x - f_extrusion.x, f_quad_sdf.y - f_extrusion.y);
     sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
-
     color.rgb -= vec3(0.4) * step(0.0, sdf);
 
     // Mark discarded space in red/blue
@@ -282,7 +257,7 @@ if (!debug) {
         color.b += 0.2;
 
     // Mark regions excluded via truncation in green
-    color.rb += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
+    color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
     // and inner truncation as softer green
     if (min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0) > 0.0)
