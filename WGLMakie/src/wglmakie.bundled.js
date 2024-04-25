@@ -21610,6 +21610,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+            float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -21707,8 +21708,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
                 //       same direction, but becomes vec(0) at 0°, so we can use it instead
                 vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
-                vec2 miter_n1 = miter.x < -0.0 ? sign(dot(v0.xy, n1)) *normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-                vec2 miter_n2 = miter.y < -0.0 ? sign(dot(v1.xy, n2)) *normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+                vec2 miter_n1 = miter.x < -0.0 ?
+                    sign_no_zero(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+                vec2 miter_n2 = miter.y < -0.0 ?
+                    sign_no_zero(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
                 // Are we truncating the joint based on miter limit or joinstyle?
                 // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
