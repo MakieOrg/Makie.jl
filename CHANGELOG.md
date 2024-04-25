@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
+- Added `sector`: circular sector recipe (similar to `arc`) [#3806](https://github.com/MakieOrg/Makie.jl/pull/3806).
 
 ## [0.20.9] - 2024-03-29
 
