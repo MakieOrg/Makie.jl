@@ -21,9 +21,9 @@ include("interaction/iodevices.jl")
 This struct provides accessible `Observable`s to monitor the events
 associated with a Scene.
 
-Functions that act on a `Observable` must return `Consume()` if the function
+Functions that act on an `Observable` must return `Consume()` if the function
 consumes an event. When an event is consumed it does
-not trigger other observer functions. The order in which functions are exectued
+not trigger other observer functions. The order in which functions are executed
 can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:

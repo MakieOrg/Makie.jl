@@ -455,7 +455,7 @@ end
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
 
-Takes an array of `{T, 3} where T`, converts the dimesions `n`, `m` and `k` into `ClosedInterval`,
+Takes an array of `{T, 3} where T`, converts the dimensions `n`, `m` and `k` into `ClosedInterval`,
 and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in a Tuple.
 
 `P` is the plot Type (it is optional).
@@ -692,7 +692,7 @@ end
 to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
 
 """
-Converts the elemen array type to `T1` without making a copy if the element type matches
+Converts the element array type to `T1` without making a copy if the element type matches
 """
 function elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N}
     return convert(AbstractArray{T1, N}, x)
@@ -789,7 +789,7 @@ Converts a representation of vertices `v` to its canonical representation as a
 
 - An `AbstractVector` of 3-element `Tuple`s or `StaticVector`s,
 
-- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case exta dimensions will
+- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case extra dimensions will
   be either truncated or padded with zeros as required,
 
 - An `AbstractMatrix`"
@@ -1741,13 +1741,13 @@ Use
 scatter(..., marker=FastPixel())
 ```
 
-For significant faster plotting times for large amount of points.
+For significantly faster plotting times for large amount of points.
 Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
 
 """
-Vector of anything that is accepted as a single marker will give each point it's own marker.
+Vector of anything that is accepted as a single marker will give each point its own marker.
 Note that it needs to be a uniform vector with the same element type!
 """
 to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)
