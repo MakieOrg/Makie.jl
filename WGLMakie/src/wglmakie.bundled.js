@@ -4858,7 +4858,7 @@ vec4 LinearTosRGB( in vec4 value ) {
 	#else
 		uniform sampler2D envMap;
 	#endif
-	
+
 #endif`, nm = `#ifdef USE_ENVMAP
 	uniform float reflectivity;
 	#if defined( USE_BUMPMAP ) || defined( USE_NORMALMAP ) || defined( PHONG ) || defined( LAMBERT )
@@ -4875,7 +4875,7 @@ vec4 LinearTosRGB( in vec4 value ) {
 		#define ENV_WORLDPOS
 	#endif
 	#ifdef ENV_WORLDPOS
-		
+
 		varying vec3 vWorldPosition;
 	#else
 		varying vec3 vReflect;
@@ -5686,7 +5686,7 @@ IncidentLight directLight;
 	vec4 sampledDiffuseColor = texture2D( map, vMapUv );
 	#ifdef DECODE_VIDEO_TEXTURE
 		sampledDiffuseColor = vec4( mix( pow( sampledDiffuseColor.rgb * 0.9478672986 + vec3( 0.0521327014 ), vec3( 2.4 ) ), sampledDiffuseColor.rgb * 0.0773993808, vec3( lessThanEqual( sampledDiffuseColor.rgb, vec3( 0.04045 ) ) ) ), sampledDiffuseColor.w );
-	
+
 	#endif
 	diffuseColor *= sampledDiffuseColor;
 #endif`, Pm = `#ifdef USE_MAP
@@ -21336,7 +21336,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec2 f_extrusion;          // invalid / not needed
             flat out float f_linewidth;
             flat out vec4 f_pattern_overwrite;  // invalid / not needed
-            flat out vec2 f_discard_limit;      // invalid / not needed
             flat out uint f_instance_id;
             flat out ${color} f_color1;
             flat out ${color} f_color2;
@@ -21420,9 +21419,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // invalid - no joints requiring pattern adjustments
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
 
-                // invalid - no joints that need pixels discarded
-                f_discard_limit = vec2(10.0);
-
                 // invalid - no joints requiring line sdfs to be extruded
                 f_extrusion = vec2(0.0);
 
@@ -21433,6 +21429,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
+
+                // no joints means these should be set to a "never discard" state
+                f_linepoints = vec4(-1e12);
+                f_miter_vecs = vec4(-1);
 
 
                 ////////////////////////////////////////////////////////////////////
@@ -21485,9 +21485,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
-            out highp float f_quad_sdf0;
-            out highp vec3 f_quad_sdf1;
-            out highp float f_quad_sdf2;
+            out vec3 f_quad_sdf;
             out vec2 f_truncation;
             out float f_linestart;
             out float f_linelength;
@@ -21495,7 +21493,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec2 f_extrusion;
             flat out float f_linewidth;
             flat out vec4 f_pattern_overwrite;
-            flat out vec2 f_discard_limit;
             flat out uint f_instance_id;
             flat out ${color} f_color1;
             flat out ${color} f_color2;
@@ -21798,15 +21795,35 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Static vertex data
                 ////////////////////////////////////////////////////////////////////
 
-
-                // For truncated miter joints we discard overlapping sections of
-                // the two involved line segments. To avoid discarding far into
-                // the line segment we limit the range here. (Without this short
-                // segments can cut holes into longer sections.)
-                f_discard_limit = vec2(
-                    is_truncated[0] ? 0.0 : 1e12,
-                    is_truncated[1] ? 0.0 : 1e12
-                );
+                // For truncated miter joints we discard overlapping sections of the two
+                // involved line segments. To identify which sections overlap we calculate
+                // the signed distance in +- miter vector direction from the shared line
+                // point in fragment shader. We pass the necessary data here. If we do not
+                // have a truncated joint we adjust the data here to never discard.
+                // Why not calculate the sdf here?
+                // If we calculate the sdf here and pass it as an interpolated vertex output
+                // the values we get between the two line segments will differ since the
+                // the vertices each segment interpolates from differ. This causes the
+                // discard check to rarely be true or false for both segments, resulting in
+                // duplicated or missing pixel/fragment draw.
+                // Passing the line point and miter vector instead should fix this issue,
+                // because both of these values come from the same calculation between the
+                // two segments. I.e. (previous segment).p2 == (next segment).p1 and
+                // (previous segment).miter_v2 == (next segment).miter_v1 should be the case.
+                if (isvalid[0] && is_truncated[0] && (adjustment[0] == 0.0)) {
+                    f_linepoints.xy = p1.xy + px_per_unit * scene_origin;   // FragCoords are relative to the window
+                    f_miter_vecs.xy = -miter_v1.xy;                         // but p1/p2 is relative to the scene origin
+                } else {
+                    f_linepoints.xy = vec2(-1e12);          // FragCoord > 0
+                    f_miter_vecs.xy = normalize(vec2(-1));
+                }
+                if (isvalid[3] && is_truncated[1] && (adjustment[1] == 0.0)) {
+                    f_linepoints.zw = p2.xy + px_per_unit * scene_origin;
+                    f_miter_vecs.zw = miter_v2.xy;
+                } else {
+                    f_linepoints.zw = vec2(-1e12);
+                    f_miter_vecs.zw = normalize(vec2(-1));
+                }
 
                 // Used to elongate sdf to include joints
                 // if start/end         elongate slightly so that there is no AA gap in loops
@@ -21867,24 +21884,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec2 VP1 = point.xy - p1.xy;
                 vec2 VP2 = point.xy - p2.xy;
 
-                // Signed distance of the previous segment from the shared point
-                // p1 in line direction. Used decide which segments renders
-                // which joint fragment/pixel for truncated joints.
-                if (isvalid[0] && (adjustment[0] == 0.0) && is_truncated[0])
-                    f_quad_sdf0 = dot(VP1, v0.xy);
-                else
-                    f_quad_sdf0 = 1e12;
-
                 // sdf of this segment
-                f_quad_sdf1.x = dot(VP1, -v1.xy);
-                f_quad_sdf1.y = dot(VP2,  v1.xy);
-                f_quad_sdf1.z = dot(VP1,  n1);
-
-                // SDF for next segment, see quad_sdf0
-                if (isvalid[3] && (adjustment[1] == 0.0) && is_truncated[1])
-                    f_quad_sdf2 = dot(VP2, -v2.xy);
-                else
-                    f_quad_sdf2 = 1e12;
+                f_quad_sdf.x = dot(VP1, -v1.xy);
+                f_quad_sdf.y = dot(VP2,  v1.xy);
+                f_quad_sdf.z = dot(VP1,  n1);
 
                 // sdf for creating a flat cap on truncated joints
                 // (sign(dot(...)) detects if line bends left or right)
@@ -21937,9 +21940,7 @@ function lines_fragment_shader(uniforms, attributes) {
     precision mediump sampler2D;
     precision mediump sampler3D;
 
-    in highp float f_quad_sdf0;
-    in highp vec3 f_quad_sdf1;
-    in highp float f_quad_sdf2;
+    in highp vec3 f_quad_sdf;
     in vec2 f_truncation;
     in float f_linestart;
     in float f_linelength;
@@ -21947,7 +21948,6 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in float f_linewidth;
     flat in vec4 f_pattern_overwrite;
     flat in vec2 f_extrusion;
-    flat in vec2 f_discard_limit;
     flat in ${color} f_color1;
     flat in ${color} f_color2;
     flat in float f_alpha_weight;
@@ -22067,18 +22067,18 @@ function lines_fragment_shader(uniforms, attributes) {
     void main(){
         vec4 color;
 
-        // f_quad_sdf1.x is the distance from p1, negative in v1 direction.
+        // f_quad_sdf.x is the distance from p1, negative in v1 direction.
         vec2 uv = vec2(
-            (f_cumulative_length - f_quad_sdf1.x) / (2.0 * f_linewidth * pattern_length),
-            0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
+            (f_cumulative_length - f_quad_sdf.x) / (2.0 * f_linewidth * pattern_length),
+            0.5 + 0.5 * f_quad_sdf.z / f_linewidth
         );
 
     #ifndef DEBUG
-        // discard fragments that are "more inside" the other segment to remove
-        // overlap between adjacent line segments. (truncated joints)
-        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
-        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
-        if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
+        // discard fragments that are other side of the truncated joint
+        float discard_sdf1 = dot(gl_FragCoord.xy - f_linepoints.xy, f_miter_vecs.xy);
+        float discard_sdf2 = dot(gl_FragCoord.xy - f_linepoints.zw, f_miter_vecs.zw);
+        if ((f_quad_sdf.x > 0.0 && discard_sdf1 > 0.0) ||
+            (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0))
             discard;
 
         float sdf;
@@ -22139,11 +22139,11 @@ function lines_fragment_shader(uniforms, attributes) {
         //      p1      v1
         //        '.   --->
         //          '----------
-        // -f_quad_sdf1.x is the distance from p1, positive in v1 direction
+        // -f_quad_sdf.x is the distance from p1, positive in v1 direction
         // f_linestart is the distance between p1 and the left edge along v1 direction
         // f_start_length.y is the distance between the edges of this segment, in v1 direction
         // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
-        float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
+        float factor = (-f_quad_sdf.x - f_linestart) / f_linelength;
         color = get_color(f_color1 + factor * (f_color2 - f_color1), colormap, colorrange);
 
         color.a *= aastep(0.0, -sdf) * f_alpha_weight;
@@ -22155,36 +22155,35 @@ function lines_fragment_shader(uniforms, attributes) {
         color.rgb += (2.0 * mod(float(f_instance_id), 2.0) - 1.0) * 0.1;
 
         // show color interpolation as brightness gradient
-        // float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
+        // float factor = (-f_quad_sdf.x - f_linestart) / f_linelength;
         // color.rgb += (2.0 * factor - 1.0) * 0.2;
 
         // mark "outside" define by quad_sdf in black
-        float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
-        sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
+        float sdf = max(f_quad_sdf.x - f_extrusion.x, f_quad_sdf.y - f_extrusion.y);
+        sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
         color.rgb -= vec3(0.4) * step(0.0, sdf);
 
         // Mark discarded space in red/blue
-        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
-        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
-        if (dist_in_prev < f_quad_sdf1.x)
+        float discard_sdf1 = dot(gl_FragCoord.xy - f_linepoints.xy, f_miter_vecs.xy);
+        float discard_sdf2 = dot(gl_FragCoord.xy - f_linepoints.zw, f_miter_vecs.zw);
+        if (f_quad_sdf.x > 0.0 && discard_sdf1 > 0.0)
             color.r += 0.5;
-        if (dist_in_next <= f_quad_sdf1.y) {
+        if (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0)
             color.b += 0.5;
-        }
 
         // remaining overlap as softer red/blue
-        if (f_quad_sdf1.x - f_quad_sdf0 - 1.0 > 0.0)
+        if (discard_sdf1 - 1.0 > 0.0)
             color.r += 0.2;
-        if (f_quad_sdf1.y - f_quad_sdf2 - 1.0 > 0.0)
+        if (discard_sdf2 - 1.0 > 0.0)
             color.b += 0.2;
 
         // Mark regions excluded via truncation in green
         color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
-        // and inner truncation as soft green
-        if (min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0) > 0.0)
+        // and inner truncation as softer green
+        if (min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0) > 0.0)
             color.g += 0.2;
-        if (min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0) > 0.0)
+        if (min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0) > 0.0)
             color.g += 0.2;
 
         // mark pattern in white
@@ -23283,4 +23282,3 @@ export { pick_sorted as pick_sorted };
 export { pick_native_uuid as pick_native_uuid };
 export { pick_native_matrix as pick_native_matrix };
 export { register_popup as register_popup };
-

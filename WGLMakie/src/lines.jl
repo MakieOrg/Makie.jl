@@ -6,6 +6,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :depth_shift => plot.depth_shift,
         :picking => false,
         :linecap => linecap,
+        :scene_origin => map(vp -> Vec2f(origin(vp)), plot, scene.viewport)
     )
     if plot isa Lines
         uniforms[:joinstyle] = joinstyle
