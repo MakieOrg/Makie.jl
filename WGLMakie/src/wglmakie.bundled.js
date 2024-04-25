@@ -4858,7 +4858,7 @@ vec4 LinearTosRGB( in vec4 value ) {
 	#else
 		uniform sampler2D envMap;
 	#endif
-
+	
 #endif`, nm = `#ifdef USE_ENVMAP
 	uniform float reflectivity;
 	#if defined( USE_BUMPMAP ) || defined( USE_NORMALMAP ) || defined( PHONG ) || defined( LAMBERT )
@@ -4875,7 +4875,7 @@ vec4 LinearTosRGB( in vec4 value ) {
 		#define ENV_WORLDPOS
 	#endif
 	#ifdef ENV_WORLDPOS
-
+		
 		varying vec3 vWorldPosition;
 	#else
 		varying vec3 vReflect;
@@ -5686,7 +5686,7 @@ IncidentLight directLight;
 	vec4 sampledDiffuseColor = texture2D( map, vMapUv );
 	#ifdef DECODE_VIDEO_TEXTURE
 		sampledDiffuseColor = vec4( mix( pow( sampledDiffuseColor.rgb * 0.9478672986 + vec3( 0.0521327014 ), vec3( 2.4 ) ), sampledDiffuseColor.rgb * 0.0773993808, vec3( lessThanEqual( sampledDiffuseColor.rgb, vec3( 0.04045 ) ) ) ), sampledDiffuseColor.w );
-
+	
 	#endif
 	diffuseColor *= sampledDiffuseColor;
 #endif`, Pm = `#ifdef USE_MAP
@@ -21326,9 +21326,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
-            out highp float f_quad_sdf0;        // invalid / not needed
-            out highp vec3 f_quad_sdf1;
-            out highp float f_quad_sdf2;        // invalid / not needed
+
+            out vec3 f_quad_sdf;
             out vec2 f_truncation;              // invalid / not needed
             out float f_linestart;              // constant
             out float f_linelength;
@@ -21342,6 +21341,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
             flat out ivec2 f_capmode;
+            flat out vec4 f_linepoints;         // invalid / not needed
+            flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
 
@@ -21452,16 +21453,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec2 VP1 = point.xy - p1.xy;
                 vec2 VP2 = point.xy - p2.xy;
 
-                // invalid - no joint to compute overlap with
-                f_quad_sdf0 = 1e12;
-
                 // sdf of this segment
-                f_quad_sdf1.x = dot(VP1, -v1.xy);
-                f_quad_sdf1.y = dot(VP2,  v1.xy);
-                f_quad_sdf1.z = dot(VP1,  n1);
-
-                // invalid - no joint to compute overlap with
-                f_quad_sdf2 = 1e12;
+                f_quad_sdf.x = dot(VP1, -v1.xy);
+                f_quad_sdf.y = dot(VP2,  v1.xy);
+                f_quad_sdf.z = dot(VP1,  n1);
 
                 // invalid - no joint to truncate
                 f_truncation = vec2(-1e12);
@@ -21499,6 +21494,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
             flat out ivec2 f_capmode;
+            flat out vec4 f_linepoints;
+            flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
 
@@ -21710,8 +21707,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
                 //       same direction, but becomes vec(0) at 0°, so we can use it instead
                 vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
-                vec2 miter_n1 = miter.x < -0.0 ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-                vec2 miter_n2 = miter.y < -0.0 ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+                vec2 miter_n1 = miter.x < -0.0 ? sign(dot(v0.xy, n1)) *normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+                vec2 miter_n2 = miter.y < -0.0 ? sign(dot(v1.xy, n2)) *normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
                 // Are we truncating the joint based on miter limit or joinstyle?
                 // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
@@ -21962,6 +21959,8 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in uint f_instance_id;
     flat in float f_cumulative_length;
     flat in ivec2 f_capmode;
+    flat in vec4 f_linepoints;
+    flat in vec4 f_miter_vecs;
 
     uniform uint object_id;
     ${uniform_decl}
@@ -22091,20 +22090,20 @@ function lines_fragment_shader(uniforms, attributes) {
 
         float sdf;
 
-        // f_quad_sdf1.x includes everything from p1 in p2-p1 direction, i.e. >
+        // f_quad_sdf.x includes everything from p1 in p2-p1 direction, i.e. >
         // f_quad_sdf2.y includes everything from p2 in p1-p2 direction, i.e. <
         // <   < | >    < >    < | >   >
         // <   < 1->----<->----<-2 >   >
         // <   < | >    < >    < | >   >
         if (f_capmode.x == ROUND) {
             // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
-            sdf = min(sqrt(f_quad_sdf1.x * f_quad_sdf1.x + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.x);
+            sdf = min(sqrt(f_quad_sdf.x * f_quad_sdf.x + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.x);
         } else if (f_capmode.x == SQUARE) {
             // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
-            sdf = f_quad_sdf1.x - f_linewidth;
+            sdf = f_quad_sdf.x - f_linewidth;
         } else { // miter or bevel joint or :butt cap
             // variable shift in -(p2-p1) direction to make space for joints
-            sdf = f_quad_sdf1.x - f_extrusion.x;
+            sdf = f_quad_sdf.x - f_extrusion.x;
             // do truncate joints
             sdf = max(sdf, f_truncation.x);
         }
@@ -22112,12 +22111,12 @@ function lines_fragment_shader(uniforms, attributes) {
         // Same as above but for p2
         if (f_capmode.y == ROUND) {
             sdf = max(sdf,
-                min(sqrt(f_quad_sdf1.y * f_quad_sdf1.y + f_quad_sdf1.z * f_quad_sdf1.z) - f_linewidth, f_quad_sdf1.y)
+                min(sqrt(f_quad_sdf.y * f_quad_sdf.y + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.y)
             );
         } else if (f_capmode.y == SQUARE) {
-            sdf = max(sdf, f_quad_sdf1.y - f_linewidth);
+            sdf = max(sdf, f_quad_sdf.y - f_linewidth);
         } else { // miter or bevel joint or :butt cap
-            sdf = max(sdf, f_quad_sdf1.y - f_extrusion.y);
+            sdf = max(sdf, f_quad_sdf.y - f_extrusion.y);
             sdf = max(sdf, f_truncation.y);
         }
 
@@ -22126,15 +22125,15 @@ function lines_fragment_shader(uniforms, attributes) {
         //  ^  |  ^      ^  | ^
         //     1------------2
         //  ^  |  ^      ^  | ^
-        sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
+        sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
 
         // inner truncation (AA for overlapping parts)
         // min(a, b) keeps what is inside a and b
         // where a is the smoothly cut of part just before discard triggers (i.e. visible)
         // and b is the (smoothly) cut of part where the discard triggers
-        // 100.0x sdf makes the sdf much more sharp, avoiding overdraw in the center
-        sdf = max(sdf, min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0));
-        sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
+        // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
+        sdf = max(sdf, min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0));
+        sdf = max(sdf, min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0));
 
         // pattern application
         sdf = max(sdf, get_pattern_sdf(pattern, uv));
@@ -23290,3 +23289,4 @@ export { pick_sorted as pick_sorted };
 export { pick_native_uuid as pick_native_uuid };
 export { pick_native_matrix as pick_native_matrix };
 export { register_popup as register_popup };
+
