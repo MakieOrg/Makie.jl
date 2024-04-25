@@ -17,9 +17,7 @@ in uvec2 g_id[];
 in int g_valid_vertex[];
 in float g_thickness[];
 
-out highp float f_quad_sdf0;
-out highp vec3 f_quad_sdf1;
-out highp float f_quad_sdf2;
+out highp vec3 f_quad_sdf;
 out vec2 f_truncation;
 out float f_linestart;
 out float f_linelength;
@@ -33,6 +31,8 @@ flat out {{stripped_color_type}} f_color1;
 flat out {{stripped_color_type}} f_color2;
 flat out float f_alpha_weight;
 flat out float f_cumulative_length;
+flat out vec4 f_linepoints;
+flat out vec4 f_miter_vecs;
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -40,6 +40,7 @@ out vec3 o_view_normal;
 {{pattern_type}} pattern;
 uniform float pattern_length;
 uniform vec2 resolution;
+uniform vec2 scene_origin;
 
 // Constants
 const float MITER_LIMIT = -0.4;
@@ -55,9 +56,7 @@ struct LineVertex {
     vec3 position;
     int index;
 
-    float quad_sdf0;
-    vec3 quad_sdf1;
-    float quad_sdf2;
+    vec3 quad_sdf;
     vec2 truncation;
 
     float linestart;
@@ -66,9 +65,7 @@ struct LineVertex {
 
 void emit_vertex(LineVertex vertex) {
     gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
-    f_quad_sdf0    = vertex.quad_sdf0;
-    f_quad_sdf1    = vertex.quad_sdf1;
-    f_quad_sdf2    = vertex.quad_sdf2;
+    f_quad_sdf    = vertex.quad_sdf;
     f_truncation   = vertex.truncation;
     f_linestart    = vertex.linestart;
     f_linelength   = vertex.linelength;
@@ -291,8 +288,8 @@ void main(void)
     // Miter normals (normal of truncated edge / vector to sharp corner)
     // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
     //       same direction, but becomes vec(0) at 0°, so we can use it instead
-    vec2 miter_n1 = is_truncated[0] ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-    vec2 miter_n2 = is_truncated[1] ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+    vec2 miter_n1 = is_truncated[0] ? sign(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+    vec2 miter_n2 = is_truncated[1] ? sign(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
     // miter vectors (line vector matching miter normal)
     vec2 miter_v1 = -normal_vector(miter_n1);
@@ -358,14 +355,35 @@ void main(void)
     if (adjustment[0] != 0.0 || adjustment[1] != 0.0)
         shape_factor = vec2(1.0);
 
-    // For truncated miter joints we discard overlapping sections of
-    // the two involved line segments. To avoid discarding far into
-    // the line segment we limit the range here. (Without this short
-    // segments can cut holes into longer sections.)
-    f_discard_limit = vec2(
-        is_truncated[0] ? 0.0 : 1e12,
-        is_truncated[1] ? 0.0 : 1e12
-    );
+    // For truncated miter joints we discard overlapping sections of the two
+    // involved line segments. To identify which sections overlap we calculate
+    // the signed distance in +- miter vector direction from the shared line
+    // point in fragment shader. We pass the necessary data here. If we do not
+    // have a truncated joint we adjust the data here to never discard.
+    // Why not calculate the sdf here?
+    // If we calculate the sdf here and pass it as an interpolated vertex output
+    // the values we get between the two line segments will differ since the
+    // the vertices each segment interpolates from differ. This causes the
+    // discard check to rarely be true or false for both segments, resulting in
+    // duplicated or missing pixel/fragment draw.
+    // Passing the line point and miter vector instead should fix this issue,
+    // because both of these values come from the same calculation between the
+    // two segments. I.e. (previous segment).p2 == (next segment).p1 and
+    // (previous segment).miter_v2 == (next segment).miter_v1 should be the case.
+    if (isvalid[0] && is_truncated[0] && (adjustment[0] == 0.0)) {
+        f_linepoints.xy = p1.xy + scene_origin; // FragCoords are relative to the window
+        f_miter_vecs.xy = -miter_v1.xy;         // but p1/p2 is relative to the scene origin
+    } else {
+        f_linepoints.xy = vec2(-1e12);          // FragCoord > 0
+        f_miter_vecs.xy = normalize(vec2(-1));
+    }
+    if (isvalid[3] && is_truncated[1] && (adjustment[1] == 0.0)) {
+        f_linepoints.zw = p2.xy + scene_origin;
+        f_miter_vecs.zw = miter_v2.xy;
+    } else {
+        f_linepoints.zw = vec2(-1e12);
+        f_miter_vecs.zw = normalize(vec2(-1));
+    }
 
     // used to elongate sdf to include joints
     // if start/end       elongate slightly so that there is no AA gap in loops
@@ -429,24 +447,10 @@ void main(void)
             vec2 VP1 = vertex.position.xy - p1.xy;
             vec2 VP2 = vertex.position.xy - p2.xy;
 
-            // Signed distance of the previous segment from the shared point
-            // p1 in line direction. Used decide which segments renders
-            // which joint fragment/pixel for truncated joints.
-            if (isvalid[0] && (adjustment[0] == 0) && is_truncated[0])
-                vertex.quad_sdf0 = dot(VP1, v0.xy);
-            else
-                vertex.quad_sdf0 = 1e12;
-
             // sdf of this segment
-            vertex.quad_sdf1.x = dot(VP1, -v1.xy);
-            vertex.quad_sdf1.y = dot(VP2,  v1.xy);
-            vertex.quad_sdf1.z = dot(VP1,  n1);
-
-            // SDF for next segment, see quad_sdf0
-            if (isvalid[3] && (adjustment[1] == 0) && is_truncated[1])
-                vertex.quad_sdf2 = dot(VP2, -v2.xy);
-            else
-                vertex.quad_sdf2 = 1e12;
+            vertex.quad_sdf.x = dot(VP1, -v1.xy);
+            vertex.quad_sdf.y = dot(VP2,  v1.xy);
+            vertex.quad_sdf.z = dot(VP1,  n1);
 
             // sdf for creating a flat cap on truncated joints
             // (sign(dot(...)) detects if line bends left or right)

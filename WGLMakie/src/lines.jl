@@ -4,7 +4,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     uniforms = Dict(
         :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
         :depth_shift => plot.depth_shift,
-        :picking => false
+        :picking => false,
+        :scene_origin => map(vp -> Vec2f(origin(vp)), plot, scene.viewport)
     )
 
     # TODO: maybe convert nothing to Sampler([-1.0]) to allowed dynamic linestyles?
