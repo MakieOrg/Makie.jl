@@ -488,21 +488,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 //   '---'
                 // To avoid drawing the "inverted" section we move the relevant
                 // vertices to the crossing point (x) using this scaling factor.
-                float shape_factor = max(
-                    0.0,
-                    segment_length / max(
-                        segment_length,
-                        (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1])
-                    )
-                );
-
-
-                // Don't use shape_vector on line starts/ends to avoid cutting of linecaps.
-                // (This is irrelevant for :butt)
-                // TODO: consider elongating :butt-ed lines and adjusting rendering for
-                // :round-ed lines to get a linestart/end.
-                shape_factor = isvalid[3 * int(is_end)] ? shape_factor : 1.0;
-
+                // TODO: skipping this for linestart/end avoid round and square
+                //       being cut off but causes overlap...
+                float shape_factor = 1.0;
+                if ((isvalid[0] && isvalid[3]) || (linecap == BUTT))
+                    shape_factor = segment_length / max(segment_length,
+                        (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1]));
 
                 // If a pattern starts or stops drawing in a joint it will get
                 // fractured across the joint. To avoid this we either:
