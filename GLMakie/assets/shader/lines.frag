@@ -27,6 +27,7 @@ flat in float f_cumulative_length;
 flat in ivec2 f_capmode;
 flat in vec4 f_linepoints;
 flat in vec4 f_miter_vecs;
+flat in vec4 f_line_vec_normal;
 
 {{pattern_type}} pattern;
 uniform float pattern_length;
@@ -194,15 +195,18 @@ if (!debug) {
     //  ^  |  ^      ^  | ^
     //     1------------2
     //  ^  |  ^      ^  | ^
-    sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
+    // sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
+    // sdf = max(sdf, abs(f_quad_sdf.z) - 0.25 * AA_RADIUS);
+    sdf = max(sdf, 0.5 * abs(dot(2 * gl_FragCoord.xy - f_linepoints.xy - f_linepoints.zw, f_line_vec_normal.zw)) - f_linewidth);
+    // sdf = max(sdf, abs(f_quad_sdf.z) - 1000.0 * f_linewidth);
 
     // inner truncation (AA for overlapping parts)
     // min(a, b) keeps what is inside a and b
     // where a is the smoothly cut of part just before discard triggers (i.e. visible)
     // and b is the (smoothly) cut of part just after discard triggers (i.e not visible)
     // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
-    sdf = max(sdf, min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0));
-    sdf = max(sdf, min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0));
+    sdf = max(sdf, min(f_quad_sdf.x + 1.0, 1000.0 * discard_sdf1 - 1.0));
+    sdf = max(sdf, min(f_quad_sdf.y + 1.0, 1000.0 * discard_sdf2 - 1.0));
 
     // pattern application
     sdf = max(sdf, get_pattern_sdf(pattern, uv));
@@ -224,6 +228,7 @@ if (!debug) {
     color.a *= f_alpha_weight;
 
     if (!fxaa) {
+        // color.a *= step(0.0, -sdf);
         color.a *= aastep(0.0, -sdf);
     } else {
         color.a *= step(0.0, -sdf);

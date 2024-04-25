@@ -34,6 +34,7 @@ flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
 flat out vec4 f_miter_vecs;
+flat out vec4 f_line_vec_normal;
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -284,9 +285,9 @@ void main(void)
         v2 = normalize(p3.xy - p2.xy);
 
     // determine the normal of each of the 3 segments (previous, current, next)
-    vec2 n0 = normal_vector(v0);
-    vec2 n1 = normal_vector(v1);
-    vec2 n2 = normal_vector(v2);
+    vec2 n0 = normalize(normal_vector(v0));
+    vec2 n1 = normalize(normal_vector(v1));
+    vec2 n2 = normalize(normal_vector(v2));
 
     // Miter normals (normal of truncated edge / vector to sharp corner)
     // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
@@ -427,6 +428,8 @@ void main(void)
         isvalid[3] ? joinstyle : linecap
     );
 
+    f_line_vec_normal = vec4(v1.xy, n1.xy);
+
     // Generate interpolated/varying outputs:
 
     LineVertex vertex;
@@ -470,7 +473,7 @@ void main(void)
             // sdf of this segment
             vertex.quad_sdf.x = dot(VP1, -v1.xy);
             vertex.quad_sdf.y = dot(VP2,  v1.xy);
-            vertex.quad_sdf.z = dot(VP1,  n1);
+            vertex.quad_sdf.z = 0.5 * dot(VP1 + VP2,  n1);
 
             // sdf for creating a flat cap on truncated joints
             // (sign(dot(...)) detects if line bends left or right)
