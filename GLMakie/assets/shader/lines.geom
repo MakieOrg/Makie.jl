@@ -292,8 +292,8 @@ void main(void)
     // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
     //       same direction, but becomes vec(0) at 0°, so we can use it instead
     vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
-    vec2 miter_n1 = miter.x < -0.4 ? sign(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-    vec2 miter_n2 = miter.y < -0.4 ? sign(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+    vec2 miter_n1 = miter.x < -0.0 ? sign(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+    vec2 miter_n2 = miter.y < -0.0 ? sign(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
 
     // Are we truncating the joint based on miter limit or joinstyle?
     // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
@@ -350,8 +350,8 @@ void main(void)
     // TODO: skipping this for linestart/end avoid round and square being cut off
     //       but causes overlap...
     vec2 shape_factor = (isvalid[0] && isvalid[3]) || (linecap == BUTT) ? vec2(
-        segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][0] - extrusion[1][0])), // -n
-        segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][1] - extrusion[1][1]))  // +n
+        max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][0] - extrusion[1][0]))), // -n
+        max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][1] - extrusion[1][1])))  // +n
     ) : vec2(1.0);
 
     // Generate static/flat outputs

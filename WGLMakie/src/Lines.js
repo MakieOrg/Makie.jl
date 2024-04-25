@@ -491,7 +491,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // TODO: skipping this for linestart/end avoid round and square
                 //       being cut off but causes overlap...
                 float shape_factor = 1.0;
-                if ((isvalid[0] && isvalid[3]) || (linecap == BUTT))
+                if ((isvalid[0] && isvalid[3]) || (int(linecap) == BUTT))
                     shape_factor = segment_length / max(segment_length,
                         (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1]));
 
@@ -803,7 +803,7 @@ function lines_fragment_shader(uniforms, attributes) {
         float sdf;
 
         // f_quad_sdf.x includes everything from p1 in p2-p1 direction, i.e. >
-        // f_quad_sdf2.y includes everything from p2 in p1-p2 direction, i.e. <
+        // f_quad_sdf.y includes everything from p2 in p1-p2 direction, i.e. <
         // <   < | >    < >    < | >   >
         // <   < 1->----<->----<-2 >   >
         // <   < | >    < >    < | >   >
@@ -892,6 +892,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         // remaining overlap as softer red/blue
         if (discard_sdf1 - 1.0 > 0.0)
+            color.r += 0.2;
             color.r += 0.2;
         if (discard_sdf2 - 1.0 > 0.0)
             color.b += 0.2;
