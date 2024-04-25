@@ -1,5 +1,5 @@
 """
-    arc(origin, radius, start_angle, stop_angle; kwargs...)
+    sector(origin, radius, start_angle, stop_angle; kwargs...)
 
 This function plots a circular sector, centered at `origin` with radius `radius`,
 from `start_angle` to `stop_angle`.
