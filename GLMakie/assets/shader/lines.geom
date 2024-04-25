@@ -352,6 +352,12 @@ void main(void)
         max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][1] - extrusion[1][1])))  // +n
     );
 
+    // Don't use shape_vector on line starts/ends to avoid cutting of linecaps.
+    // (This is irrelevant for :butt)
+    // TODO: consider elongating :butt-ed lines and adjusting rendering for
+    // :round-ed lines to get a linestart/end.
+    shape_factor = vec2(isvalid[0] ? shape_factor.x : 1.0, isvalid[3] ? shape_factor.y : 1.0);
+
     // Generate static/flat outputs
 
     // If a pattern starts or stops drawing in a joint it will get

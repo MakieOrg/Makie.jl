@@ -21776,6 +21776,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     )
                 );
 
+
+                // Don't use shape_vector on line starts/ends to avoid cutting of linecaps.
+                // (This is irrelevant for :butt)
+                // TODO: consider elongating :butt-ed lines and adjusting rendering for
+                // :round-ed lines to get a linestart/end.
+                shape_factor = isvalid[3 * int(is_end)] ? shape_factor : 1.0;
+
+
                 // If a pattern starts or stops drawing in a joint it will get
                 // fractured across the joint. To avoid this we either:
                 // - adjust the involved line segments so that the patterns ends
