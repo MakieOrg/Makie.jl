@@ -11,14 +11,13 @@ layout(triangle_strip, max_vertices = 4) out;
 uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
+uniform int linecap;
 
 in {{stripped_color_type}} g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
 
-out float f_quad_sdf0;
-out vec3 f_quad_sdf1;
-out float f_quad_sdf2;
+out vec3 f_quad_sdf;
 out vec2 f_truncation;
 out float f_linestart;
 out float f_linelength;
@@ -27,11 +26,13 @@ flat out float f_linewidth;
 flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
 flat out vec2 f_extrusion;
-flat out vec2 f_discard_limit;
 flat out {{stripped_color_type}} f_color1;
 flat out {{stripped_color_type}} f_color2;
 flat out float f_alpha_weight;
 flat out float f_cumulative_length;
+flat out ivec2 f_capmode;
+flat out vec4 f_linepoints;
+flat out vec4 f_miter_vecs;
 
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 2.0 * AA_RADIUS;
@@ -79,12 +80,11 @@ void main(void)
     vec2 n1 = normal_vector(v1);
 
     // Set invalid / ignored outputs
-    f_quad_sdf0 = 10.0;             // no joint to previous segment
-    f_quad_sdf2 = 10.0;             // not joint to next segment
-    f_truncation = vec2(-10.0);     // no truncated joint
+    f_truncation = vec2(-1e12);     // no truncated joint
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0); // no joints to overwrite
     f_extrusion = vec2(0.5);        // no joints needing extrusion
-    f_discard_limit = vec2(10.0);   // no joints needing discards
+    f_linepoints = vec4(-1e12);
+    f_miter_vecs = vec4(-1);
 
     // constants
     f_color1 = g_color[0];
@@ -94,13 +94,16 @@ void main(void)
     f_linelength = segment_length;  // and also no changes in line length
     f_cumulative_length = 0.0;      // resets for each new segment
 
+    // linecaps
+    f_capmode = ivec2(linecap);
+
     // Generate vertices
 
     for (int x = 0; x < 2; x++) {
-        // Get offset in line direction
-        float v_offset = (2 * x - 1) * AA_THICKNESS;
         // pass on linewidth and id (picking) for the current line vertex
         float halfwidth = 0.5 * max(AA_RADIUS, g_thickness[x]);
+        // Get offset in line direction
+        float v_offset = (2 * x - 1) * (halfwidth + AA_THICKNESS);
         // TODO: if we just make this a varying output we probably get var linewidths here
         f_linewidth = halfwidth;
         f_id = g_id[x];
@@ -118,9 +121,9 @@ void main(void)
             vec2 VP2 = position.xy - p2.xy;
 
             // sdf of this segment
-            f_quad_sdf1.x = dot(VP1, -v1.xy);
-            f_quad_sdf1.y = dot(VP2,  v1.xy);
-            f_quad_sdf1.z = n_offset;
+            f_quad_sdf.x = dot(VP1, -v1.xy);
+            f_quad_sdf.y = dot(VP2,  v1.xy);
+            f_quad_sdf.z = n_offset;
 
             // finalize vertex
             EmitVertex();

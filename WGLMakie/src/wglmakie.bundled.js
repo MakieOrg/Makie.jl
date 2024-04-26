@@ -21327,9 +21327,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ${attribute_decl}
 
 
-            out highp float f_quad_sdf0;        // invalid / not needed
-            out highp vec3 f_quad_sdf1;
-            out highp float f_quad_sdf2;        // invalid / not needed
+            out vec3 f_quad_sdf;
             out vec2 f_truncation;              // invalid / not needed
             out float f_linestart;              // constant
             out float f_linelength;
@@ -21337,12 +21335,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec2 f_extrusion;          // invalid / not needed
             flat out float f_linewidth;
             flat out vec4 f_pattern_overwrite;  // invalid / not needed
-            flat out vec2 f_discard_limit;      // invalid / not needed
             flat out uint f_instance_id;
             flat out ${color} f_color1;
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
+            flat out ivec2 f_capmode;
+            flat out vec4 f_linepoints;         // invalid / not needed
+            flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
 
@@ -21420,9 +21420,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // invalid - no joints requiring pattern adjustments
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
 
-                // invalid - no joints that need pixels discarded
-                f_discard_limit = vec2(10.0);
-
                 // invalid - no joints requiring line sdfs to be extruded
                 f_extrusion = vec2(0.0);
 
@@ -21434,14 +21431,21 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
 
+                // no joints means these should be set to a "never discard" state
+                f_linepoints = vec4(-1e12);
+                f_miter_vecs = vec4(-1);
+
 
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
 
 
+                // linecaps
+                f_capmode = ivec2(linecap);
+
                 // Vertex position (padded for joint & anti-aliasing)
-                float v_offset = position.x * (0.5 * segment_length + AA_THICKNESS);
+                float v_offset = position.x * (0.5 * segment_length + halfwidth + AA_THICKNESS);
                 float n_offset = (halfwidth + AA_THICKNESS) * position.y;
                 vec3 point = 0.5 * (p1 + p2) + v_offset * v1 + n_offset * vec3(n1, 0);
 
@@ -21449,19 +21453,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec2 VP1 = point.xy - p1.xy;
                 vec2 VP2 = point.xy - p2.xy;
 
-                // invalid - no joint to compute overlap with
-                f_quad_sdf0 = 10.0;
-
                 // sdf of this segment
-                f_quad_sdf1.x = dot(VP1, -v1.xy);
-                f_quad_sdf1.y = dot(VP2,  v1.xy);
-                f_quad_sdf1.z = dot(VP1,  n1);
-
-                // invalid - no joint to compute overlap with
-                f_quad_sdf2 = 10.0;
+                f_quad_sdf.x = dot(VP1, -v1.xy);
+                f_quad_sdf.y = dot(VP2,  v1.xy);
+                f_quad_sdf.z = dot(VP1,  n1);
 
                 // invalid - no joint to truncate
-                f_truncation = vec2(-10.0);
+                f_truncation = vec2(-1e12);
 
                 // simplified - no extrusion or joints means we just have:
                 f_linestart = 0.0;
@@ -21482,9 +21480,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
-            out highp float f_quad_sdf0;
-            out highp vec3 f_quad_sdf1;
-            out highp float f_quad_sdf2;
+            out vec3 f_quad_sdf;
             out vec2 f_truncation;
             out float f_linestart;
             out float f_linelength;
@@ -21492,19 +21488,25 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec2 f_extrusion;
             flat out float f_linewidth;
             flat out vec4 f_pattern_overwrite;
-            flat out vec2 f_discard_limit;
             flat out uint f_instance_id;
             flat out ${color} f_color1;
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
+            flat out ivec2 f_capmode;
+            flat out vec4 f_linepoints;
+            flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
 
             // Constants
-            const float MITER_LIMIT = -0.4;
             const float AA_RADIUS = 0.8;
             const float AA_THICKNESS = 2.0 * AA_RADIUS;
+            const int BUTT   = 0;
+            const int SQUARE = 1;
+            const int ROUND  = 2;
+            const int MITER  = 0;
+            const int BEVEL  = 3;
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -21608,6 +21610,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+            float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -21701,17 +21704,22 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // joint information
 
-                // Are we truncating the joint?
-                bool[2] is_truncated = bool[2](
-                    dot(v0.xy, v1.xy) < MITER_LIMIT,
-                    dot(v1.xy, v2.xy) < MITER_LIMIT
-                );
-
                 // Miter normals (normal of truncated edge / vector to sharp corner)
                 // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
                 //       same direction, but becomes vec(0) at 0°, so we can use it instead
-                vec2 miter_n1 = is_truncated[0] ? normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-                vec2 miter_n2 = is_truncated[1] ? normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+                vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
+                vec2 miter_n1 = miter.x < -0.0 ?
+                    sign_no_zero(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+                vec2 miter_n2 = miter.y < -0.0 ?
+                    sign_no_zero(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+
+                // Are we truncating the joint based on miter limit or joinstyle?
+                // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
+                // miter joints a when v1 ≈ v2 (v0)
+                bool[2] is_truncated = bool[2](
+                    (int(joinstyle) == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
+                    (int(joinstyle) == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
+                );
 
                 // miter vectors (line vector matching miter normal)
                 vec2 miter_v1 = -normal_vector(miter_n1);
@@ -21760,13 +21768,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 //   '---'
                 // To avoid drawing the "inverted" section we move the relevant
                 // vertices to the crossing point (x) using this scaling factor.
-                float shape_factor = max(
-                    0.0,
-                    segment_length / max(
-                        segment_length,
-                        (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1])
-                    )
-                );
+                // TODO: skipping this for linestart/end avoid round and square
+                //       being cut off but causes overlap...
+                float shape_factor = 1.0;
+                if ((isvalid[0] && isvalid[3]) || (int(linecap) == BUTT))
+                    shape_factor = segment_length / max(segment_length,
+                        (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1]));
 
                 // If a pattern starts or stops drawing in a joint it will get
                 // fractured across the joint. To avoid this we either:
@@ -21787,15 +21794,35 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Static vertex data
                 ////////////////////////////////////////////////////////////////////
 
-
-                // For truncated miter joints we discard overlapping sections of
-                // the two involved line segments. To avoid discarding far into
-                // the line segment we limit the range here. (Without this short
-                // segments can cut holes into longer sections.)
-                f_discard_limit = vec2(
-                    is_truncated[0] ? 0.0 : 1e12,
-                    is_truncated[1] ? 0.0 : 1e12
-                );
+                // For truncated miter joints we discard overlapping sections of the two
+                // involved line segments. To identify which sections overlap we calculate
+                // the signed distance in +- miter vector direction from the shared line
+                // point in fragment shader. We pass the necessary data here. If we do not
+                // have a truncated joint we adjust the data here to never discard.
+                // Why not calculate the sdf here?
+                // If we calculate the sdf here and pass it as an interpolated vertex output
+                // the values we get between the two line segments will differ since the
+                // the vertices each segment interpolates from differ. This causes the
+                // discard check to rarely be true or false for both segments, resulting in
+                // duplicated or missing pixel/fragment draw.
+                // Passing the line point and miter vector instead should fix this issue,
+                // because both of these values come from the same calculation between the
+                // two segments. I.e. (previous segment).p2 == (next segment).p1 and
+                // (previous segment).miter_v2 == (next segment).miter_v1 should be the case.
+                if (isvalid[0] && is_truncated[0] && (adjustment[0] == 0.0)) {
+                    f_linepoints.xy = p1.xy + px_per_unit * scene_origin;   // FragCoords are relative to the window
+                    f_miter_vecs.xy = -miter_v1.xy;                         // but p1/p2 is relative to the scene origin
+                } else {
+                    f_linepoints.xy = vec2(-1e12);          // FragCoord > 0
+                    f_miter_vecs.xy = normalize(vec2(-1));
+                }
+                if (isvalid[3] && is_truncated[1] && (adjustment[1] == 0.0)) {
+                    f_linepoints.zw = p2.xy + px_per_unit * scene_origin;
+                    f_miter_vecs.zw = miter_v2.xy;
+                } else {
+                    f_linepoints.zw = vec2(-1e12);
+                    f_miter_vecs.zw = normalize(vec2(-1));
+                }
 
                 // Used to elongate sdf to include joints
                 // if start/end         elongate slightly so that there is no AA gap in loops
@@ -21813,6 +21840,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 f_cumulative_length = lastlen_start;
 
+                // linecap + joinstyle
+                f_capmode = ivec2(
+                    isvalid[0] ? joinstyle : linecap,
+                    isvalid[3] ? joinstyle : linecap
+                );
+
 
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
@@ -21825,7 +21858,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if (is_truncated[x] || !isvalid[3 * x]) {
                         // handle overlap in fragment shader via SDF comparison
                         offset = shape_factor * (
-                            (halfwidth * extrusion[x] + position.x * AA_THICKNESS) * v1 +
+                            position.x * (halfwidth * max(1.0, abs(extrusion[x])) + AA_THICKNESS) * v1 +
                             vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0)
                         );
                     } else {
@@ -21850,24 +21883,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec2 VP1 = point.xy - p1.xy;
                 vec2 VP2 = point.xy - p2.xy;
 
-                // Signed distance of the previous segment from the shared point
-                // p1 in line direction. Used decide which segments renders
-                // which joint fragment/pixel for truncated joints.
-                if (isvalid[0] && (adjustment[0] == 0.0) && is_truncated[0])
-                    f_quad_sdf0 = dot(VP1, v0.xy);
-                else
-                    f_quad_sdf0 = 1e12;
-
                 // sdf of this segment
-                f_quad_sdf1.x = dot(VP1, -v1.xy);
-                f_quad_sdf1.y = dot(VP2,  v1.xy);
-                f_quad_sdf1.z = dot(VP1,  n1);
-
-                // SDF for next segment, see quad_sdf0
-                if (isvalid[3] && (adjustment[1] == 0.0) && is_truncated[1])
-                    f_quad_sdf2 = dot(VP2, -v2.xy);
-                else
-                    f_quad_sdf2 = 1e12;
+                f_quad_sdf.x = dot(VP1, -v1.xy);
+                f_quad_sdf.y = dot(VP2,  v1.xy);
+                f_quad_sdf.z = dot(VP1,  n1);
 
                 // sdf for creating a flat cap on truncated joints
                 // (sign(dot(...)) detects if line bends left or right)
@@ -21920,9 +21939,7 @@ function lines_fragment_shader(uniforms, attributes) {
     precision mediump sampler2D;
     precision mediump sampler3D;
 
-    in highp float f_quad_sdf0;
-    in highp vec3 f_quad_sdf1;
-    in highp float f_quad_sdf2;
+    in highp vec3 f_quad_sdf;
     in vec2 f_truncation;
     in float f_linestart;
     in float f_linelength;
@@ -21930,12 +21947,14 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in float f_linewidth;
     flat in vec4 f_pattern_overwrite;
     flat in vec2 f_extrusion;
-    flat in vec2 f_discard_limit;
     flat in ${color} f_color1;
     flat in ${color} f_color2;
     flat in float f_alpha_weight;
     flat in uint f_instance_id;
     flat in float f_cumulative_length;
+    flat in ivec2 f_capmode;
+    flat in vec4 f_linepoints;
+    flat in vec4 f_miter_vecs;
 
     uniform uint object_id;
     ${uniform_decl}
@@ -21946,6 +21965,11 @@ function lines_fragment_shader(uniforms, attributes) {
     const float AA_RADIUS = 0.8;
     // space allocated for AA
     const float AA_THICKNESS = 2.0 * AA_RADIUS;
+    const int BUTT   = 0;
+    const int SQUARE = 1;
+    const int ROUND  = 2;
+    const int MITER  = 0;
+    const int BEVEL  = 3;
 
     float aastep(float threshold, float value) {
         return smoothstep(threshold-AA_RADIUS, threshold+AA_RADIUS, value);
@@ -22044,38 +22068,66 @@ function lines_fragment_shader(uniforms, attributes) {
     void main(){
         vec4 color;
 
-        // f_quad_sdf1.x is the distance from p1, negative in v1 direction.
+        // f_quad_sdf.x is the distance from p1, negative in v1 direction.
         vec2 uv = vec2(
-            (f_cumulative_length - f_quad_sdf1.x) / (2.0 * f_linewidth * pattern_length),
-            0.5 + 0.5 * f_quad_sdf1.z / f_linewidth
+            (f_cumulative_length - f_quad_sdf.x) / (2.0 * f_linewidth * pattern_length),
+            0.5 + 0.5 * f_quad_sdf.z / f_linewidth
         );
 
     #ifndef DEBUG
-        // discard fragments that are "more inside" the other segment to remove
-        // overlap between adjacent line segments. (truncated joints)
-        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
-        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
-        if (dist_in_prev < f_quad_sdf1.x || dist_in_next < f_quad_sdf1.y)
+        // discard fragments that are other side of the truncated joint
+        float discard_sdf1 = dot(gl_FragCoord.xy - f_linepoints.xy, f_miter_vecs.xy);
+        float discard_sdf2 = dot(gl_FragCoord.xy - f_linepoints.zw, f_miter_vecs.zw);
+        if ((f_quad_sdf.x > 0.0 && discard_sdf1 > 0.0) ||
+            (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0))
             discard;
 
-        // SDF for inside vs outside along the line direction. extrusion adjusts
-        // the distance from p1/p2 for joints etc
-        float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
+        float sdf;
+
+        // f_quad_sdf.x includes everything from p1 in p2-p1 direction, i.e. >
+        // f_quad_sdf.y includes everything from p2 in p1-p2 direction, i.e. <
+        // <   < | >    < >    < | >   >
+        // <   < 1->----<->----<-2 >   >
+        // <   < | >    < >    < | >   >
+        if (f_capmode.x == ROUND) {
+            // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
+            sdf = min(sqrt(f_quad_sdf.x * f_quad_sdf.x + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.x);
+        } else if (f_capmode.x == SQUARE) {
+            // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
+            sdf = f_quad_sdf.x - f_linewidth;
+        } else { // miter or bevel joint or :butt cap
+            // variable shift in -(p2-p1) direction to make space for joints
+            sdf = f_quad_sdf.x - f_extrusion.x;
+            // do truncate joints
+            sdf = max(sdf, f_truncation.x);
+        }
+
+        // Same as above but for p2
+        if (f_capmode.y == ROUND) {
+            sdf = max(sdf,
+                min(sqrt(f_quad_sdf.y * f_quad_sdf.y + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.y)
+            );
+        } else if (f_capmode.y == SQUARE) {
+            sdf = max(sdf, f_quad_sdf.y - f_linewidth);
+        } else { // miter or bevel joint or :butt cap
+            sdf = max(sdf, f_quad_sdf.y - f_extrusion.y);
+            sdf = max(sdf, f_truncation.y);
+        }
 
         // distance in linewidth direction
-        sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
-
-        // truncation of truncated joints (creates flat cap)
-        sdf = max(sdf, f_truncation.x);
-        sdf = max(sdf, f_truncation.y);
+        // f_quad_sdf.z is 0 along the line connecting p1 and p2 and increases along line-normal direction
+        //  ^  |  ^      ^  | ^
+        //     1------------2
+        //  ^  |  ^      ^  | ^
+        sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
 
         // inner truncation (AA for overlapping parts)
         // min(a, b) keeps what is inside a and b
         // where a is the smoothly cut of part just before discard triggers (i.e. visible)
         // and b is the (smoothly) cut of part where the discard triggers
         // 100.0x sdf makes the sdf much more sharply, avoiding overdraw in the center
-        sdf = max(sdf, min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0));
-        sdf = max(sdf, min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0));
+        sdf = max(sdf, min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0));
+        sdf = max(sdf, min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0));
 
         // pattern application
         sdf = max(sdf, get_pattern_sdf(pattern, uv));
@@ -22088,11 +22140,11 @@ function lines_fragment_shader(uniforms, attributes) {
         //      p1      v1
         //        '.   --->
         //          '----------
-        // -f_quad_sdf1.x is the distance from p1, positive in v1 direction
+        // -f_quad_sdf.x is the distance from p1, positive in v1 direction
         // f_linestart is the distance between p1 and the left edge along v1 direction
         // f_start_length.y is the distance between the edges of this segment, in v1 direction
         // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
-        float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
+        float factor = (-f_quad_sdf.x - f_linestart) / f_linelength;
         color = get_color(f_color1 + factor * (f_color2 - f_color1), colormap, colorrange);
 
         color.a *= aastep(0.0, -sdf) * f_alpha_weight;
@@ -22104,36 +22156,36 @@ function lines_fragment_shader(uniforms, attributes) {
         color.rgb += (2.0 * mod(float(f_instance_id), 2.0) - 1.0) * 0.1;
 
         // show color interpolation as brightness gradient
-        // float factor = (-f_quad_sdf1.x - f_linestart) / f_linelength;
+        // float factor = (-f_quad_sdf.x - f_linestart) / f_linelength;
         // color.rgb += (2.0 * factor - 1.0) * 0.2;
 
         // mark "outside" define by quad_sdf in black
-        float sdf = max(f_quad_sdf1.x - f_extrusion.x, f_quad_sdf1.y - f_extrusion.y);
-        sdf = max(sdf, abs(f_quad_sdf1.z) - f_linewidth);
+        float sdf = max(f_quad_sdf.x - f_extrusion.x, f_quad_sdf.y - f_extrusion.y);
+        sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
         color.rgb -= vec3(0.4) * step(0.0, sdf);
 
         // Mark discarded space in red/blue
-        float dist_in_prev = max(f_quad_sdf0, - f_discard_limit.x);
-        float dist_in_next = max(f_quad_sdf2, - f_discard_limit.y);
-        if (dist_in_prev < f_quad_sdf1.x)
+        float discard_sdf1 = dot(gl_FragCoord.xy - f_linepoints.xy, f_miter_vecs.xy);
+        float discard_sdf2 = dot(gl_FragCoord.xy - f_linepoints.zw, f_miter_vecs.zw);
+        if (f_quad_sdf.x > 0.0 && discard_sdf1 > 0.0)
             color.r += 0.5;
-        if (dist_in_next <= f_quad_sdf1.y) {
+        if (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0)
             color.b += 0.5;
-        }
 
         // remaining overlap as softer red/blue
-        if (f_quad_sdf1.x - f_quad_sdf0 - 1.0 > 0.0)
+        if (discard_sdf1 - 1.0 > 0.0)
             color.r += 0.2;
-        if (f_quad_sdf1.y - f_quad_sdf2 - 1.0 > 0.0)
+            color.r += 0.2;
+        if (discard_sdf2 - 1.0 > 0.0)
             color.b += 0.2;
 
         // Mark regions excluded via truncation in green
         color.g += 0.5 * step(0.0, max(f_truncation.x, f_truncation.y));
 
-        // and inner truncation as soft green
-        if (min(f_quad_sdf1.x + 1.0, 100.0 * (f_quad_sdf1.x - f_quad_sdf0) - 1.0) > 0.0)
+        // and inner truncation as softer green
+        if (min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0) > 0.0)
             color.g += 0.2;
-        if (min(f_quad_sdf1.y + 1.0, 100.0 * (f_quad_sdf1.y - f_quad_sdf2) - 1.0) > 0.0)
+        if (min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0) > 0.0)
             color.g += 0.2;
 
         // mark pattern in white
