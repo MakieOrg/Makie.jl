@@ -1092,8 +1092,8 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, markersize, rotations))
-    marker = cairo_scatter_marker(primitive.marker[]) # use CairoMakie's conversion system instead of Makie's
+    @get_attribute(primitive, (model, marker, markersize, rotations))
+
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(model)
