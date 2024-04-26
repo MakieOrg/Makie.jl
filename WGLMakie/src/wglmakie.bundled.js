@@ -21340,6 +21340,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
+            flat out ivec2 f_capmode;
             flat out vec4 f_linepoints;         // invalid / not needed
             flat out vec4 f_miter_vecs;         // invalid / not needed
 
@@ -21440,8 +21441,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
+                // linecaps
+                f_capmode = ivec2(linecap);
+
                 // Vertex position (padded for joint & anti-aliasing)
-                float v_offset = position.x * (0.5 * segment_length + AA_THICKNESS);
+                float v_offset = position.x * (0.5 * segment_length + halfwidth + AA_THICKNESS);
                 float n_offset = (halfwidth + AA_THICKNESS) * position.y;
                 vec3 point = 0.5 * (p1 + p2) + v_offset * v1 + n_offset * vec3(n1, 0);
 
@@ -21455,7 +21459,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_quad_sdf.z = dot(VP1,  n1);
 
                 // invalid - no joint to truncate
-                f_truncation = vec2(-10.0);
+                f_truncation = vec2(-1e12);
 
                 // simplified - no extrusion or joints means we just have:
                 f_linestart = 0.0;
@@ -21489,15 +21493,20 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
             flat out float f_cumulative_length;
+            flat out ivec2 f_capmode;
             flat out vec4 f_linepoints;
             flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
 
             // Constants
-            const float MITER_LIMIT = -0.4;
             const float AA_RADIUS = 0.8;
             const float AA_THICKNESS = 2.0 * AA_RADIUS;
+            const int BUTT   = 0;
+            const int SQUARE = 1;
+            const int ROUND  = 2;
+            const int MITER  = 0;
+            const int BEVEL  = 3;
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -21601,6 +21610,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+            float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
 
             ////////////////////////////////////////////////////////////////////////
@@ -21694,17 +21704,22 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 // joint information
 
-                // Are we truncating the joint?
-                bool[2] is_truncated = bool[2](
-                    dot(v0.xy, v1.xy) < MITER_LIMIT,
-                    dot(v1.xy, v2.xy) < MITER_LIMIT
-                );
-
                 // Miter normals (normal of truncated edge / vector to sharp corner)
                 // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
                 //       same direction, but becomes vec(0) at 0°, so we can use it instead
-                vec2 miter_n1 = is_truncated[0] ? sign(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-                vec2 miter_n2 = is_truncated[1] ? sign(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+                vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
+                vec2 miter_n1 = miter.x < -0.0 ?
+                    sign_no_zero(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+                vec2 miter_n2 = miter.y < -0.0 ?
+                    sign_no_zero(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+
+                // Are we truncating the joint based on miter limit or joinstyle?
+                // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
+                // miter joints a when v1 ≈ v2 (v0)
+                bool[2] is_truncated = bool[2](
+                    (int(joinstyle) == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
+                    (int(joinstyle) == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
+                );
 
                 // miter vectors (line vector matching miter normal)
                 vec2 miter_v1 = -normal_vector(miter_n1);
@@ -21753,13 +21768,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 //   '---'
                 // To avoid drawing the "inverted" section we move the relevant
                 // vertices to the crossing point (x) using this scaling factor.
-                float shape_factor = max(
-                    0.0,
-                    segment_length / max(
-                        segment_length,
-                        (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1])
-                    )
-                );
+                // TODO: skipping this for linestart/end avoid round and square
+                //       being cut off but causes overlap...
+                float shape_factor = 1.0;
+                if ((isvalid[0] && isvalid[3]) || (int(linecap) == BUTT))
+                    shape_factor = segment_length / max(segment_length,
+                        (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1]));
 
                 // If a pattern starts or stops drawing in a joint it will get
                 // fractured across the joint. To avoid this we either:
@@ -21826,6 +21840,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 f_cumulative_length = lastlen_start;
 
+                // linecap + joinstyle
+                f_capmode = ivec2(
+                    isvalid[0] ? joinstyle : linecap,
+                    isvalid[3] ? joinstyle : linecap
+                );
+
 
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
@@ -21838,7 +21858,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if (is_truncated[x] || !isvalid[3 * x]) {
                         // handle overlap in fragment shader via SDF comparison
                         offset = shape_factor * (
-                            (halfwidth * extrusion[x] + position.x * AA_THICKNESS) * v1 +
+                            position.x * (halfwidth * max(1.0, abs(extrusion[x])) + AA_THICKNESS) * v1 +
                             vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0)
                         );
                     } else {
@@ -21932,6 +21952,7 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in float f_alpha_weight;
     flat in uint f_instance_id;
     flat in float f_cumulative_length;
+    flat in ivec2 f_capmode;
     flat in vec4 f_linepoints;
     flat in vec4 f_miter_vecs;
 
@@ -21944,6 +21965,11 @@ function lines_fragment_shader(uniforms, attributes) {
     const float AA_RADIUS = 0.8;
     // space allocated for AA
     const float AA_THICKNESS = 2.0 * AA_RADIUS;
+    const int BUTT   = 0;
+    const int SQUARE = 1;
+    const int ROUND  = 2;
+    const int MITER  = 0;
+    const int BEVEL  = 3;
 
     float aastep(float threshold, float value) {
         return smoothstep(threshold-AA_RADIUS, threshold+AA_RADIUS, value);
@@ -22056,16 +22082,44 @@ function lines_fragment_shader(uniforms, attributes) {
             (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0))
             discard;
 
-        // SDF for inside vs outside along the line direction. extrusion adjusts
-        // the distance from p1/p2 for joints etc
-        float sdf = max(f_quad_sdf.x - f_extrusion.x, f_quad_sdf.y - f_extrusion.y);
+        float sdf;
+
+        // f_quad_sdf.x includes everything from p1 in p2-p1 direction, i.e. >
+        // f_quad_sdf.y includes everything from p2 in p1-p2 direction, i.e. <
+        // <   < | >    < >    < | >   >
+        // <   < 1->----<->----<-2 >   >
+        // <   < | >    < >    < | >   >
+        if (f_capmode.x == ROUND) {
+            // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
+            sdf = min(sqrt(f_quad_sdf.x * f_quad_sdf.x + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.x);
+        } else if (f_capmode.x == SQUARE) {
+            // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
+            sdf = f_quad_sdf.x - f_linewidth;
+        } else { // miter or bevel joint or :butt cap
+            // variable shift in -(p2-p1) direction to make space for joints
+            sdf = f_quad_sdf.x - f_extrusion.x;
+            // do truncate joints
+            sdf = max(sdf, f_truncation.x);
+        }
+
+        // Same as above but for p2
+        if (f_capmode.y == ROUND) {
+            sdf = max(sdf,
+                min(sqrt(f_quad_sdf.y * f_quad_sdf.y + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.y)
+            );
+        } else if (f_capmode.y == SQUARE) {
+            sdf = max(sdf, f_quad_sdf.y - f_linewidth);
+        } else { // miter or bevel joint or :butt cap
+            sdf = max(sdf, f_quad_sdf.y - f_extrusion.y);
+            sdf = max(sdf, f_truncation.y);
+        }
 
         // distance in linewidth direction
+        // f_quad_sdf.z is 0 along the line connecting p1 and p2 and increases along line-normal direction
+        //  ^  |  ^      ^  | ^
+        //     1------------2
+        //  ^  |  ^      ^  | ^
         sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
-
-        // truncation of truncated joints (creates flat cap)
-        sdf = max(sdf, f_truncation.x);
-        sdf = max(sdf, f_truncation.y);
 
         // inner truncation (AA for overlapping parts)
         // min(a, b) keeps what is inside a and b
@@ -22120,6 +22174,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         // remaining overlap as softer red/blue
         if (discard_sdf1 - 1.0 > 0.0)
+            color.r += 0.2;
             color.r += 0.2;
         if (discard_sdf2 - 1.0 > 0.0)
             color.b += 0.2;

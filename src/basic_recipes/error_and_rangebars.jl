@@ -21,6 +21,7 @@ If you want to plot intervals from low to high values instead of relative errors
     color = @inherit linecolor
     "The thickness of the lines in screen units."
     linewidth = @inherit linewidth
+    linecap = @inherit linecap
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
     cycle = [:color]
@@ -46,6 +47,7 @@ If you want to plot errors relative to a reference value, use `errorbars`.
     color = @inherit linecolor
     "The thickness of the lines in screen units."
     linewidth = @inherit linewidth
+    linecap = @inherit linecap
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
     cycle = [:color]
@@ -194,7 +196,9 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    @extract plot (whiskerwidth, color, linewidth, visible, colormap, colorscale, colorrange, inspectable, transparency)
+    @extract plot (
+        whiskerwidth, color, linewidth, linecap, visible, colormap, colorscale, colorrange,
+        inspectable, transparency)
 
     scene = parent_scene(plot)
 
@@ -231,12 +235,12 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     end
 
     linesegments!(
-        plot, linesegpairs, color = color, linewidth = linewidth, visible = visible,
+        plot, linesegpairs, color = color, linewidth = linewidth, linecap = linecap, visible = visible,
         colormap = colormap, colorscale = colorscale, colorrange = colorrange, inspectable = inspectable,
         transparency = transparency
     )
     linesegments!(
-        plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
+        plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, linecap = linecap,
         visible = visible, colormap = colormap, colorscale = colorscale, colorrange = colorrange,
         inspectable = inspectable, transparency = transparency, space = :pixel,
         model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()

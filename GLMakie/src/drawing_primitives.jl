@@ -443,7 +443,9 @@ end
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
     return cached_robj!(screen, scene, plot) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
+        miter_limit = pop!(gl_attributes, :miter_limit)
         data = Dict{Symbol, Any}(gl_attributes)
+        data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
         positions = handle_view(plot[1], data)
         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
             Vec2f(ppu * origin(viewport))

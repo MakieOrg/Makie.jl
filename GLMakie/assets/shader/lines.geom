@@ -31,6 +31,7 @@ flat out {{stripped_color_type}} f_color1;
 flat out {{stripped_color_type}} f_color2;
 flat out float f_alpha_weight;
 flat out float f_cumulative_length;
+flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
 flat out vec4 f_miter_vecs;
 
@@ -42,11 +43,19 @@ uniform float pattern_length;
 uniform vec2 resolution;
 uniform vec2 scene_origin;
 
+uniform int linecap;
+uniform int joinstyle;
+uniform float miter_limit;
+
 // Constants
-const float MITER_LIMIT = -0.4;
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 4.0 * AA_RADIUS;
 // NOTE: if MITER_LIMIT becomes a variable AA_THICKNESS needs to scale with the joint extrusion
+const int BUTT   = 0;
+const int SQUARE = 1;
+const int ROUND  = 2;
+const int MITER  = 0;
+const int BEVEL  = 3;
 
 vec3 screen_space(vec4 vertex) {
     return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
@@ -75,6 +84,7 @@ void emit_vertex(LineVertex vertex) {
 
 vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
 vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,17 +289,22 @@ void main(void)
     vec2 n1 = normal_vector(v1);
     vec2 n2 = normal_vector(v2);
 
-    // Are we truncating the joint?
-    bvec2 is_truncated = bvec2(
-        dot(v0, v1.xy) < MITER_LIMIT,
-        dot(v1.xy, v2) < MITER_LIMIT
-    );
-
     // Miter normals (normal of truncated edge / vector to sharp corner)
     // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
     //       same direction, but becomes vec(0) at 0°, so we can use it instead
-    vec2 miter_n1 = is_truncated[0] ? sign(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
-    vec2 miter_n2 = is_truncated[1] ? sign(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+    vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
+    vec2 miter_n1 = miter.x < 0.0 ?
+        sign_no_zero(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+    vec2 miter_n2 = miter.y < 0.0 ?
+        sign_no_zero(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+
+    // Are we truncating the joint based on miter limit or joinstyle?
+    // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
+    // miter joints a when v1 ≈ v2 (v0)
+    bvec2 is_truncated = bvec2(
+        (joinstyle == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
+        (joinstyle == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
+    );
 
     // miter vectors (line vector matching miter normal)
     vec2 miter_v1 = -normal_vector(miter_n1);
@@ -335,10 +350,12 @@ void main(void)
     //   '---'
     // To avoid drawing the "inverted" section we move the relevant
     // vertices to the crossing point (x) using this scaling factor.
-    vec2 shape_factor = vec2(
+    // TODO: skipping this for linestart/end avoid round and square being cut off
+    //       but causes overlap...
+    vec2 shape_factor = (isvalid[0] && isvalid[3]) || (linecap == BUTT) ? vec2(
         max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][0] - extrusion[1][0]))), // -n
         max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][1] - extrusion[1][1])))  // +n
-    );
+    ) : vec2(1.0);
 
     // Generate static/flat outputs
 
@@ -407,6 +424,12 @@ void main(void)
     // for uv's
     f_cumulative_length = g_lastlen[1];
 
+    // 0 :butt/normal cap or joint | 1 :square cap | 2 rounded cap/joint
+    f_capmode = ivec2(
+        isvalid[0] ? joinstyle : linecap,
+        isvalid[3] ? joinstyle : linecap
+    );
+
     // Generate interpolated/varying outputs:
 
     LineVertex vertex;
@@ -421,7 +444,7 @@ void main(void)
                 if (is_truncated[x] || !isvalid[3*x]) {
                     // handle overlap in fragment shader via SDF comparison
                     offset = shape_factor[y] * (
-                        (halfwidth * extrusion[x][y] + (2 * x - 1) * AA_THICKNESS) * v1 +
+                        (halfwidth * max(1.0, abs(extrusion[x][y])) + AA_THICKNESS) * (2 * x - 1) * v1 +
                         vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0)
                     );
                 } else {

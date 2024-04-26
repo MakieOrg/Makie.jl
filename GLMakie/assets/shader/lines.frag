@@ -16,7 +16,7 @@ in vec2 f_truncation;
 in float f_linestart;
 in float f_linelength;
 
-flat in float f_linewidth;
+flat in float f_linewidth; // half the real linewidth here because we count from center
 flat in vec4 f_pattern_overwrite;
 flat in vec2 f_extrusion;
 flat in {{stripped_color_type}} f_color1;
@@ -24,6 +24,7 @@ flat in {{stripped_color_type}} f_color2;
 flat in float f_alpha_weight;
 flat in uvec2 f_id;
 flat in float f_cumulative_length;
+flat in ivec2 f_capmode;
 flat in vec4 f_linepoints;
 flat in vec4 f_miter_vecs;
 
@@ -39,6 +40,11 @@ uniform vec4 nan_color;
 
 // Half width of antialiasing smoothstep
 const float AA_RADIUS = 0.8;
+const int BUTT   = 0;
+const int SQUARE = 1;
+const int ROUND  = 2;
+const int MITER  = 0;
+const int BEVEL  = 3;
 
 float aastep(float threshold1, float dist) {
     return smoothstep(threshold1-AA_RADIUS, threshold1+AA_RADIUS, dist);
@@ -127,6 +133,11 @@ float get_pattern_sdf(Nothing _, vec2 uv){
 
 void write2framebuffer(vec4 color, uvec2 id);
 
+// General Notes on SDFs here:
+// < 0 is considered inside the shape, i.e. drawn
+// min(sdf1, sdf2) is the union shapes sdf1 and sdf2
+// max(sdf1, sdf2) is the intersection of sdf1 and sdf2
+
 void main(){
     vec4 color;
 
@@ -146,16 +157,44 @@ if (!debug) {
         (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0))
         discard;
 
-    // SDF for inside vs outside along the line direction. extrusion adjusts
-        // the distance from p1/p2 for joints etc
-    float sdf = max(f_quad_sdf.x - f_extrusion.x, f_quad_sdf.y - f_extrusion.y);
+    float sdf;
+
+    // f_quad_sdf.x includes everything from p1 in p2-p1 direction, i.e. >
+    // f_quad_sdf.y includes everything from p2 in p1-p2 direction, i.e. <
+    // <   < | >    < >    < | >   >
+    // <   < 1->----<->----<-2 >   >
+    // <   < | >    < >    < | >   >
+    if (f_capmode.x == ROUND) {
+        // in circle(p1, halfwidth) || is beyond p1 in p2-p1 direction
+        sdf = min(sqrt(f_quad_sdf.x * f_quad_sdf.x + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.x);
+    } else if (f_capmode.x == SQUARE) {
+        // everything in p2-p1 direction shifted by halfwidth in p1-p2 direction (i.e. include more)
+        sdf = f_quad_sdf.x - f_linewidth;
+    } else { // miter or bevel joint or :butt cap
+        // variable shift in -(p2-p1) direction to make space for joints
+        sdf = f_quad_sdf.x - f_extrusion.x;
+        // do truncate joints
+        sdf = max(sdf, f_truncation.x);
+    }
+
+    // Same as above but for p2
+    if (f_capmode.y == ROUND) { // rounded joint or cap
+        sdf = max(sdf,
+            min(sqrt(f_quad_sdf.y * f_quad_sdf.y + f_quad_sdf.z * f_quad_sdf.z) - f_linewidth, f_quad_sdf.y)
+        );
+    } else if (f_capmode.y == SQUARE) { // :square cap
+        sdf = max(sdf, f_quad_sdf.y - f_linewidth);
+    } else { // miter or bevel joint or :butt cap
+        sdf = max(sdf, f_quad_sdf.y - f_extrusion.y);
+        sdf = max(sdf, f_truncation.y);
+    }
 
     // distance in linewidth direction
+    // f_quad_sdf.z is 0 along the line connecting p1 and p2 and increases along line-normal direction
+    //  ^  |  ^      ^  | ^
+    //     1------------2
+    //  ^  |  ^      ^  | ^
     sdf = max(sdf, abs(f_quad_sdf.z) - f_linewidth);
-
-    // outer truncation of truncated joints (smooth outside edge)
-    sdf = max(sdf, f_truncation.x);
-    sdf = max(sdf, f_truncation.y);
 
     // inner truncation (AA for overlapping parts)
     // min(a, b) keeps what is inside a and b

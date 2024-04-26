@@ -31,6 +31,9 @@ See the function `Makie.streamplot_impl` for implementation details.
     quality = 16
 
     linewidth = @inherit linewidth
+    linecap = @inherit linecap
+    joinstyle = @inherit joinstyle
+    miter_limit = @inherit miter_limit
     linestyle = nothing
     MakieCore.mixin_colormap_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
@@ -178,6 +181,9 @@ function plot!(p::StreamPlot)
         lift(x->x[3], p, data),
         color = lift(last, p, data),
         linestyle = p.linestyle,
+        linecap = p.linecap,
+        joinstyle = p.joinstyle,
+        miter_limit = p.miter_limit,
         linewidth = p.linewidth;
         colormap_args...,
         generic_plot_attributes...
