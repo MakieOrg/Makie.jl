@@ -200,7 +200,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
-        
+
         # Verify initial camera state
         @test cc.lookat[]       == Vec3f(0)
         @test cc.eyeposition[]  == Vec3f(3)
@@ -288,6 +288,26 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         e.scroll[] = (0.0, 4.0)
         @test cc.lookat[]       ≈ Vec3f(0)
         @test cc.eyeposition[]  ≈ 0.6830134f0 * Vec3f(3)
+        @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
+
+
+
+        # Reset state so this is indepentent from the last checks
+        scene = Scene(size=(800, 600));
+        e = events(scene)
+        cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false, zoom_translates_lookat = true)
+        cc = cameracontrols(scene)
+
+        # Verify initial camera state
+        @test cc.lookat[]       == Vec3f(0)
+        @test cc.eyeposition[]  == Vec3f(3)
+        @test cc.upvector[]     == Vec3f(0, 0, 1)
+
+        # Zoom
+        e.mouseposition[] = (400, 250) # for debugging
+        e.scroll[] = (0.0, 4.0)
+        @test cc.lookat[]       ≈ Vec3f(0.9509598)
+        @test cc.eyeposition[]  ≈ Vec3f(3)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
     end
 

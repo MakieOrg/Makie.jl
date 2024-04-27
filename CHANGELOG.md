@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
+- Added the `zoom_translates_lookat` setting to LScene's 3D camera. If set to true the camera no longer moves away from or towards lookat when zooming, avoiding issues with it clipping into a shape. [#3793](https://github.com/MakieOrg/Makie.jl/pull/3793)
 
 ## [0.20.9] - 2024-03-29
 
