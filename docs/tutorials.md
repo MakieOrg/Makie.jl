@@ -66,7 +66,7 @@
       How to reuse existing recipes in non-trivial ways.
       @@
       ~~~
-      <img src="/assets/tutorials/wrap-existing-recipe/code/output/final_result.png">
+      <img src="/assets/tutorials/wrap-existing-recipe/code/output/wrapping-recipes.svg">
       ~~~
     @@
     ~~~</a>~~~

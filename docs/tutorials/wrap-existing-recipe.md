@@ -72,7 +72,7 @@ This almost works, but we see that the keyword arguments are not passed to the `
 To handle these attributes properly, we need to override/merge the
 default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes, since Makie 0.21, it is handled automatically:
 
-\begin{examplefigure}{svg = true}
+\begin{examplefigure}{svg = true, name = "wrapping-recipes"}
 ```julia
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
     barplot!(plot, plot.attributes, plot[1])
