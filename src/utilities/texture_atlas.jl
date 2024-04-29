@@ -298,6 +298,7 @@ function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
     return insert_glyph!(atlas, fast_stable_hash(path), path)
 end
 
+
 function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{BezierPath, Tuple{UInt64, NativeFont}})
     return get!(atlas.mapping, hash) do
         uv_pixel = render(atlas, path_or_glyp)
