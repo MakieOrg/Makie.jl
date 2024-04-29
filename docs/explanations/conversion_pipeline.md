@@ -186,9 +186,9 @@ scene
 ### Argument Conversions
 
 When calling a plot function, e.g. `scatter!(axis_or_scene, args...)` a new plot object is constructed.
-The plot object keeps track of the input arguments in `plot.args`, promoting them to observables if need be.
-It also keeps track of a type normalized set of inputs in `plot.converted` which are generated from `plot.args` using various `convert_arguments()` functions.
-Generally speaking these functions either dispatch on the plot type or the result of `conversion_trait(PlotType, args...)`, i.e. `convert_arguments(type_or_traint, args...)`.
+The plot object keeps track of the original input arguments converted to Observables in `plot.args`.
+Those input arguments are then converted via `convert_arguments` and stored in `plot.converted`.
+Generally speaking these methods either dispatch on the plot type or the result of `conversion_trait(PlotType, args...)`, i.e. `convert_arguments(type_or_traint, args...)`.
 They are expected to generalize and simplify the structure of data given to a plot while leaving the numeric type as either a Float32 or Float64 as appropriate.
 
 ### Transformation Objects
@@ -201,7 +201,7 @@ Ignoring `Float32Convert` for now, the next two transformations are summarized u
 The first transformation is `transformation.transform_func`, which holds a function which is applied to a `Vector{Point{N, T}}` element by element.
 It is meant to resolve transformations that cannot be represented as a matrix operations, for example moving data into a logarithmic space or into Polar coordinates.
 They are implemented using the `apply_transform(func, data)` methods.
-Generally we also expect transform function to be (partially) invertable and their inverse to be returned by `inverse_transform(func)`.
+Generally we also expect transform function to be (partially) invertible and their inverse to be returned by `inverse_transform(func)`.
 
 The second transformation is `transformation.model`, which combines `translate!(plot, ...)`, `scale!(plot, ...)` and `rotate!(plot, ...)` into a matrix.
 The order of operations here is fixed - rotations apply first, then scaling and finally translations.
