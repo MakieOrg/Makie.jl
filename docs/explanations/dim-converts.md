@@ -1,7 +1,7 @@
 # Dim Converts
 
-Starting with Makie@0.21, support for types like units, categorical values and Dates has been added.
-They are converted to a plotable representation by dim converts, which also take care of axis ticks.
+Starting with `Makie@0.21`, support for types like units, categorical values and Dates has been added.
+They are converted to a plottable representation by dim converts, which also take care of axis ticks.
 In the following sections we will explain their usage and how to extend the interface with your own types.
 
 ## Examples
@@ -28,6 +28,7 @@ scatter!(ax, LinRange(0u"yr", 0.1u"yr", 5))
 f
 ```
 \end{examplefigure}
+
 Note that the units displayed in ticks will adjust to the given range of values.
 
 Going back to just numbers errors since the axis is unitful now:
@@ -38,7 +39,9 @@ catch e
     return e
 end
 ```
+
 Similarly, trying to plot units into a unitless axis dimension errors too, since otherwise it would alter the meaning of the previous plotted values:
+
 ```julia
 try
     scatter!(ax, LinRange(0u"yr", 0.1u"yr", 10), rand(Hour(1):Hour(1):Hour(20), 10))
@@ -47,23 +50,28 @@ catch e
 end
 ```
 
-you can access the conversion via ax.dim1_conversion and ax.dim2_conversion:
+you can access the conversion via `ax.dim1_conversion` and `ax.dim2_conversion`:
+
 ```julia
 (ax.dim1_conversion[], ax.dim2_conversion[])
 ```
 
 And set them accordingly:
+
 ```julia
 f = Figure()
 ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```
+
+### Scope
+
+Currently, dim conversions only works for x and y arguments for the standard 2D Axis. It's setup to generalize to other Axis types, but is currently only supported by `Axis`.
 
 ### Current conversions in Makie
 
 {{doc CategoricalConversion}}
 {{doc UnitfulConversion}}
 {{doc DateTimeConversion}}
-
 
 ## Dev docs
 
@@ -129,5 +137,6 @@ barplot([MyUnit(1), MyUnit(2), MyUnit(3)], 1:3)
 \end{examplefigure}
 
 For more complex examples, you should look at the implementation in:
-`Makie/src/dim-converts`
+`Makie/src/dim-converts`.
+
 The conversions get applied in the function `Makie.conversion_pipeline` in `Makie/src/interfaces.jl`.
