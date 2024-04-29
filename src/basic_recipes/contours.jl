@@ -25,6 +25,9 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     levels = 5
     linewidth = 1.0
     linestyle = nothing
+    linecap = @inherit linecap
+    joinstyle = @inherit joinstyle
+    miter_limit = @inherit miter_limit
     enable_depth = true
     """
     If `true`, adds text labels to the contour lines.
@@ -160,6 +163,9 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     pop!(attr, :color)
     pop!(attr, :linestyle)
     pop!(attr, :linewidth)
+    pop!(attr, :linecap)
+    pop!(attr, :joinstyle)
+    pop!(attr, :miter_limit)
     volume!(plot, attr, x, y, z, volume)
 end
 
@@ -326,6 +332,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         color = colors,
         linewidth = plot.linewidth,
         linestyle = plot.linestyle,
+        linecap = plot.linecap,
+        joinstyle = plot.joinstyle,
+        miter_limit = plot.miter_limit,
         visible=plot.visible,
         transparency=plot.transparency,
         overdraw=plot.overdraw,

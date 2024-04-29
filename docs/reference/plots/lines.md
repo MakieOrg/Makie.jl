@@ -52,6 +52,31 @@ f
 ```
 \end{examplefigure}
 
+### Linecaps and Joinstyles
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure()
+Axis(f[1, 1])
+
+ps = 0.8 .* Point2f[(-0.2, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5), (-0.5, -0.2)]
+
+for i in 1:3, j in 1:3
+    lines!(
+        ps .+ Point2f(i, -j), linewidth = 20,
+        linecap = (:butt, :square, :round)[i],
+        joinstyle = (:miter, :bevel, :round)[j]
+    )
+    scatterlines!(ps .+ Point2f(i, -j), color = :gray)
+end
+
+f
+```
+\end{examplefigure}
+
 ### Dealing with outline artifacts in GLMakie
 
 In GLMakie 3D line plots can generate outline artifacts depending on the order line segments are rendered in.

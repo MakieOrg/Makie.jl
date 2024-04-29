@@ -443,8 +443,13 @@ end
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
     return cached_robj!(screen, scene, plot) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
+        miter_limit = pop!(gl_attributes, :miter_limit)
         data = Dict{Symbol, Any}(gl_attributes)
+        data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
         positions = handle_view(plot[1], data)
+        data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
+            Vec2f(ppu * origin(viewport))
+        end
 
         space = plot.space
         if isnothing(to_value(linestyle))
@@ -483,6 +488,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
     return cached_robj!(screen, scene, plot) do gl_attributes
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = pop!(data, :linestyle)
+        data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
+            Vec2f(ppu * origin(viewport))
+        end
 
         positions = handle_view(plot[1], data)
         # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)
