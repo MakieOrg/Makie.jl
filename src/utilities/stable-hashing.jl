@@ -1,9 +1,9 @@
 using CRC32c
 
 # Seems like crc32c is slow enough, that it's worthwhile to memoize the hashes
-const MEMOIZED_HASHES = Dict{Any,UInt32}()
+const MEMOIZED_HASHES = Dict{Tuple{UInt64,String},UInt32}()
 
-function fast_stable_hash(x)
+function fast_stable_hash(x::Tuple{UInt64,String})
     return get!(MEMOIZED_HASHES, x) do
         return hash_crc32(x)
     end
