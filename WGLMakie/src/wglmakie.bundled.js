@@ -21257,8 +21257,8 @@ function delete_plots(plot_uuids) {
     const plots = find_plots(plot_uuids);
     plots.forEach(delete_plot);
 }
-function convert_texture(data) {
-    const tex = create_texture(data);
+function convert_texture(scene, data) {
+    const tex = create_texture(scene, data);
     tex.needsUpdate = true;
     tex.minFilter = mod[data.minFilter];
     tex.magFilter = mod[data.magFilter];
@@ -21275,10 +21275,10 @@ function convert_texture(data) {
 function is_three_fixed_array(value) {
     return value instanceof mod.Vector2 || value instanceof mod.Vector3 || value instanceof mod.Vector4 || value instanceof mod.Matrix4;
 }
-function to_uniform(data) {
+function to_uniform(scene, data) {
     if (data.type !== undefined) {
         if (data.type == "Sampler") {
-            return convert_texture(data);
+            return convert_texture(scene, data);
         }
         throw new Error(`Type ${data.type} not known`);
     }
@@ -21303,14 +21303,14 @@ function to_uniform(data) {
     }
     return data;
 }
-function deserialize_uniforms(data) {
+function deserialize_uniforms(scene, data) {
     const result = {};
     for(const name in data){
         const value = data[name];
         if (value instanceof mod.Uniform) {
             result[name] = value;
         } else {
-            const ser = to_uniform(value);
+            const ser = to_uniform(scene, value);
             result[name] = new mod.Uniform(ser);
         }
     }
@@ -21460,8 +21460,8 @@ function lines_fragment_shader(uniforms, attributes) {
     }
     `;
 }
-function create_line_material(uniforms, attributes) {
-    const uniforms_des = deserialize_uniforms(uniforms);
+function create_line_material(scene, uniforms, attributes) {
+    const uniforms_des = deserialize_uniforms(scene, uniforms);
     const mat = new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
         glslVersion: THREE.GLSL3,
@@ -21543,11 +21543,11 @@ function attach_updates(mesh, buffers, attributes, is_segments) {
         });
     }
 }
-function _create_line(line_data, is_segments) {
+function _create_line(scene, line_data, is_segments) {
     const geometry = create_line_instance_geometry();
     const buffers = {};
     create_line_buffers(geometry, buffers, line_data.attributes, is_segments);
-    const material = create_line_material(line_data.uniforms, geometry.attributes);
+    const material = create_line_material(scene, line_data.uniforms, geometry.attributes);
     material.uniforms.is_segments_multi = {
         value: is_segments ? 2 : 1
     };
@@ -21558,26 +21558,26 @@ function _create_line(line_data, is_segments) {
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
-function create_line(line_data) {
-    return _create_line(line_data, false);
+function create_line(scene, line_data) {
+    return _create_line(scene, line_data, false);
 }
-function create_linesegments(line_data) {
-    return _create_line(line_data, true);
+function create_linesegments(scene, line_data) {
+    return _create_line(scene, line_data, true);
 }
-function deserialize_plot(data) {
+function deserialize_plot(scene, data) {
     let mesh;
     const update_visible = (v)=>{
         mesh.visible = v;
         return;
     };
     if (data.plot_type === "lines") {
-        mesh = create_line(data);
+        mesh = create_line(scene, data);
     } else if (data.plot_type === "linesegments") {
-        mesh = create_linesegments(data);
+        mesh = create_linesegments(scene, data);
     } else if ("instance_attributes" in data) {
-        mesh = create_instanced_mesh(data);
+        mesh = create_instanced_mesh(scene, data);
     } else {
-        mesh = create_mesh(data);
+        mesh = create_mesh(scene, data);
     }
     mesh.name = data.name;
     mesh.frustumCulled = false;
@@ -21635,7 +21635,7 @@ function add_plot(scene, plot_data) {
             plot_data.uniforms.light_direction.value.fromArray(value);
         });
     }
-    const p = deserialize_plot(plot_data);
+    const p = deserialize_plot(scene, plot_data);
     plot_cache[p.plot_uuid] = p;
     scene.add(p);
     const next_insert = new Set(ON_NEXT_INSERT);
@@ -21678,26 +21678,45 @@ function convert_RGB_to_RGBA(rgbArray) {
     }
     return rgbaArray;
 }
-function create_texture(data) {
-    const buffer = data.data;
+function create_texture_from_data(data) {
+    let buffer = data.data;
     if (data.size.length == 3) {
         const tex = new mod.Data3DTexture(buffer, data.size[0], data.size[1], data.size[2]);
         tex.format = mod[data.three_format];
         tex.type = mod[data.three_type];
         return tex;
     } else {
-        let tex_data;
-        if (buffer == "texture_atlas") {
-            tex_data = TEXTURE_ATLAS[0].value;
-        } else {
-            tex_data = buffer;
-        }
         let format = mod[data.three_format];
         if (data.three_format == "RGBFormat") {
-            tex_data = convert_RGB_to_RGBA(tex_data);
+            buffer = convert_RGB_to_RGBA(buffer);
             format = mod.RGBAFormat;
         }
-        return new mod.DataTexture(tex_data, data.size[0], data.size[1], format, mod[data.three_type]);
+        return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
+    }
+}
+function create_texture(scene, data) {
+    const buffer = data.data;
+    if (buffer == "texture_atlas") {
+        const { texture_atlas  } = scene.screen;
+        if (texture_atlas) {
+            return texture_atlas;
+        } else {
+            data.data = TEXTURE_ATLAS[0].value;
+            const texture = create_texture_from_data(data);
+            scene.screen.texture_atlas = texture;
+            TEXTURE_ATLAS[0].on((new_data)=>{
+                if (new_data === texture) {
+                    return false;
+                } else {
+                    texture.image.data.set(new_data);
+                    texture.needsUpdate = true;
+                    return;
+                }
+            });
+            return texture;
+        }
+    } else {
+        return create_texture_from_data(data);
     }
 }
 function re_create_texture(old_texture, buffer, size) {
@@ -21789,10 +21808,10 @@ function recreate_instanced_geometry(mesh) {
     mesh.geometry = buffer_geometry;
     mesh.needsUpdate = true;
 }
-function create_material(program) {
+function create_material(scene, program) {
     const is_volume = "volumedata" in program.uniforms;
     return new mod.RawShaderMaterial({
-        uniforms: deserialize_uniforms(program.uniforms),
+        uniforms: deserialize_uniforms(scene, program.uniforms),
         vertexShader: program.vertex_source,
         fragmentShader: program.fragment_source,
         side: is_volume ? mod.BackSide : mod.DoubleSide,
@@ -21802,23 +21821,23 @@ function create_material(program) {
         depthWrite: !program.transparency.value
     });
 }
-function create_mesh(program) {
+function create_mesh(scene, program) {
     const buffer_geometry = new mod.BufferGeometry();
     const faces = new mod.BufferAttribute(program.faces.value, 1);
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
-    const material = create_material(program);
+    const material = create_material(scene, program);
     const mesh = new mod.Mesh(buffer_geometry, material);
     program.faces.on((x)=>{
         mesh.geometry.setIndex(new mod.BufferAttribute(x, 1));
     });
     return mesh;
 }
-function create_instanced_mesh(program) {
+function create_instanced_mesh(scene, program) {
     const buffer_geometry = new mod.InstancedBufferGeometry();
     const faces = new mod.BufferAttribute(program.faces.value, 1);
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
     attach_instanced_geometry(buffer_geometry, program.instance_attributes);
-    const material = create_material(program);
+    const material = create_material(scene, program);
     const mesh = new mod.Mesh(buffer_geometry, material);
     program.faces.on((x)=>{
         mesh.geometry.setIndex(new mod.BufferAttribute(x, 1));
@@ -21955,7 +21974,13 @@ function render_scene(scene, picking = false) {
     const { camera , renderer , px_per_unit  } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
-        console.log("EXITING WGL");
+        console.log("removing WGL context, canvas is not in the DOM anymore!");
+        if (scene.screen.texture_atlas) {
+            const data = TEXTURE_ATLAS[0].value;
+            TEXTURE_ATLAS[0].notify(scene.screen.texture_atlas, true);
+            TEXTURE_ATLAS[0].value = data;
+            scene.screen.texture_atlas = undefined;
+        }
         delete_three_scene(scene);
         renderer.state.reset();
         renderer.dispose();
@@ -22250,7 +22275,8 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         canvas,
         px_per_unit,
         scalefactor,
-        winscale
+        winscale,
+        texture_atlas: undefined
     };
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
@@ -22494,7 +22520,8 @@ window.WGL = {
     events2unitless,
     on_next_insert,
     register_popup,
-    render_scene
+    render_scene,
+    TEXTURE_ATLAS
 };
 export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert };
 export { render_scene as render_scene };

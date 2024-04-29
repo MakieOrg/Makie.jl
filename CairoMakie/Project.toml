@@ -1,7 +1,7 @@
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
-version = "0.11.9"
+version = "0.11.10"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
@@ -24,7 +24,7 @@ FileIO = "1.1"
 FreeType = "3, 4.0"
 GeometryBasics = "0.4.1"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.20.8"
+Makie = "=0.20.9"
 PrecompileTools = "1.0"
 julia = "1.3"
 

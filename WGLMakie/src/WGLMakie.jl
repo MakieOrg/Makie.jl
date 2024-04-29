@@ -78,7 +78,8 @@ function __init__()
     atlas = wgl_texture_atlas()
     TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
     Makie.font_render_callback!(atlas) do sd, uv
-        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
+        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
+        return
     end
     DISABLE_JS_FINALZING[] = false
     return
