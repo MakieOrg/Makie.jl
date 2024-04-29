@@ -2,8 +2,7 @@
 
 ## [Unreleased]
 
-- Added supported markers hint to unsupported marker warn message.
-- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
+- Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
 
 ## [0.21.0] - 2024-03-0X
 
@@ -40,13 +39,24 @@
 - Add `scale_to=:flip` option to `hist`, which flips the direction of the bars [#3732](https://github.com/MakieOrg/Makie.jl/pull/3732)
 - Fixed an issue with the texture atlas not updating in WGLMakie after display, causing new symbols to not show up [#3737](https://github.com/MakieOrg/Makie.jl/pull/3737)
 
+## [0.20.9] - 2024-03-29
+
+- Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
+- Fixed bug in CairoMakie line drawing when multiple successive points had the same color [#3712](https://github.com/MakieOrg/Makie.jl/pull/3712).
+- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
+- Fixed `contourf` bug where n levels would sometimes miss the uppermost value, causing gaps [#3713](https://github.com/MakieOrg/Makie.jl/pull/3713).
+- Added `scale` attribute to `violin` [#3352](https://github.com/MakieOrg/Makie.jl/pull/3352).
+- Use label formatter in barplot [#3718](https://github.com/MakieOrg/Makie.jl/pull/3718).
+- Fix the incorrect shading with non uniform markerscale in meshscatter [#3722](https://github.com/MakieOrg/Makie.jl/pull/3722)
+- Add `scale_to=:flip` option to `hist`, which flips the direction of the bars [#3732](https://github.com/MakieOrg/Makie.jl/pull/3732)
+- Fixed an issue with the texture atlas not updating in WGLMakie after display, causing new symbols to not show up [#3737](https://github.com/MakieOrg/Makie.jl/pull/3737)
+
 ## [0.20.8] - 2024-02-22
 
 - Fixed excessive use of space with HTML image outputs [#3642](https://github.com/MakieOrg/Makie.jl/pull/3642).
 - Fixed bugs with format strings and add new features by switching to Format.jl [#3633](https://github.com/MakieOrg/Makie.jl/pull/3633).
 - Fixed an issue where CairoMakie would unnecessarily rasterize polygons [#3605](https://github.com/MakieOrg/Makie.jl/pull/3605).
 - Added `PointBased` conversion trait to `scatterlines` recipe [#3603](https://github.com/MakieOrg/Makie.jl/pull/3603).
-- Added Axis converts (dim_convert), for unit/categorical and dates support [#3226](https://github.com/MakieOrg/Makie.jl/pull/3226).
 - Multiple small fixes for `map_latest`, `WGLMakie` picking and `PlotSpec` [#3637](https://github.com/MakieOrg/Makie.jl/pull/3637).
 - Fixed PolarAxis `rticks` being incompatible with rich text. [#3615](https://github.com/MakieOrg/Makie.jl/pull/3615)
 - Fixed an issue causing lines, scatter and text to not scale with resolution after deleting plots in GLMakie. [#3649](https://github.com/MakieOrg/Makie.jl/pull/3649)

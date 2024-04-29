@@ -424,11 +424,11 @@ end
 #                                  VolumeLike                                  #
 ################################################################################
 
-
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
     return (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(data))
 end
+  
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
 
@@ -653,7 +653,7 @@ end
 to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
 
 """
-Converts the elemen array type to `T1` without making a copy if the element type matches
+Converts the element array type to `T1` without making a copy if the element type matches
 """
 function elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N}
     return convert(AbstractArray{T1, N}, x)
@@ -753,7 +753,7 @@ Converts a representation of vertices `v` to its canonical representation as a
 
 - An `AbstractVector` of 3-element `Tuple`s or `StaticVector`s,
 
-- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case exta dimensions will
+- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case extra dimensions will
   be either truncated or padded with zeros as required,
 
 - An `AbstractMatrix`"
@@ -1655,13 +1655,13 @@ Use
 scatter(..., marker=FastPixel())
 ```
 
-For significant faster plotting times for large amount of points.
+For significantly faster plotting times for large amount of points.
 Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
 
 """
-Vector of anything that is accepted as a single marker will give each point it's own marker.
+Vector of anything that is accepted as a single marker will give each point its own marker.
 Note that it needs to be a uniform vector with the same element type!
 """
 to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)

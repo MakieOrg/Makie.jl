@@ -20,7 +20,7 @@ end
 
 function set_ft_font(ctx, font)
 
-    font_face = ccall(
+    font_face = Base.@lock font.lock ccall(
         (:cairo_ft_font_face_create_for_ft_face, Cairo.libcairo),
         Ptr{Cvoid}, (Makie.FreeTypeAbstraction.FT_Face, Cint),
         font, 0
