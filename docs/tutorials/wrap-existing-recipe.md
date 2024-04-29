@@ -41,7 +41,7 @@ following method for this type of customization:
 Makie.convert_arguments(P::Type{<:BarPlot}, h::MyHist) = convert_arguments(P, h.bincenters, h.bincounts)
 ```
 
-\begin{examplefigure}
+\begin{examplefigure}{svg = true}
 ```julia
 h = MyHist([1, 10, 100], 1:3)
 
@@ -57,7 +57,7 @@ data as input, but we already have the binned data in our `MyHist` type.
 
 The first thing one might try is to override the `plot!` method for `Hist` recipe:
 
-\begin{examplefigure}{svg}
+\begin{examplefigure}{svg = true}
 ```julia
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
     barplot!(plot, plot[1])
@@ -72,12 +72,10 @@ This almost works, but we see that the keyword arguments are not passed to the `
 To handle these attributes properly, we need to override/merge the
 default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes, since Makie 0.21, it is handled automatically:
 
-\begin{examplefigure}{name = "final_result"}
+\begin{examplefigure}{svg = true}
 ```julia
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
-    scene = Makie.parent_scene(plot)
     barplot!(plot, plot.attributes, plot[1])
-    plot
 end
 h = MyHist([1, 10, 100], 1:3)
 hist(h; color=:red, direction=:x)
