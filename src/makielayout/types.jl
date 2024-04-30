@@ -47,6 +47,11 @@ struct LinearTicks
     end
 end
 
+"""
+Wilkinson's algorithm for positioning ticks.
+
+$(@doc PlotUtils.optimize_ticks)
+"""
 struct WilkinsonTicks
     k_ideal::Int
     k_min::Int
@@ -56,7 +61,6 @@ struct WilkinsonTicks
     simplicity_weight::Float64
     coverage_weight::Float64
     niceness_weight::Float64
-    min_px_dist::Float64
 end
 
 """
@@ -93,17 +97,17 @@ struct AngularTicks
     end
 end
 
+#=
+"""
+    LogitTicks{T}(linear_ticks::T)
 
-
-# """
-#     LogitTicks{T}(linear_ticks::T)
-
-# Wraps any other tick object.
-# Used to apply a linear tick searching algorithm on a logit-transformed interval.
-# """
-# struct LogitTicks{T}
-#     linear_ticks::T
-# end
+Wraps any other tick object.
+Used to apply a linear tick searching algorithm on a logit-transformed interval.
+"""
+struct LogitTicks{T}
+    linear_ticks::T
+end
+=#
 
 """
     LogTicks{T}(linear_ticks::T)
