@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Document `WilkinsonTicks` [#3819](https://github.com/MakieOrg/Makie.jl/pull/3819).
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
 
 ## [0.20.9] - 2024-03-29

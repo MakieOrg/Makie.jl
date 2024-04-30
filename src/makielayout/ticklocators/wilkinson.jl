@@ -12,7 +12,8 @@ function WilkinsonTicks(
     end
 
     WilkinsonTicks(
-        k_ideal, k_min, k_max, Q, granularity_weight, simplicity_weight, coverage_weight, niceness_weight
+        k_ideal, k_min, k_max, Q, granularity_weight,
+        simplicity_weight, coverage_weight, niceness_weight
     )
 end
 
