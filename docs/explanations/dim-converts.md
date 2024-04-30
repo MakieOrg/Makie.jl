@@ -20,6 +20,7 @@ f, ax, pl = scatter(rand(Second(1):Second(60):Second(20*60), 10))
 
 Once an axis dimension is set to a certain unit, one must plot into that axis with compatible units.
 So e.g. hours work, since they're compatible with the unitful conversion:
+
 \begin{examplefigure}{}
 ```julia
 scatter!(ax, rand(Hour(1):Hour(1):Hour(20), 10))
@@ -32,6 +33,7 @@ f
 Note that the units displayed in ticks will adjust to the given range of values.
 
 Going back to just numbers errors since the axis is unitful now:
+
 ```julia
 try
     scatter!(ax, 1:4)

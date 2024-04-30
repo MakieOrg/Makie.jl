@@ -20,16 +20,13 @@ end
 """
     DateTimeConversion(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
 
-Creates conversion & conversions for Date, DateTime and Time. For other time units one should use `UnitfulConversion`, which work with e.g. Seconds.
+Creates conversion and conversions for Date, DateTime and Time. For other time units one should use `UnitfulConversion`, which work with e.g. Seconds.
 
-For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conversion, otherwise `WilkinsonTicks` are used on the integer representation of the date.
+For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conversion, otherwise `axis.(x/y)ticks` are used on the integer representation of the date.
 
 # Arguments
 
 - `type=automatic`: when left at automatic, the first plot into the axis will determine the type. Otherwise, one can set this to `Time`, `Date`, or `DateTime`.
-- `k_min=automatic`: gets passed to `PlotUtils.optimize_datetime_ticks` for DateTimes, and otherwise to `WilkinsonTicks`.
-- `k_max=automatic`: gets passed to `PlotUtils.optimize_datetime_ticks` for DateTimes, and otherwise to `WilkinsonTicks`.
-- `k_ideal=automatic`: will be ignored for DateTime, and passed to `WilkinsonTicks` for Time / Date.
 
 # Examples
 
@@ -40,9 +37,9 @@ date_time_range = range(date_time, step=Week(5), length=10)
 scatter(date_time_range, 1:10)
 
 # explicitely chose DateTimeConversion and use it to plot unitful values into it and display in the `Time` format:
-using Unitful
-yticks = DateTimeConversion(Time)
-scatter(1:4, (1:4) .* u"s", axis=(yticks=yticks,))
+using Makie.Unitful
+conversion = Makie.DateTimeConversion(Time)
+scatter(1:4, (1:4) .* u"s", axis=(dim2_conversion=conversion,))
 ```
 """
 struct DateTimeConversion <: AbstractDimConversion
