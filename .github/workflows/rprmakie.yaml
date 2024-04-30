@@ -43,6 +43,8 @@ jobs:
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
+          pkg"registry up"
+          Pkg.update()
           # dev mono repo versions
           pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
       - name: Run the tests
