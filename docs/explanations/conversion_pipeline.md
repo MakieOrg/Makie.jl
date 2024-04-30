@@ -191,7 +191,7 @@ Those input arguments are then converted via `convert_arguments` and stored in `
 Generally speaking these methods either dispatch on the plot type or the result of `conversion_trait(PlotType, args...)`, i.e. `convert_arguments(type_or_trait, args...)`.
 They are expected to generalize and simplify the structure of data given to a plot while leaving the numeric type as either a Float32 or Float64 as appropriate.
 
-The full conversion pipeline is run in `Makie.conversion_pipeline` which also applies [`Dim Converts`](./explanations/dim-converts.md) and checks if the conversion was successful.
+The full conversion pipeline is run in `Makie.conversion_pipeline` which also applies [`Dim Converts`](./dim-converts) and checks if the conversion was successful.
 
 ### Transformation Objects
 
