@@ -5,7 +5,7 @@ Draw a violin plot.
 - `x`: positions of the categories
 - `y`: variables whose density is computed
 """
-@recipe Violin x y begin
+@recipe Violin (x, y) begin
     npoints = 200
     boundary = automatic
     bandwidth = automatic

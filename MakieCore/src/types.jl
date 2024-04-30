@@ -10,6 +10,7 @@ abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
+
 """
 Screen constructors implemented by all backends:
 
@@ -70,7 +71,7 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     kw::Dict{Symbol,Any}
     args::Vector{Any}
 
-    converted::NTuple{N,Observable} where {N}
+    converted::Vector{Observable}
     # Converted and processed arguments
     attributes::Attributes
 
@@ -78,10 +79,12 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Plot}
 
-    function Plot{Typ,T}(kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable}) where {Typ,T,N}
+    function Plot{Typ,T}(
+                         kw::Dict{Symbol,Any}, args::Vector{Any}, converted::Vector{Observable},
+            deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
+            ) where {Typ,T}
         validate_attribute_keys(Plot{Typ}, kw)
-        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[],
-                   Observables.ObserverFunction[])
+        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[], deregister_callbacks)
     end
 end
 
@@ -142,3 +145,8 @@ Billboard(angles::Vector) = Billboard(Float32.(angles))
     FastShading
     MultiLightShading
 end
+
+const RealArray{T,N} = AbstractArray{T,N} where {T<:Real}
+const RealVector{T} = RealArray{1}
+const RealMatrix{T} = RealArray{2}
+const FloatType = Union{Float32,Float64}

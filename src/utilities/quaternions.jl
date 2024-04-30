@@ -134,7 +134,7 @@ end
 
 function orthogonal(v::T) where T <: StaticVector{3}
     x, y, z = abs.(v)
-    other = x < y ? (x < z ? unit(T, 1) : unit(T, 3)) : (y < z ? unit(T, 2) : unit(T, 3))
+    other = x < y ? (x < z ? GeometryBasics.unit(T, 1) : GeometryBasics.unit(T, 3)) : (y < z ? GeometryBasics.unit(T, 2) : GeometryBasics.unit(T, 3))
     return cross(v, other)
 end
 

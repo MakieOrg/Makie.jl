@@ -39,7 +39,7 @@ end
 
 Plots a barplot.
 """
-@recipe BarPlot x y begin
+@recipe BarPlot (x, y) begin
     """Controls the baseline of the bars. This is zero in the default `automatic` case unless the barplot is in a log-scaled `Axis`.
     With a log scale, the automatic default is half the minimum value because zero is an invalid value for a log scale.
     """
@@ -239,7 +239,7 @@ end
 function Makie.plot!(p::BarPlot)
     bar_points = p[1]
     if !(eltype(bar_points[]) <: Point2)
-        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`.")
+        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`. Found: $(bar_points[])")
     end
     labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2d}[])
     label_aligns = Observable(Vec2d[])

@@ -16,9 +16,9 @@ isdiscrete(::Distribution{<:VariateForm,<:Discrete}) = true
 support(dist::Distribution) = default_range(dist)
 support(dist::Distribution{<:VariateForm,<:Discrete}) = UnitRange(endpoints(default_range(dist))...)
 
-convert_arguments(P::PlotFunc, dist::Distribution) = convert_arguments(P, support(dist), dist)
+convert_arguments(P::Type{<:AbstractPlot}, dist::Distribution) = convert_arguments(P, support(dist), dist)
 
-function convert_arguments(P::PlotFunc, x::Union{Interval,AbstractVector}, dist::Distribution)
+function convert_arguments(P::Type{<:AbstractPlot}, x::Union{Interval,AbstractVector}, dist::Distribution)
     default_ptype = isdiscrete(dist) ? ScatterLines : Lines
     ptype = plottype(P, default_ptype)
     to_plotspec(ptype, convert_arguments(ptype, x, x -> pdf(dist, x)))
@@ -97,10 +97,15 @@ end
 maybefit(D::Type{<:Distribution}, y) = Distributions.fit(D, y)
 maybefit(x, _) = x
 
+function convert_arguments(::Type{<:QQPlot}, points::AbstractVector{<:Point2},
+                           lines::AbstractVector{<:Point2}; qqline = :none)
+    return (points, lines)
+end
+
 function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
     x = maybefit(x′, y)
     points, line = fit_qqplot(x, y; qqline = qqline)
-    return PlotSpec(:QQPlot, points, line)
+    return (points, line)
 end
 
 convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
@@ -108,6 +113,8 @@ convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
+
+plottype(::Type{<:QQNorm}, args...) = QQPlot
 
 function Makie.plot!(p::QQPlot)
 

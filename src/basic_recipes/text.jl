@@ -4,6 +4,16 @@ function check_textsize_deprecation(@nospecialize(dictlike))
     end
 end
 
+# conversion stopper for previous methods
+convert_arguments(::Type{<:Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
+convert_arguments(::Type{<:Text}, gc::GlyphCollection) = (gc,)
+convert_arguments(::Type{<:Text}, vec::AbstractVector{<:Tuple{<:Any,<:Point}}) = (vec,)
+convert_arguments(::Type{<:Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
+convert_arguments(::Type{<:Text}, string::AbstractString) = (string,)
+# Fallback to PointBased
+convert_arguments(::Type{<:Text}, args...) = convert_arguments(PointBased(), args...)
+
+
 function plot!(plot::Text)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
@@ -12,6 +22,9 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[]; ignore_equal_values=true)
     linecolors = Observable(RGBAf[]; ignore_equal_values=true)
     lineindices = Ref(Int[])
+    if !haskey(plot, :text)
+        attributes(plot)[:text] = plot[2]
+    end
 
     onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,
@@ -71,19 +84,18 @@ function plot!(plot::Text)
 
     attrs = copy(plot.attributes)
     # remove attributes that are already in the glyphcollection
-    pop!(attrs, :position)
+    attributes(attrs)[:position] = positions
     pop!(attrs, :text)
     pop!(attrs, :align)
     pop!(attrs, :color)
     pop!(attrs, :calculated_colors)
 
-    t = text!(plot, glyphcollections; attrs..., position = positions)
+    t = text!(plot, attrs, glyphcollections)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)
     pop!(t.attributes, :text)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
-
     plot
 end
 
@@ -131,12 +143,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractString}})
     plot
 end
 
-# conversion stopper for previous methods
-convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
-convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
-convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:Any, <:Point}}) = (vec,)
-convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
-convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
+
 
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging

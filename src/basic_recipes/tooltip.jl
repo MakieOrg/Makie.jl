@@ -4,7 +4,7 @@
 
 Creates a tooltip pointing at `position` displaying the given `string
 """
-@recipe Tooltip position begin
+@recipe Tooltip (position,) begin
     # General
     text = ""
     "Sets the offset between the given `position` and the tip of the triangle pointing at that position."

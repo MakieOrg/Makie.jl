@@ -14,8 +14,6 @@ end # module MakieApp
 """
 
 using Pkg, Test
-pkg"registry up"
-Pkg.update()
 makie_dir = pwd()
 tmpdir = mktempdir()
 # create a temporary project

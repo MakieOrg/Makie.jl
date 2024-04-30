@@ -209,7 +209,7 @@ end
 function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
     a, b = extrema(ranges[dim])
     whalf = Float32(((b - a) / 2))
-    halfaxis = unit(Point{N, Float32}, dim) .* whalf
+    halfaxis = GeometryBasics.unit(Point{N, Float32}, dim) .* whalf
 
     origin .+ (halfaxis .+ (normalize(dir) * tgap))
 end
@@ -258,7 +258,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     tgap = 0.01limit_widths[offset_indices] .* tgap
 
     for i in 1:N
-        axis_vec = unit(Point{N, Float32}, i)
+        axis_vec = GeometryBasics.unit(Point{N, Float32}, i)
         width = Float32(limit_widths[i])
         stop = origin .+ (width .* axis_vec)
         if showaxis[i]
@@ -267,7 +267,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
         if showticks[i]
             range = ranges[i]
             j = offset_indices[i]
-            tickdir = unit(Vec{N, Float32}, j)
+            tickdir = GeometryBasics.unit(Vec{N, Float32}, j)
             offset2 = Float32(limit_widths[j] + tgap[i]) * tickdir
             for (j, tick) in enumerate(range)
                 labels = ticklabels[i]
@@ -301,7 +301,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
             thickness = gridthickness[i]
             for _j = (i + 1):(i + N - 1)
                 j = mod1(_j, N)
-                dir = unit(Point{N, Float32}, j)
+                dir = GeometryBasics.unit(Point{N, Float32}, j)
                 range = ranges[j]
                 for tick in range
                     offset = Float32(tick - origin[j]) * dir

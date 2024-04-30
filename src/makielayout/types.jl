@@ -213,6 +213,15 @@ end
     elements::Dict{Symbol, Any}
     @attributes begin
         """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
+        """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
         """
@@ -1265,6 +1274,19 @@ end
 @Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1363,6 +1385,18 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1651,6 +1685,15 @@ end
     target_r0::Observable{Float32}
     @attributes begin
         # Generic
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
 
         "The height setting of the scene."
         height = nothing

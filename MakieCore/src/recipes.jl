@@ -340,19 +340,53 @@ function _attribute_docs(T::Type{<:Plot})
 end
 
 
-macro recipe(Tsym::Symbol, args...)
+function create_args_type_expr(PlotType, args::Nothing)
+    return [], :()
+end
+function create_args_type_expr(PlotType, args)
+    if Meta.isexpr(args, :tuple)
+        all_fields = args.args
+    else
+        throw(ArgumentError("Recipe arguments need to be a tuple of the form (name::OptionalType, name,). Found: $(args)"))
+    end
+    if any(x -> !(Meta.isexpr(x, :(::)) || x isa Symbol), all_fields)
+        throw(ArgumentError("All fields need to be of type `name::Type` or `name`. Found: $(all_fields)"))
+    end
+    types = []; names = Symbol[]
+    if all(x-> x isa Symbol, all_fields)
+        return all_fields, :()
+    end
+    for field in all_fields
+        if  field isa Symbol
+            error("All fields need to be typed if one is. Please either type  all fields or none. Found: $(all_fields)")
+        end
+        push!(names, field.args[1])
+        push!(types, field.args[2])
+    end
+    expr = quote
+        MakieCore.types_for_plot_arguments(::Type{<:$(PlotType)}) = Tuple{$(types...)}
+    end
+    return names, expr
+end
 
+macro recipe(Tsym::Symbol, attrblock)
+    return create_recipe_expr(Tsym, nothing, attrblock)
+end
+
+macro recipe(Tsym::Symbol, args, attrblock)
+    return create_recipe_expr(Tsym, args, attrblock)
+end
+
+function types_for_plot_arguments end
+
+function create_recipe_expr(Tsym, args, attrblock)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)
 
-    syms = args[1:end-1]
-    for sym in syms
-        sym isa Symbol || throw(ArgumentError("Found argument that is not a symbol in the position where optional argument names should appear: $sym"))
-    end
-    attrblock = args[end]
+    syms, arg_type_func = create_args_type_expr(PlotType, args)
     if !(attrblock isa Expr && attrblock.head === :block)
         throw(ArgumentError("Last argument is not a begin end block"))
     end
@@ -360,7 +394,6 @@ macro recipe(Tsym::Symbol, args...)
     # attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
     docs_placeholder = gensym()
-
     attr_placeholder = gensym()
 
     q = quote
@@ -414,6 +447,7 @@ macro recipe(Tsym::Symbol, args...)
         function $(MakieCore).default_theme(scene, T::Type{<:$(PlotType)})
             Attributes(documented_attributes(T).closure(scene))
         end
+        $(arg_type_func)
 
         docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)),user_docstring)
         @doc docstring_modified $funcname_sym
@@ -427,12 +461,12 @@ macro recipe(Tsym::Symbol, args...)
             q.args,
             :(
                 $(esc(:($(MakieCore).argument_names)))(::Type{<:$PlotType}, len::Integer) =
-                    $syms
+                    ($(QuoteNode.(syms)...),)
             ),
         )
     end
 
-    q
+    return q
 end
 
 function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
@@ -678,7 +712,8 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
 end
 
 function attribute_name_allowlist()
-    (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation)
+    return (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
+            :dim_conversions)
 end
 
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})

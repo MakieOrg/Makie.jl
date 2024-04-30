@@ -14,7 +14,7 @@ streamplot(v, -2..2, -2..2)
 ## Implementation
 See the function `Makie.streamplot_impl` for implementation details.
 """
-@recipe StreamPlot f limits begin
+@recipe StreamPlot (f, limits) begin
     stepsize = 0.01
     gridsize = (32, 32, 32)
     maxsteps = 500

@@ -12,7 +12,7 @@ It is most commonly used as part of the `boxplot`.
 - `ymin`: lower limit of the box
 - `ymax`: upper limit of the box
 """
-@recipe CrossBar x y ymin ymax begin
+@recipe CrossBar (x, y, ymin, ymax) begin
     color= @inherit patchcolor
     colormap= @inherit colormap
     colorscale=identity

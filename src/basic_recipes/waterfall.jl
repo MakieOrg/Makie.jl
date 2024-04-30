@@ -5,7 +5,7 @@ Plots a [waterfall chart](https://en.wikipedia.org/wiki/Waterfall_chart) to visu
 positive and negative components that add up to a net result as a barplot with stacked bars next
 to each other.
 """
-@recipe Waterfall x y begin
+@recipe Waterfall (x, y) begin
     color = @inherit patchcolor
     dodge=automatic
     n_dodge=automatic

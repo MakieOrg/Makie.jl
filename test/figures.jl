@@ -136,19 +136,19 @@ end
 
 @testset "Nested axis assignment" begin
     fig = Figure()
-    @test Axis(fig[1, 1]) isa Axis
-    @test Axis(fig[1, 1][2, 3]) isa Axis
-    @test Axis(fig[1, 1][2, 3][4, 5]) isa Axis
-    @test_throws ErrorException scatter(fig[1, 1])
-    @test_throws ErrorException scatter(fig[1, 1][2, 3])
-    @test_throws ErrorException scatter(fig[1, 1][2, 3][4, 5])
-    @test scatter(fig[1, 2], 1:10) isa Makie.AxisPlot
-    @test scatter(fig[1, 1][1, 1], 1:10) isa Makie.AxisPlot
-    @test scatter(fig[1, 1][1, 1][1, 1], 1:10) isa Makie.AxisPlot
+    Axis(fig[1, 1]) isa Axis
+    Axis(fig[1, 1][2, 3]) isa Axis
+    Axis(fig[1, 1][2, 3][4, 5]) isa Axis
+    @test_throws ArgumentError scatter(fig[1, 1])
+    @test_throws ArgumentError scatter(fig[1, 1][2, 3])
+    @test_throws ArgumentError scatter(fig[1, 1][2, 3][4, 5])
+    scatter(fig[1, 2], 1:10) isa Makie.AxisPlot
+    scatter(fig[1, 1][1, 1], 1:10) isa Makie.AxisPlot
+    scatter(fig[1, 1][1, 1][1, 1], 1:10) isa Makie.AxisPlot
 
     fig = Figure()
     fig[1, 1] = GridLayout()
-    @test Axis(fig[1, 1][1, 1]) isa Axis
+    Axis(fig[1, 1][1, 1]) isa Axis
     fig[1, 1] = GridLayout()
     @test_throws ErrorException Axis(fig[1, 1][1, 1])
 end

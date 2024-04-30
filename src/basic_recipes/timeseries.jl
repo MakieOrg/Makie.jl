@@ -21,7 +21,7 @@ end
 
 ```
 """
-@recipe TimeSeries signal begin
+@recipe TimeSeries (signal,) begin
     history = 100
     MakieCore.documented_attributes(Lines)...
 end

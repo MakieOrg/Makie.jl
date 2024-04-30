@@ -259,7 +259,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (endpoints, ticksize, tickwidth,
-        tickcolor, tickalign, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
+        tickcolor, tickalign, dim_convert, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont, ticklabelcolor,
@@ -417,10 +417,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     tickvalues = Observable(Float64[]; ignore_equal_values=true)
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64},Vector{Any}}}()
-    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, limits, ticks, tickformat,
-         attrs.scale) do (position, extents, horizontal),
-            limits, ticks, tickformat, scale
-        get_ticks(ticks, scale, tickformat, limits...)
+    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
+    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
+         attrs.scale) do (position, extents, horizontal), _, limits, ticks, tickformat, scale
+        return get_ticks(dim_convert[], ticks, scale, tickformat, limits...)
     end
 
     tickpositions = Observable(Point2f[]; ignore_equal_values=true)
@@ -610,10 +610,6 @@ function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
 
     ticks, labels
 end
-
-# function get_ticks(::Automatic, scale::typeof(Makie.logit), any_formatter, vmin, vmax)
-#     get_ticks(LogitTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
-# end
 
 logit_10(x) = Makie.logit(x) / log(10)
 expit_10(x) = Makie.logistic(log(10) * x)

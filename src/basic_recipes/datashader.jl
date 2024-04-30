@@ -286,7 +286,7 @@ Do pay attention though, that if x and y don't have a fast iteration/getindex im
 
 For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
 """
-@recipe DataShader points begin
+@recipe DataShader (points,) begin
     """
     Can be `AggCount()`, `AggAny()` or `AggMean()`. User-extensible by overloading:
 

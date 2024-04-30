@@ -11,7 +11,7 @@ Curves can be:
 
 If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` is set != nothing, a scatterplot is added.
 """
-@recipe Series curves begin
+@recipe Series (curves,) begin
     linewidth=2
     color=:lighttest
     solid_color=nothing

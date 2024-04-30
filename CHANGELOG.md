@@ -1,16 +1,17 @@
 # Changelog
 
-## [0.20.9] - 2024-03-29
+## [Unreleased]
 
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
 
 ## [0.21.0] - 2024-03-0X
 
-- Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527)
+- Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527).
 - Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
 - Fixed bug in CairoMakie line drawing when multiple successive points had the same color [#3712](https://github.com/MakieOrg/Makie.jl/pull/3712).
 - Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
-- **Potentially breaking** Added a new `@recipe` variant with a `begin end` block. This variant is considered **internal** to Makie for now and could be refactored in patch releases. If you want to use it already on an experimental basis, do so only with Makie pinned to a patch version to avoid breakage. The new syntax allows documenting attributes directly in the `@recipe` definition and validating that all user-passed attributes are known whenever a plot is created. All of Makie's recipes have been ported over to this new syntax and will therefore throw errors when they receive invalid attributes. This is not breaking in the sense that the API changes, but existing user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed. A likely culprit is the forwarding of attributes to child plots by splatting the parent attributes into it like `some_plot!(...; attrs...)`. To fix this, make sure that you are only passing along valid attributes to the child plots in your recipes.
+- **Breaking (sort of)** Added a new `@recipe` variant which allows documenting attributes directly where they are defined and validating that all attributes are known whenever a plot is created. This is not breaking in the sense that the API changes, but user code is likely to break because of misspelled attribute names etc. that have so far gone unnoticed.
+- Add axis converts, enabling unit/categorical support and more [#3226](https://github.com/MakieOrg/Makie.jl/pull/3226).
 - **Breaking** Streamlined `data_limits` and `boundingbox` [#3671](https://github.com/MakieOrg/Makie.jl/pull/3671)
   - `data_limits` now only considers plot positions, completely ignoring transformations
   - `boundingbox(p::Text)` is deprecated in favor of `boundingbox(p::Text, p.markerspace[])`. The more internal methods use `string_boundingbox(p)`. [#3723](https://github.com/MakieOrg/Makie.jl/pull/3723)
@@ -38,6 +39,18 @@
 - Add `scale_to=:flip` option to `hist`, which flips the direction of the bars [#3732](https://github.com/MakieOrg/Makie.jl/pull/3732)
 - Fixed an issue with the texture atlas not updating in WGLMakie after display, causing new symbols to not show up [#3737](https://github.com/MakieOrg/Makie.jl/pull/3737)
 - Added `linecap` and `joinstyle` attributes for lines and linesegments. Also normalized `miter_limit` to 60° across all backends. [#3771](https://github.com/MakieOrg/Makie.jl/pull/3771)
+
+## [0.20.9] - 2024-03-29
+
+- Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
+- Fixed bug in CairoMakie line drawing when multiple successive points had the same color [#3712](https://github.com/MakieOrg/Makie.jl/pull/3712).
+- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
+- Fixed `contourf` bug where n levels would sometimes miss the uppermost value, causing gaps [#3713](https://github.com/MakieOrg/Makie.jl/pull/3713).
+- Added `scale` attribute to `violin` [#3352](https://github.com/MakieOrg/Makie.jl/pull/3352).
+- Use label formatter in barplot [#3718](https://github.com/MakieOrg/Makie.jl/pull/3718).
+- Fix the incorrect shading with non uniform markerscale in meshscatter [#3722](https://github.com/MakieOrg/Makie.jl/pull/3722)
+- Add `scale_to=:flip` option to `hist`, which flips the direction of the bars [#3732](https://github.com/MakieOrg/Makie.jl/pull/3732)
+- Fixed an issue with the texture atlas not updating in WGLMakie after display, causing new symbols to not show up [#3737](https://github.com/MakieOrg/Makie.jl/pull/3737)
 
 ## [0.20.8] - 2024-02-22
 

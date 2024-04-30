@@ -14,7 +14,7 @@ Plots errorbars at xy positions, extending by errors in the given `direction`.
 
 If you want to plot intervals from low to high values instead of relative errors, use `rangebars`.
 """
-@recipe Errorbars begin
+@recipe Errorbars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
     "The width of the whiskers or line caps in screen units."
     whiskerwidth = 0
     "The color of the lines. Can be an array to color each bar separately."
@@ -29,6 +29,7 @@ If you want to plot intervals from low to high values instead of relative errors
     MakieCore.mixin_generic_plot_attributes()...
 end
 
+const RealOrVec = Union{Real, RealVector}
 
 """
     rangebars(val, low, high; kwargs...)
@@ -57,22 +58,22 @@ end
 
 ### conversions for errorbars
 
-function convert_arguments(::Type{<:Errorbars}, x, y, error_both)
+function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealVector)
     T = float_type(x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
         Vec4{T}(x, y, e, e)
     end
     (xyerr,)
 end
-
-function convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
+RealOrVec
+function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low::RealOrVec, error_high::RealOrVec)
     T = float_type(x, y, error_low, error_high)
     xyerr = broadcast(Vec4{T}, x, y, error_low, error_high)
     (xyerr,)
 end
 
 
-function convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2, T}}) where T
+function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low_high::AbstractVector{<:VecTypes{2, T}}) where T
     T_out = float_type(float_type(x, y), T)
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
         Vec4{T_out}(x, y, el, eh)
@@ -80,7 +81,8 @@ function convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVe
     (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_both) where T
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,T}},
+                           error_both::RealOrVec) where {T}
     T_out = float_type(T, float_type(error_both))
     xyerr = broadcast(xy, error_both) do (x, y), e
         Vec4{T_out}(x, y, e, e)
@@ -88,7 +90,7 @@ function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,
     (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low, error_high) where T
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where T
     T_out = float_type(T, float_type(error_low, error_high))
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
         Vec4{T_out}(x, y, el, eh)
@@ -114,13 +116,14 @@ end
 
 ### conversions for rangebars
 
-function convert_arguments(::Type{<:Rangebars}, val, low, high)
+function convert_arguments(::Type{<:Rangebars}, val::RealOrVec, low::RealOrVec, high::RealOrVec)
     T = float_type(val, low, high)
     val_low_high = broadcast(Vec3{T}, val, low, high)
-    (val_low_high,)
+    return (val_low_high,)
 end
 
-function convert_arguments(::Type{<:Rangebars}, val, low_high::AbstractVector{<:VecTypes{2, T}}) where T
+function convert_arguments(::Type{<:Rangebars}, val::RealOrVec,
+                           low_high::AbstractVector{<:VecTypes{2,T}}) where {T}
     T_out = float_type(float_type(val), T)
     val_low_high = broadcast(val, low_high) do val, (low, high)
         Vec3{T_out}(val, low, high)
@@ -131,7 +134,7 @@ end
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTypes{4}}}
+function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
 
     x_y_low_high = plot[1]
 
@@ -161,7 +164,7 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
 end
 
 
-function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTypes{3}}}
+function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
 
     val_low_high = plot[1]
 

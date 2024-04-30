@@ -6,13 +6,13 @@ VolumeSlices
 
 Draws heatmap slices of the volume v
 """
-@recipe VolumeSlices x y z volume begin
+@recipe VolumeSlices (x, y, z, volume) begin
     MakieCore.documented_attributes(Heatmap)...
     bbox_visible = true
     bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
 end
 
-function plot!(plot::VolumeSlices)
+function Makie.plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
     replace_automatic!(plot, :colorrange) do
         map(extrema, volume)
