@@ -45,6 +45,8 @@ jobs:
         run: |
           using Pkg
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore"
           Pkg.test("Makie"; coverage=true)
 

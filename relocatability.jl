@@ -14,13 +14,15 @@ end # module MakieApp
 """
 
 using Pkg, Test
-
+pkg"registry up"
+Pkg.update()
 makie_dir = pwd()
 tmpdir = mktempdir()
 # create a temporary project
 cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
+
 
 paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
 
