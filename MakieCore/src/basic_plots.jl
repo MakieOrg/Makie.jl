@@ -316,7 +316,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     linewidth = @inherit linewidth
     "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
     linestyle = nothing
-    "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
+    "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 0.5 linewidth extrusion) or :round."
     linecap = @inherit linecap
     "Controls whether line joints are rounded (:round) or not (:miter)."
     joinstyle = @inherit joinstyle
