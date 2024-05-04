@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add `axislegend(ax, "title")` method [#3808](https://github.com/MakieOrg/Makie.jl/pull/3808)
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
 - Provided an interface to convert markers in CairoMakie separately (`cairo_scatter_marker`) so external packages can overload it. [#3811](https://github.com/MakieOrg/Makie.jl/pull/3811)
 - Updated to DelaunayTriangulation v1.0 [#3787](https://github.com/MakieOrg/Makie.jl/pull/3787).
