@@ -1,11 +1,11 @@
 """
     WilkinsonTicks(k_ideal::Int;
-                   k_min = 2, k_max = 10,
-                   Q = [(1.0, 1.0), (5.0, 0.9), (2.0, 0.7), (2.5, 0.5), (3.0, 0.2)],
-                   granularity_weight = 1/4,
-                   simplicity_weight = 1/6,
-                   coverage_weight = 1/3,
-                   niceness_weight = 1/4)
+        k_min = 2, k_max = 10,
+        Q = [(1.0, 1.0), (5.0, 0.9), (2.0, 0.7), (2.5, 0.5), (3.0, 0.2)],
+        granularity_weight = 1/4,
+        simplicity_weight = 1/6,
+        coverage_weight = 1/3,
+        niceness_weight = 1/4)
 
 `WilkinsonTicks` is a thin wrapper over `PlotUtils.optimize_ticks`, the docstring of which is reproduced below:
 
