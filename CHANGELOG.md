@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add formatter [#2520](https://github.com/MakieOrg/Makie.jl/pull/2520).
 - Add `axislegend(ax, "title")` method [#3808](https://github.com/MakieOrg/Makie.jl/pull/3808)
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
 
