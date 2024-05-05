@@ -274,6 +274,7 @@ end
     leg = axislegend(ax, position = (0.4, 0.8))
     @test leg.halign[] == 0.4
     @test leg.valign[] == 0.8
+    @test_nowarn axislegend(ax, "foo")  # issue 2530
 end
 
 # issue 2005
