@@ -24,7 +24,7 @@ function WilkinsonTicks(k_ideal::Int;
     end
 
     WilkinsonTicks(k_ideal, k_min, k_max, Q, granularity_weight,
-                   simplicity_weight, coverage_weight, niceness_weight)
+        simplicity_weight, coverage_weight, niceness_weight)
 end
 
 get_tickvalues(ticks::WilkinsonTicks, vmin, vmax) = get_tickvalues(ticks, Float64(vmin), Float64(vmax))
