@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add recipes for plotting intervals to `Band`, `Rangebars`, `H/VSpan` [3695](https://github.com/MakieOrg/Makie.jl/pull/3695)
 - Document `WilkinsonTicks` [#3819](https://github.com/MakieOrg/Makie.jl/pull/3819).
 - Add `axislegend(ax, "title")` method [#3808](https://github.com/MakieOrg/Makie.jl/pull/3808).
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
