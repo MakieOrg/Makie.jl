@@ -1,7 +1,7 @@
 const Point2d = Point2{Float64}
 
 """
-    MoveTo(p::Point2)
+    MoveTo(p::VecTypes)
     MoveTo(x::Real, y::Real)
 
 A path command for use within a `BezierPath` which starts a new subpath at the given point.
@@ -13,7 +13,7 @@ end
 MoveTo(x, y) = MoveTo(Point2d(x, y))
 
 """
-    LineTo(p::Point2)
+    LineTo(p::VecTypes)
     LineTo(x::Real, y::Real)
 
 A path command for use within a `BezierPath` which continues the current subpath with a line
@@ -26,7 +26,7 @@ end
 LineTo(x, y) = LineTo(Point2d(x, y))
 
 """
-    CurveTo(c1::Point2, c2::Point2, p::Point2)
+    CurveTo(c1::VecTypes, c2::VecTypes, p::VecTypes)
     CurveTo(cx1::Real, cy1::Real, cx2::Real, cy2::Real, px::Real, py::Real)
 
 A path command for use within a `BezierPath` which continues the current subpath with a cubic
@@ -43,7 +43,7 @@ CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
 )
 
 """
-    EllipticalArc(c::Point2, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
+    EllipticalArc(c::VecTypes, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
     EllipticalArc(cx::Real, cy::Real, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
 
 A path command for use within a `BezierPath` which continues the current subpath with an
