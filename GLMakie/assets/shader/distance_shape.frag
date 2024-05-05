@@ -14,6 +14,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 #define ROUNDED_RECTANGLE 2
 #define DISTANCEFIELD     3
 #define TRIANGLE          4
+#define ELLIPSE           5
 
 #define M_SQRT_2          1.4142135
 
@@ -24,19 +25,20 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 uniform float           stroke_width;
 uniform float           glow_width;
 uniform int             shape; // shape is a uniform for now. Making them a in && using them for control flow is expected to kill performance
-uniform vec2            resolution;
+uniform float           px_per_unit;
 uniform bool            transparent_picking;
+uniform bool            fxaa;
 
 flat in float           f_viewport_from_u_scale;
 flat in float           f_distancefield_scale;
 flat in vec4            f_color;
-flat in vec4            f_bg_color;
 flat in vec4            f_stroke_color;
 flat in vec4            f_glow_color;
 flat in uvec2           f_id;
 flat in int             f_primitive_index;
 in vec2                 f_uv; // f_uv.{x,y} are in the interval [-a, 1+a]
 flat in vec4            f_uv_texture_bbox;
+flat in vec2            f_sprite_scale;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
@@ -65,25 +67,52 @@ float triangle(vec2 P){
     return -max(r1,r2);
 }
 float circle(vec2 uv){
-    return 0.5-length(uv-vec2(0.5));
+    return 0.5 - length(uv - vec2(0.5));
 }
 float rectangle(vec2 uv){
-    vec2 d = max(-uv, uv-vec2(1));
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(-uv, uv-vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
 float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
-    vec2 d = max(tl-uv, uv-br);
-    return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(tl-uv, uv-br);
+    return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))) - s.x * tl.x);
+}
+// See https://iquilezles.org/articles/ellipsedist/
+float ellipse(vec2 uv, vec2 scale)
+{
+    // to central coordinates, use symmetry (quarter ellipse, 0 <= p <= wh)
+    vec2 wh = scale / min(scale.x, scale.y);
+    vec2 p = wh * abs(uv - vec2(0.5));
+    wh = wh * 0.5;
+
+    // initial value
+    vec2 q = wh * (p - wh);
+    vec2 cs = normalize( (q.x<q.y) ? vec2(0.01,1) : vec2(1,0.01) );
+
+    // find root with Newton solver
+    for( int i=0; i<5; i++ )
+    {
+        vec2 u = wh * vec2( cs.x, cs.y);
+        vec2 v = wh * vec2(-cs.y, cs.x);
+        float a = dot(p-u,v);
+        float c = dot(p-u,u) + dot(v,v);
+        float b = sqrt(c*c-a*a);
+        cs = vec2( cs.x*b-cs.y*a, cs.y*b+cs.x*a )/c;
+    }
+
+    // compute final point and distance
+    float d = length(p - wh*cs);
+
+    // return signed distance
+    return (dot(p/wh,p/wh)>1.0) ? -d : d;
 }
 
-void fill(vec4 fillcolor, Nothing image, vec2 uv, float infill, inout vec4 color){
-    color = mix(color, fillcolor, infill);
-}
-void fill(vec4 c, sampler2D image, vec2 uv, float infill, inout vec4 color){
-    color.rgba = mix(color, texture(image, uv.yx), infill);
-}
-void fill(vec4 c, sampler2DArray image, vec2 uv, float infill, inout vec4 color){
-    color = mix(color, texture(image, vec3(uv.yx, f_primitive_index)), infill);
+vec4 fill(vec4 fillcolor, Nothing image, vec2 uv) { return fillcolor; }
+vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
+vec4 fill(vec4 c, sampler2DArray image, vec2 uv) {
+    return texture(image, vec3(uv.yx, f_primitive_index));
 }
 
 
@@ -95,10 +124,20 @@ void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 col
     }
 }
 
+void stroke_fxaa(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
+    if (width != 0.0){
+        float t = step(min(width, 0.0), signed_distance) - step(max(width, 0.0), signed_distance);
+        vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
+        color = mix(bg_color, strokecolor, t);
+    }
+}
+
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
     if (glow_width > 0.0){
-        float outside = (abs(signed_distance)-stroke_width)/glow_width;
-        float alpha = 1-outside;
+        float s_stroke_width = px_per_unit * stroke_width;
+        float s_glow_width = px_per_unit * glow_width;
+        float outside = (abs(signed_distance) - s_stroke_width) / s_glow_width;
+        float alpha = 1 - outside;
         color = mix(vec4(glowcolor.rgb, glowcolor.a*alpha), color, inside);
     }
 }
@@ -138,20 +177,44 @@ void main(){
     else if(shape == ROUNDED_RECTANGLE)
         signed_distance = rounded_rectangle(f_uv, vec2(0.2), vec2(0.8));
     else if(shape == RECTANGLE)
-        signed_distance = 1.0; // rectangle(f_uv);
+        signed_distance = rectangle(f_uv);
     else if(shape == TRIANGLE)
         signed_distance = triangle(f_uv);
+    else if(shape == ELLIPSE)
+        signed_distance = ellipse(f_uv, f_sprite_scale);
 
     // See notes in geometry shader where f_viewport_from_u_scale is computed.
     signed_distance *= f_viewport_from_u_scale;
 
-    float inside_start = max(-stroke_width, 0.0);
-    float inside = aastep(inside_start, signed_distance);
-    vec4 final_color = f_bg_color;
+    float s_stroke_width = px_per_unit * stroke_width;
+    float inside_start = max(-s_stroke_width, 0.0);
+    vec4 final_color = fill(f_color, image, tex_uv);
 
-    fill(f_color, image, tex_uv, inside, final_color);
-    stroke(f_stroke_color, signed_distance, -stroke_width, final_color);
-    glow(f_glow_color, signed_distance, aastep(-stroke_width, signed_distance), final_color);
+    if (!fxaa){ // anti-aliasing via sdf
+        // For the initial coloring we can use the base pixel color and modulate
+        // its alpha value to create the shape set by the signed distance field. (i.e. inside)
+        float inside = aastep(inside_start, signed_distance);
+        final_color.a = final_color.a * inside;
+
+        // Stroke and glow need to also modulate colors (rgb) to smoothly transition
+        // from one to another.
+        stroke(f_stroke_color, signed_distance, -s_stroke_width, final_color);
+
+    } else { // AA via FXAA
+        // Here we don't smooth edges (i.e. use step rather than smoothstep) and
+        // let fxaa figure out smoothing/anti-aliasing later. This fixes the
+        // halo artifact when rendering at different depths for solid colors
+        float inside = step(inside_start, signed_distance);
+        final_color.a = final_color.a * inside;
+
+        stroke_fxaa(f_stroke_color, signed_distance, -s_stroke_width, final_color);
+    }
+
+    // glow is always semi transparent so switching between step and smoothstep
+    // is mostly useless here
+    glow(f_glow_color, signed_distance, aastep(-s_stroke_width, signed_distance), final_color);
+
+
     // TODO: In 3D, we should arguably discard fragments outside the sprite
     //       But note that this may interfere with object picking.
     // if (final_color == f_bg_color)

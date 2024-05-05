@@ -28,7 +28,6 @@ in vec3 vertices;
 in vec3 normals;
 {{texturecoordinates_type}} texturecoordinates;
 
-uniform vec3 lightposition;
 uniform mat4 view, model, projection;
 uniform uint objectid;
 uniform int len;
@@ -91,7 +90,7 @@ vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, N
     return vec4(0);
 }
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 
 vec2 get_uv(Nothing x){return vec2(0.0);}
 vec2 get_uv(vec2 x){return vec2(1.0 - x.y, x.x);}
@@ -101,12 +100,12 @@ void main(){
     o_id = uvec2(objectid, index+1);
     vec3 s = _scale(scale, index);
     vec3 V = vertices * s;
-    vec3 N = normals;
+    vec3 N = normals / s; // see issue #3702
     vec3 pos;
     {{position_calc}}
     o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
     o_uv = get_uv(texturecoordinates);
     rotate(rotation, index, V, N);
-    render(model * vec4(pos + V, 1), N, view, projection, lightposition);
+    render(model * vec4(pos + V, 1), N, view, projection);
 }

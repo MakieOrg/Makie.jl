@@ -108,7 +108,6 @@ end
 ############################################################################
 
 function _chosen_limits(rz, ax)
-
     r = positivize(Rect2f(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
@@ -124,7 +123,7 @@ end
 
 function _selection_vertices(ax_scene, outer, inner)
     _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.px_area[])
+    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.viewport[])
     transf = Makie.transform_func(ax_scene)
     outer = positivize(Makie.apply_transform(transf, outer))
     inner = positivize(Makie.apply_transform(transf, inner))
@@ -144,7 +143,8 @@ function _selection_vertices(ax_scene, outer, inner)
 end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
-
+    # only rectangle zoom if modifier is pressed (defaults to true)
+    ispressed(ax.scene, r.modifier) || return Consume(false)
     # TODO: actually, the data from the mouse event should be transformed already
     # but the problem is that these mouse events are generated all the time
     # and outside of log axes, you would quickly run into domain errors
@@ -180,7 +180,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         try
             r.callback(r.rectnode[])
         catch e
-            @warn "error in rectangle zoom" exception=e
+            @warn "error in rectangle zoom" exception=(e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)
@@ -204,14 +204,14 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     return Consume(true)
 end
 
-function positivize(r::Rect2f)
+function positivize(r::Rect2)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
-    return Rect2f(newori, newwidths)
+    return Rect2(newori, newwidths)
 end
 
-function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -242,7 +242,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     cam = camera(scene)
 
     if zoom != 0
-        pa = pixelarea(scene)[]
+        pa = viewport(scene)[]
 
         z = (1f0 - s.speed)^zoom
 
@@ -302,11 +302,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     ypanlock = ax.ypanlock
     xpankey = ax.xpankey
     ypankey = ax.ypankey
-    panbutton = ax.panbutton
 
     scene = ax.scene
     cam = camera(scene)
-    pa = pixelarea(scene)[]
+    pa = viewport(scene)[]
 
     mp_axscene = Vec4f((event.px .- pa.origin)..., 0, 1)
     mp_axscene_prev = Vec4f((event.prev_px .- pa.origin)..., 0, 1)

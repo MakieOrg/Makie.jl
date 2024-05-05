@@ -9,7 +9,7 @@ from `start_angle` to `stop_angle`.
 Examples:
 
 `arc(Point2f(0), 1, 0.0, π)`
-`arc(Point2f(1, 2), 0.3. π, -π)`
+`arc(Point2f(1, 2), 0.3, π, -π)`
 
 ## Attributes
 $(ATTRIBUTES)
@@ -23,9 +23,9 @@ end
 
 function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
-    positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
-        map(range(start_angle, stop=stop_angle, length=resolution)) do angle
-            origin .+ Point2f((cos(angle), sin(angle)) .* radius)
+    positions = lift(p, args...) do origin, radius, start_angle, stop_angle, resolution
+        return map(range(start_angle, stop=stop_angle, length=resolution)) do angle
+            return origin .+ Point2f((cos(angle), sin(angle)) .* radius)
         end
     end
     attr = Attributes(p)

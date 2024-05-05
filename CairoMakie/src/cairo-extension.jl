@@ -20,7 +20,7 @@ end
 
 function set_ft_font(ctx, font)
 
-    font_face = ccall(
+    font_face = Base.@lock font.lock ccall(
         (:cairo_ft_font_face_create_for_ft_face, Cairo.libcairo),
         Ptr{Cvoid}, (Makie.FreeTypeAbstraction.FT_Face, Cint),
         font, 0
@@ -66,6 +66,7 @@ function set_miter_limit(ctx, limit)
 end
 
 function get_render_type(surface::Cairo.CairoSurface)
+    @assert surface.ptr != C_NULL
     typ = ccall((:cairo_surface_get_type, Cairo.libcairo), Cint, (Ptr{Nothing},), surface.ptr)
     typ == Cairo.CAIRO_SURFACE_TYPE_PDF && return PDF
     typ == Cairo.CAIRO_SURFACE_TYPE_PS && return EPS

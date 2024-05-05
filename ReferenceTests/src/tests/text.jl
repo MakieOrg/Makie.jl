@@ -1,5 +1,5 @@
 @reference_test "heatmap_with_labels" begin
-    fig = Figure(resolution = (600, 600))
+    fig = Figure(size = (600, 600))
     ax = fig[1, 1] = Axis(fig)
     values = RNG.rand(10, 10)
 
@@ -28,7 +28,7 @@ end
 end
 
 @reference_test "single_strings_single_positions" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
     scatter!(scene, points, marker = :circle, markersize = 10px)
@@ -51,7 +51,7 @@ end
 
 
 @reference_test "multi_strings_multi_positions" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     angles = (-pi/6, 0.0, pi/6)
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3 for angle in angles]
@@ -66,8 +66,7 @@ end
             for valign in (:top, :center, :bottom)
             for rotation in angles]
 
-    scatter!(scene, points, marker = :circle, markersize = 10px)
-
+    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
 
     text!(scene, points, text = strings, align = aligns, rotation = rotations,
         color = [(:black, alpha) for alpha in LinRange(0.3, 0.7, length(points))])
@@ -76,10 +75,10 @@ end
 end
 
 @reference_test "single_strings_single_positions_justification" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px)
+    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
 
     symbols = (:left, :center, :right)
 
@@ -109,7 +108,7 @@ end
 end
 
 @reference_test "multi_boundingboxes" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     t1 = text!(scene,
         fill("makie", 4),
@@ -137,7 +136,7 @@ end
 end
 
 @reference_test "single_boundingboxes" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     for a in pi/4:pi/2:7pi/4
 
@@ -176,12 +175,13 @@ end
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
         fontsize = 1,
-        markerspace = :data
+        markerspace = :data,
+        axis=(; type=LScene)
     )
 end
 
 @reference_test "empty_lines" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     t1 = text!(scene, "Line1\nLine 2\n\nLine4",
         position = (200, 400), align = (:center, :center), markerspace = :data)
@@ -212,7 +212,7 @@ end
 
 
 @reference_test "Text offset" begin
-    f = Figure(resolution = (1000, 1000))
+    f = Figure(size = (1000, 1000))
     barplot(f[1, 1], 3:5)
     text!(1, 3, text = "bar 1", offset = (0, 10), align = (:center, :baseline))
     text!([(2, 4), (3, 5)], text = ["bar 2", "bar 3"],
@@ -283,7 +283,7 @@ end
         position = Point2f(50, 50),
         rotation = 0.0,
         markerspace = :data)
-    wireframe!(s, boundingbox(t))
+    wireframe!(s, boundingbox(t), color=:black)
     s
 end
 
@@ -349,7 +349,7 @@ end
 @reference_test "Word Wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
-    fig = Figure(resolution=(600, 500))
+    fig = Figure(size=(600, 500))
     ax = Axis(fig[1, 1])
     text!(ax, 0, 0, text = latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, fontsize = 12, align = (:left, :bottom), justification = :left, color = :black)
     text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, fontsize = 12, align = (:left, :top), justification = :right, color = :black)
@@ -369,3 +369,14 @@ end
     fig
 end
 
+# test #3232
+@reference_test "texture atlas update" begin
+    scene = Scene(size = (250, 100))
+    campixel!(scene)
+    p = text!(scene, "test", fontsize = 85)
+    st = Stepper(scene)
+    Makie.step!(st)
+    p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
+    Makie.step!(st)
+    st
+end

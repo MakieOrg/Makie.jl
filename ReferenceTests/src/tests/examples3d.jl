@@ -1,15 +1,16 @@
 
 @reference_test "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, axis = (;show_axis=false))
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=NoShading, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
+    cameracontrols(ax).settings.center[] = false # avoid recenter on display
     fig
 end
 
 @reference_test "Image on Geometry (Earth)" begin
     earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
-    mesh(m, color=earth, shading=false)
+    mesh(m, color=earth, shading=NoShading)
 end
 
 @reference_test "Orthographic Camera" begin
@@ -29,19 +30,12 @@ end
     meshes = map(colormesh, rectangles)
     fig, ax, meshplot = mesh(merge(meshes))
     scene = ax.scene
-    center!(scene)
     cam = cameracontrols(scene)
-    dir = widths(data_limits(scene)) ./ 2.
-    dir_scaled = Vec3f(
-        dir[1] * scene.transformation.scale[][1],
-        0.0,
-        dir[3] * scene.transformation.scale[][2],
-    )
+    cam.settings[:projectiontype][] = Makie.Orthographic
+    cam.settings.center[] = false # This would be set by update_cam!()
     cam.upvector[] = (0.0, 0.0, 1.0)
-    cam.lookat[] = minimum(data_limits(scene)) + dir_scaled
-    cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
-    cam.attributes[:projectiontype][] = Makie.Orthographic
-    cam.zoom_mult[] = 0.61f0
+    cam.lookat[] = Vec3f(0.595, 1.5, 0.5)
+    cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 0.61, cam.lookat[][3])
     update_cam!(scene, cam)
     fig
 end
@@ -55,8 +49,19 @@ end
     mesh(catmesh, color=loadasset("diffusemap.png"))
 end
 
+@reference_test "Textured meshscatter" begin
+    catmesh = loadasset("cat.obj")
+    img = loadasset("diffusemap.png")
+    rot = qrotation(Vec3f(1, 0, 0), 0.5pi) * qrotation(Vec3f(0, 1, 0), 0.7pi)
+    meshscatter(
+        1:3, 1:3, fill(0, 3, 3),
+        marker=catmesh, color=img, markersize=1, rotations=rot,
+        axis=(type=LScene, show_axis=false)
+    )
+end
+
 @reference_test "Load Mesh" begin
-    mesh(loadasset("cat.obj"))
+    mesh(loadasset("cat.obj"); color=:black)
 end
 
 @reference_test "Colored Mesh" begin
@@ -121,6 +126,13 @@ end
 @reference_test "Marker sizes" begin
     colors = Makie.resample(to_colormap(:Spectral), 20)
     scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
+end
+
+@reference_test "Ellipsoid marker sizes" begin # see PR #3722
+    pts = Point3f[[0, 0, 0], [1, 0, 0]]
+    markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
+    rotations = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
+    meshscatter(pts; markersize, rotations, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
 end
 
 @reference_test "Record Video" begin
@@ -190,7 +202,6 @@ end
     x = [cospi(φ) * sinpi(θ) for θ in θ, φ in φ]
     y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
     z = [cospi(θ) for θ in θ, φ in φ]
-    RNG.rand([-1f0, 1f0], 3)
     pts = vec(Point3f.(x, y, z))
     f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end
@@ -230,6 +241,30 @@ end
     fig
 end
 
+@reference_test "colorscale (surface)" begin
+    x = y = range(-1, 1; length = 20)
+    f(x, y) = exp(-(x^2 + y^2)^2)
+    fig = Figure()
+    surface(fig[1, 1], x, y, f; colorscale = identity)
+    surface(fig[1, 2], x, y, f; colorscale = log10)
+    fig
+end
+
+@reference_test "colorscale (poly)" begin
+    X = [0.0 1 1 2; 1 1 2 2; 0 0 1 1]
+    Y = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    Z = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    C = [0.5 1.0 1.0 0.5; 1.0 0.5 0.5 0.1667; 0.333 0.333 0.5 0.5] .^ 3
+
+    vertices = connect(reshape([X[:] Y[:] Z[:]]', :), Point3f)
+    indices = connect(1:length(X), TriangleFace)
+
+    fig = Figure()
+    poly!(Axis3(fig[1, 1]), vertices, indices; color=C[:], colorscale=identity)
+    poly!(Axis3(fig[1, 2]), vertices, indices; color=C[:], colorscale=log10)
+    fig
+end
+
 @reference_test "FEM mesh 3D" begin
     cat = loadasset("cat.obj")
     vertices = decompose(Point3f, cat)
@@ -247,7 +282,7 @@ end
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
-    scene = Scene(resolution=(500, 500), camera=cam3d!)
+    scene = Scene(size=(500, 500), camera=cam3d!)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
     psurf = surface!(scene, vx, vy, f)
     axis3d!(scene, frame = (linewidth = 2.0,))
@@ -273,7 +308,6 @@ end
         fontsize=20,
         font="helvetica"
     )
-    c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
     scene
 end
@@ -418,8 +452,8 @@ end
 
 @reference_test "Line GIF" begin
     us = range(0, stop=1, length=100)
-    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
-    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true)
+    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)); color=:black)
+    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true, color=:black)
     lineplots = [p]
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
@@ -489,7 +523,8 @@ end
     fig, ax, pl = volume(
         r, r, r,          # coordinates to plot on
         ρ,                # charge density (functions as colorant)
-        algorithm=:mip  # maximum-intensity-projection
+        algorithm=:mip,  # maximum-intensity-projection
+        colorrange=(0, 1),
     )
     ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
     fig.scene.backgroundcolor[] = to_color(:black)
@@ -498,7 +533,7 @@ end
 
 @reference_test "Depth Shift" begin
     # Up to some artifacts from fxaa the left side should be blue and the right red.
-    fig = Figure(resolution = (800, 400))
+    fig = Figure(size = (800, 400))
 
     prim = Rect3(Point3f(0), Vec3f(1))
     ps  = RNG.rand(Point3f, 10) .+ Point3f(0, 0, 1)
@@ -556,8 +591,9 @@ end
         end
     end
     cam = cameracontrols(ax.scene)
-    cam.attributes.fov[] = 22f0
+    cam.fov[] = 22f0
     update_cam!(ax.scene, cam, Vec3f(0.625, 0, 3.5), Vec3f(0.625, 0, 0), Vec3f(0, 1, 0))
+    cameracontrols(ax).settings.center[] = false # avoid recenter on display
     fig
 end
 
@@ -566,10 +602,15 @@ end
     fig = Figure()
     for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
         mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
-        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
+        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = NoShading)
         linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
         text!(ax, 0, 0.52, text = "Clip Space", align = (:center, :bottom), space = :clip)
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig
+end
+
+# TODO: get 3D images working in CairoMakie and test them here too
+@reference_test "Heatmap 3D" begin
+    heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
 end

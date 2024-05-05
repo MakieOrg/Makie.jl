@@ -14,7 +14,7 @@ scene = Scene(;
     # set_theme!(lightposition=:eyeposition, ambient=RGBf(0.5, 0.5, 0.5))`
     lights = Makie.automatic,
     backgroundcolor = :gray,
-    resolution = (500, 500);
+    size = (500, 500);
     # gets filled in with the currently set global theme
     theme_kw...
 )
@@ -36,7 +36,7 @@ With scenes, one can create subwindows. The window extends are given by a `Rect{
 using GLMakie, Makie
 GLMakie.activate!()
 scene = Scene(backgroundcolor=:gray)
-subwindow = Scene(scene, px_area=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
+subwindow = Scene(scene, viewport=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
 scene
 ```
 \end{examplefigure}
@@ -90,7 +90,7 @@ We can fix this by translating the scene further back:
 \begin{examplefigure}{}
 ```julia
 GLMakie.activate!() # hide
-translate!(scene.plots[1], 0, 0, -1000)
+translate!(scene.plots[1], 0, 0, -10000)
 scene
 ```
 \end{examplefigure}
@@ -128,7 +128,7 @@ We can use those events to e.g. move the subwindow. If you execute the below in 
 ```julia
 on(scene.events.mouseposition) do mousepos
     if ispressed(subwindow, Mouse.left & Keyboard.left_control)
-        subwindow.px_area[] = Rect(Int.(mousepos)..., 200, 200)
+        subwindow.viewport[] = Rect(Int.(mousepos)..., 200, 200)
     end
 end
 ```
@@ -249,12 +249,14 @@ The scene graph can be used to create rigid transformations, like for a robot ar
 ```julia
 GLMakie.activate!() # hide
 parent = Scene()
-cam3d!(parent)
+cam3d!(parent; clipping_mode = :static)
 
 # One can set the camera lookat and eyeposition, by getting the camera controls and using `update_cam!`
 camc = cameracontrols(parent)
 update_cam!(parent, camc, Vec3f(0, 8, 0), Vec3f(4.0, 0, 0))
-
+# One may need to adjust the
+# near and far clip plane when adjusting the camera manually
+camc.far[] = 100f0
 s1 = Scene(parent, camera=parent.camera)
 mesh!(s1, Rect3f(Vec3f(0, -0.1, -0.1), Vec3f(5, 0.2, 0.2)))
 s2 = Scene(s1, camera=parent.camera)
@@ -279,16 +281,11 @@ parent
 
 With this basic principle, we can even bring robots to life :)
 [Kevin Moerman](https://github.com/Kevin-Mattheus-Moerman) was so nice to supply a Lego mesh, which we're going to animate!
-When the scene graph is really just about a transformation Graph, one can use the Transformation struct directly, which is what we're going to do here.
+When the scene graph is really just about a transformation graph, one can use the `Transformation` struct directly, which is what we're going to do here.
 This is more efficient and easier than creating a scene for each model.
-Let's use WGLMakie with it's offline export feature, to create a plot with sliders to move the parts, that keeps working in the browser:
 
-\begin{showhtml}{}
 ```julia
-using WGLMakie, JSServe
-WGLMakie.activate!()
 using MeshIO, FileIO, GeometryBasics
-Page(offline=true, exportable=true)
 
 colors = Dict(
     "eyes" => "#000",
@@ -358,37 +355,11 @@ function plot_lego_figure(s, floor=true)
     floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
     return figure
 end
-App() do session
-    s = Scene(resolution=(500, 500))
-    cam3d!(s)
-    figure = plot_lego_figure(s, false)
-    bodies = [
-        "arm_left", "arm_right",
-        "leg_left", "leg_right"]
-    sliders = map(bodies) do name
-        slider = if occursin("arm", name)
-            JSServe.Slider(-60:4:60)
-        else
-            JSServe.Slider(-30:4:30)
-        end
-        rotvec = rotation_axes[name]
-        bodymesh = figure[name]
-        on(slider) do val
-            rotate!(bodymesh, rotvec, deg2rad(val))
-        end
-        DOM.div(name, slider)
-    end
-    center!(s)
-    JSServe.record_states(session, DOM.div(sliders..., s))
-end
-```
-\end{showhtml}
 
-Finally, lets let him walk and record it as a video with the new, experimental ray tracing backend.
+# Finally, lets let him walk and record it as a video with the new, experimental ray tracing backend.
 
-Note: RPRMakie is still not very stable and rendering out the video is quite slow on CI, so the shown video is prerendered!
+# Note: RPRMakie is still not very stable and rendering out the video is quite slow on CI, so the shown video is prerendered!
 
-```julia
 using RPRMakie
 # iterate rendering 200 times, to get less noise and more light
 RPRMakie.activate!(iterations=200)
@@ -399,7 +370,7 @@ lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
     PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
 ]
-s = Scene(resolution=(500, 500), lights=lights)
+s = Scene(size=(500, 500), lights=lights)
 cam3d!(s)
 c = cameracontrols(s)
 c.near[] = 5
@@ -426,6 +397,6 @@ Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, ang
 end
 ```
 ~~~
-<video autoplay controls src="/assets/lego_walk.mp4">
+<video mute autoplay controls src="/assets/lego_walk.mp4">
 </video>
 ~~~

@@ -6,6 +6,7 @@ using Makie
 using FixedPointNumbers
 using ColorTypes
 using ..GLMakie.GLFW
+using ..GLMakie: ShaderSource
 using Printf
 using LinearAlgebra
 using Observables

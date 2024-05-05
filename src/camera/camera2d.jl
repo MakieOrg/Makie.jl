@@ -1,8 +1,8 @@
 struct Camera2D <: AbstractCamera
     area::Observable{Rect2f}
     zoomspeed::Observable{Float32}
-    zoombutton::Observable{ButtonTypes}
-    panbutton::Observable{Union{ButtonTypes, Vector{ButtonTypes}}}
+    zoombutton::Observable{IsPressedInputType}
+    panbutton::Observable{IsPressedInputType}
     padding::Observable{Float32}
     last_area::Observable{Vec{2, Int}}
     update_limits::Observable{Bool}
@@ -11,14 +11,23 @@ end
 """
     cam2d!(scene::SceneLike, kwargs...)
 
-Creates a 2D camera for the given Scene.
+Creates a 2D camera for the given `scene`. The camera implements zooming by
+scrolling and translation using mouse drag. It also implements rectangle
+selections.
+
+## Keyword Arguments
+
+- `zoomspeed = 0.1f0` sets the zoom speed.
+- `zoombutton = true` sets a button (combination) which needs to be pressed to enable zooming. By default no button needs to be pressed.
+- `panbutton = Mouse.right` sets the button used to translate the camera. This must include a mouse button.
+- `selectionbutton = (Keyboard.space, Mouse.left)` sets the button used for rectangle selection. This must include a mouse button.
 """
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Attributes(
             area = Observable(Rectf(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
-            zoombutton = nothing,
+            zoombutton = true,
             panbutton = Mouse.right,
             selectionbutton = (Keyboard.space, Mouse.left),
             padding = 0.001,
@@ -37,6 +46,7 @@ function cam2d!(scene::SceneLike; kw_args...)
     cam
 end
 
+get_space(::Camera2D) = :data
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
 
@@ -45,14 +55,21 @@ wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
 Updates the camera for the given `scene` to cover the given `area` in 2d.
 """
-update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), area)
+function update_cam!(scene::SceneLike, area::Rect)
+    return update_cam!(scene, cameracontrols(scene), area)
+end
+function update_cam!(scene::SceneLike, area::Rect, center::Bool)
+    return update_cam!(scene, cameracontrols(scene), area, center)
+end
+
+
 """
     update_cam!(scene::SceneLike)
 
 Updates the camera for the given `scene` to cover the limits of the `Scene`.
 Useful when using the `Observable` pipeline.
 """
-update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
+update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), data_limits(scene))
 
 function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = Rect2f(area3d)
@@ -60,7 +77,7 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     # ignore rects with width almost 0
     any(x-> x ≈ 0.0, widths(area)) && return
 
-    pa = pixelarea(scene)[]
+    pa = viewport(scene)[]
     px_wh = normalize(widths(pa))
     wh = normalize(widths(area))
     ratio = px_wh ./ wh
@@ -89,7 +106,7 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
 end
 
 function correct_ratio!(scene, cam)
-    on(camera(scene), pixelarea(scene)) do area
+    on(camera(scene), viewport(scene)) do area
         neww = widths(area)
         change = neww .- cam.last_area[]
         if !(change ≈ Vec(0.0, 0.0))
@@ -123,7 +140,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             diff = startpos[] .- mp
             startpos[] = mp
             area = cam.area[]
-            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            diff = Vec(diff) .* wscale(viewport(scene)[], area)
             cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
             active[] = false
@@ -141,7 +158,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             diff = startpos[] .- pos
             startpos[] = pos
             area = cam.area[]
-            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            diff = Vec(diff) .* wscale(viewport(scene)[], area)
             cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
             return Consume(true)
@@ -156,7 +173,7 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
         @extractvalue cam (zoomspeed, zoombutton, area)
         zoom = Float32(x[2])
         if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
-            pa = pixelarea(scene)[]
+            pa = viewport(scene)[]
             z = (1f0 - zoomspeed)^zoom
             mp = Vec2f(e.mouseposition[]) - minimum(pa)
             mp = (mp .* wscale(pa, area)) + minimum(area)
@@ -173,7 +190,7 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
 end
 
 function camspace(scene::SceneLike, cam::Camera2D, point)
-    point = Vec(point) .* wscale(pixelarea(scene)[], cam.area[])
+    point = Vec(point) .* wscale(viewport(scene)[], cam.area[])
     return Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
@@ -301,6 +318,7 @@ function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
 end
 
 struct PixelCamera <: AbstractCamera end
+get_space(::PixelCamera) = :pixel
 
 
 struct UpdatePixelCam
@@ -308,6 +326,7 @@ struct UpdatePixelCam
     near::Float32
     far::Float32
 end
+get_space(::UpdatePixelCam) = :pixel
 
 function (cam::UpdatePixelCam)(window_size)
     w, h = Float32.(widths(window_size))
@@ -318,27 +337,31 @@ end
 """
     campixel!(scene; nearclip=-1000f0, farclip=1000f0)
 
-Creates a pixel-level camera for the `Scene`.  No controls!
+Creates a pixel camera for the given `scene`. This means that the positional
+data of a plot will be interpreted in pixel units. This camera does not feature
+controls.
 """
 function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     disconnect!(camera(scene))
     update_once = Observable(false)
     closure = UpdatePixelCam(camera(scene), nearclip, farclip)
-    on(closure, camera(scene), pixelarea(scene))
+    on(closure, camera(scene), viewport(scene))
     cam = PixelCamera()
     # update once
-    closure(pixelarea(scene)[])
+    closure(viewport(scene)[])
     cameracontrols!(scene, cam)
     update_once[] = true
     return cam
 end
 
 struct RelativeCamera <: AbstractCamera end
+get_space(::RelativeCamera) = :relative
 
 """
     cam_relative!(scene)
 
-Creates a pixel-level camera for the `Scene`.  No controls!
+Creates a camera for the given `scene` which maps the scene area to a 0..1 by
+0..1 range. This camera does not feature controls.
 """
 function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
