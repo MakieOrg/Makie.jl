@@ -16,15 +16,11 @@ jobs:
       - uses: julia-actions/setup-julia@latest
         with:
           version: '1'
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install JuliaFormatter and format
-        shell: julia --project=@. --color=yes {0}
         run: |
-          using Pkg
-          Pkg.activate(; temp=true)
-          Pkg.add("JuliaFormatter")
-          using JuliaFormatter
-          format(".", verbose=true)
+          julia -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter"))'
+          julia -e 'using JuliaFormatter; format(".", verbose=true)'
       - name: Format check
         run: |
           julia -e '
