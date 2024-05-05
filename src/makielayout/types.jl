@@ -47,11 +47,6 @@ struct LinearTicks
     end
 end
 
-"""
-Wilkinson's algorithm for positioning ticks.
-
-$(@doc PlotUtils.optimize_ticks)
-"""
 struct WilkinsonTicks
     k_ideal::Int
     k_min::Int
