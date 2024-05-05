@@ -649,7 +649,9 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any})
-    lims
+    _convert_single_limit(x) = x
+    _convert_single_limit(x::Interval) = endpoints(x)
+    map(_convert_single_limit, lims)
 end
 
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
@@ -1218,6 +1220,9 @@ function Base.show(io::IO, ax::Axis)
     print(io, "Axis ($nplots plots)")
 end
 
+Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
+Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
+
 function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
@@ -1257,7 +1262,8 @@ end
 """
     xlims!(ax, low, high)
     xlims!(ax; low = nothing, high = nothing)
-    xlims!(ax, xlims)
+    xlims!(ax, (low, high))
+    xlims!(ax, low..high)
 
 Set the x-axis limits of axis `ax` to `low` and `high` or a tuple
 `xlims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1268,7 +1274,8 @@ Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
 """
     ylims!(ax, low, high)
     ylims!(ax; low = nothing, high = nothing)
-    ylims!(ax, ylims)
+    ylims!(ax, (low, high))
+    ylims!(ax, low..high)
 
 Set the y-axis limits of axis `ax` to `low` and `high` or a tuple
 `ylims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1279,7 +1286,8 @@ Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
 """
     zlims!(ax, low, high)
     zlims!(ax; low = nothing, high = nothing)
-    zlims!(ax, zlims)
+    zlims!(ax, (low, high))
+    zlims!(ax, low..high)
 
 Set the z-axis limits of axis `ax` to `low` and `high` or a tuple
 `zlims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1397,6 +1405,7 @@ end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)
 defaultlimits(limits::Tuple{Real, Real}, scale) = limits
+defaultlimits(limits::Interval, scale) = endpoints(limits)
 defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(scale)[2])
 defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
