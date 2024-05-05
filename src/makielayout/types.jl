@@ -56,7 +56,6 @@ struct WilkinsonTicks
     simplicity_weight::Float64
     coverage_weight::Float64
     niceness_weight::Float64
-    min_px_dist::Float64
 end
 
 """
