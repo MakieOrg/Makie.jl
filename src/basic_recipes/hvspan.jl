@@ -16,7 +16,7 @@ All style attributes are the same as for `Poly`.
         default_theme(Poly, scene)...,
         cycle = [:color => :patchcolor],
     )
-    end
+end
 
 """
     vspan(xs_low, xs_high; ymin = 0.0, ymax = 1.0, attrs...)
@@ -38,7 +38,7 @@ All style attributes are the same as for `Poly`.
     )
 end
 
-function Makie.plot!(p::Union{HSpan, VSpan})
+function Makie.plot!(p::Union{HSpan,VSpan})
     scene = Makie.parent_scene(p)
     transf = transform_func_obs(scene)
 
@@ -57,13 +57,13 @@ function Makie.plot!(p::Union{HSpan, VSpan})
             if p isa HSpan
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
-                low  = _apply_y_transform(transf, low)
+                low = _apply_y_transform(transf, low)
                 high = _apply_y_transform(transf, high)
                 push!(rects[], Rect2f(Point2f(x_mi, low), Vec2f(x_ma - x_mi, high - low)))
             elseif p isa VSpan
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
-                low  = _apply_x_transform(transf, low)
+                low = _apply_x_transform(transf, low)
                 high = _apply_x_transform(transf, high)
                 push!(rects[], Rect2f(Point2f(low, y_mi), Vec2f(high - low, y_ma - y_mi)))
             end
@@ -74,7 +74,7 @@ function Makie.plot!(p::Union{HSpan, VSpan})
     notify(p[1])
 
     poly_attributes = copy(p.attributes)
-    foreach(x-> delete!(poly_attributes, x), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
+    foreach(x -> delete!(poly_attributes, x), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
 
     # we handle transform_func manually
     poly_attributes[:transformation] = Transformation(p, transform_func = identity)

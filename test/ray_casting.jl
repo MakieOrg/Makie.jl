@@ -29,7 +29,7 @@
 
     # Generate rate that passes through transformed point
     transformed = Point3f(model * Point4f(point..., 1))
-    direction = (1 + 10*rand()) * rand(Vec3f)
+    direction = (1 + 10 * rand()) * rand(Vec3f)
     ray = Makie.Ray(transformed + direction, normalize(direction))
 
     @test Makie.is_point_on_ray(transformed, ray)
@@ -94,14 +94,14 @@
 
         # Heatmap (2D) & Image (3D)
         scene = Scene(size = (400, 400))
-        p = heatmap!(scene, 0..1, -1..1, rand(10, 10))
+        p = heatmap!(scene, 0 .. 1, -1 .. 1, rand(10, 10))
         cam2d!(scene)
         ray = Makie.Ray(scene, (228.0, 91.0))
         pos = Makie.position_on_plot(p, 0, ray)
         @test pos ≈ Point3f(0.13999999, -0.54499996, 0.0)
 
         scene = Scene(size = (400, 400))
-        p = image!(scene, -1..1, -1..1, rand(10, 10))
+        p = image!(scene, -1 .. 1, -1 .. 1, rand(10, 10))
         cam3d!(scene)
         ray = Makie.Ray(scene, (309.0, 197.0))
         pos = Makie.position_on_plot(p, 3, ray)
@@ -118,7 +118,7 @@
 
         # Surface (3D)
         scene = Scene(size = (400, 400))
-        p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10])
+        p = surface!(scene, -2 .. 2, -2 .. 2, [sin(x) * cos(y) for x in -10:10, y in -10:10])
         cam3d!(scene)
         ray = Makie.Ray(scene, (52.0, 238.0))
         pos = Makie.position_on_plot(p, 57, ray)

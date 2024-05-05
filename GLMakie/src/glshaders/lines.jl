@@ -3,7 +3,7 @@ function sumlengths(points)
     result = zeros(T, length(points))
     i12 = Vec(1, 2)
     for i in eachindex(points)
-        i0 = max(i-1, 1)
+        i0 = max(i - 1, 1)
         p1, p2 = points[i0], points[i]
         if !(any(map(isnan, p1)) || any(map(isnan, p2)))
             result[i] = result[i0] + norm(p1[i12] - p2[i12])
@@ -30,14 +30,14 @@ function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
     end
 end
 #TODO NaNMath.min/max?
-dist(a, b) = abs(a-b)
+dist(a, b) = abs(a - b)
 mindist(x, a, b) = min(dist(a, x), dist(b, x))
 function gappy(x, ps)
     n = length(ps)
     x <= first(ps) && return first(ps) - x
-    for j=1:(n-1)
+    for j in 1:(n - 1)
         p0 = ps[j]
-        p1 = ps[min(j+1, n)]
+        p1 = ps[min(j + 1, n)]
         if p0 <= x && p1 >= x
             return mindist(x, p0, p1) * (isodd(j) ? 1 : -1)
         end
@@ -56,12 +56,12 @@ function ticks(points, resolution)
     # so we need rescaling by ((resolution + 1) / resolution)
 
     scaled = ((resolution + 1) / resolution) .* points
-    r = range(first(scaled), stop=last(scaled), length=resolution+1)[1:end-1]
-    return Float16[gappy(x, scaled) for x = r]
+    r = range(first(scaled), stop = last(scaled), length = resolution + 1)[1:(end - 1)]
+    return Float16[gappy(x, scaled) for x in r]
 end
 
 @nospecialize
-function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
+function draw_lines(screen, position::Union{VectorTypes{T},MatTypes{T}}, data::Dict) where T<:Point
     p_vec = if isa(position, GPUArray)
         position
     else
@@ -69,26 +69,26 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
     end
 
     @gen_defaults! data begin
-        total_length::Int32 = const_lift(x-> Int32(length(x)), position)
-        vertex              = p_vec => GLBuffer
-        intensity           = nothing
-        color               = nothing => GLBuffer
-        color_map           = nothing => Texture
-        color_norm          = nothing
-        thickness           = 2f0 => GLBuffer
-        pattern             = nothing
-        pattern_sections    = pattern => Texture
-        fxaa                = false
+        total_length::Int32 = const_lift(x -> Int32(length(x)), position)
+        vertex = p_vec => GLBuffer
+        intensity = nothing
+        color = nothing => GLBuffer
+        color_map = nothing => Texture
+        color_norm = nothing
+        thickness = 2f0 => GLBuffer
+        pattern = nothing
+        pattern_sections = pattern => Texture
+        fxaa = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
         # segment to have neighbouring vertices.
-        indices             = const_lift(p_vec) do p
+        indices = const_lift(p_vec) do p
             len0 = length(p) - 1
             return isempty(p) ? Cuint[] : Cuint[0; 0:len0; len0]
         end => to_index_buffer
         transparency = false
-        fast         = false
-        shader              = GLVisualizeShader(
+        fast = false
+        shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag",
             view = Dict(
@@ -97,12 +97,12 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
                 "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : ""
             )
         )
-        gl_primitive        = GL_LINE_STRIP_ADJACENCY
-        valid_vertex        = const_lift(p_vec) do points
-            map(p-> Float32(all(isfinite, p)), points)
+        gl_primitive = GL_LINE_STRIP_ADJACENCY
+        valid_vertex = const_lift(p_vec) do points
+            map(p -> Float32(all(isfinite, p)), points)
         end => GLBuffer
-        lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
-        pattern_length      = 1f0 # we divide by pattern_length a lot.
+        lastlen = const_lift(sumlengths, p_vec) => GLBuffer
+        pattern_length = 1f0 # we divide by pattern_length a lot.
     end
     if to_value(pattern) !== nothing
         if !isa(pattern, Texture)
@@ -119,21 +119,21 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
     return assemble_shader(data)
 end
 
-function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where T <: Point
+function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where T<:Point
     @gen_defaults! data begin
-        vertex              = positions => GLBuffer
-        color               = default(RGBA, s, 1) => GLBuffer
-        color_map           = nothing => Texture
-        color_norm          = nothing
-        thickness           = 2f0 => GLBuffer
-        shape               = RECTANGLE
-        pattern             = nothing
-        fxaa                = false
-        fast                = false
-        indices             = const_lift(length, positions) => to_index_buffer
+        vertex = positions => GLBuffer
+        color = default(RGBA, s, 1) => GLBuffer
+        color_map = nothing => Texture
+        color_norm = nothing
+        thickness = 2f0 => GLBuffer
+        shape = RECTANGLE
+        pattern = nothing
+        fxaa = false
+        fast = false
+        indices = const_lift(length, positions) => to_index_buffer
         # TODO update boundingbox
-        transparency        = false
-        shader              = GLVisualizeShader(
+        transparency = false
+        shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
             view = Dict(
@@ -142,7 +142,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
                 "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : ""
             )
         )
-        gl_primitive   = GL_LINES
+        gl_primitive = GL_LINES
         pattern_length = 1f0
     end
     if !isa(pattern, Texture) && to_value(pattern) !== nothing

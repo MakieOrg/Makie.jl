@@ -23,24 +23,24 @@ Plots the given colour gradients arranged as horizontal colourbars.
 If you change the offsets or the font size, you may need to change the resolution.
 """
 function showgradients(
-        cgrads::AbstractVector{Symbol};
-        size = (800, length(cgrads) * 84),
-    )
+    cgrads::AbstractVector{Symbol};
+    size = (800, length(cgrads) * 84),
+)
 
-    f = Figure(; size=size)
+    f = Figure(; size = size)
     ax = Axis(f[1, 1])
 
     labels = map(enumerate(cgrads)) do (i, cmap)
         c = to_colormap(cmap)
         image!(
             ax,
-            0..10,
-            i..(i+1),
-            reshape(c, (length(c),1))
+            0 .. 10,
+            i .. (i + 1),
+            reshape(c, (length(c), 1))
         )
 
         cmapstr = string(cmap)
-        return ((i + (i + 1))/2, cmapstr)
+        return ((i + (i + 1)) / 2, cmapstr)
     end
 
     ax.yticks = (first.(labels), last.(labels))

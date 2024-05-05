@@ -13,13 +13,13 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # so, we should also take a look at converted 
     # First, we check whether a `draw_poly` method exists for the input arguments
     # before conversion:
-    return if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.args))...})
+    return if Base.hasmethod(draw_poly, Tuple{Scene,Screen,typeof(poly),typeof.(to_value.(poly.args))...})
         draw_poly(scene, screen, poly, to_value.(poly.args)...)
-    # If not, we check whether a `draw_poly` method exists for the arguments after conversion
-    # (`plot.converted`).  This allows anything which decomposes to be checked for.
-    elseif Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.converted))...})
+        # If not, we check whether a `draw_poly` method exists for the arguments after conversion
+        # (`plot.converted`).  This allows anything which decomposes to be checked for.
+    elseif Base.hasmethod(draw_poly, Tuple{Scene,Screen,typeof(poly),typeof.(to_value.(poly.converted))...})
         draw_poly(scene, screen, poly, to_value.(poly.converted)...)
-    # In the worst case, we return to drawing the polygon as a mesh + lines.
+        # In the worst case, we return to drawing the polygon as a mesh + lines.
     else
         draw_poly_as_mesh(scene, screen, poly)
     end
@@ -49,8 +49,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokecolor, strokestyle, strokewidth)
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant,Cairo.CairoPattern},
+    model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(poly), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
@@ -75,7 +75,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
 
     broadcast_foreach(points_list, color,
         strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokestyle, strokewidth, model
-            draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
+        draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     end
 end
 
@@ -180,7 +180,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
 end
 
-function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
+function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:MultiPolygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_multipolygon.(Ref(poly), space, polygons, Ref(model))
@@ -210,7 +210,7 @@ end
 ################################################################################
 
 function draw_plot(scene::Scene, screen::Screen,
-        band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
     if !(band.color[] isa AbstractArray)
         color = to_cairo_color(band.color[], band)
@@ -262,7 +262,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
             polypath(screen.context, pol)
-            if i == length(colornumbers) || colnum != colornumbers[i+1]
+            if i == length(colornumbers) || colnum != colornumbers[i + 1]
                 set_source(screen.context, col)
                 Cairo.fill(screen.context)
             end

@@ -1,6 +1,6 @@
 
 
-function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colorrange)
+function to_image(image::AbstractMatrix{<:AbstractFloat}, colormap::AbstractVector{<:Colorant}, colorrange)
     return interpolated_getindex.((to_value(colormap),), image, (to_value(colorrange),))
 end
 
@@ -10,7 +10,7 @@ Resample a vector with linear interpolation to have length `len`
 """
 function resample(A::AbstractVector, len::Integer)
     length(A) == len && return A
-    return interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
+    return interpolated_getindex.((A,), range(0.0, stop = 1.0, length = len))
 end
 
 
@@ -21,17 +21,17 @@ end
 * ncolors: number of desired colors
 * alpha: additional alpha applied to each color. Can also be an array, matching `colors`, or a tuple giving a start + stop alpha value.
 """
-function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
+function resample_cmap(cmap, ncolors::Integer; alpha = 1.0)
     cols = to_colormap(cmap)
-    r = range(0.0, stop=1.0, length=ncolors)
-    if alpha isa Tuple{<:Number, <:Number}
+    r = range(0.0, stop = 1.0, length = ncolors)
+    if alpha isa Tuple{<:Number,<:Number}
         alphas = LinRange(alpha..., ncolors)
     else
         alphas = alpha
     end
     return broadcast(r, alphas) do i, a
         c = interpolated_getindex(cols, i)
-        return RGBAf(Colors.color(c), Colors.alpha(c) *  a)
+        return RGBAf(Colors.color(c), Colors.alpha(c) * a)
     end
 end
 
@@ -61,8 +61,8 @@ function is_unitrange(x::AbstractVector)
 end
 
 function ngrid(x::AbstractVector, y::AbstractVector)
-    xgrid = [Float32(x[i]) for i = 1:length(x), j = 1:length(y)]
-    ygrid = [Float32(y[j]) for i = 1:length(x), j = 1:length(y)]
+    xgrid = [Float32(x[i]) for i in 1:length(x), j in 1:length(y)]
+    ygrid = [Float32(y[j]) for i in 1:length(x), j in 1:length(y)]
     xgrid, ygrid
 end
 
@@ -129,9 +129,9 @@ macro get_attribute(scene, args)
 end
 
 # a few shortcut functions to make attribute conversion easier
-function converted_attribute(dict, key, default=nothing)
+function converted_attribute(dict, key, default = nothing)
     if haskey(dict, key)
-        return lift(x-> convert_attribute(x, Key{key}()), dict[key])
+        return lift(x -> convert_attribute(x, Key{key}()), dict[key])
     else
         return default
     end
@@ -172,7 +172,7 @@ attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractVector, i) = x[i]
-attr_broadcast_getindex(x::AbstractArray{T, 0}, i) where T = x[1]
+attr_broadcast_getindex(x::AbstractArray{T,0}, i) where T = x[1]
 attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
 attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broadcasting, for protecting iterables
@@ -239,7 +239,7 @@ function same_length_array(arr, value::Vector)
 end
 same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
 
-function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
+function to_ndim(T::Type{<:VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
     T(ntuple(Val(N)) do i
         i > N2 && return ET(fillval)
         @inbounds return vec[i]
@@ -288,7 +288,7 @@ function to_vector(x::AbstractArray, len, T)
 end
 function to_vector(x::ClosedInterval, len, T)
     a, b = T.(extrema(x))
-    range(a, stop=b, length=len)
+    range(a, stop = b, length = len)
 end
 
 # This function was copied from GR.jl,
@@ -298,10 +298,10 @@ end
 
 Return a nonlinear function on a grid.  Useful for test cases.
 """
-function peaks(n=49)
+function peaks(n = 49)
     x = LinRange(-3, 3, n)
     y = LinRange(-3, 3, n)
-    3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y .+ 1).^2) .- 10 * (x' / 5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1 / 3 * exp.(-(x' .+ 1).^2 .- y.^2)
+    3 * (1 .- x') .^ 2 .* exp.(-(x' .^ 2) .- (y .+ 1) .^ 2) .- 10 * (x' / 5 .- x' .^ 3 .- y .^ 5) .* exp.(-x' .^ 2 .- y .^ 2) .- 1 / 3 * exp.(-(x' .+ 1) .^ 2 .- y .^ 2)
 end
 
 
@@ -327,7 +327,7 @@ function surface_normals(x, y, z)
             s = size(z)
             return Vec3f(get_dim(x, off, 1, s), get_dim(y, off, 2, s), z[off])
         end
-        return normalize(mapreduce(offsets, +, init=Vec3f(0), of))
+        return normalize(mapreduce(offsets, +, init = Vec3f(0), of))
     end
     return vec(map(normal, CartesianIndices(z)))
 end
@@ -396,9 +396,9 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
     faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
     # create the uv (texture) vectors
-    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uv = map(x -> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     # return a mesh with known uvs and normals.
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
+    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv = uv, normals = nan_aware_normals(ps, faces)), faces,)
 end
 
 

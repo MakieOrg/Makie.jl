@@ -13,6 +13,7 @@ using Makie:
 
     let nctt = NoConversionTestType(),
         ncttt = conversion_trait(nctt)
+
         @test convert_arguments(ncttt, 1, 2, 3) == (1, 2, 3)
     end
 
@@ -27,29 +28,29 @@ end
 end
 
 @testset "to_vertices" begin
-    X1 = [Point(rand(3)...) for i = 1:10]
+    X1 = [Point(rand(3)...) for i in 1:10]
     V1 = to_vertices(X1)
     @test Float32(X1[7][1]) == V1[7][1]
 
-    X2 = [tuple(rand(3)...) for i = 1:10]
+    X2 = [tuple(rand(3)...) for i in 1:10]
     V2 = to_vertices(X2)
     @test Float32(X2[7][1]) == V2[7][1]
 
-    X4 = rand(2,10)
+    X4 = rand(2, 10)
     V4 = to_vertices(X4)
-    @test Float32(X4[1,7]) == V4[7][1]
+    @test Float32(X4[1, 7]) == V4[7][1]
 
-    X5 = rand(3,10)
+    X5 = rand(3, 10)
     V5 = to_vertices(X5)
-    @test Float32(X5[1,7]) == V5[7][1]
+    @test Float32(X5[1, 7]) == V5[7][1]
 
-    X6 = rand(10,2)
+    X6 = rand(10, 2)
     V6 = to_vertices(X6)
-    @test Float32(X6[7,1]) == V6[7][1]
+    @test Float32(X6[7, 1]) == V6[7][1]
 
-    X7 = rand(10,3)
+    X7 = rand(10, 3)
     V7 = to_vertices(X7)
-    @test Float32(X7[7,1]) == V7[7][1]
+    @test Float32(X7[7, 1]) == V7[7][1]
 end
 
 @testset "GeometryBasics Lines & Polygons" begin
@@ -114,20 +115,20 @@ end
 end
 
 @testset "functions" begin
-    x = -pi..pi
+    x = -pi .. pi
     (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
-        @test fval ≈ sin(val) atol=1f-6
+        @test fval ≈ sin(val) atol = 1f-6
     end
 
-    x = range(-pi, stop=pi, length=100)
+    x = range(-pi, stop = pi, length = 100)
     (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
-        @test fval ≈ sin(val) atol=1f-6
+        @test fval ≈ sin(val) atol = 1f-6
     end
 end
 
@@ -141,23 +142,23 @@ using Makie: check_line_pattern, line_diff_pattern
     # for readability, the length of dash and dot
     dash, dot = 3.0, 1.0
 
-    @test line_diff_pattern(:dash)             ==
-          line_diff_pattern("-",   :normal)    == [dash, 3.0]
-    @test line_diff_pattern(:dot)              ==
-          line_diff_pattern(".",   :normal)    == [dot, 2.0]
-    @test line_diff_pattern(:dashdot)          ==
-          line_diff_pattern("-.",  :normal)    == [dash, 3.0, dot, 3.0]
-    @test line_diff_pattern(:dashdotdot)       ==
-          line_diff_pattern("-..", :normal)    == [dash, 3.0, dot, 2.0, dot, 3.0]
+    @test line_diff_pattern(:dash) ==
+          line_diff_pattern("-", :normal) == [dash, 3.0]
+    @test line_diff_pattern(:dot) ==
+          line_diff_pattern(".", :normal) == [dot, 2.0]
+    @test line_diff_pattern(:dashdot) ==
+          line_diff_pattern("-.", :normal) == [dash, 3.0, dot, 3.0]
+    @test line_diff_pattern(:dashdotdot) ==
+          line_diff_pattern("-..", :normal) == [dash, 3.0, dot, 2.0, dot, 3.0]
 
-    @test line_diff_pattern(:dash, :loose)     == [dash, 6.0]
-    @test line_diff_pattern(:dot,  :loose)     == [dot, 4.0]
-    @test line_diff_pattern("-",   :dense)     == [dash, 2.0]
-    @test line_diff_pattern(".",   :dense)     == [dot, 1.0]
-    @test line_diff_pattern(:dash, 0.5)        == [dash, 0.5]
-    @test line_diff_pattern(:dot,  0.5)        == [dot, 0.5]
-    @test line_diff_pattern("-",   (0.4, 0.6)) == [dash, 0.6]
-    @test line_diff_pattern(:dot,  (0.4, 0.6)) == [dot, 0.4]
+    @test line_diff_pattern(:dash, :loose) == [dash, 6.0]
+    @test line_diff_pattern(:dot, :loose) == [dot, 4.0]
+    @test line_diff_pattern("-", :dense) == [dash, 2.0]
+    @test line_diff_pattern(".", :dense) == [dot, 1.0]
+    @test line_diff_pattern(:dash, 0.5) == [dash, 0.5]
+    @test line_diff_pattern(:dot, 0.5) == [dot, 0.5]
+    @test line_diff_pattern("-", (0.4, 0.6)) == [dash, 0.6]
+    @test line_diff_pattern(:dot, (0.4, 0.6)) == [dot, 0.4]
     @test line_diff_pattern("-..", (0.4, 0.6)) == [dash, 0.6, dot, 0.4, dot, 0.6]
 
     # gaps must be Symbol, a number, or two numbers
@@ -210,15 +211,15 @@ end
 end
 
 @testset "resample colormap" begin
-    cs = Makie.resample_cmap(:viridis, 10; alpha=LinRange(0, 1, 10))
+    cs = Makie.resample_cmap(:viridis, 10; alpha = LinRange(0, 1, 10))
     @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
-    cs = Makie.resample_cmap(:viridis, 2; alpha=0.5)
-    @test all(x-> x == 0.5, Colors.alpha.(cs))
+    cs = Makie.resample_cmap(:viridis, 2; alpha = 0.5)
+    @test all(x -> x == 0.5, Colors.alpha.(cs))
     @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:viridis), 2))
     cs = Makie.resample_cmap(:Set1, 100)
-    @test all(x-> x == 1.0, Colors.alpha.(cs))
+    @test all(x -> x == 1.0, Colors.alpha.(cs))
     @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:Set1), 100))
-    cs = Makie.resample_cmap(:Set1, 10; alpha=(0, 1))
+    cs = Makie.resample_cmap(:Set1, 10; alpha = (0, 1))
     @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
 end
 
@@ -252,11 +253,11 @@ end
     @test to_colormap((:viridis, 0.1)) isa Vector{RGBAf}
     @test to_colormap(Reverse(:viridis)) isa Vector{RGBAf}
     @test to_colormap(:cividis) isa Vector{RGBAf}
-    @test to_colormap(cgrad(:cividis, 8, categorical=true)) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis, 8, categorical = true)) isa Vector{RGBAf}
     @test to_colormap(cgrad(:cividis, 8)) isa Vector{RGBAf}
     @test to_colormap(cgrad(:cividis)) isa Vector{RGBAf}
-    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5))[1]) == 0.5
-    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))[1]) == 0.5
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha = 0.5))[1]) == 0.5
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha = 0.5, categorical = true))[1]) == 0.5
 
 
     @inferred to_colormap([HSL(0, 10, 20)])
@@ -265,32 +266,32 @@ end
     @inferred to_colormap((:viridis, 0.1))
     @inferred to_colormap(Reverse(:viridis))
     @inferred to_colormap(:cividis)
-    @inferred to_colormap(cgrad(:cividis, 8, categorical=true))
+    @inferred to_colormap(cgrad(:cividis, 8, categorical = true))
     @inferred to_colormap(cgrad(:cividis, 8))
     @inferred to_colormap(cgrad(:cividis))
-    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5))
-    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha = 0.5))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha = 0.5, categorical = true))
 end
 
 
 @testset "empty poly" begin
     # Geometry Primitive
-    f, ax, pl = poly(Rect2f[]);
-    pl[1] = [Rect2f(0, 0, 1, 1)];
+    f, ax, pl = poly(Rect2f[])
+    pl[1] = [Rect2f(0, 0, 1, 1)]
     @test pl.plots[1][1][] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
 
     # Empty Polygon
-    f, ax, pl = poly(Polygon(Point2f[]));
-    pl[1] = Polygon(Point2f[(1,0), (1,1), (0,1)]);
+    f, ax, pl = poly(Polygon(Point2f[]))
+    pl[1] = Polygon(Point2f[(1, 0), (1, 1), (0, 1)])
     @test pl.plots[1][1][] == GeometryBasics.triangle_mesh(pl[1][])
 
-    f, ax, pl = poly(Polygon[]);
-    pl[1] = [Polygon(Point2f[(1,0), (1,1), (0,1)])];
+    f, ax, pl = poly(Polygon[])
+    pl[1] = [Polygon(Point2f[(1, 0), (1, 1), (0, 1)])]
     @test pl.plots[1][1][] == GeometryBasics.triangle_mesh.(pl[1][])
 
     # PointBased inputs
     f, ax, pl = poly(Point2f[])
-    points = decompose(Point2f, Circle(Point2f(0),1))
+    points = decompose(Point2f, Circle(Point2f(0), 1))
     pl[1] = points
     @test pl.plots[1][1][] == Makie.poly_convert(points)
 
@@ -323,16 +324,16 @@ end
     v1 = collect(1:10)
     v2 = collect(1:6)
 
-    i1 = 1..10
-    i2 = 1..6
+    i1 = 1 .. 10
+    i2 = 1 .. 6
 
     o3 = Float32.(m3)
 
     # Conversions
     @testset "ImageLike conversion" begin
-        @test convert_arguments(Image, m3)         == (0f0..10f0, 0f0..6f0, o3)
-        @test convert_arguments(Image, v1, r2, m3) == (1f0..10f0, 1f0..6f0, o3)
-        @test convert_arguments(Image, i1, v2, m3) == (1f0..10f0, 1f0..6f0, o3)
+        @test convert_arguments(Image, m3) == (0f0 .. 10f0, 0f0 .. 6f0, o3)
+        @test convert_arguments(Image, v1, r2, m3) == (1f0 .. 10f0, 1f0 .. 6f0, o3)
+        @test convert_arguments(Image, i1, v2, m3) == (1f0 .. 10f0, 1f0 .. 6f0, o3)
         @test_throws ErrorException convert_arguments(Image, m1, m2, m3)
         @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
     end
@@ -342,17 +343,17 @@ end
         vo2 = Float32.(v2)
         mo1 = Float32.(m1)
         mo2 = Float32.(m2)
-        @test convert_arguments(Surface, m3)          == (vo1, vo2, o3)
-        @test convert_arguments(Contour, i1, v2, m3)  == (vo1, vo2, o3)
+        @test convert_arguments(Surface, m3) == (vo1, vo2, o3)
+        @test convert_arguments(Contour, i1, v2, m3) == (vo1, vo2, o3)
         @test convert_arguments(Contourf, v1, r2, m3) == (vo1, vo2, o3)
-        @test convert_arguments(Surface, m1, m2, m3)  == (mo1, mo2, o3)
-        @test convert_arguments(Surface, m1, m2)      == (mo1, mo2, zeros(Float32, size(o3)))
+        @test convert_arguments(Surface, m1, m2, m3) == (mo1, mo2, o3)
+        @test convert_arguments(Surface, m1, m2) == (mo1, mo2, zeros(Float32, size(o3)))
     end
 
     @testset "CellGrid conversion" begin
         o1 = Float32.(0.5:1:10.5)
         o2 = Float32.(0.5:1:6.5)
-        @test convert_arguments(Heatmap, m3)         == (o1, o2, o3)
+        @test convert_arguments(Heatmap, m3) == (o1, o2, o3)
         @test convert_arguments(Heatmap, r1, i2, m3) == (o1, o2, o3)
         @test convert_arguments(Heatmap, v1, r2, m3) == (o1, o2, o3)
         @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0f0:10f0), o2, o3)
@@ -398,7 +399,7 @@ end
     @test convert_arguments(Voronoiplot, xs, ys, zs)[1] == Point3f.(xs, ys', zs)[:]
 
     # color sorting
-    zs = [exp(-(x-y)^2) for x in LinRange(-1, 1, 10), y in LinRange(-1, 1, 10)]
+    zs = [exp(-(x - y)^2) for x in LinRange(-1, 1, 10), y in LinRange(-1, 1, 10)]
     fig, ax, sc = voronoiplot(1:10, 1:10, zs, markersize = 10, strokewidth = 3)
     ps = [Point2f(x, y) for x in 1:10 for y in 1:10]
     vorn = Makie.DelTri.voronoi(Makie.DelTri.triangulate(ps))
@@ -441,6 +442,6 @@ end
         @test Makie.angle2align(angle) ≈ Vec2f(0.5c, 0.5s) ./ max(abs(s), abs(c)) .+ Vec2f(0.5)
     end
     # sanity checks
-    @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
-    @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
+    @test isapprox(Makie.angle2align(pi / 4), Vec2f(1, 1), atol = 1e-12)
+    @test isapprox(Makie.angle2align(5pi / 4), Vec2f(0, 0), atol = 1e-12)
 end

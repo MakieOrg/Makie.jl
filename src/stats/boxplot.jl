@@ -36,7 +36,7 @@ The boxplot has 3 components:
         weights = automatic,
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
-        colorscale=identity,
+        colorscale = identity,
         colorrange = automatic,
         orientation = :vertical,
         # box and dodging
@@ -124,7 +124,7 @@ function Makie.plot!(plot::BoxPlot)
             if Float64(range) != 0.0  # if the range is 0.0, the whiskers will extend to the data
                 limit = range * (q4 - q2)
                 inside = Float64[]
-                for (value, idx) in zip(values,idxs)
+                for (value, idx) in zip(values, idxs)
                     if (value < (q2 - limit)) || (value > (q4 + limit))
                         if show_outliers
                             push!(outlier_points, (center, value))

@@ -5,26 +5,26 @@ to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Will get overloaded by recipe Macro
 plotsym(x) = :plot
 
-function func2string(func::F) where F <: Function
+function func2string(func::F) where F<:Function
     string(F.name.mt.name)
 end
 
 plotfunc(::Plot{F}) where F = F
-plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
-plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
+plotfunc(::Type{<:AbstractPlot{Func}}) where Func = Func
+plotfunc(::T) where T<:AbstractPlot = plotfunc(T)
 plotfunc(f::Function) = f
 
 func2type(x::T) where T = func2type(T)
-func2type(x::Type{<: AbstractPlot}) = x
+func2type(x::Type{<:AbstractPlot}) = x
 func2type(f::Function) = Plot{f}
 
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
-plotkey(::T) where T <: AbstractPlot = plotkey(T)
+plotkey(::Type{<:AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
+plotkey(::T) where T<:AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
 plotkey(any) = nothing
 
 
-argtypes(::T) where {T <: Tuple} = T
+argtypes(::T) where {T<:Tuple} = T
 
 function create_axis_like end
 function create_axis_like! end
@@ -36,8 +36,8 @@ function _create_plot! end
 
 
 
-plot(args...; kw...) = _create_plot(plot, Dict{Symbol, Any}(kw), args...)
-plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
+plot(args...; kw...) = _create_plot(plot, Dict{Symbol,Any}(kw), args...)
+plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol,Any}(kw), args...)
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
@@ -54,8 +54,8 @@ end
 # Since we can use Plot like a scene in some circumstances, we define this alias
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::AbstractScene) = x.theme
-theme(x::AbstractScene, key; default=nothing) = deepcopy(get(x.theme, key, default))
-theme(x::AbstractPlot, key; default=nothing) = deepcopy(get(x.attributes, key, default))
+theme(x::AbstractScene, key; default = nothing) = deepcopy(get(x.theme, key, default))
+theme(x::AbstractPlot, key; default = nothing) = deepcopy(get(x.attributes, key, default))
 
 Attributes(x::AbstractPlot) = x.attributes
 
@@ -172,8 +172,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
-        ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
+        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol,Any}(kw), args...)
+        ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol,Any}(kw), args...)
         $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end
@@ -211,15 +211,15 @@ plot(MyType(...))
 ```
 """
 function Plot(args::Vararg{DataType,N}) where {N}
-    Plot{plot, <:Tuple{args...}}
+    Plot{plot,<:Tuple{args...}}
 end
 
 function Plot(::Type{T}) where {T}
-    Plot{plot, <:Tuple{T}}
+    Plot{plot,<:Tuple{T}}
 end
 
 function Plot(::Type{T1}, ::Type{T2}) where {T1,T2}
-    Plot{plot, <:Tuple{T1,T2}}
+    Plot{plot,<:Tuple{T1,T2}}
 end
 
 """

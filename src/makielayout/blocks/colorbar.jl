@@ -46,14 +46,14 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
             get(plot, :alpha, Observable(1.0)),
             get(plot, :highclip, Observable(automatic)),
             get(plot, :lowclip, Observable(automatic)),
-            get(plot, :nan_color, Observable(RGBAf(0,0,0,0))),
+            get(plot, :nan_color, Observable(RGBAf(0, 0, 0, 0))),
         )
     else
         return nothing
     end
 end
 
-function extract_colormap(plot::Union{Arrows, StreamPlot})
+function extract_colormap(plot::Union{Arrows,StreamPlot})
     return extract_colormap(plot.plots[1])
 end
 
@@ -72,11 +72,11 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
     elow = lift(extend_color, plot.extendlow, plot._computed_extendlow)
     ehigh = lift(extend_color, plot.extendhigh, plot._computed_extendhigh)
     return ColorMapping(levels[], levels, plot._computed_colormap, limits, plot.colorscale, Observable(1.0),
-                    elow, ehigh, plot.nan_color)
+        elow, ehigh, plot.nan_color)
 end
 
 
-function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
+function extract_colormap_recursive(@nospecialize(plot::T)) where {T<:AbstractPlot}
     cmap = extract_colormap(plot)
     if !isnothing(cmap)
         return cmap
@@ -88,7 +88,7 @@ function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: Abstract
             return nothing
         else
             # Prefer ColorMapping if in doubt!
-            cmaps = filter(x-> x isa ColorMapping, colormaps)
+            cmaps = filter(x -> x isa ColorMapping, colormaps)
             length(cmaps) == 1 && return cmaps[1]
             error("Multiple colormaps found for plot $(plot), please specify which one to use manually. Please overload `Makie.extract_colormap(::$(T))` to allow for the automatical creation of a Colorbar.")
         end
@@ -107,7 +107,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         error("extract_colormap(::$(Plot{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMapping`.")
     end
 
-    if to_value(cmap.color) isa Union{AbstractVector{<: Colorant}, Colorant}
+    if to_value(cmap.color) isa Union{AbstractVector{<:Colorant},Colorant}
         error("""Plot $(func)'s color attribute uses colors directly, so it can't be used to create a Colorbar, since no numbers are mapped to a color via the colormap.
             Please create the colorbar manually e.g. via `Colorbar(f[1, 2], colorrange=the_range, colormap=the_colormap)`..
        """)
@@ -115,7 +115,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     return Colorbar(
         fig_or_scene;
-        colormap=cmap,
+        colormap = cmap,
         kwargs...
     )
 end
@@ -162,12 +162,12 @@ function initialize_block!(cb::Colorbar)
     end
     limits = cmap.colorrange
     colors = lift(blockscene, cmap.mapping, cmap.color_mapping_type, cmap.color, cb.nsteps, limits;
-                  ignore_equal_values=true) do mapping, mapping_type, values, n, limits
+        ignore_equal_values = true) do mapping, mapping_type, values, n, limits
         if mapping === nothing
             if mapping_type === Makie.banded
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             elseif mapping_type === Makie.categorical
-                return convert(Vector{Float64},1:length(unique(values)))
+                return convert(Vector{Float64}, 1:length(unique(values)))
             else
                 return convert(Vector{Float64}, LinRange(limits..., n))
             end
@@ -187,9 +187,9 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    lowclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.lowclip; ignore_equal_values=true)
-    highclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.highclip; ignore_equal_values=true)
-    tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox; ignore_equal_values=true) do hv, lv, box
+    lowclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.lowclip; ignore_equal_values = true)
+    highclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.highclip; ignore_equal_values = true)
+    tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox; ignore_equal_values = true) do hv, lv, box
         if cb.vertical[]
             return (lv * width(box), hv * width(box))
         else
@@ -197,7 +197,7 @@ function initialize_block!(cb::Colorbar)
         end .* sin(pi / 3)
     end
 
-    barbox = lift(blockscene, framebox; ignore_equal_values=true) do fbox
+    barbox = lift(blockscene, framebox; ignore_equal_values = true) do fbox
         if cb.vertical[]
             return BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[][1], top(fbox) - tri_heights[][2])
         else
@@ -205,8 +205,8 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    xrange = Observable(Float32[]; ignore_equal_values=true)
-    yrange = Observable(Float32[]; ignore_equal_values=true)
+    xrange = Observable(Float32[]; ignore_equal_values = true)
+    yrange = Observable(Float32[]; ignore_equal_values = true)
 
     function update_xyrange(bb, v, colors, scale, mapping_type)
         xmin, ymin = minimum(bb)
@@ -233,18 +233,18 @@ function initialize_block!(cb::Colorbar)
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
     continous_pixels = lift(blockscene, cb.vertical, colors,
-                            cmap.color_mapping_type) do v, colors, mapping_type
+        cmap.color_mapping_type) do v, colors, mapping_type
         if mapping_type !== Makie.categorical
-            colors = (colors[1:end-1] .+ colors[2:end]) ./2
+            colors = (colors[1:(end - 1)] .+ colors[2:end]) ./ 2
         end
         n = length(colors)
         return v ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
     # TODO, implement interpolate = true for irregular grics in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
-    show_cats = Observable(false; ignore_equal_values=true)
-    show_continous = Observable(false; ignore_equal_values=true)
-    on(blockscene, cmap.color_mapping_type; update=true) do type
+    show_cats = Observable(false; ignore_equal_values = true)
+    show_continous = Observable(false; ignore_equal_values = true)
+    on(blockscene, cmap.color_mapping_type; update = true) do type
         if type === continuous
             show_continous[] = true
             show_cats[] = false
@@ -255,9 +255,9 @@ function initialize_block!(cb::Colorbar)
     end
     heatmap!(blockscene,
         xrange, yrange, continous_pixels;
-        colormap=colormap,
-        visible=show_cats,
-        inspectable=false
+        colormap = colormap,
+        visible = show_cats,
+        inspectable = false
     )
     image!(blockscene,
         lift(extrema, xrange), lift(extrema, yrange), continous_pixels;
@@ -271,11 +271,11 @@ function initialize_block!(cb::Colorbar)
             lb, rb = topline(box)
             l = lb
             r = rb
-            t = ((l .+ r) ./ 2) .+ Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi/3))
+            t = ((l .+ r) ./ 2) .+ Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi / 3))
             [l, r, t]
         else
             b, t = rightline(box)
-            r = ((b .+ t) ./ 2) .+ Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi/3), 0)
+            r = ((b .+ t) ./ 2) .+ Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
             [t, b, r]
         end
     end
@@ -293,11 +293,11 @@ function initialize_block!(cb::Colorbar)
             lb, rb = bottomline(box)
             l = lb
             r = rb
-            t = ((l .+ r) ./ 2) .- Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi/3))
+            t = ((l .+ r) ./ 2) .- Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi / 3))
             [l, r, t]
         else
             b, t = leftline(box)
-            l = ((b .+ t) ./ 2) .- Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi/3), 0)
+            l = ((b .+ t) ./ 2) .- Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
             [b, t, l]
         end
     end
@@ -339,7 +339,7 @@ function initialize_block!(cb::Colorbar)
     lines!(blockscene, borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
 
     axispoints = lift(blockscene, barbox, cb.vertical, cb.flipaxis) do scenearea,
-            vertical, flipaxis
+    vertical, flipaxis
 
         if vertical
             if flipaxis
@@ -368,11 +368,11 @@ function initialize_block!(cb::Colorbar)
     end
 
     axis = LineAxis(blockscene, endpoints = axispoints, flipped = cb.flipaxis,
-                    limits=lims, ticklabelalign=cb.ticklabelalign, label=cb.label,
+        limits = lims, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
-                    labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont, ticks=ticks,
-                    tickformat=cb.tickformat,
+        labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont, ticks = ticks,
+        tickformat = cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
         ticklabelrotation = cb.ticklabelrotation,
@@ -386,7 +386,7 @@ function initialize_block!(cb::Colorbar)
     cb.axis = axis
 
     onany(blockscene, axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
-            vertical, flipaxis
+    vertical, flipaxis
 
         left, right, top, bottom = 0f0, 0f0, 0f0, 0f0
 
@@ -435,7 +435,7 @@ function scaled_steps(steps, scale, lims)
     # scale with scaling function
     steps_scaled = scale.(steps)
     # normalize to lims range
-    steps_lim_scaled = @. steps_scaled * (scale(lims[2]) -  scale(lims[1])) + scale(lims[1])
+    steps_lim_scaled = @. steps_scaled * (scale(lims[2]) - scale(lims[1])) + scale(lims[1])
     # then rescale to 0 to 1
     return @. (steps_lim_scaled - steps_lim_scaled[begin]) / (steps_lim_scaled[end] - steps_lim_scaled[begin])
 end

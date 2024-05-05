@@ -56,16 +56,16 @@ function Ray(scene::Scene, cam::Camera2D, xy::VecTypes{2})
     m = Vec2f(pv[1, 1], pv[2, 2])
     b = Vec2f(pv[1, 4], pv[2, 4])
     origin = (2 * rel_pos .- 1 - b) ./ m
-    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
+    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0, 0, -1))
 end
 
 function Ray(::Scene, ::PixelCamera, xy::VecTypes{2})
-    return Ray(to_ndim(Point3f, xy, 10_000f0), Vec3f(0,0,-1))
+    return Ray(to_ndim(Point3f, xy, 10_000f0), Vec3f(0, 0, -1))
 end
 
 function Ray(scene::Scene, ::RelativeCamera, xy::VecTypes{2})
     origin = xy ./ widths(scene)
-    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
+    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0, 0, -1))
 end
 
 Ray(scene::Scene, cam, xy::VecTypes{2}) = ray_from_projectionview(scene, xy)
@@ -98,8 +98,8 @@ end
 
 function transform(M::Mat4f, ray::Ray)
     p4d = M * to_ndim(Point4f, ray.origin, 1f0)
-    dir = normalize(M[Vec(1,2,3), Vec(1,2,3)] * ray.direction)
-    return Ray(p4d[Vec(1,2,3)] / p4d[4], dir)
+    dir = normalize(M[Vec(1, 2, 3), Vec(1, 2, 3)] * ray.direction)
+    return Ray(p4d[Vec(1, 2, 3)] / p4d[4], dir)
 end
 
 
@@ -151,8 +151,9 @@ end
 
 function ray_rect_intersection(rect::Rect2f, ray::Ray)
     possible_hit = ray.origin - ray.origin[3] / ray.direction[3] * ray.direction
-    min = minimum(rect); max = maximum(rect)
-    if all(min <= possible_hit[Vec(1,2)] <= max)
+    min = minimum(rect)
+    max = maximum(rect)
+    if all(min <= possible_hit[Vec(1, 2)] <= max)
         return possible_hit
     end
     return Point3f(NaN)
@@ -239,7 +240,7 @@ function position_on_plot(plot::AbstractPlot, idx::Integer; apply_transform = tr
 end
 
 
-function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; apply_transform = true)
+function position_on_plot(plot::Union{Scatter,MeshScatter}, idx, ray::Ray; apply_transform = true)
     point = plot[1][][idx]
     point3f = to_ndim(Point3f, point, 0.0f0)
     point_t = if apply_transform && !isnan(point3f)
@@ -250,11 +251,11 @@ function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; appl
     return to_ndim(typeof(point), point_t, 0.0f0)
 end
 
-function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply_transform = true)
+function position_on_plot(plot::Union{Lines,LineSegments}, idx, ray::Ray; apply_transform = true)
     if idx == 1
         idx = 2
     end
-    p0, p1 = apply_transform_and_model(plot, plot[1][][(idx-1):idx])
+    p0, p1 = apply_transform_and_model(plot, plot[1][][(idx - 1):idx])
 
     pos = closest_point_on_line(p0, p1, ray)
 
@@ -268,7 +269,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     end
 end
 
-function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_transform = true)
+function position_on_plot(plot::Union{Heatmap,Image}, idx, ray::Ray; apply_transform = true)
     # Heatmap and Image are always a Rect2f. The transform function is currently
     # not allowed to change this, so applying it should be fine. Applying the
     # model matrix may add a z component to the Rect2f, which we can't represent.
@@ -317,11 +318,11 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
 end
 
 # Handling indexing into different surface input types
-surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
+surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i - 1) / (N - 1)
 surface_x(xs, i, j, N) = xs[i]
 surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
 
-surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
+surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j - 1) / (N - 1)
 surface_y(ys, i, j, N) = ys[j]
 surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
 
@@ -335,7 +336,8 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     ys = plot[2][]
     zs = plot[3][]
     w, h = size(zs)
-    _i = mod1(idx, w); _j = div(idx-1, w)
+    _i = mod1(idx, w)
+    _j = div(idx - 1, w)
 
     ray = transform(inv(plot.model[]), ray)
     tf = transform_func(plot)
@@ -343,14 +345,14 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
 
     # This isn't the most accurate so we include some neighboring faces
     pos = Point3f(NaN)
-    for i in _i-1:_i+1, j in _j-1:_j+1
+    for i in (_i - 1):(_i + 1), j in (_j - 1):(_j + 1)
         (1 <= i <= w) && (1 <= j < h) || continue
 
         if i - 1 > 0
             # transforms only apply to x and y coordinates of surfaces
-            A = surface_pos(xs, ys, zs, i,   j)
-            B = surface_pos(xs, ys, zs, i-1, j)
-            C = surface_pos(xs, ys, zs, i, j+1)
+            A = surface_pos(xs, ys, zs, i, j)
+            B = surface_pos(xs, ys, zs, i - 1, j)
+            C = surface_pos(xs, ys, zs, i, j + 1)
             A, B, C = map((A, B, C)) do p
                 xy = Makie.apply_transform(tf, Point2f(p), space)
                 Point3f(xy[1], xy[2], p[3])
@@ -359,9 +361,9 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
         end
 
         if i + 1 <= w && isnan(pos)
-            A = surface_pos(xs, ys, zs, i,   j)
-            B = surface_pos(xs, ys, zs, i,   j+1)
-            C = surface_pos(xs, ys, zs, i+1, j+1)
+            A = surface_pos(xs, ys, zs, i, j)
+            B = surface_pos(xs, ys, zs, i, j + 1)
+            C = surface_pos(xs, ys, zs, i + 1, j + 1)
             A, B, C = map((A, B, C)) do p
                 xy = Makie.apply_transform(tf, Point2f(p), space)
                 Point3f(xy[1], xy[2], p[3])

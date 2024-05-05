@@ -13,7 +13,7 @@ struct ScreenConfig
     scalefactor::Union{Nothing,Float64}
     resize_to_body::Bool
     function ScreenConfig(framerate::Number, resize_to::Any, px_per_unit::Union{Number,Automatic,Nothing},
-                          scalefactor::Union{Number,Automatic,Nothing}, resize_to_body::Union{Nothing,Bool})
+        scalefactor::Union{Number,Automatic,Nothing}, resize_to_body::Union{Nothing,Bool})
         if px_per_unit isa Automatic
             px_per_unit = nothing
         end
@@ -58,7 +58,7 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
-function scene_already_displayed(screen::Screen, scene=screen.scene)
+function scene_already_displayed(screen::Screen, scene = screen.scene)
     scene === nothing && return false
     screen.scene === scene || return false
     screen.canvas === nothing && return false
@@ -139,15 +139,18 @@ function Base.show(io::IO, screen::Screen)
     ppu = c.px_per_unit
     sf = c.scalefactor
     three_str = sprint(io -> show(io, MIME"text/plain"(), screen.plot_initialized))
-    return print(io, """WGLMakie.Screen(
-               framerate = $(c.framerate),
-               resize_to = $(c.resize_to),
-               px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
-               scalefactor = $(isnothing(sf) ? :automatic : sf),
-               session = $(isnothing(screen.session) ? :nothing : isopen(screen.session)),
-               three = $(three_str),
-               scene = $(isnothing(screen.scene) ? :nothing : screen.scene),
-           )""")
+    return print(
+        io,
+        """WGLMakie.Screen(
+    framerate = $(c.framerate),
+    resize_to = $(c.resize_to),
+    px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
+    scalefactor = $(isnothing(sf) ? :automatic : sf),
+    session = $(isnothing(screen.session) ? :nothing : isopen(screen.session)),
+    three = $(three_str),
+    scene = $(isnothing(screen.scene) ? :nothing : screen.scene),
+)"""
+    )
 end
 
 # Resizing the scene is enough for WGLMakie
@@ -169,7 +172,7 @@ end
 for M in Makie.WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
-            inline_display = App(title="WGLMakie") do session::Session
+            inline_display = App(title = "WGLMakie") do session::Session
                 return render_with_init(screen, session, scene)
             end
             Base.show(io, m, inline_display)
@@ -189,8 +192,8 @@ function Base.size(screen::Screen)
     return size(screen.scene)
 end
 
-function get_screen_session(screen::Screen; timeout=100,
-                   error::Union{Nothing,String}=nothing)::Union{Nothing,Session}
+function get_screen_session(screen::Screen; timeout = 100,
+    error::Union{Nothing,String} = nothing)::Union{Nothing,Session}
     function throw_error(status)
         if !isnothing(error)
             message = "Can't get three: $(status)\n$(error)"
@@ -205,12 +208,12 @@ function get_screen_session(screen::Screen; timeout=100,
         throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status)")
         return nothing
     end
-    success = Bonito.wait_for_ready(screen.session; timeout=timeout)
+    success = Bonito.wait_for_ready(screen.session; timeout = timeout)
     if success !== :success
         throw_error("Timed out waiting for session to get ready")
         return nothing
     end
-    success = Bonito.wait_for(() -> isready(screen.plot_initialized); timeout=timeout)
+    success = Bonito.wait_for(() -> isready(screen.plot_initialized); timeout = timeout)
     # Throw error if error message specified
     if success !== :success
         throw_error("Timed out waiting $(timeout)s for session to get initilize")
@@ -246,13 +249,13 @@ function Base.display(screen::Screen, scene::Scene; unused...)
     if scene_already_displayed(screen, scene)
         return screen
     end
-    app = App(title="WGLMakie") do session
+    app = App(title = "WGLMakie") do session
         return render_with_init(screen, session, scene)
     end
     display(app)
     Bonito.wait_for_ready(screen.session)
     # wait for plot to be full initialized, so that operations don't get racy (e.g. record/RamStepper & friends)
-    get_screen_session(screen; error="Waiting for plot to be initialized in display")
+    get_screen_session(screen; error = "Waiting for plot to be initialized in display")
     return screen
 end
 
@@ -266,7 +269,7 @@ function session2image(session::Session, scene::Scene)
         })
     }()
     """
-    picture_base64 = Bonito.evaljs_value(session, to_data; timeout=100)
+    picture_base64 = Bonito.evaljs_value(session, to_data; timeout = 100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = Bonito.Base64.base64decode(picture_base64)
     return PNGFiles.load(IOBuffer(bytes))
@@ -276,7 +279,7 @@ function Makie.colorbuffer(screen::Screen)
     if isnothing(screen.session)
         Base.display(screen, screen.scene)
     end
-    session = get_screen_session(screen; error="Not able to show scene in a browser")
+    session = get_screen_session(screen; error = "Not able to show scene in a browser")
     return session2image(session, screen.scene)
 end
 
@@ -293,16 +296,19 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
         err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
-        evaljs_value(session, js"""
-        $(WGL).then(WGL=> {
-            const parent = WGL.find_scene($(parent_uuid));
-            if (!parent) {
-                throw new Error($(err))
-            }
-            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
-            parent.scene_children.push(new_scene);
-        })
-        """)
+        evaljs_value(
+            session,
+            js"""
+$(WGL).then(WGL=> {
+    const parent = WGL.find_scene($(parent_uuid));
+    if (!parent) {
+        throw new Error($(err))
+    }
+    const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
+    parent.scene_children.push(new_scene);
+})
+"""
+        )
         mark_as_displayed!(screen, scene)
         return false
     end
@@ -317,12 +323,12 @@ function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
-    Bonito.evaljs_value(plot_sub, js; timeout=50)
+    Bonito.evaljs_value(plot_sub, js; timeout = 50)
     return
 end
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
-    session = get_screen_session(screen; error="Plot needs to be displayed to insert additional plots")
+    session = get_screen_session(screen; error = "Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
         insert_plot!(session, scene, plot)
     else
@@ -343,23 +349,26 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
 end
 
 function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
-                            session::Union{Nothing,Session})
+    session::Union{Nothing,Session})
     main_session = get_screen_session(screen)
     isnothing(main_session) && return # if no session we haven't displayed and dont need to delete
     isready(main_session) || return
-    Bonito.evaljs(main_session, js"""
-    $(WGL).then(WGL=> {
-        WGL.delete_plots($(plot_uuids));
-    })""")
+    Bonito.evaljs(
+        main_session,
+        js"""
+$(WGL).then(WGL=> {
+    WGL.delete_plots($(plot_uuids));
+})"""
+    )
     !isnothing(session) && close(session)
     return
 end
 
-function all_plots_scenes(scene::Scene; scene_uuids=String[], plots=Plot[])
+function all_plots_scenes(scene::Scene; scene_uuids = String[], plots = Plot[])
     push!(scene_uuids, js_uuid(scene))
     append!(plots, scene.plots)
     for child in scene.children
-        all_plots_scenes(child; plots=plots, scene_uuids=scene_uuids)
+        all_plots_scenes(child; plots = plots, scene_uuids = scene_uuids)
     end
     return scene_uuids, plots
 end
@@ -375,10 +384,13 @@ function delete_js_objects!(screen::Screen, scene::Scene)
             close(wgl_session)
         end
     end
-    Bonito.evaljs(session, js"""
-    $(WGL).then(WGL=> {
-        WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
-    })""")
+    Bonito.evaljs(
+        session,
+        js"""
+$(WGL).then(WGL=> {
+    WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
+})"""
+    )
     return
 end
 
@@ -393,10 +405,10 @@ end
 
 function LockfreeQueue{T}(execute_job::F) where {T,F}
     return LockfreeQueue{T,F}(T[],
-                              T[],
-                              Threads.Atomic{Int}(1),
-                              Base.RefValue{Union{Nothing,Task}}(nothing),
-                              execute_job)
+        T[],
+        Threads.Atomic{Int}(1),
+        Base.RefValue{Union{Nothing,Task}}(nothing),
+        execute_job)
 end
 
 function run_jobs!(queue::LockfreeQueue)

@@ -14,8 +14,8 @@ end
     # https://github.com/MakieOrg/Makie.jl/issues/3273
     directions = decompose(Point2f, Circle(Point2f(0), 1))
     points = decompose(Point2f, Circle(Point2f(0), 0.5))
-    color = range(0, 1, length=length(directions))
-    fig, ax, pl = arrows(points, directions; color=color)
+    color = range(0, 1, length = length(directions))
+    fig, ax, pl = arrows(points, directions; color = color)
     cbar = Colorbar(fig[1, 2], pl)
     @test cbar.limits[] == Vec2f(0, 1)
     pl.colorrange = (0.5, 0.6)
@@ -57,7 +57,7 @@ end
 @testset "scalar color for scatterlines" begin
     colorrange = (1, 5)
     colormap = :Blues
-    f, ax, sl = scatterlines(1:10,1:10,color=3,colormap=colormap,colorrange=colorrange)
+    f, ax, sl = scatterlines(1:10, 1:10, color = 3, colormap = colormap, colorrange = colorrange)
     l = sl.plots[1]::Lines
     sc = sl.plots[2]::Scatter
     @test l.color[] == 3

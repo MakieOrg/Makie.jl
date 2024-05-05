@@ -1,5 +1,5 @@
 
-function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))
+function add_cycle_attribute!(plot::Plot, scene::Scene, cycle = get_cycle_for_plottype(plot.cycle[]))
     cycler = scene.cycler
     palette = scene.theme.palette
     add_cycle_attributes!(plot, cycle, cycler, palette)
@@ -15,25 +15,25 @@ function color_and_colormap!(plot, colors = plot.color)
     attributes(plot.attributes)[:calculated_colors] = colors
 end
 
-function calculated_attributes!(::Type{<: AbstractPlot}, plot)
+function calculated_attributes!(::Type{<:AbstractPlot}, plot)
     scene = parent_scene(plot)
     if !isnothing(scene) && haskey(plot, :cycle)
         add_cycle_attribute!(plot, scene)
     end
 end
 
-function calculated_attributes!(::Type{<: Mesh}, plot)
+function calculated_attributes!(::Type{<:Mesh}, plot)
     mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
-    color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
+    color = haskey(mesha[], :color) ? lift(x -> x[:color], plot, mesha) : plot.color
     color_and_colormap!(plot, color)
     return
 end
 
-function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
+function calculated_attributes!(::Type{<:Union{Heatmap,Image}}, plot)
     color_and_colormap!(plot, plot[3])
 end
 
-function calculated_attributes!(::Type{<: Surface}, plot)
+function calculated_attributes!(::Type{<:Surface}, plot)
     colors = plot[3]
     if haskey(plot, :color)
         color = plot[:color][]
@@ -44,7 +44,7 @@ function calculated_attributes!(::Type{<: Surface}, plot)
     color_and_colormap!(plot, colors)
 end
 
-function calculated_attributes!(::Type{<: MeshScatter}, plot)
+function calculated_attributes!(::Type{<:MeshScatter}, plot)
     color_and_colormap!(plot)
     return
 end
@@ -59,7 +59,7 @@ function calculated_attributes!(::Type{<:Text}, plot)
     return
 end
 
-function calculated_attributes!(::Type{<: Scatter}, plot)
+function calculated_attributes!(::Type{<:Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
 
@@ -72,7 +72,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 
     replace_automatic!(plot, :markerspace) do
         lift(plot, plot.markersize) do ms
-            if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
+            if ms isa Pixel || (ms isa AbstractVector && all(x -> ms isa Pixel, ms))
                 return :pixel
             else
                 return :data
@@ -81,7 +81,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     end
 end
 
-function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
+function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines,LineSegments}}
     pos = plot[1][]
     # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
     if T <: LineSegments
@@ -103,7 +103,7 @@ const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
     lines, surface, volume, heatmap, image
 )
-const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
+const Atomic{Arg} = Union{map(x -> Plot{x,Arg}, atomic_functions)...}
 
 function convert_arguments!(plot::Plot{F}) where {F}
     P = Plot{F,Any}
@@ -186,9 +186,9 @@ used_attributes(args...) = ()
 # Chose the more specific plot type from arguments or input type
 # Note the plottype(Scatter, Plot{plot}) will return Scatter
 # And plottype(args...) falls back to Plot{plot}
-plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argvalues...))
+plottype(P::Type{<:Plot{T}}, argvalues...) where T = plottype(P, plottype(argvalues...))
 plottype(P::Type{<:Plot{T}}) where {T} = P
-plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
+plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1,T2} = P1
 plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
 """
     plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
@@ -209,8 +209,8 @@ plottype(P::Type{<:Plot{T}}, ::Type{Plot{plot}}) where {T} = P
 plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector) = Scatter
-plottype(::AbstractMatrix{<: Real}) = Heatmap
-plottype(::Array{<: AbstractFloat, 3}) = Volume
+plottype(::AbstractMatrix{<:Real}) = Heatmap
+plottype(::Array{<:AbstractFloat,3}) = Volume
 plottype(::AbstractString) = Text
 
 plottype(::LineString) = Lines
@@ -267,7 +267,7 @@ function plot!(scene::SceneLike, plot::Plot)
     return plot
 end
 
-function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
+function apply_theme!(scene::Scene, plot::P) where {P<:Plot}
     raw_attr = attributes(plot.attributes)
     plot_theme = default_theme(scene, P)
     plot_sym = plotsym(P)

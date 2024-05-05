@@ -29,21 +29,21 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
     th = default_theme(scene, Mesh)
     sc = default_theme(scene, Scatter)
     attr = Attributes(;
-                      # Toggles
-                      show_generators=true,
-                      smooth=false,
+        # Toggles
+        show_generators = true,
+        smooth = false,
 
-                      # Point settings
-                      markersize=sc.markersize,
-                      marker=sc.marker,
-                      markercolor=sc.color,
+        # Point settings
+        markersize = sc.markersize,
+        marker = sc.marker,
+        markercolor = sc.color,
 
-                      # Polygon settings
-                      strokecolor=theme(scene, :patchstrokecolor),
-                      strokewidth=1.0,
-                      color=automatic,
-                      unbounded_edge_extension_factor=0.1,
-                      clip=automatic)
+        # Polygon settings
+        strokecolor = theme(scene, :patchstrokecolor),
+        strokewidth = 1.0,
+        color = automatic,
+        unbounded_edge_extension_factor = 0.1,
+        clip = automatic)
     MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
     return attr
 end
@@ -155,7 +155,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
 
     # Default to circular clip for polar transformed data
     attr[:clip] = map(p, pop!(attr, :clip), p.unbounded_edge_extension_factor,
-                              transform_func_obs(p), ps) do bb, ext, tf, ps
+        transform_func_obs(p), ps) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
             rscaled = maximum(p -> p[1 + tf.theta_as_x], ps) * (1 + ext)
             return Circle(Point2f(0), rscaled)
@@ -163,7 +163,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
             return bb
         end
     end
-    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
+    attr[:transformation] = Transformation(p.transformation; transform_func = identity)
     return voronoiplot!(p, attr, vorn)
 end
 
@@ -192,7 +192,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
             return cs
         elseif color isa AbstractArray
             @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
-                    "Color vector must have the same length as the number of generators, including any not yet in the tessellation.")
+                "Color vector must have the same length as the number of generators, including any not yet in the tessellation.")
             return [color[i] for i in DelTri.each_generator(vorn)] # this matches the polygon order
         else
             return color # constant color
@@ -204,7 +204,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
             bbox = nothing
         elseif p.clip[] === automatic
             extent = p.unbounded_edge_extension_factor[]
-            bbox = DelTri.polygon_bounds(vorn, extent; include_polygon_vertices=false)
+            bbox = DelTri.polygon_bounds(vorn, extent; include_polygon_vertices = false)
         else
             bbox = p.clip[]
         end
@@ -216,22 +216,22 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     update_plot(p[1][])
 
     poly!(p, polygons;
-          strokecolor=p.strokecolor,
-          strokewidth=p.strokewidth,
-          color=p._calculated_colors,
-          colormap=p.colormap,
-          colorscale=p.colorscale,
-          colorrange=p.colorrange,
-          lowclip=p.lowclip,
-          highclip=p.highclip,
-          nan_color=p.nan_color)
+        strokecolor = p.strokecolor,
+        strokewidth = p.strokewidth,
+        color = p._calculated_colors,
+        colormap = p.colormap,
+        colorscale = p.colorscale,
+        colorrange = p.colorrange,
+        lowclip = p.lowclip,
+        highclip = p.highclip,
+        nan_color = p.nan_color)
 
     scatter!(p, generators_2f;
-             markersize=p.markersize,
-             marker=p.marker,
-             color=p.markercolor,
-             visible=p.show_generators,
-             depth_shift=-2.0f-5)
+        markersize = p.markersize,
+        marker = p.marker,
+        color = p.markercolor,
+        visible = p.show_generators,
+        depth_shift = -2.0f-5)
 
     return p
 end

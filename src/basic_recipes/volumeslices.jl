@@ -33,11 +33,11 @@ function plot!(plot::VolumeSlices)
         mx, Mx = extrema(x)
         my, My = extrema(y)
         mz, Mz = extrema(z)
-        Rect3(mx, my, mz, Mx-mx, My-my, Mz-mz)
+        Rect3(mx, my, mz, Mx - mx, My - my, Mz - mz)
     end
 
     axes = :x, :y, :z
-    for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
+    for (ax, p, r, (X, Y)) in zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
         plot[Symbol(:heatmap_, p)] = hmap = heatmap!(
             plot, attr, X, Y, zeros(length(X[]), length(Y[]))
         )

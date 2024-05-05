@@ -24,7 +24,7 @@ Pkg.activate("MakieApp")
 
 paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
 
-Pkg.develop(map(x-> (;path=x), paths))
+Pkg.develop(map(x -> (; path = x), paths))
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)
@@ -35,7 +35,7 @@ Pkg.add("PackageCompiler")
 
 using PackageCompiler
 
-create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
+create_app(joinpath(pwd(), "MakieApp"), "executable"; force = true, incremental = true, include_transitive_dependencies = false)
 exe = joinpath(pwd(), "executable", "bin", "MakieApp")
 @test success(`$(exe)`)
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")

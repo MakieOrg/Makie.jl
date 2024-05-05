@@ -59,7 +59,7 @@ Picks a mouse position.  Implemented by the backend.
 function pick end
 
 function pick(::Scene, ::Screen, xy) where Screen
-    @warn "Picking not supported yet by $(parentmodule(Screen))" maxlog=1
+    @warn "Picking not supported yet by $(parentmodule(Screen))" maxlog = 1
     return nothing, 0
 end
 
@@ -83,7 +83,7 @@ If more than two arguments are given a tree of `And` structs is created.
 
 See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`&`](@ref)
 """
-struct And{L, R} <: BooleanOperator
+struct And{L,R} <: BooleanOperator
     left::L
     right::R
 end
@@ -98,7 +98,7 @@ If more than two arguments are given a tree of `Or` structs is created.
 
 See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`|`](@ref)
 """
-struct Or{L, R} <: BooleanOperator
+struct Or{L,R} <: BooleanOperator
     left::L
     right::R
 end
@@ -135,7 +135,7 @@ See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref),
 [`&`](@ref), [`|`](@ref), [`!`](@ref)
 """
 struct Exclusively <: BooleanOperator
-    x::Set{Union{Keyboard.Button, Mouse.Button}}
+    x::Set{Union{Keyboard.Button,Mouse.Button}}
 end
 
 # Printing
@@ -173,34 +173,34 @@ Or(x) = x
 
 
 function Base.:(&)(
-        left::Union{BooleanOperator, Keyboard.Button, Mouse.Button},
-        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button, Bool}
-    )
+    left::Union{BooleanOperator,Keyboard.Button,Mouse.Button},
+    right::Union{BooleanOperator,Keyboard.Button,Mouse.Button,Bool}
+)
     And(left, right)
 end
 function Base.:(&)(
-        left::Bool,
-        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
-    )
+    left::Bool,
+    right::Union{BooleanOperator,Keyboard.Button,Mouse.Button}
+)
     And(left, right)
 end
 function Base.:(|)(
-        left::Union{BooleanOperator, Keyboard.Button, Mouse.Button},
-        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button, Bool}
-    )
+    left::Union{BooleanOperator,Keyboard.Button,Mouse.Button},
+    right::Union{BooleanOperator,Keyboard.Button,Mouse.Button,Bool}
+)
     Or(left, right)
 end
 function Base.:(|)(
-        left::Bool,
-        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
-    )
+    left::Bool,
+    right::Union{BooleanOperator,Keyboard.Button,Mouse.Button}
+)
     Or(left, right)
 end
-Base.:(!)(x::Union{BooleanOperator, Keyboard.Button, Mouse.Button}) = Not(x)
+Base.:(!)(x::Union{BooleanOperator,Keyboard.Button,Mouse.Button}) = Not(x)
 
 
-Exclusively(x::Union{Vector, Tuple}) = Exclusively(Set(x))
-Exclusively(x::Union{Keyboard.Button, Mouse.Button}) = Exclusively(Set((x,)))
+Exclusively(x::Union{Vector,Tuple}) = Exclusively(Set(x))
+Exclusively(x::Union{Keyboard.Button,Mouse.Button}) = Exclusively(Set((x,)))
 Exclusively(x::Bool) = x
 Exclusively(x::Or) = Or(Exclusively(x.left), Exclusively(x.right))
 Exclusively(x::And) = Or(Exclusively.(unique(create_sets(x)))...)
@@ -209,14 +209,14 @@ Exclusively(x::And) = Or(Exclusively.(unique(create_sets(x)))...)
 # Sets represent `And`, arrays represent `Or`
 function create_sets(x::And)
     [union(left, right) for left in create_sets(x.left)
-                        for right in create_sets(x.right)]
+     for right in create_sets(x.right)]
 end
 create_sets(x::Or) = vcat(create_sets(x.left), create_sets(x.right))
-create_sets(::Not) = Set{Union{Keyboard.Button, Mouse.Button}}()
-function create_sets(b::Union{Keyboard.Button, Mouse.Button})
-    [Set{Union{Keyboard.Button, Mouse.Button}}((b,))]
+create_sets(::Not) = Set{Union{Keyboard.Button,Mouse.Button}}()
+function create_sets(b::Union{Keyboard.Button,Mouse.Button})
+    [Set{Union{Keyboard.Button,Mouse.Button}}((b,))]
 end
-create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
+create_sets(s::Set) = [Set{Union{Keyboard.Button,Mouse.Button}}(s)]
 
 
 # ispressed and logic evaluation
@@ -267,10 +267,10 @@ ispressed(parent, key::Keyboard.Button, waspressed = nothing) = ispressed(events
 
 # Boolean Operator evaluation
 ispressed(parent, op::And, waspressed = nothing) = ispressed(parent, op.left, waspressed) && ispressed(parent, op.right, waspressed)
-ispressed(parent, op::Or, waspressed = nothing)  = ispressed(parent, op.left, waspressed) || ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Or, waspressed = nothing) = ispressed(parent, op.left, waspressed) || ispressed(parent, op.right, waspressed)
 ispressed(parent, op::Not, waspressed = nothing) = !ispressed(parent, op.x, waspressed)
 ispressed(parent, op::Exclusively, waspressed = nothing) = ispressed(events(parent), op, waspressed)
-ispressed(e::Events, op::Exclusively, waspressed::Union{Mouse.Button, Keyboard.Button}) = op.x == union(e.keyboardstate, e.mousebuttonstate, waspressed)
+ispressed(e::Events, op::Exclusively, waspressed::Union{Mouse.Button,Keyboard.Button}) = op.x == union(e.keyboardstate, e.mousebuttonstate, waspressed)
 ispressed(e::Events, op::Exclusively, waspressed = nothing) = op.x == union(e.keyboardstate, e.mousebuttonstate)
 
 # collections

@@ -1,10 +1,10 @@
-const URL_CACHE = Dict{String, String}()
+const URL_CACHE = Dict{String,String}()
 
 function serve_update_page_from_dir(folder)
 
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
-    
+
     router = HTTP.Router()
 
     function receive_update(req)
@@ -98,7 +98,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
     checkruns = filter(checksinfo["check_runs"]) do checkrun
         name = checkrun["name"]
         id = checkrun["id"]
-    
+
         if name == "Merge artifacts"
             job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
@@ -155,15 +155,15 @@ function serve_update_page(; commit = nothing, pr = nothing)
 end
 
 function unzip(file, exdir = "")
-    fileFullPath = isabspath(file) ?  file : joinpath(pwd(),file)
+    fileFullPath = isabspath(file) ? file : joinpath(pwd(), file)
     basePath = dirname(fileFullPath)
-    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(),exdir)))
+    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(), exdir)))
     isdir(outPath) ? "" : mkdir(outPath)
     @info "Extracting zip file $file to $outPath"
     zarchive = ZipFile.Reader(fileFullPath)
     for f in zarchive.files
-        fullFilePath = joinpath(outPath,f.name)
-        if (endswith(f.name,"/") || endswith(f.name,"\\"))
+        fullFilePath = joinpath(outPath, f.name)
+        if (endswith(f.name, "/") || endswith(f.name, "\\"))
             mkdir(fullFilePath)
         else
             mkpath(dirname(fullFilePath))

@@ -14,7 +14,7 @@ function get_frames(video::AbstractString)
         if length(aframes) > 10
             # we don't want to compare too many frames since it's time costly
             # so we just compare 10 random frames if more than 10
-            samples = range(1, stop=length(aframes), length=10)
+            samples = range(1, stop = length(aframes), length = 10)
             istep = round(Int, length(aframes) / 10)
             samples = 1:istep:length(aframes)
             aframes = aframes[samples]
@@ -38,7 +38,7 @@ function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{
     range_dim1 = round.(Int, range(0, size(a, 1), length = ceil(Int, size(a, 1) / approx_tile_size_px)))
     range_dim2 = round.(Int, range(0, size(a, 2), length = ceil(Int, size(a, 2) / approx_tile_size_px)))
 
-    boundary_iter(boundaries) = zip(boundaries[1:end-1] .+ 1, boundaries[2:end])
+    boundary_iter(boundaries) = zip(boundaries[1:(end - 1)] .+ 1, boundaries[2:end])
 
     _norm(rgb1::RGBf, rgb2::RGBf) = sqrt(sum(((rgb1.r - rgb2.r)^2, (rgb1.g - rgb2.g)^2, (rgb1.b - rgb2.b)^2)))
     _norm(rgba1::RGBAf, rgba2::RGBAf) = sqrt(sum(((rgba1.r - rgba2.r)^2, (rgba1.g - rgba2.g)^2, (rgba1.b - rgba2.b)^2, (rgba1.alpha - rgba2.alpha)^2)))
@@ -81,7 +81,7 @@ function get_all_relative_filepaths_recursively(dir)
     end
 end
 
-function record_comparison(base_folder::String; record_folder_name="recorded", tag=last_major_version())
+function record_comparison(base_folder::String; record_folder_name = "recorded", tag = last_major_version())
     record_folder = joinpath(base_folder, record_folder_name)
     @info "Downloading reference images"
     reference_folder = download_refimages(tag)
@@ -120,7 +120,7 @@ function test_comparison(scores; threshold)
     end
 end
 
-function compare(relative_test_paths::Vector{String}, reference_dir::String, record_dir; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
+function compare(relative_test_paths::Vector{String}, reference_dir::String, record_dir; o_refdir = reference_dir, missing_refimages = String[], scores = Dict{String,Float64}())
     for relative_test_path in relative_test_paths
         ref_path = joinpath(reference_dir, relative_test_path)
         rec_path = joinpath(record_dir, relative_test_path)

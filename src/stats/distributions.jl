@@ -4,10 +4,10 @@ The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 
 # pick a nice default x range given a distribution
-function default_range(dist::Distribution, alpha=0.0001)
+function default_range(dist::Distribution, alpha = 0.0001)
     minval = isfinite(minimum(dist)) ? minimum(dist) : quantile(dist, alpha)
     maxval = isfinite(maximum(dist)) ? maximum(dist) : quantile(dist, 1 - alpha)
-    minval..maxval
+    minval .. maxval
 end
 
 isdiscrete(::Distribution) = false
@@ -86,7 +86,7 @@ end
 function fit_qqplot(x, y; qqline = :none)
     if !(qqline in (:identity, :fit, :fitrobust, :none))
         msg = "valid values for qqline are :identity, :fit, :fitrobust or :none, " *
-            "encountered " * repr(qqline)
+              "encountered " * repr(qqline)
         throw(ArgumentError(msg))
     end
     h = qqbuild(x, y)

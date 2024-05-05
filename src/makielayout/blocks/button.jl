@@ -7,7 +7,7 @@ function initialize_block!(b::Button)
     subarea = lift(scene, b.layoutobservables.computedbbox) do bbox
         round_to_IRect2D(bbox)
     end
-    subscene = Scene(scene, subarea, camera=campixel!)
+    subscene = Scene(scene, subarea, camera = campixel!)
 
     # buttonrect is without the left bottom offset of the bbox
     buttonrect = lift(scene, b.layoutobservables.computedbbox) do bbox

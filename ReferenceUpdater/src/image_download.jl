@@ -11,7 +11,7 @@ function last_major_version()
     return "v" * string(VersionNumber(version.major, version.minor))
 end
 
-function upload_reference_images(path=basedir("recorded"), tag=last_major_version())
+function upload_reference_images(path = basedir("recorded"), tag = last_major_version())
     mktempdir() do dir
         tarfile = joinpath(dir, "reference_images.tar")
         Tar.create(path, tarfile)

@@ -9,26 +9,26 @@
             y_dir, flip = false, false
             @test Makie.calculate_bar_label_align(al, 0.0, y_dir, flip) ≈ Vec2f(0.0, 0.5)
             @test Makie.calculate_bar_label_align(al, π, y_dir, flip) ≈ Vec2f(1.0, 0.5)
-            @test Makie.calculate_bar_label_align(al, π/2, y_dir, flip) ≈ Vec2f(0.5, 1.0)
-            @test Makie.calculate_bar_label_align(al, -π/2, y_dir, flip) ≈ Vec2f(0.5, 0.0)
+            @test Makie.calculate_bar_label_align(al, π / 2, y_dir, flip) ≈ Vec2f(0.5, 1.0)
+            @test Makie.calculate_bar_label_align(al, -π / 2, y_dir, flip) ≈ Vec2f(0.5, 0.0)
 
             y_dir, flip = true, false
             @test Makie.calculate_bar_label_align(al, 0.0, y_dir, flip) ≈ Vec2f(0.5, 0.0)
             @test Makie.calculate_bar_label_align(al, π, y_dir, flip) ≈ Vec2f(0.5, 1.0)
-            @test Makie.calculate_bar_label_align(al, π/2, y_dir, flip) ≈ Vec2f(0.0, 0.5)
-            @test Makie.calculate_bar_label_align(al, -π/2, y_dir, flip) ≈ Vec2f(1.0, 0.5)
+            @test Makie.calculate_bar_label_align(al, π / 2, y_dir, flip) ≈ Vec2f(0.0, 0.5)
+            @test Makie.calculate_bar_label_align(al, -π / 2, y_dir, flip) ≈ Vec2f(1.0, 0.5)
 
             y_dir, flip = false, true
             @test Makie.calculate_bar_label_align(al, 0.0, y_dir, flip) ≈ Vec2f(1.0, 0.5)
             @test Makie.calculate_bar_label_align(al, π, y_dir, flip) ≈ Vec2f(0.0, 0.5)
-            @test Makie.calculate_bar_label_align(al, π/2, y_dir, flip) ≈ Vec2f(0.5, 0.0)
-            @test Makie.calculate_bar_label_align(al, -π/2, y_dir, flip) ≈ Vec2f(0.5, 1.0)
+            @test Makie.calculate_bar_label_align(al, π / 2, y_dir, flip) ≈ Vec2f(0.5, 0.0)
+            @test Makie.calculate_bar_label_align(al, -π / 2, y_dir, flip) ≈ Vec2f(0.5, 1.0)
 
             y_dir, flip = true, true
             @test Makie.calculate_bar_label_align(al, 0.0, y_dir, flip) ≈ Vec2f(0.5, 1.0)
             @test Makie.calculate_bar_label_align(al, π, y_dir, flip) ≈ Vec2f(0.5, 0.0)
-            @test Makie.calculate_bar_label_align(al, π/2, y_dir, flip) ≈ Vec2f(1.0, 0.5)
-            @test Makie.calculate_bar_label_align(al, -π/2, y_dir, flip) ≈ Vec2f(0.0, 0.5)
+            @test Makie.calculate_bar_label_align(al, π / 2, y_dir, flip) ≈ Vec2f(1.0, 0.5)
+            @test Makie.calculate_bar_label_align(al, -π / 2, y_dir, flip) ≈ Vec2f(0.0, 0.5)
         end
 
         @testset "manual" begin
@@ -52,27 +52,27 @@
     end
 
     @testset "stack" begin
-        x1         = [1, 1,  1,  1]
-        grp_dodge1 = [2, 2,  1,  1]
-        grp_stack1 = [1, 2,  1,  2]
-        y1         = [2, 3, -3, -2]
+        x1 = [1, 1, 1, 1]
+        grp_dodge1 = [2, 2, 1, 1]
+        grp_stack1 = [1, 2, 1, 2]
+        y1 = [2, 3, -3, -2]
 
-        x2         = [2, 2,  2,  2]
-        grp_dodge2 = [3, 4,  3,  4]
-        grp_stack2 = [3, 4,  3,  4]
-        y2         = [2, 3, -3, -2]
+        x2 = [2, 2, 2, 2]
+        grp_dodge2 = [3, 4, 3, 4]
+        grp_stack2 = [3, 4, 3, 4]
+        y2 = [2, 3, -3, -2]
 
         from, to = Makie.stack_grouped_from_to(grp_stack1, y1, (; x1 = x1, grp_dodge1 = grp_dodge1))
-        from1 = [0.0, 2.0,  0.0, -3.0]
-        to1   = [2.0, 5.0, -3.0, -5.0]
+        from1 = [0.0, 2.0, 0.0, -3.0]
+        to1 = [2.0, 5.0, -3.0, -5.0]
         @test from == from1
-        @test to   == to1
+        @test to == to1
 
         from, to = Makie.stack_grouped_from_to(grp_stack2, y2, (; x2 = x2, grp_dodge2 = grp_dodge2))
-        from2 = [0.0,  0.0,  0.0,  0.0]
-        to2   = [2.0,  3.0, -3.0, -2.0]
+        from2 = [0.0, 0.0, 0.0, 0.0]
+        to2 = [2.0, 3.0, -3.0, -2.0]
         @test from == from2
-        @test to   == to2
+        @test to == to2
 
         perm = [1, 4, 2, 7, 5, 3, 8, 6]
         x = [x1; x2][perm]
@@ -123,7 +123,7 @@
         y = [0.0, 1.0, -1.0, -1.0]
         from = [0.0, 0.0, 0.0, -1.0]
         to = [0.0, 1.0, -1.0, -2.0]
-        from_, to_ = Makie.stack_grouped_from_to(1:4, y, (; x=ones(4)))
+        from_, to_ = Makie.stack_grouped_from_to(1:4, y, (; x = ones(4)))
         @test from == from_
         @test to == to_
     end

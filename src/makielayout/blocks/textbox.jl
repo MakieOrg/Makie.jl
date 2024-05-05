@@ -57,7 +57,7 @@ function initialize_block!(tbox::Textbox)
 
     realtextcolor = Observable{RGBAf}()
     map!(topscene, realtextcolor, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
-         tbox.stored_string, tbox.displayed_string) do tc, tcph, foc, cont, disp
+        tbox.stored_string, tbox.displayed_string) do tc, tcph, foc, cont, disp
         # the textbox has normal text color if it's focused
         # if it's defocused, the displayed text has to match the stored text in order
         # to be normal colored
@@ -91,7 +91,7 @@ function initialize_block!(tbox::Textbox)
         end
 
         if 0 < ci < length(bbs)
-            [leftline(bbs[ci+1])...]
+            [leftline(bbs[ci + 1])...]
         elseif ci == 0
             [leftline(bbs[1])...]
         else
@@ -126,7 +126,7 @@ function initialize_block!(tbox::Textbox)
 
         pos = state.data
         closest_charindex = argmin(
-            [sum((pos .- center(bb)).^2) for bb in displayed_charbbs[]]
+            [sum((pos .- center(bb)) .^ 2) for bb in displayed_charbbs[]]
         )
         # set cursor to index of closest char if right of center, or previous char if left of center
         cursorindex[] = if (pos .- center(displayed_charbbs[][closest_charindex]))[1] > 0
@@ -161,7 +161,7 @@ function initialize_block!(tbox::Textbox)
             empty!(displayed_chars[])
             index = 1
         end
-        newchars = [displayed_chars[][1:index-1]; c; displayed_chars[][index:end]]
+        newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
         tbox.displayed_string[] = join(newchars)
         cursorindex[] = index
     end
@@ -171,7 +171,7 @@ function initialize_block!(tbox::Textbox)
     end
 
     function removechar!(index)
-        newchars = [displayed_chars[][1:index-1]; displayed_chars[][index+1:end]]
+        newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
 
         if isempty(newchars)
             newchars = [' ']
@@ -184,7 +184,7 @@ function initialize_block!(tbox::Textbox)
         tbox.displayed_string[] = join(newchars)
     end
 
-    on(topscene, events(scene).unicode_input; priority=60) do char
+    on(topscene, events(scene).unicode_input; priority = 60) do char
         if tbox.focused[] && is_allowed(char, tbox.restriction[])
             insertchar!(char, cursorindex[] + 1)
             return Consume(true)
@@ -212,7 +212,7 @@ function initialize_block!(tbox::Textbox)
     end
 
 
-    on(topscene, events(scene).keyboardbutton; priority=60) do event
+    on(topscene, events(scene).keyboardbutton; priority = 60) do event
         if tbox.focused[]
             ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
             if ispressed(scene, ctrl_v)
@@ -343,7 +343,7 @@ function focus!(tb::Textbox)
                 [0, 1.0],
                 [Colors.alphacolor(COLOR_ACCENT[], 0), Colors.alphacolor(COLOR_ACCENT[], 1)],
                 Animations.sineio(n = 2, yoyo = true, postwait = 0.2)),
-                0.0, 0.0, 1000)
+            0.0, 0.0, 1000)
 
         if !isnothing(tb.cursoranimtask)
             Animations.stop(tb.cursoranimtask)

@@ -26,7 +26,7 @@ let
             shared_precompile = joinpath(base_path, "shared-precompile.jl")
             include(shared_precompile)
             try
-                display(plot(x); visible=false)
+                display(plot(x); visible = false)
             catch
             end
             Makie.CURRENT_FIGURE[] = nothing
@@ -37,13 +37,13 @@ let
             close(screen)
             destroy!(screen)
 
-            config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
-            screen = Screen(Scene(), config, nothing, MIME"image/png"(); visible=false, start_renderloop=false)
+            config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}())
+            screen = Screen(Scene(), config, nothing, MIME"image/png"(); visible = false, start_renderloop = false)
             close(screen)
 
 
             config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}())
-            screen = Screen(Scene(), config; visible=false, start_renderloop=false)
+            screen = Screen(Scene(), config; visible = false, start_renderloop = false)
             close(screen)
 
             empty!(atlas_texture_cache)
@@ -63,7 +63,7 @@ precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBf}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBA{N0f8}}))
 precompile(glTexImage,
-           (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{GLAbstraction.DepthStencil_24_8}))
+    (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{GLAbstraction.DepthStencil_24_8}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{Vec{2,GLuint}}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBA{Float16}}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{N0f8}))

@@ -1,8 +1,8 @@
 const histogram_plot_types = (BarPlot, Heatmap, Volume)
 
-function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any, N}) where N
+function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any,N}) where N
     ptype = plottype(P, histogram_plot_types[N])
-    f(edges) = edges[1:end-1] .+ diff(edges)./2
+    f(edges) = edges[1:(end - 1)] .+ diff(edges) ./ 2
     kwargs = N == 1 ? (; width = step(h.edges[1]), gap = 0, dodge_gap = 0) : NamedTuple()
     return to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
@@ -12,7 +12,7 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
     h_norm = StatsBase.normalize(h; mode = normalization)
     weights = h_norm.weights
-    centers = edges[1:end-1] .+ (diff(edges) ./ 2)
+    centers = edges[1:(end - 1)] .+ (diff(edges) ./ 2)
     if scale_to === :flip
         weights .= -weights
     elseif !isnothing(scale_to)
@@ -59,7 +59,7 @@ function Makie.plot!(plot::StepHist)
     edges = lift(pick_hist_edges, plot, values, plot.bins)
 
     points = lift(plot, edges, plot.normalization, plot.scale_to,
-                  plot.weights) do edges, normalization, scale_to, wgts
+        plot.weights) do edges, normalization, scale_to, wgts
         _, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         phantomedge = edges[end] # to bring step back to baseline
         edges = vcat(edges, phantomedge)
@@ -80,7 +80,7 @@ function Makie.plot!(plot::StepHist)
     pop!(attr, :normalization)
     pop!(attr, :scale_to)
     pop!(attr, :bins)
-    stairs!(plot, points; attr..., color=color)
+    stairs!(plot, points; attr..., color = color)
     plot
 end
 
@@ -132,9 +132,7 @@ $(ATTRIBUTES)
         color = theme(scene, :patchcolor),
         offset = 0.0,
         fillto = automatic,
-        scale_to = nothing,
-
-        bar_labels = nothing,
+        scale_to = nothing, bar_labels = nothing,
         flip_labels_at = Inf,
         label_color = theme(scene, :textcolor),
         over_background_color = automatic,
@@ -154,7 +152,7 @@ function pick_hist_edges(vals, bins)
         end
         # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
         ma = nextfloat(ma)
-        return range(mi, ma, length = bins+1)
+        return range(mi, ma, length = bins + 1)
     else
         if !issorted(bins)
             error("Histogram bins are not sorted: $bins")
@@ -169,7 +167,7 @@ function Makie.plot!(plot::Hist)
     edges = lift(pick_hist_edges, plot, values, plot.bins)
 
     points = lift(plot, edges, plot.normalization, plot.scale_to,
-                  plot.weights) do edges, normalization, scale_to, wgts
+        plot.weights) do edges, normalization, scale_to, wgts
         centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         return Point2f.(centers, weights)
     end
@@ -186,7 +184,7 @@ function Makie.plot!(plot::Hist)
         x === :values ? :y : x
     end
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
+    bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto = plot.fillto, offset = plot.offset, bar_labels = bar_labels, color = color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(plot, widths) do w

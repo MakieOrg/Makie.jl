@@ -48,7 +48,7 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels+1))
+_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels + 1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
@@ -67,7 +67,7 @@ function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     return Float32.(levels .* (ma - mi) .+ mi)
 end
 
-function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
+function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real},<:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
     c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
@@ -78,7 +78,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         minimum(levels), maximum(levels)
     end
     computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
+        c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
@@ -103,7 +103,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
-        lows = levels[1:end-1]
+        lows = levels[1:(end - 1)]
         highs = levels[2:end]
 
         # zs needs to be transposed to match rest of makie
@@ -178,7 +178,7 @@ function _group_polys(points, ids)
     groups = Vector{Vector{Point2f}}[]
 
     # a dict that maps index in `polys` to index in `groups` for outer polys
-    outerindex_groupdict = Dict{Int, Int}()
+    outerindex_groupdict = Dict{Int,Int}()
 
     # all polys have to be classified
     while !isempty(unclassified_polyindices)

@@ -2,12 +2,15 @@
 function pick_native(screen::Screen, rect::Rect2i)
     (x, y) = minimum(rect)
     (w, h) = widths(rect)
-    session = get_screen_session(screen; error="Can't do picking!")
+    session = get_screen_session(screen; error = "Can't do picking!")
     scene = screen.scene
-    picking_data = Bonito.evaljs_value(session, js"""
-        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
-    """)
-    empty = Matrix{Tuple{Union{Nothing, AbstractPlot}, Int}}(undef, 0, 0)
+    picking_data = Bonito.evaljs_value(
+        session,
+        js"""
+    Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
+"""
+    )
+    empty = Matrix{Tuple{Union{Nothing,AbstractPlot},Int}}(undef, 0, 0)
     if isnothing(picking_data)
         return empty
     end
@@ -35,10 +38,13 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     # isopen(screen) || return (nothing, 0)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
-    session = get_screen_session(screen; error="Can't do picking!")
-    selection = Bonito.evaljs_value(session, js"""
-        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_closest(scene, $(xy_vec), $(range)))
-    """)
+    session = get_screen_session(screen; error = "Can't do picking!")
+    selection = Bonito.evaljs_value(
+        session,
+        js"""
+    Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_closest(scene, $(xy_vec), $(range)))
+"""
+    )
     lookup = plot_lookup(scene)
     return (lookup[selection[1]], selection[2] + 1)
 end
@@ -48,10 +54,13 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
 
-    session = get_screen_session(screen; error="Can't do picking!")
-    selection = Bonito.evaljs_value(session, js"""
-        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
-    """)
+    session = get_screen_session(screen; error = "Can't do picking!")
+    selection = Bonito.evaljs_value(
+        session,
+        js"""
+    Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
+"""
+    )
     isnothing(selection) && return Tuple{Union{Nothing,AbstractPlot},Int}[]
     lookup = plot_lookup(scene)
     return map(selection) do (plot_id, index)
@@ -101,12 +110,12 @@ struct ToolTip
     scene::Scene
     callback::Bonito.JSCode
     plot_uuids::Vector{String}
-    function ToolTip(figlike, callback; plots=nothing)
+    function ToolTip(figlike, callback; plots = nothing)
         scene = Makie.get_scene(figlike)
         if isnothing(plots)
             plots = scene.plots
         end
-        all_plots = js_uuid.(filter!(x-> x.inspectable[], Makie.collect_atomic_plots(plots)))
+        all_plots = js_uuid.(filter!(x -> x.inspectable[], Makie.collect_atomic_plots(plots)))
         new(scene, callback, all_plots)
     end
 end
@@ -115,13 +124,16 @@ const POPUP_CSS = Bonito.Asset(joinpath(@__DIR__, "popup.css"))
 
 function Bonito.jsrender(session::Session, tt::ToolTip)
     scene = tt.scene
-    popup =  DOM.div("", class="popup")
-    Bonito.evaljs(session, js"""
-        $(scene).then(scene => {
-            const plots_to_pick = new Set($(tt.plot_uuids));
-            const callback = $(tt.callback);
-            WGL.register_popup($popup, scene, plots_to_pick, callback)
-        })
-    """)
+    popup = DOM.div("", class = "popup")
+    Bonito.evaljs(
+        session,
+        js"""
+    $(scene).then(scene => {
+        const plots_to_pick = new Set($(tt.plot_uuids));
+        const callback = $(tt.callback);
+        WGL.register_popup($popup, scene, plots_to_pick, callback)
+    })
+"""
+    )
     return DOM.span(Bonito.jsrender(session, POPUP_CSS), popup)
 end

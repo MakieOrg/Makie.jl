@@ -14,7 +14,7 @@ include("GLAbstraction/GLAbstraction.jl")
 
 using .GLAbstraction
 
-const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
+const atlas_texture_cache = Dict{Any,Tuple{Texture{Float16,2},Function}}()
 
 function get_texture!(atlas::Makie.TextureAtlas)
     current_ctx = GLAbstraction.current_context()
@@ -34,15 +34,15 @@ function get_texture!(atlas::Makie.TextureAtlas)
 
     tex, func = get!(atlas_texture_cache, (pointer(atlas.data), current_ctx)) do
         tex = Texture(
-                atlas.data,
-                minfilter = :linear,
-                magfilter = :linear,
-                # TODO: Consider alternatives to using the builtin anisotropic
-                # samplers for signed distance fields; the anisotropic
-                # filtering should happen *after* the SDF thresholding, but
-                # with the builtin sampler it happens before.
-                anisotropic = 16f0,
-                mipmap = true
+            atlas.data,
+            minfilter = :linear,
+            magfilter = :linear,
+            # TODO: Consider alternatives to using the builtin anisotropic
+            # samplers for signed distance fields; the anisotropic
+            # filtering should happen *after* the SDF thresholding, but
+            # with the builtin sampler it happens before.
+            anisotropic = 16f0,
+            mipmap = true
         )
         # update the texture, whenever a new font is added to the atlas
         function callback(distance_field, rectangle)

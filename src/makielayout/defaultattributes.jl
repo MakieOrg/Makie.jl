@@ -10,12 +10,12 @@ function inherit(::Nothing, attr::Symbol, default_value)
     default_value
 end
 
-inherit(scene, attr::NTuple{1, <: Symbol}, default_value) = inherit(scene, attr[begin], default_value)
+inherit(scene, attr::NTuple{1,<:Symbol}, default_value) = inherit(scene, attr[begin], default_value)
 
 
-function inherit(scene, attr::NTuple{N, <: Symbol}, default_value) where N
+function inherit(scene, attr::NTuple{N,<:Symbol}, default_value) where N
     current_dict = scene.theme
-    for i in 1:(N-1)
+    for i in 1:(N - 1)
         if haskey(current_dict, attr[i])
             current_dict = current_dict[attr[i]]
         else
@@ -30,7 +30,7 @@ function inherit(scene, attr::NTuple{N, <: Symbol}, default_value) where N
     end
 end
 
-function inherit(::Nothing, attr::NTuple{N, Symbol}, default_value::T) where {N, T}
+function inherit(::Nothing, attr::NTuple{N,Symbol}, default_value::T) where {N,T}
     default_value
 end
 

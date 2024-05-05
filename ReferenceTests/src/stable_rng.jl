@@ -11,11 +11,11 @@ randn(args...) = Base.randn(STABLE_RNG, args...)
 
 seed_rng!() = Random.seed!(STABLE_RNG, 123)
 
-function Base.rand(r::StableRNGs.LehmerRNG, ::Random.SamplerType{T}) where T <: ColorAlpha
+function Base.rand(r::StableRNGs.LehmerRNG, ::Random.SamplerType{T}) where T<:ColorAlpha
     return T(Base.rand(r), Base.rand(r), Base.rand(r), Base.rand(r))
 end
 
-function Base.rand(r::StableRNGs.LehmerRNG, ::Random.SamplerType{T}) where T <: AbstractRGB
+function Base.rand(r::StableRNGs.LehmerRNG, ::Random.SamplerType{T}) where T<:AbstractRGB
     return T(Base.rand(r), Base.rand(r), Base.rand(r))
 end
 

@@ -2,7 +2,7 @@ using ShaderAbstractions: Buffer, Sampler, VertexArray
 
 # Mesh
 mesh(Sphere(Point3f(0), 1f0)) |> display
-mesh(Sphere(Point3f(0), 1f0), color=:red, ambient=Vec3f(0.9))
+mesh(Sphere(Point3f(0), 1f0), color = :red, ambient = Vec3f(0.9))
 
 tocolor(x) = RGBf(x...)
 positions = Observable(decompose(Point3f, Sphere(Point3f(0), 1f0)))
@@ -18,7 +18,7 @@ uv_buff = Buffer(uv)
 texture_buff = Sampler(texture)
 texsampler = Makie.sampler(:viridis, rand(length(positions)))
 
-coords = VertexArray(pos_buff, triangles_buff, color=vert_color_buff)
+coords = VertexArray(pos_buff, triangles_buff, color = vert_color_buff)
 mesh = GeometryBasics.Mesh(coords)
 GeometryBasics.coordinates(mesh);
 
@@ -43,7 +43,7 @@ p = ShaderAbstractions.Program(
 
 println(p.vertex_source)
 
-uniforms = Dict{Symbol, Any}(
+uniforms = Dict{Symbol,Any}(
     :texturecoordinates => Vec2f(0),
     :image => nothing
 )
@@ -52,77 +52,89 @@ rshader = GLMakie.GLAbstraction.gl_convert(shader, uniforms)
 vbo = GLMakie.GLAbstraction.GLVertexArray(program, posmeta, triangles_buff)
 
 m = GeometryBasics.Mesh(posmeta, triangles_buff)
-disp = display(Makie.mesh(m, show_axis=false));
+disp = display(Makie.mesh(m, show_axis = false));
 
 
 mesh_normals = GeometryBasics.normals(positions, triangles)
-coords = meta(positions, color=xyz_vertex_color, normals=mesh_normals)
+coords = meta(positions, color = xyz_vertex_color, normals = mesh_normals)
 vertexcolor_mesh = GeometryBasics.Mesh(coords, triangles)
-scren = mesh(vertexcolor_mesh, show_axis=false) |> display
+scren = mesh(vertexcolor_mesh, show_axis = false) |> display
 
 
 function getter_function(io::IO, ::Fragment, sampler::Sampler, name::Symbol)
     index_t = type_string(context, sampler.values)
     sampler_t = type_string(context, sampler.colors)
 
-    println(io, """
-    in $(value_t) fragment_$(name)_index;
-    uniform $(sampler_t) $(name)_texture;
+    println(
+        io,
+        """
+in $(value_t) fragment_$(name)_index;
+uniform $(sampler_t) $(name)_texture;
 
-    vec4 get_$(name)(){
-        return texture($(name)_texture, fragment_$(name)_index);
-    }
-    """)
+vec4 get_$(name)(){
+    return texture($(name)_texture, fragment_$(name)_index);
+}
+"""
+    )
 end
 
 function getter_function(io::IO, ::Vertex, sampler::Sampler, name::Symbol)
     index_t = type_string(context, sampler.values)
-    println(io, """
-    in $(index_t) $(name)_index;
-    out $(index_t) fragment_$(name)_index;
+    println(
+        io,
+        """
+in $(index_t) $(name)_index;
+out $(index_t) fragment_$(name)_index;
 
-    vec4 get_$(name)(){
-        fragment_uv = uv;
-        // color gets calculated in fragment!
-        return vec4(0);
-    }
-    """)
+vec4 get_$(name)(){
+    fragment_uv = uv;
+    // color gets calculated in fragment!
+    return vec4(0);
+}
+"""
+    )
 end
 
 function getter_function(io::IO, ::Fragment, ::AbstractVector{T}, name) where T
     t_str = type_string(context, T)
-    println(io, """
-    in $(t_str) fragment_$(name);
-    $(t_str) get_$(name)(){
-        return fragment_$(name);
-    }
-    """)
+    println(
+        io,
+        """
+in $(t_str) fragment_$(name);
+$(t_str) get_$(name)(){
+    return fragment_$(name);
+}
+"""
+    )
 end
 
 function getter_function(io::IO, ::Vertex, ::AbstractVector{T}, name) where T
     t_str = type_string(context, T)
-    println(io, """
-    in $(t_str) $(name);
-    out $(t_str) fragment_$(name);
+    println(
+        io,
+        """
+in $(t_str) $(name);
+out $(t_str) fragment_$(name);
 
-    $(t_str) get_$(name)(){
-        fragment_$(name) = $(name);
-        return $(name);
-    }
-    """)
+$(t_str) get_$(name)(){
+    fragment_$(name) = $(name);
+    return $(name);
+}
+"""
+    )
 end
 
 texsampler = Makie.sampler(rand(RGBf, 4, 4), uv)
-coords = meta(positions, color=texsampler, normals=mesh_normals)
+coords = meta(positions, color = texsampler, normals = mesh_normals)
 texture_mesh = GeometryBasics.Mesh(coords, triangles)
 
-scren = mesh(texture_mesh, show_axis=false) |> display
+scren = mesh(texture_mesh, show_axis = false) |> display
 
 texsampler = Makie.sampler(:viridis, rand(length(positions)))
-coords = meta(positions, color=texsampler, normals=mesh_normals)
+coords = meta(positions, color = texsampler, normals = mesh_normals)
 texture_mesh = GeometryBasics.Mesh(coords, triangles)
 
-scren = mesh(texture_mesh, show_axis=false) |> display
+scren = mesh(texture_mesh, show_axis = false) |> display
 
 
 

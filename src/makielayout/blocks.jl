@@ -6,7 +6,7 @@ function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
 
-macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
+macro Block(_name::Union{Expr,Symbol}, body::Expr = Expr(:block))
 
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
@@ -14,7 +14,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     name = _name isa Symbol ? _name : _name.args[1]
     structdef = quote
         mutable struct $(type_expr)
-            parent::Union{Figure, Scene, Nothing}
+            parent::Union{Figure,Scene,Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
             blockscene::Scene
         end
@@ -27,7 +27,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     i_forwarded_layout = findfirst(
         x -> x isa Expr && x.head === :macrocall &&
-            x.args[1] == Symbol("@forwarded_layout"),
+                 x.args[1] == Symbol("@forwarded_layout"),
         body.args
     )
     has_forwarded_layout = i_forwarded_layout !== nothing
@@ -63,7 +63,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene,Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
             curdeftheme = Makie.fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
@@ -72,9 +72,9 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         function Makie.attribute_default_expressions(::Type{$name})
             $(
                 if attrs === nothing
-                    Dict{Symbol, String}()
+                    Dict{Symbol,String}()
                 else
-                    Dict{Symbol, String}([a.symbol => _defaultstring(a.default) for a in attrs])
+                    Dict{Symbol,String}([a.symbol => _defaultstring(a.default) for a in attrs])
                 end
             )
         end
@@ -83,8 +83,8 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             Dict(
                 $(
                     (attrs !== nothing ?
-                        [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
-                        [])...
+                     [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
+                     [])...
                 )
             )
         end
@@ -172,7 +172,7 @@ end
 function extract_attributes!(body)
     i = findfirst(
         (x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
-            x.args[3] isa Expr && x.args[3].head === :block),
+                  x.args[3] isa Expr && x.args[3].head === :block),
         body.args
     )
     if i === nothing
@@ -261,7 +261,7 @@ get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = get_top_parent(gp.parent)
 
 function _block(T::Type{<:Block},
-        gp::Union{GridPosition, GridSubposition}, args...; kwargs...)
+    gp::Union{GridPosition,GridSubposition}, args...; kwargs...)
 
     top_parent = get_top_parent(gp)
     if top_parent === nothing
@@ -272,18 +272,18 @@ function _block(T::Type{<:Block},
 end
 
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args...; bbox = nothing, kwargs...)
     return _block(T, fig_or_scene, Any[args...], Dict{Symbol,Any}(kwargs), bbox)
 end
 
-function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
+function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing,Scene})
     return block_defaults(getfield(Makie, blockname), attribute_kwargs, scene)
 end
-function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing, Scene}) where {B <: Block}
+function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,Scene}) where {B<:Block}
     default_attrs = default_attribute_values(B, scene)
     blockname = nameof(B)
     typekey_scene_attrs = get(theme(scene), blockname, Attributes())
-    typekey_attrs = theme(blockname; default=Attributes())::Attributes
+    typekey_attrs = theme(blockname; default = Attributes())::Attributes
     attributes = Dict{Symbol,Any}()
     # make a final attribute dictionary using different priorities
     # for the different themes
@@ -305,12 +305,12 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     return attributes
 end
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete=false)
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
     # first sort out all user kwargs that correspond to block attributes
     check_textsize_deprecation(kwdict)
 
-    attribute_kwargs = Dict{Symbol, Any}()
+    attribute_kwargs = Dict{Symbol,Any}()
     for (key, value) in kwdict
         if is_attribute(T, key)
             attribute_kwargs[key] = pop!(kwdict, key)
@@ -349,7 +349,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(topscene, clear=false, camera = campixel!)
+    blockscene = Scene(topscene, clear = false, camera = campixel!)
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
@@ -418,7 +418,7 @@ end
 """
 Get the scene which blocks need from their parent to plot stuff into
 """
-get_topscene(f::Union{GridPosition, GridSubposition}) = get_topscene(get_top_parent(f))
+get_topscene(f::Union{GridPosition,GridSubposition}) = get_topscene(get_top_parent(f))
 get_topscene(f::Figure) = f.scene
 function get_topscene(s::Scene)
     if !(Makie.cameracontrols(s) isa Makie.PixelCamera)
@@ -450,7 +450,7 @@ function connect_block_layoutobservables!(@nospecialize(block), layout_width, la
     return
 end
 
-@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Block
+@inline function Base.setproperty!(x::T, key::Symbol, value) where T<:Block
     if hasfield(T, key)
         if fieldtype(T, key) <: Observable
             if value isa Observable
@@ -459,7 +459,7 @@ end
             obs = fieldtype(T, key)
             getfield(x, key)[] = convert_for_attribute(observable_type(obs), value)
         else
-        setfield!(x, key, value)
+            setfield!(x, key, value)
         end
     else
         # this will throw correctly
@@ -470,7 +470,7 @@ end
 # treat all blocks as scalars when broadcasting
 Base.Broadcast.broadcastable(l::Block) = Ref(l)
 
-function Base.show(io::IO, ::T) where T <: Block
+function Base.show(io::IO, ::T) where T<:Block
     print(io, "$T()")
 end
 

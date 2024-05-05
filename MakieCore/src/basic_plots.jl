@@ -183,11 +183,7 @@ $(Base.Docs.doc(colormap_attributes!))
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Heatmap, x, y, values) do scene
-    attr = Attributes(;
-
-        interpolate = false,
-
-        linewidth = 0.0,
+    attr = Attributes(; interpolate = false, linewidth = 0.0,
         fxaa = true,
     )
     generic_plot_attributes!(attr)
@@ -223,9 +219,7 @@ $(Base.Docs.doc(colormap_attributes!))
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Volume, x, y, z, volume) do scene
-    attr = Attributes(;
-
-        algorithm = :mip,
+    attr = Attributes(; algorithm = :mip,
         isovalue = 0.5,
         isorange = 0.05,
         interpolate = true,
@@ -259,9 +253,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 @recipe(Surface, x, y, z) do scene
     attr = Attributes(;
         color = nothing,
-        invert_normals = false,
-
-        fxaa = true,
+        invert_normals = false, fxaa = true,
     )
     shading_attributes!(attr)
     generic_plot_attributes!(attr)
@@ -292,16 +284,12 @@ $(Base.Docs.doc(colormap_attributes!))
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Lines, positions) do scene
-    attr = Attributes(;
-
-        color = theme(scene, :linecolor),
-        linewidth = theme(scene, :linewidth),
-
-        linestyle = nothing,
+    attr = Attributes(; color = theme(scene, :linecolor),
+        linewidth = theme(scene, :linewidth), linestyle = nothing,
         fxaa = false,
         cycle = [:color],
     )
-    generic_plot_attributes!(attr, )
+    generic_plot_attributes!(attr,)
     return colormap_attributes!(attr, theme(scene, :colormap))
 end
 
@@ -358,9 +346,7 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 @recipe(Mesh, mesh) do scene
     attr = Attributes(;
         color = :black,
-        interpolate = true,
-
-        fxaa = true,
+        interpolate = true, fxaa = true,
         cycle = [:color => :patchcolor],
     )
     shading_attributes!(attr)
@@ -398,25 +384,15 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Scatter, positions) do scene
     attr = Attributes(;
-        color = theme(scene, :markercolor),
-
-        marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
-
-        strokecolor = theme(scene, :markerstrokecolor),
+        color = theme(scene, :markercolor), marker = theme(scene, :marker),
+        markersize = theme(scene, :markersize), strokecolor = theme(scene, :markerstrokecolor),
         strokewidth = theme(scene, :markerstrokewidth),
         glowcolor = (:black, 0.0),
-        glowwidth = 0.0,
-
-        rotations = Billboard(),
-        marker_offset = automatic,
-
-        transform_marker = false, # Applies the plots transformation to marker
+        glowwidth = 0.0, rotations = Billboard(),
+        marker_offset = automatic, transform_marker = false, # Applies the plots transformation to marker
         distancefield = nothing,
         uv_offset_width = (0.0, 0.0, 0.0, 0.0),
-        markerspace = :pixel,
-
-        fxaa = false,
+        markerspace = :pixel, fxaa = false,
         cycle = [:color],
     )
     generic_plot_attributes!(attr)
@@ -450,14 +426,10 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(MeshScatter, positions) do scene
     attr = Attributes(;
-        color = theme(scene, :markercolor),
-
-        marker = :Sphere,
+        color = theme(scene, :markercolor), marker = :Sphere,
         markersize = 0.1,
         rotations = 0.0,
-        space = :data,
-
-        fxaa = true,
+        space = :data, fxaa = true,
         cycle = [:color],
     )
     shading_attributes!(attr)
@@ -498,12 +470,8 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Text, positions) do scene
     attr = Attributes(;
-        color = theme(scene, :textcolor),
-
-        font = theme(scene, :font),
-        fonts = theme(scene, :fonts),
-
-        strokecolor = (:black, 0.0),
+        color = theme(scene, :textcolor), font = theme(scene, :font),
+        fonts = theme(scene, :fonts), strokecolor = (:black, 0.0),
         strokewidth = 0,
         align = (:left, :bottom),
         rotation = 0.0,
@@ -555,17 +523,11 @@ $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(Poly) do scene
     attr = Attributes(;
-        color = theme(scene, :patchcolor),
-
-        strokecolor = theme(scene, :patchstrokecolor),
+        color = theme(scene, :patchcolor), strokecolor = theme(scene, :patchstrokecolor),
         strokecolormap = theme(scene, :colormap),
         strokewidth = theme(scene, :patchstrokewidth),
-        linestyle = nothing,
-
-        shading = NoShading,
-        fxaa = true,
-
-        cycle = [:color => :patchcolor],
+        linestyle = nothing, shading = NoShading,
+        fxaa = true, cycle = [:color => :patchcolor],
     )
     generic_plot_attributes!(attr)
     return colormap_attributes!(attr, theme(scene, :colormap))
@@ -580,22 +542,12 @@ end
 
 @recipe(Arrows, points, directions) do scene
     attr = Attributes(
-        color = :black,
-
-        arrowsize = automatic,
+        color = :black, arrowsize = automatic,
         arrowhead = automatic,
-        arrowtail = automatic,
-
-        linecolor = automatic,
+        arrowtail = automatic, linecolor = automatic,
         linestyle = nothing,
-        align = :origin,
-
-        normalize = false,
-        lengthscale = 1f0,
-
-        colorscale = identity,
-
-        quality = 32,
+        align = :origin, normalize = false,
+        lengthscale = 1f0, colorscale = identity, quality = 32,
         markerspace = :pixel,
     )
 

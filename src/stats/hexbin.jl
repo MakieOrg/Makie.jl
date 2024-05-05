@@ -20,18 +20,18 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 """
 @recipe(Hexbin) do scene
     return Attributes(;
-        colormap=theme(scene, :colormap),
-        colorscale=identity,
-        colorrange=Makie.automatic,
+        colormap = theme(scene, :colormap),
+        colorscale = identity,
+        colorrange = Makie.automatic,
         lowclip = automatic,
         highclip = automatic,
         nan_color = :transparent,
-        bins=20,
-        weights=nothing,
-        cellsize=nothing,
-        threshold=1,
-        strokewidth=0,
-        strokecolor=:black)
+        bins = 20,
+        weights = nothing,
+        cellsize = nothing,
+        threshold = 1,
+        strokewidth = 0,
+        strokecolor = :black)
 end
 
 function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
@@ -57,7 +57,7 @@ function spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma,
     yspacing = cellsizes[2] * 3 / 4
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
     return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
-           ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
+    ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
 end
 
 conversion_trait(::Type{<:Hexbin}) = PointBased()
@@ -111,7 +111,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         xsize = xspacing * 2
         rx = xsize / sqrt3
 
-        d = Dict{Tuple{Int,Int}, Float64}()
+        d = Dict{Tuple{Int,Int},Float64}()
 
         # for the distance measurement, the y dimension must be weighted relative to the x
         # dimension according to the different sizes in each, otherwise the attribution to hexagonal
@@ -133,12 +133,12 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             id = if is_grid1
                 (
                     cld(dvx, 2),
-                    iseven(dvy) ? dvy : dvy+1
+                    iseven(dvy) ? dvy : dvy + 1
                 )
             else
                 (
                     fld(dvx, 2),
-                    iseven(dvy) ? dvy+1 : dvy,
+                    iseven(dvy) ? dvy + 1 : dvy,
                 )
             end
 
@@ -147,9 +147,9 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         end
 
         if threshold == 0
-            for iy in 0:nbinsy-1
+            for iy in 0:(nbinsy - 1)
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
-                for ix in 0:_nx-1
+                for ix in 0:(_nx - 1)
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
                     c = get(d, (ix, iy), 0.0)
@@ -198,7 +198,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         end
     end
 
-    hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi / 6, 13pi / 6; length=7)[1:6]])
+    hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi / 6, 13pi / 6; length = 7)[1:6]])
     scale = if haskey(hb, :scale)
         @warn("`hexbin(..., scale=$(hb.scale[]))` is deprecated, use `hexbin(..., colorscale=$(hb.scale[]))` instead")
         hb.scale
@@ -206,18 +206,18 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         hb.colorscale
     end
     return scatter!(hb, points;
-                    colorrange=hb.colorrange,
-                    color=count_hex,
-                    colormap=hb.colormap,
-                    colorscale=scale,
-                    lowclip=hb.lowclip,
-                    highclip=hb.highclip,
-                    nan_color=hb.nan_color,
-                    marker=hexmarker,
-                    markersize=markersize,
-                    markerspace=:data,
-                    strokewidth=hb.strokewidth,
-                    strokecolor=hb.strokecolor)
+        colorrange = hb.colorrange,
+        color = count_hex,
+        colormap = hb.colormap,
+        colorscale = scale,
+        lowclip = hb.lowclip,
+        highclip = hb.highclip,
+        nan_color = hb.nan_color,
+        marker = hexmarker,
+        markersize = markersize,
+        markerspace = :data,
+        strokewidth = hb.strokewidth,
+        strokecolor = hb.strokecolor)
 end
 
 function center_value(dv, spacing, offset, is_grid1)

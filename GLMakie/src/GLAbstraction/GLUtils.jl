@@ -1,6 +1,6 @@
 function print_with_lines(out::IO, text::AbstractString)
     io = IOBuffer()
-    for (i,line) in enumerate(split(text, "\n"))
+    for (i, line) in enumerate(split(text, "\n"))
         println(io, @sprintf("%-4d: %s", i, line))
     end
     write(out, take!(io))
@@ -13,8 +13,8 @@ Needed to match the lazy gl_convert exceptions.
     `Target`: targeted OpenGL type
     `x`: the variable that gets matched
 """
-matches_target(::Type{Target}, x::T) where {Target, T} = applicable(gl_convert, Target, x) || T <: Target  # it can be either converted to Target, or it's already the target
-matches_target(::Type{Target}, x::Observable{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
+matches_target(::Type{Target}, x::T) where {Target,T} = applicable(gl_convert, Target, x) || T <: Target  # it can be either converted to Target, or it's already the target
+matches_target(::Type{Target}, x::Observable{T}) where {Target,T} = applicable(gl_convert, Target, x) || T <: Target
 matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
 
@@ -45,13 +45,13 @@ macro gen_defaults!(dict, args)
     dictsym = gensym()
     return_expression = Expr(:block)
     push!(return_expression.args, :($dictsym = $dict)) # dict could also be an expression, so we need to asign it to a variable at the beginning
-    push!(return_expression.args, :(gl_convert_targets = get!($dictsym, :gl_convert_targets, Dict{Symbol, Any}()))) # exceptions for glconvert.
-    push!(return_expression.args, :(doc_strings = get!($dictsym, :doc_string, Dict{Symbol, Any}()))) # exceptions for glconvert.
+    push!(return_expression.args, :(gl_convert_targets = get!($dictsym, :gl_convert_targets, Dict{Symbol,Any}()))) # exceptions for glconvert.
+    push!(return_expression.args, :(doc_strings = get!($dictsym, :doc_string, Dict{Symbol,Any}()))) # exceptions for glconvert.
     # @gen_defaults can be used multiple times, so we need to reuse gl_convert_targets if already in here
     for (i, elem) in enumerate(tuple_list)
         opengl_convert_target = :() # is optional, so first is an empty expression
-        convert_target        = :() # is optional, so first is an empty expression
-        doc_strings           = :()
+        convert_target = :() # is optional, so first is an empty expression
+        doc_strings = :()
         if Meta.isexpr(elem, :(=))
             key_name, value_expr = elem.args
             if isa(key_name, Expr) && key_name.head === :(::) # we need to convert to a julia type
@@ -103,5 +103,5 @@ export @gen_defaults!
 
 makesignal(@nospecialize(v)) = convert(Observable, v)
 
-@inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
+@inline const_lift(f::Union{DataType,Type,Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift

@@ -4,13 +4,13 @@ https://www.nature.com/articles/nmeth.1618?WT.ec_id=NMETH-201106
 =#
 function wong_colors(alpha = 1.0)
     colors = [
-        RGB(0/255, 114/255, 178/255), # blue
-        RGB(230/255, 159/255, 0/255), # orange
-        RGB(0/255, 158/255, 115/255), # green
-        RGB(204/255, 121/255, 167/255), # reddish purple
-        RGB(86/255, 180/255, 233/255), # sky blue
-        RGB(213/255, 94/255, 0/255), # vermillion
-        RGB(240/255, 228/255, 66/255), # yellow
+        RGB(0 / 255, 114 / 255, 178 / 255), # blue
+        RGB(230 / 255, 159 / 255, 0 / 255), # orange
+        RGB(0 / 255, 158 / 255, 115 / 255), # green
+        RGB(204 / 255, 121 / 255, 167 / 255), # reddish purple
+        RGB(86 / 255, 180 / 255, 233 / 255), # sky blue
+        RGB(213 / 255, 94 / 255, 0 / 255), # vermillion
+        RGB(240 / 255, 228 / 255, 66 / 255), # yellow
     ]
     return RGBAf.(colors, alpha)
 end
@@ -87,9 +87,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         antialias = :best,
         visible = true,
         start_renderloop = false
-    ),
-
-    GLMakie = Attributes(
+    ), GLMakie = Attributes(
         # Renderloop
         renderloop = automatic,
         pause_renderloop = false,
@@ -120,9 +118,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # maximum number of lights with shading = :verbose
         max_lights = 64,
         max_light_parameters = 5 * 64
-    ),
-
-    WGLMakie = Attributes(
+    ), WGLMakie = Attributes(
         framerate = 30.0,
         resize_to = nothing,
         # DEPRECATED in favor of resize_to
@@ -130,9 +126,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         resize_to_body = nothing,
         px_per_unit = automatic,
         scalefactor = automatic
-    ),
-
-    RPRMakie = Attributes(
+    ), RPRMakie = Attributes(
         iterations = 200,
         resource = automatic,
         plugin = automatic,
@@ -193,7 +187,7 @@ current_default_theme() = CURRENT_DEFAULT_THEME
 Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.
 """
-function set_theme!(new_theme=Attributes(); kwargs...)
+function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
         new_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
@@ -233,12 +227,12 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
-theme(::Nothing, key::Symbol; default=nothing) = theme(key; default)
+theme(::Nothing, key::Symbol; default = nothing) = theme(key; default)
 theme(::Nothing) = CURRENT_DEFAULT_THEME
-function theme(key::Symbol; default=nothing)
+function theme(key::Symbol; default = nothing)
     if haskey(CURRENT_DEFAULT_THEME, key)
         val = to_value(CURRENT_DEFAULT_THEME[key])
-        if val isa Union{NamedTuple, Attributes}
+        if val isa Union{NamedTuple,Attributes}
             return val
         else
             Observable{Any}(val)

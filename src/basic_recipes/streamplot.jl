@@ -26,14 +26,10 @@ See the function `Makie.streamplot_impl` for implementation details.
         stepsize = 0.01,
         gridsize = (32, 32, 32),
         maxsteps = 500,
-        color = norm,
-
-        arrow_size = automatic,
+        color = norm, arrow_size = automatic,
         arrow_head = automatic,
         density = 1.0,
-        quality = 16,
-
-        linewidth = theme(scene, :linewidth),
+        quality = 16, linewidth = theme(scene, :linewidth),
         linestyle = nothing,
     )
     MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
@@ -41,13 +37,13 @@ See the function `Makie.streamplot_impl` for implementation details.
     return attr
 end
 
-function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
+function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange, yrange)
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
     return (f, Rect(xmin, ymin, xmax - xmin, ymax - ymin))
 end
 
-function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, zrange)
+function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange, yrange, zrange)
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
     zmin, zmax = extrema(zrange)
@@ -56,7 +52,7 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, z
     return (f, Rect(mini, maxi .- mini))
 end
 
-function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
+function convert_arguments(::Type{<:StreamPlot}, f::Function, limits::Rect)
     return (f, limits)
 end
 
@@ -81,17 +77,17 @@ Links:
 
 [Quasirandom sequences](http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/)
 """
-function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0, color_func = norm) where {N, T}
-    resolution = to_ndim(Vec{N, Int}, resolutionND, last(resolutionND))
+function streamplot_impl(CallType, f, limits::Rect{N,T}, resolutionND, stepsize, maxsteps = 500, dens = 1.0, color_func = norm) where {N,T}
+    resolution = to_ndim(Vec{N,Int}, resolutionND, last(resolutionND))
     mask = trues(resolution...) # unvisited squares
-    arrow_pos = Point{N, Float32}[]
-    arrow_dir = Vec{N, Float32}[]
-    line_points = Point{N, Float32}[]
-    _cfunc = x-> to_color(color_func(x))
+    arrow_pos = Point{N,Float32}[]
+    arrow_dir = Vec{N,Float32}[]
+    line_points = Point{N,Float32}[]
+    _cfunc = x -> to_color(color_func(x))
     ColorType = typeof(_cfunc(Point{N,Float32}(0.0)))
     line_colors = ColorType[]
     colors = ColorType[]
-    dt = Point{N, Float32}(stepsize)
+    dt = Point{N,Float32}(stepsize)
     mini, maxi = minimum(limits), maximum(limits)
     r = ntuple(N) do i
         LinRange(mini[i], maxi[i], resolution[i] + 1)
@@ -100,13 +96,13 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
 
     # see http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
     ϕ = (MathConstants.φ, 1.324717957244746, 1.2207440846057596)[N]
-    acoeff = ϕ.^(-(1:N))
+    acoeff = ϕ .^ (-(1:N))
     n_points = 0 # count visited squares
     ind = 0 # index of low discrepancy sequence
-    while n_points < prod(resolution)*min(one(dens), dens) # fill up to 100*dens% of mask
+    while n_points < prod(resolution) * min(one(dens), dens) # fill up to 100*dens% of mask
         # next index from low discrepancy sequence
         c = CartesianIndex(ntuple(N) do i
-            j = ceil(Int, ((0.5 + acoeff[i]*ind) % 1)*resolution[i])
+            j = ceil(Int, ((0.5 + acoeff[i] * ind) % 1) * resolution[i])
             clamp(j, 1, size(mask, i))
         end)
         ind += 1
@@ -129,7 +125,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
                 n_linepoints = 1
                 x = x0
                 ccur = c
-                push!(line_points, Point{N, Float32}(NaN), x)
+                push!(line_points, Point{N,Float32}(NaN), x)
                 push!(line_colors, color, color)
                 while x in limits && n_linepoints < maxsteps
                     point = apply_f(x, CallType)
@@ -180,7 +176,7 @@ function plot!(p::StreamPlot)
 
     lines!(
         p,
-        lift(x->x[3], p, data),
+        lift(x -> x[3], p, data),
         color = lift(last, p, data),
         linestyle = p.linestyle,
         linewidth = p.linewidth;
@@ -228,8 +224,8 @@ function plot!(p::StreamPlot)
     scatterfun(N)(
         p,
         lift(first, p, data);
-        markersize=arrow_size, rotations=rotations,
-        color=lift(x -> x[4], p, data),
+        markersize = arrow_size, rotations = rotations,
+        color = lift(x -> x[4], p, data),
         marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
         colormap_args...,
         generic_plot_attributes...

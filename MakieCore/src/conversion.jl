@@ -23,7 +23,7 @@ function used_attributes end
 
 abstract type ConversionTrait end
 
-const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
+const XYBased = Union{MeshScatter,Scatter,Lines,LineSegments}
 
 struct NoConversion <: ConversionTrait end
 
@@ -40,8 +40,8 @@ Plots with the `PointBased` trait convert their input data to a
 `Vector{Point{D, Float32}}`.
 """
 struct PointBased <: ConversionTrait end
-conversion_trait(::Type{<: XYBased}) = PointBased()
-conversion_trait(::Type{<: Text}) = PointBased()
+conversion_trait(::Type{<:XYBased}) = PointBased()
+conversion_trait(::Type{<:Text}) = PointBased()
 
 """
     GridBased <: ConversionTrait
@@ -67,7 +67,7 @@ See also: [`CellGrid`](@ref), [`ImageLike`](@ref)
 Used for: Surface
 """
 struct VertexGrid <: GridBased end
-conversion_trait(::Type{<: Surface}) = VertexGrid()
+conversion_trait(::Type{<:Surface}) = VertexGrid()
 
 """
     CellGrid() <: GridBased <: ConversionTrait
@@ -81,7 +81,7 @@ See also: [`VertexGrid`](@ref), [`ImageLike`](@ref)
 Used for: Heatmap
 """
 struct CellGrid <: GridBased end
-conversion_trait(::Type{<: Heatmap}) = CellGrid()
+conversion_trait(::Type{<:Heatmap}) = CellGrid()
 
 """
     ImageLike() <: ConversionTrait
@@ -94,9 +94,9 @@ See also: [`CellGrid`](@ref), [`VertexGrid`](@ref)
 Used for: Image
 """
 struct ImageLike <: ConversionTrait end
-conversion_trait(::Type{<: Image}) = ImageLike()
+conversion_trait(::Type{<:Image}) = ImageLike()
 # Rect2f(xmin, ymin, xmax, ymax)
 
 
 struct VolumeLike <: ConversionTrait end
-conversion_trait(::Type{<: Volume}) = VolumeLike()
+conversion_trait(::Type{<:Volume}) = VolumeLike()

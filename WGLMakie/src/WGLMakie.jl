@@ -43,7 +43,7 @@ include("meshes.jl")
 include("imagelike.jl")
 include("picking.jl")
 
-const LAST_INLINE = Base.RefValue{Union{Automatic, Bool}}(Makie.automatic)
+const LAST_INLINE = Base.RefValue{Union{Automatic,Bool}}(Makie.automatic)
 
 """
     WGLMakie.activate!(; screen_config...)
@@ -55,7 +55,7 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config...)
+function activate!(; inline::Union{Automatic,Bool} = LAST_INLINE[], screen_config...)
     Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
@@ -86,7 +86,7 @@ function __init__()
 end
 
 # re-export Makie, including deprecated names
-for name in names(Makie, all=true)
+for name in names(Makie, all = true)
     if Base.isexported(Makie, name) && name !== :Button && name !== :Slider
         @eval using Makie: $(name)
         @eval export $(name)

@@ -152,7 +152,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     inv_transf = Makie.inverse_transform(transf)
 
     if isnothing(inv_transf)
-        @warn "Can't rectangle zoom without inverse transform" maxlog=1
+        @warn "Can't rectangle zoom without inverse transform" maxlog = 1
         # TODO, what can we do without inverse?
         return Consume(false)
     end
@@ -180,7 +180,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         try
             r.callback(r.rectnode[])
         catch e
-            @warn "error in rectangle zoom" exception=(e, Base.catch_backtrace())
+            @warn "error in rectangle zoom" exception = (e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)
@@ -189,10 +189,10 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     return Consume(false)
 end
 
-function rectclamp(p::Point{N, T}, r::Rect) where {N, T}
+function rectclamp(p::Point{N,T}, r::Rect) where {N,T}
     mi, ma = extrema(r)
     p = clamp.(p, mi, ma)
-    return Point{N, T}(p)
+    return Point{N,T}(p)
 end
 
 function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
@@ -249,11 +249,11 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         mp_axscene = Vec4f((e.mouseposition[] .- pa.origin)..., 0, 1)
 
         # first to normal -1..1 space
-        mp_axfraction =  (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
-            # now to 1..-1 if an axis is reversed to correct zoom point
-            (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
-            # now to 0..1
-            0.5 .+ 0.5
+        mp_axfraction = (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
+                        # now to 1..-1 if an axis is reversed to correct zoom point
+                        (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
+                        # now to 0..1
+                        0.5 .+ 0.5
 
         xscale = ax.xscale[]
         yscale = ax.yscale[]
@@ -361,7 +361,7 @@ function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
     dpx = event.px - event.prev_px
 
     ax3d.azimuth[] += -dpx[1] * 0.01
-    ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi/2 + 0.001, pi/2 - 0.001)
+    ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi / 2 + 0.001, pi / 2 - 0.001)
 
     return Consume(true)
 end

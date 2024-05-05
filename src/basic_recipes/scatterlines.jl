@@ -28,10 +28,10 @@ $(ATTRIBUTES)
     )
 end
 
-conversion_trait(::Type{<: ScatterLines}) = PointBased()
+conversion_trait(::Type{<:ScatterLines}) = PointBased()
 
 
-function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
+function plot!(p::Plot{scatterlines,<:NTuple{N,Any}}) where N
 
     # markercolor is the same as linecolor if left automatic
     real_markercolor = Observable{Any}()

@@ -40,18 +40,18 @@ end
 function show_glyph(ctx, glyph, x, y)
     cg = Ref(CairoGlyph(glyph, x, y))
     ccall((:cairo_show_glyphs, Cairo.libcairo),
-            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
-            ctx.ptr, cg, 1)
+        Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+        ctx.ptr, cg, 1)
 end
 
 function glyph_path(ctx, glyph, x, y)
     cg = Ref(CairoGlyph(glyph, x, y))
     ccall((:cairo_glyph_path, Cairo.libcairo),
-            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
-            ctx.ptr, cg, 1)
+        Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+        ctx.ptr, cg, 1)
 end
 
-function surface_set_device_scale(surf, device_x_scale, device_y_scale=device_x_scale)
+function surface_set_device_scale(surf, device_x_scale, device_y_scale = device_x_scale)
     # this sets a scaling factor on the lowest level that is "hidden" so its even
     # enabled when the drawing space is reset for strokes
     # that means it can be used to increase or decrease the image resolution

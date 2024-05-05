@@ -24,7 +24,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     end
 end
 
-function pick_native(screen::Screen, xy::Vec{2, Float64})
+function pick_native(screen::Screen, xy::Vec{2,Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
     ShaderAbstractions.switch_context!(screen.glscreen)
     fb = screen.framebuffer
@@ -43,7 +43,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     return SelectionID{Int}(0, 0)
 end
 
-function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
+function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2,Float64})
     sid = pick_native(screen, xy)
     if haskey(screen.cache2plot, sid.id)
         plot = screen.cache2plot[sid.id]
@@ -72,14 +72,15 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
 
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.((w, h), floor.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
+    dx = x1 - x0
+    dy = y1 - y0
     sids = pick_native(screen, Rect2i(x0, y0, dx, dy))
 
     min_dist = range^2
     id = SelectionID{Int}(0, 0)
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
+    x, y = xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        d = (x-i)^2 + (y-j)^2
+        d = (x - i)^2 + (y - j)^2
         sid = sids[i, j]
         if (d < min_dist) && (sid.id > 0) && haskey(screen.cache2plot, sid.id)
             min_dist = d
@@ -99,20 +100,21 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
     w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
-        return Tuple{AbstractPlot, Int}[]
+        return Tuple{AbstractPlot,Int}[]
     end
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], ceil.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
+    dx = x1 - x0
+    dy = y1 - y0
 
     picks = pick_native(screen, Rect2i(x0, y0, dx, dy))
 
     selected = filter(x -> x.id > 0 && haskey(screen.cache2plot, x.id), unique(vec(picks)))
     distances = Float32[range^2 for _ in selected]
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
+    x, y = xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         if picks[i, j].id > 0
-            d = (x-i)^2 + (y-j)^2
+            d = (x - i)^2 + (y - j)^2
             idx = findfirst(isequal(picks[i, j]), selected)
             if idx === nothing
                 continue

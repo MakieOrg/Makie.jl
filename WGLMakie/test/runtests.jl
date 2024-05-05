@@ -50,7 +50,7 @@ excludes = Set([
 ])
 Makie.inline!(Makie.automatic)
 
-edisplay = Bonito.use_electron_display(devtools=true)
+edisplay = Bonito.use_electron_display(devtools = true)
 @testset "refimages" begin
     WGLMakie.activate!()
     ReferenceTests.mark_broken_tests(excludes)
@@ -63,9 +63,9 @@ end
     Makie.CURRENT_FIGURE[] = nothing
     app = App(nothing)
     display(edisplay, app)
-    GC.gc(true);
+    GC.gc(true)
     # Somehow this may take a while to get emptied completely
-    Bonito.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)")));timeout=20)
+    Bonito.wait_for(() -> (GC.gc(true); isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)"))); timeout = 20)
     wgl_plots = run(edisplay.window, "Object.keys(WGL.scene_cache)")
     @test isempty(wgl_plots)
 
@@ -76,7 +76,7 @@ end
     @test session_size / 10^6 < 6
     @test texture_atlas_size < 6
     s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
-    Bonito.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=30)
+    Bonito.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout = 30)
     js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
     js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
     # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)

@@ -17,7 +17,7 @@ function initialize_block!(l::Label)
     textbb = Ref(BBox(0, 1, 0, 1))
 
     onany(topscene, l.text, l.fontsize, l.font, l.rotation, word_wrap_width,
-          l.padding) do _, _, _, _, _, padding
+        l.padding) do _, _, _, _, _, padding
         textbb[] = Rect2f(boundingbox(t))
         autowidth = width(textbb[]) + padding[1] + padding[2]
         autoheight = height(textbb[]) + padding[3] + padding[4]

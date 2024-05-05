@@ -69,11 +69,11 @@ struct Events
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates once per event poll/frame.
     """
-    mouseposition::Observable{NTuple{2, Float64}} # why no Vec2?
+    mouseposition::Observable{NTuple{2,Float64}} # why no Vec2?
     """
     The direction of scroll
     """
-    scroll::Observable{NTuple{2, Float64}} # why no Vec2?
+    scroll::Observable{NTuple{2,Float64}} # why no Vec2?
 
     """
     Most recently triggered `KeyEvent`. Contains the relevant `event.key` and
@@ -119,14 +119,10 @@ function Events()
     events = Events(
         Observable(Recti(0, 0, 0, 0)),
         Observable(100.0),
-        Observable(false),
-
-        Observable(MouseButtonEvent(Mouse.none, Mouse.release)),
+        Observable(false), Observable(MouseButtonEvent(Mouse.none, Mouse.release)),
         Set{Mouse.Button}(),
         Observable((0.0, 0.0)),
-        Observable((0.0, 0.0)),
-
-        Observable(KeyEvent(Keyboard.unknown, Keyboard.release)),
+        Observable((0.0, 0.0)), Observable(KeyEvent(Keyboard.unknown, Keyboard.release)),
         Set{Keyboard.Button}(),
         Observable('\0'),
         Observable(String[]),
@@ -256,7 +252,7 @@ struct Camera
     """
     steering_nodes::Vector{ObserverFunction}
 
-    calculated_values::Dict{Symbol, Observable}
+    calculated_values::Dict{Symbol,Observable}
 end
 
 """
@@ -283,38 +279,38 @@ struct Transformation <: Transformable
         end
         transform_func_o = convert(Observable{Any}, transform_func)
         return new(RefValue{Transformation}(),
-                   translation_o, scale_o, rotation_o, model, parent_model, transform_func_o)
+            translation_o, scale_o, rotation_o, model, parent_model, transform_func_o)
     end
 end
 
-function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
+function Transformation(transform_func = identity;
+    scale = Vec3f(1),
+    translation = Vec3f(0),
+    rotation = Quaternionf(0, 0, 0, 1))
     return Transformation(translation,
-                          scale,
-                          rotation,
-                          transform_func)
+        scale,
+        rotation,
+        transform_func)
 end
 
 function Transformation(parent::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1),
-                        transform_func=nothing)
+    scale = Vec3f(1),
+    translation = Vec3f(0),
+    rotation = Quaternionf(0, 0, 0, 1),
+    transform_func = nothing)
     connect_func = isnothing(transform_func)
     trans = isnothing(transform_func) ? identity : transform_func
 
     trans = Transformation(translation,
-                           scale,
-                           rotation,
-                           trans)
-    connect!(transformation(parent), trans; connect_func=connect_func)
+        scale,
+        rotation,
+        trans)
+    connect!(transformation(parent), trans; connect_func = connect_func)
     return trans
 end
 
 struct ScalarOrVector{T}
-    sv::Union{T, Vector{T}}
+    sv::Union{T,Vector{T}}
 end
 
 Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
@@ -383,7 +379,7 @@ struct GlyphCollection
     strokewidths::ScalarOrVector{Float32}
 
     function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,
-            colors, strokecolors, strokewidths)
+        colors, strokecolors, strokewidths)
 
         n = length(glyphs)
         @assert length(fonts) == n
@@ -404,9 +400,9 @@ end
 
 
 # The color type we ideally use for most color attributes
-const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
+const RGBColors = Union{RGBAf,Vector{RGBAf},Vector{Float32}}
 
-const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
+const LogFunctions = Union{typeof(log10),typeof(log2),typeof(log)}
 
 """
     ReversibleScale
@@ -416,7 +412,7 @@ Custom scale struct, taking a forward and inverse arbitrary scale function.
 ## Fields
 $(TYPEDFIELDS)
 """
-struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: Function
+struct ReversibleScale{F<:Function,I<:Function,T<:AbstractInterval} <: Function
     """
     forward transformation (e.g. `log10`)
     """
@@ -434,7 +430,7 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: F
     """
     interval::T
     name::Symbol
-    function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32), name=Symbol(forward))
+    function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32), name = Symbol(forward))
         inverse isa Automatic && (inverse = inverse_transform(forward))
         isnothing(inverse) && throw(ArgumentError(
             "Cannot determine inverse transform: you can use `ReversibleScale($(forward), inverse($(forward)))` instead."

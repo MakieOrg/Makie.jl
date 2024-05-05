@@ -9,7 +9,7 @@ nothing_or_color(c::Nothing) = RGBAf(0, 0, 0, 1)
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
-    grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
+    grid(x, y, z, trans, space) = Makie.matrix_grid(p -> apply_transform(trans, p, space), x, y, z)
 
     # TODO: Use Makie.surface2mesh
     ps = lift(grid, plot, px, py, pz, transform_func_obs(plot), get(plot, :space, :data))
@@ -24,7 +24,7 @@ function create_shader(mscene::Scene, plot::Surface)
     uv = Buffer(lift(plot, rect) do r
         Nx, Ny = r.nvertices
         f = Vec2f(1 / Nx, 1 / Ny)
-        [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+        [f .* Vec2f(0.5 + i, 0.5 + j) for j in (Ny - 1):-1:0 for i in 0:(Nx - 1)]
     end)
     normals = Buffer(lift(Makie.nan_aware_normals, plot, ps, fs))
 
@@ -34,7 +34,7 @@ function create_shader(mscene::Scene, plot::Surface)
     return draw_mesh(mscene, per_vertex, plot, uniforms)
 end
 
-function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
+function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
     mesh = limits_to_uvmesh(plot)
     uniforms = Dict(
         :normals => Vec3f(0),
@@ -69,7 +69,7 @@ function create_shader(mscene::Scene, plot::Volume)
 
 
 
-    uniforms = Dict{Symbol, Any}(
+    uniforms = Dict{Symbol,Any}(
         :modelinv => modelinv,
         :isovalue => lift(Float32, plot, plot.isovalue),
         :isorange => lift(Float32, plot, plot.isorange),
@@ -90,7 +90,7 @@ function create_shader(mscene::Scene, plot::Volume)
         :object_id => UInt32(0)
     )
 
-    handle_color!(plot, uniforms, nothing, :volumedata; permute_tex=false)
+    handle_color!(plot, uniforms, nothing, :volumedata; permute_tex = false)
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
 end
 
@@ -127,8 +127,8 @@ end
 
 function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
-    px = map((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
-    py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
+    px = map((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values = true)
+    py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values = true)
     # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
@@ -148,7 +148,7 @@ function limits_to_uvmesh(plot)
         function grid(x, y, trans, space)
             return Makie.matrix_grid(p -> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
         end
-        resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values=true)
+        resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values = true)
         positions = Buffer(lift(grid, plot, px, py, t, get(plot, :space, :data)))
         faces = Buffer(lift(fast_faces, plot, resolution))
         uv = Buffer(lift(fast_uv, plot, resolution))

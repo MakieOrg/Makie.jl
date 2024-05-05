@@ -29,9 +29,7 @@ $(ATTRIBUTES)
         linestyle = nothing,
         enable_depth = true,
         transparency = false,
-        labels = false,
-
-        labelfont = theme(scene, :font),
+        labels = false, labelfont = theme(scene, :font),
         labelcolor = nothing,  # matches color by default
         labelformatter = contour_label_formatter,
         labelsize = 10,  # arbitrary
@@ -71,7 +69,7 @@ function label_info(lev, vertices, col)
     )
 end
 
-function contourlines(::Type{<: Contour}, contours, cols, labels)
+function contourlines(::Type{<:Contour}, contours, cols, labels)
     points = Point2f[]
     colors = RGBA{Float32}[]
     lev_pos_col = Tuple{Float32,NTuple{3,Point2f},RGBA{Float32}}[]
@@ -86,7 +84,7 @@ function contourlines(::Type{<: Contour}, contours, cols, labels)
     points, colors, lev_pos_col
 end
 
-function contourlines(::Type{<: Contour3d}, contours, cols, labels)
+function contourlines(::Type{<:Contour3d}, contours, cols, labels)
     points = Point3f[]
     colors = RGBA{Float32}[]
     lev_pos_col = Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[]
@@ -103,7 +101,7 @@ function contourlines(::Type{<: Contour3d}, contours, cols, labels)
     points, colors, lev_pos_col
 end
 
-to_levels(x::AbstractVector{<: Number}, cnorm) = x
+to_levels(x::AbstractVector{<:Number}, cnorm) = x
 
 function to_levels(n::Integer, cnorm)
     zmin, zmax = cnorm
@@ -111,16 +109,16 @@ function to_levels(n::Integer, cnorm)
     range(zmin + dz; step = dz, length = n)
 end
 
-conversion_trait(::Type{<: Contour3d}) = VertexGrid()
-conversion_trait(::Type{<: Contour}) = VertexGrid()
-conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<: Number, 3}}) = VolumeLike()
-conversion_trait(::Type{<: Contour}, ::AbstractArray{<: Number, 3}) = VolumeLike()
+conversion_trait(::Type{<:Contour3d}) = VertexGrid()
+conversion_trait(::Type{<:Contour}) = VertexGrid()
+conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function,AbstractArray{<:Number,3}}) = VolumeLike()
+conversion_trait(::Type{<:Contour}, ::AbstractArray{<:Number,3}) = VolumeLike()
 
-function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+function plot!(plot::Contour{<:Tuple{X,Y,Z,Vol}}) where {X,Y,Z,Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
     valuerange = lift(nan_extrema, plot, volume)
-    cliprange = replace_automatic!(()-> valuerange, plot, :colorrange)
+    cliprange = replace_automatic!(() -> valuerange, plot, :colorrange)
     cmap = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
@@ -135,7 +133,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i
-            i01 = (i-1) / (N - 1)
+            i01 = (i - 1) / (N - 1)
             c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
             line = reduce(levels, init = false) do v0, level
@@ -167,7 +165,7 @@ color_per_level(color, args...) = color_per_level(to_color(color), args...)
 color_per_level(color::Colorant, _, _, _, _, levels) = fill(color, length(levels))
 color_per_level(colors::AbstractVector, args...) = color_per_level(to_colormap(colors), args...)
 
-function color_per_level(colors::AbstractVector{<: Colorant}, _, _, _, _, levels)
+function color_per_level(colors::AbstractVector{<:Colorant}, _, _, _, _, levels)
     if length(levels) == length(colors)
         return colors
     else
@@ -202,11 +200,11 @@ function has_changed(old_args, new_args)
     false
 end
 
-function plot!(plot::T) where T <: Union{Contour, Contour3d}
+function plot!(plot::T) where T<:Union{Contour,Contour3d}
     x, y, z = plot[1:3]
     zrange = lift(nan_extrema, plot, z)
     levels = lift(plot, plot.levels, zrange) do levels, zrange
-        if levels isa AbstractVector{<: Number}
+        if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
             to_levels(levels, zrange)
@@ -215,7 +213,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         end
     end
 
-    replace_automatic!(()-> zrange, plot, :colorrange)
+    replace_automatic!(() -> zrange, plot, :colorrange)
 
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorscale, colorrange, alpha)
@@ -223,7 +221,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     args = (x, y, z, levels, level_colors, labels)
     arg_values = map(to_value, args)
     old_values = map(copy, arg_values)
-    points, colors, lev_pos_col = Observable.(contourlines(arg_values..., T); ignore_equal_values=true)
+    points, colors, lev_pos_col = Observable.(contourlines(arg_values..., T); ignore_equal_values = true)
     onany(plot, args...) do args...
         # contourlines is expensive enough, that it's worth to copy & check against old values
         # We need to copy, since the values may get mutated in place
@@ -251,13 +249,17 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     )
 
     lift(scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
-            labels, labelcolor, labelformatter, lev_pos_col
-        ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
+        labels, labelcolor, labelformatter, lev_pos_col
+    ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
-        pos = texts.positions.val; empty!(pos)
-        rot = texts.rotation.val; empty!(rot)
-        col = texts.color.val; empty!(col)
-        lbl = texts.text.val; empty!(lbl)
+        pos = texts.positions.val
+        empty!(pos)
+        rot = texts.rotation.val
+        empty!(rot)
+        col = texts.color.val
+        empty!(col)
+        lbl = texts.text.val
+        empty!(lbl)
         for (lev, (p1, p2, p3), color) in lev_pos_col
             px_pos1 = project(scene, apply_transform(transform_func(plot), p1, space))
             px_pos3 = project(scene, apply_transform(transform_func(plot), p3, space))
@@ -281,7 +283,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         return
     end
 
-    bboxes = lift(labels, texts.text; ignore_equal_values=true) do labels, _
+    bboxes = lift(labels, texts.text; ignore_equal_values = true) do labels, _
         labels || return
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
@@ -304,7 +306,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
-                # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
+            # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
             elseif project(scene, apply_transform(transform_func(plot), p, space)) in bb
                 masked[i] = nan
                 for dir in (-1, +1)
@@ -326,19 +328,19 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         color = colors,
         linewidth = plot.linewidth,
         linestyle = plot.linestyle,
-        visible=plot.visible,
-        transparency=plot.transparency,
-        overdraw=plot.overdraw,
-        inspectable=plot.inspectable,
-        depth_shift=plot.depth_shift,
-        space=plot.space
+        visible = plot.visible,
+        transparency = plot.transparency,
+        overdraw = plot.overdraw,
+        inspectable = plot.inspectable,
+        depth_shift = plot.depth_shift,
+        space = plot.space
     )
     plot
 end
 
-function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+function point_iterator(x::Contour{<:Tuple{X,Y,Z}}) where {X,Y,Z}
     axes = (x[1], x[2])
-    extremata = map(extrema∘to_value, axes)
+    extremata = map(extrema ∘ to_value, axes)
     minpoint = Point2f(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
     rect = Rect2f(minpoint, Vec2f(widths))

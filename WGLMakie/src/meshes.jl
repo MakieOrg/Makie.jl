@@ -1,6 +1,6 @@
 function vertexbuffer(x, trans, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos, space)
+    return apply_transform(trans, pos, space)
 end
 
 function vertexbuffer(x::Observable, @nospecialize(p))
@@ -17,7 +17,7 @@ function converted_attribute(plot::AbstractPlot, key::Symbol)
     end
 end
 
-function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_color; permute_tex=true)
+function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_color; permute_tex = true)
     color = plot.calculated_colors
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
 
@@ -29,15 +29,15 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         buffers[:color] = Buffer(color)
     elseif color[] isa Makie.AbstractPattern
         uniforms[:pattern] = true
-        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter=minfilter)
+        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter = minfilter)
     elseif color[] isa AbstractMatrix
-        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter=minfilter)
+        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter = minfilter)
     elseif color[] isa Makie.ColorMapping
         if color[].color_scaled[] isa AbstractVector
             buffers[:color] = Buffer(color[].color_scaled)
         else
             color_scaled = convert_text(color[].color_scaled)
-            uniforms[uniform_color_name] = Sampler(color_scaled; minfilter=minfilter)
+            uniforms[uniform_color_name] = Sampler(color_scaled; minfilter = minfilter)
         end
         uniforms[:colormap] = Sampler(color[].colormap)
         uniforms[:colorrange] = color[].colorrange_scaled
@@ -58,9 +58,9 @@ end
 lift_or(f, p, x) = f(x)
 lift_or(f, @nospecialize(p), x::Observable) = lift(f, p, x)
 
-function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
+function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex = true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
-    handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
+    handle_color!(plot, uniforms, per_vertex; permute_tex = permute_tex)
 
     get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
@@ -123,5 +123,5 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     attributes[:faces] = faces
     attributes[:positions] = positions
 
-    return draw_mesh(scene, attributes, plot, uniforms; permute_tex=false)
+    return draw_mesh(scene, attributes, plot, uniforms; permute_tex = false)
 end

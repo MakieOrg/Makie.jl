@@ -130,7 +130,7 @@ end
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTypes{4}}}
+function Makie.plot!(plot::Errorbars{T}) where T<:Tuple{AbstractVector{<:VecTypes{4}}}
 
     x_y_low_high = plot[1]
 
@@ -160,7 +160,7 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
 end
 
 
-function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTypes{3}}}
+function Makie.plot!(plot::Rangebars{T}) where T<:Tuple{AbstractVector{<:VecTypes{3}}}
 
     val_low_high = plot[1]
 
@@ -205,8 +205,8 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         screenendpoints = plot_to_screen(plot, endpoints)
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
-            (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
-            sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
+            (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth / 2)),
+                sep .+ f_if(is_in_y_direction[], reverse, Point(0, whiskerwidth / 2)))
         end
 
         return [p for pair in screenendpoints_shifted_pairs for p in pair]
@@ -221,7 +221,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
             return to_color(color)::RGBAf
         end
     end
-    whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
+    whiskerlinewidths = Observable{Union{Float32,Vector{Float32}}}()
     map!(plot, whiskerlinewidths, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
@@ -289,6 +289,6 @@ function screen_to_plot(plot, p::VecTypes)
 end
 
 # ignore whiskers when determining data limits
-function data_limits(bars::Union{Errorbars, Rangebars})
+function data_limits(bars::Union{Errorbars,Rangebars})
     data_limits(bars.plots[1])
 end

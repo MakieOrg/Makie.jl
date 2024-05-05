@@ -39,7 +39,7 @@ function plot!(plot::Pie)
         end
 
         # create vector of a vector of points for each piece
-        vertex_arrays = map(boundaries[1:end-1], boundaries[2:end]) do sta, en
+        vertex_arrays = map(boundaries[1:(end - 1)], boundaries[2:end]) do sta, en
             distance = en - sta
             # how many vertices are needed for the curve?
             nvertices = max(2, ceil(Int, rad2deg(distance) * vertex_per_deg))

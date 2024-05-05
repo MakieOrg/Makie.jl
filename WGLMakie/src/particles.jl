@@ -93,7 +93,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:shading] = map(x -> x != NoShading, plot.shading)
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
+        instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 using Makie: to_spritemarker
@@ -105,18 +105,18 @@ using Makie: to_spritemarker
 Optimization to just send the texture atlas one time to JS and then look it up from there in wglmakie.js,
 instead of uploading this texture 10x in every plot.
 """
-struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
-    dims::NTuple{2, Int}
+struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16,2}
+    dims::NTuple{2,Int}
 end
 
 function serialize_three(fta::NoDataTextureAtlas)
     tex = Dict(:type => "Sampler", :data => "texture_atlas",
-               :size => [fta.dims...], :three_format => three_format(Float16),
-               :three_type => three_type(Float16),
-               :minFilter => three_filter(:linear),
-               :magFilter => three_filter(:linear),
-               :wrapS => "RepeatWrapping",
-               :anisotropy => 16f0)
+        :size => [fta.dims...], :three_format => three_format(Float16),
+        :three_type => three_type(Float16),
+        :minFilter => three_filter(:linear),
+        :magFilter => three_filter(:linear),
+        :wrapS => "RepeatWrapping",
+        :anisotropy => 16f0)
     tex[:wrapT] = "RepeatWrapping"
     return tex
 end
@@ -124,7 +124,7 @@ end
 function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
     per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
-                         :uv_offset_width, :quad_offset, :marker_offset)
+        :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
     marker = nothing
@@ -160,7 +160,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     end
 
     color_keys = Set([:color, :colormap, :highclip, :lowclip, :nan_color, :colorrange, :colorscale,
-                      :calculated_colors])
+        :calculated_colors])
 
     for (k, v) in uniforms
         k in IGNORE_KEYS && continue
@@ -170,7 +170,7 @@ function scatter_shader(scene::Scene, attributes, plot)
 
     if !isnothing(marker)
         get!(uniform_dict, :shape_type) do
-            return lift(plot, marker; ignore_equal_values=true) do marker
+            return lift(plot, marker; ignore_equal_values = true) do marker
                 return Cint(Makie.marker_to_sdf_shape(to_spritemarker(marker)))
             end
         end
@@ -209,7 +209,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
 
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
+        instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 function create_shader(scene::Scene, plot::Scatter)
@@ -217,7 +217,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes = copy(plot.attributes.attributes)
     space = get(attributes, :space, :data)
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    attributes[:pos] = lift(apply_transform, plot, transform_func_obs(plot),  plot[1], space)
+    attributes[:pos] = lift(apply_transform, plot, transform_func_obs(plot), plot[1], space)
 
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
@@ -236,7 +236,7 @@ value_or_first(x::StaticVector) = x
 value_or_first(x::Mat) = x
 value_or_first(x) = x
 
-function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
+function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection,<:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
     transfunc = Makie.transform_func_obs(plot)
     pos = plot.position
@@ -244,7 +244,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
-    glyph_data = lift(plot, pos, glyphcollection, offset, transfunc, space; ignore_equal_values=true) do pos, gc, offset, transfunc, space
+    glyph_data = lift(plot, pos, glyphcollection, offset, transfunc, space; ignore_equal_values = true) do pos, gc, offset, transfunc, space
         Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
     end
 

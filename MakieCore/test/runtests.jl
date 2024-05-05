@@ -12,7 +12,7 @@ end
 function plot!(plot::Plot(AbstractTimeseriesSolution))
     # plot contains any keyword arguments that you pass to plot(series; kw...)
     var = get(plot, :var, Observable(5))
-    density!(plot, map((v, r)-> v .* r.results, var, plot[1]))
+    density!(plot, map((v, r) -> v .* r.results, var, plot[1]))
 end
 
 struct Test2
@@ -29,7 +29,7 @@ function plot!(plot::Plot(Test2))
     ser = AbstractTimeseriesSolution(arg1[].series)
     sol = Solution(arg1[].series)
     plot!(plot, ser, var = 10)
-    scatter!(plot, sol, attribute = 3, color=:red)
+    scatter!(plot, sol, attribute = 3, color = :red)
 end
 
 used_attributes(::Any, x::Solution) = (:attribute,)

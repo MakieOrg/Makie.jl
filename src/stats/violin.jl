@@ -54,8 +54,8 @@ function plot!(plot::Violin)
     args = @extract plot (width, side, scale, color, show_median, npoints, boundary, bandwidth, weights,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
     signals = lift(plot, x, y,
-                   args...) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits, max_density,
-                               dodge, n_dodge, gap, dodge_gap, orientation
+        args...) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits, max_density,
+    dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all componentes
@@ -66,7 +66,7 @@ function plot!(plot::Violin)
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
-            return s === :left ? - 1 : s === :right ? 1 : 0
+            return s === :left ? -1 : s === :right ? 1 : 0
         end
 
         sa = StructArray((x = x̂, side = sides))
@@ -103,7 +103,7 @@ function plot!(plot::Violin)
         end
 
         vertices = Vector{Point2f}[]
-        lines = Pair{Point2f, Point2f}[]
+        lines = Pair{Point2f,Point2f}[]
         colors = RGBA{Float32}[]
 
         for spec in specs
@@ -134,8 +134,8 @@ function plot!(plot::Violin)
                 # interpolate median bounds between corresponding points
                 xm = spec.median
                 ip = findfirst(>(xm), spec.kde.x)
-                ym₋, ym₊ = spec.kde.density[ip-1], spec.kde.density[ip]
-                xm₋, xm₊ = spec.kde.x[ip-1], spec.kde.x[ip]
+                ym₋, ym₊ = spec.kde.density[ip - 1], spec.kde.density[ip]
+                xm₋, xm₊ = spec.kde.x[ip - 1], spec.kde.x[ip]
                 ym = (xm * (ym₊ - ym₋) + xm₊ * ym₋ - xm₋ * ym₊) / (xm₊ - xm₋)
                 median_left = point_func(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
                 median_right = point_func(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
@@ -151,7 +151,7 @@ function plot!(plot::Violin)
     poly!(
         plot,
         lift(s -> s.vertices, plot, signals);
-        color=lift(s -> s.colors, plot, signals),
+        color = lift(s -> s.colors, plot, signals),
         strokecolor = plot[:strokecolor],
         strokewidth = plot[:strokewidth],
     )

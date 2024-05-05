@@ -18,7 +18,7 @@ function shrinkbymargin(rect, margin)
     return Recti(minimum(rect) .+ margin, (widths(rect) .- 2 .* margin))
 end
 
-function limits(r::Rect{N, T}) where {N, T}
+function limits(r::Rect{N,T}) where {N,T}
     mini, maxi = extrema(r)
     return ntuple(i -> (mini[i], maxi[i]), N)
 end
@@ -41,7 +41,7 @@ end
 """
 Converts a point in fractions of rect dimensions into real coordinates.
 """
-function fractionpoint(bbox::Rect2f, point::T) where T <: Point2
+function fractionpoint(bbox::Rect2f, point::T) where T<:Point2
     T(left(bbox) + point[1] * width(bbox), bottom(bbox) + point[2] * height(bbox))
 end
 

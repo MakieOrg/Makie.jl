@@ -15,7 +15,7 @@ end
     end
 
     function fpoint3(x::Point3)
-        return Point3f(x[1] + 10, x[2] - 77, x[3] /  4)
+        return Point3f(x[1] + 10, x[2] - 77, x[3] / 4)
     end
     trans2 = PointTrans{2}(fpoint2)
     trans3 = PointTrans{3}(fpoint3)
@@ -77,14 +77,14 @@ end
     @test apply_transform(i2, 1) == 1
     @test apply_transform(i3, 1) == 1
 
-    @test apply_transform(identity, 1..2) == 1..2
-    @test apply_transform(i2, 1..2) == 1..2
-    @test apply_transform(i3, 1..2) == 1..2
+    @test apply_transform(identity, 1 .. 2) == 1 .. 2
+    @test apply_transform(i2, 1 .. 2) == 1 .. 2
+    @test apply_transform(i3, 1 .. 2) == 1 .. 2
 
     pa = Point2f(1, 2)
     pb = Point2f(3, 4)
     r2 = Rect2f(pa, pb .- pa)
-    @test apply_transform(t1, r2) == Rect2f(apply_transform(t1, pa), apply_transform(t1, pb) .- apply_transform(t1, pa) )
+    @test apply_transform(t1, r2) == Rect2f(apply_transform(t1, pa), apply_transform(t1, pb) .- apply_transform(t1, pa))
 end
 
 @testset "Polar Transform" begin
@@ -95,40 +95,40 @@ end
     @test tf.direction == 1
     @test tf.r0 == 0.0
 
-    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
+    input = Point2f.([0, pi / 3, pi / 2, pi, 2pi, 3pi], 1:6)
     output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
-    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
+    inv = Point2f.(mod.([0, pi / 3, pi / 2, pi, 2pi, 3pi], (0 .. 2pi,)), 1:6)
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(pi/2, 1, 0, false)
-    input = Point2f.(1:6, [0, pi/3, pi/2, pi, 2pi, 3pi])
-    output = [r * Point2f(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
-    inv = Point2f.(1:6, mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)))
+    tf = Makie.Polar(pi / 2, 1, 0, false)
+    input = Point2f.(1:6, [0, pi / 3, pi / 2, pi, 2pi, 3pi])
+    output = [r * Point2f(cos(phi + pi / 2), sin(phi + pi / 2)) for (r, phi) in input]
+    inv = Point2f.(1:6, mod.([0, pi / 3, pi / 2, pi, 2pi, 3pi], (0 .. 2pi,)))
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(pi/2, -1, 0, false)
-    output = [r * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
+    tf = Makie.Polar(pi / 2, -1, 0, false)
+    output = [r * Point2f(cos(-phi - pi / 2), sin(-phi - pi / 2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
-    tf = Makie.Polar(pi/2, -1, 0.5, false)
-    output = [(r - 0.5) * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
+    tf = Makie.Polar(pi / 2, -1, 0.5, false)
+    output = [(r - 0.5) * Point2f(cos(-phi - pi / 2), sin(-phi - pi / 2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
     tf = Makie.Polar(0, 1, 0, true)
-    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
+    input = Point2f.([0, pi / 3, pi / 2, pi, 2pi, 3pi], 1:6)
     output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
-    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
+    inv = Point2f.(mod.([0, pi / 3, pi / 2, pi, 2pi, 3pi], (0 .. 2pi,)), 1:6)
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 
     tf = Makie.Polar(0, 1, 0, true, false)
-    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], -6:-1)
+    input = Point2f.([0, pi / 3, pi / 2, pi, 2pi, 3pi], -6:-1)
     output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
-    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi] .+ pi, (0..2pi,)), 6:-1:1)
+    inv = Point2f.(mod.([0, pi / 3, pi / 2, pi, 2pi, 3pi] .+ pi, (0 .. 2pi,)), 6:-1:1)
     @test apply_transform(tf, input) ≈ output
     @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
 end
@@ -151,14 +151,14 @@ end
 
 @testset "Bounding box utilities" begin
 
-    box = Rect2f(0,0,1,1)
+    box = Rect2f(0, 0, 1, 1)
 
     @test Makie.rotatedrect(box, π) == Rect2f(-1, -1, 1, 1)
 
-    @test Makie.rotatedrect(box, π/2) == Rect2f(0, -1, 1, 1)
+    @test Makie.rotatedrect(box, π / 2) == Rect2f(0, -1, 1, 1)
 
-    @test all(Makie.rotatedrect(box, π/4).origin .≈ Rect2f(0, -1/(√2f0), √2f0, √2f0).origin)
-    @test all(Makie.rotatedrect(box, π/4).widths .≈ Rect2f(0, -1/(√2f0), √2f0, √2f0).widths)
+    @test all(Makie.rotatedrect(box, π / 4).origin .≈ Rect2f(0, -1 / (√2f0), √2f0, √2f0).origin)
+    @test all(Makie.rotatedrect(box, π / 4).widths .≈ Rect2f(0, -1 / (√2f0), √2f0, √2f0).widths)
 
 end
 
@@ -171,10 +171,10 @@ end
     p3 = Point(2.0, 5.0, 4.0)
 
     spaces_and_desired_transforms = Dict(
-        :data => (x,y) -> y, # uses changes
-        :clip => (x,y) -> x, # no change
-        :relative => (x,y) -> x, # no change
-        :pixel => (x,y) -> x, # no transformation
+        :data => (x, y) -> y, # uses changes
+        :clip => (x, y) -> x, # no change
+        :relative => (x, y) -> x, # no change
+        :pixel => (x, y) -> x, # no transformation
     )
     for (space, desired_transform) in spaces_and_desired_transforms
         @test apply_transform(identity, p2, space) == p2

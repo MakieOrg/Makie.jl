@@ -36,9 +36,9 @@ end
     i = 1
     for halign in (:right, :center, :left), valign in (:top, :center, :bottom)
 
-        for rotation in (-pi/6, 0.0, pi/6)
+        for rotation in (-pi / 6, 0.0, pi / 6)
             text!(scene, string(halign) * "/" * string(valign) *
-                    " " * string(round(rad2deg(rotation), digits = 0)) * "°",
+                         " " * string(round(rad2deg(rotation), digits = 0)) * "°",
                 color = (:black, 0.5),
                 position = points[i],
                 align = (halign, valign),
@@ -53,20 +53,20 @@ end
 @reference_test "multi_strings_multi_positions" begin
     scene = Scene(camera = campixel!, size = (800, 800))
 
-    angles = (-pi/6, 0.0, pi/6)
+    angles = (-pi / 6, 0.0, pi / 6)
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3 for angle in angles]
     aligns = [(halign, valign) for halign in
-        (:right, :center, :left) for valign in (:top, :center, :bottom) for rotation in angles]
+                                   (:right, :center, :left) for valign in (:top, :center, :bottom) for rotation in angles]
     rotations = [rotation for _ in
-        (:right, :center, :left) for _ in (:top, :center, :bottom) for rotation in angles]
+                              (:right, :center, :left) for _ in (:top, :center, :bottom) for rotation in angles]
 
     strings = [string(halign) * "/" * string(valign) *
-        " " * string(round(rad2deg(rotation), digits = 0)) * "°"
-            for halign in (:right, :center, :left)
-            for valign in (:top, :center, :bottom)
-            for rotation in angles]
+               " " * string(round(rad2deg(rotation), digits = 0)) * "°"
+               for halign in (:right, :center, :left)
+               for valign in (:top, :center, :bottom)
+               for rotation in angles]
 
-    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
+    scatter!(scene, points, marker = :circle, markersize = 10px, color = :black)
 
     text!(scene, points, text = strings, align = aligns, rotation = rotations,
         color = [(:black, alpha) for alpha in LinRange(0.3, 0.7, length(points))])
@@ -78,7 +78,7 @@ end
     scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
+    scatter!(scene, points, marker = :circle, markersize = 10px, color = :black)
 
     symbols = (:left, :center, :right)
 
@@ -101,7 +101,7 @@ end
 
     for (p, al) in zip(points[7:9], (:left, :center, :right))
         text!(scene, p .+ (80, 0), text = "justification\n:" * string(al),
-            align = (:center, :top), rotation = pi/2)
+            align = (:center, :top), rotation = pi / 2)
     end
 
     scene
@@ -112,8 +112,8 @@ end
 
     t1 = text!(scene,
         fill("makie", 4),
-        position = [(200, 200) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
-        rotation = pi/4:pi/2:7pi/4,
+        position = [(200, 200) .+ 60 * Point2f(cos(a), sin(a)) for a in (pi / 4):(pi / 2):(7pi / 4)],
+        rotation = (pi / 4):(pi / 2):(7pi / 4),
         align = (:left, :center),
         fontsize = 30,
         markerspace = :data
@@ -123,8 +123,8 @@ end
 
     t2 = text!(scene,
         fill("makie", 4),
-        position = [(200, 600) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
-        rotation = pi/4:pi/2:7pi/4,
+        position = [(200, 600) .+ 60 * Point2f(cos(a), sin(a)) for a in (pi / 4):(pi / 2):(7pi / 4)],
+        rotation = (pi / 4):(pi / 2):(7pi / 4),
         align = (:left, :center),
         fontsize = 30,
         markerspace = :pixel
@@ -138,7 +138,7 @@ end
 @reference_test "single_boundingboxes" begin
     scene = Scene(camera = campixel!, size = (800, 800))
 
-    for a in pi/4:pi/2:7pi/4
+    for a in (pi / 4):(pi / 2):(7pi / 4)
 
         t = text!(scene,
             "makie",
@@ -171,12 +171,12 @@ end
     text(
         fill("Makie", 7),
         rotation = [i / 7 * 1.5pi for i in 1:7],
-        position = [Point3f(0, 0, i/2) for i in 1:7],
+        position = [Point3f(0, 0, i / 2) for i in 1:7],
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
         fontsize = 1,
         markerspace = :data,
-        axis=(; type=LScene)
+        axis = (; type = LScene)
     )
 end
 
@@ -199,14 +199,14 @@ end
 
 @reference_test "3D screenspace annotations" begin
     positions = RNG.rand(Point3f, 10)
-    fig, ax, p = meshscatter(positions, color=:white)
+    fig, ax, p = meshscatter(positions, color = :white)
     text!(
         fill("Annotation", 10),
         position = positions,
         align = (:center, :center),
         fontsize = 20,
         markerspace = :pixel,
-        overdraw=false)
+        overdraw = false)
     fig
 end
 
@@ -222,16 +222,16 @@ end
     scatter(f[1, 2], Point2f(0, 0))
     text!(0, 0, text = "hello", offset = (40, 0), align = (:left, :center))
     text!(0, 0, text = "hello", offset = (40, 0), align = (:left, :center),
-        rotation = -pi/4)
+        rotation = -pi / 4)
     text!(0, 0, text = "hello", offset = (40, 0), align = (:left, :center),
-        rotation = pi/4)
+        rotation = pi / 4)
 
     scatter(f[2, 1], Point2f[(0, 0), (10, 0), (20, 10)])
     text!(0, 0, text = "ABC", markerspace = :data, offset = (0, 0), color = (:red, 0.3), align = (:left, :baseline))
     text!(0, 0, text = "ABC", markerspace = :data, offset = (10, 0), color = (:green, 0.3), align = (:left, :baseline))
     text!(0, 0, text = "ABC", markerspace = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
 
-    LScene(f[2, 2], show_axis=false)
+    LScene(f[2, 2], show_axis = false)
     scatter!(Point3f[(0, 0, 0), (2, 2, 2)])
     text!(1, 1, 1, text = "hello", offset = (10, 10))
 
@@ -248,12 +248,12 @@ end
 end
 
 @reference_test "latex strings" begin
-    f, ax , l = lines(cumsum(RNG.randn(1000)),
+    f, ax, l = lines(cumsum(RNG.randn(1000)),
         axis = (
-                title = L"\sum_k{x y_k}",
-                xlabel = L"\lim_{x →\infty} A^j v_{(a + b)_k}^i \sqrt{23.5} x!= \sqrt{\frac{1+6}{4+a+g}}\int_{0}^{2π} \sin(x) dx",
-                ylabel = L"x + y - \sin(x) × \tan(y) + \sqrt{2}",
-            ),
+            title = L"\sum_k{x y_k}",
+            xlabel = L"\lim_{x →\infty} A^j v_{(a + b)_k}^i \sqrt{23.5} x!= \sqrt{\frac{1+6}{4+a+g}}\int_{0}^{2π} \sin(x) dx",
+            ylabel = L"x + y - \sin(x) × \tan(y) + \sqrt{2}",
+        ),
         figure = (fontsize = 18,)
     )
     text!(500, 0, text = L"\int_{0}^{2π} \sin(x) dx")
@@ -262,7 +262,7 @@ end
 end
 
 @reference_test "latex hlines in axis" begin
-    text(1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", fontsize = 50, rotation = pi/4,
+    text(1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", fontsize = 50, rotation = pi / 4,
         align = (:center, :center))
 end
 
@@ -271,7 +271,7 @@ end
     t = text!(s,
         L"\sqrt{2}",
         position = (50, 50),
-        rotation = pi/2,
+        rotation = pi / 2,
         markerspace = :data)
     s
 end
@@ -283,7 +283,7 @@ end
         position = Point2f(50, 50),
         rotation = 0.0,
         markerspace = :data)
-    wireframe!(s, boundingbox(t), color=:black)
+    wireframe!(s, boundingbox(t), color = :black)
     s
 end
 
@@ -327,11 +327,11 @@ end
 end
 
 @reference_test "latex ticks" begin
-    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25,),
+    lines(0 .. 25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25,),
         axis = (
             xticks = (0:10:20, [L"10^{-3.5}", L"10^{-4.5}", L"10^{-5.5}"]),
             yticks = ([-1, 0, 1], [L"\sum_%$i{xy}" for i in 1:3]),
-            yticklabelrotation = pi/8,
+            yticklabelrotation = pi / 8,
             title = L"\int_0^1{x^2}",
             xlabel = L"\sum_k{x_k ⋅ y_k}",
             ylabel = L"\int_a^b{\sqrt{abx}}"
@@ -341,20 +341,20 @@ end
 
 
 @reference_test "dynamic latex ticks" begin
-    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4),
+    lines(0 .. 25, x -> 4 * sin(x) / (cos(3x) + 4),
         figure = (fontsize = 16,),
-        axis = (xtickformat = (xs -> [L"e^{\sqrt{%$x}}+\sum" for x in xs]), ))
+        axis = (xtickformat = (xs -> [L"e^{\sqrt{%$x}}+\sum" for x in xs]),))
 end
 
 @reference_test "Word Wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
-    fig = Figure(size=(600, 500))
+    fig = Figure(size = (600, 500))
     ax = Axis(fig[1, 1])
-    text!(ax, 0, 0, text = latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, fontsize = 12, align = (:left, :bottom), justification = :left, color = :black)
-    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, fontsize = 12, align = (:left, :top), justification = :right, color = :black)
-    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, fontsize = 12, align = (:right, :bottom), justification = :center, color = :red)
-    text!(ax, -0.3, 0, text = lorem_ipsum, word_wrap_width=200, fontsize = 12, align = (:center, :top), color = :blue)
+    text!(ax, 0, 0, text = latexstring(L"$1$ " * lorem_ipsum), word_wrap_width = 250, fontsize = 12, align = (:left, :bottom), justification = :left, color = :black)
+    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width = 250, fontsize = 12, align = (:left, :top), justification = :right, color = :black)
+    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width = 250, fontsize = 12, align = (:right, :bottom), justification = :center, color = :red)
+    text!(ax, -0.3, 0, text = lorem_ipsum, word_wrap_width = 200, fontsize = 12, align = (:center, :top), color = :blue)
     xlims!(ax, -0.8, 0.8)
     ylims!(ax, -0.8, 0.6)
     fig
