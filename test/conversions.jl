@@ -4,7 +4,8 @@ using Makie:
     conversion_trait,
     convert_single_argument,
     to_vertices,
-    categorical_colors
+    categorical_colors,
+    (..)
 
 @testset "Conversions" begin
     # NoConversion
@@ -111,6 +112,15 @@ end
     mpol_emtpy = MultiPolygon(typeof(pol_emtpy)[])
     p_empty = convert_arguments(Makie.PointBased(), mpol_emtpy)
     @test p_empty[1] == pts_empty
+end
+
+@testset "intervals" begin
+    x = [1, 5, 10]
+    y = [1..2, 1..3, 2..3]
+    @test convert_arguments(Band, x, y) == (Point2f.([1, 5, 10], [1, 1, 2]), Point2f.([1, 5, 10], [2, 3, 3]))
+    @test convert_arguments(Rangebars, x, y) == (Vec3f.([1,5,10], [1,1,2], [2,3,3]),)
+    @test convert_arguments(HSpan, 1..2) == (1f0, 2f0)
+    @test convert_arguments(VSpan, 1..2) == (1f0, 2f0)
 end
 
 @testset "functions" begin
