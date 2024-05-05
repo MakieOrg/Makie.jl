@@ -106,7 +106,7 @@ function connect_scene_events!(scene::Scene, comm::Observable)
                 resize!(scene, tuple(resize...))
             end
         catch err
-            @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
+            @warn "Error in window event callback" exception = (err, Base.catch_backtrace())
         end
         return
     end

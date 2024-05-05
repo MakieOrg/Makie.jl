@@ -7,10 +7,10 @@ function backend_show end
 """
 Current backend
 """
-const CURRENT_BACKEND = Ref{Union{Missing, Module}}(missing)
+const CURRENT_BACKEND = Ref{Union{Missing,Module}}(missing)
 current_backend() = CURRENT_BACKEND[]
 
-function set_active_backend!(backend::Union{Missing, Module})
+function set_active_backend!(backend::Union{Missing,Module})
     CURRENT_BACKEND[] = backend
     return
 end
@@ -49,7 +49,7 @@ Removes screen from scene and cleans up screen
 function delete_screen!(scene::Scene, screen::MakieScreen)
     delete!(screen, scene)
     empty!(screen)
-    filter!(x-> x !== screen, scene.current_screens)
+    filter!(x -> x !== screen, scene.current_screens)
     return
 end
 
@@ -81,7 +81,7 @@ function merge_screen_config(::Type{Config}, config::Dict) where Config
 end
 
 
-const ALWAYS_INLINE_PLOTS = Ref{Union{Automatic, Bool}}(automatic)
+const ALWAYS_INLINE_PLOTS = Ref{Union{Automatic,Bool}}(automatic)
 
 """
     inline!(inline=true)
@@ -92,7 +92,7 @@ Only case Makie always shows the plot inside the plotpane is when using VSCode e
 If you want to always force inlining the plot into the plotpane, set `inline!(true)` (E.g. when run in the VSCode REPL).
 In other cases `inline!(true/false)` won't do anything.
 """
-function inline!(inline=automatic)
+function inline!(inline = automatic)
     ALWAYS_INLINE_PLOTS[] = inline
 end
 
@@ -127,9 +127,9 @@ see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 
 `backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
 """
-function Base.display(figlike::FigureLike; backend=current_backend(),
-                      inline=ALWAYS_INLINE_PLOTS[], update = true, screen_config...)
-    config = Dict{Symbol, Any}(screen_config)
+function Base.display(figlike::FigureLike; backend = current_backend(),
+    inline = ALWAYS_INLINE_PLOTS[], update = true, screen_config...)
+    config = Dict{Symbol,Any}(screen_config)
     if ismissing(backend)
         error("""
         No backend available!
@@ -174,7 +174,7 @@ is_displayed(screen::MakieScreen, scene::Scene) = screen in scene.current_screen
 # Backends overload display(::Backend.Screen, scene::Scene), while Makie overloads the below,
 # so that they don't need to worry
 # about stuff like `update_state_before_display!`
-function Base.display(screen::MakieScreen, figlike::FigureLike; update=true, display_attributes...)
+function Base.display(screen::MakieScreen, figlike::FigureLike; update = true, display_attributes...)
     scene = get_scene(figlike)
     update && update_state_before_display!(figlike)
     display(screen, get_scene(figlike); display_attributes...)
@@ -255,7 +255,7 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
     update_state_before_display!(figlike)
-    screen = getscreen(backend, scene, Dict(:visible=>false), io, m)
+    screen = getscreen(backend, scene, Dict(:visible => false), io, m)
     backend_show(screen, io, m, scene)
     return screen
 end
@@ -300,19 +300,19 @@ Save a `Scene` with the specified filename and format.
 - `pt_per_unit`: The size of one scene unit in `pt` when exporting to a vector format.
 """
 function FileIO.save(
-        filename::String, fig::FigureLike; args...
-    )
+    filename::String, fig::FigureLike; args...
+)
     FileIO.save(FileIO.query(filename), fig; args...)
 end
 
 function FileIO.save(
-        file::FileIO.Formatted, fig::FigureLike;
-        size = Base.size(get_scene(fig)),
-        resolution = nothing,
-        backend = current_backend(),
-        update = true,
-        screen_config...
-    )
+    file::FileIO.Formatted, fig::FigureLike;
+    size = Base.size(get_scene(fig)),
+    resolution = nothing,
+    backend = current_backend(),
+    update = true,
+    screen_config...
+)
     scene = get_scene(fig)
     if resolution !== nothing
         @warn "The keyword argument `resolution` for `save()` has been deprecated. Use `size` instead, which better reflects that this is a unitless size and not a pixel resolution."
@@ -338,14 +338,14 @@ function FileIO.save(
             # Else, we create a new scene and update the state of the fig
             update && update_state_before_display!(fig)
             visible = isvisible(getscreen(scene)) # if already has a screen, don't hide it!
-            config = Dict{Symbol, Any}(screen_config)
+            config = Dict{Symbol,Any}(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
             backend_show(screen, io, mime, scene)
         end
     catch e
         # So, if open(io-> error(...), "w"), the file will get created, but not removed...
-        isfile(filename) && rm(filename; force=true)
+        isfile(filename) && rm(filename; force = true)
         rethrow(e)
     end
 end
@@ -367,12 +367,12 @@ function jl_to_gl_format(image)
         n = first(ind1) + last(ind1)
         for i in ind1
             @simd for j in ind2
-                @inbounds bufc[j, n-i] = image[i, j]
+                @inbounds bufc[j, n - i] = image[i, j]
             end
         end
         return bufc
     else
-        reverse!(image; dims=1)
+        reverse!(image; dims = 1)
         return PermutedDimsArray(image, (2, 1))
     end
 end
@@ -395,7 +395,7 @@ function apply_screen_config! end
 Gets the current screen a scene is associated with.
 Returns nothing if not yet displayed on a screen.
 """
-function getscreen(scene::Scene, backend=current_backend())
+function getscreen(scene::Scene, backend = current_backend())
     isempty(scene.current_screens) && return nothing # stop search
     idx = findfirst(scene.current_screens) do screen
         parentmodule(typeof(screen)) === backend
@@ -405,9 +405,9 @@ function getscreen(scene::Scene, backend=current_backend())
     return scene.current_screens[idx]
 end
 
-getscreen(scene::SceneLike, backend=current_backend()) = getscreen(get_scene(scene), backend)
+getscreen(scene::SceneLike, backend = current_backend()) = getscreen(get_scene(scene), backend)
 
-function getscreen(backend::Union{Missing, Module}, scene::Scene, _config::Dict, args...)
+function getscreen(backend::Union{Missing,Module}, scene::Scene, _config::Dict, args...)
     screen = getscreen(scene, backend)
     config = merge_screen_config(backend.ScreenConfig, _config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
@@ -454,7 +454,7 @@ or RGBA.
 - `screen_config`: Backend dependent, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 - `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update = true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
     update && update_state_before_display!(fig)
     # if already has a screen, use their visibility value, if no screen, returns false

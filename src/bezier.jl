@@ -35,7 +35,7 @@ EllipticalArc(cx, cy, r1, r2, angle, a1, a2) = EllipticalArc(Point2d(cx, cy),
     r1, r2, angle, a1, a2)
 
 struct ClosePath end
-const PathCommand = Union{MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath}
+const PathCommand = Union{MoveTo,LineTo,CurveTo,EllipticalArc,ClosePath}
 
 # For hashing with crc32c
 function Base.write(io::IO, command::PathCommand)
@@ -61,7 +61,7 @@ end
 function elliptical_arc_to_beziers(arc::EllipticalArc)
     delta_a = abs(arc.a2 - arc.a1)
     n_beziers = ceil(Int, delta_a / 0.5pi)
-    angles = range(arc.a1, arc.a2; length=n_beziers + 1)
+    angles = range(arc.a1, arc.a2; length = n_beziers + 1)
 
     startpoint = Point2f(cos(arc.a1), sin(arc.a1))
     curves = map(angles[1:(end - 1)], angles[2:end]) do start, stop
@@ -95,7 +95,7 @@ function point_at_angle(e::EllipticalArc, theta)
     M = abs(e.r1) * cos(theta)
     N = abs(e.r2) * sin(theta)
     return Point2f(e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
-                   e.c[2] + sin(e.angle) * M + cos(e.angle) * N)
+        e.c[2] + sin(e.angle) * M + cos(e.angle) * N)
 end
 
 function cleanup_bbox(bb::Rect2f)
@@ -124,7 +124,7 @@ fast_stable_hash(x::BezierPath) = x.hash
 Base.:(==)(b1::BezierPath, b2::BezierPath) = b1.commands == b2.commands
 Base.broadcastable(b::BezierPath) = Ref(b)
 
-function Base.:+(pc::P, p::Point2) where P <: PathCommand
+function Base.:+(pc::P, p::Point2) where P<:PathCommand
     fnames = fieldnames(P)
     return P(map(f -> getfield(pc, f) + p, fnames)...)
 end
@@ -155,7 +155,7 @@ function scale(e::EllipticalArc, v::VecTypes{2})
     elseif x < 0 && y > 0
         pi - e.angle, -e.a1, -e.a2
     else
-        pi - e.angle, pi-e.a1, pi-e.a2
+        pi - e.angle, pi - e.a1, pi - e.a2
     end
     EllipticalArc(e.c .* v, e.r1 * abs(x), e.r2 * abs(y), ang, a1, a2)
 end
@@ -166,7 +166,7 @@ rotate(c::ClosePath, a) = c
 rotate(l::LineTo, a) = LineTo(rotmatrix2d(a) * l.p)
 function rotate(c::CurveTo, a)
     m = rotmatrix2d(a)
-    CurveTo(m * c.c1, m * c.c2, m *c.p)
+    CurveTo(m * c.c1, m * c.c2, m * c.p)
 end
 function rotate(e::EllipticalArc, a)
     m = rotmatrix2d(a)
@@ -207,7 +207,7 @@ Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 
 function bezier_ngon(n, radius, angle)
     points = [radius * Point2f(cos(a + angle), sin(a + angle))
-        for a in range(0, 2pi, length = n+1)[1:end-1]]
+              for a in range(0, 2pi, length = n + 1)[1:(end - 1)]]
     BezierPath([
         MoveTo(points[1]);
         LineTo.(@view points[2:end]);
@@ -218,8 +218,8 @@ end
 function bezier_star(n, inner_radius, outer_radius, angle)
     points = [
         (isodd(i) ? outer_radius : inner_radius) *
-            Point2f(cos(a + angle), sin(a + angle))
-        for (i, a) in enumerate(range(0, 2pi, length = 2n+1)[1:end-1])]
+        Point2f(cos(a + angle), sin(a + angle))
+        for (i, a) in enumerate(range(0, 2pi, length = 2n + 1)[1:(end - 1)])]
     BezierPath([
         MoveTo(points[1]);
         LineTo.(points[2:end]);
@@ -317,27 +317,27 @@ function parse_bezier_commands(svg)
         end
 
         if comm == "M"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, MoveTo(Point2d(x, y)))
             i += 3
         elseif comm == "m"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, MoveTo(Point2d(x, y) + lastp()))
             i += 3
         elseif comm == "L"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, LineTo(Point2d(x, y)))
             i += 3
         elseif comm == "l"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, LineTo(Point2d(x, y) + lastp()))
             i += 3
         elseif comm == "H"
-            x = parse(Float64, args[i+1])
+            x = parse(Float64, args[i + 1])
             push!(commands, LineTo(Point2d(x, lastp()[2])))
             i += 2
         elseif comm == "h"
-            x = parse(Float64, args[i+1])
+            x = parse(Float64, args[i + 1])
             push!(commands, LineTo(Point2d(x, 0) + lastp()))
             i += 2
         elseif comm == "Z"
@@ -347,55 +347,55 @@ function parse_bezier_commands(svg)
             push!(commands, ClosePath())
             i += 1
         elseif comm == "C"
-            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[i+1:i+6])
+            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[(i + 1):(i + 6)])
             push!(commands, CurveTo(Point2d(x1, y1), Point2d(x2, y2), Point2d(x3, y3)))
             i += 7
         elseif comm == "c"
-            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[i+1:i+6])
+            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[(i + 1):(i + 6)])
             l = lastp()
             push!(commands, CurveTo(Point2d(x1, y1) + l, Point2d(x2, y2) + l, Point2d(x3, y3) + l))
             i += 7
         elseif comm == "S"
-            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            x1, y1, x2, y2 = parse.(Float64, args[(i + 1):(i + 4)])
             prev = commands[end]
             reflected = prev.p + (prev.p - prev.c2)
             push!(commands, CurveTo(reflected, Point2d(x1, y1), Point2d(x2, y2)))
             i += 5
         elseif comm == "s"
-            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            x1, y1, x2, y2 = parse.(Float64, args[(i + 1):(i + 4)])
             prev = commands[end]
             reflected = prev.p + (prev.p - prev.c2)
             l = lastp()
             push!(commands, CurveTo(reflected, Point2d(x1, y1) + l, Point2d(x2, y2) + l))
             i += 5
         elseif comm == "A"
-            args[i+1:i+7]
-            r1, r2 = parse.(Float64, args[i+1:i+2])
-            angle = parse(Float64, args[i+3])
-            large_arc_flag, sweep_flag = parse.(Bool, args[i+4:i+5])
-            x2, y2 = parse.(Float64, args[i+6:i+7])
+            args[(i + 1):(i + 7)]
+            r1, r2 = parse.(Float64, args[(i + 1):(i + 2)])
+            angle = parse(Float64, args[i + 3])
+            large_arc_flag, sweep_flag = parse.(Bool, args[(i + 4):(i + 5)])
+            x2, y2 = parse.(Float64, args[(i + 6):(i + 7)])
             x1, y1 = lastp()
 
             push!(commands, EllipticalArc(x1, y1, x2, y2, r1, r2,
                 angle, large_arc_flag, sweep_flag))
             i += 8
         elseif comm == "a"
-            r1, r2 = parse.(Float64, args[i+1:i+2])
-            angle = parse(Float64, args[i+3])
-            large_arc_flag, sweep_flag = parse.(Bool, args[i+4:i+5])
+            r1, r2 = parse.(Float64, args[(i + 1):(i + 2)])
+            angle = parse(Float64, args[i + 3])
+            large_arc_flag, sweep_flag = parse.(Bool, args[(i + 4):(i + 5)])
             x1, y1 = lastp()
-            x2, y2 = parse.(Float64, args[i+6:i+7]) .+ (x1, y1)
+            x2, y2 = parse.(Float64, args[(i + 6):(i + 7)]) .+ (x1, y1)
 
             push!(commands, EllipticalArc(x1, y1, x2, y2, r1, r2,
                 angle, large_arc_flag, sweep_flag))
             i += 8
         elseif comm == "v"
-            dy = parse(Float64, args[i+1])
+            dy = parse(Float64, args[i + 1])
             l = lastp()
             push!(commands, LineTo(Point2d(l[1], l[2] + dy)))
             i += 2
         elseif comm == "V"
-            y = parse(Float64, args[i+1])
+            y = parse(Float64, args[i + 1])
             l = lastp()
             push!(commands, LineTo(Point2d(l[1], y)))
             i += 2
@@ -423,15 +423,15 @@ function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bo
     x1′, y1′ = m1 * (0.5 * (p1 - p2))
 
     tempsqrt = (rx^2 * ry^2 - rx^2 * y1′^2 - ry^2 * x1′^2) /
-        (rx^2 * y1′^2 + ry^2 * x1′^2)
+               (rx^2 * y1′^2 + ry^2 * x1′^2)
 
     c′ = (largearc == sweepflag ? -1 : 1) *
-        sqrt(tempsqrt) * Point2d(rx * y1′ / ry, -ry * x1′ / rx)
+         sqrt(tempsqrt) * Point2d(rx * y1′ / ry, -ry * x1′ / rx)
 
     c = Mat2(cos(ϕ), sin(ϕ), -sin(ϕ), cos(ϕ)) * c′ + 0.5 * (p1 + p2)
 
     vecangle(u, v) = sign(u[1] * v[2] - u[2] * v[1]) *
-        acos(dot(u, v) / (norm(u) * norm(v)))
+                     acos(dot(u, v) / (norm(u) * norm(v)))
 
     px(sign) = Point2d((sign * x1′ - c′[1]) / rx, (sign * y1′ - c′[2]) / rx)
 
@@ -662,8 +662,8 @@ segment(p, c::CurveTo) = BezierSegment(p, c.c1, c.c2, c.p)
 const BezierCircle = let
     r = 0.47 # sqrt(1/pi)
     BezierPath([MoveTo(Point(r, 0.0)),
-                EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
-                ClosePath()])
+        EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
+        ClosePath()])
 end
 
 const BezierUTriangle = let
@@ -676,9 +676,9 @@ const BezierUTriangle = let
     p3 = Point2d(w / 2, -h / 2)
     centroid = (p1 + p2 + p3) / 3
     bp = BezierPath([MoveTo(p1 - centroid),
-                     LineTo(p2 - centroid),
-                     LineTo(p3 - centroid),
-                     ClosePath()])
+        LineTo(p2 - centroid),
+        LineTo(p3 - centroid),
+        ClosePath()])
 end
 
 const BezierLTriangle = rotate(BezierUTriangle, pi / 2)
@@ -688,10 +688,10 @@ const BezierRTriangle = rotate(BezierUTriangle, 3pi / 2)
 const BezierSquare = let
     r = 0.95 * sqrt(pi) / 2 / 2 # this gives a little less area as the r=0.5 circle
     BezierPath([MoveTo(Point2d(r, -r)),
-                LineTo(Point2d(r, r)),
-                LineTo(Point2d(-r, r)),
-                LineTo(Point2d(-r, -r)),
-                ClosePath()])
+        LineTo(Point2d(r, r)),
+        LineTo(Point2d(-r, r)),
+        LineTo(Point2d(-r, -r)),
+        ClosePath()])
 end
 
 const BezierCross = let
@@ -701,13 +701,13 @@ const BezierCross = let
 
     first_three = Point2d[(r, ri), (ri, ri), (ri, r)]
     all = (x -> reduce(vcat, x))(map(0:(pi / 2):(3pi / 2)) do a
-                                   m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
-                                   return Ref(m) .* first_three
-                               end)
+        m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
+        return Ref(m) .* first_three
+    end)
 
     BezierPath([MoveTo(all[1]),
-                LineTo.(all[2:end])...,
-                ClosePath()])
+        LineTo.(all[2:end])...,
+        ClosePath()])
 end
 
 const BezierX = rotate(BezierCross, pi / 4)

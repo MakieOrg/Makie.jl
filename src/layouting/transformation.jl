@@ -1,13 +1,13 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
-function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
+function Observables.connect!(parent::Transformation, child::Transformation; connect_func = true)
     tfuncs = []
-    obsfunc = on(parent.model; update=true) do m
+    obsfunc = on(parent.model; update = true) do m
         return child.parent_model[] = m
     end
     push!(tfuncs, obsfunc)
     if connect_func
-        t2 = on(parent.transform_func; update=true) do f
+        t2 = on(parent.transform_func; update = true) do f
             child.transform_func[] = f
             return
         end
@@ -40,23 +40,23 @@ end
 function translated(scene::Scene; kw_args...)
     tscene = Scene(scene, transformation = Transformation())
     transform!(tscene; kw_args...)
-     tscene
+    tscene
 end
 
 function transform!(
-        t::Transformable;
-        translation = Vec3f(0),
-        scale = Vec3f(1),
-        rotation = 0.0,
-    )
+    t::Transformable;
+    translation = Vec3f(0),
+    scale = Vec3f(1),
+    rotation = 0.0,
+)
     translate!(t, to_value(translation))
     scale!(t, to_value(scale))
     rotate!(t, to_value(rotation))
 end
 
 function transform!(
-        t::Transformable, attributes::Union{Attributes, AbstractDict, NamedTuple}
-    )
+    t::Transformable, attributes::Union{Attributes,AbstractDict,NamedTuple}
+)
     transform!(t; attributes...)
 end
 
@@ -153,20 +153,20 @@ Translate the given `Transformable` (a Scene or Plot), relative to its current p
 """
 translate!(::Type{T}, t::Transformable, xyz...) where T = translate!(T, t, xyz)
 
-function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
+function transform!(t::Transformable, x::Tuple{Symbol,<:Number})
     plane, dimval = string(x[1]), Float32(x[2])
-    if length(plane) != 2 || (!all(x-> x in ('x', 'y', 'z'), plane))
+    if length(plane) != 2 || (!all(x -> x in ('x', 'y', 'z'), plane))
         error("plane needs to define a 2D plane in xyz. It should only contain 2 symbols out of (:x, :y, :z). Found: $plane")
     end
-    if all(x-> x in ('x', 'y'), plane) # xy plane
+    if all(x -> x in ('x', 'y'), plane) # xy plane
         translate!(t, 0, 0, dimval)
-    elseif all(x-> x in ('x', 'z'), plane) # xz plane
+    elseif all(x -> x in ('x', 'z'), plane) # xz plane
         rotate!(t, Vec3f(1, 0, 0), 0.5pi)
         translate!(t, 0, dimval, 0)
     else #yz plane
         r1 = qrotation(Vec3f(0, 1, 0), 0.5pi)
         r2 = qrotation(Vec3f(1, 0, 0), 0.5pi)
-        rotate!(t,  r2 * r1)
+        rotate!(t, r2 * r1)
         translate!(t, dimval, 0, 0)
     end
     t
@@ -212,7 +212,7 @@ of the the transformation spaces (currently only :data is transformed)
 """
 apply_transform(f, data, space) = space === :data ? apply_transform(f, data) : data
 function apply_transform(f::Observable, data::Observable, space::Observable)
-    return lift((f, d, s)-> apply_transform(f, d, s), f, data, space)
+    return lift((f, d, s) -> apply_transform(f, d, s), f, data, space)
 end
 
 """
@@ -226,26 +226,26 @@ apply_transform(f::typeof(identity), x::VecTypes) = x
 apply_transform(f::typeof(identity), x::Number) = x
 apply_transform(f::typeof(identity), x::ClosedInterval) = x
 
-apply_transform(f::NTuple{2, typeof(identity)}, x) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::AbstractArray) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::VecTypes) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::Number) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::ClosedInterval) = x
+apply_transform(f::NTuple{2,typeof(identity)}, x) = x
+apply_transform(f::NTuple{2,typeof(identity)}, x::AbstractArray) = x
+apply_transform(f::NTuple{2,typeof(identity)}, x::VecTypes) = x
+apply_transform(f::NTuple{2,typeof(identity)}, x::Number) = x
+apply_transform(f::NTuple{2,typeof(identity)}, x::ClosedInterval) = x
 
-apply_transform(f::NTuple{3, typeof(identity)}, x) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::AbstractArray) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::VecTypes) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::Number) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::ClosedInterval) = x
+apply_transform(f::NTuple{3,typeof(identity)}, x) = x
+apply_transform(f::NTuple{3,typeof(identity)}, x::AbstractArray) = x
+apply_transform(f::NTuple{3,typeof(identity)}, x::VecTypes) = x
+apply_transform(f::NTuple{3,typeof(identity)}, x::Number) = x
+apply_transform(f::NTuple{3,typeof(identity)}, x::ClosedInterval) = x
 
 
-struct PointTrans{N, F}
+struct PointTrans{N,F}
     f::F
-    function PointTrans{N}(f::F) where {N, F}
+    function PointTrans{N}(f::F) where {N,F}
         if !hasmethod(f, Tuple{Point{N}})
             error("PointTrans with parameter N = $N must be applicable to an argument of type Point{$N}.")
         end
-        new{N, F}(f)
+        new{N,F}(f)
     end
 end
 
@@ -256,14 +256,14 @@ function apply_transform(f::PointTrans{N}, point::Point{N}) where N
     return f.f(point)
 end
 
-function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
-    p_dim = to_ndim(Point{N1, Float32}, point, 0.0)
+function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1,N2}
+    p_dim = to_ndim(Point{N1,Float32}, point, 0.0)
     p_trans = f.f(p_dim)
     if N1 < N2
-        p_large = ntuple(i-> i <= N1 ? p_trans[i] : point[i], N2)
-        return Point{N2, Float32}(p_large)
+        p_large = ntuple(i -> i <= N1 ? p_trans[i] : point[i], N2)
+        return Point{N2,Float32}(p_large)
     else
-        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
+        return to_ndim(Point{N2,Float32}, p_trans, 0.0)
     end
 end
 
@@ -271,23 +271,23 @@ function apply_transform(f, data::AbstractArray)
     map(point -> apply_transform(f, point), data)
 end
 
-function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2})
+function apply_transform(f::Tuple{Any,Any}, point::VecTypes{2})
     Point2{Float32}(
         f[1](point[1]),
         f[2](point[2]),
     )
 end
 # ambiguity fix
-apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{2}) = point
+apply_transform(f::NTuple{2,typeof(identity)}, point::VecTypes{2}) = point
 
 
-function apply_transform(f::Tuple{Any, Any}, point::VecTypes{3})
+function apply_transform(f::Tuple{Any,Any}, point::VecTypes{3})
     apply_transform((f..., identity), point)
 end
 # ambiguity fix
-apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{3}) = point
+apply_transform(f::NTuple{2,typeof(identity)}, point::VecTypes{3}) = point
 
-function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3})
+function apply_transform(f::Tuple{Any,Any,Any}, point::VecTypes{3})
     Point3{Float32}(
         f[1](point[1]),
         f[2](point[2]),
@@ -295,13 +295,13 @@ function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3})
     )
 end
 # ambiguity fix
-apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point
+apply_transform(f::NTuple{3,typeof(identity)}, point::VecTypes{3}) = point
 
 
 apply_transform(f, number::Number) = f(number)
 
 function apply_transform(f::Observable, data::Observable)
-    return lift((f, d)-> apply_transform(f, d), f, data)
+    return lift((f, d) -> apply_transform(f, d), f, data)
 end
 
 apply_transform(f, itr::Pair) = apply_transform(f, itr[1]) => apply_transform(f, itr[2])
@@ -327,49 +327,51 @@ end
 
 # ambiguity fix
 apply_transform(f::typeof(identity), r::Rect) = r
-apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
-apply_transform(f::NTuple{3, typeof(identity)}, r::Rect) = r
+apply_transform(f::NTuple{2,typeof(identity)}, r::Rect) = r
+apply_transform(f::NTuple{3,typeof(identity)}, r::Rect) = r
 
 const pseudolog10 = ReversibleScale(
     x -> sign(x) * log10(abs(x) + 1),
     x -> sign(x) * (exp10(abs(x)) - 1);
-    limits=(0f0, 3f0),
-    name=:pseudolog10
+    limits = (0f0, 3f0),
+    name = :pseudolog10
 )
 
 Symlog10(hi) = Symlog10(-hi, hi)
 function Symlog10(lo, hi)
-    forward(x) = if x > 0
-        x <= hi ? x / hi * log10(hi) : log10(x)
-    elseif x < 0
-        x >= lo ? x / abs(lo) * log10(abs(lo)) : -log10(abs(x))
-    else
-        x
-    end
-    inverse(x) = if x > 0
-        l = log10(hi)
-        x <= l ? x / l * hi : exp10(x)
-    elseif x < 0
-        l = -log10(abs(lo))
-        x >= l ? x / l * abs(lo) : -exp10(abs(x))
-    else
-        x
-    end
-    return ReversibleScale(forward, inverse; limits=(0.0f0, 3.0f0), name=:Symlog10)
+    forward(x) =
+        if x > 0
+            x <= hi ? x / hi * log10(hi) : log10(x)
+        elseif x < 0
+            x >= lo ? x / abs(lo) * log10(abs(lo)) : -log10(abs(x))
+        else
+            x
+        end
+    inverse(x) =
+        if x > 0
+            l = log10(hi)
+            x <= l ? x / l * hi : exp10(x)
+        elseif x < 0
+            l = -log10(abs(lo))
+            x >= l ? x / l * abs(lo) : -exp10(abs(x))
+        else
+            x
+        end
+    return ReversibleScale(forward, inverse; limits = (0.0f0, 3.0f0), name = :Symlog10)
 end
 
 inverse_transform(::typeof(identity)) = identity
 inverse_transform(::typeof(log10)) = exp10
 inverse_transform(::typeof(log2)) = exp2
 inverse_transform(::typeof(log)) = exp
-inverse_transform(::typeof(sqrt)) = x -> x ^ 2
+inverse_transform(::typeof(sqrt)) = x -> x^2
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::ReversibleScale) = s.inverse
 inverse_transform(::Any) = nothing
 
 function is_identity_transform(t)
-    return t === identity || t isa Tuple && all(x-> x === identity, t)
+    return t === identity || t isa Tuple && all(x -> x === identity, t)
 end
 
 
@@ -413,7 +415,7 @@ end
 
 Base.broadcastable(x::Polar) = (x,)
 
-function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
+function apply_transform(trans::Polar, point::VecTypes{2,T}) where T<:Real
     if trans.theta_as_x
         θ, r = point
     else
@@ -429,14 +431,14 @@ function apply_transform(trans::Polar, point::VecTypes{2, T}) where T <: Real
 end
 
 # Point2 may get expanded to Point3. In that case we leave z untransformed
-function apply_transform(f::Polar, point::VecTypes{N2, T}) where {N2, T}
+function apply_transform(f::Polar, point::VecTypes{N2,T}) where {N2,T}
     p_dim = to_ndim(Point2f, point, 0.0)
     p_trans = apply_transform(f, p_dim)
     if 2 < N2
-        p_large = ntuple(i-> i <= 2 ? p_trans[i] : point[i], N2)
-        return Point{N2, Float32}(p_large)
+        p_large = ntuple(i -> i <= 2 ? p_trans[i] : point[i], N2)
+        return Point{N2,Float32}(p_large)
     else
-        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
+        return to_ndim(Point{N2,Float32}, p_trans, 0.0)
     end
 end
 
@@ -444,7 +446,7 @@ function inverse_transform(trans::Polar)
     if trans.theta_as_x
         return Makie.PointTrans{2}() do point
             typeof(point)(
-                mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi),
+                mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0 .. 2pi),
                 hypot(point[1], point[2]) + trans.r0
             )
         end
@@ -452,7 +454,7 @@ function inverse_transform(trans::Polar)
         return Makie.PointTrans{2}() do point
             typeof(point)(
                 hypot(point[1], point[2]) + trans.r0,
-                mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0..2pi)
+                mod(trans.direction * atan(point[2], point[1]) - trans.theta_0, 0 .. 2pi)
             )
         end
     end

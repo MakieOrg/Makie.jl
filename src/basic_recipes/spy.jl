@@ -27,14 +27,14 @@ $(ATTRIBUTES)
     )
 end
 
-function convert_arguments(::Type{<: Spy}, x::SparseArrays.AbstractSparseArray)
-    (0..size(x, 1), 0..size(x, 2), x)
+function convert_arguments(::Type{<:Spy}, x::SparseArrays.AbstractSparseArray)
+    (0 .. size(x, 1), 0 .. size(x, 2), x)
 end
-function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
+function convert_arguments(::Type{<:Spy}, x, y, z::SparseArrays.AbstractSparseArray)
     (x, y, z)
 end
 
-function calculated_attributes!(::Type{<: Spy}, plot)
+function calculated_attributes!(::Type{<:Spy}, plot)
 end
 
 function plot!(p::Spy)
@@ -58,7 +58,7 @@ function plot!(p::Spy)
         x, y, color = SparseArrays.findnz(z)
         points = map(x, y) do x, y
             (((Point2f(x, y) .- 1) ./ Point2f(size(z) .- 1)) .*
-            widths(rect) .+ minimum(rect))
+             widths(rect) .+ minimum(rect))
         end
         points, convert(Vector{Float32}, color)
     end
@@ -77,9 +77,9 @@ function plot!(p::Spy)
         p,
         lift(first, p, xycol), color = lift(last, p, xycol),
         marker = marker, markersize = markersize, colorrange = p.colorrange,
-        colormap = p.colormap, colorscale = p.colorscale,inspectable = p.inspectable, visible = p.visible
+        colormap = p.colormap, colorscale = p.colorscale, inspectable = p.inspectable, visible = p.visible
     )
 
     lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable,
-           visible = p.visible)
+        visible = p.visible)
 end

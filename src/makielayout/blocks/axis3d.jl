@@ -19,12 +19,12 @@ function initialize_block!(ax::Axis3)
     cam = OrthographicCamera()
     cameracontrols!(scene, cam)
 
-    mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
+    mi1 = Observable(!(pi / 2 <= mod1(ax.azimuth[], 2pi) < 3pi / 2))
     mi2 = Observable(0 <= mod1(ax.azimuth[], 2pi) < pi)
     mi3 = Observable(ax.elevation[] > 0)
 
     on(scene, ax.azimuth) do x
-        b = !(pi/2 <= mod1(x, 2pi) < 3pi/2)
+        b = !(pi / 2 <= mod1(x, 2pi) < 3pi / 2)
         mi1.val == b || (mi1[] = b)
         return
     end
@@ -39,7 +39,7 @@ function initialize_block!(ax::Axis3)
     end
 
     matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.elevation, ax.azimuth,
-                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
+        ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
 
     on(scene, matrices) do (model, view, proj, eyepos)
         cam = camera(scene)
@@ -125,7 +125,7 @@ function initialize_block!(ax::Axis3)
         return Consume(false)
     end
 
-    ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
+    ax.interactions = Dict{Symbol,Tuple{Bool,Any}}()
 
     on(scene, ax.limits) do lims
         reset_limits!(ax)
@@ -253,12 +253,12 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 
             if viewmode === :fitzoom
                 if ratio_y > ratio_x
-                    pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
+                    pm = Makie.scalematrix(Vec3(1 / ratio_y, 1 / ratio_y, 1)) * pm
                 else
-                    pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
+                    pm = Makie.scalematrix(Vec3(1 / ratio_x, 1 / ratio_x, 1)) * pm
                 end
             else
-                pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
+                pm = Makie.scalematrix(Vec3(1 / ratio_x, 1 / ratio_y, 1)) * pm
             end
         end
         pm
@@ -292,7 +292,7 @@ function autolimits!(ax::Axis3)
 end
 
 to_protrusions(x::Number) = GridLayoutBase.RectSides{Float32}(x, x, x, x)
-to_protrusions(x::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(x...)
+to_protrusions(x::Tuple{Any,Any,Any,Any}) = GridLayoutBase.RectSides{Float32}(x...)
 
 function getlimits(ax::Axis3, dim)
     dim in (1, 2, 3) || error("Dimension $dim not allowed. Only 1, 2 or 3.")
@@ -300,10 +300,10 @@ function getlimits(ax::Axis3, dim)
     filtered_plots = filter(ax.scene.plots) do p
         attr = p.attributes
         to_value(get(attr, :visible, true)) &&
-        is_data_space(to_value(get(attr, :space, :data))) &&
-        ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
-        ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&
-        ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
+            is_data_space(to_value(get(attr, :space, :data))) &&
+            ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
+            ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&
+            ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
     end
 
     bboxes = Makie.data_limits.(filtered_plots)
@@ -398,7 +398,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
 
 
     framepoints = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
-            ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
+    ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
         o = pxa.origin
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -458,8 +458,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     ticksize = attr(:ticksize)
 
     tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
-            scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
-                pview, pxa, tsize, xrev, yrev, zrev
+        scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
+    pview, pxa, tsize, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -493,7 +493,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
-         end
+        end
     end
     # we are going to transform the 3d tick segments into 2d of the topscene
     # because otherwise they
@@ -514,7 +514,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     labels_positions = Observable{Any}()
     map!(topscene, labels_positions, scene.viewport, scene.camera.projectionview,
-            tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
+        tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
 
@@ -549,9 +549,9 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     label_align = Observable((:center, :top))
 
     onany(topscene,
-            scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
-            attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
-            ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
+        scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
+        attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+    ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         o = pxa.origin
 
@@ -585,18 +585,18 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             (min1 ⊻ min2 ⊻ revdim) ? 1 : -1
         end
 
-        a = pi/2
+        a = pi / 2
 
         # get the vector pointing from the axis in the direction of the label anchor
         offset_vec = (Makie.Mat2f(cos(a), sin(a), -sin(a), cos(a)) *
-            Makie.GeometryBasics.normalize(diffsign * diff))
+                      Makie.GeometryBasics.normalize(diffsign * diff))
 
         # calculate the label offset from the axis midpoint
         plus_offset = midpoint + labeloffset * offset_vec
 
         offset_ang = atan(offset_vec[2], offset_vec[1])
-        offset_ang_90deg = offset_ang + pi/2
-        offset_ang_90deg_alwaysup = ((offset_ang + pi/2 + pi/2) % pi) - pi/2
+        offset_ang_90deg = offset_ang + pi / 2
+        offset_ang_90deg_alwaysup = ((offset_ang + pi / 2 + pi / 2) % pi) - pi / 2
 
         # # prefer rotated left 90deg to rotated right 90deg
         slight_flip = offset_ang_90deg_alwaysup < -deg2rad(88)
@@ -654,7 +654,7 @@ end
 function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim1]) *
-        string((:x, :y, :z)[dim2]) * string(sym))
+                         string((:x, :y, :z)[dim2]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
 
     vertices = lift(limits, min3) do lims, mi3
@@ -787,11 +787,11 @@ end
 
 
 # this is so users can do limits = (x1, x2, y1, y2, z1, z2)
-function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
+function convert_limit_attribute(lims::Tuple{Any,Any,Any,Any,Any,Any})
     (lims[1:2], lims[3:4], lims[5:6])
 end
 
-function convert_limit_attribute(lims::Tuple{Any, Any, Any})
+function convert_limit_attribute(lims::Tuple{Any,Any,Any})
     lims
 end
 
@@ -838,7 +838,7 @@ function zautolimits(ax::Axis3)
     zlims
 end
 
-function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real,Nothing},Union{Real,Nothing}})
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2] && xlims[1] !== nothing
@@ -856,7 +856,7 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     nothing
 end
 
-function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real,Nothing},Union{Real,Nothing}})
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2] && ylims[1] !== nothing

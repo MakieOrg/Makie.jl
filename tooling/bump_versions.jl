@@ -4,9 +4,9 @@ using Pkg
 
 dictmap(f, d) = Dict(key => f(key, value) for (key, value) in d)
 
-bump_patch(v::VersionNumber) = VersionNumber(v.major, v.minor, v.patch+1)
-bump_minor(v::VersionNumber) = VersionNumber(v.major, v.minor+1, 0)
-bump_major(v::VersionNumber) = VersionNumber(v.major+1, 0, 0)
+bump_patch(v::VersionNumber) = VersionNumber(v.major, v.minor, v.patch + 1)
+bump_minor(v::VersionNumber) = VersionNumber(v.major, v.minor + 1, 0)
+bump_major(v::VersionNumber) = VersionNumber(v.major + 1, 0, 0)
 
 function bump_versions()
 

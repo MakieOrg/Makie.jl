@@ -4,7 +4,7 @@ struct Camera2D <: AbstractCamera
     zoombutton::Observable{IsPressedInputType}
     panbutton::Observable{IsPressedInputType}
     padding::Observable{Float32}
-    last_area::Observable{Vec{2, Int}}
+    last_area::Observable{Vec{2,Int}}
     update_limits::Observable{Bool}
 end
 
@@ -75,7 +75,7 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = Rect2f(area3d)
     area = positive_widths(area)
     # ignore rects with width almost 0
-    any(x-> x ≈ 0.0, widths(area)) && return
+    any(x -> x ≈ 0.0, widths(area)) && return
 
     pa = viewport(scene)[]
     px_wh = normalize(widths(pa))
@@ -341,7 +341,7 @@ Creates a pixel camera for the given `scene`. This means that the positional
 data of a plot will be interpreted in pixel units. This camera does not feature
 controls.
 """
-function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+function campixel!(scene::Scene; nearclip = -10_000f0, farclip = 10_000f0)
     disconnect!(camera(scene))
     update_once = Observable(false)
     closure = UpdatePixelCam(camera(scene), nearclip, farclip)
@@ -363,7 +363,7 @@ get_space(::RelativeCamera) = :relative
 Creates a camera for the given `scene` which maps the scene area to a 0..1 by
 0..1 range. This camera does not feature controls.
 """
-function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+function cam_relative!(scene::Scene; nearclip = -10_000f0, farclip = 10_000f0)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
     set_proj_view!(camera(scene), projection, Mat4f(I))
     cam = RelativeCamera()

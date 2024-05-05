@@ -10,14 +10,14 @@ function glGetShaderiv(shaderID::GLuint, variable::GLenum)
 end
 function glShaderSource(shaderID::GLuint, shadercode::Vector{UInt8})
     shader_code_ptrs = Ptr{UInt8}[pointer(shadercode)]
-    len              = Ref{GLint}(length(shadercode))
+    len = Ref{GLint}(length(shadercode))
     glShaderSource(shaderID, 1, shader_code_ptrs, len)
 end
 glShaderSource(shaderID::GLuint, shadercode::String) = glShaderSource(shaderID, Vector{UInt8}(shadercode))
 function glGetAttachedShaders(program::GLuint)
-    shader_count   = glGetProgramiv(program, GL_ATTACHED_SHADERS)
+    shader_count = glGetProgramiv(program, GL_ATTACHED_SHADERS)
     length_written = GLsizei[0]
-    shaders        = zeros(GLuint, shader_count)
+    shaders = zeros(GLuint, shader_count)
 
     glGetAttachedShaders(program, shader_count, length_written, shaders)
     shaders[1:first(length_written)]
@@ -61,15 +61,15 @@ function get_uniform_location(program::GLuint, name::String)
 end
 
 function glGetActiveUniform(programID::GLuint, index::Integer)
-    actualLength   = GLsizei[1]
-    uniformSize    = GLint[1]
-    typ            = GLenum[1]
-    maxcharsize    = glGetProgramiv(programID, GL_ACTIVE_UNIFORM_MAX_LENGTH)
-    name           = Vector{GLchar}(undef, maxcharsize)
+    actualLength = GLsizei[1]
+    uniformSize = GLint[1]
+    typ = GLenum[1]
+    maxcharsize = glGetProgramiv(programID, GL_ACTIVE_UNIFORM_MAX_LENGTH)
+    name = Vector{GLchar}(undef, maxcharsize)
 
     glGetActiveUniform(programID, index, maxcharsize, actualLength, uniformSize, typ, name)
 
-    actualLength[1] <= 0 &&  error("No active uniform at given index. Index: ", index)
+    actualLength[1] <= 0 && error("No active uniform at given index. Index: ", index)
 
     uname = unsafe_string(pointer(name), actualLength[1])
     uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
@@ -77,11 +77,11 @@ function glGetActiveUniform(programID::GLuint, index::Integer)
 end
 
 function glGetActiveAttrib(programID::GLuint, index::Integer)
-    actualLength   = GLsizei[1]
-    attributeSize  = GLint[1]
-    typ            = GLenum[1]
-    maxcharsize    = glGetProgramiv(programID, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH)
-    name           = Vector{GLchar}(undef, maxcharsize)
+    actualLength = GLsizei[1]
+    attributeSize = GLint[1]
+    typ = GLenum[1]
+    maxcharsize = glGetProgramiv(programID, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH)
+    name = Vector{GLchar}(undef, maxcharsize)
 
     glGetActiveAttrib(programID, index, maxcharsize, actualLength, attributeSize, typ, name)
 
@@ -104,7 +104,7 @@ function glGetIntegerv(variable::GLenum)
     return result[]
 end
 
-function glGenBuffers(n=1)
+function glGenBuffers(n = 1)
     result = GLuint[0]
     glGenBuffers(1, result)
     id = result[]
@@ -118,7 +118,7 @@ function glGenVertexArrays()
     result = GLuint[0]
     glGenVertexArrays(1, result)
     id = result[1]
-    if id <=0
+    if id <= 0
         error("glGenVertexArrays returned invalid id. OpenGL Context active?")
     end
     return id
@@ -179,12 +179,12 @@ end
 
 function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer, h::Integer, d::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
     glTexImage3D(GL_PROXY_TEXTURE_3D, level, internalFormat, w, h, d, border, format, datatype, C_NULL)
-    for l in  0:level
+    for l in 0:level
         result = glGetTexLevelParameteriv(GL_PROXY_TEXTURE_3D, l, GL_TEXTURE_WIDTH)
         if result == 0
             error("glTexImage 3D: width too large. Width: ", w)
         end
-        result = glGetTexLevelParameteriv(GL_PROXY_TEXTURE_3D, l,GL_TEXTURE_HEIGHT)
+        result = glGetTexLevelParameteriv(GL_PROXY_TEXTURE_3D, l, GL_TEXTURE_HEIGHT)
         if result == 0
             error("glTexImage 3D: height too large. height: ", h)
         end

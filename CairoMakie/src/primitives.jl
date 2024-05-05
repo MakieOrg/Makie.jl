@@ -2,7 +2,7 @@
 #                             Lines, LineSegments                              #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines,LineSegments}))
     @get_attribute(primitive, (color, linewidth, linestyle))
     ctx = screen.context
     model = primitive[:model][]
@@ -15,7 +15,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # a vector of tuples of two points. we convert those to a list of points
     # so they don't trip up the rest of the pipeline
     # TODO this shouldn't be necessary anymore!
-    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:AbstractFace}}} where P
+    if positions isa SubArray{<:Point3,1,P,<:Tuple{Array{<:AbstractFace}}} where P
         positions = let
             pos = Point3f[]
             for tup in positions
@@ -114,12 +114,12 @@ function draw_single(primitive::Lines, ctx, positions)
         # only take action for non-NaNs
         if !isnan(p)
             # new line segment at beginning or if previously NaN
-            if i == 1 || isnan(positions[i-1])
+            if i == 1 || isnan(positions[i - 1])
                 Cairo.move_to(ctx, p...)
             else
                 Cairo.line_to(ctx, p...)
                 # complete line segment at end or if next point is NaN
-                if i == n || isnan(positions[i+1])
+                if i == n || isnan(positions[i + 1])
                     Cairo.stroke(ctx)
                 end
             end
@@ -133,9 +133,9 @@ function draw_single(primitive::LineSegments, ctx, positions)
 
     @assert iseven(length(positions))
 
-    @inbounds for i in 1:2:length(positions)-1
+    @inbounds for i in 1:2:(length(positions) - 1)
         p1 = positions[i]
-        p2 = positions[i+1]
+        p2 = positions[i + 1]
 
         if isnan(p1) || isnan(p2)
             continue
@@ -165,26 +165,26 @@ function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArr
     @assert length(linewidths) == length(colors)
 
     for i in 1:2:length(positions)
-        if isnan(positions[i+1]) || isnan(positions[i])
+        if isnan(positions[i + 1]) || isnan(positions[i])
             continue
         end
-        if linewidths[i] != linewidths[i+1]
+        if linewidths[i] != linewidths[i + 1]
             error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i+1])) at the endpoints of a line.")
         end
         Cairo.move_to(ctx, positions[i]...)
-        Cairo.line_to(ctx, positions[i+1]...)
+        Cairo.line_to(ctx, positions[i + 1]...)
         Cairo.set_line_width(ctx, linewidths[i])
 
         !isnothing(dash) && Cairo.set_dash(ctx, dash .* linewidths[i])
         c1 = colors[i]
-        c2 = colors[i+1]
+        c2 = colors[i + 1]
         # we can avoid the more expensive gradient if the colors are the same
         # this happens if one color was given for each segment
         if c1 == c2
             Cairo.set_source_rgba(ctx, red(c1), green(c1), blue(c1), alpha(c1))
             Cairo.stroke(ctx)
         else
-            pat = Cairo.pattern_create_linear(positions[i]..., positions[i+1]...)
+            pat = Cairo.pattern_create_linear(positions[i]..., positions[i + 1]...)
             Cairo.pattern_add_color_stop_rgba(pat, 0, red(c1), green(c1), blue(c1), alpha(c1))
             Cairo.pattern_add_color_stop_rgba(pat, 1, red(c2), green(c2), blue(c2), alpha(c2))
             Cairo.set_source(ctx, pat)
@@ -211,7 +211,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
         # first is nan, do nothing
     end
 
-    for i in eachindex(positions)[begin+1:end]
+    for i in eachindex(positions)[(begin + 1):end]
         this_position = positions[i]
         this_color = colors[i]
         this_nan = isnan(this_position)
@@ -316,14 +316,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     transfunc = Makie.transform_func(primitive)
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotations, model, positions, size_model, font, markerspace,
-                               space)
+        marker_offset, rotations, model, positions, size_model, font, markerspace,
+        space)
 end
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
     broadcast_foreach(positions, colors, markersize, strokecolor,
-            strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
-            markersize, strokecolor, strokewidth, m, mo, rotation
+        strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+    markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
@@ -399,17 +399,17 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     set_font_matrix(ctx, old_matrix)
 end
 
-function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, ::Type{<:Circle}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
     marker_offset = marker_offset + scale ./ 2
     pos += Point2f(marker_offset[1], -marker_offset[2])
 
     if scale[1] != scale[2]
         old_matrix = Cairo.get_matrix(ctx)
         Cairo.scale(ctx, scale[1], scale[2])
-        Cairo.translate(ctx, pos[1]/scale[1], pos[2]/scale[2])
-        Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
+        Cairo.translate(ctx, pos[1] / scale[1], pos[2] / scale[2])
+        Cairo.arc(ctx, 0, 0, 0.5, 0, 2 * pi)
     else
-        Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
+        Cairo.arc(ctx, pos[1], pos[2], scale[1] / 2, 0, 2 * pi)
     end
 
     Cairo.fill_preserve(ctx)
@@ -423,7 +423,7 @@ function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidt
     nothing
 end
 
-function draw_marker(ctx, ::Type{<: Rect}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, ::Type{<:Rect}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
     s2 = Point2((scale .* (1, -1))...)
     pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
@@ -484,21 +484,21 @@ end
 
 
 function draw_marker(ctx, marker::Matrix{T}, pos, scale,
-        strokecolor #= unused =#, strokewidth #= unused =#,
-        marker_offset, rotation) where T<:Colorant
+    strokecolor, strokewidth, #= unused =#
+    marker_offset, rotation) where T<:Colorant
 
     # convert marker to Cairo compatible image data
-    marker = permutedims(marker, (2,1))
+    marker = permutedims(marker, (2, 1))
     marker_surf = to_cairo_image(marker)
 
     w, h = size(marker)
 
     Cairo.translate(ctx,
-                    scale[1]/2 + pos[1] + marker_offset[1],
-                    scale[2]/2 + pos[2] + marker_offset[2])
+        scale[1] / 2 + pos[1] + marker_offset[1],
+        scale[2] / 2 + pos[2] + marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.scale(ctx, scale[1] / w, scale[2] / h)
-    Cairo.set_source_surface(ctx, marker_surf, -w/2, -h/2)
+    Cairo.set_source_surface(ctx, marker_surf, -w / 2, -h / 2)
     Cairo.paint(ctx)
 end
 
@@ -509,13 +509,13 @@ end
 
 function p3_to_p2(p::Point3{T}) where T
     if p[3] == 0 || isnan(p[3])
-        Point2{T}(p[Vec(1,2)]...)
+        Point2{T}(p[Vec(1, 2)]...)
     else
         error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
     end
 end
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection},Makie.GlyphCollection}}}))
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, markerspace, offset))
     transform_marker = to_value(get(primitive, :transform_marker, true))::Bool
@@ -532,9 +532,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 end
 
 function draw_glyph_collection(
-        scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset, transformation, transform_marker
-    )
+    scene, ctx, positions, glyph_collections::AbstractArray, rotation,
+    model::Mat, space, markerspace, offset, transformation, transform_marker
+)
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
@@ -548,8 +548,8 @@ _deref(x) = x
 _deref(x::Ref) = x[]
 
 function draw_glyph_collection(
-        scene, ctx, position, glyph_collection, rotation, _model, space,
-        markerspace, offsets, transformation, transform_marker)
+    scene, ctx, position, glyph_collection, rotation, _model, space,
+    markerspace, offsets, transformation, transform_marker)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -576,7 +576,7 @@ function draw_glyph_collection(
     Cairo.save(ctx)
 
     broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
-        glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
+    glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
 
         cairoface = set_ft_font(ctx, font)
         old_matrix = get_font_matrix(ctx)
@@ -658,13 +658,13 @@ If not, returns array unchanged.
 function regularly_spaced_array_to_range(arr)
     diffs = unique!(sort!(diff(arr)))
     step = sum(diffs) ./ length(diffs)
-    if all(x-> x ≈ step, diffs)
+    if all(x -> x ≈ step, diffs)
         m, M = extrema(arr)
         if step < zero(step)
             m, M = M, m
         end
         # don't use stop=M, since that may not include M
-        return range(m; step=step, length=length(arr))
+        return range(m; step = step, length = length(arr))
     else
         return arr
     end
@@ -680,21 +680,21 @@ premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
 premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
 premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Heatmap, Image}))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Heatmap,Image}))
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
     if !(xs isa AbstractVector)
         l, r = extrema(xs)
         N = size(image, 1)
-        xs = range(l, r, length = N+1)
+        xs = range(l, r, length = N + 1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
     if !(ys isa AbstractVector)
         l, r = extrema(ys)
         N = size(image, 2)
-        ys = range(l, r, length = N+1)
+        ys = range(l, r, length = N + 1)
     else
         ys = regularly_spaced_array_to_range(ys)
     end
@@ -708,15 +708,15 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
     t = Makie.transform_func(primitive)
-    identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
+    identity_transform = (t === identity || t isa Tuple && all(x -> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
     xy_aligned = let
         # Only allow scaling and translation
         pv = scene.camera.projectionview[]
         M = Mat4f(
-            pv[1, 1], 0.0,      0.0,      0.0,
-            0.0,      pv[2, 2], 0.0,      0.0,
-            0.0,      0.0,      pv[3, 3], 0.0,
+            pv[1, 1], 0.0, 0.0, 0.0,
+            0.0, pv[2, 2], 0.0, 0.0,
+            0.0, 0.0, pv[3, 3], 0.0,
             pv[1, 4], pv[2, 4], pv[3, 4], 1.0
         )
         pv ≈ M
@@ -740,7 +740,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     w, h = xymax .- xy
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
-        (interpolate || xy_aligned)
+                        (interpolate || xy_aligned)
     use_fast_path = can_use_fast_path && !disable_fast_path
 
     if use_fast_path
@@ -781,9 +781,9 @@ end
 function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
     @inbounds for i in 1:ni, j in 1:nj
         p1 = xys[i, j]
-        p2 = xys[i+1, j]
-        p3 = xys[i+1, j+1]
-        p4 = xys[i, j+1]
+        p2 = xys[i + 1, j]
+        p3 = xys[i + 1, j + 1]
+        p4 = xys[i, j + 1]
 
         # Rectangles and polygons that are directly adjacent usually show
         # white lines between them due to anti aliasing. To avoid this we
@@ -795,10 +795,10 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
             # model matrix.) (i!=1) etc is used to avoid increasing the
             # outer extent of the heatmap.
             center = 0.25f0 * (p1 + p2 + p3 + p4)
-            p1 += sign.(p1 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=1))
-            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=1))
-            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=nj))
-            p4 += sign.(p4 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=nj))
+            p1 += sign.(p1 - center) .* Point2f(0.5f0 * (i != 1), 0.5f0 * (j != 1))
+            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i != ni), 0.5f0 * (j != 1))
+            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i != ni), 0.5f0 * (j != nj))
+            p4 += sign.(p4 - center) .* Point2f(0.5f0 * (i != 1), 0.5f0 * (j != nj))
         end
 
         Cairo.set_line_width(ctx, 0)
@@ -820,7 +820,7 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
     mesh = primitive[1][]
-    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
+    if Makie.cameracontrols(scene) isa Union{Camera2D,Makie.PixelCamera,Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive, mesh)
     else
         if !haskey(primitive, :faceculling)
@@ -832,9 +832,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
-    vs =  decompose(Point2f, mesh)::Vector{Point2f}
+    vs = decompose(Point2f, mesh)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+    uv = decompose_uv(mesh)::Union{Nothing,Vector{Vec2f}}
     model = plot.model[]::Mat4f
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
     cols = per_face_colors(color, nothing, fs, nothing, uv)
@@ -844,7 +844,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
 end
 
 function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func,
-        vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
+    vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
 
     ctx = screen.context
     # Priorize colors of the mesh if present
@@ -852,7 +852,7 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
 
-        t1, t2, t3 =  project_position.(scene, (transform_func,), space, vs[f], (model,)) #triangle points
+        t1, t2, t3 = project_position.(scene, (transform_func,), space, vs[f], (model,)) #triangle points
 
         # don't draw any mesh faces with NaN components.
         if isnan(t1) || isnan(t2) || isnan(t3)
@@ -895,7 +895,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
-    meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
+    meshuvs = texturecoordinates(mesh)::Union{Nothing,Vector{Vec2f}}
 
     # Priorize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
@@ -923,11 +923,11 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
 end
 
 function draw_mesh3D(
-        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col,
-        pos, scale, rotation,
-        model, shading, diffuse,
-        specular, shininess, faceculling
-    )
+    scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col,
+    pos, scale, rotation,
+    model, shading, diffuse,
+    specular, shininess, faceculling
+)
     ctx = screen.context
     projectionview = Makie.space_to_clip(scene.camera, space, true)
     eyeposition = scene.camera.eyeposition[]
@@ -951,7 +951,7 @@ function draw_mesh3D(
     dirlight = Makie.get_directional_light(scene)
     if !isnothing(dirlight)
         lightdirection = if dirlight.camera_relative
-            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+            T = inv(scene.camera.view[][Vec(1, 2, 3), Vec(1, 2, 3)])
             normalize(T * dirlight.direction[])
         else
             normalize(dirlight.direction[])
@@ -959,7 +959,7 @@ function draw_mesh3D(
         c = dirlight.color[]
         light_color = Vec3f(red(c), green(c), blue(c))
     else
-        lightdirection = Vec3f(0,0,-1)
+        lightdirection = Vec3f(0, 0, -1)
         light_color = Vec3f(0)
     end
 
@@ -1099,21 +1099,19 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     view = scene.camera.view[]
 
     zorder = sortperm(pos, by = p -> begin
-        p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
-        cam_pos = view * model * p4d
-        cam_pos[3] / cam_pos[4]
-    end, rev=false)
+            p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
+            cam_pos = view * model * p4d
+            cam_pos[3] / cam_pos[4]
+        end, rev = false)
 
     color = to_color(primitive.calculated_colors[])
     submesh = Attributes(
-        model=model,
+        model = model,
         calculated_colors = color,
-        shading=primitive.shading, diffuse=primitive.diffuse,
-        specular=primitive.specular, shininess=primitive.shininess,
-        faceculling=get(primitive, :faceculling, -10),
-        transformation=Makie.transformation(primitive)
-
-    )
+        shading = primitive.shading, diffuse = primitive.diffuse,
+        specular = primitive.specular, shininess = primitive.shininess,
+        faceculling = get(primitive, :faceculling, -10),
+        transformation = Makie.transformation(primitive))
 
     submesh[:model] = model
     scales = primitive[:markersize][]

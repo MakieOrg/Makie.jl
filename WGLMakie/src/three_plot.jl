@@ -33,32 +33,35 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], scene, viewport(scene))
-    canvas = DOM.m("canvas"; tabindex="0", style="display: block")
-    wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
+    canvas = DOM.m("canvas"; tabindex = "0", style = "display: block")
+    wrapper = DOM.div(canvas; style = "width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = Bonito.Retain(TEXTURE_ATLAS)
-    evaljs(session, js"""
-    $(WGL).then(WGL => {
-        try {
-            const renderer = WGL.create_scene(
-                $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
-                $(ta), $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
-            )
-            const gl = renderer.getContext()
-            const err = gl.getError()
-            if (err != gl.NO_ERROR) {
-                throw new Error("WebGL error: " + WGL.wglerror(gl, err))
-            }
-            $(done_init).notify(true)
-        } catch (e) {
-            Bonito.Connection.send_error("error initializing scene", e)
-            $(done_init).notify(false)
-            return
+    evaljs(
+        session,
+        js"""
+$(WGL).then(WGL => {
+    try {
+        const renderer = WGL.create_scene(
+            $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+            $(ta), $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
+        )
+        const gl = renderer.getContext()
+        const err = gl.getError()
+        if (err != gl.NO_ERROR) {
+            throw new Error("WebGL error: " + WGL.wglerror(gl, err))
         }
-    })
-    """)
+        $(done_init).notify(true)
+    } catch (e) {
+        Bonito.Connection.send_error("error initializing scene", e)
+        $(done_init).notify(false)
+        return
+    }
+})
+"""
+    )
     on(session, done_init) do val
         window_open[] = true
     end

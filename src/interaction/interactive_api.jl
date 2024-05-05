@@ -20,8 +20,8 @@ Calls `f(plot, idx)` whenever the mouse is over any of `plots`.
 `idx` is an index, e.g. when over a scatter plot, it will be the index of the
 hovered element
 """
-onpick(f, x, plots::AbstractPlot...; range=1) = onpick(f, get_scene(x), plots..., range = range)
-function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
+onpick(f, x, plots::AbstractPlot...; range = 1) = onpick(f, get_scene(x), plots..., range = range)
+function onpick(f, scene::Scene, plots::AbstractPlot...; range = 1)
     fplots = collect_atomic_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
@@ -56,7 +56,7 @@ Returns the plot under pixel position `(x, y)`.
 """
 pick(obj, x::Number, y::Number) = pick(get_scene(obj), x, y)
 function pick(scene::Scene, x::Number, y::Number)
-    return pick(scene, Vec{2, Float64}(x, y))
+    return pick(scene, Vec{2,Float64}(x, y))
 end
 
 
@@ -70,7 +70,7 @@ pick(obj, xy::VecTypes{2}) = pick(get_scene(obj), xy)
 function pick(scene::Scene, xy::VecTypes{2})
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
-    pick(scene, screen, Vec{2, Float64}(xy))
+    pick(scene, screen, Vec{2,Float64}(xy))
 end
 
 """
@@ -92,15 +92,16 @@ function pick_closest(scene::SceneLike, screen, xy, range)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
+    dx = x1 - x0
+    dy = y1 - y0
 
     picks = pick(scene, screen, Rect2i(x0, y0, dx, dy))
 
     min_dist = range^2
     selected = (0, 0)
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
+    x, y = xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        d = (x-i)^2 + (y-j)^2
+        d = (x - i)^2 + (y - j)^2
         if (d < min_dist) && (picks[i, j][1] != nothing)
             min_dist = d
             selected = (i, j)
@@ -120,27 +121,28 @@ sorted by distance to `xy`.
 """
 function pick_sorted(scene::Scene, xy, range)
     screen = getscreen(scene)
-    screen === nothing && return Tuple{AbstractPlot, Int}[]
+    screen === nothing && return Tuple{AbstractPlot,Int}[]
     return pick_sorted(scene, screen, xy, range)
 end
 
 function pick_sorted(scene::Scene, screen, xy, range)
     w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
-        return Tuple{AbstractPlot, Int}[]
+        return Tuple{AbstractPlot,Int}[]
     end
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
+    dx = x1 - x0
+    dy = y1 - y0
 
     picks = pick(scene, screen, Rect2i(x0, y0, dx, dy))
 
     selected = filter(x -> x[1] !== nothing, unique(vec(picks)))
     distances = [range^2 for _ in selected]
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
+    x, y = xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         if picks[i, j][1] !== nothing
-            d = (x-i)^2 + (y-j)^2
+            d = (x - i)^2 + (y - j)^2
             i = findfirst(isequal(picks[i, j]), selected)::Int
             if distances[i] > d
                 distances[i] = d
@@ -162,7 +164,7 @@ screen boundaries.
 pick(x, rect::Rect2i) = pick(get_scene(x), rect)
 function pick(scene::Scene, rect::Rect2i)
     screen = getscreen(scene)
-    screen === nothing && return Tuple{AbstractPlot, Int}[]
+    screen === nothing && return Tuple{AbstractPlot,Int}[]
     return pick(scene, screen, rect)
 end
 
@@ -231,7 +233,7 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
         scene, rect, visible = false, color = RGBAf(0, 0, 0, 0), strokecolor = RGBAf(0.1, 0.1, 0.8, 0.5), strokewidth = strokewidth, kwargs...,
     )
 
-    on(events(scene).mousebutton, priority=priority) do event
+    on(events(scene).mousebutton, priority = priority) do event
         if event.button == key
             if event.action == Mouse.press && is_mouseinside(scene)
                 mp = mouseposition(scene)
@@ -257,7 +259,7 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
 
         return Consume(false)
     end
-    on(events(scene).mouseposition, priority=priority) do event
+    on(events(scene).mouseposition, priority = priority) do event
         if waspressed[]
             mp = mouseposition(scene)
             mini = minimum(rect[])
@@ -287,15 +289,15 @@ The `kwargs...` are propagated into `lines!` which plots the selected line.
 function select_line(scene; blocking = false, priority = 2, kwargs...)
     key = Mouse.left
     waspressed = Observable(false)
-    line = Observable([Point2f(0,0), Point2f(1,1)])
-    line_ret = Observable([Point2f(0,0), Point2f(1,1)])
+    line = Observable([Point2f(0, 0), Point2f(1, 1)])
+    line_ret = Observable([Point2f(0, 0), Point2f(1, 1)])
     # Create an initially hidden  arrow
     plotted_line = lines!(
         scene, line; visible = false, color = RGBAf(0.1, 0.1, 0.8, 0.5),
         linewidth = 4, kwargs...,
     )
 
-    on(events(scene).mousebutton, priority=priority) do event
+    on(events(scene).mousebutton, priority = priority) do event
         if event.button == key && is_mouseinside(scene)
             mp = mouseposition(scene)
             if event.action == Mouse.press
@@ -319,7 +321,7 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
         end
         return Consume(false)
     end
-    on(events(scene).mouseposition, priority=priority) do event
+    on(events(scene).mouseposition, priority = priority) do event
         if waspressed[]
             mp = mouseposition(scene)
             line[][2] = mp
@@ -345,19 +347,19 @@ The value of the returned point is updated **only** when the user un-clicks.
 
 The `kwargs...` are propagated into `scatter!` which plots the selected point.
 """
-function select_point(scene; blocking = false, priority=2, kwargs...)
+function select_point(scene; blocking = false, priority = 2, kwargs...)
     key = Mouse.left
     pmarker = Circle(Point2f(0, 0), Float32(1))
     waspressed = Observable(false)
-    point = Observable([Point2f(0,0)])
-    point_ret = Observable(Point2f(0,0))
+    point = Observable([Point2f(0, 0)])
+    point_ret = Observable(Point2f(0, 0))
     # Create an initially hidden  arrow
     plotted_point = scatter!(
         scene, point; visible = false, marker = pmarker, markersize = 20px,
         color = RGBAf(0.1, 0.1, 0.8, 0.5), kwargs...,
     )
 
-    on(events(scene).mousebutton, priority=priority) do event
+    on(events(scene).mousebutton, priority = priority) do event
         if event.button == key && is_mouseinside(scene)
             mp = mouseposition(scene)
             if event.action == Mouse.press
@@ -378,7 +380,7 @@ function select_point(scene; blocking = false, priority=2, kwargs...)
         end
         return Consume(false)
     end
-    on(events(scene).mouseposition, priority=priority) do event
+    on(events(scene).mouseposition, priority = priority) do event
         if waspressed[]
             mp = mouseposition(scene)
             point[][1] = mp

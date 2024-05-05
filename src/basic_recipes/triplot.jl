@@ -38,38 +38,38 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
 @recipe(Triplot, triangles) do scene
     sc = default_theme(scene, Scatter)
     return Attributes(;
-                      # Toggles
-                      show_points=false,
-                      show_convex_hull=false,
-                      show_ghost_edges=false,
-                      show_constrained_edges=false,
-                      recompute_centers=false,
+        # Toggles
+        show_points = false,
+        show_convex_hull = false,
+        show_ghost_edges = false,
+        show_constrained_edges = false,
+        recompute_centers = false,
 
-                      # Mesh settings
-                      markersize=theme(scene, :markersize),
-                      marker=theme(scene, :marker),
-                      markercolor=sc.color,
-                      strokecolor=theme(scene, :patchstrokecolor),
-                      strokewidth=1,
-                      linestyle=:solid,
-                      triangle_color=(:white, 0.0),
+        # Mesh settings
+        markersize = theme(scene, :markersize),
+        marker = theme(scene, :marker),
+        markercolor = sc.color,
+        strokecolor = theme(scene, :patchstrokecolor),
+        strokewidth = 1,
+        linestyle = :solid,
+        triangle_color = (:white, 0.0),
 
-                      # Convex hull settings
-                      convex_hull_color=:red,
-                      convex_hull_linestyle=:dash,
-                      convex_hull_linewidth=theme(scene, :linewidth),
+        # Convex hull settings
+        convex_hull_color = :red,
+        convex_hull_linestyle = :dash,
+        convex_hull_linewidth = theme(scene, :linewidth),
 
-                      # Ghost edge settings
-                      ghost_edge_color=:blue,
-                      ghost_edge_linestyle=theme(scene, :linestyle),
-                      ghost_edge_linewidth=theme(scene, :linewidth),
-                      ghost_edge_extension_factor=0.1,
-                      bounding_box=automatic,
+        # Ghost edge settings
+        ghost_edge_color = :blue,
+        ghost_edge_linestyle = theme(scene, :linestyle),
+        ghost_edge_linewidth = theme(scene, :linewidth),
+        ghost_edge_extension_factor = 0.1,
+        bounding_box = automatic,
 
-                      # Constrained edge settings
-                      constrained_edge_color=:magenta,
-                      constrained_edge_linestyle=theme(scene, :linestyle),
-                      constrained_edge_linewidth=theme(scene, :linewidth))
+        # Constrained edge settings
+        constrained_edge_color = :magenta,
+        constrained_edge_linestyle = theme(scene, :linestyle),
+        constrained_edge_linewidth = theme(scene, :linewidth))
 end
 
 function get_all_triangulation_points!(points, tri)
@@ -110,12 +110,12 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     if bounding_box === automatic
         if DelTri.has_boundary_nodes(tri)
             xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                           DelTri.get_boundary_nodes(tri),
-                                                           Val(true))
+                DelTri.get_boundary_nodes(tri),
+                Val(true))
         else
             xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                           DelTri.get_convex_hull_indices(tri),
-                                                           Val(true))
+                DelTri.get_convex_hull_indices(tri),
+                Val(true))
         end
         Δx = xmax - xmin
         Δy = ymax - ymin
@@ -189,7 +189,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
         return DelTri.triangulate(transformed)
     end
 
-    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
+    attr[:transformation] = Transformation(p.transformation; transform_func = identity)
     triplot!(p, attr, tri)
     return
 end
@@ -220,23 +220,23 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
         p.show_constrained_edges[] && get_triangulation_constrained_edges!(constrained_edges_2f[], tri)
 
         foreach(notify,
-                (points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f,
-                 constrained_edges_2f))
+            (points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f,
+                constrained_edges_2f))
         return nothing
     end
     onany(update_plot, p, p[1])
     update_plot(p[1][])
 
-    poly!(p, points_2f, triangles_3f; strokewidth=p.strokewidth, strokecolor=p.strokecolor,
-          color=p.triangle_color)
-    linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
-                  linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
-    lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
-           linestyle=p.convex_hull_linestyle, depth_shift=-1.0f-5)
-    linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift=-2.0f-5,
-                  linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
-    scatter!(p, present_points_2f; markersize=p.markersize, color=p.markercolor,
-             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift=-3.0f-5)
+    poly!(p, points_2f, triangles_3f; strokewidth = p.strokewidth, strokecolor = p.strokecolor,
+        color = p.triangle_color)
+    linesegments!(p, ghost_edges_2f; color = p.ghost_edge_color, linewidth = p.ghost_edge_linewidth,
+        linestyle = p.ghost_edge_linestyle, xautolimits = false, yautolimits = false)
+    lines!(p, convex_hull_2f; color = p.convex_hull_color, linewidth = p.convex_hull_linewidth,
+        linestyle = p.convex_hull_linestyle, depth_shift = -1.0f-5)
+    linesegments!(p, constrained_edges_2f; color = p.constrained_edge_color, depth_shift = -2.0f-5,
+        linewidth = p.constrained_edge_linewidth, linestyle = p.constrained_edge_linestyle)
+    scatter!(p, present_points_2f; markersize = p.markersize, color = p.markercolor,
+        strokecolor = p.strokecolor, marker = p.marker, visible = p.show_points, depth_shift = -3.0f-5)
     return p
 end
 

@@ -31,13 +31,13 @@ function openurl(url::String)
     @warn("Can't find a way to open a browser, open $(url) manually!")
 end
 
-function Base.display(screen::Screen, scene::Scene; connect=false)
+function Base.display(screen::Screen, scene::Scene; connect = false)
     # Nothing to do, since drawing is done in the other functions
     # TODO write to file and implement upenurl
     return screen
 end
 
-function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
+function Base.display(screen::Screen{IMAGE}, scene::Scene; connect = false)
     path = joinpath(mktempdir(), "display.png")
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
@@ -73,14 +73,14 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
     # across svgs when embedding them on websites.
     # the hash and therefore the salt will always be the same for the same file
     # so the output is deterministic
-    salt = repr(CRC32c.crc32c(svg))[end-7:end]
+    salt = repr(CRC32c.crc32c(svg))[(end - 7):end]
 
     # matches:
     # id="someid"
     # xlink:href="someid" (but not xlink:href="data:someothercontent" which is how image data is attached)
     # url(#someid)
     svg = replace(svg, r"((?:(?:id|xlink:href)=\"(?!data:)[^\"]+)|url\(#[^)]+)" => SubstitutionString("\\1-$salt"))
-    
+
     print(io, svg)
     return screen
 end
@@ -110,7 +110,7 @@ end
 
 const DISABLED_MIMES = Set{String}()
 const SUPPORTED_MIMES = Set([
-    map(x->string(x()), Makie.WEB_MIMES)...,
+    map(x -> string(x()), Makie.WEB_MIMES)...,
     "image/svg+xml",
     "application/pdf",
     "application/postscript",
@@ -127,7 +127,7 @@ end
 
 Converts anything like `"png", :png, "image/png", MIME"image/png"()` to `"image/png"`.
 """
-function to_mime_string(mime::Union{String, Symbol, MIME})
+function to_mime_string(mime::Union{String,Symbol,MIME})
     if mime isa MIME
         mime_str = string(mime)
         if !(mime_str in SUPPORTED_MIMES)
@@ -150,7 +150,7 @@ The default is automatic, which lets the display system figure out the best mime
 If set to any other valid mime, will result in `showable(any_other_mime, figurelike)` to return false and only return true for `showable(preferred_mime, figurelike)`.
 Depending on the display system used, this may result in nothing getting displayed.
 """
-function disable_mime!(mimes::Union{String, Symbol, MIME}...)
+function disable_mime!(mimes::Union{String,Symbol,MIME}...)
     empty!(DISABLED_MIMES) # always start from 0
     if isempty(mimes)
         # Reset disabled mimes when called with no arguments
@@ -164,7 +164,7 @@ function disable_mime!(mimes::Union{String, Symbol, MIME}...)
     return
 end
 
-function enable_only_mime!(mimes::Union{String, Symbol, MIME}...)
+function enable_only_mime!(mimes::Union{String,Symbol,MIME}...)
     empty!(DISABLED_MIMES) # always start from 0
     if isempty(mimes)
         # Reset disabled mimes when called with no arguments

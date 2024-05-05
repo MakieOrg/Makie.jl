@@ -1,6 +1,6 @@
 function Base.isapprox(r1::Rect{D}, r2::Rect{D}; kwargs...) where D
     return isapprox(minimum(r1), minimum(r2); kwargs...) &&
-            isapprox(widths(r1), widths(r2); kwargs...)
+           isapprox(widths(r1), widths(r2); kwargs...)
 end
 
 @testset "data_limits(plot)" begin
@@ -17,7 +17,7 @@ end
     @test data_limits(p) ≈ Rect3f(Point3f(0), Vec3f(1, 1, 0))
 
     fig = Figure()
-    ax = Axis(fig[1, 1], yscale=log, xscale=log)
+    ax = Axis(fig[1, 1], yscale = log, xscale = log)
     scatter!(ax, [0.5, 1, 2], [0.5, 1, 2])
     p1 = vlines!(ax, [0.5])
     p2 = hlines!(ax, [0.5])
@@ -26,7 +26,8 @@ end
     Makie.reset_limits!(ax)
 
     lims = ax.finallimits[]
-    x, y = minimum(lims); w, h = widths(lims)
+    x, y = minimum(lims)
+    w, h = widths(lims)
 
     @test data_limits(p1) ≈ Rect3f(Point3f(0.5, y, 0), Vec3f(0, h, 0))
     @test data_limits(p2) ≈ Rect3f(Point3f(x, 0.5, 0), Vec3f(w, 0, 0))
@@ -44,7 +45,7 @@ end
     @test bb.origin ≈ Point3f(-0.1678, -0.002068, -0.358661)
     @test bb.widths ≈ Vec3f(0.339423, 0.92186, 1.3318559)
 
-    fig, ax, p = surface([x*y for x in 1:10, y in 1:10])
+    fig, ax, p = surface([x * y for x in 1:10, y in 1:10])
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(1.0, 1.0, 1.0)
     @test bb.widths ≈ Vec3f(9.0, 9.0, 99.0)
@@ -59,7 +60,7 @@ end
         [Point3f(0) for _ in 1:3],
         marker = Rect3f(Point3f(-0.1, -0.1, -0.1), Vec3f(0.2, 0.2, 1.2)),
         markersize = Vec3f(1, 1, 2),
-        rotations = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)])
+        rotations = Makie.rotation_between.((Vec3f(0, 0, 1),), Vec3f[(1, 0, 0), (0, 1, 0), (0, 0, 1)])
     )
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(-0.2)

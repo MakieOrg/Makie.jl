@@ -3,10 +3,10 @@
 # ## Types and aliases
 
 const PlotContext = Union{
-                    AbstractScene,
-                    AbstractPlot,
-                    MakieLayout.LAxis
-                }
+    AbstractScene,
+    AbstractPlot,
+    MakieLayout.LAxis
+}
 
 # ## API implementation
 
@@ -25,20 +25,20 @@ end
 RecipesPipeline.is_seriestype_supported(sc::PlotContext, st) = haskey(makie_seriestype_map, st)
 
 # Forward the argument preprocessing to Plots for now.
-RecipesPipeline.series_defaults(sc::PlotContext, args...) = Dict{Symbol, Any}()
+RecipesPipeline.series_defaults(sc::PlotContext, args...) = Dict{Symbol,Any}()
 
 # Pre-processing of user recipes
 function RecipesPipeline.process_userrecipe!(sc::PlotContext, kw_list, kw)
     if isa(get(kw, :marker_z, nothing), Function)
         # TODO: should this take y and/or z as arguments?
         kw[:marker_z] = isa(kw[:z], Nothing) ? map(kw[:marker_z], kw[:x], kw[:y]) :
-            map(kw[:marker_z], kw[:x], kw[:y], kw[:z])
+                        map(kw[:marker_z], kw[:x], kw[:y], kw[:z])
     end
 
     # map line_z if it's a Function
     if isa(get(kw, :line_z, nothing), Function)
         kw[:line_z] = isa(kw[:z], Nothing) ? map(kw[:line_z], kw[:x], kw[:y]) :
-            map(kw[:line_z], kw[:x], kw[:y], kw[:z])
+                      map(kw[:line_z], kw[:x], kw[:y], kw[:z])
     end
 
     push!(kw_list, kw)
@@ -48,14 +48,14 @@ end
 function RecipesPipeline.get_axis_limits(sc::PlotContext, f, letter)
     lims = to_value(data_limits(sc))
     i = if letter === :x
-            1
-        elseif letter === :y
-            2
-        elseif letter === :z
-            3
-        else
-            throw(ArgumentError("Letter $letter does not correspond to an axis."))
-        end
+        1
+    elseif letter === :y
+        2
+    elseif letter === :z
+        3
+    else
+        throw(ArgumentError("Letter $letter does not correspond to an axis."))
+    end
 
     o = origin(lims)
     return (o[i], o[i] + widths(lims)[i])
@@ -66,9 +66,9 @@ end
 ########################################
 
 function slice_arg(v::AbstractMatrix, idx::Int)
-    c = mod1(idx, size(v,2))
-    m,n = axes(v)
-    size(v,1) == 1 ? v[first(m),n[c]] : v[:,n[c]]
+    c = mod1(idx, size(v, 2))
+    m, n = axes(v)
+    size(v, 1) == 1 ? v[first(m), n[c]] : v[:, n[c]]
 end
 # slice_arg(wrapper::Plots.InputWrapper, idx) = wrapper.obj
 slice_arg(v, idx) = v
@@ -94,7 +94,7 @@ function makie_plottype(st::Symbol)
     return get(makie_seriestype_map, st, Lines)
 end
 
-makie_args(::Type{T}, plotattributes) where T <: AbstractPlot = makie_args(conversion_trait(T), plotattributes)
+makie_args(::Type{T}, plotattributes) where T<:AbstractPlot = makie_args(conversion_trait(T), plotattributes)
 
 function makie_args(::PointBased, plotattributes)
 
@@ -115,9 +115,9 @@ end
 # TODO use Makie.plottype
 makie_args(::SurfaceLike, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
-makie_args(::Type{<: Contour}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
+makie_args(::Type{<:Contour}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
-function makie_args(::Type{<: Poly}, plotattributes)
+function makie_args(::Type{<:Poly}, plotattributes)
     return (from_nansep_vec(Point2f.(plotattributes[:x], plotattributes[:y])),)
 end
 
@@ -275,7 +275,7 @@ function set_series_color!(scene, st, plotattributes)
         # println()
     end
 
-    if !(plot isa Union{Heatmap, Surface, Image, Spy, Axis2D, Axis3D})
+    if !(plot isa Union{Heatmap,Surface,Image,Spy,Axis2D,Axis3D})
 
         get!(plotattributes, :seriescolor, to_color(plotattributes[:palette]))
 
@@ -289,7 +289,7 @@ function set_palette!(plt, plotattributes)
     pt = get!(plotattributes, :palette, default_palette)
     if pt isa Palette
         # nothing
-    elseif pt isa Vector{<: Colorant}
+    elseif pt isa Vector{<:Colorant}
         plotattributes[:palette] = Palette(pt)
     else
         @warn "Palette was unrecognizable!"
@@ -310,7 +310,7 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     @debug("Series annotations say hi")
 
-    annotations!(plt, strs, positions; fontsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    annotations!(plt, strs, positions; fontsize = fontsize / 30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 

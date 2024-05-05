@@ -40,14 +40,14 @@ push_screen!(scene, screen)
 """
 abstract type MakieScreen <: AbstractDisplay end
 
-const SceneLike = Union{AbstractScene, ScenePlot}
+const SceneLike = Union{AbstractScene,ScenePlot}
 
 """
 Main structure for holding attributes, for theming plots etc!
 Will turn all values into observables, so that they can be updated.
 """
 struct Attributes
-    attributes::Dict{Symbol, Observable}
+    attributes::Dict{Symbol,Observable}
 end
 
 """
@@ -63,8 +63,8 @@ Plot{scatter}((1:4,), Dict{Symbol, Any}(:color => :red)) isa Scatter
 Scatter((1:4,), Dict{Symbol, Any}(:color => :red))
 ```
 """
-mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
-    transformation::Union{Nothing, Transformable}
+mutable struct Plot{PlotFunc,T} <: ScenePlot{PlotFunc}
+    transformation::Union{Nothing,Transformable}
 
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
     kw::Dict{Symbol,Any}
@@ -78,9 +78,9 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Plot}
 
-    function Plot{Typ,T}(kw::Dict{Symbol, Any}, args::Vector{Any}, converted::NTuple{N, Observable}) where {Typ,T,N}
+    function Plot{Typ,T}(kw::Dict{Symbol,Any}, args::Vector{Any}, converted::NTuple{N,Observable}) where {Typ,T,N}
         return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[],
-                   Observables.ObserverFunction[])
+            Observables.ObserverFunction[])
     end
 end
 
@@ -129,7 +129,7 @@ const px = Pixel(1)
 Billboard attribute to always have a primitive face the camera.
 Can be used for rotation.
 """
-struct Billboard{T <: Union{Float32, Vector{Float32}}}
+struct Billboard{T<:Union{Float32,Vector{Float32}}}
     rotation::T
 end
 Billboard() = Billboard(0f0)

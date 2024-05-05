@@ -3,21 +3,21 @@ import Makie.SpecApi as S
 @testset "diffing" begin
     @testset "update_plot!" begin
         obs = Observable[]
-        oldspec = S.Scatter(1:4; cycle=[])
-        newspec = S.Scatter(1:4; cycle=[])
+        oldspec = S.Scatter(1:4; cycle = [])
+        newspec = S.Scatter(1:4; cycle = [])
         p = Makie.to_plot_object(newspec)
         s = Scene()
         plot!(s, p)
         Makie.update_plot!(obs, p, oldspec, newspec)
         @test isempty(obs)
 
-        newspec = S.Scatter(1:4; color=:red)
+        newspec = S.Scatter(1:4; color = :red)
         Makie.update_plot!(obs, p, oldspec, newspec)
         oldspec = newspec
         @test length(obs) == 1
         @test obs[1] === p.color
 
-        newspec = S.Scatter(1:4; color=:green, cycle=[])
+        newspec = S.Scatter(1:4; color = :green, cycle = [])
         empty!(obs)
         Makie.update_plot!(obs, p, oldspec, newspec)
         oldspec = newspec
@@ -25,15 +25,15 @@ import Makie.SpecApi as S
         @test obs[1] === p.color
         @test obs[1].val == to_color(:green)
 
-        newspec = S.Scatter(1:5; color=:green, cycle=[])
+        newspec = S.Scatter(1:5; color = :green, cycle = [])
         empty!(obs)
         Makie.update_plot!(obs, p, oldspec, newspec)
         oldspec = newspec
         @test length(obs) == 1
         @test obs[1] === p.args[1]
 
-        oldspec = S.Scatter(1:5; color=:green, marker=:rect, cycle=[])
-        newspec = S.Scatter(1:4; color=:red, marker=:circle, cycle=[])
+        oldspec = S.Scatter(1:5; color = :green, marker = :rect, cycle = [])
+        newspec = S.Scatter(1:4; color = :red, marker = :circle, cycle = [])
         empty!(obs)
         p = Makie.to_plot_object(oldspec)
         s = Scene()
@@ -46,8 +46,8 @@ import Makie.SpecApi as S
     end
 
     @testset "diff_plotlist!" begin
-        scene = Scene();
-        plotspecs = [S.Scatter(1:4; color=:red), S.Scatter(1:4; color=:red)]
+        scene = Scene()
+        plotspecs = [S.Scatter(1:4; color = :red), S.Scatter(1:4; color = :red)]
         reusable_plots = IdDict{PlotSpec,Plot}()
         obs_to_notify = Observable[]
         new_plots = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, reusable_plots)
@@ -61,7 +61,7 @@ import Makie.SpecApi as S
         @test Set(scene.plots) == Set(values(new_plots2))
         @test isempty(obs_to_notify)
 
-        plotspecs = [S.Scatter(1:4; color=:yellow), S.Scatter(1:4; color=:green)]
+        plotspecs = [S.Scatter(1:4; color = :yellow), S.Scatter(1:4; color = :green)]
         new_plots3 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, new_plots2)
 
         @test isempty(new_plots) # they got all used up
@@ -75,7 +75,7 @@ end
 struct TestPlot
 end
 function Makie.convert_arguments(P::Type{<:Plot}, ::TestPlot)
-    return PlotSpec(P, Point2f.(1:5, 1:5); color=1:5, cycle=[])
+    return PlotSpec(P, Point2f.(1:5, 1:5); color = 1:5, cycle = [])
 end
 
 @testset "PlotSpec with attributes in convert_arguments" begin

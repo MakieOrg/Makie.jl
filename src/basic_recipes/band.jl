@@ -17,11 +17,11 @@ $(ATTRIBUTES)
     attr
 end
 
-convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
+convert_arguments(::Type{<:Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
 
 function band_connect(n)
-    ns = 1:n-1
-    ns2 = n+1:2n-1
+    ns = 1:(n - 1)
+    ns2 = (n + 1):(2n - 1)
     return [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
@@ -42,7 +42,7 @@ function Makie.plot!(plot::Band)
             # side to make an even band
             if length(c) == length(lowerpoints[])
                 return repeat(to_color(c), 2)::RGBColors
-            # if there's one color for each band vertex, the colors are used directly
+                # if there's one color for each band vertex, the colors are used directly
             elseif length(c) == 2 * length(lowerpoints[])
                 return to_color(c)::RGBColors
             else
@@ -63,7 +63,7 @@ end
 function fill_view(x, y1, y2, where::Function)
     fill_view(x, y1, y2, where.(x, y1, y2))
 end
-function fill_view(x, y1, y2, bools::AbstractVector{<: Union{Integer, Bool}})
+function fill_view(x, y1, y2, bools::AbstractVector{<:Union{Integer,Bool}})
     view(x, bools), view(y1, bools), view(y2, bools)
 end
 

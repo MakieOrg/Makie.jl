@@ -9,7 +9,7 @@ macro compile(block)
             # while precompiling
             # So we just do all parts of the stack we can do without browser
             scene = Makie.get_scene(figlike)
-            session = Session(Bonito.NoConnection(); asset_server=Bonito.NoServer())
+            session = Session(Bonito.NoConnection(); asset_server = Bonito.NoServer())
             three_display(Screen(scene), session, scene)
             Bonito.jsrender(session, figlike)
             s = serialize_scene(scene)

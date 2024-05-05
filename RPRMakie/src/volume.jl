@@ -26,7 +26,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Volume)
     color_sampler.uv = gridsampler
 
     volmat = RPR.VolumeMaterial(matsys)
-    on(plot.absorption; update=true) do absorption
+    on(plot.absorption; update = true) do absorption
         return volmat.density = Vec4f(absorption, 0.0, 0.0, 0.0)
     end
     volmat.densitygrid = gridsampler

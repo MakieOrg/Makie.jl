@@ -1,4 +1,4 @@
-bar_label_formatter(value::Number) = string(round(value; digits=3))
+bar_label_formatter(value::Number) = string(round(value; digits = 3))
 bar_label_formatter(label::String) = label
 bar_label_formatter(label::LaTeXString) = label
 
@@ -23,11 +23,11 @@ end
 
 # `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
 function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
-    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
+    _logT = Union{typeof(log),typeof(log2),typeof(log10),Base.Fix1{typeof(log),<:Real}}
     if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
         # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
         # use the minimal non-zero y divided by 2 as lower bound for log scale
-        smart_fillto = minimum(y -> y<=0 ? oftype(y, Inf) : y, ys) / 2
+        smart_fillto = minimum(y -> y <= 0 ? oftype(y, Inf) : y, ys) / 2
         return clamp.(ys, smart_fillto, Inf), smart_fillto
     else
         return ys, offset
@@ -68,9 +68,7 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         inspectable = theme(scene, :inspectable),
-        cycle = [:color => :patchcolor],
-
-        bar_labels = nothing,
+        cycle = [:color => :patchcolor], bar_labels = nothing,
         flip_labels_at = Inf,
         label_rotation = 0π,
         label_color = theme(scene, :textcolor),
@@ -85,7 +83,7 @@ $(ATTRIBUTES)
     )
 end
 
-conversion_trait(::Type{<: BarPlot}) = PointBased()
+conversion_trait(::Type{<:BarPlot}) = PointBased()
 
 function bar_rectangle(x, y, width, fillto, in_y_direction)
     # y could be smaller than fillto...
@@ -122,7 +120,7 @@ end
 
 function stack_from_to_sorted(y)
     to = cumsum(y)
-    from = [0.0; to[firstindex(to):end-1]]
+    from = [0.0; to[firstindex(to):(end - 1)]]
 
     (from = from, to = to)
 end
@@ -142,7 +140,7 @@ end
 
 function stack_grouped_from_to(i_stack, y, grp)
     from = Array{Float64}(undef, length(y))
-    to   = Array{Float64}(undef, length(y))
+    to = Array{Float64}(undef, length(y))
 
     groupby = StructArray((; grp...))
     grps = StructArrays.finduniquesorted(groupby)
@@ -166,14 +164,14 @@ end
 
 function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direction::Bool, flip::Bool)
     if label_align == automatic
-        return angle2align(-label_rotation - !flip * pi + in_y_direction * pi/2)
+        return angle2align(-label_rotation - !flip * pi + in_y_direction * pi / 2)
     else
         return to_align(label_align, "Failed to convert `label_align` $label_align.")
     end
 end
 
 function text_attributes(values, in_y_direction, flip_labels_at, color_over_background, color_over_bar,
-                         label_offset, label_rotation, label_align)
+    label_offset, label_rotation, label_align)
     aligns = Vec2f[]
     offsets = Vec2f[]
     text_colors = RGBAf[]
@@ -183,7 +181,7 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
     function flip(k)
         if flip_labels_at isa Number
             return k > flip_labels_at || k < 0
-        elseif flip_labels_at isa Tuple{<:Number, <: Number}
+        elseif flip_labels_at isa Tuple{<:Number,<:Number}
             return (k > flip_labels_at[2] || k < 0) && k > flip_labels_at[1]
         else
             error("flip_labels_at needs to be a tuple of two numbers (low, high), or a single number (high)")
@@ -210,8 +208,8 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
 end
 
 function barplot_labels(xpositions, ypositions, offset, bar_labels, in_y_direction, flip_labels_at,
-                        color_over_background, color_over_bar, label_formatter, label_offset, label_rotation,
-                        label_align)
+    color_over_background, color_over_bar, label_formatter, label_offset, label_rotation,
+    label_align)
     if bar_labels isa Symbol && bar_labels in (:x, :y)
         bar_labels = map(xpositions, ypositions) do x, y
             if bar_labels === :x
@@ -224,9 +222,9 @@ function barplot_labels(xpositions, ypositions, offset, bar_labels, in_y_directi
     if bar_labels isa AbstractVector
         if length(bar_labels) == length(xpositions)
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background,
-                                         color_over_bar, label_offset, label_rotation, label_align)
+                color_over_bar, label_offset, label_rotation, label_align)
             label_pos = broadcast(xpositions, ypositions, offset, bar_labels) do x, y, off, l
-                return (string(label_formatter(l)), in_y_direction ? Point2f(x, y+off) : Point2f(y, x+off))
+                return (string(label_formatter(l)), in_y_direction ? Point2f(x, y + off) : Point2f(y, x + off))
             end
             return (label_pos, attributes...)
         else
@@ -242,15 +240,15 @@ function Makie.plot!(p::BarPlot)
     if !(eltype(bar_points[]) <: Point2)
         error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`.")
     end
-    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2f}[])
+    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString},Point2f}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])
     label_colors = Observable(RGBAf[])
     function calculate_bars(xy, fillto, offset, transformation, width, dodge, n_dodge, gap, dodge_gap, stack,
-                            dir, bar_labels, flip_labels_at, label_color, color_over_background,
-                            color_over_bar, label_formatter, label_offset, label_rotation, label_align)
+        dir, bar_labels, flip_labels_at, label_color, color_over_background,
+        color_over_bar, label_formatter, label_offset, label_rotation, label_align)
 
-        in_y_direction = get((y=true, x=false), dir) do
+        in_y_direction = get((y = true, x = false), dir) do
             error("Invalid direction $dir. Options are :x and :y.")
         end
 
@@ -297,8 +295,8 @@ function Makie.plot!(p::BarPlot)
             oback = color_over_background === automatic ? label_color : color_over_background
             obar = color_over_bar === automatic ? label_color : color_over_bar
             label_args = barplot_labels(x̂, y, offset, bar_labels, in_y_direction,
-                                        flip_labels_at, to_color(oback), to_color(obar),
-                                        label_formatter, label_offset, label_rotation, label_align)
+                flip_labels_at, to_color(oback), to_color(obar),
+                label_formatter, label_offset, label_rotation, label_align)
             labels[], label_aligns[], label_offsets[], label_colors[] = label_args
         end
 
@@ -306,8 +304,8 @@ function Makie.plot!(p::BarPlot)
     end
 
     bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
-                p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
-                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align; priority = 1)
+        p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
+        p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align; priority = 1)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
@@ -316,6 +314,6 @@ function Makie.plot!(p::BarPlot)
     )
 
     if !isnothing(p.bar_labels[])
-        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
+        text!(p, labels; align = label_aligns, offset = label_offsets, color = label_colors, font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation)
     end
 end

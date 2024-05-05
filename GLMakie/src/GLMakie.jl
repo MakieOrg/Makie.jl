@@ -31,7 +31,7 @@ using Base.Iterators: repeated, drop
 using LinearAlgebra
 
 # re-export Makie, including deprecated names
-for name in names(Makie, all=true)
+for name in names(Makie, all = true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)
@@ -56,7 +56,7 @@ end
 
 const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
-const LOADED_SHADERS = Dict{String, ShaderSource}()
+const LOADED_SHADERS = Dict{String,ShaderSource}()
 
 function loadshader(name)
     # Turns out, joinpath is so slow, that it actually makes sense

@@ -31,7 +31,7 @@ get_scene(gp::GridLayoutBase.GridSubposition) = get_scene(get_figure(gp))
 
 
 
-const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
+const CURRENT_FIGURE = Ref{Union{Nothing,Figure}}(nothing)
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 
 """
@@ -40,7 +40,7 @@ const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 Returns the current active figure (or the last figure created).
 Returns `nothing` if there is no current active figure.
 """
-current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
+current_figure() = lock(() -> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
 
 """
     current_figure!(fig)
@@ -93,13 +93,13 @@ function current_axis!(ax)
 end
 
 to_rectsides(n::Number) = to_rectsides((n, n, n, n))
-to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
+to_rectsides(t::Tuple{Any,Any,Any,Any}) = GridLayoutBase.RectSides{Float32}(t...)
 
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
-    scene = Scene(; camera=campixel!, clear = true, kwargs_dict...)
+    scene = Scene(; camera = campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, padding)
 

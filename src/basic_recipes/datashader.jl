@@ -38,7 +38,7 @@ Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, b
 simplifies passing a local or global operation.
 Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
 """
-function get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
+function get_aggregation(canvas::Canvas; operation = equalize_histogram, local_operation = identity, result = similar(canvas.pixelbuffer, canvas.resolution))
     pix_reshaped = Base.ReshapedArray(canvas.pixelbuffer, canvas.resolution, ())
     # we want to make it easy to set local_operation or operation, without them clashing, while also being able to set both!
     if operation === Makie.automatic
@@ -90,7 +90,7 @@ function Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
     return Canvas(Rect2(xmin, ymin, xmax - xmin, ymax - ymin); args...)
 end
 
-function Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
+function Canvas(bounds::Rect2; resolution::Tuple{Int,Int} = (800, 800), op = AggCount())
     xsize, ysize = resolution
     n_elements = xsize * ysize
     o0 = null(op)
@@ -103,7 +103,7 @@ end
 n_threads(::AggSerial) = 1
 n_threads(::AggThreads) = Threads.nthreads()
 
-function Base.resize!(canvas::Canvas, resolution::Tuple{Int,Int}, nthreads=1)
+function Base.resize!(canvas::Canvas, resolution::Tuple{Int,Int}, nthreads = 1)
     npixel = prod(resolution)
     n_elements = npixel * nthreads
     length(canvas.pixelbuffer) == npixel && length(canvas.aggbuffer) == n_elements && return false
@@ -131,7 +131,7 @@ using InteractiveUtils
 Aggregate points into a canvas. The points are transformed by `point_transform` before aggregation.
 Method can be `AggSerial()` or `AggThreads()`.
 """
-function aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
+function aggregate!(c::Canvas, points; point_transform = identity, method::AggMethod = AggSerial())
     resize!(c, c.resolution, n_threads(method)) # make sure we have the right size for the method
     aggbuffer, pixelbuffer = c.aggbuffer, c.pixelbuffer
     fill!(aggbuffer, null(c.op))
@@ -139,9 +139,9 @@ function aggregate!(c::Canvas, points; point_transform=identity, method::AggMeth
 end
 
 function aggregation_implementation!(::AggSerial,
-                                     aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
-                                     c::Canvas, op::AggOp,
-                                     points, point_transform)
+    aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
+    c::Canvas, op::AggOp,
+    points, point_transform)
     (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
     xsize, ysize = size(c)
     xwidth, ywidth = widths(c.bounds)
@@ -186,9 +186,9 @@ function aggregation_implementation!(::AggSerial,
 end
 
 function aggregation_implementation!(::AggThreads,
-                                     aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
-                                     c::Canvas, op::AggOp,
-                                     points, point_transform)
+    aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
+    c::Canvas, op::AggOp,
+    points, point_transform)
     (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
     xsize, ysize = size(c)
     # by adding eps to width we can use the scaling factor plus floor directly to compute the bin indices
@@ -207,7 +207,7 @@ function aggregation_implementation!(::AggThreads,
     out2 = Base.ReshapedArray(pixelbuffer, (xsize, ysize), ())
 
     n = length(points)
-    chunks = round.(Int, range(1, n; length=Threads.nthreads() + 1))
+    chunks = round.(Int, range(1, n; length = Threads.nthreads() + 1))
 
     @threads for t in 1:Threads.nthreads()
         from = chunks[t]
@@ -258,9 +258,9 @@ end
 using ..Aggregation
 using ..Aggregation: Canvas, change_op!, aggregate!
 
-function equalize_histogram(matrix; nbins=256)
-    h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins=nbins)
-    h_eq = normalize(h_eq; mode=:density)
+function equalize_histogram(matrix; nbins = 256)
+    h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins = nbins)
+    h_eq = normalize(h_eq; mode = :density)
     cdf = cumsum(h_eq.weights)
     cdf = cdf / cdf[end]
     edg = h_eq.edges[1]
@@ -318,21 +318,15 @@ $(Base.Docs.doc(MakieCore.colormap_attributes!))
 $(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
 @recipe(DataShader, points) do scene
-    attr = Theme(
-
-        agg = AggCount(),
+    attr = Theme(agg = AggCount(),
         method = AggThreads(),
         async = true,
         # Defaults to equalize_histogram
         # just set to automatic, so that if one sets local_operation, one doesn't do equalize_histogram on top of things.
-        operation=automatic,
-        local_operation=identity,
-
-        point_transform = identity,
+        operation = automatic,
+        local_operation = identity, point_transform = identity,
         binsize = 1,
-        show_timings = false,
-
-        interpolate = true
+        show_timings = false, interpolate = true
     )
     MakieCore.generic_plot_attributes!(attr)
     return MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
@@ -355,7 +349,7 @@ end
 
 
 function canvas_obs(limits::Observable, pixel_area::Observable, op, binsize::Observable)
-    canvas = Canvas(limits[]; resolution=(widths(pixel_area[])...,), op=op[])
+    canvas = Canvas(limits[]; resolution = (widths(pixel_area[])...,), op = op[])
     canvas_obs = Observable(canvas)
     onany(limits, pixel_area, binsize, op) do lims, pxarea, binsize, op
         binsize isa Int || error("Bin factor $binsize is not an Int.")
@@ -374,24 +368,24 @@ function canvas_obs(limits::Observable, pixel_area::Observable, op, binsize::Obs
     return canvas_obs
 end
 
-function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
+function Makie.plot!(p::DataShader{<:Tuple{<:AbstractVector{<:Point}}})
     scene = parent_scene(p)
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
-    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
+    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values = true)
+    viewport = lift(identity, p, scene.viewport; ignore_equal_values = true)
     canvas = canvas_obs(limits, viewport, p.agg, p.binsize)
     p._boundingbox = lift(fast_bb, p.points, p.point_transform)
     on_func = p.async[] ? onany_latest : onany
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
     p.canvas = canvas_with_aggregation
     colorrange = Observable(Vec2f(0, 1))
-    on(p.colorrange; update=true) do crange
+    on(p.colorrange; update = true) do crange
         if !(crange isa Automatic)
             colorrange[] = Vec2f(crange)
         end
     end
 
     on_func(canvas, p.points, p.point_transform) do canvas, points, f
-        Aggregation.aggregate!(canvas, points; point_transform=f, method=p.method[])
+        Aggregation.aggregate!(canvas, points; point_transform = f, method = p.method[])
         canvas_with_aggregation[] = canvas
         # If not automatic, it will get updated by the above on(p.colorrange)
         if p.colorrange[] isa Automatic
@@ -401,17 +395,17 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     end
     p.raw_colorrange = colorrange
     image!(p, canvas_with_aggregation;
-        operation=p.operation, local_operation=p.local_operation, interpolate=p.interpolate,
+        operation = p.operation, local_operation = p.local_operation, interpolate = p.interpolate,
         MakieCore.generic_plot_attributes(p)...,
         MakieCore.colormap_attributes(p)...)
     return p
 end
 
 
-function aggregate_categories!(canvases, categories; method=AggThreads())
+function aggregate_categories!(canvases, categories; method = AggThreads())
     for (k, canvas) in canvases
         points = categories[k]
-        Aggregation.aggregate!(canvas, points; method=method)
+        Aggregation.aggregate!(canvas, points; method = method)
     end
 end
 
@@ -421,25 +415,25 @@ function Makie.convert_arguments(::Type{<:DataShader}, groups::AbstractVector, p
     if length(groups) != length(points)
         error("Each point needs a group. Length $(length(groups)) != $(length(points))")
     end
-    categories = Dict{String, Vector{Point2f}}()
+    categories = Dict{String,Vector{Point2f}}()
     for (g, p) in zip(groups, points)
-        gpoints = get!(()-> Point2f[], categories, string(g))
+        gpoints = get!(() -> Point2f[], categories, string(g))
         push!(gpoints, p)
     end
     return (categories,)
 end
 
-function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
+function Makie.plot!(p::DataShader{<:Tuple{Dict{String,Vector{Point{2,Float32}}}}})
     scene = parent_scene(p)
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
-    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
+    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values = true)
+    viewport = lift(identity, p, scene.viewport; ignore_equal_values = true)
     canvas = canvas_obs(limits, viewport, Observable(AggCount{Float32}()), p.binsize)
     p._boundingbox = lift(p.points, p.point_transform) do cats, func
         rects = map(points -> fast_bb(points, func), values(cats))
         return reduce(union, rects)
     end
     categories = p.points[]
-    canvases = Dict(k => Canvas(canvas[].bounds; resolution=canvas[].resolution, op=AggCount{Float32}())
+    canvases = Dict(k => Canvas(canvas[].bounds; resolution = canvas[].resolution, op = AggCount{Float32}())
                     for (k, v) in categories)
 
     on_func = p.async[] ? onany_latest : onany
@@ -451,7 +445,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
-        aggregate_categories!(canvases, cats; method=p.method[])
+        aggregate_categories!(canvases, cats; method = p.method[])
         toal_value[] = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
         return
     end
@@ -461,18 +455,18 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     for (k, canvas) in canvases
         color = colors[k]
         cmap = [(color, 0.0), (color, 1.0)]
-        image!(p, canvas; colorrange=Vec2f(0, 1), colormap=cmap, operation=identity, local_operation=op)
+        image!(p, canvas; colorrange = Vec2f(0, 1), colormap = cmap, operation = identity, local_operation = op)
     end
     return p
 end
 
-data_limits(p::DataShader) =  p._boundingbox[]
+data_limits(p::DataShader) = p._boundingbox[]
 
 used_attributes(::Canvas) = (:operation, :local_operation)
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
-                           operation=automatic, local_operation=identity)
-    pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
+    operation = automatic, local_operation = identity)
+    pixel = Aggregation.get_aggregation(canvas; operation = operation, local_operation = local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
     return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel)
 end
@@ -485,12 +479,12 @@ Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key
 
 function get_plots(plot::DataShader)
     return map(collect(plot._categories[])) do (name, color)
-        return FakePlot(Attributes(; label=name, color=color))
+        return FakePlot(Attributes(; label = name, color = color))
     end
 end
 
 function legendelements(plot::FakePlot, legend)
-    return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
+    return [PolyElement(; color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
 end
 
 # Sadly we must define the colorbar here and cant use the default fallback,
@@ -500,7 +494,7 @@ end
 function extract_colormap(plot::DataShader)
     color = map(x -> x.aggbuffer, plot.canvas)
     return ColorMapping(
-       color[], color, plot.colormap, plot.raw_colorrange,
+        color[], color, plot.colormap, plot.raw_colorrange,
         plot.colorscale,
         plot.alpha,
         plot.highclip,

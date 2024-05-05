@@ -6,7 +6,7 @@ end
 function convert_arguments(::Type{<:Poly}, d::KernelDensity.UnivariateKDE)
     points = Vector{Point2f}(undef, length(d.x) + 2)
     points[1] = Point2f(d.x[1], 0)
-    points[2:end-1] .= Point2f.(d.x, d.density)
+    points[2:(end - 1)] .= Point2f.(d.x, d.density)
     points[end] = Point2f(d.x[end], 0)
     (points,)
 end

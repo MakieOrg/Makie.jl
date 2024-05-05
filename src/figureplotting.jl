@@ -38,7 +38,7 @@ struct FigureOnly end
 
 
 function args_preferred_axis(::Type{<:Union{Wireframe,Surface,Contour3d}}, x::AbstractArray, y::AbstractArray,
-                             z::AbstractArray)
+    z::AbstractArray)
     return all(x -> z[1] ≈ x, z) ? Axis : LScene
 end
 
@@ -118,7 +118,7 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
     end
 end
 
-MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Plot, Scene}) = s
+MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, s::Union{Plot,Scene}) = s
 
 function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, ::Nothing)
     figure = current_figure()
@@ -133,7 +133,7 @@ end
 
 function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gp::GridPosition)
     _disallow_keyword(:figure, attributes)
-    c = contents(gp; exact=true)
+    c = contents(gp; exact = true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
@@ -145,7 +145,7 @@ end
 function create_axis_like(plot::AbstractPlot, attributes::Dict, gp::GridPosition)
     _disallow_keyword(:figure, attributes)
     figure = get_top_parent(gp)
-    c = contents(gp; exact=true)
+    c = contents(gp; exact = true)
     if !isempty(c)
         error("""
         You have used the non-mutating plotting syntax with a GridPosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
@@ -165,9 +165,9 @@ end
 
 function MakieCore.create_axis_like!(@nospecialize(::AbstractPlot), attributes::Dict, gsp::GridSubposition)
     _disallow_keyword(:figure, attributes)
-    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing = false)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
-    c = contents(gp; exact=true)
+    c = contents(gp; exact = true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There is not just one axis at $(gp).")
     end
@@ -177,8 +177,8 @@ end
 
 function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposition)
     _disallow_keyword(:figure, attributes)
-    GridLayoutBase.get_layout_at!(gsp.parent; createmissing=true)
-    c = contents(gsp; exact=true)
+    GridLayoutBase.get_layout_at!(gsp.parent; createmissing = true)
+    c = contents(gsp; exact = true)
     if !isempty(c)
         error("""
         You have used the non-mutating plotting syntax with a GridSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
@@ -208,7 +208,7 @@ end
 figurelike_return(fa::FigureAxis, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.axis, plot)
 figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
 figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
-figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
+figurelike_return!(::Union{Plot,Scene}, plot::AbstractPlot) = plot
 
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
 
@@ -223,7 +223,7 @@ end
 
 @inline plot_args(args...) = (nothing, args)
 @inline function plot_args(a::Union{Figure,AbstractAxis,Scene,Plot,GridSubposition,GridPosition},
-                           args...)
+    args...)
     return (a, args)
 end
 function fig_keywords!(kws)
@@ -258,9 +258,9 @@ end
             Tried plotting with `$(F)!` into a `FigureAxisPlot` object, this is not allowed.
 
             The `FigureAxisPlot` object is returned by plotting functions not ending in `!` like `lines(...)` or `scatter(...)`.
-            
+
             It contains the new `Figure`, the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. It exists just as a convenience because returning it displays the contained figure. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-            
+
             You can do this with the destructuring syntax `fig, ax, plt = some_plot(...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
@@ -270,9 +270,9 @@ end
 
             The `AxisPlot` object is returned by plotting functions not ending in `!` with
             a `GridPosition` as the first argument, like `lines(fig[1, 2], ...)` or `scatter(fig[1, 2], ...)`.
-            
+
             It contains the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-            
+
             You can do this with the destructuring syntax `ax, plt = some_plot(fig[1, 2], ...)` and then continue, for example with `$(F)!(ax, ...)`.
             """))
         end
@@ -294,7 +294,7 @@ end
 # This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
 # Which skips axis creation
 # TODO, what to return for the dynamically created axes?
-const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
+const PlotSpecPlot = Plot{plot,Tuple{<:GridLayoutSpec}}
 
 figurelike_return(f::GridPosition, p::PlotSpecPlot) = p
 figurelike_return(f::Figure, p::PlotSpecPlot) = FigureAxisPlot(f, nothing, p)

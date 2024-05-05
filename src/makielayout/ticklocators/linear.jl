@@ -1,23 +1,23 @@
-function scale_range(vmin, vmax, n=1, threshold=100)
+function scale_range(vmin, vmax, n = 1, threshold = 100)
     dv = abs(vmax - vmin)  # > 0 as nonsingular is called before.
     meanv = (vmax + vmin) / 2
     offset = if abs(meanv) / dv < threshold
         0.0
     else
-        copysign(10 ^ (log10(abs(meanv)) ÷ 1), meanv)
+        copysign(10^(log10(abs(meanv)) ÷ 1), meanv)
     end
-    scale = 10 ^ (log10(dv / n) ÷ 1)
+    scale = 10^(log10(dv / n) ÷ 1)
     scale, offset
 end
 
 function _staircase(steps)
     n = length(steps)
     result = Vector{Float64}(undef, 2n)
-    for i in 1:(n-1)
+    for i in 1:(n - 1)
         @inbounds result[i] = 0.1 * steps[i]
     end
     for i in 1:n
-        @inbounds result[i+(n-1)] = steps[i]
+        @inbounds result[i + (n - 1)] = steps[i]
     end
     result[end] = 10 * steps[2]
     return result
@@ -40,7 +40,7 @@ end
 function closeto(e::EdgeInteger, ms, edge)
     tol = if e.offset > 0
         digits = log10(e.offset / e.step)
-        tol = max(1e-10, 10 ^ (digits - 12))
+        tol = max(1e-10, 10^(digits - 12))
         min(0.4999, tol)
     else
         1e-10
@@ -142,7 +142,7 @@ function locateticks(vmin, vmax, n_ideal::Int, _integer::Bool = false, _min_n_ti
     # 0.08000000001 instead of 0.08
     # so here we round off the numbers to the required number of digits after the decimal point
     exponent = floor(Int, minimum(log10.(abs.(diff(vals)))))
-    round.(vals, digits = max(0, -exponent+1))
+    round.(vals, digits = max(0, -exponent + 1))
 end
 
 

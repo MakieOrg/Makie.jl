@@ -22,7 +22,7 @@ as well as plot type `P` of a basic plot.
 struct PlotSpec
     type::Symbol
     args::Vector{Any}
-    kwargs::Dict{Symbol, Any}
+    kwargs::Dict{Symbol,Any}
     function PlotSpec(type::Symbol, args...; kwargs...)
         type_str = string(type)
         if type_str[end] == '!'
@@ -66,7 +66,7 @@ end
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
-PlotSpec(::Type{P}, args...; kwargs...) where {P <: Plot} = PlotSpec(plotsym(P), args...; kwargs...)
+PlotSpec(::Type{P}, args...; kwargs...) where {P<:Plot} = PlotSpec(plotsym(P), args...; kwargs...)
 to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotsym(P), args...; kwargs...)
 
 function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
@@ -82,7 +82,7 @@ struct BlockSpec
     plots::Vector{PlotSpec}
 end
 
-function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
+function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
     if typ == :Legend
         # TODO, this is hacky and works around the fact,
@@ -115,8 +115,8 @@ rangeunion(r1, r2::Colon) = r1
 struct GridLayoutSpec
     content::Vector{Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}}
 
-    size::Tuple{Int, Int}
-    offsets::Tuple{Int, Int}
+    size::Tuple{Int,Int}
+    offsets::Tuple{Int,Int}
 
     colsizes::Vector{ContentSize}
     rowsizes::Vector{ContentSize}
@@ -129,17 +129,17 @@ struct GridLayoutSpec
     valign::Float64
 
     function GridLayoutSpec(
-            content::AbstractVector{<:Pair};
-            colsizes = nothing,
-            rowsizes = nothing,
-            colgaps = nothing,
-            rowgaps = nothing,
-            alignmode::AlignMode = GridLayoutBase.Inside(),
-            tellheight::Bool = true,
-            tellwidth::Bool = true,
-            halign::Union{Symbol,Real} = :center,
-            valign::Union{Symbol,Real} = :center,
-        )
+        content::AbstractVector{<:Pair};
+        colsizes = nothing,
+        rowsizes = nothing,
+        colgaps = nothing,
+        rowgaps = nothing,
+        alignmode::AlignMode = GridLayoutBase.Inside(),
+        tellheight::Bool = true,
+        tellwidth::Bool = true,
+        halign::Union{Symbol,Real} = :center,
+        valign::Union{Symbol,Real} = :center,
+    )
 
         rowspan, colspan = foldl(content; init = (1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
             rangeunion(rows, _rows), rangeunion(cols, _cols)
@@ -266,7 +266,7 @@ end
 function compare_specs(a::PlotSpec, b::PlotSpec)
     a.type === b.type || return false
     length(a.args) == length(b.args) || return false
-    all(i-> typeof(a.args[i]) == typeof(b.args[i]), 1:length(a.args)) || return false
+    all(i -> typeof(a.args[i]) == typeof(b.args[i]), 1:length(a.args)) || return false
 
     length(a.kwargs) == length(b.kwargs) || return false
     ka = keys(a.kwargs)
@@ -412,7 +412,7 @@ function find_reusable_plot(plotspec::PlotSpec, reusable_plots::IdDict{PlotSpec,
 end
 
 function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify, reusable_plots,
-                        plotlist::Union{Nothing,PlotList}=nothing)
+    plotlist::Union{Nothing,PlotList} = nothing)
     new_plots = IdDict{PlotSpec,Plot}() # needed to be mutated
     empty!(scene.cycler.counters)
     # Global list of observables that need updating
@@ -441,7 +441,7 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
     return new_plots
 end
 
-function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist::Union{Nothing, PlotList}=nothing)
+function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist::Union{Nothing,PlotList} = nothing)
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
@@ -466,7 +466,7 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
             delete!(scene, plot)
         end
         # Transfer all new plots into unused_plots for the next update!
-        @assert !any(x-> x in unused_plots, new_plots)
+        @assert !any(x -> x in unused_plots, new_plots)
         empty!(unused_plots)
         merge!(unused_plots, new_plots)
         # finally, notify all changes at once
@@ -474,7 +474,7 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
         return
     end
     l = Base.ReentrantLock()
-    on(scene, list_of_plotspecs; update=true) do plotspecs
+    on(scene, list_of_plotspecs; update = true) do plotspecs
         lock(l) do
             update_plotlist(plotspecs)
         end
@@ -483,7 +483,7 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     return
 end
 
-function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
+function Makie.plot!(p::PlotList{<:Tuple{<:AbstractArray{PlotSpec}}})
     scene = Makie.parent_scene(p)
     update_plotspecs!(scene, p[1], p)
     return
@@ -498,7 +498,7 @@ function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP,BlockSpec}, (bnesti
     return true
 end
 
-function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP, GridLayoutSpec}, (bnesting, bp, b)::Tuple{Int,GP, GridLayoutSpec}) where {GP <: GridLayoutPosition}
+function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP,GridLayoutSpec}, (bnesting, bp, b)::Tuple{Int,GP,GridLayoutSpec}) where {GP<:GridLayoutPosition}
     anesting !== bnesting && return false
     ap !== bp && return false
     for (ac, bc) in zip(a.content, b.content)
@@ -520,20 +520,20 @@ end
 function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpec)
     # TODO pass colsizes  etc
     gl = GridLayout(length(spec.rowsizes), length(spec.colsizes);
-                    colsizes=spec.colsizes,
-                    rowsizes=spec.rowsizes,
-                    colgaps=spec.colgaps,
-                    rowgaps=spec.rowgaps,
-                    alignmode=spec.alignmode,
-                    tellwidth=spec.tellwidth,
-                    tellheight=spec.tellheight,
-                    halign=spec.halign,
-                    valign=spec.valign)
+        colsizes = spec.colsizes,
+        rowsizes = spec.rowsizes,
+        colgaps = spec.colgaps,
+        rowgaps = spec.rowgaps,
+        alignmode = spec.alignmode,
+        tellwidth = spec.tellwidth,
+        tellheight = spec.tellheight,
+        halign = spec.halign,
+        valign = spec.valign)
     parent[position...] = gl
     return gl
 end
 
-function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
+function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T<:Block
     old_attr = keys(old_spec.kwargs)
     new_attr = keys(spec.kwargs)
     # attributes that have been set previously and need to get unset now
@@ -573,7 +573,7 @@ function to_gl_key(key::Symbol)
     return key
 end
 
-function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutSpec, Nothing}, spec::GridLayoutSpec)
+function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutSpec,Nothing}, spec::GridLayoutSpec)
     # Block updates until very end where all children etc got deleted!
     layout.block_updates = true
     keys = (:alignmode, :tellwidth, :tellheight, :halign, :valign)
@@ -617,8 +617,8 @@ function find_layoutable(spec, layoutables)
 end
 
 
-function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
-                            gridspec::GridLayoutSpec, previous_contents, new_layoutables)
+function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing,GridLayoutSpec},
+    gridspec::GridLayoutSpec, previous_contents, new_layoutables)
 
     update_layoutable!(gridlayout, nothing, oldgridspec, gridspec)
 
@@ -641,7 +641,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             elseif new_layoutable isa GridLayout
                 # Make sure all plots & blocks are inserted
                 update_gridlayout!(new_layoutable, nesting + 1, spec, spec, previous_contents,
-                                   new_layoutables)
+                    new_layoutables)
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
@@ -664,7 +664,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
 end
 
 get_layout!(fig::Figure) = fig.layout
-get_layout!(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing=true)
+get_layout!(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing = true)
 
 # We use this to decide if we can re-use a plot.
 # (nesting_level_in_layout, position_in_layout, spec)
@@ -682,14 +682,14 @@ end
 function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs::Observable{GridLayoutSpec})
     # Global list of all layoutables. The LayoutableKey includes a nesting, so that we can keep even nested layouts in one global list.
     # Vector of Pairs should allow to have an identical key without overwriting the previous value
-    unused_layoutables = Pair{LayoutableKey, Tuple{Layoutable,Observable{Vector{PlotSpec}}}}[]
+    unused_layoutables = Pair{LayoutableKey,Tuple{Layoutable,Observable{Vector{PlotSpec}}}}[]
     new_layoutables = Pair{LayoutableKey,Tuple{Layoutable,Observable{Vector{PlotSpec}}}}[]
     sizehint!(unused_layoutables, 50)
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
     layout = get_layout!(fig)
 
-    on(get_topscene(fig), layout_obs; update=true) do layout_spec
+    on(get_topscene(fig), layout_obs; update = true) do layout_spec
         lock(l) do
             # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
             # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
@@ -729,7 +729,7 @@ args_preferred_axis(::GridLayoutSpec) = FigureOnly
 
 plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
 
-function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
+function plot!(fig::Union{Figure,GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
     update_fig!(fig, plot[1])

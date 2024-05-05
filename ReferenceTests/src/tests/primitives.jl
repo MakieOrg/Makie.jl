@@ -10,10 +10,10 @@
     for linewidth in 1:10
         for (i, linestyle) in enumerate(linestyles)
             lines!(s,
-                scalar .* (points .+ Point2f(linewidth*2, i * 3.25)),
+                scalar .* (points .+ Point2f(linewidth * 2, i * 3.25)),
                 linewidth = linewidth,
                 linestyle = linestyle,
-                color=:black
+                color = :black
             )
         end
     end
@@ -54,7 +54,7 @@ end
                 Point2f(i, j) .* 45,
                 marker = m,
                 markersize = ms,
-                color=:black
+                color = :black
             )
         end
     end
@@ -77,7 +77,7 @@ end
                 marker = m,
                 markersize = 30,
                 rotations = rot,
-                color=:black
+                color = :black
             )
             scatter!(s, p, color = :red, markersize = 6)
         end
@@ -89,7 +89,7 @@ end
     s = Scene(size = (350, 700), camera = campixel!)
 
     # half stroke, half glow
-    strokes = range(1, 4, length=7)
+    strokes = range(1, 4, length = 7)
     outline_colors = [:red, :green, :blue, :yellow, :purple, :cyan, :black]
     colors = [
         :red, :green, :blue,
@@ -122,7 +122,7 @@ end
     s = Scene(size = (350, 700), camera = campixel!)
 
     # half stroke, half glow
-    glows = range(4, 1, length=7)
+    glows = range(4, 1, length = 7)
     outline_colors = [:red, :green, :blue, :yellow, :purple, :cyan, :black]
     colors = [
         :red, :green, :blue,
@@ -153,14 +153,14 @@ end
 
 
 @reference_test "scatter image markers" begin
-    pixel_types = [ RGBA, RGBAf, RGBA{Float16}, ARGB, ARGB{Float16}, RGB, RGBf, RGB{Float16} ]
-    rotations = [ 2pi/3 * (i-1) for i = 1:length(pixel_types) ]
-    s = Scene(size = (100+100*length(pixel_types), 400), camera = campixel!)
+    pixel_types = [RGBA, RGBAf, RGBA{Float16}, ARGB, ARGB{Float16}, RGB, RGBf, RGB{Float16}]
+    rotations = [2pi / 3 * (i - 1) for i in 1:length(pixel_types)]
+    s = Scene(size = (100 + 100 * length(pixel_types), 400), camera = campixel!)
     filename = Makie.assetpath("icon_transparent.png")
     marker_image = load(filename)
     for (i, (rot, pxtype)) in enumerate(zip(rotations, pixel_types))
         marker = convert.(pxtype, marker_image)
-        p = Point2f((i-1) * 100 + 100, 200)
+        p = Point2f((i - 1) * 100 + 100, 200)
         scatter!(s,
             p,
             marker = marker,
@@ -211,7 +211,7 @@ end
 
     for (i, p) in enumerate(polys)
         for (j, lw) in enumerate(linewidths)
-            t = Transformation(scale=Vec3f(scalefactor), translation = Vec3f(1.3 * (i-1), 1.3 * j, 0) .* scalefactor)
+            t = Transformation(scale = Vec3f(scalefactor), translation = Vec3f(1.3 * (i - 1), 1.3 * j, 0) .* scalefactor)
             poly!(
                 s,
                 p,
@@ -329,19 +329,19 @@ end
     github = BezierPath(gh_string, fit = true, flipy = true)
 
     two_circles_with_holes = Makie.scale(BezierPath([
-        MoveTo(Point(2.25, 0)),
-        EllipticalArc(Point(1.25, 0), 1, 1, 0, 0, 2pi),
-        ClosePath(),
-        MoveTo(Point(-0.25, 0)),
-        EllipticalArc(Point(-1.25, 0), 1, 1, 0, 0, 2pi),
-        ClosePath(),
-        MoveTo(Point(2, 0)),
-        EllipticalArc(Point(1.25, 0), 0.75, 0.75, 0, 0, -2pi),
-        ClosePath(),
-        MoveTo(Point(-1, 0)),
-        EllipticalArc(Point(-1.25, 0), 0.25, 0.25, 0, 0, -2pi),
-        ClosePath(),
-    ]), 0.5)
+            MoveTo(Point(2.25, 0)),
+            EllipticalArc(Point(1.25, 0), 1, 1, 0, 0, 2pi),
+            ClosePath(),
+            MoveTo(Point(-0.25, 0)),
+            EllipticalArc(Point(-1.25, 0), 1, 1, 0, 0, 2pi),
+            ClosePath(),
+            MoveTo(Point(2, 0)),
+            EllipticalArc(Point(1.25, 0), 0.75, 0.75, 0, 0, -2pi),
+            ClosePath(),
+            MoveTo(Point(-1, 0)),
+            EllipticalArc(Point(-1.25, 0), 0.25, 0.25, 0, 0, -2pi),
+            ClosePath(),
+        ]), 0.5)
 
     markers = [
         arrow,
@@ -364,11 +364,11 @@ end
     p_big = decompose(Point2f, Circle(Point2f(0), 1))
     p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
     marker = [Polygon(p_big, [p_small]), Polygon(reverse(p_big), [p_small]), Polygon(p_big, [reverse(p_small)]), Polygon(reverse(p_big), [reverse(p_small)])]
-    scatter(1:4, fill(0, 4), marker=marker, markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))
+    scatter(1:4, fill(0, 4), marker = marker, markersize = 100, color = 1:4, axis = (limits = (0, 5, -1, 1),))
 end
 
 function centered_rect(w, h)
-    wh, hh = w/2, h/2
+    wh, hh = w / 2, h / 2
     return Point2f[(-wh, -hh), (-wh, hh), (wh, hh), (wh, -hh)]
 end
 
@@ -386,15 +386,15 @@ function create_rect(inner)
     return Makie.to_spritemarker(marker)
 end
 
-function plot_test!(scene, xoffset, yoffset, inner, reverse=true, marker=create_marker)
+function plot_test!(scene, xoffset, yoffset, inner, reverse = true, marker = create_marker)
     bpath = marker(inner)
     p = [Point2f(xoffset, yoffset) .+ 150]
     if reverse
-        scatter!(scene, p, marker=bpath, markersize=280, color=:black)
-        scatter!(scene, p, marker=Rect, markersize=280, color=:red)
+        scatter!(scene, p, marker = bpath, markersize = 280, color = :black)
+        scatter!(scene, p, marker = Rect, markersize = 280, color = :red)
     else
-        scatter!(scene, p, marker=Rect, markersize=280, color=:red)
-        scatter!(scene, p, marker=bpath, markersize=280, color=:black)
+        scatter!(scene, p, marker = Rect, markersize = 280, color = :red)
+        scatter!(scene, p, marker = bpath, markersize = 280, color = :black)
     end
 end
 
@@ -406,9 +406,9 @@ function plot_row!(scene, yoffset, reverse)
     plot_test!(scene, 900, yoffset + 0, 0.3, reverse, create_rect)
 end
 
-function draw_marker_test!(scene, marker, center; markersize=300)
+function draw_marker_test!(scene, marker, center; markersize = 300)
     # scatter!(scene, center, distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=600)
-    scatter!(scene, center, color=:black, marker=marker, markersize=markersize, markerspace=:pixel)
+    scatter!(scene, center, color = :black, marker = marker, markersize = markersize, markerspace = :pixel)
 
     font = Makie.defaultfont()
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
@@ -418,18 +418,18 @@ function draw_marker_test!(scene, marker, center; markersize=300)
     w, h = widths(inkbb) .* markersize
     ox, oy = origin(inkbb) .* markersize
     mhalf = markersize / 2
-    bbmin = center .+ Point2f(-w/2, -h/2)
+    bbmin = center .+ Point2f(-w / 2, -h / 2)
     inkbb_scaled = Rect2f(bbmin..., w, h)
 
-    lines!(scene, inkbb_scaled, linewidth=5, color=:green)
-    points = Point2f[(center[1], center[2] - h/2), (center[1], center[2] + h/2), (center[1] - w/2, center[2]), (center[1] + w/2, center[2])]
-    linesegments!(scene, points, color=:red)
+    lines!(scene, inkbb_scaled, linewidth = 5, color = :green)
+    points = Point2f[(center[1], center[2] - h / 2), (center[1], center[2] + h / 2), (center[1] - w / 2, center[2]), (center[1] + w / 2, center[2])]
+    linesegments!(scene, points, color = :red)
 
     scene
 end
 
 @reference_test "marke glyph alignment" begin
-    scene = Scene(size=(1200, 1200))
+    scene = Scene(size = (1200, 1200))
     campixel!(scene)
     # marker is in front, so it should not be smaller than the background rectangle
     plot_row!(scene, 0, false)
@@ -440,26 +440,26 @@ end
 
     # Markers should be well aligned to the red cross and just about touch the green
     # boundingbox!
-    draw_marker_test!(scene, 'x', Point2f(150, 750); markersize=550)
-    draw_marker_test!(scene, 'X', Point2f(450, 750); markersize=400)
-    draw_marker_test!(scene, 'I', Point2f(750, 750); markersize=400)
-    draw_marker_test!(scene, 'O', Point2f(1050, 750); markersize=300)
+    draw_marker_test!(scene, 'x', Point2f(150, 750); markersize = 550)
+    draw_marker_test!(scene, 'X', Point2f(450, 750); markersize = 400)
+    draw_marker_test!(scene, 'I', Point2f(750, 750); markersize = 400)
+    draw_marker_test!(scene, 'O', Point2f(1050, 750); markersize = 300)
 
-    draw_marker_test!(scene, 'L', Point2f(150, 1050); markersize=350)
-    draw_marker_test!(scene, 'Y', Point2f(450, 1050); markersize=350)
-    draw_marker_test!(scene, 'y', Point2f(750, 1050); markersize=350)
-    draw_marker_test!(scene, 'u', Point2f(1050, 1050); markersize=500)
+    draw_marker_test!(scene, 'L', Point2f(150, 1050); markersize = 350)
+    draw_marker_test!(scene, 'Y', Point2f(450, 1050); markersize = 350)
+    draw_marker_test!(scene, 'y', Point2f(750, 1050); markersize = 350)
+    draw_marker_test!(scene, 'u', Point2f(1050, 1050); markersize = 500)
 
     scene
 end
 
 @reference_test "Surface with NaN points" begin
     # prepare surface data
-    zs = [x^2 + y^2 for x in range(-2, 0, length=10), y in range(-2, 0, length=10)]
+    zs = [x^2 + y^2 for x in range(-2, 0, length = 10), y in range(-2, 0, length = 10)]
     ns = copy(zs)
     ns[4, 3:6] .= NaN
     # plot surface
-    f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
+    f, a, p = surface(1 .. 10, 1 .. 10, ns, colormap = [:lightblue, :lightblue])
     # plot a wireframe so we can see what's going on, and in which cells.
     m = Makie.surface2mesh(to_value.(p.converted)...)
     scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
@@ -473,8 +473,8 @@ end
     lab2 = lab1
     # lab2 = L"\frac{a}{b} - \sqrt{b}" # this will not work until #2667 is fixed
 
-    barplot(fig[1,1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction=:x)
-    barplot(fig[1,2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
+    barplot(fig[1, 1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction = :x)
+    barplot(fig[1, 2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
 
     fig
 end
@@ -490,10 +490,10 @@ end
     empty!(ax.scene.lights)
     hidedecorations!(ax)
 
-    heatmap!(ax, 0..0.5, 0..0.5, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
-    image!(ax, 0..0.5, 0.5..1, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    heatmap!(ax, 0 .. 0.5, 0 .. 0.5, [i + j for i in 1:10, j in 1:10], transformation = Transformation())
+    image!(ax, 0 .. 0.5, 0.5 .. 1, [i + j for i in 1:10, j in 1:10], transformation = Transformation())
     mesh!(ax, Rect2f(0.5, 0.0, 1.0, 0.25), transformation = Transformation(), color = :green)
-    p = surface!(ax, 0.5..1, 0.25..0.75, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
+    p = surface!(ax, 0.5 .. 1, 0.25 .. 0.75, [i + j for i in 1:10, j in 1:10], transformation = Transformation())
     translate!(p, Vec3f(0, 0, -20))
     poly!(ax, Rect2f(0.5, 0.75, 1.0, 1.0), transformation = Transformation(), color = :blue)
 

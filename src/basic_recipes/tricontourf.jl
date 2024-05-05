@@ -55,7 +55,7 @@ function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, 
 end
 
 function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
-    triangulation=DelaunayTriangulation())
+    triangulation = DelaunayTriangulation())
     z = elconvert(Float32, z)
     points = [x'; y']
     if triangulation isa DelaunayTriangulation
@@ -81,16 +81,16 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
     _cmap = to_colormap(cmap)
 
     if elow === :auto && ehigh !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 1; categorical = true)[2:end]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     elseif ehigh === :auto && elow !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 1; categorical = true)[1:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     elseif ehigh === :auto && elow === :auto
-        cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 2; categorical = true)[2:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     else
-        cm = cgrad(_cmap, levels_scaled; categorical=true)
+        cm = cgrad(_cmap, levels_scaled; categorical = true)
     end
     return cm
 end
@@ -115,7 +115,7 @@ function compute_highcolor(eh, cmap)
     end
 end
 
-function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
+function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation,<:AbstractVector{<:Real}}})
     tri, zs = c[1:2]
 
     c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
@@ -124,7 +124,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
 
     colorrange = lift(extrema_nan, c, c._computed_levels)
     computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
+        c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
@@ -153,7 +153,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
-        lows = levels[1:end-1]
+        lows = levels[1:(end - 1)]
         highs = levels[2:end]
 
         xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
@@ -217,9 +217,9 @@ function filled_tricontours(m::TriplotBase.TriMesh, z, levels)
     @assert issorted(levels)
     nlevels = length(levels)
     filled_contours = TriplotBase.FilledContour{eltype(levels)}[]
-    for i=1:nlevels-1
+    for i in 1:(nlevels - 1)
         lower = levels[i]
-        upper = levels[i+1]
+        upper = levels[i + 1]
         push!(filled_contours, TriplotBase.generate_filled_contours(m, z, lower, upper))
     end
     filled_contours

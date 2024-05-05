@@ -75,7 +75,7 @@ function initialize_block!(t::Toggle)
                 animating[] = false
                 break
             end
-            sleep(1/FPS[])
+            sleep(1 / FPS[])
         end
         return Consume(true)
     end

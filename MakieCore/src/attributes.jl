@@ -10,9 +10,9 @@ value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
 value_convert(@nospecialize(x)) = x
 
 # We transform a tuple of observables into a Observable(tuple(values...))
-function value_convert(x::NTuple{N, Union{Any, Observables.AbstractObservable}}) where N
+function value_convert(x::NTuple{N,Union{Any,Observables.AbstractObservable}}) where N
     result = Observable(to_value.(x))
-    onany((args...)-> args, x...)
+    onany((args...) -> args, x...)
     return result
 end
 
@@ -22,13 +22,13 @@ value_convert(x::NamedTuple) = Attributes(x)
 node_any(@nospecialize(obj)) = isa(obj, Observable{Any}) ? obj :
                                isa(obj, Observable) ? convert(Observable{Any}, obj) : Observable{Any}(obj)
 
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
+node_pairs(pair::Union{Pair,Tuple{Any,Any}}) = (pair[1] => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
-Attributes(; kw_args...) = Attributes(Dict{Symbol, Observable}(node_pairs(kw_args)))
-Attributes(pairs::Dict) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
-Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
-Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))
+Attributes(; kw_args...) = Attributes(Dict{Symbol,Observable}(node_pairs(kw_args)))
+Attributes(pairs::Dict) = Attributes(Dict{Symbol,Observable}(node_pairs(pairs)))
+Attributes(pairs::Pair...) = Attributes(Dict{Symbol,Observable}(node_pairs(pairs)))
+Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol,Observable}(node_pairs.(pairs)))
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
 attributes(x::Attributes) = getfield(x, :attributes)
@@ -79,7 +79,7 @@ end
 
 Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
 
-function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
+function Base.getproperty(x::Union{Attributes,AbstractPlot}, key::Symbol)
     if hasfield(typeof(x), key)
         getfield(x, key)
     else
@@ -94,7 +94,7 @@ function Base.setindex!(x::Attributes, value::NamedTuple, key::Symbol)
     return x[key] = Attributes(value)
 end
 
-function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
+function Base.setproperty!(x::Union{Attributes,AbstractPlot}, key::Symbol, value)
     if hasfield(typeof(x), key)
         setfield!(x, key, value)
     else
@@ -133,7 +133,7 @@ end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
 
-function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
+function Base.show(io::IO, ::MIME"text/plain", attr::Attributes)
 
     io = IOContext(io, :compact => true)
 
@@ -167,7 +167,7 @@ theme(x::AbstractPlot) = x.attributes
 isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
 
 #dict interface
-const AttributeOrPlot = Union{AbstractPlot, Attributes}
+const AttributeOrPlot = Union{AbstractPlot,Attributes}
 Base.pop!(x::AttributeOrPlot, args...) = pop!(x.attributes, args...)
 Base.haskey(x::AttributeOrPlot, key) = haskey(x.attributes, key)
 Base.delete!(x::AttributeOrPlot, key) = delete!(x.attributes, key)
@@ -180,9 +180,9 @@ function Base.get!(f::Function, x::AttributeOrPlot, key::Symbol)
         return x[key]
     end
 end
-Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(()-> default, x, key)
+Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(() -> default, x, key)
 Base.get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
-Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
+Base.get(x::AttributeOrPlot, key::Symbol, default) = get(() -> default, x, key)
 
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
 # and not a plot for integer indexing. But, we want to treat plots as "atomic"
@@ -248,7 +248,7 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
 end
 
 # a few shortcut functions to make attribute conversion easier
-function get_attribute(dict, key, default=nothing)
+function get_attribute(dict, key, default = nothing)
     if haskey(dict, key)
         value = to_value(dict[key])
         value isa Automatic && return default
@@ -280,6 +280,6 @@ function merge_attributes!(input::Attributes, theme::Attributes)
     return input
 end
 
-function Base.propertynames(x::Union{Attributes, AbstractPlot})
+function Base.propertynames(x::Union{Attributes,AbstractPlot})
     return (keys(x.attributes)...,)
 end

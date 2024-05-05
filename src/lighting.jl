@@ -4,12 +4,12 @@ abstract type AbstractLight end
 
 # These need to match up with light shaders to differentiate light types
 module LightType
-    const UNDEFINED        = 0
-    const Ambient          = 1
-    const PointLight       = 2
-    const DirectionalLight = 3
-    const SpotLight        = 4
-    const RectLight        = 5
+const UNDEFINED = 0
+const Ambient = 1
+const PointLight = 2
+const DirectionalLight = 3
+const SpotLight = 4
+const RectLight = 5
 end
 
 # Each light should implement
@@ -59,15 +59,15 @@ struct PointLight <: AbstractLight
 end
 
 # no attenuation
-function PointLight(color::Union{Colorant, Observable{<: Colorant}}, position::Union{VecTypes{3}, Observable{<: VecTypes{3}}})
+function PointLight(color::Union{Colorant,Observable{<:Colorant}}, position::Union{VecTypes{3},Observable{<:VecTypes{3}}})
     return PointLight(color, position, Vec2f(0))
 end
 # automatic attenuation
-function PointLight(color::Union{Colorant, Observable{<: Colorant}}, position::Union{VecTypes{3}, Observable{<: VecTypes{3}}}, range::Real)
+function PointLight(color::Union{Colorant,Observable{<:Colorant}}, position::Union{VecTypes{3},Observable{<:VecTypes{3}}}, range::Real)
     return PointLight(color, position, default_attenuation(range))
 end
 
-@deprecate PointLight(position::Union{VecTypes{3}, Observable{<: VecTypes{3}}}, color::Union{Colorant, Observable{<: Colorant}}) PointLight(color, position)
+@deprecate PointLight(position::Union{VecTypes{3},Observable{<:VecTypes{3}}}, color::Union{Colorant,Observable{<:Colorant}}) PointLight(color, position)
 
 light_type(::PointLight) = LightType.PointLight
 light_color(l::PointLight) = l.color[]
@@ -75,8 +75,8 @@ light_color(l::PointLight) = l.color[]
 # fit of values used on learnopengl/ogre3d
 function default_attenuation(range::Real)
     return Vec2f(
-        4.690507869767646 * range ^ -1.009712247799057,
-        82.4447791934059 * range ^ -2.0192061630628966
+        4.690507869767646 * range^-1.009712247799057,
+        82.4447791934059 * range^-2.0192061630628966
     )
 end
 
@@ -169,11 +169,12 @@ end
 
 RectLight(color, pos, u1, u2) = RectLight(color, pos, u1, u2, -normalize(cross(u1, u2)))
 function RectLight(color, r::Rect2)
-    mini = minimum(r); ws = widths(r)
+    mini = minimum(r)
+    ws = widths(r)
     position = Observable(to_ndim(Point3f, mini + 0.5 * ws, 0))
     u1 = Observable(Vec3f(ws[1], 0, 0))
     u2 = Observable(Vec3f(0, ws[2], 0))
-    return RectLight(color, position, u1, u2, normalize(Vec3f(0,0,-1)))
+    return RectLight(color, position, u1, u2, normalize(Vec3f(0, 0, -1)))
 end
 
 # Implement Transformable interface (more or less) to simplify working with
@@ -222,12 +223,12 @@ light_color(l::RectLight) = l.color[]
 
 
 function get_one_light(lights, Typ)
-    indices = findall(x-> x isa Typ, lights)
+    indices = findall(x -> x isa Typ, lights)
     isempty(indices) && return nothing
     return lights[indices[1]]
 end
 
-function default_shading!(plot, lights::Vector{<: AbstractLight})
+function default_shading!(plot, lights::Vector{<:AbstractLight})
     # if the plot does not have :shading we assume the plot doesn't support it
     haskey(plot.attributes, :shading) || return
 

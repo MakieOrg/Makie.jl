@@ -19,12 +19,12 @@ function initialize_block!(isl::IntervalSlider)
 
         if horizontal
             y = bottom(bb) + h / 2
-            [Point2f(left(bb) + h/2, y),
-             Point2f(right(bb) - h/2, y)]
+            [Point2f(left(bb) + h / 2, y),
+                Point2f(right(bb) - h / 2, y)]
         else
             x = left(bb) + w / 2
-            [Point2f(x, bottom(bb) + w/2),
-             Point2f(x, top(bb) - w/2)]
+            [Point2f(x, bottom(bb) + w / 2),
+                Point2f(x, top(bb) - w / 2)]
         end
     end
 

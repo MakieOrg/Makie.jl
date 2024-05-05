@@ -1,4 +1,4 @@
-const Optional{T} = Union{Nothing, T}
+const Optional{T} = Union{Nothing,T}
 
 
 
@@ -9,7 +9,7 @@ end
 struct DataAspect end
 
 struct Cycle
-    cycle::Vector{Pair{Vector{Symbol}, Symbol}}
+    cycle::Vector{Pair{Vector{Symbol},Symbol}}
     covary::Bool
 end
 
@@ -19,8 +19,8 @@ to_cycle(single) = [to_cycle_single(single)]
 to_cycle(::Nothing) = []
 to_cycle(symbolvec::Vector) = map(to_cycle_single, symbolvec)
 to_cycle_single(sym::Symbol) = [sym] => sym
-to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
-to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
+to_cycle_single(pair::Pair{Symbol,Symbol}) = [pair[1]] => pair[2]
+to_cycle_single(pair::Pair{Vector{Symbol},Symbol}) = pair
 
 """
     Cycled(i::Int)
@@ -51,7 +51,7 @@ struct WilkinsonTicks
     k_ideal::Int
     k_min::Int
     k_max::Int
-    Q::Vector{Tuple{Float64, Float64}}
+    Q::Vector{Tuple{Float64,Float64}}
     granularity_weight::Float64
     simplicity_weight::Float64
     coverage_weight::Float64
@@ -135,7 +135,7 @@ mutable struct LineAxis
     parent::Scene
     protrusion::Observable{Float32}
     attributes::Attributes
-    elements::Dict{Symbol, Any}
+    elements::Dict{Symbol,Any}
     tickpositions::Observable{Vector{Point2f}}
     tickvalues::Observable{Vector{Float32}}
     ticklabels::Observable{Vector{Any}}
@@ -150,38 +150,38 @@ mutable struct RectangleZoom
     active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
-    from::Union{Nothing, Point2f}
-    to::Union{Nothing, Point2f}
+    from::Union{Nothing,Point2f}
+    to::Union{Nothing,Point2f}
     rectnode::Observable{Rect2f}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
+function RectangleZoom(callback::Function; restrict_x = false, restrict_y = false, modifier = true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
+        nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
     speed::Float32
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    reset_timer::RefValue{Union{Nothing,Timer}}
+    prev_xticklabelspace::RefValue{Union{Automatic,Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic,Float64}}
     reset_delay::Float32
 end
 
 function ScrollZoom(speed, reset_delay)
-    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return ScrollZoom(speed, RefValue{Union{Nothing,Timer}}(nothing), RefValue{Union{Automatic,Float64}}(0.0), RefValue{Union{Automatic,Float64}}(0.0), reset_delay)
 end
 
 struct DragPan
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    reset_timer::RefValue{Union{Nothing,Timer}}
+    prev_xticklabelspace::RefValue{Union{Automatic,Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic,Float64}}
     reset_delay::Float32
 end
 
 function DragPan(reset_delay)
-    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return DragPan(RefValue{Union{Nothing,Timer}}(nothing), RefValue{Union{Automatic,Float64}}(0.0), RefValue{Union{Automatic,Float64}}(0.0), reset_delay)
 end
 
 
@@ -207,10 +207,10 @@ end
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
-    interactions::Dict{Symbol, Tuple{Bool, Any}}
+    interactions::Dict{Symbol,Tuple{Bool,Any}}
     xaxis::LineAxis
     yaxis::LineAxis
-    elements::Dict{Symbol, Any}
+    elements::Dict{Symbol,Any}
     @attributes begin
         """
         The content of the x axis label.
@@ -304,9 +304,9 @@ end
         "Controls if the yticklabels are visible."
         yticklabelsvisible::Bool = true
         "The space reserved for the xticklabels."
-        xticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
+        xticklabelspace::Union{Makie.Automatic,Float64} = Makie.automatic
         "The space reserved for the yticklabels."
-        yticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
+        yticklabelspace::Union{Makie.Automatic,Float64} = Makie.automatic
         "The space between xticks and xticklabels."
         xticklabelpad::Float64 = 2f0
         "The space between yticks and yticklabels."
@@ -316,9 +316,9 @@ end
         "The counterclockwise rotation of the yticklabels in radians."
         yticklabelrotation::Float64 = 0f0
         "The horizontal and vertical alignment of the xticklabels."
-        xticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
+        xticklabelalign::Union{Makie.Automatic,Tuple{Symbol,Symbol}} = Makie.automatic
         "The horizontal and vertical alignment of the yticklabels."
-        yticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
+        yticklabelalign::Union{Makie.Automatic,Tuple{Symbol,Symbol}} = Makie.automatic
         "The size of the xtick marks."
         xticksize::Float64 = 5f0
         "The size of the ytick marks."
@@ -437,9 +437,9 @@ end
         "Controls if the parent layout can adjust to this element's height"
         tellheight::Bool = true
         "The relative margins added to the autolimits in x direction."
-        xautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
+        xautolimitmargin::Tuple{Float64,Float64} = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
-        yautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
+        yautolimitmargin::Tuple{Float64,Float64} = (0.05f0, 0.05f0)
         """
         Controls what numerical tick values are calculated for the x axis.
 
@@ -526,12 +526,12 @@ end
         If `true`, limits the x axis spine's extent to the outermost major tick marks.
         Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
         """
-        xtrimspine::Union{Bool, Tuple{Bool,Bool}}  = false
+        xtrimspine::Union{Bool,Tuple{Bool,Bool}} = false
         """
         If `true`, limits the y axis spine's extent to the outermost major tick marks.
         Can also be set to a `Tuple{Bool,Bool}` to control each side separately.
         """
-        ytrimspine::Union{Bool, Tuple{Bool,Bool}} = false
+        ytrimspine::Union{Bool,Tuple{Bool,Bool}} = false
         "The background color of the axis."
         backgroundcolor::RGBAf = :white
         "Controls if the ylabel's rotation is flipped."
@@ -656,13 +656,13 @@ end
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
     selection_vertices = lift(_selection_vertices, ax.blockscene, Observable(ax.scene), ax.finallimits,
-                              r.rectnode)
+        r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
     mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = NoShading,
-                 inspectable = false, visible=r.active, transparency=true)
+        inspectable = false, visible = r.active, transparency = true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
     return r
@@ -933,8 +933,8 @@ end
 end
 
 @Block IntervalSlider begin
-    selected_indices::Observable{Tuple{Int, Int}}
-    displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
+    selected_indices::Observable{Tuple{Int,Int}}
+    displayed_sliderfractions::Observable{Tuple{Float64,Float64}}
     @attributes begin
         "The horizontal alignment of the slider in its suggested bounding box."
         halign = :center
@@ -1129,7 +1129,7 @@ struct LegendEntry
     attributes::Attributes
 end
 
-const EntryGroup = Tuple{Any, Vector{LegendEntry}}
+const EntryGroup = Tuple{Any,Vector{LegendEntry}}
 
 @Block Legend begin
     entrygroups::Observable{Vector{EntryGroup}}
@@ -1361,7 +1361,7 @@ end
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
-    interactions::Dict{Symbol, Tuple{Bool, Any}}
+    interactions::Dict{Symbol,Tuple{Bool,Any}}
     @attributes begin
         "The height setting of the scene."
         height = nothing
@@ -1378,7 +1378,7 @@ end
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
         "The elevation (up / down) angle of the camera. Possible values are between -pi/2 (looking from the bottom up) and +pi/2 (looking from the top down)."
-        elevation = pi/8
+        elevation = pi / 8
         """
         The azimuth (left / right) angle of the camera.
 
@@ -1402,7 +1402,7 @@ end
             where a cube in data space looks like a cube and not a cuboid.
           - `:equal` which is a shorthand for `(1, 1, 1)`
         """
-        aspect = (1.0, 1.0, 2/3) # :data :equal
+        aspect = (1.0, 1.0, 2 / 3) # :data :equal
         """
         The view mode affects the final projection of the axis by fitting the axis cuboid into the available
         space in different ways.
@@ -1645,8 +1645,8 @@ end
 @Block PolarAxis <: AbstractAxis begin
     scene::Scene
     overlay::Scene
-    target_rlims::Observable{Tuple{Float64, Float64}}
-    target_thetalims::Observable{Tuple{Float64, Float64}}
+    target_rlims::Observable{Tuple{Float64,Float64}}
+    target_thetalims::Observable{Tuple{Float64,Float64}}
     target_theta_0::Observable{Float32}
     target_r0::Observable{Float32}
     @attributes begin
@@ -1695,9 +1695,9 @@ end
         "Controls whether `r < 0` (after applying `radius_at_origin`) gets clipped (true) or not (false)."
         clip_r::Bool = true
         "The relative margins added to the autolimits in r direction."
-        rautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
+        rautolimitmargin::Tuple{Float64,Float64} = (0.05, 0.05)
         "The relative margins added to the autolimits in theta direction."
-        thetaautolimitmargin::Tuple{Float64, Float64} = (0.05, 0.05)
+        thetaautolimitmargin::Tuple{Float64,Float64} = (0.05, 0.05)
 
         # Spine
 
@@ -1749,7 +1749,7 @@ end
         # Theta ticks
 
         "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
-        thetaticks = AngularTicks(180/pi, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        thetaticks = AngularTicks(180 / pi, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
         "The specifier for the minor `theta` ticks."
         thetaminorticks = IntervalsBetween(2)
         "The formatter for the `theta` ticks."

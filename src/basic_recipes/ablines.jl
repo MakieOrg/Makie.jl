@@ -44,6 +44,6 @@ function Makie.plot!(p::ABLines)
 end
 
 function abline!(args...; kwargs...)
-    Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead." , :abline!, force = true)
+    Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead.", :abline!, force = true)
     ablines!(args...; kwargs...)
 end

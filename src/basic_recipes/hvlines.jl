@@ -45,7 +45,7 @@ function projview_to_2d_limits(pv)
     return Rect2f(origin, Vec2f(xmax, ymax) - origin)
 end
 
-function Makie.plot!(p::Union{HLines, VLines})
+function Makie.plot!(p::Union{HLines,VLines})
     scene = parent_scene(p)
     transf = transform_func_obs(scene)
 
@@ -81,7 +81,7 @@ function Makie.plot!(p::Union{HLines, VLines})
     notify(p[1])
 
     line_attributes = copy(p.attributes)
-    foreach(key-> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
+    foreach(key -> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
     # Drop transform_func because we handle it manually
     line_attributes[:transformation] = Transformation(p, transform_func = identity)
     linesegments!(p, line_attributes, points)

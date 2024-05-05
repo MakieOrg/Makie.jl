@@ -1,10 +1,10 @@
 @reference_test "updating 2d primitives" begin
     fig = Figure()
     t = Observable(1)
-    text(fig[1, 1], lift(i-> map(j-> ("$j", Point2f(j*30, 0)), 1:i), t), axis=(limits=(0, 380, -10, 10),), fontsize=50)
-    scatter(fig[1, 2], lift(i-> Point2f.((1:i).*30, 0), t), axis=(limits=(0, 330, -10, 10),), markersize=50)
-    linesegments(fig[2, 1], lift(i-> Point2f.((2:2:4i).*30, 0), t), axis=(limits=(30, 650, -10, 10),), linewidth=20)
-    lines(fig[2, 2], lift(i-> Point2f.((2:2:4i).*30, 0), t), axis=(limits=(30, 650, -10, 10),), linewidth=20)
+    text(fig[1, 1], lift(i -> map(j -> ("$j", Point2f(j * 30, 0)), 1:i), t), axis = (limits = (0, 380, -10, 10),), fontsize = 50)
+    scatter(fig[1, 2], lift(i -> Point2f.((1:i) .* 30, 0), t), axis = (limits = (0, 330, -10, 10),), markersize = 50)
+    linesegments(fig[2, 1], lift(i -> Point2f.((2:2:(4i)) .* 30, 0), t), axis = (limits = (30, 650, -10, 10),), linewidth = 20)
+    lines(fig[2, 2], lift(i -> Point2f.((2:2:(4i)) .* 30, 0), t), axis = (limits = (30, 650, -10, 10),), linewidth = 20)
 
     st = Stepper(fig)
 
@@ -21,21 +21,21 @@
 end
 
 @reference_test "updating multiple meshes" begin
-    points = Observable(Point3f[(1,0,0), (0,1,0), (0,0,1)])
+    points = Observable(Point3f[(1, 0, 0), (0, 1, 0), (0, 0, 1)])
 
-    meshes = map(p->Makie.normal_mesh(Sphere(p, 0.2)), points[])
-    colors = map(p->RGBf(normalize(p)...), points[])
+    meshes = map(p -> Makie.normal_mesh(Sphere(p, 0.2)), points[])
+    colors = map(p -> RGBf(normalize(p)...), points[])
 
     fig, ax, pl = mesh(meshes; color = colors)
     st = Stepper(fig)
     Makie.step!(st)
     on(points) do pts
-        pl[1].val = map(p->Makie.normal_mesh(Sphere(p, 0.2)), points[])
-        pl.color.val = map(p->RGBf(normalize(p)...), points[])
+        pl[1].val = map(p -> Makie.normal_mesh(Sphere(p, 0.2)), points[])
+        pl.color.val = map(p -> RGBf(normalize(p)...), points[])
         notify(pl[1])
     end
 
-    append!(points[], Point3f[(0,1,1), (1,0,1), (1,1,0)])
+    append!(points[], Point3f[(0, 1, 1), (1, 0, 1), (1, 1, 0)])
     notify(points)
     Makie.step!(st)
 end
@@ -43,10 +43,10 @@ end
 function generate_plot(N = 3)
     points = Observable(Point2f[])
     color = Observable(RGBAf[])
-    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(800, 800),))
+    fig, ax, pl = scatter(points, color = color, markersize = 1.0, marker = Circle, markerspace = :data, axis = (type = Axis, aspect = DataAspect(), limits = (0.4, N + 0.6, 0.4, N + 0.6),), figure = (size = (800, 800),))
     function update_func(ij)
         push!(points.val, Point2f(Tuple(ij)))
-        push!(color.val, RGBAf((Tuple(ij)./N)..., 0, 1))
+        push!(color.val, RGBAf((Tuple(ij) ./ N)..., 0, 1))
         notify(color)
         notify(points)
     end
@@ -60,10 +60,10 @@ end
 
 function load_frames(video, dir)
     framedir = joinpath(dir, "frames")
-    isdir(framedir) && rm(framedir; recursive=true, force=true)
+    isdir(framedir) && rm(framedir; recursive = true, force = true)
     mkdir(framedir)
     Makie.extract_frames(video, framedir)
-    return map(readdir(framedir; join=true)) do path
+    return map(readdir(framedir; join = true)) do path
         return convert(Matrix{RGB{N0f8}}, load(path))
     end
 end
@@ -92,7 +92,7 @@ end
             compare_videos(reference, path, dir)
 
             fig, iter, func = generate_plot(2)
-            vso = Makie.Record(func, fig, iter; format="mkv")
+            vso = Makie.Record(func, fig, iter; format = "mkv")
             path = joinpath(dir, "test.$format")
             save(path, vso)
             compare_videos(reference, path, dir)
@@ -104,7 +104,7 @@ end
 
 @reference_test "deletion" begin
     f = Figure()
-    l = Legend(f[1, 1], [LineElement(color=:red)], ["Line"])
+    l = Legend(f[1, 1], [LineElement(color = :red)], ["Line"])
     s = display(f)
     @test f.scene.current_screens[1] === s
     @test f.scene.children[1].current_screens[1] === s
@@ -113,13 +113,13 @@ end
     @test f.scene.current_screens[1] === s
     ## legend should be gone
     ax = Axis(f[1, 1])
-    scatter!(ax, 1:4, markersize=200, color=1:4)
+    scatter!(ax, 1:4, markersize = 200, color = 1:4)
     f
 end
 
 @reference_test "deletion and observable args" begin
     obs = Observable(1:5)
-    f, ax, pl = scatter(obs; markersize=150)
+    f, ax, pl = scatter(obs; markersize = 150)
     s = display(f)
     # So, for GLMakie it will be 2, since we register an additional listener for
     # State changes for the on demand renderloop
@@ -135,8 +135,8 @@ end
 @reference_test "interactive colorscale - mesh" begin
     brain = load(assetpath("brain.stl"))
     color = [abs(tri[1][2]) for tri in brain for i in 1:3]
-    f, ax, m = mesh(brain; color, colorscale=identity)
-    mesh(f[1, 2], brain; color, colorscale=log10)
+    f, ax, m = mesh(brain; color, colorscale = identity)
+    mesh(f[1, 2], brain; color, colorscale = log10)
     st = Stepper(f)
     Makie.step!(st)
     m.colorscale = log10
@@ -145,9 +145,9 @@ end
 
 @reference_test "interactive colorscale - heatmap" begin
     data = exp.(abs.(RNG.randn(20, 20)))
-    f, ax, hm = heatmap(data, colorscale=log10, axis=(; title="log10"))
+    f, ax, hm = heatmap(data, colorscale = log10, axis = (; title = "log10"))
     Colorbar(f[1, 2], hm)
-    ax2, hm2 = heatmap(f[1, 3], data, colorscale=log10, axis=(; title="log10"))
+    ax2, hm2 = heatmap(f[1, 3], data, colorscale = log10, axis = (; title = "log10"))
     st = Stepper(f)
     Makie.step!(st)
 
@@ -164,9 +164,9 @@ end
     x = RNG.randn(1_000)
     y = RNG.randn(1_000)
     f = Figure()
-    hexbin(f[1, 1], x, y; axis=(aspect=DataAspect(), title="identity"))
-    ax, hb = hexbin(f[1, 2], x, y; colorscale=log, axis=(aspect=DataAspect(), title="log"))
-    Colorbar(f[1, end+1], hb)
+    hexbin(f[1, 1], x, y; axis = (aspect = DataAspect(), title = "identity"))
+    ax, hb = hexbin(f[1, 2], x, y; colorscale = log, axis = (aspect = DataAspect(), title = "log"))
+    Colorbar(f[1, end + 1], hb)
     st = Stepper(f)
     Makie.step!(st)
     hb.colorscale = identity

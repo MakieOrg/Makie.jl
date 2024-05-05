@@ -181,7 +181,7 @@ end
 
 struct MousePositionUpdater
     screen::Screen
-    mouseposition::Observable{Tuple{Float64, Float64}}
+    mouseposition::Observable{Tuple{Float64,Float64}}
     hasfocus::Observable{Bool}
 end
 
@@ -228,7 +228,7 @@ which is an x and y offset.
 """
 Makie.scroll(scene::Scene, screen) = scroll(scene, to_native(screen))
 mutable struct ScrollUpdater <: Function
-    event::Observable{Tuple{Float64, Float64}}
+    event::Observable{Tuple{Float64,Float64}}
     integer_scroll::Bool
 end
 function (sc::ScrollUpdater)(window, w::Cdouble, h::Cdouble)

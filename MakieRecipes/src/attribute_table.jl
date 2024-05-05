@@ -1,4 +1,4 @@
-const makie_linetype = Dict{Symbol, Any}(
+const makie_linetype = Dict{Symbol,Any}(
     :auto => nothing,
     :solid => nothing,
     :dash => :dash,
@@ -14,7 +14,7 @@ function makie_color(c)
     convert(RGBA, c)
 end
 
-makie_seriestype_map = Dict{Symbol, Type}(
+makie_seriestype_map = Dict{Symbol,Type}(
     :path => Lines,
     :path3d => Lines,
     :scatter => Scatter,

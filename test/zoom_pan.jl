@@ -13,17 +13,17 @@ end
 @testset "zoom Axis" begin
     ax, axbox, lim, e = cleanaxes()
     # Put the mouse in the center
-    e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+    e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
     # zoom in
     e.scroll[] = (0.0, -1.0)
     newlim = ax.finallimits[]
     @test newlim.widths ≈ 0.9 * lim.widths
-    @test newlim.origin ≈ lim.origin + (lim.widths - newlim.widths)/2
+    @test newlim.origin ≈ lim.origin + (lim.widths - newlim.widths) / 2
     # zoom out restores original position
     e.scroll[] = (0.0, 1.0)
     newlim = ax.finallimits[]
     @test newlim.widths ≈ lim.widths
-    @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+    @test all(abs.(newlim.origin - lim.origin) .< 1e-7 * lim.widths)
     ax.finallimits[] = lim
     # Put mouse in corner
     e.mouseposition[] = Tuple(axbox.origin)
@@ -31,12 +31,12 @@ end
     e.scroll[] = (0.0, -1.0)
     newlim = ax.finallimits[]
     @test newlim.widths ≈ 0.9 * lim.widths
-    @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+    @test all(abs.(newlim.origin - lim.origin) .< 1e-7 * lim.widths)
     # zoom out
     e.scroll[] = (0.0, 1.0)
     newlim = ax.finallimits[]
     @test newlim.widths ≈ lim.widths
-    @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+    @test all(abs.(newlim.origin - lim.origin) .< 1e-7 * lim.widths)
     ax.finallimits[] = lim
 
     # Zoom only x or y
@@ -45,17 +45,17 @@ end
         lock = getproperty(ax, lockname)
         @test !lock[]
         lock[] = true
-        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
         e.scroll[] = (0.0, -1.0)
         newlim = ax.finallimits[]
         @test newlim.widths[idx] == lim.widths[idx]
-        @test newlim.widths[3-idx] ≈ 0.9 * lim.widths[3-idx]
+        @test newlim.widths[3 - idx] ≈ 0.9 * lim.widths[3 - idx]
         @test newlim.origin[idx] == lim.origin[idx]
-        @test newlim.origin[3-idx] ≈ lim.origin[3-idx] + (lim.widths[3-idx] - newlim.widths[3-idx])/2
+        @test newlim.origin[3 - idx] ≈ lim.origin[3 - idx] + (lim.widths[3 - idx] - newlim.widths[3 - idx]) / 2
         e.scroll[] = (0.0, 1.0)
         newlim = ax.finallimits[]
         @test newlim.widths ≈ lim.widths
-        @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+        @test all(abs.(newlim.origin - lim.origin) .< 1e-7 * lim.widths)
         ax.finallimits[] = lim
         lock[] = false
         # Simulate pressing the keys
@@ -66,13 +66,13 @@ end
         e.scroll[] = (0.0, -1.0)
         newlim = ax.finallimits[]
         @test newlim.widths[idx] == lim.widths[idx]
-        @test newlim.widths[3-idx] ≈ 0.9 * lim.widths[3-idx]
+        @test newlim.widths[3 - idx] ≈ 0.9 * lim.widths[3 - idx]
         @test newlim.origin[idx] == lim.origin[idx]
-        @test newlim.origin[3-idx] ≈ lim.origin[3-idx] + (lim.widths[3-idx] - newlim.widths[3-idx])/2
+        @test newlim.origin[3 - idx] ≈ lim.origin[3 - idx] + (lim.widths[3 - idx] - newlim.widths[3 - idx]) / 2
         e.scroll[] = (0.0, 1.0)
         newlim = ax.finallimits[]
         @test newlim.widths ≈ lim.widths
-        @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+        @test all(abs.(newlim.origin - lim.origin) .< 1e-7 * lim.widths)
     end
 
     # Rubber band selection
@@ -104,23 +104,23 @@ end
     empty!(e.mousebuttons[])
     empty!(keypresses)
     newlim = ax.finallimits[]
-    @test all(lim.origin .>= newlim.origin) && all(lim.origin+lim.widths .<= newlim.origin+newlim.widths)
+    @test all(lim.origin .>= newlim.origin) && all(lim.origin + lim.widths .<= newlim.origin + newlim.widths)
 end
 
 @testset "pan Axis" begin
     ax, axbox, lim, e = cleanaxes()
-    e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+    e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
     e.scroll[] = (0.0, -1.0)
     newlim = ax.finallimits[]
     e.mouseposition[] = Tuple(axbox.origin)
     panbtn = ax.panbutton[]
     e.mousebuttons[] = Set([panbtn])
     e.mousedrag[] = Mouse.down
-    e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
+    e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 10)
     e.mousedrag[] = Mouse.pressed
     e.mousebuttons[] = Set{typeof(panbtn)}()
     e.mousedrag[] = Mouse.up
     panlim = ax.finallimits[]
     @test panlim.widths == newlim.widths
-    @test (5/4)*panlim.origin ≈ -newlim.origin
+    @test (5 / 4) * panlim.origin ≈ -newlim.origin
 end
