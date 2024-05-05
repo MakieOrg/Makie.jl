@@ -9,7 +9,7 @@ from `start_angle` to `stop_angle`.
 Examples:
 
 `arc(Point2f(0), 1, 0.0, π)`
-`arc(Point2f(1, 2), 0.3. π, -π)`
+`arc(Point2f(1, 2), 0.3, π, -π)`
 
 ## Attributes
 $(ATTRIBUTES)

@@ -1,6 +1,6 @@
-function bar_label_formatter(value::Number)
-    return string(round(value; digits=3))
-end
+bar_label_formatter(value::Number) = string(round(value; digits=3))
+bar_label_formatter(label::String) = label
+bar_label_formatter(label::LaTeXString) = label
 
 """
     bar_default_fillto(tf, ys, offset)::(ys, offset)
@@ -198,18 +198,18 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
 
         if isflipped
             # plot text inside bar
-            push!(offsets, swap(0, -label_offset))
+            push!(offsets, swap(0, -sv_getindex(label_offset, i)))
             push!(text_colors, geti(color_over_bar, i))
         else
             # plot text next to bar
-            push!(offsets, swap(0, label_offset))
+            push!(offsets, swap(0, sv_getindex(label_offset, i)))
             push!(text_colors, geti(color_over_background, i))
         end
     end
     return aligns, offsets, text_colors
 end
 
-function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip_labels_at,
+function barplot_labels(xpositions, ypositions, offset, bar_labels, in_y_direction, flip_labels_at,
                         color_over_background, color_over_bar, label_formatter, label_offset, label_rotation,
                         label_align)
     if bar_labels isa Symbol && bar_labels in (:x, :y)
@@ -225,8 +225,8 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
         if length(bar_labels) == length(xpositions)
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background,
                                          color_over_bar, label_offset, label_rotation, label_align)
-            label_pos = map(xpositions, ypositions, bar_labels) do x, y, l
-                return (string(l), in_y_direction ? Point2f(x, y) : Point2f(y, x))
+            label_pos = broadcast(xpositions, ypositions, offset, bar_labels) do x, y, off, l
+                return (string(label_formatter(l)), in_y_direction ? Point2f(x, y+off) : Point2f(y, x+off))
             end
             return (label_pos, attributes...)
         else
@@ -296,7 +296,7 @@ function Makie.plot!(p::BarPlot)
         if !isnothing(bar_labels)
             oback = color_over_background === automatic ? label_color : color_over_background
             obar = color_over_bar === automatic ? label_color : color_over_bar
-            label_args = barplot_labels(x̂, y, bar_labels, in_y_direction,
+            label_args = barplot_labels(x̂, y, offset, bar_labels, in_y_direction,
                                         flip_labels_at, to_color(oback), to_color(obar),
                                         label_formatter, label_offset, label_rotation, label_align)
             labels[], label_aligns[], label_offsets[], label_colors[] = label_args

@@ -1,9 +1,24 @@
 # Changelog
 
 ## [Unreleased]
-- Added supported markers hint to unsupported marker warn message.
-- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
+
 - Add recipes for plotting intervals to `Band`, `Rangebars`, `H/VSpan` [3695](https://github.com/MakieOrg/Makie.jl/pull/3695)
+- Document `WilkinsonTicks` [#3819](https://github.com/MakieOrg/Makie.jl/pull/3819).
+- Add `axislegend(ax, "title")` method [#3808](https://github.com/MakieOrg/Makie.jl/pull/3808).
+- Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
+- Added methods `hidedecorations!`, `hiderdecorations!`, `hidethetadecorations!` and  `hidespines!` for `PolarAxis` axes
+
+## [0.20.9] - 2024-03-29
+
+- Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
+- Fixed bug in CairoMakie line drawing when multiple successive points had the same color [#3712](https://github.com/MakieOrg/Makie.jl/pull/3712).
+- Remove StableHashTraits in favor of calculating hashes directly with CRC32c [#3667](https://github.com/MakieOrg/Makie.jl/pull/3667).
+- Fixed `contourf` bug where n levels would sometimes miss the uppermost value, causing gaps [#3713](https://github.com/MakieOrg/Makie.jl/pull/3713).
+- Added `scale` attribute to `violin` [#3352](https://github.com/MakieOrg/Makie.jl/pull/3352).
+- Use label formatter in barplot [#3718](https://github.com/MakieOrg/Makie.jl/pull/3718).
+- Fix the incorrect shading with non uniform markerscale in meshscatter [#3722](https://github.com/MakieOrg/Makie.jl/pull/3722)
+- Add `scale_to=:flip` option to `hist`, which flips the direction of the bars [#3732](https://github.com/MakieOrg/Makie.jl/pull/3732)
+- Fixed an issue with the texture atlas not updating in WGLMakie after display, causing new symbols to not show up [#3737](https://github.com/MakieOrg/Makie.jl/pull/3737)
 
 ## [0.20.8] - 2024-02-22
 
@@ -434,7 +449,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.8...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.9...HEAD
+[0.20.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.8...v0.20.9
 [0.20.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.7...v0.20.8
 [0.20.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.6...v0.20.7
 [0.20.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.5...v0.20.6

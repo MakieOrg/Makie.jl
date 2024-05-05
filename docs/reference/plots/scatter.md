@@ -175,8 +175,8 @@ scatter(points,
 
 Bezier paths are the basis for vector graphic formats such as svg and pdf and consist of a couple different operations that can define complex shapes.
 
-A `BezierPath` contains a vector of path commands, these are `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath`.
-A filled shape should start with `MoveTo` and end with `ClosePath`.
+A \apilink{BezierPath} contains a vector of path commands, these are \apilink{MoveTo}, \apilink{LineTo}, \apilink{CurveTo}, \apilink{EllipticalArc} and \apilink{ClosePath}.
+A filled shape should start with \apilink{MoveTo} and end with \apilink{ClosePath}.
 
 !!! note
     Unfilled markers (like a single line or curve) are possible in CairoMakie but not in GLMakie and WGLMakie, because these backends have to render the marker as a filled shape to a texture first.

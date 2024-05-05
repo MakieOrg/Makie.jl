@@ -56,7 +56,6 @@ struct WilkinsonTicks
     simplicity_weight::Float64
     coverage_weight::Float64
     niceness_weight::Float64
-    min_px_dist::Float64
 end
 
 """
@@ -1346,7 +1345,7 @@ end
         cornerradius = 5
         "Corner segments of one rounded corner."
         cornersegments = 20
-        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."
+        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(T, string)`."
         validator = str -> true
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing

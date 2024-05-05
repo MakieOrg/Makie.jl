@@ -30,7 +30,7 @@ void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
     vec3 vertex_position = get_markersize() * to_vec3(get_position());
-    vec3 N = get_normals();
+    vec3 N = get_normals() / get_markersize(); // see issue #3702
     rotate(get_rotations(), vertex_position, N);
     vertex_position = to_vec3(get_offset()) + vertex_position;
     vec4 position_world = model * vec4(vertex_position, 1);

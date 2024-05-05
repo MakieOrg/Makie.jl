@@ -1,17 +1,37 @@
 const Point2d = Point2{Float64}
 
+"""
+    MoveTo(p::VecTypes)
+    MoveTo(x::Real, y::Real)
+
+A path command for use within a `BezierPath` which starts a new subpath at the given point.
+"""
 struct MoveTo
     p::Point2d
 end
 
 MoveTo(x, y) = MoveTo(Point2d(x, y))
 
+"""
+    LineTo(p::VecTypes)
+    LineTo(x::Real, y::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with a line
+to the given point.
+"""
 struct LineTo
     p::Point2d
 end
 
 LineTo(x, y) = LineTo(Point2d(x, y))
 
+"""
+    CurveTo(c1::VecTypes, c2::VecTypes, p::VecTypes)
+    CurveTo(cx1::Real, cy1::Real, cx2::Real, cy2::Real, px::Real, py::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with a cubic
+bezier curve to point `p`, with the first control point `c1` and the second control point `c2`. 
+"""
 struct CurveTo
     c1::Point2d
     c2::Point2d
@@ -22,6 +42,24 @@ CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
     Point2d(cx1, cy1), Point2d(cx2, cy2), Point2d(p1, p2)
 )
 
+"""
+    EllipticalArc(c::VecTypes, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
+    EllipticalArc(cx::Real, cy::Real, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with an
+elliptical arc. The ellipse is centered at `c` and has two radii, `r1` and `r2`, the orientation
+of which depends on `angle`.
+
+If `angle == 0`, `r1` goes in x direction and `r2` in y direction.
+A positive `angle` in radians rotates the ellipse counterclockwise, and a negative `angle` clockwise.
+
+The angles `a1` and `a2` are the start and stop positions of the arc on the ellipse. A value of
+`0` is where the radius `r1` points to, `pi/2` is where the radius `r2` points to, and so on.
+If `a2 > a1`, the arc turns counterclockwise. If `a1 > a2`, it turns clockwise.
+
+If the last position of the subpath does not equal the start of the arc,
+the resulting path will have an implicit line segment between the two.
+"""
 struct EllipticalArc
     c::Point2d
     r1::Float64
@@ -34,6 +72,13 @@ end
 EllipticalArc(cx, cy, r1, r2, angle, a1, a2) = EllipticalArc(Point2d(cx, cy),
     r1, r2, angle, a1, a2)
 
+"""
+    ClosePath()
+
+A path command for use within a `BezierPath` which closes the current subpath. The resulting
+path will have an implicit line segment between the last point and the first point if they
+do not match.
+"""
 struct ClosePath end
 const PathCommand = Union{MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath}
 
@@ -106,6 +151,26 @@ function cleanup_bbox(bb::Rect2f)
     return bb
 end
 
+"""
+    BezierPath(commands::Vector)
+
+Construct a `BezierPath` with a vector of path commands.
+The available path commands are
+- `MoveTo`
+- `LineTo`
+- `CurveTo`
+- `EllipticalArc`
+- `ClosePath`
+
+A `BezierPath` can be used in certain places in Makie as an alternative
+to a polygon or a collection of lines, for example as an input to `poly` or `lines`,
+or as a `marker` for `scatter`.
+
+The benefit of using a `BezierPath` is that curves do not need to be converted into
+a vector of vertices by the user. CairoMakie can use the path commands directly when
+it writes vector graphics which is more efficient and uses less space than approximating
+them visually using line segments.
+"""
 struct BezierPath
     commands::Vector{PathCommand}
     boundingbox::Rect2f
@@ -251,6 +316,36 @@ function BezierPath(poly::Polygon)
     return BezierPath(commands)
 end
 
+"""
+    BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
+
+Construct a `BezierPath` using a string of [SVG path commands](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d#path_commands).
+The commands will be parsed first into `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath` objects
+which are then passed to the `BezierPath` constructor.
+
+If `fit === true`, the path will be scaled to fit into a square of width 1 centered on the origin.
+If, additionally, `bbox` is set to some `Rect`, the path will be fit into this rectangle instead.
+If you want to use a path as a scatter marker, it is usually good to fit it so that it's centered
+and of a comparable size relative to other scatter markers.
+
+If `flipy === true` or `flipx === true`, the respective dimensions of the path will be flipped.
+Makie uses a coordinate system where y=0 is at the bottom and y increases upwards while in SVG, y=0 is at the
+top and y increases downwards, so for most SVG paths `flipy = true` will be needed.
+
+If `keep_aspect === true`, the path will be fit into the bounding box such that its longer dimension fits and
+the other one is scaled to retain the original aspect ratio. If you set `keep_aspect = false`, the new
+boundingbox of the path will be the one it is fit to, but note that this can result in a squished appearance.
+
+## Example
+
+Construct a triangular `BezierPath` out of a path command string and use it as a scatter marker:
+
+```julia
+str = "M 0,0 L 10,0 L 5,10 z"
+bp = BezierPath(str, fit = true)
+scatter(1:10, marker = bp, markersize = 20)
+```
+"""
 function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
     commands = parse_bezier_commands(svg)
     p = BezierPath(commands)
@@ -413,6 +508,20 @@ function parse_bezier_commands(svg)
     commands
 end
 
+"""
+    EllipticalArc(x1::Real, y1::Real, x2::Real, y2::Real, rx::Real, ry::Real, ϕ::Real, largearc::Bool, sweepflag::Bool)
+
+Construct an `EllipticalArc` using the endpoint parameterization.
+
+`x1, y1` is the starting point and `x2, y2` the end point, `rx` and `ry` are the two
+ellipse radii. `ϕ` is the angle of `rx` vs the x axis.
+
+Usually, four arcs can be constructed between two points given these ellipse parameters.
+One of them is chosen using two boolean flags:
+
+If `largearc === true`, the arc will be longer than 180 degrees.
+If `sweepflag === true`, the arc will sweep through increasing angles.  
+"""
 function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bool)
     # https://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
 
