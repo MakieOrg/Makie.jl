@@ -67,7 +67,7 @@ function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real
         end
         tri = DelTri.Triangulation(points)
         triangles = DelTri.get_triangles(tri)
-        for τ in DelTri.each_solid_triangle(triangulation)
+        for τ in eachcol(triangulation)
             DelTri.add_triangle!(triangles, τ)
         end
     end

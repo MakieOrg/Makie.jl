@@ -97,7 +97,7 @@ function get_triangulation_triangles!(triangles, tri)
     empty!(triangles)
     sizehint!(triangles, DelTri.num_solid_triangles(tri))
     for T in DelTri.each_solid_triangle(tri)
-        i, j, k = DelTri.indices(T)
+        i, j, k = DelTri.triangle_vertices(T)
         push!(triangles, TriangleFace(i, j, k))
     end
     return triangles
@@ -114,7 +114,7 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
                                                            Val(true))
         else
             xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                           DelTri.get_convex_hull_indices(tri),
+                                                           DelTri.get_convex_hull_vertices(tri),
                                                            Val(true))
         end
         Δx = xmax - xmin
@@ -129,8 +129,8 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     a, b, c, d = map(Float64, (a, b, c, d))
     @assert a < b && c < d "Bounding box must be of the form (xmin, xmax, ymin, ymax)."
     for e in DelTri.each_ghost_edge(tri)
-        u, v = DelTri.edge_indices(e)
-        if DelTri.is_boundary_index(v)
+        u, v = DelTri.edge_vertices(e)
+        if DelTri.is_ghost_vertex(v)
             u, v = v, u # Make sure that u is the boundary index
         end
         curve_index = DelTri.get_curve_index(tri, u)
@@ -151,7 +151,7 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
 end
 
 function get_triangulation_convex_hull!(convex_hull, tri)
-    idx = DelTri.get_convex_hull_indices(tri)
+    idx = DelTri.get_convex_hull_vertices(tri)
     empty!(convex_hull)
     sizehint!(convex_hull, length(idx))
     for i in idx
@@ -164,9 +164,9 @@ end
 
 function get_triangulation_constrained_edges!(constrained_edges, tri)
     empty!(constrained_edges)
-    sizehint!(constrained_edges, DelTri.num_edges(DelTri.get_all_constrained_edges(tri)))
-    for e in DelTri.each_constrained_edge(tri)
-        u, v = DelTri.edge_indices(e)
+    sizehint!(constrained_edges, DelTri.num_edges(DelTri.get_all_segments(tri)))
+    for e in DelTri.each_segment(tri)
+        u, v = DelTri.edge_vertices(e)
         p = DelTri.get_point(tri, u)
         q = DelTri.get_point(tri, v)
         px, py = DelTri.getxy(p)
