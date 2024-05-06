@@ -30,7 +30,7 @@ jobs:
         with:
           version: '1'
           arch: x64
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Benchmark
         continue-on-error: true
         env:

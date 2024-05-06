@@ -412,7 +412,7 @@ end
 
     circle_with_hole = BezierPath([
         MoveTo(Point(1, 0)),
-        EllipticalArc(Point(0, 0), 1, 1, 0, 0, 2pi),
+        Makie.EllipticalArc(Point(0, 0), 1, 1, 0, 0, 2pi),
         MoveTo(Point(0.5, 0.5)),
         LineTo(Point(0.5, -0.5)),
         LineTo(Point(-0.5, -0.5)),
@@ -431,16 +431,16 @@ end
 
     two_circles_with_holes = Makie.scale(BezierPath([
         MoveTo(Point(2.25, 0)),
-        EllipticalArc(Point(1.25, 0), 1, 1, 0, 0, 2pi),
+        Makie.EllipticalArc(Point(1.25, 0), 1, 1, 0, 0, 2pi),
         ClosePath(),
         MoveTo(Point(-0.25, 0)),
-        EllipticalArc(Point(-1.25, 0), 1, 1, 0, 0, 2pi),
+        Makie.EllipticalArc(Point(-1.25, 0), 1, 1, 0, 0, 2pi),
         ClosePath(),
         MoveTo(Point(2, 0)),
-        EllipticalArc(Point(1.25, 0), 0.75, 0.75, 0, 0, -2pi),
+        Makie.EllipticalArc(Point(1.25, 0), 0.75, 0.75, 0, 0, -2pi),
         ClosePath(),
         MoveTo(Point(-1, 0)),
-        EllipticalArc(Point(-1.25, 0), 0.25, 0.25, 0, 0, -2pi),
+        Makie.EllipticalArc(Point(-1.25, 0), 0.25, 0.25, 0, 0, -2pi),
         ClosePath(),
     ]), 0.5)
 

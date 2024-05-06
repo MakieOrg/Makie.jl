@@ -937,3 +937,56 @@ function thetalims!(po::PolarAxis, thetamin::Union{Nothing, Real}, thetamax::Uni
     po.thetalimits[] = (thetamin, thetamax)
     return
 end
+
+"""
+    hiderdecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+
+Hide decorations of the r-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
+"""
+function hiderdecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+    if ticklabels
+        ax.rticklabelsvisible = false
+    end
+    if grid
+        ax.rgridvisible = false
+    end
+    if minorgrid
+        ax.rminorgridvisible = false
+    end
+end
+
+"""
+    hidethetadecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+
+Hide decorations of the theta-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
+"""
+function hidethetadecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+    if ticklabels
+        ax.thetaticklabelsvisible = false
+    end
+    if grid
+        ax.thetagridvisible = false
+    end
+    if minorgrid
+        ax.thetaminorgridvisible = false
+    end
+end
+
+"""
+    hidedecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+
+Hide decorations of both r and theta-axis: label, ticklabels, ticks and grid.
+Keyword arguments can be used to disable hiding of certain types of decorations.
+
+See also [`hiderdecorations!`], [`hidethetadecorations!`], [`hidezdecorations!`]
+"""
+function hidedecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+    hiderdecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid,)
+    hidethetadecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid)
+end
+
+function hidespines!(ax::PolarAxis)
+    ax.spinevisible = false
+end

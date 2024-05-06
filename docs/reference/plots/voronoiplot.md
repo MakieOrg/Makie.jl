@@ -100,7 +100,7 @@ Random.seed!(1234)
 points = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
 tri = triangulate(points)
 refine!(tri; max_area = 0.001)
-vorn = voronoi(tri, true)
+vorn = voronoi(tri, clip = true)
 f, ax, tr = voronoiplot(vorn, show_generators = true, markersize = 13, marker = 'x')
 f
 ```
@@ -121,7 +121,7 @@ y = sin.(angles)
 points = tuple.(x, y)
 tri = triangulate(points)
 refine!(tri; max_area = 0.001)
-vorn = voronoi(tri, true)
+vorn = voronoi(tri, clip = true)
 smooth_vorn = centroidal_smooth(vorn)
 f, ax, tr = voronoiplot(smooth_vorn, show_generators=false)
 f

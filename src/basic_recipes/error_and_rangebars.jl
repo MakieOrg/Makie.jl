@@ -38,6 +38,7 @@ const RealOrVec = Union{Real, RealVector}
 
 Plots rangebars at `val` in one dimension, extending from `low` to `high` in the other dimension
 given the chosen `direction`.
+The `low_high` argument can be a vector of tuples or intervals.
 
 If you want to plot errors relative to a reference value, use `errorbars`.
 """
@@ -130,6 +131,9 @@ function convert_arguments(::Type{<:Rangebars}, val::RealOrVec,
     end
     (val_low_high,)
 end
+
+Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
+    convert_arguments(P, x, endpoints.(y))
 
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`

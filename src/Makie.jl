@@ -64,7 +64,7 @@ import DelaunayTriangulation as DelTri
 import REPL
 import MacroTools
 
-using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
+using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
 
 using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector

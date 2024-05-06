@@ -767,8 +767,8 @@ end
     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
     edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
-    tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
-    z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)]
+    tri = triangulate(points; boundary_nodes = boundary_nodes, segments = edges, check_arguments = false)
+    z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)]
     f, ax, _ = tricontourf(tri, z, levels = 30)
     f
 end
@@ -783,7 +783,7 @@ end
     end
     boundary_nodes, points = convert_boundary_points_to_indices(xy)
     tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
-    z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)]
+    z = [(x - 3/2)^2 + y^2 for (x, y) in DelaunayTriangulation.each_point(tri)]
 
     f, ax, tr = tricontourf(tri, z, colormap = :matter)
     f
@@ -1316,7 +1316,7 @@ end
 @reference_test "Voronoiplot for a tessellation with a custom bounding box" begin
     pts = 25RNG.randn(2, 50)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    vorn = voronoi(tri, false)
+    vorn = voronoi(tri, clip = false)
     fig, ax, sc = voronoiplot(vorn,
         show_generators=true,
         colormap=:RdBu,
@@ -1334,7 +1334,7 @@ end
 @reference_test "Voronoiplots with clipped tessellation and unbounded polygons" begin
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    vorn = voronoi(tri, true)
+    vorn = voronoi(tri, clip = true)
     fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2), markersize = 20, strokewidth = 4)
 
     # used to be bugged

@@ -630,12 +630,14 @@ end
 axislegend(ax = current_axis(); kwargs...) = axislegend(ax, ax; kwargs...)
 
 axislegend(title::AbstractString; kwargs...) = axislegend(current_axis(), current_axis(), title; kwargs...)
+axislegend(ax, title::AbstractString; kwargs...) = axislegend(ax, ax, title; kwargs...)
 
 """
     axislegend(ax, args...; position = :rt, kwargs...)
     axislegend(ax, args...; position = (1, 1), kwargs...)
     axislegend(ax = current_axis(); kwargs...)
     axislegend(title::AbstractString; kwargs...)
+    axislegend(ax, title::AbstractString; kwargs...)
 
 Create a legend that sits inside an Axis's plot area.
 

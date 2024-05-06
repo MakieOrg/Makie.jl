@@ -180,6 +180,19 @@ function set_source(ctx::Cairo.CairoContext, color::Colorant)
 end
 
 ########################################
+#        Marker conversion API         #
+########################################
+
+"""
+    cairo_scatter_marker(marker)
+
+Convert a Makie marker to a Cairo-compatible marker.  This defaults to calling 
+`Makie.to_spritemarker`, but can be overridden for specific markers that can 
+be directly rendered to vector formats using Cairo.
+"""
+cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
+
+########################################
 #     Image/heatmap -> ARGBSurface     #
 ########################################
 
