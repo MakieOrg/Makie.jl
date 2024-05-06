@@ -37,7 +37,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Develop and test Makie
         shell: julia --project=monorepo {0}
         run: |

@@ -2,7 +2,13 @@
 
 ## [Unreleased]
 
+- Loosened type restrictions for potentially array-valued colors in `Axis` attributes like `xticklabelcolor` [#3826](https://github.com/MakieOrg/Makie.jl/pull/3826).
+- Added support for intervals for specifying axis limits [#3696](https://github.com/MakieOrg/Makie.jl/pull/3696)
+- Added recipes for plotting intervals to `Band`, `Rangebars`, `H/VSpan` [3695](https://github.com/MakieOrg/Makie.jl/pull/3695)
+- Documented `WilkinsonTicks` [#3819](https://github.com/MakieOrg/Makie.jl/pull/3819).
+- Added `axislegend(ax, "title")` method [#3808](https://github.com/MakieOrg/Makie.jl/pull/3808).
 - Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
+- Added methods `hidedecorations!`, `hiderdecorations!`, `hidethetadecorations!` and  `hidespines!` for `PolarAxis` axes [#3823](https://github.com/MakieOrg/Makie.jl/pull/3823).
 - Added `loop` option support for HTML outputs when recording videos with `record` [#3697](https://github.com/MakieOrg/Makie.jl/pull/3697).
 
 ## [0.20.9] - 2024-03-29

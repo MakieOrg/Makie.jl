@@ -792,7 +792,9 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any, Any})
-    lims
+    _convert_single_limit(x) = x
+    _convert_single_limit(x::Interval) = endpoints(x)
+    map(_convert_single_limit, lims)
 end
 
 
@@ -837,6 +839,10 @@ function zautolimits(ax::Axis3)
     end
     zlims
 end
+
+Makie.xlims!(ax::Axis3, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
+Makie.ylims!(ax::Axis3, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
+Makie.zlims!(ax::Axis3, zlims::Interval) = Makie.zlims!(ax, endpoints(zlims))
 
 function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
     if length(xlims) != 2
