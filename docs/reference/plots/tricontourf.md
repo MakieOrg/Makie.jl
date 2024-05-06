@@ -145,8 +145,8 @@ boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_poi
 edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
 ## Extract the x, y 
-tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
-z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)] # note that each_point preserves the index order
+tri = triangulate(points; boundary_nodes = boundary_nodes, segments = edges)
+z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)] # note that each_point preserves the index order
 f, ax, _ = tricontourf(tri, z, levels = 30; axis = (; aspect = 1))
 f
 ```
@@ -169,8 +169,8 @@ for i in 1:2
     push!(xy, [[(cx[i] + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
 end
 boundary_nodes, points = convert_boundary_points_to_indices(xy)
-tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
-z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)] # note that each_point preserves the index order
+tri = triangulate(points; boundary_nodes=boundary_nodes)
+z = [(x - 3/2)^2 + y^2 for (x, y) in DelaunayTriangulation.each_point(tri)] # note that each_point preserves the index order
 
 f, ax, tr = tricontourf(tri, z, colormap = :matter)
 f
