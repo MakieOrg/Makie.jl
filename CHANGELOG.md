@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.20.10] 2024-05-07
+
 - Loosened type restrictions for potentially array-valued colors in `Axis` attributes like `xticklabelcolor` [#3826](https://github.com/MakieOrg/Makie.jl/pull/3826).
 - Added support for intervals for specifying axis limits [#3696](https://github.com/MakieOrg/Makie.jl/pull/3696)
 - Added recipes for plotting intervals to `Band`, `Rangebars`, `H/VSpan` [3695](https://github.com/MakieOrg/Makie.jl/pull/3695)
