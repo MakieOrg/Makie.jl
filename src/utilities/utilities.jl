@@ -535,6 +535,7 @@ end
 function drop_attributes(plot::Plot, to_drop::Symbol...)
     return drop_attributes(plot, Set(to_drop))
 end
+
 function drop_attributes(plot::Plot, to_drop::Set{Symbol})
     attr = attributes(attributes(plot))
     return Attributes([(k => v) for (k, v) in attr if !(k in to_drop)])
