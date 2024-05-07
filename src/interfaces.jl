@@ -254,15 +254,8 @@ end
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
-        # Only forward attributes that are usable by Plot{Func}
-        # TODO, there are two problems with this:
-        # 1) It's a bit magical which attributes are forwarded, when writing a recipe
-        # 2) We can't warn for wrong attributes, since if we do `plot(p, some_other_plot.attributes, ...)`,
-        #    which is what we have this signature for, we pretty much always have unused attributes
         attr = attributes(first(user_args))
-        usable_keys = attribute_names(Plot{Func})
-        usable_attr = Dict(((k => v) for (k,v) in attr if k in usable_keys))
-        merge!(user_attributes, usable_attr)
+        merge!(user_attributes, attr)
         return Plot{Func}(Base.tail(user_args), user_attributes)
     end
     P = Plot{Func}

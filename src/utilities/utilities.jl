@@ -489,7 +489,7 @@ function available_conversions(PlotType)
     end
     return result
 end
-                  
+
 mindist(x, a, b) = min(abs(a - x), abs(b - x))
 function gappy(x, ps)
     n = length(ps)
@@ -518,4 +518,24 @@ function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real=10
     scaled = ((resolution + 1) / resolution) .* linestyle
     r = range(first(scaled); stop=last(scaled), length=resolution + 1)[1:(end - 1)]
     return Float16[-gappy(x, scaled) for x in r]
+end
+
+"""
+    shared_attributes(plot::Plot, target::Type{<:Plot})
+
+Extracts all attributes from `plot` that are shared with the `target` plot type.
+"""
+function shared_attributes(plot::Plot, target::Type{<:Plot})
+    valid_attributes = attribute_names(target)
+    existing_attributes = attribute_names(typeof(plot))
+    to_drop = setdiff(existing_attributes, valid_attributes)
+    return drop_attributes(plot, to_drop)
+end
+
+function drop_attributes(plot::Plot, to_drop::Symbol...)
+    return drop_attributes(plot, Set(to_drop))
+end
+function drop_attributes(plot::Plot, to_drop::Set{Symbol})
+    attr = attributes(attributes(plot))
+    return Attributes([(k => v) for (k, v) in attr if !(k in to_drop)])
 end

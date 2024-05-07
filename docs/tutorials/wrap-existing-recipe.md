@@ -70,12 +70,15 @@ hist(h; color=:red, direction=:x)
 
 This almost works, but we see that the keyword arguments are not passed to the `barplot!` function.
 To handle these attributes properly, we need to override/merge the
-default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes, since Makie 0.21, it is handled automatically:
+default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes.
+Since Makie 0.21, `shared_attributes` was introduced for this use case, which extracts all valid attributes for the target plot type:
 
 \begin{examplefigure}{svg = true, name = "wrapping-recipes"}
 ```julia
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
-    barplot!(plot, plot.attributes, plot[1])
+    # Only forward valid attributes for BarPlot
+    valid_attributes = Makie.shared_attributes(plot, BarPlot)
+    barplot!(plot, valid_attributes, plot[1])
 end
 h = MyHist([1, 10, 100], 1:3)
 hist(h; color=:red, direction=:x)
