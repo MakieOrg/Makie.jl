@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added `sector`: circular sector recipe (similar to `arc`) [#3806](https://github.com/MakieOrg/Makie.jl/pull/3806).
+ 
 ## [0.20.10] 2024-05-07
 
 - Loosened type restrictions for potentially array-valued colors in `Axis` attributes like `xticklabelcolor` [#3826](https://github.com/MakieOrg/Makie.jl/pull/3826).
