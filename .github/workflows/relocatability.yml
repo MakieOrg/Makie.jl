@@ -1,12 +1,14 @@
 name: Relocatability
 on:
   pull_request:
-  push:
-    tags:
-      - '*'
     paths-ignore:
       - 'docs/**'
       - '*.md'
+    branches:
+      - master
+  push:
+    tags:
+      - '*'
     branches:
       - master
 
