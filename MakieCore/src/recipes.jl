@@ -364,7 +364,7 @@ function create_args_type_expr(PlotType, args)
         push!(types, field.args[2])
     end
     expr = quote
-        MakieCore.types_for_plot_arguments(::Type{<:$(PlotType)}) = Tuple{$(types...)}
+        MakieCore.types_for_plot_arguments(::Type{<:$(PlotType)}) = Tuple{$(esc.(types)...)}
     end
     return names, expr
 end
