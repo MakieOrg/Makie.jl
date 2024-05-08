@@ -72,16 +72,19 @@ function register_events!(ax, scene)
     return
 end
 
-function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
+function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
-    farclip = 10_000f0
+    farclip  =  10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims)
+    camera = scene.camera
 
-    left, bottom = minimum(tlims)
-    right, top = maximum(tlims)
-
+    # TODO: apply model
+    update_limits!(scene.float32convert, tlims) # update float32 scaling
+    lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
+    left, bottom = minimum(lims32)
+    right, top   = maximum(lims32)
     leftright = xrev ? (right, left) : (left, right)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
@@ -107,7 +110,7 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
     end
 
     local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
-        boundingbox(subtitlet).widths[2] + subtitlegap
+        boundingbox(subtitlet, :data).widths[2] + subtitlegap
     else
         0f0
     end
@@ -132,8 +135,8 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
         top = xaxisprotrusion
     end
 
-    titleheight = boundingbox(titlet).widths[2] + titlegap
-    subtitleheight = boundingbox(subtitlet).widths[2] + subtitlegap
+    titleheight = boundingbox(titlet, :data).widths[2] + titlegap
+    subtitleheight = boundingbox(subtitlet, :data).widths[2] + subtitlegap
 
     titlespace = if !titlevisible || iswhitespace(title)
         0f0
@@ -158,15 +161,15 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-    blockscene = ax.blockscene
 
+    blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
+    targetlimits = Observable{Rect2d}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
+    finallimits = Observable{Rect2d}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
 
@@ -184,6 +187,11 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
+    # transfer conversions from axis to scene if there are any
+    # or the other way around
+    connect_conversions!(scene.conversions, ax)
+
+    setfield!(scene, :float32convert, Float32Convert())
 
     if !isnothing(palette)
         # Backwards compatibility for when palette was part of axis!
@@ -255,8 +263,10 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(update_axis_camera, blockscene, camera(scene), scene.transformation.transform_func, finallimits,
-          ax.xreversed, ax.yreversed; priority=-2)
+    onany(blockscene, scene.transformation.transform_func, finallimits,
+          ax.xreversed, ax.yreversed; priority=-2) do args...
+        update_axis_camera(scene, args...)
+    end
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
@@ -324,12 +334,13 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
         label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
-        ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
+        ticklabelspace = ax.xticklabelspace, dim_convert = ax.dim1_conversion, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         )
+
     ax.xaxis = xaxis
 
     yaxis = LineAxis(blockscene, endpoints = yaxis_endpoints, limits = ylims,
@@ -337,7 +348,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
         label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
-        ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
+        ticklabelspace = ax.yticklabelspace, dim_convert = ax.dim2_conversion, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
             tickcolor = ax.ytickcolor,
@@ -581,7 +592,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mxlims...))
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
     end
     ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
         l = if yauto
@@ -597,7 +608,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mylims...))
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
     end
 
     if ax isa Axis3
@@ -841,10 +852,31 @@ function getlimits(la::Axis, dim)
         # only use visible plots for limits
         return !to_value(get(plot, :visible, true))
     end
-    # get all data limits, minus the excluded plots
-    boundingbox = Makie.data_limits(la.scene, exclude)
+
+    # TODO:
+    # We used to include scale! and rotate! in data_limits. For compat we include
+    # them here again until we implement a full solution
+
+    # # get all data limits, minus the excluded plots
+    # boundingbox = Makie.data_limits(la.scene, exclude)
+    bb_ref = Base.RefValue(Rect3d())
+    for plot in la.scene
+        if !exclude(plot)
+            bb = data_limits(plot)
+            # Limits can be one dimensional (partially NaN) e.g. for hlines
+            # which results in every model * point to become NaN. For now we skip
+            # model application if the model matrix is identity to avoid this...
+            model = plot.model[][Vec(1,2,3), Vec(1,2,3)]
+            if !(model ≈ I)
+                bb = Rect3d(map(p -> model * to_ndim(Point3d, p, 0), coordinates(bb)))
+            end
+            update_boundingbox!(bb_ref, bb)
+        end
+    end
+    boundingbox = bb_ref[]
+
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    Makie.isfinite_rect(boundingbox) || return nothing
+    isfinite_rect(boundingbox, dim) || return nothing
 
     # otherwise start with the first box
     mini, maxi = minimum(boundingbox), maximum(boundingbox)
@@ -1224,6 +1256,7 @@ Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
 Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
 
 function Makie.xlims!(ax::Axis, xlims)
+    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2] && xlims[1] !== nothing
@@ -1234,14 +1267,15 @@ function Makie.xlims!(ax::Axis, xlims)
     else
         ax.xreversed[] = false
     end
-    mlims = convert_limit_attribute(ax.limits[])
 
+    mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
     nothing
 end
 
 function Makie.ylims!(ax::Axis, ylims)
+    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2] && ylims[1] !== nothing
@@ -1253,7 +1287,6 @@ function Makie.ylims!(ax::Axis, ylims)
         ax.yreversed[] = false
     end
     mlims = convert_limit_attribute(ax.limits[])
-
     ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
     nothing
@@ -1392,15 +1425,15 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
-    BBox(userlimits...)
+    BBox(Float64.(userlimits)...)
 end
 
 defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
 
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
-    xl = defaultlimits(userlimits[1], xscale)
-    yl = defaultlimits(userlimits[2], yscale)
-    BBox(xl..., yl...)
+    xl = Float64.(defaultlimits(userlimits[1], xscale))
+    yl = Float64.(defaultlimits(userlimits[2], yscale))
+    return BBox(xl..., yl...)
 end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)

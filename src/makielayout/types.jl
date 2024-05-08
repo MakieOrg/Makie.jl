@@ -149,15 +149,15 @@ mutable struct RectangleZoom
     active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
-    from::Union{Nothing, Point2f}
-    to::Union{Nothing, Point2f}
-    rectnode::Observable{Rect2f}
+    from::Union{Nothing, Point2d}
+    to::Union{Nothing, Point2d}
+    rectnode::Observable{Rect2d}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
 function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
+                         nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
@@ -200,8 +200,8 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2f}
-    finallimits::Observable{Rect2f}
+    targetlimits::Observable{Rect2d}
+    finallimits::Observable{Rect2d}
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -211,6 +211,15 @@ end
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
         """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
@@ -1264,6 +1273,19 @@ end
 @Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1362,6 +1384,18 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1650,6 +1684,15 @@ end
     target_r0::Observable{Float32}
     @attributes begin
         # Generic
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
 
         "The height setting of the scene."
         height = nothing

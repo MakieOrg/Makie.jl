@@ -1,5 +1,10 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
+function parent_transform(x)
+    p = parent(transformation(x))
+    return isnothing(p) ? Mat4f(I) : p.model[]
+end
+
 function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
     tfuncs = []
     obsfunc = on(parent.model; update=true) do m
@@ -45,8 +50,8 @@ end
 
 function transform!(
         t::Transformable;
-        translation = Vec3f(0),
-        scale = Vec3f(1),
+        translation = Vec3d(0),
+        scale = Vec3d(1),
         rotation = 0.0,
     )
     translate!(t, to_value(translation))
@@ -66,7 +71,7 @@ transformation(t::Transformation) = t
 
 scale(t::Transformable) = transformation(t).scale
 
-scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3f, Float32.(s), 1))
+scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3d, s, 1))
 
 """
     scale!(t::Transformable, x, y)
@@ -128,7 +133,7 @@ This is the default setting.
 struct Absolute end
 
 function translate!(::Type{T}, t::Transformable, trans) where T
-    offset = to_ndim(Vec3f, Float32.(trans), 0)
+    offset = to_ndim(Vec3d, trans, 0)
     if T === Accum
         translation(t)[] = translation(t)[] .+ offset
     elseif T === Absolute
@@ -154,7 +159,7 @@ Translate the given `Transformable` (a Scene or Plot), relative to its current p
 translate!(::Type{T}, t::Transformable, xyz...) where T = translate!(T, t, xyz)
 
 function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
-    plane, dimval = string(x[1]), Float32(x[2])
+    plane, dimval = string(x[1]), Float64(x[2])
     if length(plane) != 2 || (!all(x-> x in ('x', 'y', 'z'), plane))
         error("plane needs to define a 2D plane in xyz. It should only contain 2 symbols out of (:x, :y, :z). Found: $plane")
     end
@@ -178,29 +183,33 @@ transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 
 """
-    apply_transform_and_model(plot, pos, output_type = Point3f)
-    apply_transform_and_model(model, transfrom_func, pos, output_type = Point3f)
-
+    apply_transform_and_model(plot, pos, output_type = Point3d)
+    apply_transform_and_model(model, transfrom_func, pos, output_type = Point3d)
 
 Applies the transform function and model matrix (i.e. transformations from
 `translate!`, `rotate!` and `scale!`) to the given input
 """
-function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3f)
+function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3d)
     return apply_transform_and_model(
         plot.model[], transform_func(plot), pos,
         to_value(get(plot, :space, :data)),
         output_type
     )
 end
-function apply_transform_and_model(model::Mat4f, f, pos::VecTypes, space = :data, output_type = Point3f)
+function apply_transform_and_model(model::Mat4, f, pos::VecTypes, space = :data, output_type = Point3d)
     transformed = apply_transform(f, pos, space)
-    p4d = to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
-    p4d = model * p4d
-    p4d = p4d ./ p4d[4]
-    return to_ndim(output_type, p4d, NaN)
+    if space in (:data, :transformed)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
+        p4d = model * p4d
+        p4d = p4d ./ p4d[4]
+        return to_ndim(output_type, p4d, NaN)
+    else
+        return to_ndim(output_type, transformed, NaN)
+    end
 end
-function apply_transform_and_model(model::Mat4f, f, positions::Vector, space = :data, output_type = Point3f)
-    return map(positions) do pos
+function apply_transform_and_model(model::Mat4, f, positions::AbstractArray, space = :data, output_type = Point3d)
+    output = similar(positions, output_type)
+    return map!(output, positions) do pos
         apply_transform_and_model(model, f, pos, space, output_type)
     end
 end
@@ -256,14 +265,14 @@ function apply_transform(f::PointTrans{N}, point::Point{N}) where N
     return f.f(point)
 end
 
-function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
-    p_dim = to_ndim(Point{N1, Float32}, point, 0.0)
+function apply_transform(f::PointTrans{N1}, point::Point{N2, T}) where {N1, N2, T}
+    p_dim = to_ndim(Point{N1, T}, point, 0.0)
     p_trans = f.f(p_dim)
     if N1 < N2
         p_large = ntuple(i-> i <= N1 ? p_trans[i] : point[i], N2)
-        return Point{N2, Float32}(p_large)
+        return Point{N2, T}(p_large)
     else
-        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
+        return to_ndim(Point{N2, T}, p_trans, 0.0)
     end
 end
 
@@ -271,8 +280,8 @@ function apply_transform(f, data::AbstractArray)
     map(point -> apply_transform(f, point), data)
 end
 
-function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2})
-    Point2{Float32}(
+function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2, T}) where T
+    Point2{T}(
         f[1](point[1]),
         f[2](point[2]),
     )
@@ -287,8 +296,8 @@ end
 # ambiguity fix
 apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{3}) = point
 
-function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3})
-    Point3{Float32}(
+function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3, T}) where T
+    Point3{T}(
         f[1](point[1]),
         f[2](point[2]),
         f[3](point[3]),
@@ -389,7 +398,7 @@ This struct defines a general polar-to-cartesian transformation, i.e.
 where θ is assumed to be in radians.
 
 Controls:
-- `theta_as_x = true` controls the order of incoming arguments. If true, a `Point2f`
+- `theta_as_x = true` controls the order of incoming arguments. If true, a `Point2`
 is interpreted as `(θ, r)`, otherwise `(r, θ)`.
 - `clip_r = true` controls whether negative radii are clipped. If true, `r < 0`
 produces `NaN`, otherwise they simply enter in the formula above as is. Note that
@@ -430,13 +439,13 @@ end
 
 # Point2 may get expanded to Point3. In that case we leave z untransformed
 function apply_transform(f::Polar, point::VecTypes{N2, T}) where {N2, T}
-    p_dim = to_ndim(Point2f, point, 0.0)
+    p_dim = to_ndim(Point2{T}, point, 0.0)
     p_trans = apply_transform(f, p_dim)
     if 2 < N2
         p_large = ntuple(i-> i <= 2 ? p_trans[i] : point[i], N2)
-        return Point{N2, Float32}(p_large)
+        return Point{N2, T}(p_large)
     else
-        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
+        return to_ndim(Point{N2, T}, p_trans, 0.0)
     end
 end
 
@@ -464,5 +473,5 @@ end
 # and this way we can use the z-value as a means to shift the drawing order
 # by translating e.g. the axis spines forward so they are not obscured halfway
 # by heatmaps or images
-zvalue2d(x)::Float32 = Makie.translation(x)[][3] + zvalue2d(x.parent)
+zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
 zvalue2d(::Nothing)::Float32 = 0f0

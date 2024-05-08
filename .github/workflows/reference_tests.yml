@@ -6,11 +6,13 @@ on:
       - '*.md'
     branches:
       - master
+      - breaking-0.21
   push:
     tags:
       - '*'
     branches:
       - master
+      - breaking-0.21
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -43,6 +45,8 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -91,6 +95,8 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
         id: referencetests
@@ -139,6 +145,8 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -179,28 +187,28 @@ jobs:
       - name: Consolidate reference image folders
         run: |
           baseDir="./ReferenceImages"
-          
+
           # Create new top-level directory for combined files
           mkdir -p "./ReferenceImagesCombined"
-          
+
           # Copy the reference folder from GLMakie, it's the same for all backends
           cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
-          
+
           # Initialize empty files for concatenation
           > "./ReferenceImagesCombined/scores.tsv"
           > "./ReferenceImagesCombined/new_files.txt"
-          
+
           # Loop through the directories and concatenate the files, and copy recorded folders
           for dir in WGLMakie CairoMakie GLMakie; do
               # Concatenate scores.tsv and new_files.txt
               cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
               cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
-          
+
               # Copy recorded folder
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
               cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
           done
-          
+
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."
       - uses: actions/upload-artifact@v4
         with:
