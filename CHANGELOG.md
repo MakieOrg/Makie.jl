@@ -2,20 +2,7 @@
 
 ## [Unreleased]
 
-## [0.20.10] 2024-05-07
-
-- Loosened type restrictions for potentially array-valued colors in `Axis` attributes like `xticklabelcolor` [#3826](https://github.com/MakieOrg/Makie.jl/pull/3826).
-- Added support for intervals for specifying axis limits [#3696](https://github.com/MakieOrg/Makie.jl/pull/3696)
-- Added recipes for plotting intervals to `Band`, `Rangebars`, `H/VSpan` [3695](https://github.com/MakieOrg/Makie.jl/pull/3695)
-- Documented `WilkinsonTicks` [#3819](https://github.com/MakieOrg/Makie.jl/pull/3819).
-- Added `axislegend(ax, "title")` method [#3808](https://github.com/MakieOrg/Makie.jl/pull/3808).
-- Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
-- Adds a tutorial for how to make recipes work with new types [#3816](https://github.com/MakieOrg/Makie.jl/pull/3816).
-- Provided an interface to convert markers in CairoMakie separately (`cairo_scatter_marker`) so external packages can overload it. [#3811](https://github.com/MakieOrg/Makie.jl/pull/3811)
-- Updated to DelaunayTriangulation v1.0 [#3787](https://github.com/MakieOrg/Makie.jl/pull/3787).
-- Added methods `hidedecorations!`, `hiderdecorations!`, `hidethetadecorations!` and  `hidespines!` for `PolarAxis` axes [#3823](https://github.com/MakieOrg/Makie.jl/pull/3823).
-
-## [0.21.0] - 2024-03-0X
+## [0.21.0] - 2024-05-08
 
 - Add `voxels` plot [#3527](https://github.com/MakieOrg/Makie.jl/pull/3527).
 - Added supported markers hint to unsupported marker warn message [#3666](https://github.com/MakieOrg/Makie.jl/pull/3666).
@@ -50,6 +37,19 @@
 - Add `scale_to=:flip` option to `hist`, which flips the direction of the bars [#3732](https://github.com/MakieOrg/Makie.jl/pull/3732)
 - Fixed an issue with the texture atlas not updating in WGLMakie after display, causing new symbols to not show up [#3737](https://github.com/MakieOrg/Makie.jl/pull/3737)
 - Added `linecap` and `joinstyle` attributes for lines and linesegments. Also normalized `miter_limit` to 60° across all backends. [#3771](https://github.com/MakieOrg/Makie.jl/pull/3771)
+
+## [0.20.10] 2024-05-07
+
+- Loosened type restrictions for potentially array-valued colors in `Axis` attributes like `xticklabelcolor` [#3826](https://github.com/MakieOrg/Makie.jl/pull/3826).
+- Added support for intervals for specifying axis limits [#3696](https://github.com/MakieOrg/Makie.jl/pull/3696)
+- Added recipes for plotting intervals to `Band`, `Rangebars`, `H/VSpan` [3695](https://github.com/MakieOrg/Makie.jl/pull/3695)
+- Documented `WilkinsonTicks` [#3819](https://github.com/MakieOrg/Makie.jl/pull/3819).
+- Added `axislegend(ax, "title")` method [#3808](https://github.com/MakieOrg/Makie.jl/pull/3808).
+- Improved thread safety of rendering with CairoMakie (independent `Scene`s only) by locking FreeType handles [#3777](https://github.com/MakieOrg/Makie.jl/pull/3777).
+- Adds a tutorial for how to make recipes work with new types [#3816](https://github.com/MakieOrg/Makie.jl/pull/3816).
+- Provided an interface to convert markers in CairoMakie separately (`cairo_scatter_marker`) so external packages can overload it. [#3811](https://github.com/MakieOrg/Makie.jl/pull/3811)
+- Updated to DelaunayTriangulation v1.0 [#3787](https://github.com/MakieOrg/Makie.jl/pull/3787).
+- Added methods `hidedecorations!`, `hiderdecorations!`, `hidethetadecorations!` and  `hidespines!` for `PolarAxis` axes [#3823](https://github.com/MakieOrg/Makie.jl/pull/3823).
 
 ## [0.20.9] - 2024-03-29
 
