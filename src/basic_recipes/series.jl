@@ -39,7 +39,8 @@ function convert_arguments(::Type{<: Series}, x::RealVector, ys::RealMatrix)
     end,)
 end
 
-function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}}) where {X <:Real, Y<:Real}
+function convert_arguments(::Type{<:Series},
+                           arg::AbstractVector{<:Tuple{X,Y}}) where {X<:RealVector,Y<:RealVector}
     # TODO: is this problematic with varying tuple types?
     return (map(arg) do (x, y)
         T = float_type(x, y)
