@@ -179,6 +179,9 @@ function mixin_shading_attributes()
         shininess = 32.0f0
         "Sets a weight for secondary light calculation with inverted normals."
         backlight = 0f0
+        "RPRMakie only attribute to set complex RadeonProRender materials.
+        *Warning*, how to set an RPR material may change and other backends will ignore this attribute"
+        material = nothing
     end
 end
 
