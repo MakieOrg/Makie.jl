@@ -1,14 +1,12 @@
 name: Relocatability
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-    branches:
-      - master
   push:
     tags:
       - '*'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
     branches:
       - master
 
@@ -38,7 +36,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Relocatability test
         run: >

@@ -175,8 +175,8 @@ scatter(points,
 
 Bezier paths are the basis for vector graphic formats such as svg and pdf and consist of a couple different operations that can define complex shapes.
 
-A `BezierPath` contains a vector of path commands, these are `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath`.
-A filled shape should start with `MoveTo` and end with `ClosePath`.
+A \apilink{BezierPath} contains a vector of path commands, these are \apilink{MoveTo}, \apilink{LineTo}, \apilink{CurveTo}, \apilink{EllipticalArc} and \apilink{ClosePath}.
+A filled shape should start with \apilink{MoveTo} and end with \apilink{ClosePath}.
 
 !!! note
     Unfilled markers (like a single line or curve) are possible in CairoMakie but not in GLMakie and WGLMakie, because these backends have to render the marker as a filled shape to a texture first.
@@ -206,7 +206,7 @@ arrow_path = BezierPath([
 scatter(1:5,
     marker = arrow_path,
     markersize = range(20, 50, length = 5),
-    rotations = range(0, 2pi, length = 6)[1:end-1],
+    rotation = range(0, 2pi, length = 6)[1:end-1],
 )
 ```
 \end{examplefigure}
@@ -287,7 +287,7 @@ scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color
 
 ### Marker rotation
 
-Markers can be rotated using the `rotations` attribute, which also allows to pass a vector.
+Markers can be rotated using the `rotation` attribute, which also allows to pass a vector.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -298,7 +298,7 @@ CairoMakie.activate!() # hide
 points = [Point2f(x, y) for y in 1:10 for x in 1:10]
 rotations = range(0, 2pi, length = length(points))
 
-scatter(points, rotations = rotations, markersize = 20, marker = '↑')
+scatter(points, rotation = rotations, markersize = 20, marker = '↑')
 ```
 \end{examplefigure}
 

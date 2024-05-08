@@ -125,7 +125,7 @@ The hard limits for `ax.gridz` are `(-10_000, 10_000)` with `9000` being a soft 
 
 ## Hiding spines and decorations
 
-For a `PolarAxis` we interpret the outer ring limitting the plotting are as the
+For a `PolarAxis` we interpret the outer ring limiting the plotting area as the
 axis spine. You can manipulate it with the `spine...` attributes.
 
 \begin{examplefigure}{svg = true}
@@ -170,6 +170,32 @@ ax = PolarAxis(
 )
 
 f
+```
+\end{examplefigure}
+
+We can also hide the spine after creation 
+with `hidespines!(ax)`. And, hide the ticklabels, grid, and/or minorgrid with `hidedecorations!`, `hiderdecorations`, and `hidethetadecorations!`.
+
+\begin{examplefigure}{svg = true}
+```julia
+fig = Figure()
+fullaxis(figpos, title) = PolarAxis(figpos;
+                                    title,
+                                    thetaminorgridvisible=true,
+                                    rminorgridvisible=true,
+                                    rticklabelrotation=deg2rad(-90),
+                                    rticklabelsize=12,
+                                    )
+ax1 = fullaxis(fig[1, 1][1, 1], "all decorations")
+ax2 = fullaxis(fig[1, 1][1, 2], "hide spine")
+hidespines!(ax2)
+ax3 = fullaxis(fig[2, 1][1, 1], "hide r decorations")
+hiderdecorations!(ax3)
+ax4 = fullaxis(fig[2, 1][1, 2], "hide theta decorations")
+hidethetadecorations!(ax4)
+ax5 = fullaxis(fig[2, 1][1, 3], "hide all decorations")
+hidedecorations!(ax5)
+fig
 ```
 \end{examplefigure}
 

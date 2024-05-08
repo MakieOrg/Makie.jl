@@ -1,40 +1,41 @@
 """
-    violin(x, y; kwargs...)
+    violin(x, y)
 Draw a violin plot.
-# Arguments
+## Arguments
 - `x`: positions of the categories
 - `y`: variables whose density is computed
-# Keywords
-- `weights`: vector of statistical weights (length of data). By default, each observation has weight `1`.
-- `orientation=:vertical`: orientation of the violins (`:vertical` or `:horizontal`)
-- `width=1`: width of the box before shrinking
-- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
-- `show_median=false`: show median as midline
-- `side=:both`: specify `:left` or `:right` to only plot the violin on one side
-- `scale=:width`: scale density by area (`:area`), count (`:count`), or width (`:width`).
-- `datalimits`: specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)
 """
-@recipe(Violin, x, y) do scene
-    Theme(;
-        default_theme(scene, Poly)...,
-        npoints = 200,
-        boundary = automatic,
-        bandwidth = automatic,
-        weights = automatic,
-        side = :both,
-        scale = :area,
-        orientation = :vertical,
-        width = automatic,
-        dodge = automatic,
-        n_dodge = automatic,
-        gap = 0.2,
-        dodge_gap = 0.03,
-        datalimits = (-Inf, Inf),
-        max_density = automatic,
-        show_median = false,
-        mediancolor = theme(scene, :linecolor),
-        medianlinewidth = theme(scene, :linewidth),
-    )
+@recipe Violin (x, y) begin
+    npoints = 200
+    boundary = automatic
+    bandwidth = automatic
+    "vector of statistical weights (length of data). By default, each observation has weight `1`."
+    weights = automatic
+    "Specify `:left` or `:right` to only plot the violin on one side."
+    side = :both
+    "Scale density by area (`:area`), count (`:count`), or width (`:width`)."
+    scale = :area
+    "Orientation of the violins (`:vertical` or `:horizontal`)"
+    orientation = :vertical
+    "Width of the box before shrinking."
+    width = automatic
+    dodge = automatic
+    n_dodge = automatic
+    "Shrinking factor, `width -> width * (1 - gap)`."
+    gap = 0.2
+    dodge_gap = 0.03
+    "Specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)."
+    datalimits = (-Inf, Inf)
+    max_density = automatic
+    "Show median as midline."
+    show_median = false
+    mediancolor = @inherit linecolor
+    medianlinewidth = @inherit linewidth
+    color = @inherit patchcolor
+    strokecolor = @inherit patchstrokecolor
+    strokewidth = @inherit patchstrokewidth
+    MakieCore.mixin_generic_plot_attributes()...
+    cycle = [:color => :patchcolor]
 end
 
 conversion_trait(::Type{<:Violin}) = SampleBased()

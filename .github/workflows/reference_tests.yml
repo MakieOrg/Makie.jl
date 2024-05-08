@@ -1,14 +1,12 @@
 name: Backends
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-    branches:
-      - master
   push:
     tags:
       - '*'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
     branches:
       - master
 
@@ -37,12 +35,14 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -84,13 +84,15 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
         id: referencetests
@@ -132,13 +134,15 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -179,28 +183,28 @@ jobs:
       - name: Consolidate reference image folders
         run: |
           baseDir="./ReferenceImages"
-          
+
           # Create new top-level directory for combined files
           mkdir -p "./ReferenceImagesCombined"
-          
+
           # Copy the reference folder from GLMakie, it's the same for all backends
           cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
-          
+
           # Initialize empty files for concatenation
           > "./ReferenceImagesCombined/scores.tsv"
           > "./ReferenceImagesCombined/new_files.txt"
-          
+
           # Loop through the directories and concatenate the files, and copy recorded folders
           for dir in WGLMakie CairoMakie GLMakie; do
               # Concatenate scores.tsv and new_files.txt
               cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
               cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
-          
+
               # Copy recorded folder
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
               cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
           done
-          
+
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."
       - uses: actions/upload-artifact@v4
         with:

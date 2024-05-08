@@ -1,6 +1,8 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
+pkg"registry up"
+Pkg.update()
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 Pkg.precompile()
 

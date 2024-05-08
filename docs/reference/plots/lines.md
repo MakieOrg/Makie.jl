@@ -52,6 +52,31 @@ f
 ```
 \end{examplefigure}
 
+### Linecaps and Joinstyles
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure()
+Axis(f[1, 1])
+
+ps = 0.8 .* Point2f[(-0.2, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5), (-0.5, -0.2)]
+
+for i in 1:3, j in 1:3
+    lines!(
+        ps .+ Point2f(i, -j), linewidth = 20,
+        linecap = (:butt, :square, :round)[i],
+        joinstyle = (:miter, :bevel, :round)[j]
+    )
+    scatterlines!(ps .+ Point2f(i, -j), color = :gray)
+end
+
+f
+```
+\end{examplefigure}
+
 ### Dealing with outline artifacts in GLMakie
 
 In GLMakie 3D line plots can generate outline artifacts depending on the order line segments are rendered in.
@@ -69,13 +94,13 @@ ps = rand(Point3f, 500)
 cs = rand(500)
 f = Figure(size = (600, 650))
 Label(f[1, 1], "base", tellwidth = false)
-lines(f[2, 1], ps, color = cs, markersize = 20, fxaa = false)
+lines(f[2, 1], ps, color = cs, fxaa = false)
 Label(f[1, 2], "fxaa = true", tellwidth = false)
-lines(f[2, 2], ps, color = cs, markersize = 20, fxaa = true)
+lines(f[2, 2], ps, color = cs, fxaa = true)
 Label(f[3, 1], "transparency = true", tellwidth = false)
-lines(f[4, 1], ps, color = cs, markersize = 20, transparency = true)
+lines(f[4, 1], ps, color = cs, transparency = true)
 Label(f[3, 2], "overdraw = true", tellwidth = false)
-lines(f[4, 2], ps, color = cs, markersize = 20, overdraw = true)
+lines(f[4, 2], ps, color = cs, overdraw = true)
 f
 ```
 \end{examplefigure}

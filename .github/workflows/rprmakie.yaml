@@ -1,14 +1,12 @@
 name: RPRMakie CI
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-    branches:
-      - master
   push:
     tags:
       - '*'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
     branches:
       - master
 
@@ -36,11 +34,13 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
+          pkg"registry up"
+          Pkg.update()
           # dev mono repo versions
           pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
       - name: Run the tests

@@ -88,3 +88,18 @@ end
     pl.color = [0, 1, 2, 3, 4]
     @test pl.color[] == [0, 1, 2, 3, 4]
 end
+
+
+@testset "Specapi and Dim conversions" begin
+    f, ax, pl = plot(S.GridLayout([S.Axis(; plots=[S.Scatter(1:4, Categorical(["a", "b", "c", "d"]); markersize=20)])]))
+    # make sure ticks change correctly
+    p = scatter!(1:2, Categorical(["x", "y"]); markersize=20)
+    ax = current_axis()
+    conversion = Makie.get_conversions(ax)
+    pconversion = Makie.get_conversions(p)
+
+    @test conversion == pconversion
+    @test conversion[2] isa Makie.CategoricalConversion
+    @test ax.dim2_conversion[] isa Makie.CategoricalConversion
+    f
+end

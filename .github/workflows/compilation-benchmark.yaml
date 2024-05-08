@@ -6,6 +6,7 @@ on:
       - '*.md'
     branches:
       - master
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -29,7 +30,7 @@ jobs:
         with:
           version: '1'
           arch: x64
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Benchmark
         continue-on-error: true
         env:

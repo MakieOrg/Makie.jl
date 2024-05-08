@@ -22,7 +22,7 @@ end
 @reference_test "scatter rotation" begin
     angles = range(0, stop=2pi, length=20)
     pos = Point2f.(sin.(angles), cos.(angles))
-    f, ax, pl = scatter(pos, markersize=0.2, markerspace=:data, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
+    f, ax, pl = scatter(pos, markersize=0.2, markerspace=:data, rotation=-angles, marker='▲', axis=(;aspect = DataAspect()))
     scatter!(pos, markersize=10, color=:red)
     f
 end
