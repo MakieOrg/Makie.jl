@@ -40,7 +40,7 @@ const IGNORE_KEYS = Set([
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
     :light_direction, :light_color,
     :cycle, :label, :inspector_clear, :inspector_hover,
-    :inspector_label, :axis_cyclerr, :dim_conversions
+    :inspector_label, :axis_cyclerr, :dim_conversions, :material
     # TODO add model here since we generally need to apply patch_model?
 ])
 

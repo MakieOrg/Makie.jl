@@ -1,5 +1,3 @@
-
-
 """
     series(curves)
 
@@ -11,7 +9,7 @@ Curves can be:
 
 If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` is set != nothing, a scatterplot is added.
 """
-@recipe Series (curves,) begin
+@recipe Series (curves::AbstractVector{<:AbstractVector{<:Point}},) begin
     linewidth=2
     color=:lighttest
     solid_color=nothing
@@ -30,18 +28,18 @@ end
 
 replace_missing(x) = ismissing(x) ? NaN : x
 
-function convert_arguments(T::Type{<: Series}, y::AbstractMatrix)
+function convert_arguments(T::Type{<: Series}, y::RealMatrix)
     convert_arguments(T, 1:size(y, 2), y)
 end
 
-function convert_arguments(::Type{<: Series}, x::AbstractVector, ys::AbstractMatrix)
+function convert_arguments(::Type{<: Series}, x::RealVector, ys::RealMatrix)
     T = float_type(x, ys)
     return (map(1:size(ys, 1)) do i
         Point2{T}.(replace_missing.(x), replace_missing.(view(ys, i, :)))
     end,)
 end
 
-function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}}) where {X, Y}
+function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}}) where {X <:Real, Y<:Real}
     # TODO: is this problematic with varying tuple types?
     return (map(arg) do (x, y)
         T = float_type(x, y)
@@ -49,7 +47,7 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}
     end,)
 end
 
-function convert_arguments(T::Type{<: Series}, arg::Tuple{<:AbstractVector, <:AbstractVector})
+function convert_arguments(T::Type{<:Series}, arg::Tuple{<:RealVector,<:RealVector})
     return convert_arguments(T, [arg])
 end
 

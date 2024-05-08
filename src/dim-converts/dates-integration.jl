@@ -98,8 +98,8 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin
 
     if T <: DateTime
         if ticks isa WilkinsonTicks
-            k_min = formatter.k_min
-            k_max = formatter.k_max
+            k_min = ticks.k_min
+            k_max = ticks.k_max
         else
             k_min = 2
             k_max = 3

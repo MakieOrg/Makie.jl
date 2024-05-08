@@ -238,7 +238,7 @@ function conversion_pipeline(
         conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
         types = MakieCore.types_for_plot_arguments(P, PTrait)
         throw(ArgumentError("""
-            Conversion failed for $(P)$(conv_trait) with args: $(typeof.(args)) $(kw_str).
+            Conversion failed for $(P)$(conv_trait) with args: $(typeof(args)) $(kw_str).
             $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
             To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
         """))
