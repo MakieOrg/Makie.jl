@@ -90,6 +90,8 @@ If none of these work for you, take a look at the other [backends](/explanations
 
 If you get an error pointing to [GLFW.jl](https://github.com/JuliaGL/GLFW.jl), please look into the existing [GLFW issues](https://github.com/JuliaGL/GLFW.jl/issues), and also google for those errors. This is then very likely something that needs fixing in the  [glfw c library](https://github.com/glfw/glfw) or in the GPU drivers.
 
+!!! warning
+    GLMakie is not thread-safe! Makie functions to display in GLMakie or updates to `Observable` displayed in GLMakie windows from other threads may not work as expected or cause a segmentation fault.
 
 ## WSL setup or X-forwarding
 
