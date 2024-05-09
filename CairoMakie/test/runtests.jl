@@ -198,3 +198,37 @@ functions = [:volume, :volume!, :uv_mesh]
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)
     ReferenceTests.test_comparison(scores; threshold = 0.05)
 end
+
+@testset "PdfVersion" begin
+    @test CairoMakie.pdfversion("1.4") === CairoMakie.PDFv14
+    @test CairoMakie.pdfversion("1.5") === CairoMakie.PDFv15
+    @test CairoMakie.pdfversion("1.6") === CairoMakie.PDFv16
+    @test CairoMakie.pdfversion("1.7") === CairoMakie.PDFv17
+    @test_throws ArgumentError CairoMakie.pdfversion("foo")
+end
+
+@testset "restrict PDF version" begin
+    magic_number(filename) = open(filename) do f
+        return String(read(f, sizeof("%PDF-X.Y")))
+    end
+
+    filename = "$(tempname()).pdf"
+
+    try
+        save(filename, Figure(), pdf_version=nothing)
+        @test startswith(magic_number(filename), "%PDF-")
+    finally
+        rm(filename)
+    end
+
+    for version in ["1.4", "1.5", "1.6", "1.7"]
+        try
+            save(filename, Figure(), pdf_version=version)
+            @test magic_number(filename) == "%PDF-$version"
+        finally
+            rm(filename)
+        end
+    end
+
+    @test_throws ArgumentError save(filename, Figure(), pdf_version="foo")
+end
