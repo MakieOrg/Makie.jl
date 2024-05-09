@@ -56,7 +56,6 @@ struct WilkinsonTicks
     simplicity_weight::Float64
     coverage_weight::Float64
     niceness_weight::Float64
-    min_px_dist::Float64
 end
 
 """
@@ -150,15 +149,15 @@ mutable struct RectangleZoom
     active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
-    from::Union{Nothing, Point2f}
-    to::Union{Nothing, Point2f}
-    rectnode::Observable{Rect2f}
+    from::Union{Nothing, Point2d}
+    to::Union{Nothing, Point2d}
+    rectnode::Observable{Rect2d}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
 function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
+                         nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
@@ -201,8 +200,8 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2f}
-    finallimits::Observable{Rect2f}
+    targetlimits::Observable{Rect2d}
+    finallimits::Observable{Rect2d}
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -212,6 +211,15 @@ end
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
         """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
@@ -292,9 +300,9 @@ end
         "The font family of the yticklabels."
         yticklabelfont = :regular
         "The color of xticklabels."
-        xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        xticklabelcolor = @inherit(:textcolor, :black)
         "The color of yticklabels."
-        yticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        yticklabelcolor = @inherit(:textcolor, :black)
         "The font size of the xticklabels."
         xticklabelsize::Float64 = @inherit(:fontsize, 16f0)
         "The font size of the yticklabels."
@@ -336,9 +344,9 @@ end
         "The width of the ytick marks."
         ytickwidth::Float64 = 1f0
         "The color of the xtick marks."
-        xtickcolor::RGBAf = RGBf(0, 0, 0)
+        xtickcolor = RGBf(0, 0, 0)
         "The color of the ytick marks."
-        ytickcolor::RGBAf = RGBf(0, 0, 0)
+        ytickcolor = RGBf(0, 0, 0)
         "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
         xticksmirrored::Bool = false
         "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
@@ -366,9 +374,9 @@ end
         "The width of the y grid lines."
         ygridwidth::Float64 = 1f0
         "The color of the x grid lines."
-        xgridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The color of the y grid lines."
-        ygridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        ygridcolor = RGBAf(0, 0, 0, 0.12)
         "The linestyle of the x grid lines."
         xgridstyle = nothing
         "The linestyle of the y grid lines."
@@ -382,9 +390,9 @@ end
         "The width of the y minor grid lines."
         yminorgridwidth::Float64 = 1f0
         "The color of the x minor grid lines."
-        xminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        xminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The color of the y minor grid lines."
-        yminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        yminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The linestyle of the x minor grid lines."
         xminorgridstyle = nothing
         "The linestyle of the y minor grid lines."
@@ -583,7 +591,7 @@ end
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
-        xminortickcolor::RGBAf = :black
+        xminortickcolor = :black
         """
         The tick locator for the minor ticks of the x axis.
 
@@ -602,7 +610,7 @@ end
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
-        yminortickcolor::RGBAf = :black
+        yminortickcolor = :black
         """
         The tick locator for the minor ticks of the y axis.
 
@@ -1265,6 +1273,19 @@ end
 @Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1363,6 +1384,18 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1651,6 +1684,15 @@ end
     target_r0::Observable{Float32}
     @attributes begin
         # Generic
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
 
         "The height setting of the scene."
         height = nothing

@@ -75,6 +75,17 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
                     elow, ehigh, plot.nan_color)
 end
 
+function extract_colormap(plot::Voxels)
+    limits = plot._limits
+    # TODO: does this need padding for lowclip and highclip?
+    discretized_values = map(lims -> range(lims[1], lims[2], length = 253), plot, limits)
+
+    return ColorMapping(
+        discretized_values[], discretized_values, plot.colormap, limits, plot.colorscale,
+        plot.alpha, plot.lowclip, plot.highclip, Observable(:transparent)
+    )
+end
+
 
 function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
     cmap = extract_colormap(plot)
@@ -167,7 +178,7 @@ function initialize_block!(cb::Colorbar)
             if mapping_type === Makie.banded
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             elseif mapping_type === Makie.categorical
-                return convert(Vector{Float64},1:length(unique(values)))
+                return convert(Vector{Float64}, sort!(unique(values)))
             else
                 return convert(Vector{Float64}, LinRange(limits..., n))
             end
@@ -212,7 +223,7 @@ function initialize_block!(cb::Colorbar)
         xmin, ymin = minimum(bb)
         xmax, ymax = maximum(bb)
         if mapping_type == Makie.categorical
-            colors = edges(colors)
+            colors = edges(1:length(colors))
         end
         s_scaled = scale.(colors)
         mini, maxi = extrema(s_scaled)
@@ -371,8 +382,9 @@ function initialize_block!(cb::Colorbar)
                     limits=lims, ticklabelalign=cb.ticklabelalign, label=cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
-                    labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont, ticks=ticks,
-                    tickformat=cb.tickformat,
+        labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont,
+        dim_convert=nothing, # TODO, we should also have a dim convert for Colorbar
+        ticks=ticks, tickformat=cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
         ticklabelrotation = cb.ticklabelrotation,

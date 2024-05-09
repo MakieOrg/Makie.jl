@@ -1,5 +1,5 @@
 function extract_material(matsys, plot)
-    if haskey(plot, :material)
+    if haskey(plot, :material) && !isnothing(plot.material[])
         if plot.material isa Attributes
             return RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
         else
@@ -112,7 +112,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         markersize
     end
 
-    rotations = Makie.to_rotation(plot.rotations[])
+    rotations = Makie.to_rotation(plot.rotation[])
 
     rotations = if rotations isa Makie.Quaternion
         Iterators.repeated(rotations, n_instances)
@@ -122,6 +122,40 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
 
     for (instance, position, scale, rotation) in zip(instances, positions, scales, rotations)
         mat = Makie.transformationmatrix(position, scale, rotation)
+        transform!(instance, mat)
+    end
+
+    return instances
+end
+
+
+function to_rpr_object(context, matsys, scene, plot::Makie.Voxels)
+    # Potentially per instance attributes
+    positions = Makie.voxel_positions(plot)
+    m_mesh = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    marker = RPR.Shape(context, m_mesh)
+    instances = [marker]
+    n_instances = length(positions)
+    RPR.rprShapeSetObjectID(marker, 0)
+    material = extract_material(matsys, plot)
+    set!(marker, material)
+    for i in 1:(n_instances-1)
+        inst = RPR.Shape(context, marker)
+        RPR.rprShapeSetObjectID(inst, i)
+        push!(instances, inst)
+    end
+
+    color_from_num = Makie.voxel_colors(plot)
+    object_id = RPR.InputLookupMaterial(matsys)
+    object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
+    uv = object_id * Vec3f(0, 1/n_instances, 0)
+    tex = RPR.Texture(matsys, collect(color_from_num'); uv = uv)
+    material.color = tex
+
+    scales = Iterators.repeated(Makie.voxel_size(plot), n_instances)
+
+    for (instance, position, scale) in zip(instances, positions, scales)
+        mat = Makie.transformationmatrix(position, scale)
         transform!(instance, mat)
     end
 

@@ -22,9 +22,6 @@ grid.
 If a `Function` is provided in place of `u, v, [w]`, then it must accept
 a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
 or other array-like output.
-
-## Attributes
-$(ATTRIBUTES)
 """
 arrows
 
@@ -106,11 +103,15 @@ function _circle(origin, r, normal, N)
     GeometryBasics.Mesh(meta(coords; normals=normals), faces)
 end
 
-convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
+function convert_arguments(::Type{<: Arrows}, x, y, u, v)
+    return (Point2{float_type(x, y)}.(x, y), Vec2{float_type(u, v)}.(u, v))
 end
-convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    return (vec(Point2{float_type(x, y)}.(x, y')), vec(Vec2{float_type(u, v)}.(u, v)))
+end
+function convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w)
+    return (Point3{float_type(x, y, z)}.(x, y, z), Vec3{float_type(u, v, w)}.(u, v, w))
+end
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
@@ -122,8 +123,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         fxaa, ssao, transparency, visible, inspectable
     )
 
-    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
     line_c = map((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
+    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
     fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic == fxaa for 3D
 
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
@@ -176,7 +177,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             lift(x-> last.(x), arrowplot, headstart),
             marker=marker_head,
             markersize = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize),
-            color = arrow_c, rotations = rotations, strokewidth = 0.0,
+            color = arrow_c, rotation = rotations, strokewidth = 0.0,
                  colormap=colormap, markerspace=arrowplot.markerspace, colorrange=arrowplot.colorrange,
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible
@@ -210,7 +211,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
         meshscatter!(
             arrowplot,
-            start, rotations = directions, markersize = msize,
+            start, rotation = directions, markersize = msize,
             marker = marker_tail,
             color = line_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,
@@ -219,7 +220,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         )
         meshscatter!(
             arrowplot,
-            start, rotations = directions, markersize = markersize,
+            start, rotation = directions, markersize = markersize,
             marker = marker_head,
             color = arrow_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,
