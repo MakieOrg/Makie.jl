@@ -649,19 +649,21 @@ struct InvalidAttributeError <: Exception
     attributes::Set{Symbol}
 end
 
-function print_columns(io::IO, v::Vector{String}; gapsize = 2, row_major = true, cols = displaysize(io)[2])
+function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true, cols = displaysize(io)[2])
+
     lens = length.(v) # for unicode ligatures etc this won't work, but we don't use those for attribute names
-    function col_widths(ncols)
+    function col_widths(ncols; rows_first)
         max_widths = zeros(Int, ncols)
         for (i, len) in enumerate(lens)
-            j = mod1(i, ncols)
+            nrows = ceil(Int, length(v) / ncols)
+            j = rows_first ? fld1(i, nrows) : mod1(i, ncols)
             max_widths[j] = max(max_widths[j], len)
         end
         return max_widths
     end
     ncols = 1
     while true
-        widths = col_widths(ncols)
+        widths = col_widths(ncols; rows_first)
         aggregated_width = (sum(widths) + (ncols-1) * gapsize)
         if aggregated_width > cols
             ncols = max(1, ncols-1)
@@ -669,19 +671,23 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, row_major = true,
         end
         ncols += 1
     end
-    widths = col_widths(ncols)
+    widths = col_widths(ncols; rows_first)
 
-    for (i, (str, len)) in enumerate(zip(v, lens))
-        j = mod1(i, ncols)
-        last_col = j == ncols
-        print(io, str)
-        remaining = widths[j] - len + !last_col * gapsize
-        for _ in 1:remaining
-            print(io, ' ')
+    nrows = ceil(Int, length(v) / ncols)
+
+    for irow in 1:nrows
+        for icol in 1:ncols
+            idx = rows_first ? (icol - 1) * nrows + irow : (irow - 1) * ncols + icol
+            if idx <= length(v)
+                print(io, v[idx])
+                remaining = widths[icol] - lens[idx]
+            else
+                remaining = widths[icol]
+            end
+            remaining += !(icol == ncols) * gapsize
+            print(io, ' ' ^ remaining)
         end
-        if last_col
-            print(io, '\n')
-        end
+        println(io)
     end
 
     return
@@ -701,13 +707,13 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
     println(io)
     println(io, "The available plot attributes for $(i.plottype) are:")
     println(io)
-    print_columns(io, nameset; cols = displaysize(stderr)[2])
+    print_columns(io, nameset; cols = displaysize(stderr)[2], rows_first = true)
     allowlist = attribute_name_allowlist()
     println(io)
     println(io)
     println(io, "Generic attributes are:")
     println(io)
-    print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2])
+    print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
     println(io)
 end
 
