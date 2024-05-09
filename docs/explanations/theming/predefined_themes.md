@@ -118,3 +118,13 @@ with_theme(demofigure, theme_light())
 with_theme(demofigure, theme_dark())
 ```
 \end{examplefigure}
+
+## theme_latexfonts
+
+See also [more general documentation on Makie and LaTeX](\reflink{LaTeX}).
+
+\begin{examplefigure}{}
+```julia
+with_theme(demofigure, theme_latexfonts())
+```
+\end{examplefigure}

@@ -11,6 +11,8 @@ update_theme!
 with_theme
 ```
 
+There are also [predefined themes](\reflink{Predefined themes}) that may form a useful starting point.
+
 ## set_theme!
 
 You can call `set_theme!(theme; kwargs...)` to change the current default theme to `theme` and override or add attributes given by `kwargs`.
