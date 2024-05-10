@@ -389,7 +389,14 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     color = @inherit markercolor
     "Sets the scatter marker."
     marker = @inherit marker
-    "Sets the size of the marker."
+    """
+    Sets the size of the marker by scaling it relative to its base size which can differ for each marker.
+    A `Real` scales x and y dimensions by the same amount.
+    A `Vec` or `Tuple` with two elements scales x and y separately.
+    An array of either scales each marker separately.
+    Humans perceive the area of a marker as its size which grows quadratically with `markersize`,
+    so multiplying `markersize` by 2 results in a marker that is 4 times as large, visually.
+    """
     markersize = @inherit markersize
     "Sets the color of the outline around a marker."
     strokecolor = @inherit markerstrokecolor
