@@ -65,9 +65,14 @@ f = Figure()
 ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```
 
-### Scope
+### Limitations
 
-Currently, dim conversions only works for x and y arguments for the standard 2D Axis. It's setup to generalize to other Axis types, but is currently only supported by `Axis`.
+
+-   For now, dim conversions only works for vectors with supported types for the x and y arguments for the standard 2D Axis. It's setup to generalize to other Axis types, but the full integration hasn't been done yet.
+-   Keywords like `direction=:y` in e.g. Barplot will not propagate to the Axis correctly, since the first argument is currently always x and second always y. We're still trying to figure out how to solve this properly
+-   Categorical values need to be wrapped in `Categorical`, since it's hard to find a good type that isn't ambiguous when defaulting to a categorical conversion. You can find a work around in the docs.
+-   Date Time ticks simply use `PlotUtils.optimize_datetime_ticks` which is also used by Plots.jl. It doesn't generate optimally readable ticks yet and can generate overlaps and goes out of axis bounds quickly. This will need more polish to create readable ticks as default.
+-   To properly apply dim conversions only when applicable, one needs to use the new undocumented `@recipe` macro and define a conversion target type. This means user recipes only work if they pass through the arguments to any basic plotting type without conversion.
 
 ### Current conversions in Makie
 
