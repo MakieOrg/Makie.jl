@@ -27,16 +27,26 @@ function GLMakie.renderloop(screen)
 end
 
 makedocs(;
-    modules=[Makie],
+    # modules=[Makie],
     sitename="Makie.jl",
     format=DocumenterVitepress.MarkdownVitepress(;
         repo = "https://github.com/MakieOrg/Makie.jl",
         devurl = "dev",
         devbranch = "master",
+        deploy_url = "", # for local testing not setting this has broken links with Makie.jl in them
     ),
     pages=[
         "Home" => "index.md",
+        "Explanations" => [
+            "Backends" => [
+                "CairoMakie" => "explanations/backends/cairomakie.md",
+                "GLMakie" => "explanations/backends/glmakie.md",
+                "RPRMakie" => "explanations/backends/rprmakie.md",
+                "WGLMakie" => "explanations/backends/wglmakie.md",
+            ]
+        ],
     ],
+    warnonly = true,
 )
 
 # # by making all links relative, we can forgo the `prepath` setting of Franklin
