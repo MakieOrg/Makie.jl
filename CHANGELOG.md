@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Treat `missing` as equivalent to `NaN` when passed to the `color` attribute of a plot (involves changes to `numbers_to_colors` and `assemble_colors`).  [#3857](https://github.com/MakieOrg/Makie.jl/pull/3857)
+- Let all CairoMakie functions use `calculated_color` instead of relying on `color`. [#3857](https://github.com/MakieOrg/Makie.jl/pull/3857)
 
 ## [0.21.0] - 2024-05-08
 
