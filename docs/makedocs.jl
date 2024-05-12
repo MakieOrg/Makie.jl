@@ -44,10 +44,11 @@ makedocs(;
         "Home" => "index.md",
         "Explanations" => [
             "Backends" => [
-                "CairoMakie" => "explanations/backends/cairomakie.md",
-                "GLMakie" => "explanations/backends/glmakie.md",
-                "RPRMakie" => "explanations/backends/rprmakie.md",
-                "WGLMakie" => "explanations/backends/wglmakie.md",
+                "explanations/backends/backends.md",
+                "explanations/backends/cairomakie.md",
+                "explanations/backends/glmakie.md",
+                "explanations/backends/rprmakie.md",
+                "explanations/backends/wglmakie.md",
             ]
         ],
         "How-Tos" => [
