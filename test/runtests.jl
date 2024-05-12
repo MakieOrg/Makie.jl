@@ -40,6 +40,7 @@ using Makie: volume
     include("barplot.jl")
     include("bezier.jl")
     include("hist.jl")
+    include("missing_support.jl")
 
     # TODO: move some things in here
     include("convert_arguments.jl")
