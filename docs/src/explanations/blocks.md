@@ -13,17 +13,11 @@ If you want to work with a bare `Scene`, you can attach a `GridLayout` to its pi
 
 Here's one way to add a `Block`, in this case an `Axis`, to a Figure.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 ax = Axis(f[1, 1])
 f
 ```
-\end{examplefigure}
 
 ## Specifying a boundingbox directly
 
@@ -34,18 +28,13 @@ The function `BBox` creates an `Rect2f`, but instead of passing origin and width
 
 Here's an example where two axes are placed manually:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
-Axis(f, bbox = BBox(100, 300, 100, 500), title = "Axis 1")
-Axis(f, bbox = BBox(400, 700, 200, 400), title = "Axis 2")
+Axis(f, bbox = BBox(50, 200, 50, 300), title = "Axis 1")
+Axis(f, bbox = BBox(250, 550, 100, 350), title = "Axis 2")
 f
 ```
-\end{examplefigure}
+
 ## Deleting blocks
 
 To remove blocks from their layout and the figure or scene, use `delete!(block)`.
