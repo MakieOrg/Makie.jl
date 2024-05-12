@@ -101,17 +101,17 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
 ### Basic Tutorial
 Learn the basics of plotting with Makie.
 
-![Basic Tutorial](/assets/basic_tutorial_example.png)
+![Basic Tutorial](./assets/basic_tutorial_example.png)
 
 ### Layout Tutorial
 Check out how to make complex plots and layouts.
 
-![Layout Tutorial](/assets/layout_tutorial.png)
+![Layout Tutorial](./assets/layout_tutorial.png)
 
 ### Plot Reference
 A visual reference of all available plotting functions and their attributes.
 
-![Plot Reference](/assets/mandelbrot_heatmap.png)
+![Plot Reference](./assets/mandelbrot_heatmap.png)
 
 
 ## Makie Ecosystem
@@ -121,22 +121,22 @@ There are four backends, each of which has particular strengths. You can switch 
 ### GLMakie.jl
 GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.
 
-![GLMakie.jl](/assets/surface_example.png)
+![GLMakie.jl](./assets/surface_example.png)
 
 ### CairoMakie.jl
 `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics.
 
-![CairoMakie.jl](/assets/density_example.png)
+![CairoMakie.jl](./assets/density_example.png)
 
 ### WGLMakie.jl
 WebGL-based interactive 2D and 3D plotting that runs within browsers.
 
-![WGLMakie.jl](/assets/wireframe_example.png)
+![WGLMakie.jl](./assets/wireframe_example.png)
 
 ### RPRMakie.jl
 Backend using RadeonProRender for raytracing Makie scenes.
 
-![RPRMakie.jl](/assets/topographie.png)
+![RPRMakie.jl](./assets/topographie.png)
 
 The differences between backends are explained in more details under [Backends](@ref).
 
@@ -147,22 +147,22 @@ These packages and sites are maintained by third parties. If you install package
 ### AlgebraOfGraphics.jl
 Grammar-of-graphics style plotting, inspired by ggplot2.
 
-![AlgebraOfGraphics.jl](/assets/aog_example.png)
+![AlgebraOfGraphics.jl](./assets/aog_example.png)
 
 ### Beautiful Makie
 This third-party gallery contains many advanced examples.
 
-![Beautiful Makie](/assets/beautifulmakie_example.png)
+![Beautiful Makie](./assets/beautifulmakie_example.png)
 
 ### GraphMakie.jl
 Graphs with two- and three-dimensional layout algorithms.
 
-![GraphMakie.jl](/assets/graphmakie.png)
+![GraphMakie.jl](./assets/graphmakie.png)
 
 ### GeoMakie.jl
 Geographic plotting utilities including projections.
 
-![GeoMakie.jl](/assets/geomakie_example.png)
+![GeoMakie.jl](./assets/geomakie_example.png)
 
 
 ## Citing Makie
