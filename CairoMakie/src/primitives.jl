@@ -1179,7 +1179,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         primitive[:faceculling] = Observable(-10)
     end
     draw_mesh3D(scene, screen, primitive, mesh)
-    primitive[:color] = old
     return nothing
 end
 
