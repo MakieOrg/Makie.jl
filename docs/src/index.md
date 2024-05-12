@@ -1,8 +1,3 @@
-@def title = "Home"
-@def order = 0
-@def frontpage = true
-@def description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live."
-
 # Welcome to Makie!
 
 Makie is a data visualization ecosystem for the [Julia](https://julialang.org/) programming language, with high performance and extensibility.
@@ -10,10 +5,7 @@ It is available for Windows, Mac and Linux.
 
 ## Example
 
-~~~
-<input id="hidecode" class="hidecode" type="checkbox">
-~~~
-```julia:lorenz
+```@example
 using GLMakie # All functionality is defined in Makie and every backend re-exports Makie
 GLMakie.activate!() # hide
 
@@ -61,11 +53,10 @@ record(fig, "lorenz.mp4", 1:120) do frame
 end
 set_theme!() # hide
 ```
-~~~
-<label for="hidecode" class="hidecode"></label>
-~~~
 
-\video{lorenz, autoplay = true}
+```@raw html
+<video autoplay loop muted playsinline controls src="./lorenz.mp4" />
+```
 
 ## Installation and Import
 
