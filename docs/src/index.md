@@ -62,7 +62,7 @@ set_theme!() # hide
 
 Add one or more of the Makie backend packages [`GLMakie.jl`](/explanations/backends/glmakie/) (OpenGL), [`CairoMakie.jl`](/explanations/backends/cairomakie/) (Cairo), or [`WGLMakie.jl`](/explanations/backends/wglmakie/) (WebGL), [`RPRMakie`](/explanations/backends/rprmakie/) (RadeonProRender) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
 
-Makie is the core package, and the backends have no user facing functionality.  They only render the final result.  See the \myreflink{Backends} page for more information!
+Makie is the core package, and the backends have no user facing functionality.  They only render the final result.  See the [Backends](@ref) page for more information!
 
 ```julia
 ]add GLMakie
