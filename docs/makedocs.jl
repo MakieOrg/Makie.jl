@@ -42,6 +42,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Tutorials" => [
+            "tutorials/aspect-tutorial.md",
+        ],
         "Explanations" => [
             "Backends" => [
                 "explanations/backends/backends.md",
