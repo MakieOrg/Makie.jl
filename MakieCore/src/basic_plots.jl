@@ -499,6 +499,10 @@ Plots one or multiple texts passed via the `text` keyword.
     markerspace = :pixel
     "Controls whether the model matrix (without translation) applies to the glyph itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)"
     transform_marker = false
+    "Sets the color of the glow effect around the text."
+    glowcolor = (:black, 0.0)
+    "Sets the size of a glow effect around the text."
+    glowwidth = 0.0
     "The offset of the text from the given position in `markerspace` units."
     offset = (0.0, 0.0)
     "Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping."
