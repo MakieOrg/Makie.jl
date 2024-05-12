@@ -1,6 +1,4 @@
-@def description = "Learn how to create data visualizations with Makie, the plotting ecosystem for the Julia language, in this introductory tutorial. Topics include Makie's different backends, basic building blocks like Figure, Axis, lines and scatters as well as how to theme your plots and create layouts with multiple subplots."
-
-# Basic Tutorial
+# Getting started with Makie
 
 ## Preface
 
@@ -27,7 +25,7 @@ Ok, now that this is out of the way, let's get started!
 
 First, we import CairoMakie. This makes all the exported symbols from `Makie.jl` available as well.
 
-```julia:setup
+```@example basic
 using CairoMakie
 CairoMakie.activate!() # hide
 
@@ -49,20 +47,16 @@ It is a canvas onto which we can add objects like `Axis`, `Colorbar`, `Legend` a
 Let's create a `Figure` and give it a background color other than the default white so we can see it.
 Returning a `Figure` from an expression will `display` it if your coding environment can show images.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 f = Figure(backgroundcolor = :tomato)
 ```
-\end{examplefigure}
 
 Another common thing to do is to give a figure a different size.
 The default is 800x600, let's try halving the height:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 f = Figure(backgroundcolor = :tomato, size = (800, 300))
 ```
-\end{examplefigure}
 
 ## Adding an Axis
 
@@ -70,20 +64,17 @@ The most common object you can add to a figure which you need for most plotting 
 The usual syntax for adding such an object to a figure is to specify a position in the `Figure`'s layout as the first argument.
 We'll learn more about layouts later, but for now the position `f[1, 1]` will just fill the whole figure.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 f = Figure()
 ax = Axis(f[1, 1])
 f
 ```
-\end{examplefigure}
 
 The default axis has no title or labels, you can pass those as keyword arguments.
 For a whole list of available attributes, check the docstring for \apilink{Axis} (you can also do that by running `?Axis` in the REPL).
 Be warned, it's very long!
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 f = Figure()
 ax = Axis(f[1, 1],
     title = "A Makie Axis",
@@ -92,17 +83,15 @@ ax = Axis(f[1, 1],
 )
 f
 ```
-\end{examplefigure}
 
 ## Adding a plot to an Axis
 
 Now we're ready to actually plot something into an `Axis`!
 
-Makie has many different plotting functions, the first we will learn about is \myreflink{lines!}.
+Makie has many different plotting functions, the first we will learn about is [`lines!`](@ref).
 Let's try plotting a sine function into an `Axis`, by passing it as the first argument:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 f = Figure()
 ax = Axis(f[1, 1])
 x = range(0, 10, length=100)
@@ -110,17 +99,15 @@ y = sin.(x)
 lines!(ax, x, y)
 f
 ```
-\end{examplefigure}
 
 There we have our first line plot.
 
 ## Scatter plot
 
-Another common function is \myreflink{scatter!}.
-It works very similar to `lines!` but shows separate markers for each input point.
+Another common function is [`scatter!`](@ref).
+It works very similar to [`lines!`](@ref) but shows separate markers for each input point.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 f = Figure()
 ax = Axis(f[1, 1])
 x = range(0, 10, length=100)
@@ -128,7 +115,6 @@ y = sin.(x)
 scatter!(ax, x, y)
 f
 ```
-\end{examplefigure}
 
 ## Creating Figure, Axis and plot in one call
 
@@ -141,13 +127,11 @@ For example, `lines!` mutates an existing `Axis`, `lines` creates an implicit on
 
 Let's see how to make a line plot without creating `Figure` and `Axis` ourselves first.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 y = sin.(x)
 lines(x, y)
 ```
-\end{examplefigure}
 
 The return type of `lines(x, y)` is `FigureAxisPlot`.
 The `lines` function first creates a `Figure`, then puts an `Axis` into it and finally adds a plot of type `Lines` to that axis.
@@ -158,12 +142,10 @@ Normally, multiple return values are returned as `Tuple`s in Julia but it's unco
 
 If you need the objects, for example to add more things to the figure later and edit axis and plot attributes, you could destructure the return value:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 figure, axis, lineplot = lines(x, y)
 figure
 ```
-\end{examplefigure}
 
 As you can see, the output of returning the extracted figure is the same.
 
@@ -173,8 +155,7 @@ You might wonder how to specify a different resolution for this scatter plot, or
 Because a normal plotting function like `lines` or `scatter` creates these objects before it creates the plot, you can pass special keyword arguments to it called `axis` and `figure`.
 You can pass any kind of object with symbol-value pairs and these will be used as keyword arguments for `Figure` and `Axis`, respectively.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 y = sin.(x)
 scatter(x, y;
@@ -182,7 +163,6 @@ scatter(x, y;
     axis = (; title = "Scatter plot", xlabel = "x label")
 )
 ```
-\end{examplefigure}
 
 The `;` in `(; size = (400, 400))` is nothing special, it just clarifies that we want a one-element `NamedTuple` and not a variable called `size`.
 It's good habit to include it but it's not needed for `NamedTuple`s with more than one entry.
@@ -197,27 +177,21 @@ Here are a few different examples of what you can use with `lines`:
 
 An interval and a function:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 lines(0..10, sin)
 ```
-\end{examplefigure}
 
 A collection of numbers and a function:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 lines(0:1:10, cos)
 ```
-\end{examplefigure}
 
 A collection of `Point`s from `GeometryBasics.jl` (which supplies most geometric primitives in Makie):
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 lines([Point(0, 0), Point(5, 10), Point(10, 5)])
 ```
-\end{examplefigure}
 
 The input arguments you can use with `lines` and `scatter` are mostly the same because they have the same conversion trait `PointBased`.
 Other plotting functions have different conversion traits, \myreflink{heatmap} for example expects two-dimensional grid data.
@@ -231,30 +205,26 @@ For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
 To plot two things into the same axis, you can use the mutating plotting functions like `lines!` and `scatter!`.
 For example, here's how you could plot two lines on top of each other:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 
 f, ax, l1 = lines(x, sin)
 l2 = lines!(ax, x, cos)
 f
 ```
-\end{examplefigure}
 
 The second `lines!` call plots into the axis created by the first `lines` call.
 It's colored differently because the `Axis` keeps track of what has been plotted into it and cycles colors for similar plotting functions.
 
 You can also leave out the axis argument for convenience, then the axis being used is the `current_axis()`, which is usually just the axis that was created last.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 
 f, ax, l1 = lines(x, sin)
 lines!(x, cos)
 f
 ```
-\end{examplefigure}
 
 Note that you cannot pass `figure` and `axis` keywords to mutating plotting functions like `lines!` or `scatter!`.
 That's because they don't create an `Figure` and `Axis`, and we chose not to allow modification of the existing objects in plotting calls so it's clearer what is going on.
@@ -275,35 +245,30 @@ You can read more about colors at [juliagraphics.github.io/Colors.jl](https://ju
 
 Here's a plot with one named color and one where we use `RGBf`:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 
 f, ax, l1 = lines(x, sin, color = :tomato)
 l2 = lines!(ax, x, cos, color = RGBf(0.2, 0.7, 0.9))
 f
 ```
-\end{examplefigure}
 
 Other plotting functions have different attributes.
 The function `scatter`, for example, does not only have the `color` attribute, but also a `markersize` attribute.
 
 You can read about all possible attributes by running `?scatter` in the REPL, and examples are shown on the page \myreflink{scatter}.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 
 f, ax, sc1 = scatter(x, sin, color = :red, markersize = 5)
 sc2 = scatter!(ax, x, cos, color = :blue, markersize = 10)
 f
 ```
-\end{examplefigure}
 
 You can also manipulate most plot attributes afterwards with the syntax `plot.attribute = new_value`.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 sc1.marker = :utriangle
 sc1.markersize = 20
 
@@ -314,7 +279,6 @@ sc2.strokecolor = :purple
 
 f
 ```
-\end{examplefigure}
 
 ## Array attributes
 
@@ -323,8 +287,7 @@ For example, it is usually much more performant to draw many points with one sca
 
 Here, we vary markersize and color:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 
 scatter(x, sin,
@@ -333,7 +296,6 @@ scatter(x, sin,
     colormap = :thermal
 )
 ```
-\end{examplefigure}
 
 Note that the color array does not actually contain colors, rather the numerical values are mapped to the plot's `colormap`.
 There are many different colormaps to choose from, take a look on the \myreflink{Colors} page.
@@ -342,8 +304,7 @@ The values are mapped to colors via the `colorrange` attribute, which by default
 But we can also limit or expand the range manually.
 For example, we can constrain the previous scatter plot's color range to (0.33, 0.66), which will clip the colors at the bottom and the top.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 x = range(0, 10, length=100)
 
 scatter(x, sin,
@@ -353,12 +314,10 @@ scatter(x, sin,
     colorrange = (0.33, 0.66)
 )
 ```
-\end{examplefigure}
 
 Of course you can also use an array of colors directly, in which case the `colorrange` is ignored:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 using CairoMakie
 
@@ -368,14 +327,12 @@ colors = repeat([:crimson, :dodgerblue, :slateblue1, :sienna1, :orchid1], 20)
 
 scatter(x, sin, color = colors, markersize = 20)
 ```
-\end{examplefigure}
 
 ## Simple legend
 
 If you add label attributes to your plots, you can call the `axislegend` function to add a `Legend` with all labeled plots to the current `Axis`, or optionally to one you pass as the first argument.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 using CairoMakie
 
@@ -386,7 +343,6 @@ lines!(x, cos, color = :blue, label = "cos")
 axislegend()
 current_figure()
 ```
-\end{examplefigure}
 
 ## Subplots
 
@@ -396,8 +352,7 @@ So far, we have only used the default position [1, 1], where the Axis is created
 We can make subplots by giving the location of the subplot in our layout grid as the first argument to our plotting function.
 The basic syntax for specifying the location in a figure is `fig[row, col]`.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 using CairoMakie
 
@@ -411,15 +366,13 @@ lines(fig[2, 1:2], x, y, color = :green)
 
 fig
 ```
-\end{examplefigure}
 
 Each `lines` call creates a new axis in the position given as the first argument, that's why we use `lines` and not `lines!` here.
 
 We can also create a couple of axes manually at first and then plot into them later.
 For example, we can create a figure with three axes.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 using CairoMakie
 
@@ -429,19 +382,16 @@ ax2 = Axis(fig[1, 2])
 ax3 = Axis(fig[2, 1:2])
 fig
 ```
-\end{examplefigure}
 
 And then we can continue to plot into these empty axes.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 lines!(ax1, 0..10, sin)
 lines!(ax2, 0..10, cos)
 lines!(ax3, 0..10, sqrt)
 fig
 ```
-\end{examplefigure}
 
 ## Legend and Colorbar
 
@@ -455,8 +405,7 @@ You can see here that we can deconstruct the return value from the two `lines` c
 We can then feed the plot objects to the legend constructor.
 We place the legend in the second column and across both rows, which centers it nicely next to the two axes.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 using CairoMakie
 
@@ -466,7 +415,6 @@ ax2, l2 = lines(fig[2, 1], 0..10, cos, color = :blue)
 Legend(fig[1:2, 2], [l1, l2], ["sin", "cos"])
 fig
 ```
-\end{examplefigure}
 
 The \myreflink{Colorbar} works in a very similar way.
 We just need to pass a position in the figure to it, and one plot object.
@@ -475,8 +423,7 @@ In this example, we use a `heatmap`.
 You can see here that we split the return value of `heatmap` into three parts: the newly created figure, the axis and the heatmap plot object.
 This is useful as we can then continue with the figure `fig` and the heatmap `hm` which we need for the colorbar.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 using CairoMakie
 
@@ -484,13 +431,11 @@ fig, ax, hm = heatmap(randn(20, 20))
 Colorbar(fig[1, 2], hm)
 fig
 ```
-\end{examplefigure}
 
 The previous short syntax is basically equivalent to this longer, manual version.
 You can switch between those workflows however you please.
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure basic
 
 using CairoMakie
 
@@ -500,7 +445,6 @@ hm = heatmap!(ax, randn(20, 20))
 Colorbar(fig[1, 2], hm)
 fig
 ```
-\end{examplefigure}
 
 ## Next steps
 
