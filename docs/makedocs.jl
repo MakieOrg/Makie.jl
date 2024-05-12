@@ -43,6 +43,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Tutorials" => [
+            "tutorials/basic-tutorial.md",
             "tutorials/aspect-tutorial.md",
         ],
         "Explanations" => [
