@@ -9,12 +9,8 @@ function boundingbox(plot::Text, target_space::Symbol)
     # transformations (i.e. drops textsize etc when markerspace is not part of
     # the plot.space -> target_space conversion chain)
     if target_space == :data
-        if plot.space[] == plot.markerspace[]
-            # probably shouldn't transform...
-            return apply_transform_and_model(plot, string_boundingbox(plot))
-        else
-            return Rect3d(iterate_transformed(plot))
-        end
+        # This also transforms string boundingboxes if space == markerspace
+        return apply_transform_and_model(plot, data_limits(plot))
     elseif target_space == plot.markerspace[]
         return string_boundingbox(plot)
     else
