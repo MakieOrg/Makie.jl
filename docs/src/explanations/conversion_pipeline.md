@@ -1,13 +1,14 @@
-# Conversion Pipeline and Coordinate spaces
+# Conversions and spaces
 
 ## Conversion Pipeline
 
 The following graphic sketches out the conversion pipeline of data given to a plot with `space = :data` for GL backends.
 
-\begin{examplefigure}{}
-```julia
-#hideall
+```@example
+# hideall
 using GLMakie, LinearAlgebra
+GLMakie.activate!()
+Makie.inline!(true)
 
 function myarrows!(scene, ps; kwargs...)
     ends = map(ps) do ps
@@ -181,7 +182,6 @@ text!(
 
 scene
 ```
-\end{examplefigure}
 
 ### Argument Conversions
 
