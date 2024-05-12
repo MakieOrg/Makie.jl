@@ -122,6 +122,7 @@ function plot!(pl::Bracket)
 end
 
 data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl[1][])
+boundingbox(pl::Bracket, space::Symbol = :data) = apply_transform_and_model(pl, data_limits(pl))
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 

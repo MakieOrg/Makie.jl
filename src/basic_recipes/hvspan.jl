@@ -99,4 +99,4 @@ function data_limits(p::VSpan)
     return Rect3d(Point3d(xmin, NaN, 0), Vec3d(xmax - xmin, NaN, 0))
 end
 
-convert_arguments(P::Type{<:Union{HSpan, VSpan}}, x::Interval) = convert_arguments(P, endpoints(x)...)
+convert_arguments(P::Type{<:Union{HSpan, VSpan}}, x::Interval) = apply_transform_and_model(P, endpoints(x)...)
