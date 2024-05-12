@@ -35,7 +35,7 @@ See also: [`data_limits`](@ref)
 function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     # Assume primitive plot
     if isempty(plot.plots)
-        return Rect3d(iterate_transformed(plot))
+        return apply_transform_and_model(plot, data_limits(plot))
     end
 
     # Assume combined plot
@@ -49,6 +49,7 @@ end
 
 # for convenience
 function transform_bbox(scenelike, lims::Rect)
+    @warn "no more"
     return Rect3d(iterate_transformed(scenelike, point_iterator(lims)))
 end
 
