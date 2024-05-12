@@ -1,42 +1,30 @@
-# How to save a `Figure` with transparency
+# How to save a figure with transparency
 
 ## CairoMakie
 
 In CairoMakie, set the background color to `:transparent` (converts to `RGBAf(0, 0, 0, 0)`) to get a fully transparent background.
 In the following examples, I use a partially transparent blue because a transparent background is indistinguishable from the usual white on a white page.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure(backgroundcolor = (:blue, 0.4))
 Axis(f[1, 1], backgroundcolor = (:tomato, 0.5))
 f
 ```
-\end{examplefigure}
 
 ## GLMakie
 
 For technical reasons, GLMakie's color buffer does not have an alpha component:
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
-Makie.inline!(true) # hide
-
+```@figure backend=GLMakie
 f = Figure(backgroundcolor = (:blue, 0.4))
 Axis(f[1, 1], backgroundcolor = (:tomato, 0.5))
 f
 ```
-\end{examplefigure}
-
 
 With the following trick you can still save an image with transparent background.
 It works by setting two different background colors and calculating the foreground color with alpha from the difference.
 
-```julia:transparent-glmakie
+```@example
 using GLMakie
 GLMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -72,8 +60,8 @@ f = Figure(backgroundcolor = (:blue, 0.4))
 Axis(f[1, 1], backgroundcolor = (:tomato, 0.5))
 f
 
-save(joinpath(@OUTPUT, "transparent.png"), alpha_colorbuffer(f)) # hide
 save("transparent.png", alpha_colorbuffer(f))
+nothing # hide
 ```
 
-\fig{transparent.png}
+![transparent](./transparent.png)

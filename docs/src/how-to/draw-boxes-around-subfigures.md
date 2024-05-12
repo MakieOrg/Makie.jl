@@ -4,11 +4,7 @@ If you want to show that several elements in a `Figure` belong together, you can
 The trick is to use a nested `GridLayout` for each group of objects and place a `Box` at the same position as this `GridLayout`.
 Then the `alignmode = Outside(some_padding)` ensures that objects with protrusions sticking out, like `Axis`, are fully contained within the enclosing boxes.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 
 g1 = GridLayout(f[1, 1], alignmode = Outside(15))
@@ -31,4 +27,3 @@ Label(f[0, :], "Two boxes indicate groups of axes that belong together")
 
 f
 ```
-\end{examplefigure}

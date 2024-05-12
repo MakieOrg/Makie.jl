@@ -29,6 +29,8 @@ function GLMakie.renderloop(screen)
     return
 end
 
+include("figure_block.jl")
+
 makedocs(;
     # modules=[Makie],
     sitename="Makie.jl",
@@ -47,6 +49,10 @@ makedocs(;
                 "RPRMakie" => "explanations/backends/rprmakie.md",
                 "WGLMakie" => "explanations/backends/wglmakie.md",
             ]
+        ],
+        "How-Tos" => [
+            "how-to/draw-boxes-around-subfigures.md",
+            "how-to/save-figure-with-transparency.md",
         ],
         "API" => "api.md",
         "News" => "news.md",
