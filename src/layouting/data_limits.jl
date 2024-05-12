@@ -195,6 +195,7 @@ function isfinite_rect(x::Rect{N}, dim::Int) where N
     end
 end
 _isfinite(x) = isfinite(x)
+_isfinite(::Missing) = false
 _isfinite(x::VecTypes) = all(isfinite, x)
 
 finite_min(a, b) = isfinite(a) ? (isfinite(b) ? min(a, b) : a) : (isfinite(b) ? b : a)
