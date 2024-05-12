@@ -48,6 +48,7 @@ makedocs(;
                 "WGLMakie" => "explanations/backends/wglmakie.md",
             ]
         ],
+        "API" => "api.md",
         "News" => "news.md",
     ],
     warnonly = true,
