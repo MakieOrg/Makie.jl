@@ -1,4 +1,4 @@
-# Backends
+# What is a backend
 
 Makie is the frontend package that defines all plotting functions.
 It is reexported by every backend, so you don't have to specifically install or import it.
