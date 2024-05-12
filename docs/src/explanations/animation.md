@@ -6,7 +6,7 @@ You can find out more about the Observables workflow on the \myreflink{Observabl
 
 ## A simple example
 
-To create an animation you need to use the \apilink{record} function.
+To create an animation you need to use the [`record`](@ref) function.
 
 First you create a `Figure`. Next, you pass a function that modifies this figure frame-by-frame to `record`.
 Any changes you make to the figure or its plots will appear in the final animation.
@@ -16,7 +16,7 @@ over the course of the animation.
 
 As a start, here is how you can change the color of a line plot:
 
-```julia:color_animation
+```@example
 using GLMakie
 GLMakie.activate!() # hide
 using Makie.Colors
@@ -35,7 +35,9 @@ end
 nothing # hide
 ```
 
-\video{color_animation}
+```@raw html
+<video autoplay loop muted playsinline controls src="./color_animation.mp4" />
+```
 
 Passing a function as the first argument is usually done with Julia's `do`-notation, which you might not be familiar with.
 Instead of the above, we could also have written:
@@ -69,7 +71,9 @@ Here is an example that plots two different functions.
 The y-values of each depend on time and therefore we only have to change the time for both plots to change.
 We use the convenient `@lift` macro which denotes that the `lift`ed expression depends on each Observable marked with a `$` sign.
 
-```julia:time_animation
+```@example
+using GLMakie
+
 time = Observable(0.0)
 
 xs = range(0, 7, length=40)
@@ -91,18 +95,25 @@ end
 nothing # hide
 ```
 
-\video{time_animation}
+```@raw html
+<video autoplay loop muted playsinline controls src="./time_animation.mp4" />
+```
 
 You can set most plot attributes equal to `Observable`s, so that you need only update
 a single variable (like time) during your animation loop.
 
 For example, to make a line with color dependent on time, you could write:
 
-```julia:color_animation_2
+```@example
+using GLMakie
+
 time = Observable(0.0)
 color_observable = @lift(RGBf($time, 0, 0))
 
 fig = lines(0..10, sin, color = color_observable)
+
+framerate = 30
+timestamps = range(0, 2, step=1/framerate)
 
 record(fig, "color_animation_2.mp4", timestamps; framerate = framerate) do t
     time[] = t
@@ -110,7 +121,9 @@ end
 nothing # hide
 ```
 
-\video{color_animation_2}
+```@raw html
+<video autoplay loop muted playsinline controls src="./color_animation_2.mp4" />
+```
 
 ## Appending data with Observables
 
@@ -119,7 +132,9 @@ Instead of passing `x` and `y` (or `z`) values separately,
 it is better to make a `Observable` with a vector of `Point`s,
 so that the number of `x` and `y` values can not go out of sync.
 
-```julia:append_animation
+```@example
+using GLMakie
+
 points = Observable(Point2f[(0, 0)])
 
 fig, ax = scatter(points)
@@ -135,7 +150,9 @@ end
 nothing # hide
 ```
 
-\video{append_animation}
+```@raw html
+<video autoplay loop muted playsinline controls src="./append_animation.mp4" />
+```
 
 ## Animating a plot "live"
 
@@ -156,12 +173,11 @@ for i = 1:nframes
     points[] = push!(points[], new_point)
     sleep(1/fps) # refreshes the display!
 end
-nothing # hide
 ```
 
 Another example that updates the contents of a heatmap:
 
-```julia:heatmap
+```@example
 using GLMakie
 GLMakie.activate!() # hide
 
@@ -195,4 +211,7 @@ record(fig, "heatmap_mandelbrot.mp4", 1:7:N) do i
     # yield() -> not required with record
 end
 ```
-\video{heatmap_mandelbrot, autoplay = false}
+
+```@raw html
+<video loop muted playsinline controls src="./heatmap_mandelbrot.mp4" />
+```
