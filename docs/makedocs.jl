@@ -47,6 +47,7 @@ makedocs(;
             "tutorials/aspect-tutorial.md",
             "tutorials/layout-tutorial.md",
             "tutorials/scenes.md",
+            "tutorials/wrap-existing-recipe.md",
         ],
         "Explanations" => [
             "Backends" => [

@@ -1,6 +1,4 @@
-@def description = "Learn how to extend existing plot types on user-defined data types."
-
-# Wrap Existing Recipe on New Types
+# Wrapping existing recipes for new types
 
 ## Introduction
 
@@ -15,7 +13,7 @@ To define recipes, one only needs to use `MakieCore.jl`, this is especially hand
 developer and want to avoid depend on the full Makie.jl. For demonstration purpose, this tutorial
 will use `CairoMakie.jl` to visualize things as we go.
 
-```julia:setup
+```@example recipe
 using MakieCore, CairoMakie
 CairoMakie.activate!() # hide
 
@@ -37,17 +35,16 @@ The first recipe we want to teach Makie to draw is `BarPlot()`. As we allured to
 fields we have in the `MyHist` type basically tell us how to draw it as a BarPlot. Makie exposes the
 following method for this type of customization:
 
-```julia:setup
+```@example recipe
 Makie.convert_arguments(P::Type{<:BarPlot}, h::MyHist) = convert_arguments(P, h.bincenters, h.bincounts)
+nothing # hide
 ```
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure recipe
 h = MyHist([1, 10, 100], 1:3)
 
 barplot(h)
 ```
-\end{examplefigure}
 
 ## Hist recipe -- override `Makie.plot!`
 
@@ -57,8 +54,7 @@ data as input, but we already have the binned data in our `MyHist` type.
 
 The first thing one might try is to override the `plot!` method for `Hist` recipe:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure recipe
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
     barplot!(plot, plot[1])
     plot
@@ -66,15 +62,13 @@ end
 h = MyHist([1, 10, 100], 1:3)
 hist(h; color=:red, direction=:x)
 ```
-\end{examplefigure}
 
 This almost works, but we see that the keyword arguments are not passed to the `barplot!` function.
 To handle these attributes properly, we need to override/merge the
 default attributes of the underlying plot type (in this case, `BarPlot`) with the user-passed attributes.
 Since Makie 0.21, `shared_attributes` was introduced for this use case, which extracts all valid attributes for the target plot type:
 
-\begin{examplefigure}{svg = true, name = "wrapping-recipes"}
-```julia
+```@figure recipe
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
     # Only forward valid attributes for BarPlot
     valid_attributes = Makie.shared_attributes(plot, BarPlot)
@@ -83,4 +77,3 @@ end
 h = MyHist([1, 10, 100], 1:3)
 hist(h; color=:red, direction=:x)
 ```
-\end{examplefigure}
