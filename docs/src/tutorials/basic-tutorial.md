@@ -7,7 +7,7 @@ Here is a quick tutorial to get you started with Makie!
 Makie is the name of the whole plotting ecosystem and `Makie.jl` is the main package that describes how plots work.
 To actually render and save plots, we need a backend that knows how to translate plots into images or vector graphics.
 
-There are three main backends which you can use to render plots (for more information, have a look at \myreflink{Backends}):
+There are three main backends which you can use to render plots (for more information, have a look at [Backends](@ref)):
 
 - `CairoMakie.jl` if you want to render vector graphics or high quality 2D images and don't need interactivity or true 3D rendering.
 - `GLMakie.jl` if you need interactive windows and true 3D rendering but no vector output.
@@ -41,7 +41,7 @@ In the next steps, we will take a look at how we can create these objects.
 
 ## An empty figure
 
-The basic container object in Makie is the \apilink{Figure}.
+The basic container object in Makie is the [`Figure`](@ref).
 It is a canvas onto which we can add objects like `Axis`, `Colorbar`, `Legend` and others.
 
 Let's create a `Figure` and give it a background color other than the default white so we can see it.
@@ -60,7 +60,7 @@ f = Figure(backgroundcolor = :tomato, size = (800, 300))
 
 ## Adding an Axis
 
-The most common object you can add to a figure which you need for most plotting is the [Axis](\reflink{Axis}).
+The most common object you can add to a figure which you need for most plotting is the [Axis](@ref).
 The usual syntax for adding such an object to a figure is to specify a position in the `Figure`'s layout as the first argument.
 We'll learn more about layouts later, but for now the position `f[1, 1]` will just fill the whole figure.
 
@@ -194,7 +194,7 @@ lines([Point(0, 0), Point(5, 10), Point(10, 5)])
 ```
 
 The input arguments you can use with `lines` and `scatter` are mostly the same because they have the same conversion trait `PointBased`.
-Other plotting functions have different conversion traits, \myreflink{heatmap} for example expects two-dimensional grid data.
+Other plotting functions have different conversion traits, [heatmap](@ref) for example expects two-dimensional grid data.
 The respective trait is called `CellGrid`.
 
 ## Layering multiple plots
@@ -395,11 +395,11 @@ fig
 
 ## Legend and Colorbar
 
-We have seen two `Blocks` so far, the \myreflink{Axis} and the \myreflink{Legend} which was created by the function `axislegend`.
+We have seen two `Blocks` so far, the [Axis](@ref) and the [Legend](@ref) which was created by the function `axislegend`.
 All `Block`s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
 
-In the same way as with the \myreflink{Axis} before, you can also create a \myreflink{Legend} manually and then place it freely, wherever you want, in the figure.
-There are multiple ways to create \myreflink{Legend}s, for one of them you pass one vector of plot objects and one vector of label strings.
+In the same way as with the [Axis](@ref) before, you can also create a [Legend](@ref) manually and then place it freely, wherever you want, in the figure.
+There are multiple ways to create [Legend](@ref)s, for one of them you pass one vector of plot objects and one vector of label strings.
 
 You can see here that we can deconstruct the return value from the two `lines` calls into one newly created axis and one plot object each.
 We can then feed the plot objects to the legend constructor.
@@ -416,7 +416,7 @@ Legend(fig[1:2, 2], [l1, l2], ["sin", "cos"])
 fig
 ```
 
-The \myreflink{Colorbar} works in a very similar way.
+The [Colorbar](@ref) works in a very similar way.
 We just need to pass a position in the figure to it, and one plot object.
 In this example, we use a `heatmap`.
 
@@ -450,10 +450,10 @@ fig
 
 We've only looked at a small subset of Makie's functionality here.
 
-You can read about the different available plotting functions with examples in the \myreflink{Plotting Functions} section.
+You can read about the different available plotting functions with examples in the [Plotting Functions](@ref) section.
 
-If you want to learn about making complex figures with nested sublayouts, have a look at the \myreflink{Layout Tutorial} section.
+If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref) section.
 
-If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the \myreflink{Observables & Interaction} section.
+If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables & Interaction](@ref) section.
 
-If you want to create animated movies, you can find more information in the \myreflink{Animations} section.
+If you want to create animated movies, you can find more information in the [Animations](@ref) section.
