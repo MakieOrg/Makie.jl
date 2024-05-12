@@ -1,16 +1,13 @@
-# Layout Tutorial
+# Creating complex layouts
 
 In this tutorial, you will learn how to create a complex figure using Makie's layout tools.
 
 Let's say that we want to create the following figure:
 
-\outputimage{final_result.png}
+![](final_result.png)
 
 Here's the full code for reference:
 
-~~~
-<input id="hidecode" class="hidecode" type="checkbox">
-~~~
 ```julia
 using CairoMakie
 using Makie.FileIO
@@ -144,9 +141,6 @@ rowsize!(gcd, 1, Auto(1.5))
 
 f
 ```
-~~~
-<label for="hidecode" class="hidecode"></label>
-~~~
 
 How do we approach this task?
 
@@ -163,16 +157,12 @@ We could say that A and B are in one column, and C and D are in one column. We c
 
 Ok, let's create the figure first with a gray backgroundcolor, and a predefined font:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
+```@figure layout
 using FileIO
-CairoMakie.activate!() # hide
 
 f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
     size = (1000, 700))
 ```
-\end{examplefigure}
 
 ## Setting up GridLayouts
 
@@ -181,12 +171,13 @@ Now, let's make the four nested GridLayouts that are going to hold the objects o
 !!! note
     It's not strictly necessary to first create separate `GridLayout`s, then use them to place objects in the figure. You can also implicitly create nested grids using multiple indexing, for example like `Axis(f[1, 2:3][4:5, 6])`. This is further explained in \myreflink{GridPositions and GridSubpositions}. But if you want to manipulate your nested grids afterwards, for example to change column sizes or row gaps, it's easier if you have them stored in variables already.
 
-```julia:grids
+```@example layout
 ga = f[1, 1] = GridLayout()
 gb = f[2, 1] = GridLayout()
 gcd = f[1:2, 2] = GridLayout()
 gc = gcd[1, 1] = GridLayout()
 gd = gcd[2, 1] = GridLayout()
+nothing # hide
 ```
 
 ## Panel A
@@ -195,8 +186,7 @@ Now we can start placing objects into the figure. We start with A.
 
 There are three axes and a legend. We can place the axes first, link them appropriately, and plot the first data into them.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 axtop = Axis(ga[1, 1])
 axmain = Axis(ga[2, 1], xlabel = "before", ylabel = "after")
 axright = Axis(ga[2, 2])
@@ -215,41 +205,34 @@ end
 
 f
 ```
-\end{examplefigure}
 
 There's a small gap between the density plots and their axes, which we can remove by fixing one side of the limits.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 ylims!(axtop, low = 0)
 xlims!(axright, low = 0)
 
 f
 ```
-\end{examplefigure}
 
 We can also choose different x ticks with whole numbers.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 axmain.xticks = 0:3:9
 axtop.xticks = 0:3:9
 
 f
 ```
-\end{examplefigure}
 
 ### Legend
 
 We have set the `label` attribute in the scatter call so it's easier to construct the legend. We can just pass `axmain` as the second argument to `Legend`.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 leg = Legend(ga[1, 2], axmain)
 
 f
 ```
-\end{examplefigure}
 
 ### Legend Tweaks
 
@@ -257,45 +240,38 @@ There are a couple things we want to change. There are unnecessary decorations f
 
 Also, the top axis does not have the same height as the legend. That's because a legend is usually used on the right of an `Axis` and is therefore preset with `tellheight = false`. We set this attribute to `true` so the row in which the legend sits can contract to its known size.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
 leg.tellheight = true
 
 f
 ```
-\end{examplefigure}
 
 The axes are still a bit too far apart, so we reduce column and row gaps.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 colgap!(ga, 10)
 rowgap!(ga, 10)
 
 f
 ```
-\end{examplefigure}
 
 We can make a title by placing a label across the top two elements.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 Label(ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
     font = :bold,
     padding = (0, 0, 5, 0))
 
 f
 ```
-\end{examplefigure}
 
 ## Panel B
 
 Let's move to B. We have two axes stacked on top of each other, and a colorbar alongside them. This time, we create the axes by just plotting into the right `GridLayout` slots. This can be more convenient than creating an `Axis` first.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 xs = LinRange(0.5, 6, 50)
 ys = LinRange(0.5, 6, 50)
 data1 = [sin(x^1.5) * cos(y^0.5) for x in xs, y in ys] .+ 0.1 .* randn.()
@@ -313,15 +289,13 @@ contour!(ax2, xs, ys, data2, levels = 5, color = :black)
 
 f
 ```
-\end{examplefigure}
 
 ### Colorbar
 
 Now we need a colorbar.
 Because we haven't set specific edges for the two contour plots, just how many levels there are, we can make a colorbar using one of the contour plots and then label the bins in there from one to six.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 cb = Colorbar(gb[1:2, 2], hm, label = "cell group")
 low, high = extrema(data1)
 edges = range(low, high, length = 7)
@@ -330,7 +304,6 @@ cb.ticks = (centers, string.(1:6))
 
 f
 ```
-\end{examplefigure}
 
 #### Mixed alignmode
 
@@ -339,31 +312,26 @@ This can later cause a bit of a gap between the density plot and content on the 
 
 In order to improve this, we can pull the colorbar labels into its layout cell using the `Mixed` alignmode. The keyword `right = 0` means that the right side of the colorbar should pull its protrusion content inward with an additional padding of `0`.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 cb.alignmode = Mixed(right = 0)
 
 f
 ```
-\end{examplefigure}
 
 As in A, the axes are a bit too far apart.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 colgap!(gb, 10)
 rowgap!(gb, 10)
 
 f
 ```
-\end{examplefigure}
 
 ## Panel C
 
 Now, we move on to panel C. This is just an `Axis3` with a colorbar on the side.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 brain = load(assetpath("brain.stl"))
 
 ax3d = Axis3(gc[1, 1], title = "Brain activation")
@@ -377,7 +345,6 @@ Colorbar(gc[1, 2], m, label = "BOLD level")
 
 f
 ```
-\end{examplefigure}
 
 Note that the z label overlaps the plot to the left a little bit. `Axis3` can't have automatic protrusions because the label positions change with the projection and the cell size of the axis, which is different from the 2D `Axis`.
 
@@ -387,8 +354,7 @@ You can set the attribute `ax3.protrusions` to a tuple of four values (left, rig
 
 We move on to Panel D, which has a grid of 3x2 axes.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 axs = [Axis(gd[row, col]) for row in 1:3, col in 1:2]
 hidedecorations!.(axs, grid = false, label = false)
 
@@ -406,37 +372,31 @@ axs[3, 2].xlabel = "Day 2"
 
 f
 ```
-\end{examplefigure}
 
 We can make a little title for the six axes by placing a `Label` in the top protrusion of row 1 and across both columns.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 Label(gd[1, :, Top()], "EEG traces", valign = :bottom,
     font = :bold,
     padding = (0, 0, 5, 0))
 
 f
 ```
-\end{examplefigure}
 
 Again, we bring the subplots closer together by reducing gap sizes.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 rowgap!(gd, 10)
 colgap!(gd, 10)
 
 f
 ```
-\end{examplefigure}
 
 ### EEG labels
 
 Now, we add three boxes on the side with labels in them. In this case, we just place them in another column to the right.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 for (i, label) in enumerate(["sleep", "awake", "test"])
     Box(gd[i, 3], color = :gray90)
     Label(gd[i, 3], label, rotation = pi/2, tellheight = false)
@@ -444,17 +404,14 @@ end
 
 f
 ```
-\end{examplefigure}
 
 The boxes are in the correct positions, but we still need to remove the column gap.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 colgap!(gd, 2, 0)
 
 f
 ```
-\end{examplefigure}
 
 ### Scaling axes relatively
 
@@ -463,8 +420,7 @@ We want to scale the axes so that they both have the same zoom level.
 We can do this by setting the column widths to `Auto(x)` where x is a number proportional to the number of data points of the axis.
 This way, both will have the same relative scaling.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 n_day_1 = length(0:0.1:6pi)
 n_day_2 = length(0:0.1:10pi)
 
@@ -473,15 +429,13 @@ colsize!(gd, 2, Auto(n_day_2))
 
 f
 ```
-\end{examplefigure}
 
 ## Subplot labels
 
 Now, we can add the subplot labels. We already have our four `GridLayout` objects that enclose each panel's content, so the easiest way is to create `Label`s in the top left protrusion of these layouts.
 That will leave all other alignments intact, because we're not creating any new columns or rows. The labels belong to the gaps between the layouts instead.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
         fontsize = 26,
@@ -492,7 +446,6 @@ end
 
 f
 ```
-\end{examplefigure}
 
 ## Final tweaks
 
@@ -502,22 +455,19 @@ This gives the column a smaller weight when distributing widths between all colu
 
 You can also use `Relative` or `Fixed` but they are not as flexible if you add more things later, so I prefer using `Auto`.
 
-\begin{examplefigure}{}
-```julia
+```@figure layout
 colsize!(f.layout, 1, Auto(0.5))
 
 f
 ```
-\end{examplefigure}
 
 The EEG traces are currently as high as the brain axis, let's increase the size of the row with the panel C layout a bit so it has more space.
 
 And that is the final result:
 
-\begin{examplefigure}{name = "final_result"}
-```julia
+```@figure layout
 rowsize!(gcd, 1, Auto(1.5))
 
+save("final_result.png", f) # hide
 f
 ```
-\end{examplefigure}

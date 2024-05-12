@@ -45,6 +45,7 @@ makedocs(;
         "Tutorials" => [
             "tutorials/basic-tutorial.md",
             "tutorials/aspect-tutorial.md",
+            "tutorials/layout-tutorial.md",
         ],
         "Explanations" => [
             "Backends" => [
