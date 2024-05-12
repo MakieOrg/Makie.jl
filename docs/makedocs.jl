@@ -9,7 +9,7 @@ Pkg.precompile()
 # copy CHANGELOG file over to documentation
 cp(
     joinpath(@__DIR__, "..", "CHANGELOG.md"),
-    joinpath(@__DIR__, "news.md"),
+    joinpath(@__DIR__, "src", "news.md"),
     force = true)
 
 using Documenter
@@ -48,6 +48,7 @@ makedocs(;
                 "WGLMakie" => "explanations/backends/wglmakie.md",
             ]
         ],
+        "News" => "news.md",
     ],
     warnonly = true,
 )
