@@ -1,4 +1,4 @@
-# Scene tutorial
+# A primer on Makies scene graph
 
 The scene constructor:
 
@@ -31,29 +31,22 @@ A scene is doing four things:
 
 With scenes, one can create subwindows. The window extends are given by a `Rect{2, Int}` and the position is always in window pixels and relative to the parent.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie, Makie
-GLMakie.activate!()
+```@figure scenes backend=GLMakie
 scene = Scene(backgroundcolor=:gray)
 subwindow = Scene(scene, viewport=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
 scene
 ```
-\end{examplefigure}
 
 When using `Scenes` directly, one needs to manually set up the camera
 and center the camera to the content of the scene
 As described in more detail the camera section, we have multiple `cam***!` functions to set a certain projection and camera type for the scene.
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 cam3d!(subwindow)
 meshscatter!(subwindow, rand(Point3f, 10), color=:gray)
 center!(subwindow)
 scene
 ```
-\end{examplefigure}
 
 Instead of a white background, we can also stop clearing the background
 to make the scene see-through, and give it an outline instead.
@@ -61,39 +54,30 @@ The easiest way to create an outline is, to make a sub scene with a projection t
 To make a subscene with a certain projection type, Makie offers for each camera function a version without `!`, that will create a subscene, and apply the camera type.
 We call the space that goes from 0..1 `relative` space, so `camrelative` will give this projection:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 subwindow.clear = false
 relative_space = Makie.camrelative(subwindow)
 # this draws a line at the scene window boundary
 lines!(relative_space, Rect(0, 0, 1, 1))
 scene
 ```
-\end{examplefigure}
 
 We can also now give the parent scene a more exciting background by using `campixel!` and plotting an image to the window:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 campixel!(scene)
 w, h = size(scene) # get the size of the scene in pixels
 # this draws a line at the scene window boundary
 image!(scene, [sin(i/w) + cos(j/h) for i in 1:w, j in 1:h])
 scene
 ```
-\end{examplefigure}
 
 We can fix this by translating the scene further back:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 translate!(scene.plots[1], 0, 0, -10000)
 scene
 ```
-\end{examplefigure}
 
 We need a fairly high translation, since the far + near plane for `campixel!` goes from `-1000` to `1000`, while for `cam3d!` those get automatically adjusted to the camera parameters. Both end up in the same depthbuffer, transformed to the range `0..1` by the far & near plane, so to stay behind the 3d scene, it needs to be set to a high value.
 
@@ -101,9 +85,7 @@ With `clear = true` we wouldn't have this problem!
 
 In GLMakie, we can actually take a look at the depthbuffer, to see how it looks now:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 screen = display(scene) # use display, to get a reference to the screen object
 depth_color = GLMakie.depthbuffer(screen)
 close(screen)
@@ -112,16 +94,14 @@ f, ax, pl = heatmap(depth_color)
 Colorbar(f[1, 2], pl)
 f
 ```
-\end{examplefigure}
 
 
 ## Window Events
 
 Every scene also holds a reference to all global window events:
-```julia:ex-scene
+```@example scenes
 scene.events
 ```
-\show{ex-scene}
 
 We can use those events to e.g. move the subwindow. If you execute the below in GLMakie, you can move the sub-window around by pressing left mouse & ctrl:
 
@@ -138,37 +118,28 @@ end
 We've already talked a bit about cameras, but not really how it works.
 Lets start from zero. By default, the scene x/y extends go from -1 to 1.
 So, to draw a rectangle outlining the scene window, the following rectangle does the job:
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 scene = Scene(backgroundcolor=:gray)
 lines!(scene, Rect2f(-1, -1, 2, 2), linewidth=5, color=:black)
 scene
 ```
-\end{examplefigure}
 
 this is, because the projection matrix and view matrix are the identity matrix by default, and Makie's unit space is what's called `Clip space` in the OpenGL world
 
-```julia:ex-scene
+```@example scenes
 cam = Makie.camera(scene) # this is how to access the scenes camera
 ```
-\show{ex-scene}
 
 One can change the mapping, to e.g. draw from -3 to 5 with an orthographic projection matrix:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 cam.projection[] = Makie.orthographicprojection(-3f0, 5f0, -3f0, 5f0, -100f0, 100f0)
 scene
 ```
-\end{examplefigure}
 
 one can also change the camera to a perspective 3d projection:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 w, h = size(scene)
 nearplane = 0.1f0
 farplane = 100f0
@@ -182,7 +153,6 @@ upvector = Vec3f(0, 0, 1)
 cam.view[] = Makie.lookat(eyeposition, lookat, upvector)
 scene
 ```
-\end{examplefigure}
 
 ## Interaction with Axis & Layouts
 
@@ -191,9 +161,7 @@ Besides that, it's a normal scene, which we can use to create subscenes with sma
 
 So, we can use `camrelative` and friends to e.g. plot in the middle of the axis:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 figure, axis, plot_object = scatter(1:4)
 relative_projection = Makie.camrelative(axis.scene);
 scatter!(relative_projection, [Point2f(0.5)], color=:red)
@@ -202,7 +170,6 @@ text!(relative_projection, "Hi", position=Point2f(0.5), offset=Vec2f(5))
 lines!(relative_projection, Rect(0, 0, 1, 1), color=:blue, linewidth=3)
 figure
 ```
-\end{examplefigure}
 
 
 ## Transformations and Scene graph
@@ -215,13 +182,13 @@ The "world" transformation is implemented via the `Transformation` struct in Mak
 The transformation of a scene will get inherited by all plots added to the scene.
 An easy way to manipulate any `Transformable` is via these 3 functions:
 
-{{doc translate!}}
-{{doc rotate!}}
-{{doc scale!}}
+```@docs
+translate!
+rotate!
+scale!
+```
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 scene = Scene()
 cam3d!(scene)
 sphere_plot = mesh!(scene, Sphere(Point3f(0), 0.5), color=:red)
@@ -229,25 +196,19 @@ scale!(scene, 0.5, 0.5, 0.5)
 rotate!(scene, Vec3f(1, 0, 0), 0.5) # 0.5 rad around the y axis
 scene
 ```
-\end{examplefigure}
 
 One can also transform the plot objects directly, which then adds the transformation from the plot object on top of the transformation from the scene.
 One can add subscenes and interact with those dynamically.
 Makie offers here what's usually referred to as a scene graph.
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 translate!(sphere_plot, Vec3f(0, 0, 1))
 scene
 ```
-\end{examplefigure}
 
 The scene graph can be used to create rigid transformations, like for a robot arm:
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 parent = Scene()
 cam3d!(parent; clipping_mode = :static)
 
@@ -267,17 +228,13 @@ mesh!(s3, Rect3f(Vec3f(-0.2), Vec3f(0.4)), color=:blue)
 translate!(s3, 5, 0, 0)
 parent
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-GLMakie.activate!() # hide
+```@figure scenes
 # Now, rotate the "joints"
 rotate!(s2, Vec3f(0, 1, 0), 0.5)
 rotate!(s3, Vec3f(1, 0, 0), 0.5)
 parent
 ```
-\end{examplefigure}
 
 With this basic principle, we can even bring robots to life :)
 [Kevin Moerman](https://github.com/Kevin-Mattheus-Moerman) was so nice to supply a Lego mesh, which we're going to animate!
@@ -396,7 +353,7 @@ Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, ang
     translate!(figure["torso"], translation, 0, 20)
 end
 ```
-~~~
-<video mute autoplay controls src="/assets/lego_walk.mp4">
-</video>
-~~~
+
+```@raw html
+<video mute autoplay loop controls src="/assets/lego_walk.mp4" />
+```
