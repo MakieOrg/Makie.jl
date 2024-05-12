@@ -1,4 +1,4 @@
-# Aspect ratio and size control tutorial
+# Aspect ratios and automatic figure sizes
 
 A very common problem in plotting is dealing with aspect ratios and other ways to precisely control figures.
 
@@ -9,11 +9,7 @@ This aspect is not concerned with what the data limits are, it's just about the 
 Let's look at one common example, a square axis with a colorbar next to it:
 
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure aspect
 set_theme!(backgroundcolor = :gray90)
 
 f = Figure(size = (800, 500))
@@ -21,7 +17,6 @@ ax = Axis(f[1, 1], aspect = 1)
 Colorbar(f[1, 2])
 f
 ```
-\end{examplefigure}
 
 
 As you can see, the axis is square, but there's also a large gap between it and the colorbar.
@@ -30,12 +25,10 @@ Why is that?
 We can visualize the reason by adding a Box to the same cell where the axis is:
 
 
-\begin{examplefigure}{svg = true, name = "aspect_tutorial_example"}
-```julia
+```@figure aspect
 Box(f[1, 1], color = (:red, 0.2), strokewidth = 0)
 f
 ```
-\end{examplefigure}
 
 
 The red area of the box extends out into the whitespace left by the Axis.
@@ -59,28 +52,24 @@ If we want to force a cell to have an aspect ratio, we need to set either its re
 Let's try the example from above again, but this time we force the column of the Axis to have an aspect ratio of 1.0 relative to the row of the Axis, which is row 1.
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 f = Figure(size = (800, 500))
 ax = Axis(f[1, 1])
 Colorbar(f[1, 2])
 colsize!(f.layout, 1, Aspect(1, 1.0))
 f
 ```
-\end{examplefigure}
 
 
 As you can see, this time the colorbar sticks close to the axis, there is no unnecessary whitespace between them.
 We can visualize the effect of `Aspect` again with a red box, that shows us the extent of the layout cell:
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 # hide
 Box(f[1, 1], color = (:red, 0.2), strokewidth = 0)
 f
 ```
-\end{examplefigure}
 
 
 So this time the layout cell itself is square, therefore the Axis that fills it is also square.
@@ -88,30 +77,25 @@ Let me just demonstrate that we can play the same game again and give the Axis a
 This will again cause unnecessary whitespace:
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 ax.aspect = 0.5
 f
 ```
-\end{examplefigure}
 
 
 And now we change the column aspect again, to remove this gap:
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 colsize!(f.layout, 1, Aspect(1, 0.5))
 f
 ```
-\end{examplefigure}
 
 
 Let's return to our previous state with a square axis:
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 # hide
 f = Figure(size = (800, 500))
 ax = Axis(f[1, 1])
@@ -119,7 +103,6 @@ Colorbar(f[1, 2])
 colsize!(f.layout, 1, Aspect(1, 1.0))
 f
 ```
-\end{examplefigure}
 
 
 Now you might think that there is no whitespace anymore between Axis and Colorbar, but there is a lot of it to the left and the right.
@@ -140,12 +123,10 @@ By calling `resize_to_layout!`, we can adjust the figure size to the size that t
 Let's try it out:
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 resize_to_layout!(f)
 f
 ```
-\end{examplefigure}
 
 
 As you can see, the whitespace at the sides has been trimmed.
@@ -160,25 +141,21 @@ The `Auto` sized columns and rows of the default layout pick up these measuremen
 Of course, the figure size will by default not be appropriate for such an arrangement, and the content will clip:
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 f = Figure()
 for i in 1:5, j in 1:5
     Axis(f[i, j], width = 150, height = 150)
 end
 f
 ```
-\end{examplefigure}
 
 
 But like before we can call `resize_to_layout!` and the size will be corrected so no clipping occurs.
 
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 set_theme!() # hide
 resize_to_layout!(f)
 f
 ```
-\end{examplefigure}
 
