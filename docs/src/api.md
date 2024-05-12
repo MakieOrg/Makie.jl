@@ -5,6 +5,6 @@ CurrentModule = Makie
 ```
 
 ```@autodocs
-Modules = [Makie]
+Modules = [Makie, MakieCore]
 Private = false
 ```
