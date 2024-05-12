@@ -62,6 +62,7 @@ makedocs(;
         "News" => "news.md",
     ],
     warnonly = true,
+    pagesonly = true,
 )
 
 # # by making all links relative, we can forgo the `prepath` setting of Franklin
