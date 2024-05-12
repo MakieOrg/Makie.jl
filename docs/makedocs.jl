@@ -19,6 +19,9 @@ using DocumenterVitepress
 # include("buildutils/relative_links.jl")
 # include("buildutils/redirect_generation.jl")
 
+using CairoMakie
+using WGLMakie
+using RPRMakie
 using GLMakie
 # remove GLMakie's renderloop completely, because any time `GLMakie.activate!()`
 # is called somewhere, it's reactivated and slows down CI needlessly

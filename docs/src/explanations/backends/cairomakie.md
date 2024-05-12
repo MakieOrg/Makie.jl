@@ -6,14 +6,10 @@ You should use it if you want to achieve the highest-quality plots for publicati
 ## Activation and screen config
 
 Activate the backend by calling `CairoMakie.activate!()` with the following options:
-```julia:docs
-# hideall
-using CairoMakie, Markdown
-println("~~~")
-println(Markdown.html(@doc CairoMakie.activate!))
-println("~~~")
+
+```@docs
+CairoMakie.activate!
 ```
-\textoutput{docs}
 
 #### Inline Plot Type
 

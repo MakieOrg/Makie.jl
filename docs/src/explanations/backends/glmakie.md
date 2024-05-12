@@ -6,14 +6,10 @@ It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 ## Activation and screen config
 
 Activate the backend by calling `GLMakie.activate!()`:
-```julia:docs
-# hideall
-using GLMakie, Markdown
-println("~~~")
-println(Markdown.html(@doc GLMakie.activate!))
-println("~~~")
+
+```@docs
+GLMakie.activate!
 ```
-\textoutput{docs}
 
 #### Window Scaling
 

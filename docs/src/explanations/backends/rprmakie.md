@@ -16,14 +16,9 @@ To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x84
 ## Activation and screen config
 
 Activate the backend by calling `RPRMakie.activate!()` with the following options:
-```julia:docs
-# hideall
-using RPRMakie, Markdown
-println("~~~")
-println(Markdown.html(@doc RPRMakie.activate!))
-println("~~~")
+```@docs
+RPRMakie.activate!
 ```
-\textoutput{docs}
 
 Since RPRMakie is quite the unique backend and still experimental, there are several gotchas when working with it.
 
