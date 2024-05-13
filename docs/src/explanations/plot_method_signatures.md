@@ -1,4 +1,4 @@
-# Plot Method Signatures
+# Plot methods
 
 Makie offers a simple but powerful set of methods for each plotting function, which allow you to easily create and manipulate the most common aspects of a figure.
 
@@ -33,10 +33,7 @@ All other keyword arguments are passed as attributes to the plotting function.
 
 Here are two examples with the scatter function (take care to create single-argument NamedTuples correctly, for example with a trailing comma):
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure
 # FigureAxisPlot takes figure and axis keywords
 fig, ax, p = lines(cumsum(randn(1000)),
     figure = (size = (1000, 600),),
@@ -50,7 +47,6 @@ lines(fig[2, 1], cumsum(randn(1000)),
 
 fig
 ```
-\end{examplefigure}
 
 ## Mutating
 
@@ -78,10 +74,7 @@ The link to the Figure is in the parent field of the top layout.
 Using the non-mutating plotting functions with GridPositions creates new axes at the given locations.
 If a GridLayout along the nesting levels doesn't exist, yet, it is created automatically for convenience.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure
 fig = Figure()
 
 # first row, first column
@@ -104,7 +97,6 @@ fig[:, end+1] = Colorbar(fig, hm)
 
 fig
 ```
-\end{examplefigure}
 
 ### With Mutating Plotting Functions
 
@@ -113,10 +105,7 @@ First, it is checked if one - and only one - axis exists already at the given po
 If that's the case, that axis is plotted into.
 If it's not the case, the function will error.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure
 fig = Figure()
 
 lines(fig[1, 1], 1.0..10, sin, color = :blue)
@@ -140,4 +129,3 @@ lines!(ax, 1.0..10, cos, color = :yellow)
 
 fig
 ```
-\end{examplefigure}
