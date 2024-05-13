@@ -1,4 +1,4 @@
-# Inspecting Data
+# Inspecting data
 
 Makie provides a data inspection tool via `DataInspector(x)` where x can be a
 figure, axis or scene. With it you get a floating tooltip with relevant
@@ -9,7 +9,9 @@ By default the inspector will be able to pick any plot other than `text` and
 `plot.inspectable[] = false`. With that the next closest plot (in range) will be
 picked.
 
-{{doc DataInspector}}
+```@docs
+DataInspector
+```
 
 ## Custom text
 
