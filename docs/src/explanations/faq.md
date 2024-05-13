@@ -98,11 +98,7 @@ If you forget to put an element in a layout, it will have its default bounding b
 of `BBox(0, 100, 0, 100)` which ends up being in the lower left corner. You can
 also choose to specify a bounding box manually if you need more control.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 
 ax1 = Axis(f, title = "Squashed")
@@ -112,8 +108,6 @@ ax3 = Axis(f, bbox = BBox(200, 600, 100, 500),
 
 f
 ```
-\end{examplefigure}
-
 
 ### Columns or rows are shrunk to the size of Text or another element
 
@@ -126,10 +120,7 @@ the attribute `tellheight = false` or `tellwidth = false`. This way, its own hei
 or width doesn't influence the automatic sizing of the layout. Alternatively, you can set the size
 of that row or column to `Auto(false)` (or any other value than `Auto(true)`).
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-
+```@figure
 f = Figure()
 
 Axis(f[1, 1], title = "Shrunk")
@@ -139,8 +130,6 @@ Label(f[2, 2], "This Label has the setting\ntellheight = false.\nThe row it is i
 
 f
 ```
-\end{examplefigure}
-
 
 ### The Figure content does not fit the Figure
 
@@ -156,10 +145,7 @@ If this is the case, you can use the function `resize_to_layout!`, which determi
 Here is an example, where all `Axis` objects are given fixed widths and heights.
 There are not enough degrees of freedom for the layout algorithm to fit everything nicely into the `Figure`:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-
+```@figure resize
 set_theme!(backgroundcolor = :gray90)
 
 f = Figure(size = (800, 600))
@@ -174,17 +160,14 @@ Colorbar(f[1:3, 4])
 
 f
 ```
-\end{examplefigure}
 
 
 As you can see, there's empty space on all four sides, because there are no flexible objects that could fill it.
 
 But once we run `resize_to_layout!`, the `Figure` assumes the appropriate size for our axes:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure resize
 resize_to_layout!(f)
 set_theme!() # hide
 f
 ```
-\end{examplefigure}
