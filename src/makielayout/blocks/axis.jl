@@ -863,7 +863,13 @@ function getlimits(la::Axis, dim)
         bb = boundingbox(la.scene, exclude)
         # then undo transform_func so that ticks can handle transform_func
         # without ignoring translations, scaling or rotations from model
-        bb = apply_transform(itf, bb)
+        try
+            bb = apply_transform(itf, bb)
+        catch e
+            # TODO: Is this necessary?
+            @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
+            bb = data_limits(la.scene, exclude)
+        end
     end
 
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
