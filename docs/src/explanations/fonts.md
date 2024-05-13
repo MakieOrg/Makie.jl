@@ -15,22 +15,20 @@ font_by_name = "TeX Gyre Heros Makie"
 
 If you want to find out what exact font your string was resolved as, you can execute `Makie.to_font(the_string)`:
 
-```julia:fonts1
+```@example
 using Makie
 Makie.to_font("Blackchancery")
 ```
-\show{fonts1}
 
 ## Symbol
 
 A `Symbol` will be resolved by looking it up in the `text`'s `fonts` attribute.
 The default theme has the following fonts set:
 
-```julia:fonts2
+```@example
 using Makie
 Makie.theme(:fonts)
 ```
-\show{fonts2}
 
 Therefore, you can pick a font from this set by setting, for example, `font = :bold_italic`.
 The advantage of this is that you can set your fonts not by hardcoding specific ones at every place where you use `text`, but by setting the fonts at the top level.
@@ -38,17 +36,12 @@ The advantage of this is that you can set your fonts not by hardcoding specific 
 You can modify or add keys in the font set using `set_theme!`, `with_theme`, `update_theme!`, or by passing them to the `Figure` constructor.
 Here's an example:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure(fontsize = 24, fonts = (; regular = "Dejavu", weird = "Blackchancery"))
 Axis(f[1, 1], title = "A title", xlabel = "An x label", xlabelfont = :weird)
 
 f
 ```
-\end{examplefigure}
 
 ## Emoji and color fonts
 
