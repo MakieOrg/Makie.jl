@@ -9,17 +9,7 @@ While this engine is responsive enough for use in GLMakie, it only supports a su
 You can pass `LaTeXString` objects to almost any object with text labels. They are constructed using the `L` string macro prefix.
 The whole string is interpreted as an equation if it doesn't contain an unescaped `$`.
 
-
-```!
-# hideall
-using CairoMakie
-```
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure(fontsize = 18)
 
 Axis(f[1, 1],
@@ -30,33 +20,23 @@ Axis(f[1, 1],
 
 f
 ```
-\end{examplefigure}
 
 You can also mix math-mode and text-mode.
 For [string interpolation](https://docs.julialang.org/en/v1/manual/strings/#string-interpolation) use `%$`instead of `$`:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure(fontsize = 18)
 t = "text"
 Axis(f[1,1], title=L"Some %$(t) and some math: $\frac{2\alpha+1}{y}$")
 
 f
 ```
-\end{examplefigure}
 
 ## Uniformizing the fonts
 
 We provide a LaTeX theme to easily switch to the LaTeX default fonts for all the text.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 with_theme(theme_latexfonts()) do
     fig = Figure()
     Label(fig[1, 1], "A standard Label", tellwidth = false)
@@ -65,4 +45,3 @@ with_theme(theme_latexfonts()) do
     fig
 end
 ```
-\end{examplefigure}
