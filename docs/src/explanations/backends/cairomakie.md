@@ -39,22 +39,14 @@ You can deactivate this rasterization by setting `plt.rasterize = false`.
 
 Example:
 
-\begin{examplefigure}{svg=true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure mime=svg
 v = rand(10,2)
 scatter(v[:,1], v[:,2], rasterize = true, markersize = 30.0)
 ```
-\end{examplefigure}
 
 If you zoom in, you will see a pretty badly pixelated image - this is because the rasterization density is set to 1 `px` per `pt`.  Setting `rasterize=10` makes this a lot smoother:
 
-\begin{examplefigure}{svg=true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure mime=svg
 v = rand(10,2)
 scatter(v[:,1], v[:,2], rasterize = 10, markersize = 30.0)
 ```
-\end{examplefigure}
