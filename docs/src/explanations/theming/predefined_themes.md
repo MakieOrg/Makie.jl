@@ -3,11 +3,7 @@
 Makie has a few predefined themes.
 Here you can see the same example figure with these different themes applied.
 
-~~~
-<input id="hidecode" class="hidecode" type="checkbox">
-~~~
-
-```julia:demofigure
+```@example theme
 using CairoMakie
 using Random
 
@@ -67,64 +63,46 @@ function demofigure()
 end
 ```
 
-~~~
-<label for="hidecode" class="hidecode"></label>
-~~~
-
 ## Default theme
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 demofigure()
 ```
-\end{examplefigure}
 
 ## theme_ggplot2
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(demofigure, theme_ggplot2())
 ```
-\end{examplefigure}
 
 ## theme_minimal
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(demofigure, theme_minimal())
 ```
-\end{examplefigure}
 
 ## theme_black
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(demofigure, theme_black())
 ```
-\end{examplefigure}
 
 ## theme_light
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(demofigure, theme_light())
 ```
-\end{examplefigure}
 
 ## theme_dark
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(demofigure, theme_dark())
 ```
-\end{examplefigure}
 
 ## theme_latexfonts
 
 See also [more general documentation on Makie and LaTeX](\reflink{LaTeX}).
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(demofigure, theme_latexfonts())
 ```
-\end{examplefigure}

@@ -1,4 +1,4 @@
-# Theming
+# Themes
 
 Makie allows you to change almost every visual aspect of your plots via attributes.
 You can set attributes whenever you create an object, or you define a general style that is then used as the default by all following objects.
@@ -11,7 +11,7 @@ update_theme!
 with_theme
 ```
 
-There are also [predefined themes](\reflink{Predefined themes}) that may form a useful starting point.
+There are also [Predefined themes](@ref) that may form a useful starting point.
 
 ## set_theme!
 
@@ -20,11 +20,7 @@ You can also reset your changes by calling `set_theme!()` without arguments.
 
 Let's create a plot with the default theme:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure theme
 function example_plot()
     f = Figure()
     for i in 1:2, j in 1:2
@@ -37,24 +33,21 @@ end
 
 example_plot()
 ```
-\end{examplefigure}
 
 Now we define a theme which changes the default fontsize, activate it, and plot.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie # hide
+```@figure theme
 fontsize_theme = Theme(fontsize = 10)
 set_theme!(fontsize_theme)
 
 example_plot()
 ```
-\end{examplefigure}
 
 This theme will be active until we call `set_theme!()`.
 
-```julia:set_theme
+```@example theme
 set_theme!()
+nothing # hide
 ```
 
 ## merge
@@ -63,15 +56,12 @@ Themes often only affect part of the plot attributes. Therefore it is possible t
 
 For example, you can combine the dark theme with the LaTeX fonts theme to have both the dark colors and uniform fonts.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie # hide
+```@figure theme
 dark_latexfonts = merge(theme_dark(), theme_latexfonts())
 with_theme(dark_latexfonts) do
     example_plot()
 end
 ```
-\end{examplefigure}
 
 ## update_theme!
 
@@ -79,46 +69,35 @@ If you have activated a theme already and want to update it partially, without r
 
 For example, you can decide to change the text size after activating the dark and latex theme in the previous section.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie # hide
+```@figure theme
 update_theme!(fontsize=30)
 example_plot()
 ```
-\end{examplefigure}
 
 ## with_theme
 
 Because it can be tedious to remember to switch themes off which you need only temporarily, there's the function `with_theme(f, theme)` which handles the resetting for you automatically, even if you encounter an error while running `f`.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie # hide
+```@figure theme
 set_theme!() # hide
 with_theme(fontsize_theme) do
     example_plot()
 end
 ```
-\end{examplefigure}
 
 You can also pass additional keywords to add or override attributes in your theme:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie # hide
+```@figure theme
 with_theme(fontsize_theme, fontsize = 25) do
     example_plot()
 end
 ```
-\end{examplefigure}
 
 ## Theming plot objects
 
 You can theme plot objects by using their uppercase type names as a key in your theme.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie # hide
+```@figure theme
 lines_theme = Theme(
     Lines = (
         linewidth = 4,
@@ -128,7 +107,6 @@ lines_theme = Theme(
 
 with_theme(example_plot, lines_theme)
 ```
-\end{examplefigure}
 
 ## Theming block objects
 
@@ -136,9 +114,7 @@ Every Block such as `Axis`, `Legend`, `Colorbar`, etc. can be themed by using it
 
 Here is how you could define a simple ggplot-like style for your axes:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie # hide
+```@figure theme
 ggplot_theme = Theme(
     Axis = (
         backgroundcolor = :gray90,
@@ -153,7 +129,6 @@ ggplot_theme = Theme(
 
 with_theme(example_plot, ggplot_theme)
 ```
-\end{examplefigure}
 
 ## Cycles
 
@@ -178,8 +153,7 @@ Notice that cycles must be given as attributes to a plot object, not the top-lev
 (because different plot objects can cycle different attributes, e.g., a density plot
 cannot cycle markers). This is exemplified in the following code blocks.
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(
     Theme(
         palette = (color = [:red, :blue], marker = [:circle, :xcross]),
@@ -193,7 +167,6 @@ with_theme(
     current_figure()
 end
 ```
-\end{examplefigure}
 
 ### Covarying cycles
 
@@ -220,8 +193,7 @@ cycle = Cycle([:color, :marker], covary = true)
 
 For example
 
-\begin{examplefigure}{}
-```julia
+```@figure theme
 with_theme(
     Theme(
         palette = (color = [:red, :blue], linestyle = [:dash, :dot]),
@@ -235,7 +207,6 @@ with_theme(
     current_figure()
 end
 ```
-\end{examplefigure}
 
 ### Manual cycling using `Cycled`
 
@@ -245,11 +216,7 @@ For example, to access the third color in a cycler, instead of plotting three pl
 
 The cycler's internal counter is not advanced when using `Cycled` for any attribute, and only attributes with `Cycled` access the cycled values, all other usually cycled attributes fall back to their non-cycled defaults.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 
 Axis(f[1, 1])
@@ -266,7 +233,6 @@ lines!(0..10, x -> sin(x) - 7, color = Cycled(1))
 
 f
 ```
-\end{examplefigure}
 
 ### Palettes
 
@@ -274,11 +240,7 @@ The attributes specified in the cycle are looked up in the axis' palette.
 A single `:color` is both plot attribute as well as palette attribute, while `:color => :patchcolor` means that `plot.color` should be set to `palette.patchcolor`.
 Here's an example that shows how density plots react to different palette options:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 set_theme!() # hide
 
 f = Figure(size = (800, 800))
@@ -309,7 +271,6 @@ set_theme!() # hide
 
 f
 ```
-\end{examplefigure}
 
 You can also theme global palettes via `set_theme!(palette = (color = my_colors, marker = my_markers))` for example.
 
