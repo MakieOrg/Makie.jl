@@ -23,6 +23,7 @@ using CairoMakie
 using WGLMakie
 using RPRMakie
 using GLMakie
+
 # remove GLMakie's renderloop completely, because any time `GLMakie.activate!()`
 # is called somewhere, it's reactivated and slows down CI needlessly
 function GLMakie.renderloop(screen)
@@ -56,7 +57,24 @@ makedocs(;
                 "explanations/backends/glmakie.md",
                 "explanations/backends/rprmakie.md",
                 "explanations/backends/wglmakie.md",
-            ]
+            ],
+            "explanations/animation.md",
+            "explanations/blocks.md",
+            "explanations/cameras.md",
+            "explanations/conversion_pipeline.md",
+            "explanations/colors.md",
+            "explanations/dim-converts.md",
+            "explanations/events.md",
+            "explanations/figure.md",
+            "explanations/faq.md",
+            "explanations/fonts.md",
+            "explanations/layouting.md",
+            "explanations/headless.md",
+            "explanations/inspector.md",
+            "explanations/latex.md",
+            "explanations/observables.md",
+            "explanations/plot_method_signatures.md",
+            "explanations/recipes.md",
         ],
         "How-Tos" => [
             "how-to/draw-boxes-around-subfigures.md",
@@ -83,7 +101,8 @@ makedocs(;
 #     r"/explanations/(.*)" => s"/documentation/\1",
 # ], dry_run = false)
 
-# deploy(
-#     params;
-#     target = "__site",
-# )
+deploydocs(;
+    repo="github.com/MakieOrg/Makie.jl",
+    devbranch="master",
+    push_preview = true,
+)
