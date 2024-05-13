@@ -233,9 +233,19 @@ end
 function apply_model(model::Mat4, transformed::Rect{N, T}, space::Symbol) where {N, T}
     if space in (:data, :transformed)
         bb = Rect{N, T}()
-        for input in corners(transformed)
-            output = to_ndim(Point{N, T}, unchecked_apply_model(model, input), NaN)
-            bb = update_boundingbox(bb, output)
+        if !isfinite_rect(transformed) && is_translation_scale_matrix(model)
+            # Bbox contains NaN so matmult would make everything NaN, but model
+            # matrix doesn't actually mix dimensions (just translation + scaling)
+            scale = to_ndim(Vec{N, T}, Vec3(model[1, 1], model[2, 2], model[3, 3]), 1.0)
+            trans = to_ndim(Vec{N, T}, Vec3(model[1, 4], model[2, 4], model[3, 4]), 1.0)
+            mini = scale .* minimum(transformed) .+ trans
+            maxi = scale .* maximum(transformed) .+ trans
+            return Rect{N, T}(mini, maxi - mini)
+        else
+            for input in corners(transformed)
+                output = to_ndim(Point{N, T}, unchecked_apply_model(model, input), NaN)
+                bb = update_boundingbox(bb, output)
+            end
         end
         return bb
     else
