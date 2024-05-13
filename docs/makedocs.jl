@@ -82,6 +82,12 @@ makedocs(;
             ],
             "explanations/transparency.md",
         ],
+        "How-Tos" => [
+            "how-to/draw-boxes-around-subfigures.md",
+            "how-to/save-figure-with-transparency.md",
+        ],
+        "API" => "api.md",
+        "News" => "news.md",
     ],
     warnonly = true,
     pagesonly = true,
