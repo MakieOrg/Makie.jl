@@ -35,17 +35,21 @@ A subscene is no different than a normal Scene, except that it is linked to a "p
 
 Makie offers mutation functions to scale, translate and rotate your Scenes on the fly.
 
-{{doc translate!}}
-{{doc rotate!}}
-{{doc scale!}}
+```@docs
+translate!
+rotate!
+scale!
+```
 
 ## Updating the Scene
 
 When the Scene is changed, you may need to update several aspects of it.
 Makie provides three main updating functions:
 
-{{doc update_cam!}}
+```@docs
+update_cam!
+```
 
 ## Events
 
-Scenes have several pre-created event "hooks" (through Observables) that you can handle.  These can be accessed through `scene.events`, which returns an \apilink{Events} struct.
+Scenes have several pre-created event "hooks" (through Observables) that you can handle.  These can be accessed through `scene.events`, which returns an [`Events`](@ref) struct.
