@@ -62,9 +62,7 @@ axis = Makie.BlockSpec(:Axis; title="Axis at layout position (1, 1)")
 
 To build layouts quickly, you can pass column vectors, row vectors or matrices of block specs to `S.GridLayout`. If you need more control over the layout, you can specify row and column sizes and gaps directly.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
+```@figure backend=GLMakie
 using DelimitedFiles
 using Makie.FileIO
 import Makie.SpecApi as S
@@ -94,7 +92,6 @@ spec_row = S.GridLayout([spec_column_vector spec_matrix], colsizes = [Auto(), Au
 
 f, ax, pl = plot(S.GridLayout(spec_row); figure = (; fontsize = 10))
 ```
-\end{examplefigure}
 
 ## Advanced spec layouting
 
@@ -103,9 +100,7 @@ These positions are specified as a tuple of `(rows, columns [, side])` where `si
 For `rows` and `columns` you can either use integers like `2`, ranges like `1:3` or the colon operator `:` which spans across all rows or columns that are specified for other elements.
 Rows and columns start at `1` by default but you can also use numbers lower than `1` if necessary.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 import Makie.SpecApi as S
 Makie.inline!(true) # hide
 CairoMakie.activate!() # hide
@@ -124,13 +119,10 @@ plot(
     ])
 )
 ```
-\end{examplefigure}
 
 You can also use manual positions with nested `GridLayout`s.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
+```@figure
 import Makie.SpecApi as S
 Makie.inline!(true) # hide
 CairoMakie.activate!() # hide
@@ -141,7 +133,6 @@ plot(S.GridLayout([
     (2, :) => S.GridLayout(fill(S.Axis(), 1, 3)),
 ]))
 ```
-\end{examplefigure}
 
 Here are all the keyword arguments that `S.GridLayout` accepts.
 
@@ -171,11 +162,8 @@ The main difference between those is, that returning an array of `PlotSpecs` may
 
 In this example, we overload `convert_arguments` for a custom type to create facet grids easily.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure spec
 import Makie.SpecApi as S
-CairoMakie.activate!() # hide
 
 # Our custom type we want to write a conversion method for
 struct PlotGrid
@@ -200,18 +188,15 @@ end
 # Now, when we plot `PlotGrid` we get a whole facet layout
 plot(PlotGrid((3, 4)))
 ```
-\end{examplefigure}
 
 We can also plot into existing `Figure`s with our new `plot` method:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure spec
 f = Figure()
 plot(f[1, 1], PlotGrid((2, 2)); color=Cycled(1))
 plot(f[1, 2], PlotGrid((3, 2)); color=Cycled(2))
 f
 ```
-\end{examplefigure}
 
 ## `convert_arguments` for `PlotSpec`s
 
@@ -221,12 +206,9 @@ For this, users had to do tedious manual bookkeeping which is now abstracted awa
 
 Note, that this method currently doesn't allow to forward keyword arguments from the `plot` command to `convert_arguments`, so we put the plot arguments into the `LineScatter` object in the following example:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
+```@figure
 import Makie.SpecApi as S
 using Random
-CairoMakie.activate!() # hide
 
 Random.seed!(123)
 
@@ -260,19 +242,15 @@ plot!(ax, CustomMatrix(data, style = :heatmap, colormap = :Blues))
 plot(f[1, 2], CustomMatrix(data, style = :contourf, colormap = :inferno))
 f
 ```
-\end{examplefigure}
-
 
 ## Interactive example
 
 The SpecApi is geared towards dashboards and interactively creating complex plots.
 Here is an example using a `Slider` and a `Menu`, to visualize a fake simulation:
 
-~~~
-<input id="hidecode" class="hidecode" type="checkbox">
-~~~
-```julia:simulation
+```@example
 using GLMakie
+using Random
 import Makie.SpecApi as S
 GLMakie.activate!() # hide
 
@@ -326,9 +304,9 @@ record(f, "interactive_specapi.mp4", framerate=1) do io
         recordframe!(io)
     end
 end
+nothing # hide
 ```
-~~~
-<label for="hidecode" class="hidecode"></label>
-~~~
 
-\video{interactive_specapi, autoplay = true}
+```@raw html
+<video autoplay loop muted playsinline controls src="./interactive_specapi.mp4" />
+```
