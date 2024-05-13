@@ -3,7 +3,7 @@
 Interactive backends such as `GLMakie` and `WGLMakie` pass events to Observables collected in an `Events` struct. By reacting to these one can build up custom interactions.
 
 !!! note
-    If you are new to Observables you should first read [Observables & Interaction](\reflink{Observables & Interaction})
+    If you are new to Observables you should first read [Observables](@ref).
 
 ## Observables with priority
 
@@ -11,7 +11,7 @@ With Observables, one can add callbacks also with a priority. Furthermore it all
 
 To understand how a `PriorityObserable` works you may try this example:
 
-```julia:po_code
+```@example
 using Makie
 
 po = Observable(0)
@@ -37,7 +37,6 @@ end
 po[] = 3
 nothing # hide
 ```
-\show{po_code}
 
 
 With only the first listener connected `Low priority: 1` gets printed. In this case the behavior is the same as normal Observables. The second listener we add is a blocking one because it returns `Consume(true)`. Since it has a higher priority than the first one only the second listener will trigger. Thus we get `Medium blocking priority: 2`. The third listener is non-blocking and at yet again higher priority. As such we get a result from both the third and second listener.
@@ -380,12 +379,12 @@ Note that the way we used `ispressed` above, the condition will be true for "pre
 
 ## Interactive Widgets
 
-Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can learn about in the \myreflink{Blocks} section.
+Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can learn about in the [Blocks](@ref) section.
 
 ## Recording Animations with Interactions
 
 You can record a `Scene` while you're interacting with it.
-Just use the \apilink{record} function (also see the \myreflink{Animations} page) and allow interaction by `sleep`ing in the loop.
+Just use the [`record`](@ref) function (also see the [Animations](@ref) page) and allow interaction by `sleep`ing in the loop.
 
 In this example, we sample from the Scene `scene` for 10 seconds, at a rate of 10 frames per second.
 

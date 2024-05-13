@@ -1,4 +1,4 @@
-# Observables & Interaction
+# Observables
 
 Interaction and animations in Makie are handled using [`Observables.jl`](https://juliagizmos.github.io/Observables.jl/stable/).
 An `Observable` is a container object whose stored value you can update interactively.
@@ -8,31 +8,20 @@ This way you can easily build dynamic and interactive visualizations.
 
 On this page you will learn how the `Observable`s pipeline and the event-based interaction system work. Besides this, there is also a video tutorial on how to make interactive visualizations (or animations) with Makie.jl and the `Observable` system:
 
-~~~<a class="boxlink" href="https://www.youtube.com/watch?v=L-gyDvhjzGQ">~~~
-@@title Animations & Interaction @@
-@@box-content
-    @@description
-    How to create animations and interactive applications in Makie.
-    @@
-    ~~~
-    <div class="youtube-container">
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/L-gyDvhjzGQ?controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-    </div>
-    ~~~
-@@
-~~~</a>~~~
+```@raw html
+<iframe width="560" height="315" src="https://www.youtube.com/embed/L-gyDvhjzGQ?controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+```
 
 ## The `Observable` structure
 
 A `Observable` is an object that allows its value to be updated interactively.
 Let's start by creating one:
 
-```julia:code1
+```@example observable
 using GLMakie, Makie
 
 x = Observable(0.0)
 ```
-\show{code1}
 
 Each `Observable` has a type parameter, which determines what kind of objects it can store.
 If you create one like we did above, the type parameter will be the type of the argument.
@@ -51,18 +40,17 @@ For example, a color could be `:red` or `RGB(1,0,0)`.
 
 You change the value of a Observable with empty index notation:
 
-```julia:code2
+```@example observable
 x[] = 3.34
 nothing # hide
 ```
-\show{code2}
 
 This was not particularly interesting.
 But Observables allow you to register functions that are executed whenever the Observable's content is changed.
 
 One such function is `on`. Let's register something on our Observable `x` and change `x`'s value:
 
-```julia:code3
+```@example observable
 on(x) do x
     println("New value of x is $x")
 end
@@ -70,7 +58,6 @@ end
 x[] = 5.0
 nothing # hide
 ```
-\show{code3}
 
 !!! note
     If you updated the `Observable` using in-place syntax (e.g. `img[] .= colorant"red"`), you need to manually
@@ -92,20 +79,19 @@ The advantage of using `to_value` is that you can use it in situations where you
 
 ## Chaining `Observable`s With `lift`
 
-You can create a Observable depending on another Observable using \apilink{lift}.
+You can create a Observable depending on another Observable using [`lift`](@ref).
 The first argument of `lift` must be a function that computes the value of the output Observable given the values of the input Observables.
 
-```julia:code4
+```@example observable
 f(x) = x^2
 y = lift(f, x)
 ```
-\show{code4}
 
 Now, whenever `x` changes, the derived `Observable` `y` will immediately hold the value `f(x)`.
 In turn, `y`'s change could trigger the update of other observables, if any have been connected.
 Let's connect one more observable and update x:
 
-```julia:code5
+```@example observable
 z = lift(y) do y
     -y
 end
@@ -117,7 +103,6 @@ x[] = 10.0
 @show z[]
 nothing # hide
 ```
-\show{code5}
 
 If `x` changes, so does `y` and then `z`.
 
@@ -125,7 +110,7 @@ Note, though, that changing `y` does not change `x`.
 There is no guarantee that chained Observables are always synchronized, because they
 can be mutated in different places, even sidestepping the change trigger mechanism.
 
-```julia:code6
+```@example observable
 y[] = 20.0
 
 @show x[]
@@ -133,12 +118,11 @@ y[] = 20.0
 @show z[]
 nothing # hide
 ```
-\show{code6}
 
 
 ## Shorthand Macro For `lift`
 
-When using \apilink{lift}, it can be tedious to reference each participating `Observable`
+When using [`lift`](@ref), it can be tedious to reference each participating `Observable`
 at least three times, once as an argument to `lift`, once as an argument to the closure that
 is the first argument, and at least once inside the closure:
 
