@@ -1,4 +1,4 @@
-# Basic transparency
+# Transparency
 
 To make a plot transparent you need to add an alpha value to its `color` or `colormap`.
 
@@ -25,7 +25,7 @@ fig
 ```
 
 
-# Details and Problems with transparency
+## Problems with transparency
 
 The color generated from two overlapping transparent objects depends on their order. Consider for example a red and blue marker with the same level of transparency. If the blue marker is in front we expect a more blue color where they overlap. If the red one is in front we expect a more red color.
 
