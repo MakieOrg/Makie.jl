@@ -9,9 +9,6 @@ function colors_svg(key::Symbol, cs, w, h; categorical)
     n = length(cs)
     ws = min(w / n, h)
     html = """
-    <?xml version="1.0" encoding="UTF-8"?>
-    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
-     "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
      <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
           width="$(categorical ? n * ws : w)mm" height="$(h)mm"
           viewBox="0 0 $n 1" preserveAspectRatio="none"
@@ -46,7 +43,6 @@ function colors_svg(key::Symbol, cs, w, h; categorical)
 end
 
 function generate_colorschemes_table(ks)
-    extra_dir = get(ENV, "CI", "false") == "true" ? "../" : ""
     html = "<table><tr class=\"headerrow\">"
     for header in ["NAME", "Categorical variant", "Continuous variant"]
         html *= "<th>$header</th>"
@@ -72,5 +68,9 @@ function generate_colorschemes_table(ks)
     return html
 end
 
+struct ColorTable
+    keys::Vector{Symbol}
+end
 
+Base.show(io::IO, ::MIME"text/html", c::ColorTable) = print(io, generate_colorschemes_table(c.keys))
 

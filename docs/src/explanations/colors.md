@@ -24,10 +24,7 @@ Alternatively, one can make partially transparent colors or colormaps by passing
 
 Here's a little cheat sheet showing common color specifications:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 using Makie.Colors
 
 theme = Attributes(
@@ -90,7 +87,6 @@ with_theme(theme) do
     f
 end
 ```
-\end{examplefigure}
 
 ## Named colors
 Named colors in Makie.jl (e.g., `:blue`) are parsed using [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/constructionandconversion/#Color-Parsing) and thus have a large array of possibilities under CSS specifications. You can find a plotted table of all possible names [in this page](https://juliagraphics.github.io/Colors.jl/stable/namedcolors/).
@@ -101,11 +97,7 @@ Makie's default categorical color palette used for cycling is a reordered versio
 
 Makie's default continuous color map is `:viridis` which is a perceptually uniform colormap originally developed for matplotlib.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f, ax, sc = scatter(1:7, fill(1, 7), color = Makie.wong_colors(), markersize = 50)
 hidedecorations!(ax)
 hidespines!(ax)
@@ -117,8 +109,67 @@ text!(ax, 4, 0, text = ":viridis",
 ylims!(ax, -1, 2)
 f
 ```
-\end{examplefigure}
 
 The following is a list of all the colormaps accessible via a `Symbol` in Makie which are defined in ColorSchemes.jl:
 
-{{colorschemes}}
+### misc
+
+These colorschemes are not defined or provide different colors in ColorSchemes.jl
+They are kept for compatibility with the old behaviour of Makie, before v0.10.
+
+```@example colors
+using Markdown # hide
+using Makie.PlotUtils # hide
+Core.include(@__MODULE__, "colormap_generation.jl") # hide
+ColorTable([:default; sort(collect(keys(PlotUtils.MISC_COLORSCHEMES)))]) # hide
+```
+
+### cmocean
+
+```@example colors
+getkeys(colorscheme) = sort([k for (k, v) in PlotUtils.ColorSchemes.colorschemes if occursin(colorscheme, v.category)]) # hide
+ColorTable(getkeys("cmocean")) # hide
+```
+
+### scientific
+
+```@example colors
+ColorTable(getkeys("scientific")) # hide
+```
+
+### matplotlib
+
+```@example colors
+ColorTable(getkeys("matplotlib")) # hide
+```
+
+### colorbrewer
+
+```@example colors
+ColorTable(getkeys("colorbrewer")) # hide
+```
+
+### gnuplot
+
+```@example colors
+ColorTable(getkeys("gnuplot")) # hide
+```
+
+### colorcet
+
+```@example colors
+ColorTable(getkeys("colorcet")) # hide
+```
+
+### seaborn
+
+```@example colors
+ColorTable(getkeys("seaborn")) # hide
+```
+
+### general
+
+```@example colors
+ColorTable(getkeys("general")) # hide
+```
+
