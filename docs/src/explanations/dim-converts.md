@@ -8,7 +8,7 @@ In the following sections we will explain their usage and how to extend the inte
 
 The basic usage is as easy as replacing numbers with any supported type, e.g. `Dates.Second`:
 
-```@figure
+```@figure dimconverts
 using CairoMakie, Makie.Dates, Makie.Unitful
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -19,7 +19,7 @@ f, ax, pl = scatter(rand(Second(1):Second(60):Second(20*60), 10))
 Once an axis dimension is set to a certain unit, one must plot into that axis with compatible units.
 So e.g. hours work, since they're compatible with the unitful conversion:
 
-```@figure
+```@figure dimconverts
 scatter!(ax, rand(Hour(1):Hour(1):Hour(20), 10))
 # Unitful works as well
 scatter!(ax, LinRange(0u"yr", 0.1u"yr", 5))
@@ -82,7 +82,7 @@ Makie.DateTimeConversion
 
 You can overload the API to define your own dim converts by overloading the following functions:
 
-```@figure
+```@figure dimconverts
 struct MyDimConversion <: Makie.AbstractDimConversion end
 
 # The type you target with the dim conversion
