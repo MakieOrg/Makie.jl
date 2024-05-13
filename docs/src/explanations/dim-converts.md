@@ -1,34 +1,30 @@
-# Dim Converts
+# Dimension conversions
 
-Starting with `Makie@0.21`, support for types like units, categorical values and Dates has been added.
-They are converted to a plottable representation by dim converts, which also take care of axis ticks.
+Starting with Makie v0.21, support for types like units, categorical values and dates has been added.
+They are converted to a plottable representation by dim(ension) converts, which also take care of axis ticks.
 In the following sections we will explain their usage and how to extend the interface with your own types.
 
 ## Examples
 
 The basic usage is as easy as replacing numbers with any supported type, e.g. `Dates.Second`:
 
-\begin{examplefigure}{}
-```julia
+```@figure
 using CairoMakie, Makie.Dates, Makie.Unitful
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
 f, ax, pl = scatter(rand(Second(1):Second(60):Second(20*60), 10))
 ```
-\end{examplefigure}
 
 Once an axis dimension is set to a certain unit, one must plot into that axis with compatible units.
 So e.g. hours work, since they're compatible with the unitful conversion:
 
-\begin{examplefigure}{}
-```julia
+```@figure
 scatter!(ax, rand(Hour(1):Hour(1):Hour(20), 10))
 # Unitful works as well
 scatter!(ax, LinRange(0u"yr", 0.1u"yr", 5))
 f
 ```
-\end{examplefigure}
 
 Note that the units displayed in ticks will adjust to the given range of values.
 
@@ -76,16 +72,17 @@ ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 
 ### Current conversions in Makie
 
-{{doc CategoricalConversion}}
-{{doc UnitfulConversion}}
-{{doc DateTimeConversion}}
+```@docs
+Makie.CategoricalConversion
+Makie.UnitfulConversion
+Makie.DateTimeConversion
+```
 
-## Dev docs
+## Developer docs
 
 You can overload the API to define your own dim converts by overloading the following functions:
 
-\begin{examplefigure}{}
-```julia
+```@figure
 struct MyDimConversion <: Makie.AbstractDimConversion end
 
 # The type you target with the dim conversion
@@ -141,7 +138,6 @@ end
 
 barplot([MyUnit(1), MyUnit(2), MyUnit(3)], 1:3)
 ```
-\end{examplefigure}
 
 For more complex examples, you should look at the implementation in:
 `Makie/src/dim-converts`.
