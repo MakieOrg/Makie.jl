@@ -1,4 +1,4 @@
-# How layouts work
+# GridLayouts
 
 The goal is that all elements placed in a scene fit into the
 window, fill the available space, and are nicely aligned relative to each other.
