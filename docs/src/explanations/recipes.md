@@ -1,4 +1,4 @@
-# Plot Recipes
+# Recipes
 
 Recipes allow you to extend `Makie` with your own custom types and plotting commands.
 
@@ -169,7 +169,7 @@ In this example, we will create a special type to hold this information, and a r
 
 First, we make a struct to hold the stock's values for a given day:
 
-```julia:eval-env
+```@example stocks
 using CairoMakie
 CairoMakie.activate!() # hide
 
@@ -184,7 +184,7 @@ end
 Now we create a new plot type called `StockChart`.
 The `do scene` closure is just a function that returns our default attributes, in this case they color stocks going down red, and stocks going up green.
 
-```julia:eval-env
+```@example stocks
 @recipe(StockChart) do scene
     Attributes(
         downcolor = :red,
@@ -203,7 +203,7 @@ Note that the input arguments we receive inside the `plot!` method, which we can
 This means that we must construct our plotting function in a dynamic way so that it will update itself whenever the input observables change.
 This can be a bit trickier than recipes you might know from other plotting packages which produce mostly static plots.
 
-```julia:eval-env
+```@example stocks
 function Makie.plot!(
         sc::StockChart{<:Tuple{AbstractVector{<:Real}, AbstractVector{<:StockValue}}})
 
@@ -275,8 +275,7 @@ nothing # hide
 
 Finally, let's try it out and plot some stocks:
 
-\begin{examplefigure}{}
-```julia
+```@figure stocks
 timestamps = 1:100
 
 # we create some fake stock values in a way that looks pleasing later
@@ -301,12 +300,11 @@ stockchart(f[2, 1], timestamps, stockvalues,
     downcolor = :purple, upcolor = :orange)
 f
 ```
-\end{examplefigure}
 
 As a last example, lets pretend our stock data is coming in dynamically, and we want to create an animation out of it.
 This is easy if we use observables as input arguments which we then update frame by frame:
 
-```julia:stockchart_animation
+```@example stocks
 timestamps = Observable(collect(1:100))
 stocknode = Observable(stockvalues)
 
@@ -340,7 +338,9 @@ using GLMakie # hide
 GLMakie.activate!() # hide
 ```
 
-\video{stockchart_animation}
+```@raw html
+<video autoplay loop muted playsinline controls src="./stockchart_animation.mp4" />
+```
 
 ## Makie Package Extension
 
