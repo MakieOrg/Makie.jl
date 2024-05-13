@@ -80,7 +80,6 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     tlims = Makie.apply_transform(t, lims)
     camera = scene.camera
 
-    # TODO: apply model
     update_limits!(scene.float32convert, tlims) # update float32 scaling
     lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
     left, bottom = minimum(lims32)
@@ -853,33 +852,25 @@ function getlimits(la::Axis, dim)
         return !to_value(get(plot, :visible, true))
     end
 
-    # TODO:
-    # We used to include scale! and rotate! in data_limits. For compat we include
-    # them here again until we implement a full solution
-
-    # # get all data limits, minus the excluded plots
-    # boundingbox = Makie.data_limits(la.scene, exclude)
-    bb_ref = Base.RefValue(Rect3d())
-    for plot in la.scene
-        if !exclude(plot)
-            bb = data_limits(plot)
-            # Limits can be one dimensional (partially NaN) e.g. for hlines
-            # which results in every model * point to become NaN. For now we skip
-            # model application if the model matrix is identity to avoid this...
-            model = plot.model[][Vec(1,2,3), Vec(1,2,3)]
-            if !(model ≈ I)
-                bb = Rect3d(map(p -> model * to_ndim(Point3d, p, 0), coordinates(bb)))
-            end
-            update_boundingbox!(bb_ref, bb)
-        end
+    # get all data limits, minus the excluded plots
+    tf = la.scene.transformation.transform_func[]
+    itf = inverse_transform(tf)
+    if itf === nothing
+        @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
+        bb = data_limits(la.scene, exclude)
+    else
+        # get limits with transform_func and model applied
+        bb = boundingbox(la.scene, exclude)
+        # then undo transform_func so that ticks can handle transform_func
+        # without ignoring translations, scaling or rotations from model
+        bb = apply_transform(itf, bb)
     end
-    boundingbox = bb_ref[]
 
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    isfinite_rect(boundingbox, dim) || return nothing
+    isfinite_rect(bb, dim) || return nothing
 
     # otherwise start with the first box
-    mini, maxi = minimum(boundingbox), maximum(boundingbox)
+    mini, maxi = minimum(bb), maximum(bb)
     return (mini[dim], maxi[dim])
 end
 
