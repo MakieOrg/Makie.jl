@@ -50,11 +50,7 @@ The indexing syntax of `Figure` is implemented to work seamlessly with layouting
 If you index into the figure, a `GridPosition` object that stores this indexing operation is created.
 This object can be used to plot a new axis into a certain layout position in the figure, for example like this:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 pos = f[1, 1]
 scatter(pos, rand(100, 2))
@@ -67,18 +63,13 @@ heatmap(f[1, 3], randn(10, 10))
 
 f
 ```
-\end{examplefigure}
 
 
 You can also index further into a `GridPosition`, which creates a `GridSubposition`.
 With `GridSubposition`s you can describe positions in arbitrarily nested grid layouts.
 Often, a desired plot layout can only be achieved with nesting, and repeatedly indexing makes this easy.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 
 f[1, 1] = Axis(f, title = "I'm not nested")
@@ -89,7 +80,6 @@ heatmap(f[1, 2][2, 1], randn(20, 20))
 
 f
 ```
-\end{examplefigure}
 
 
 All nested GridLayouts that don't exist yet, but are needed for a nested plotting call, are created in the background automatically.
@@ -106,11 +96,7 @@ You can change the amount of whitespace (margin) around the figure content with 
 This takes either a number for all four sides, or a tuple of four numbers for left, right, bottom, top.
 You can also theme this setting with `set_theme!(figure_padding = 30)`, for example.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure(figure_padding = 1, backgroundcolor = :gray80)
 
 Axis(f[1, 1])
@@ -118,7 +104,6 @@ scatter!(1:10)
 
 f
 ```
-\end{examplefigure}
 
 ## Retrieving Objects From A Figure
 
