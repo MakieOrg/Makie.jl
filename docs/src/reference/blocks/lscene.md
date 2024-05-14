@@ -24,4 +24,6 @@ fig
 
 ## Attributes
 
-<!-- \attrdocs{LScene} -->
+```@attrdocs
+LScene
+```

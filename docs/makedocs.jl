@@ -11,7 +11,10 @@ cp(
     force = true)
 
 using Documenter
+using Documenter.MarkdownAST
+using Documenter.MarkdownAST: @ast
 using DocumenterVitepress
+using Markdown
 
 # include("buildutils/deploydocs.jl")
 # include("buildutils/relative_links.jl")
@@ -29,6 +32,7 @@ function GLMakie.renderloop(screen)
 end
 
 include("figure_block.jl")
+include("attrdocs_block.jl")
 
 makedocs(;
     # modules=[Makie],

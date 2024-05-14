@@ -258,4 +258,6 @@ f
 
 ## Attributes
 
-<!-- \attrdocs{Legend} -->
+```@attrdocs
+Legend
+```

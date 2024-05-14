@@ -54,4 +54,6 @@ f
 
 ## Attributes
 
-<!-- \attrdocs{IntervalSlider} -->
+```@attrdocs
+IntervalSlider
+```

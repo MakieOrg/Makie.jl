@@ -71,4 +71,6 @@ fig
 
 ## Attributes
 
-<!-- \attrdocs{Menu} -->
+```@attrdocs
+Menu
+```

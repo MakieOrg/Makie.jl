@@ -79,4 +79,6 @@ We can't use `cgrad(...; categorical=true)` for this, since it has an ambigious 
 
 ## Attributes
 
-<!-- \attrdocs{Colorbar} -->
+```@attrdocs
+Colorbar
+```

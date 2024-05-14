@@ -28,4 +28,6 @@ fig
 
 ## Attributes
 
-<!-- \attrdocs{Button} -->
+```@attrdocs
+Button
+```

@@ -28,4 +28,6 @@ fig
 
 ## Attributes
 
-<!-- \attrdocs{Toggle} -->
+```@attrdocs
+Toggle
+```

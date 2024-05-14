@@ -35,4 +35,6 @@ fig
 
 ## Attributes
 
-<!-- \attrdocs{SliderGrid} -->
+```@attrdocs
+SliderGrid
+```

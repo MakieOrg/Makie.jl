@@ -2,4 +2,6 @@
 
 ## Attributes
 
-<!-- \attrdocs{Axis3} -->
+```@attrdocs
+Axis3
+```

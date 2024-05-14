@@ -5,4 +5,6 @@ This can be useful to visually group parts of a layout, or as a placeholder.
 
 ## Attributes
 
-<!-- \attrdocs{Box} -->
+```@attrdocs
+Box
+```

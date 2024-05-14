@@ -50,4 +50,6 @@ f
 
 ## Attributes
 
-<!-- \attrdocs{Label} -->
+```@attrdocs
+Label
+```

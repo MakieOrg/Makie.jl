@@ -293,4 +293,6 @@ For those purposes, you can overload the methods `registration_setup!(parent, in
 
 ## Attributes
 
-<!-- \attrdocs{Axis} -->
+```@attrdocs
+Axis
+```

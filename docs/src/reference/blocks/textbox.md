@@ -38,4 +38,6 @@ f
 
 ## Attributes
 
-<!-- \attrdocs{Textbox} -->
+```@attrdocs
+Textbox
+```

@@ -293,4 +293,6 @@ fig
 
 ## Attributes
 
-<!-- \attrdocs{PolarAxis} -->
+```@attrdocs
+PolarAxis
+```

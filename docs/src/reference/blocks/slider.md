@@ -40,4 +40,6 @@ The functions \apilink{labelslider!} and \apilink{labelslidergrid!} are deprecat
 
 ## Attributes
 
-<!-- \attrdocs{Slider} -->
+```@attrdocs
+Slider
+```
