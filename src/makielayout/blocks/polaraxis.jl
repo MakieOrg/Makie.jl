@@ -167,7 +167,7 @@ function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
     rmin, rmax = max.(0.0, rlims .- r0)
 
     if abs(thetamax - thetamin) > 3pi/2
-        return Rect2f(-rmax, -rmax, 2rmax, 2rmax)
+        return Rect2d(-rmax, -rmax, 2rmax, 2rmax)
     end
 
     @assert thetamin < thetamax # otherwise shift by 2pi I guess
@@ -185,7 +185,7 @@ function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
 
     # Initial bbox from corners
     p = polar2cartesian(rmin, thetamin)
-    bb = Rect2f(p, Vec2f(0))
+    bb = Rect2d(p, Vec2d(0))
     bb = update_boundingbox(bb, polar2cartesian(rmax, thetamin))
     bb = update_boundingbox(bb, polar2cartesian(rmin, thetamax))
     bb = update_boundingbox(bb, polar2cartesian(rmax, thetamax))
@@ -209,7 +209,7 @@ end
 
 function setup_camera_matrices!(po::PolarAxis)
     # Initialization
-    usable_fraction = Observable(Vec2f(1.0, 1.0))
+    usable_fraction = Observable(Vec2d(1.0, 1.0))
     setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((0.0, 10.0)))
     setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((0.0, 2pi)))
     setfield!(po, :target_theta_0, map(identity, po.theta_0))
