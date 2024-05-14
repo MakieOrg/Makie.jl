@@ -42,6 +42,38 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Reference" => [
+            "blocks" => [
+                "Overview" => "reference/blocks.md",
+                "axis" => "reference/blocks/axis.md",
+                "axis3" => "reference/blocks/axis3.md",
+                "box" => "reference/blocks/box.md",
+                "button" => "reference/blocks/button.md",
+                "colorbar" => "reference/blocks/colorbar.md",
+                "gridlayout" => "reference/blocks/gridlayout.md",
+                "intervalslider" => "reference/blocks/intervalslider.md",
+                "label" => "reference/blocks/label.md",
+                "legend" => "reference/blocks/legend.md",
+                "lscene" => "reference/blocks/lscene.md",
+                "menu" => "reference/blocks/menu.md",
+                "polaraxis" => "reference/blocks/polaraxis.md",
+                "slider" => "reference/blocks/slider.md",
+                "slidergrid" => "reference/blocks/slidergrid.md",
+                "textbox" => "reference/blocks/textbox.md",
+                "toggle" => "reference/blocks/toggle.md",
+            ],
+            "plots" => [
+                "Overview" => "reference/plots.md",
+                "ablines" => "reference/plots/ablines.md",
+            ],
+            "scene" => [
+                "Overview" => "reference/scene.md",
+                "lighting" => "reference/scene/lighting.md",
+                "matcap" => "reference/scene/matcap.md",
+                "SSAO" => "reference/scene/SSAO.md",
+            ]
+        ],
+
         "Tutorials" => [
             "tutorials/basic-tutorial.md",
             "tutorials/aspect-tutorial.md",
