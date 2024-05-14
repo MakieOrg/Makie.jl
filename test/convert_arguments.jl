@@ -66,6 +66,10 @@ end
     @test_throws ArgumentError heatmap(1im)
 end
 
+# custom vector type to ensure that the conversion can be overriden for vectors
+struct MyConvVector <: AbstractVector{Float64} end
+Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
+
 @testset "convert_arguments" begin
     #=
     TODO:
@@ -227,6 +231,8 @@ end
 
                         @test apply_conversion(CT, m2)  isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, m3)  isa Tuple{Vector{Point3{T_out}}}
+
+                        @test apply_conversion(CT, MyConvVector()) == ([Point(10, 20)],)
                     end
                 end
 
