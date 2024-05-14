@@ -289,7 +289,9 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :uv_offset_width => uv_offset_width,
         :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
         :billboard => Observable(false),
-        :depth_shift => get(plot, :depth_shift, Observable(0f0))
+        :depth_shift => get(plot, :depth_shift, Observable(0f0)),
+        :glowwidth => plot.glowwidth,
+        :glowcolor => plot.glowcolor,
     )
 
     return scatter_shader(scene, uniforms, plot_attributes)
