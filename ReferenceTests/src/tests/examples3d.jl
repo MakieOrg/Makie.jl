@@ -397,9 +397,10 @@ end
 @reference_test "Text glow and overdraw" begin
     p1 = Point3f(0,0,0)
     p2 = Point3f(1,0,0)
-    meshscatter([p1, p2]; markersize=0.3, color=[:purple, :yellow])
-    text!(p1; text="A", align=(:center, :center), glowwidth=10.0, glowcolor=:white, color=:black, fontsize=40, overdraw=true)
-    text!(p2; text="B", align=(:center, :center), glowwidth=20.0, glowcolor=(:black, 0.6), color=:white, fontsize=40, overdraw=true)
+    f, ax, pl = meshscatter([p1, p2]; markersize=0.3, color=[:purple, :yellow])
+    text!(ax, p1; text="A", align=(:center, :center), glowwidth=10.0, glowcolor=:white, color=:black, fontsize=40, overdraw=true)
+    text!(ax, p2; text="B", align=(:center, :center), glowwidth=20.0, glowcolor=(:black, 0.6), color=:white, fontsize=40, overdraw=true)
+    f
 end
 
 @reference_test "Animated surface and wireframe" begin
