@@ -43,34 +43,34 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Reference" => [
-            "blocks" => [
+            "Blocks" => [
                 "Overview" => "reference/blocks.md",
-                "axis" => "reference/blocks/axis.md",
-                "axis3" => "reference/blocks/axis3.md",
-                "box" => "reference/blocks/box.md",
-                "button" => "reference/blocks/button.md",
-                "colorbar" => "reference/blocks/colorbar.md",
-                "gridlayout" => "reference/blocks/gridlayout.md",
-                "intervalslider" => "reference/blocks/intervalslider.md",
-                "label" => "reference/blocks/label.md",
-                "legend" => "reference/blocks/legend.md",
-                "lscene" => "reference/blocks/lscene.md",
-                "menu" => "reference/blocks/menu.md",
-                "polaraxis" => "reference/blocks/polaraxis.md",
-                "slider" => "reference/blocks/slider.md",
-                "slidergrid" => "reference/blocks/slidergrid.md",
-                "textbox" => "reference/blocks/textbox.md",
-                "toggle" => "reference/blocks/toggle.md",
+                "reference/blocks/axis.md",
+                "reference/blocks/axis3.md",
+                "reference/blocks/box.md",
+                "reference/blocks/button.md",
+                "reference/blocks/colorbar.md",
+                "reference/blocks/gridlayout.md",
+                "reference/blocks/intervalslider.md",
+                "reference/blocks/label.md",
+                "reference/blocks/legend.md",
+                "reference/blocks/lscene.md",
+                "reference/blocks/menu.md",
+                "reference/blocks/polaraxis.md",
+                "reference/blocks/slider.md",
+                "reference/blocks/slidergrid.md",
+                "reference/blocks/textbox.md",
+                "reference/blocks/toggle.md",
             ],
-            "plots" => [
+            "Plots" => [
                 "Overview" => "reference/plots.md",
-                "ablines" => "reference/plots/ablines.md",
+                "reference/plots/ablines.md",
             ],
-            "scene" => [
+            "Scene" => [
                 "Overview" => "reference/scene.md",
-                "lighting" => "reference/scene/lighting.md",
-                "matcap" => "reference/scene/matcap.md",
-                "SSAO" => "reference/scene/SSAO.md",
+                "reference/scene/lighting.md",
+                "reference/scene/matcap.md",
+                "reference/scene/SSAO.md",
             ]
         ],
 
