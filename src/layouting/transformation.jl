@@ -1,3 +1,11 @@
+#=
+`apply_transform` Interface for custom transformations:
+- can be a struct holding information about the transformation or a function
+- should implement `inverse_transform(transformation)`
+- for struct: must implement `apply_transform(transform, ::VecTypes)` (for 2d and 3d points)
+- for struct: must implement `apply_transform(transform, ::Rect3d)` for bounding boxes
+=#
+
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
 function parent_transform(x)
@@ -183,36 +191,74 @@ transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 
 """
-    apply_transform_and_model(plot, pos, output_type = Point3d)
-    apply_transform_and_model(model, transfrom_func, pos, output_type = Point3d)
+    apply_transform_and_model(plot, data, output_type = Point3d)
+    apply_transform_and_model(model, transfrom_func, data, output_type = Point3d)
 
 Applies the transform function and model matrix (i.e. transformations from
-`translate!`, `rotate!` and `scale!`) to the given input
+`translate!`, `rotate!` and `scale!`) to the given input.
 """
-function apply_transform_and_model(plot::AbstractPlot, pos, output_type = Point3d)
+function apply_transform_and_model(plot::AbstractPlot, data, output_type = Point3d)
     return apply_transform_and_model(
-        plot.model[], transform_func(plot), pos,
+        plot.model[], transform_func(plot), data,
         to_value(get(plot, :space, :data)),
         output_type
     )
 end
-function apply_transform_and_model(model::Mat4, f, pos::VecTypes, space = :data, output_type = Point3d)
-    transformed = apply_transform(f, pos, space)
+function apply_transform_and_model(model::Mat4, f, data, space = :data, output_type = Point3d)
+    transformed = apply_transform(f, data, space)
+    world = apply_model(model, transformed, space)
+    return promote_geom(output_type, world)
+end
+
+function unchecked_apply_model(model::Mat4, transformed::VecTypes)
+    p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
+    p4d = model * p4d
+    p4d = p4d ./ p4d[4]
+    return p4d
+end
+@inline function apply_model(model::Mat4, transformed::AbstractArray, space::Symbol)
     if space in (:data, :transformed)
-        p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
-        p4d = model * p4d
-        p4d = p4d ./ p4d[4]
-        return to_ndim(output_type, p4d, NaN)
+        return unchecked_apply_model.((model,), transformed)
     else
-        return to_ndim(output_type, transformed, NaN)
+        return transformed
     end
 end
-function apply_transform_and_model(model::Mat4, f, positions::AbstractArray, space = :data, output_type = Point3d)
-    output = similar(positions, output_type)
-    return map!(output, positions) do pos
-        apply_transform_and_model(model, f, pos, space, output_type)
+function apply_model(model::Mat4, transformed::VecTypes, space::Symbol)
+    if space in (:data, :transformed)
+        return unchecked_apply_model(model, transformed)
+    else
+        return transformed
     end
 end
+function apply_model(model::Mat4, transformed::Rect{N, T}, space::Symbol) where {N, T}
+    if space in (:data, :transformed)
+        bb = Rect{N, T}()
+        if !isfinite_rect(transformed) && is_translation_scale_matrix(model)
+            # Bbox contains NaN so matmult would make everything NaN, but model
+            # matrix doesn't actually mix dimensions (just translation + scaling)
+            scale = to_ndim(Vec{N, T}, Vec3(model[1, 1], model[2, 2], model[3, 3]), 1.0)
+            trans = to_ndim(Vec{N, T}, Vec3(model[1, 4], model[2, 4], model[3, 4]), 1.0)
+            mini = scale .* minimum(transformed) .+ trans
+            maxi = scale .* maximum(transformed) .+ trans
+            return Rect{N, T}(mini, maxi - mini)
+        else
+            for input in corners(transformed)
+                output = to_ndim(Point{N, T}, unchecked_apply_model(model, input), NaN)
+                bb = update_boundingbox(bb, output)
+            end
+        end
+        return bb
+    else
+        return transformed
+    end
+end
+
+promote_geom(output_type::Type{<:VecTypes}, x::VecTypes) = to_ndim(output_type, x, NaN)
+promote_geom(output_type::Type{<:VecTypes}, x::AbstractArray) = promote_geom.(output_type, x)
+function promote_geom(output_type::Type{<:VecTypes}, x::T) where {T <: Rect}
+    return T(promote_geom(output_type, minimum(x)), promote_geom(output_type, widths(x)))
+end
+
 
 """
     apply_transform(f, data, space)
@@ -246,7 +292,6 @@ apply_transform(f::NTuple{3, typeof(identity)}, x::AbstractArray) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::VecTypes) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::Number) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::ClosedInterval) = x
-
 
 struct PointTrans{N, F}
     f::F
@@ -447,6 +492,20 @@ function apply_transform(f::Polar, point::VecTypes{N2, T}) where {N2, T}
     else
         return to_ndim(Point{N2, T}, p_trans, 0.0)
     end
+end
+
+# For bbox
+function apply_transform(trans::Polar, bbox::Rect3d)
+    if trans.theta_as_x
+        θmin, rmin, zmin = minimum(bbox)
+        θmax, rmax, zmax = maximum(bbox)
+    else
+        rmin, θmin, zmin = minimum(bbox)
+        rmax, θmax, zmax = maximum(bbox)
+    end
+    bb2d = polaraxis_bbox((rmin, rmax), (θmin, θmax), trans.r0, trans.direction, trans.theta_0)
+    o = minimum(bb2d); w = widths(bb2d)
+    return Rect3d(to_ndim(Point3d, o, zmin), to_ndim(Vec3d, w, zmax - zmin))
 end
 
 function inverse_transform(trans::Polar)

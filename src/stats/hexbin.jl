@@ -56,7 +56,7 @@ function data_limits(hb::Hexbin)
 
     return Rect3d(no, nw)
 end
-boundingbox(p::Hexbin, space::Symbol = :data) = transform_bbox(p, data_limits(hb))
+boundingbox(p::Hexbin, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 get_weight(weights, i) = Float64(weights[i])
 get_weight(::StatsBase.UnitWeights, i) = 1e0
