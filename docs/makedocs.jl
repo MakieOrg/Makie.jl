@@ -4,11 +4,7 @@ Pkg.activate(".")
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 Pkg.precompile()
 
-# copy CHANGELOG file over to documentation
-cp(
-    joinpath(@__DIR__, "..", "CHANGELOG.md"),
-    joinpath(@__DIR__, "src", "news.md"),
-    force = true)
+include("copy_changelog.jl")
 
 using Documenter
 using Documenter.MarkdownAST
