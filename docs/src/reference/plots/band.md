@@ -1,15 +1,8 @@
 # band
 
-{{doc band}}
+## Examples
 
-### Examples
-
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -22,14 +15,9 @@ band!(xs, ys_low .- 1, ys_high .-1, color = :red)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure
 using Statistics
-using CairoMakie
-CairoMakie.activate!() # hide
-
 
 f = Figure()
 Axis(f[1, 1])
@@ -44,16 +32,16 @@ lines!(t, μ)              # plot mean line
 band!(t, μ + σ, μ - σ)   # plot stddev band
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
-
+```@figure backend=GLMakie
 lower = fill(Point3f(0,0,0), 100)
 upper = [Point3f(sin(x), cos(x), 1.0) for x in range(0,2pi, length=100)]
 col = repeat([1:50;50:-1:1],outer=2)
 band(lower, upper, color=col, axis=(type=Axis3,))
 ```
-\end{examplefigure}
+
+## Attributes
+
+```@attrdocs
+Band
+```

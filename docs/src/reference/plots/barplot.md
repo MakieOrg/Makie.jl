@@ -1,15 +1,8 @@
 # barplot
 
-{{doc barplot}}
+## Examples
 
-### Examples
-
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -21,27 +14,15 @@ barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
 
 barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure barplot
 tbl = (cat = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        height = 0.1:0.1:0.9,
        grp = [1, 2, 3, 1, 2, 3, 1, 2, 3],
@@ -56,10 +37,8 @@ barplot(tbl.cat, tbl.height,
                 title = "Stacked bars"),
         )
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure barplot
 barplot(tbl.cat, tbl.height,
         dodge = tbl.grp,
         color = tbl.grp,
@@ -67,10 +46,8 @@ barplot(tbl.cat, tbl.height,
                 title = "Dodged bars"),
         )
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure barplot
 barplot(tbl.cat, tbl.height,
         dodge = tbl.grp1,
         stack = tbl.grp2,
@@ -79,10 +56,8 @@ barplot(tbl.cat, tbl.height,
                 title = "Dodged and stacked bars"),
         )
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure barplot
 colors = Makie.wong_colors()
 
 # Figure and Axis
@@ -104,10 +79,8 @@ Legend(fig[1,2], elements, labels, title)
 
 fig
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure barplot
 barplot(
     tbl.cat, tbl.height,
     dodge = tbl.grp,
@@ -122,10 +95,8 @@ barplot(
     direction=:x,
 )
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure
 barplot([-1, -0.5, 0.5, 1],
     bar_labels = :y,
     axis = (title="Fonts + flip_labels_at",),
@@ -136,12 +107,8 @@ barplot([-1, -0.5, 0.5, 1],
     label_offset = 10
 )
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-
+```@figure
 #Gantt data
 gantt = (
     machine = [1,2,1,2],
@@ -193,4 +160,9 @@ Legend(fig[1,1], elements, labels, "Jobs", orientation=:horizontal, tellwidth = 
 
 fig
 ```
-\end{examplefigure}
+
+## Attributes
+
+```@attrdocs
+BarPlot
+```
