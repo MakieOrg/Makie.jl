@@ -110,7 +110,7 @@ Or(left, right::Bool) = right ? true : left
 
 Creates a `Not` struct with the given argument for later evaluation.
 
-See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), [`!`](@ref)
+See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), `!`
 """
 struct Not{T} <: BooleanOperator
     x::T
@@ -132,7 +132,7 @@ button under a `Not` must not be pressed and that this follows automatically
 from the subset of buttons that must be pressed.
 
 See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
+`&`, `|`, `!`
 """
 struct Exclusively <: BooleanOperator
     x::Set{Union{Keyboard.Button, Mouse.Button}}
@@ -256,7 +256,7 @@ pass `event.button` so that a key combination including that button still evalua
 as true.
 
 See also: [`waspressed`](@ref) [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
+`&`, `|`, `!`
 """
 ispressed(events::Events, mb::Mouse.Button, waspressed = nothing) = mb in events.mousebuttonstate || mb == waspressed
 ispressed(events::Events, key::Keyboard.Button, waspressed = nothing) = key in events.keyboardstate || key == waspressed
