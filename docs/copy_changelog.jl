@@ -8,7 +8,7 @@ kept_lines = filter(all_lines) do line
     end
     return !islink
 end
-open(joinpath("src", "news.md"), "w") do io
+open(joinpath("src", "changelog.md"), "w") do io
     for line in kept_lines
         println(io, replace(line, r"## \[(Unreleased|\d+\.\d+\.\d+)\]" => function (str)
         url = links[str[4:end]]

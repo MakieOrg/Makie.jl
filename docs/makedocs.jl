@@ -168,7 +168,7 @@ makedocs(;
             "how-to/save-figure-with-transparency.md",
         ],
         "API" => "api.md",
-        "News" => "news.md",
+        "Changelog" => "changelog.md",
     ],
     warnonly = true,
     pagesonly = true,
