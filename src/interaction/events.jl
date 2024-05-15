@@ -255,7 +255,7 @@ of it's current state. For example, when reacting to a mousebutton event, you ca
 pass `event.button` so that a key combination including that button still evaluates
 as true.
 
-See also: [`waspressed`](@ref) [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
+See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
 `&`, `|`, `!`
 """
 ispressed(events::Events, mb::Mouse.Button, waspressed = nothing) = mb in events.mousebuttonstate || mb == waspressed

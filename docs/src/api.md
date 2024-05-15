@@ -14,5 +14,4 @@ Makie.And
 Makie.Exclusively
 Makie.Not
 Makie.Or
-Makie.waspressed
 ```
