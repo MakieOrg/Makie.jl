@@ -16,6 +16,29 @@ function DocumenterVitepress.render(io::IO, mime::MIME"text/plain", node::Markdo
     DocumenterVitepress.render(io, mime, node, node.children, page, doc; kwargs...)
 end
 
+function attrs_examples_docs_defaults(B::Type{<:Makie.Block})
+    attrkeys = sort(collect(keys(Makie.default_attribute_values(type, nothing))))
+
+    all_examples = Makie.attribute_examples(type)
+    all_docs = Makie._attribute_docs(type)
+    all_defaults = Makie.attribute_default_expressions(type)
+
+    (; attrkeys, all_examples, all_docs, all_defaults)
+end
+
+function attrs_examples_docs_defaults(B::Type{<:Makie.Plot})
+
+    docatt = Makie.MakieCore.documented_attributes(B)
+    metadata = docatt.d
+
+    attrkeys = sort(collect(keys(metadata)))
+    all_examples = Dict{Symbol,Vector{Makie.Example}}()
+    all_docs = Dict([(attr => something(meta.docstring, "No docs available.")) for (attr, meta) in metadata])
+    all_defaults = Dict([(attr => meta.default_expr) for (attr, meta) in metadata])
+
+    (; attrkeys, all_examples, all_docs, all_defaults)
+end
+
 function Documenter.Selectors.runner(::Type{AttrdocsBlocks}, node, page, doc)
 
     codeblock = node.element
@@ -23,11 +46,7 @@ function Documenter.Selectors.runner(::Type{AttrdocsBlocks}, node, page, doc)
 
     type = getproperty(Makie, Symbol(strip(codeblock.code)))
 
-    attrkeys = sort(collect(keys(Makie.default_attribute_values(type, nothing))))
-
-    all_examples = Makie.attribute_examples(type)
-    all_docs = Makie._attribute_docs(type)
-    all_defaults = Makie.attribute_default_expressions(type)
+    (; attrkeys, all_examples, all_docs, all_defaults) = attrs_examples_docs_defaults(type)
 
     for attrkey in attrkeys
 
