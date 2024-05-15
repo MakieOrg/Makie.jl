@@ -26,12 +26,15 @@ hero:
 # Welcome to Makie!
 
 Makie is a data visualization ecosystem for the [Julia](https://julialang.org/) programming language, with high performance and extensibility.
+
 It is available for Windows, Mac and Linux.
 
-## Example
+Makie turns your data into beautiful images or animations, such as this one:
+
+::: details Show me the code
 
 ```@example
-using GLMakie # All functionality is defined in Makie and every backend re-exports Makie
+using GLMakie
 GLMakie.activate!() # hide
 
 Base.@kwdef mutable struct Lorenz
@@ -56,7 +59,7 @@ end
 
 attractor = Lorenz()
 
-points = Observable(Point3f[]) # Signal that can be used to update plots efficiently
+points = Observable(Point3f[])
 colors = Observable(Int[])
 
 set_theme!(theme_black())
@@ -68,19 +71,20 @@ fig, ax, l = lines(points, color = colors,
 
 record(fig, "lorenz.mp4", 1:120) do frame
     for i in 1:50
-        # update arrays inplace
         push!(points[], step!(attractor))
         push!(colors[], frame)
     end
-    ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120) # set the view angle of the axis
-    notify(points); notify(colors) # tell points and colors that their value has been updated
-    l.colorrange = (0, frame) # update plot attribute directly
+    ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120)
+    notify(points)
+    notify(colors)
+    l.colorrange = (0, frame)
 end
 set_theme!() # hide
 ```
+:::
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./lorenz.mp4" />
+<video autoplay loop muted playsinline controls src="./lorenz.mp4" style="max-height: 40vh;"/>
 ```
 
 ## Installation and Import
