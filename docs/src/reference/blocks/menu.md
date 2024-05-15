@@ -1,9 +1,5 @@
 # Menu
 
-```
-{{doc Menu}}
-```
-
 ```@figure backend=GLMakie
 fig = Figure()
 
