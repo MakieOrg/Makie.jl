@@ -1,12 +1,7 @@
 # hlines and vlines
 
-{{doc hlines}}
-{{doc vlines}}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 f = Figure()
 

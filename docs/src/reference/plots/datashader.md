@@ -1,15 +1,12 @@
 # datashader
 
-{{doc datashader}}
 
 ## Examples
 
 ### Airports
 
-\begin{examplefigure}{}
-```julia
-using DelimitedFiles, GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
+using DelimitedFiles
 # For saving/showing/inlining into documentation we need to disable async calculation.
 Makie.set_theme!(DataShader = (; async=false))
 airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
@@ -27,12 +24,10 @@ Colorbar(fig[1, 2], ds, label="Number of airports")
 hidedecorations!(ax); hidespines!(ax)
 fig
 ```
-\end{examplefigure}
 
 ### Strange Attractors
 
-\begin{examplefigure}{}
-```julia
+```@figure backend=GLMakie
 # Taken from Lazaro Alonso in Beautiful Makie:
 # https://beautiful.makie.org/dev/examples/generated/2d/datavis/strange_attractors/?h=cliffo#trajectory
 Clifford((x, y), a, b, c, d) = Point2f(sin(a * y) + c * cos(a * x), sin(b * x) + d * cos(b * y))
@@ -84,7 +79,6 @@ rowgap!(fig.layout,5)
 colgap!(fig.layout,1)
 fig
 ```
-\end{examplefigure}
 
 ### Bigger examples
 
@@ -192,8 +186,7 @@ datashader(Dict(:category_a => all_points_a, :category_b => all_points_b))
 The type of the category doesn't matter, but will get converted to strings internally, to be displayed nicely in the legend.
 Categories are currently aggregated in one Canvas per category, and then overlayed with alpha blending.
 
-\begin{examplefigure}{}
-```julia
+```@figure backend=GLMakie
 normaldist = randn(Point2f, 1_000_000)
 ds1 = normaldist .+ (Point2f(-1, 0),)
 ds2 = normaldist .+ (Point2f(1, 0),)
@@ -201,7 +194,6 @@ fig, ax, pl = datashader(Dict("a" => ds1, "b" => ds2))
 hidedecorations!(ax)
 fig
 ```
-\end{examplefigure}
 
 We can also re-use the previous NYC example for a categorical plot:
 ```julia
@@ -228,6 +220,4 @@ end
 The `datashader` recipe makes it very simple to get started, and is also efficiently implemented so that most changes like `f, ax, pl = datashader(...); pl.colorrange=new_range; pl.operation=log10` won't redo the aggregation.
 But if you still need more manual control, one can also use the underlying `Canvas` API directly for more manual control:
 
-{{doc Canvas}}
 
-{{doc aggregate!}}

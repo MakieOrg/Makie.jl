@@ -1,13 +1,9 @@
 # hist
 
-{{doc hist}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 
 data = randn(1000)
@@ -19,23 +15,17 @@ hist(f[2, 1], data, bins = [-5, -2, -1, 0, 1, 2, 5], color = :gray)
 hist(f[2, 2], data, normalization = :pdf)
 f
 ```
-\end{examplefigure}
 
 #### Histogram with labels
 
 You can use all the same arguments as \apilink{barplot}:
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 data = randn(1000)
 
 hist(data, normalization = :pdf, bar_labels = :values,
      label_formatter=x-> round(x, digits=2), label_size = 15,
      strokewidth = 0.5, strokecolor = (:black, 0.5), color = :values)
 ```
-\end{examplefigure}
 
 #### Moving histograms
 
@@ -44,11 +34,7 @@ Note, that offset automatically sets fillto, to move the whole barplot.
 Also, one can use a negative `scale_to` amount to flip the histogram,
 or `scale_to=:flip` to flip the direction of the bars without changing their height.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 fig = Figure()
 ax = Axis(fig[1, 1])
 for i in 1:5
@@ -56,14 +42,11 @@ for i in 1:5
 end
 fig
 ```
-\end{examplefigure}
 
 #### Using statistical weights
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie, Distributions
-CairoMakie.activate!() # hide
+```@figure
+using Distributions
 
 
 N = 100_000
@@ -77,4 +60,3 @@ hist(fig[1,2], x, weights = w)
 
 fig
 ```
-\end{examplefigure}

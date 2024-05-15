@@ -1,17 +1,13 @@
 # voxels
 
-{{doc voxels}}
 
-### Examples
+## Examples
 
 
 
 #### Basic Example
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 # Same as volume example
 r = LinRange(-1, 1, 100)
@@ -22,7 +18,6 @@ cube_with_holes = cube .* (cube .> 1.4)
 # values outside the range (1.65..1.75) to invisible air blocks with is_air
 f, a, p = voxels(-1..1, -1..1, -1..1, cube_with_holes, is_air = x -> !(1.65 <= x <= 1.75))
 ```
-\end{examplefigure}
 
 
 #### Gap Attribute
@@ -31,15 +26,11 @@ The `gap` attribute allows you to specify a gap size between adjacent voxels.
 It is given in units of the voxel size (at `gap = 0`) so that `gap = 0` creates no gaps and `gap = 1` reduces the voxel size to 0.
 Note that this attribute only takes effect at values `gap > 0.01`.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 chunk = reshape(collect(1:27), 3, 3, 3)
 voxels(chunk, gap = 0.33)
 ```
-\end{examplefigure}
 
 
 #### Color and the internal representation
@@ -49,10 +40,7 @@ In this representation the voxel id `0x00` is defined as an invisible air block.
 All other ids (0x01 - 0xff or 1 - 255) are visible and derive their color from the various color attributes.
 For `plot.color` specifically the voxel id acts as an index into an array of colors:
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 chunk = UInt8[
     1 0 2; 0 0 0; 3 0 4;;;
@@ -61,17 +49,13 @@ chunk = UInt8[
 ]
 f, a, p = voxels(chunk, color = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta])
 ```
-\end{examplefigure}
 
 
 #### Colormaps
 
 With non `UInt8` inputs, colormap attributes (colormap, colorrange, highclip, lowclip and colorscale) work as usual, with the exception of `nan_color` which is not applicable:
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 chunk = reshape(collect(1:512), 8, 8, 8)
 
@@ -81,7 +65,6 @@ f, a, p = voxels(chunk,
     colormap = [:blue, :green]
 )
 ```
-\end{examplefigure}
 
 When passing voxel ids directly (i.e. an `Array{UInt8, 3}`) they are used to index a vector `[lowclip; sampled_colormap; highclip]`.
 This means id 1 maps to lowclip, 2..254 to colors of the colormap and 255 to highclip.
@@ -95,10 +78,8 @@ For this `plot.color` needs to be an image (matrix of colors) and `plot.uvmap` n
 The `uvmap` can take two forms here.
 The first is a `Vector{Vec4f}` which maps voxel ids (starting at 1) to normalized uv coordinates, formatted left-right-bottom-top.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie, FileIO
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
+using FileIO
 
 # load a sprite sheet with 10 x 9 textures
 texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
@@ -120,15 +101,12 @@ chunk = UInt8[
 # draw
 f, a, p = voxels(chunk, uvmap = uv_map, color = texture)
 ```
-\end{examplefigure}
 
 The second format allows you define sides in the second dimension of the uvmap.
 The order of sides is: -x, -y, -z, +x, +y, +z.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie, FileIO
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
+using FileIO
 
 texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
 
@@ -154,7 +132,6 @@ chunk = UInt8[
 
 f, a, p = voxels(chunk, uvmap = uv_map, color = texture)
 ```
-\end{examplefigure}
 
 The textures used in these examples are from [Kenney's Voxel Pack](https://www.kenney.nl/assets/voxel-pack).
 
@@ -166,41 +143,30 @@ The voxel plot is a bit different from other plot types which affects how you ca
 
 First you *can* pass your data as an `Observable` and update that observable as usual:
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 chunk = Observable(ones(8,8,8))
 f, a, p = voxels(chunk, colorrange = (0, 1))
 chunk[] = rand(8,8,8)
 f
 ```
-\end{examplefigure}
 
 You can also update the data contained in the plot object.
 For this you can't index into the plot though, since that will return the converted voxel id data.
 Instead you need to index into `p.args`.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 f, a, p = voxels(ones(8,8,8), colorrange = (0, 1))
 p.args[end][] = rand(8,8,8)
 f
 ```
-\end{examplefigure}
 
 Both of these solutions triggers a full replacement of the input array (i.e. `chunk`), the internal representation (`plot.converted[4]`) and the texture on gpu.
 This can be quite slow and wasteful if you only want to update a small section of a large chunk.
 In that case you should instead update your input data without triggering an update (using `obs.val`) and then call `local_update(plot, is, js, ks)` to process the update:
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 chunk = Observable(rand(64, 64, 64))
 f, a, p = voxels(chunk, colorrange = (0, 1))
@@ -208,7 +174,6 @@ chunk.val[30:34, :, :] .= NaN # or p.args[end].val
 Makie.local_update(p, 30:34, :, :)
 f
 ```
-\end{examplefigure}
 
 
 

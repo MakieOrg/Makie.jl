@@ -1,13 +1,9 @@
 # lines
 
-{{doc lines}}
 
 ## Examples
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -23,14 +19,10 @@ lines!(xs, ys .- 3, linestyle = :dash)
 
 f
 ```
-\end{examplefigure}
 
 ### Linestyles
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -50,14 +42,10 @@ end
 
 f
 ```
-\end{examplefigure}
 
 ### Linecaps and Joinstyles
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 f = Figure()
 Axis(f[1, 1])
@@ -75,7 +63,6 @@ end
 
 f
 ```
-\end{examplefigure}
 
 ### Dealing with outline artifacts in GLMakie
 
@@ -85,10 +72,7 @@ Currently there are a few ways to mitigate this problem, but they all come at a 
 - `transparency = true` will disable depth testing to a degree, resulting in all lines being rendered without artifacts. However with this lines will always have some level of transparency.
 - `overdraw = true` will disable depth testing entirely (read and write) for the plot, removing artifacts. This will however change the z-order of line segments and allow plots rendered later to show up on top of the lines plot.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 ps = rand(Point3f, 500)
 cs = rand(500)

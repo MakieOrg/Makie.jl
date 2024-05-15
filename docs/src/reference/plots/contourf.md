@@ -1,12 +1,8 @@
 # contourf
 
-{{doc contourf}}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelimitedFiles
-CairoMakie.activate!() # hide
 
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
@@ -20,13 +16,9 @@ Colorbar(f[1, 2], co)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelimitedFiles
-CairoMakie.activate!() # hide
 
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
@@ -44,13 +36,9 @@ Colorbar(f[1, 2], co)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelimitedFiles
-CairoMakie.activate!() # hide
 
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
@@ -68,7 +56,6 @@ Colorbar(f[1, 2], co)
 
 f
 ```
-\end{examplefigure}
 
 #### Relative mode
 
@@ -76,11 +63,8 @@ Sometimes it's beneficial to drop one part of the range of values, usually towar
 Rather than specifying the levels to include manually, you can set the `mode` attribute
 to `:relative` and specify the levels from 0 to 1, relative to the current minimum and maximum value.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelimitedFiles
-CairoMakie.activate!() # hide
 
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
@@ -95,4 +79,3 @@ contourf!(volcano, levels = 10)
 
 f
 ```
-\end{examplefigure}

@@ -1,6 +1,5 @@
 # text
 
-{{doc text}}
 
 ## Marker space pixel
 
@@ -12,10 +11,7 @@ This also means that `autolimits!` might cut off your text, because the glyphs d
 
 You can either plot one string with one position, or a vector of strings with a vector of positions.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -37,17 +33,13 @@ text!(
 
 f
 ```
-\end{examplefigure}
 
 ## Marker space data
 
 For text whose dimensions are meaningful in data space, set `markerspace = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -65,16 +57,12 @@ text!(
 
 f
 ```
-\end{examplefigure}
 
 ## Alignment
 
 Text can be aligned with the horizontal alignments `:left`, `:center`, `:right` and the vertical alignments `:bottom`, `:baseline`, `:center`, `:top`.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 aligns = [(h, v) for v in [:bottom, :baseline, :center, :top]
@@ -85,7 +73,6 @@ scatter(x, y)
 text!(x, y, text = string.(aligns), align = aligns)
 current_figure()
 ```
-\end{examplefigure}
 
 ## Justification
 
@@ -93,10 +80,7 @@ By default, justification of multiline text follows alignment.
 Text that is left aligned is also left justified.
 You can override this with the `justification` attribute.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 scene = Scene(camera = campixel!, size = (800, 800))
@@ -131,7 +115,6 @@ end
 
 scene
 ```
-\end{examplefigure}
 
 ## Offset
 
@@ -139,10 +122,7 @@ The offset attribute can be used to shift text away from its position.
 This is especially useful with `space = :pixel`, for example to place text together with barplots.
 You can specify the end of the barplots in data coordinates, and then offset the text a little bit to the left.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -160,7 +140,6 @@ text!(Point.(horsepower, 1:5), text = cars, align = (:right, :center),
 
 f
 ```
-\end{examplefigure}
 
 ## Relative space
 
@@ -170,10 +149,7 @@ With `space = :relative`, the position `(0, 0)` refers to the lower left corner 
 
 A common scenario is to place labels within axes:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 f = Figure()
 
@@ -195,31 +171,23 @@ end
 
 f
 ```
-\end{examplefigure}
 
 ## MathTeX
 
 Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 lines(0.5..20, x -> sin(x) / sqrt(x), color = :black)
 text!(7, 0.38, text = L"\frac{\sin(x)}{\sqrt{x}}", color = :black)
 current_figure()
 ```
-\end{examplefigure}
 
 
 You can also pass L-strings to many objects that use text, for example as labels in the legend.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -234,7 +202,6 @@ Legend(f[1, 2], ax)
 
 f
 ```
-\end{examplefigure}
 
 ## Rich text
 
@@ -245,10 +212,7 @@ Each of these functions takes a variable number of arguments, each of which can 
 Each can also take keyword arguments such as `color` or `font`, to set these attributes for the given part.
 The top-level settings for font, color, etc. are taken from the `text` attributes as usual.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 f = Figure(fontsize = 30)
 Label(
@@ -271,7 +235,6 @@ Label(f[2, 1], rich(rainbow_chars...), font = :bold)
 
 f
 ```
-\end{examplefigure}
 
 ### Tweaking offsets
 
@@ -279,10 +242,7 @@ Sometimes, when using regular and italic fonts next to each other, the gaps betw
 You can use the `offset` value for rich text to shift glyphs by an amount proportional to the fontsize.
 
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 f = Figure(fontsize = 30)
 Label(
@@ -305,4 +265,3 @@ Label(
 
 f
 ```
-\end{examplefigure}

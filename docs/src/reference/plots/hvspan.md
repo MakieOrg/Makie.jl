@@ -1,13 +1,8 @@
 # hspan and vspan
 
-{{doc hspan}}
-{{doc vspan}}
 
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 lines(0..20, sin)
 vspan!([0, 2pi, 4pi], [pi, 3pi, 5pi],
@@ -15,4 +10,3 @@ vspan!([0, 2pi, 4pi], [pi, 3pi, 5pi],
 hspan!(-1.1, -0.9, color = (:blue, 0.2))
 current_figure()
 ```
-\end{examplefigure}

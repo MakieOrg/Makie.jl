@@ -1,16 +1,11 @@
 # bracket
 
-{{doc bracket}}
 
-### Examples
+## Examples
 
 #### Scalar arguments
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f, ax, l = lines(0..9, sin; axis = (; xgridvisible = false, ygridvisible = false))
 ylims!(ax, -1.5, 1.5)
 
@@ -27,15 +22,10 @@ bracket!(Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
     fontsize = 30, textoffset = 30, width = 50)
 f
 ```
-\end{examplefigure}
 
 #### Vector arguments
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 ax = Axis(f[1, 1])
 
@@ -60,15 +50,10 @@ bracket!(ax,
 
 f
 ```
-\end{examplefigure}
 
 #### Styles
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 ax = Axis(f[1, 1], xgridvisible = false, ygridvisible = false)
 ylims!(ax, -1, 2)

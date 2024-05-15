@@ -1,15 +1,9 @@
 # streamplot
 
-{{doc streamplot}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 struct FitzhughNagumo{T}
     ϵ::T
     s::T
@@ -31,4 +25,3 @@ fig, ax, pl = streamplot(f, -1.5..1.5, -1.5..1.5, colormap = :magma)
 streamplot(fig[1,2], f, -1.5 .. 1.5, -1.5 .. 1.5, color=(p)-> RGBAf(p..., 0.0, 1))
 fig
 ```
-\end{examplefigure}

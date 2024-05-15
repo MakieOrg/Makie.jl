@@ -1,14 +1,9 @@
 # poly
 
-{{doc poly}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-using Makie.GeometryBasics
+```@figureusing Makie.GeometryBasics
 
 
 f = Figure()
@@ -18,13 +13,8 @@ poly!(Point2f[(0, 0), (2, 0), (3, 1), (1, 1)], color = :red, strokecolor = :blac
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-using Makie.GeometryBasics
+```@figureusing Makie.GeometryBasics
 
 
 f = Figure()
@@ -40,13 +30,8 @@ poly!(p, color = :blue)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-using Makie.GeometryBasics
+```@figureusing Makie.GeometryBasics
 
 
 f = Figure()
@@ -61,13 +46,8 @@ poly!(
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-using Makie.GeometryBasics
+```@figureusing Makie.GeometryBasics
 
 
 f = Figure()
@@ -78,13 +58,8 @@ poly!(Circle(Point2f(0, 0), 15f0), color = :pink)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-using Makie.GeometryBasics
+```@figureusing Makie.GeometryBasics
 
 
 f = Figure()
@@ -98,13 +73,8 @@ poly!(ps, color = rand(RGBf, length(ps)))
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-using Makie.GeometryBasics
+```@figureusing Makie.GeometryBasics
 
 
 f = Figure()

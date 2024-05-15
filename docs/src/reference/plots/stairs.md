@@ -1,15 +1,9 @@
 # stairs
 
-{{doc stairs}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 
 xs = LinRange(0, 4pi, 21)
@@ -21,4 +15,3 @@ stairs(f[3, 1], xs, ys; step=:center, color=:red, linestyle=:dot)
 
 f
 ```
-\end{examplefigure}

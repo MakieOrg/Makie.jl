@@ -1,13 +1,9 @@
 # volumeslices
 
-{{doc volumeslices}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 
 fig = Figure()
@@ -53,4 +49,3 @@ end
 
 fig
 ```
-\end{examplefigure}

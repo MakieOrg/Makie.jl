@@ -1,6 +1,5 @@
 # heatmap
 
-{{doc heatmap}}
 
 ## Examples
 
@@ -8,11 +7,7 @@
 
 In this example, `x` and `y` specify the points around which the heatmap cells are placed.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 ax = Axis(f[1, 1])
 
@@ -26,16 +21,11 @@ scatter!(ax, [(x, y) for x in centers_x for y in centers_y], color=:white, strok
 
 f
 ```
-\end{examplefigure}
 
 The same approach works for irregularly spaced cells.
 Note how the rectangles are not centered around the points, because the boundaries are between adjacent points like voronoi cells.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 ax = Axis(f[1, 1])
 
@@ -48,16 +38,11 @@ heatmap!(ax, centers_x, centers_y, data)
 scatter!(ax, [(x, y) for x in centers_x for y in centers_y], color=:white, strokecolor=:black, strokewidth=1)
 f
 ```
-\end{examplefigure}
 
 If we add one more element to `x` and `y`, they now specify the edges of the rectangular cells.
 Here's a regular grid:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 ax = Axis(f[1, 1])
 
@@ -70,15 +55,10 @@ heatmap!(ax, edges_x, edges_y, data)
 scatter!(ax, [(x, y) for x in edges_x for y in edges_y], color=:white, strokecolor=:black, strokewidth=1)
 f
 ```
-\end{examplefigure}
 
 We can do the same with an irregular grid as well:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 ax = Axis(f[1, 1])
 
@@ -90,7 +70,6 @@ heatmap!(ax, borders_x, borders_y, data)
 scatter!(ax, [(x, y) for x in borders_x for y in borders_y], color=:white, strokecolor=:black, strokewidth=1)
 f
 ```
-\end{examplefigure}
 
 ### Using a `Function` instead of a `Matrix`
 
@@ -99,7 +78,6 @@ When using a `Function` of the form `(i, j) -> v` as the `values` argument, it i
 \begin{examplefigure}{name = "mandelbrot_heatmap"}
 ```julia
 using CairoMakie
-CairoMakie.activate!() # hide
 
 
 function mandelbrot(x, y)
@@ -110,18 +88,12 @@ end
 heatmap(-2:0.001:1, -1.1:0.001:1.1, mandelbrot,
     colormap = Reverse(:deep))
 ```
-\end{examplefigure}
 
 ### Three vectors
 
 There must be no duplicate combinations of x and y, but it is allowed to leave out values.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 
 xs = [1, 2, 3, 1, 2, 3, 1, 2, 3]
 ys = [1, 1, 1, 2, 2, 2, 3, 3, 3]
@@ -129,7 +101,6 @@ zs = [1, 2, 3, 4, 5, 6, 7, 8, NaN]
 
 heatmap(xs, ys, zs)
 ```
-\end{examplefigure}
 
 ### Colorbar for single heatmap
 
@@ -137,12 +108,7 @@ To get a scale for what the colors represent, add a colorbar. The colorbar is
 placed within the figure in the first argument, and the scale and colormap can be
 conveniently set by passing the relevant heatmap to it.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 xs = range(0, 2π, length=100)
 ys = range(0, 2π, length=100)
 zs = [sin(x*y) for x in xs, y in ys]
@@ -152,7 +118,6 @@ Colorbar(fig[:, end+1], hm)
 
 fig
 ```
-\end{examplefigure}
 
 ### Colorbar for multiple heatmaps
 
@@ -166,12 +131,7 @@ Since the heatmaps in the example below have the same colorrange and colormap, a
 can be passed to `Colorbar` to give the colorbar the same attributes. Alternativly,
 the colorbar attributes can be set explicitly.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 xs = range(0, 2π, length=100)
 ys = range(0, 2π, length=100)
 zs1 = [sin(x*y) for x in xs, y in ys]
@@ -188,18 +148,13 @@ Colorbar(fig[:, end+1], colorrange = joint_limits)  # equivalent
 
 fig
 ```
-\end{examplefigure}
 
 
 ### Using a custom colorscale
 
 One can define a custom (color)scale using the `ReversibleScale` type. When the transformation is simple enough (`log`, `sqrt`, ...), the inverse transform is automatically deduced.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 x = 10.0.^(1:0.1:4)
 y = 1.0:0.1:5.0
 z = broadcast((x, y) -> x - 10, x, y')
@@ -210,4 +165,3 @@ Colorbar(fig[1, 2], hm)
 
 fig
 ```
-\end{examplefigure}

@@ -1,13 +1,9 @@
 # scatterlines
 
-{{doc scatterlines}}
 
 ## Examples
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -24,4 +20,3 @@ scatterlines!(xs, ys .- 3, marker = :cross, strokewidth = 1,
 
 f
 ```
-\end{examplefigure}

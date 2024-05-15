@@ -1,6 +1,5 @@
 # triplot
 
-{{doc triplot}}
 
 ## Examples
 
@@ -8,11 +7,8 @@ A `triplot` plots a triangle mesh generated from an arbitrary set of points. The
 input data can either be point based (like `scatter` or `lines`) or a `Triangulation`
 from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl).
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelaunayTriangulation
-CairoMakie.activate!() # hide
 
 using Random
 Random.seed!(1234)
@@ -24,15 +20,11 @@ tri = triangulate(points)
 ax, tr = triplot(f[1, 2], tri, show_points = true)
 f
 ```
-\end{examplefigure}
 
 You can use `triplot` to visualise the [ghost edges](https://danielvandh.github.io/DelaunayTriangulation.jl/stable/boundary_handling/#Ghost-Triangles) surrounding the boundary.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelaunayTriangulation
-CairoMakie.activate!() # hide
 
 n = 20
 angles = range(0, 2pi, length = n+1)[1:end-1]
@@ -47,15 +39,11 @@ tri = triangulate(points; boundary_nodes = boundary_nodes)
 f, ax, tr = triplot(tri; show_ghost_edges = true, show_points = true)
 f
 ```
-\end{examplefigure}
 
 You can also highlight the constrained edges and display the convex hull, which is especially useful when the triangulation is no longer convex.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelaunayTriangulation
-CairoMakie.activate!() # hide
 
 using Random
 Random.seed!(1234)
@@ -77,4 +65,3 @@ refine!(tri; max_area=1e-3*get_area(tri))
 f, ax, tr = triplot(tri, show_constrained_edges = true, constrained_edge_linewidth = 4, show_convex_hull = true)
 f
 ```
-\end{examplefigure}

@@ -1,28 +1,16 @@
 # violin
 
-{{doc violin}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 categories = rand(1:3, 1000)
 values = randn(1000)
 
 violin(categories, values)
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using Makie, CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 fig = Figure()
 xs = vcat([fill(i, i * 1000) for i in 1:4]...)
 ys = vcat(randn(6000), randn(4000) * 2)
@@ -34,14 +22,8 @@ for (i, scale) in enumerate([:area, :count, :width])
 end
 fig
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 categories = rand(1:3, 1000)
 values = map(categories) do x
     return x == 1 ? randn() : x == 2 ? 0.5 * randn() : 5 * rand()
@@ -49,14 +31,8 @@ end
 
 violin(categories, values, datalimits = extrema)
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 N = 1000
 categories = rand(1:3, N)
 dodge = rand(1:2, N)
@@ -68,14 +44,8 @@ end
 
 violin(categories, values, dodge = dodge, side = side, color = color)
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 N = 1000
 categories = rand(1:3, N)
 side = rand([:left, :right], N)
@@ -89,15 +59,11 @@ end
 
 violin(categories, values, side = side, color = color)
 ```
-\end{examplefigure}
 
 #### Using statistical weights
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie, Distributions
-CairoMakie.activate!() # hide
-
+```@figure
+using Distributions
 
 N = 100_000
 categories = rand(1:3, N)
@@ -112,15 +78,10 @@ violin(fig[1,2], categories, values, weights = w)
 
 fig
 ```
-\end{examplefigure}
 
 #### Horizontal axis
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 fig = Figure()
 
 categories = rand(1:3, 1000)
@@ -143,4 +104,3 @@ violin!(ax_horiz, categories, values; orientation=:horizontal)
 
 fig
 ```
-\end{examplefigure}

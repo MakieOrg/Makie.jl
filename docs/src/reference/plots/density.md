@@ -1,15 +1,9 @@
 # density
 
-{{doc density}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -17,14 +11,8 @@ density!(randn(200))
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -32,14 +20,8 @@ density!(randn(200), direction = :y, npoints = 10)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -48,14 +30,8 @@ density!(randn(200), color = (:red, 0.3),
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -68,18 +44,12 @@ end
 
 f
 ```
-\end{examplefigure}
 
 #### Gradients
 
 You can color density plots with gradients by choosing `color = :x` or `:y`, depending on the `direction` attribute.
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 months = ["January", "February", "March", "April",
     "May", "June", "July", "August", "September",
     "October", "November", "December"]
@@ -97,16 +67,10 @@ for i in 12:-1:1
 end
 f
 ```
-\end{examplefigure}
 
 Due to technical limitations, if you color the `:vertical` dimension (or :horizontal with direction = :y), only a colormap made with just two colors can currently work:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 for x in 1:5
@@ -115,14 +79,11 @@ for x in 1:5
 end
 f
 ```
-\end{examplefigure}
 
 #### Using statistical weights
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie, Distributions
-CairoMakie.activate!() # hide
+```@figure
+using Distributions
 
 
 N = 100_000
@@ -136,4 +97,3 @@ density(fig[1,2], x, weights = w)
 
 fig
 ```
-\end{examplefigure}

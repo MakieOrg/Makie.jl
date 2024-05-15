@@ -1,15 +1,9 @@
 # errorbars
 
-{{doc errorbars}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -26,14 +20,8 @@ scatter!(xs, ys, markersize = 3, color = :black)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -52,14 +40,8 @@ scatter!(xs, ys, markersize = 3, color = :black)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -76,4 +58,3 @@ scatter!(xs, ys, markersize = 3, color = :black)
 
 f
 ```
-\end{examplefigure}

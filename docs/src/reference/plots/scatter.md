@@ -1,6 +1,5 @@
 # scatter
 
-{{doc scatter}}
 
 ## Examples
 
@@ -11,7 +10,6 @@ Scatters can be constructed by passing a list of x and y coordinates.
 \begin{examplefigure}{name = "basic_scatter", svg = true}
 ```julia
 using CairoMakie
-CairoMakie.activate!() # hide
 
 
 xs = range(0, 10, length = 30)
@@ -19,7 +17,6 @@ ys = 0.5 .* sin.(xs)
 
 scatter(xs, ys)
 ```
-\end{examplefigure}
 
 ### Using points
 
@@ -28,10 +25,7 @@ It is also possible to pass coordinates as a vector of points, which is preferre
 Attributes like `color` and `markersize` can be set in scalar or vector form.
 If you pass a vector of numbers for `color`, the attribute `colorrange` which is by default automatically equal to the extrema of the color values, decides how colors are looked up in the `colormap`.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 xs = range(0, 10, length = 30)
@@ -41,7 +35,6 @@ points = Point2f.(xs, ys)
 scatter(points, color = 1:30, markersize = range(5, 30, length = 30),
     colormap = :thermal)
 ```
-\end{examplefigure}
 
 ### Markers
 
@@ -57,10 +50,7 @@ There are a couple different categories of markers you can use with `scatter`:
 
 Here is an example plot showing different shapes that are accessible by `Symbol`s, as well as a few characters.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 markers_labels = [
@@ -105,7 +95,6 @@ end
 
 f
 ```
-\end{examplefigure}
 
 #### Markersize
 
@@ -114,10 +103,7 @@ Therefore, `markersize` cannot be directly understood in terms of a unit like `p
 
 For `Char` markers, `markersize` is equivalent to the font size when displaying the same characters using `text`.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f, ax, sc = scatter(1, 1, marker = 'A', markersize = 50)
@@ -125,7 +111,6 @@ text!(2, 1, text = "A", fontsize = 50, align = (:center, :center))
 xlims!(ax, -1, 4)
 f
 ```
-\end{examplefigure}
 
 The default `BezierPath` markers like `:circle`, `:rect`, `:utriangle`, etc. have been chosen such that they approximately match `Char` markers of the same markersize.
 This makes it easier to switch out markers without the overall look changing too much.
@@ -133,10 +118,7 @@ However, both `Char` and `BezierPath` markers are not exactly `markersize` high 
 We can visualize this by plotting some `Char`s, `BezierPath`s, `Circle` and `Rect` in front of a line of width `50`.
 You can see that only the special markers `Circle` and `Rect` match the line width because their base size is 1 x 1, however they don't match the `Char`s or `BezierPath`s very well.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f, ax, l = lines([0, 1], [1, 1], linewidth = 50, color = :gray80)
@@ -145,17 +127,13 @@ for (marker, x) in zip(['X', 'x', :circle, :rect, :utriangle, Circle, Rect], ran
 end
 f
 ```
-\end{examplefigure}
 
 If you need a marker that has some exact base size, so that you can match it with lines or other plot objects of known size, or because you want to use the marker in data space, you can construct it yourself using `BezierPath` or `Polygon`.
 A marker with a base size of 1 x 1, e.g., will be scaled like `lines` when `markersize` and `linewidth` are the same, just like `Circle` and `Rect` markers.
 
 Here, we construct a hexagon polygon with radius `1`, which we can then use to tile a surface in data coordinates by setting `markerspace = :data`.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 hexagon = Makie.Polygon([Point2f(cos(a), sin(a)) for a in range(1/6 * pi, 13/6 * pi, length = 7)])
@@ -169,7 +147,6 @@ scatter(points,
     color = 1:3,
     axis = (; aspect = 1, limits = (-2, 4, -2, 4)))
 ```
-\end{examplefigure}
 
 ### Bezier path markers
 
@@ -185,10 +162,7 @@ A filled shape should start with \apilink{MoveTo} and end with \apilink{ClosePat
 
 Here is an example with a simple arrow that is centered on its tip, built from path elements.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 arrow_path = BezierPath([
@@ -209,7 +183,6 @@ scatter(1:5,
     rotation = range(0, 2pi, length = 6)[1:end-1],
 )
 ```
-\end{examplefigure}
 
 #### Holes
 
@@ -217,10 +190,7 @@ Paths can have holes, just start a new subpath with `MoveTo` that is inside the 
 The holes have to be in clockwise direction if the outside is in anti-clockwise direction, or vice versa.
 For example, a circle with a square cut out can be made by one `EllipticalArc` that goes anticlockwise, and a square inside which goes clockwise:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 circle_with_hole = BezierPath([
@@ -238,7 +208,6 @@ scatter(1:5,
     markersize = 30,
 )
 ```
-\end{examplefigure}
 
 #### Construction from svg path strings
 
@@ -251,10 +220,7 @@ Set `keep_aspect = false` to squeeze the path into the bounding box, disregardin
 
 Here's an example with an svg string that contains the bat symbol:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 batsymbol_string = "M96.84 141.998c-4.947-23.457-20.359-32.211-25.862-13.887-11.822-22.963-37.961-16.135-22.041 6.289-3.005-1.295-5.872-2.682-8.538-4.191-8.646-5.318-15.259-11.314-19.774-17.586-3.237-5.07-4.994-10.541-4.994-16.229 0-19.774 21.115-36.758 50.861-43.694.446-.078.909-.154 1.372-.231-22.657 30.039 9.386 50.985 15.258 24.645l2.528-24.367 5.086 6.52H103.205l5.07-6.52 2.543 24.367c5.842 26.278 37.746 5.502 15.414-24.429 29.777 6.951 50.891 23.936 50.891 43.709 0 15.136-12.406 28.651-31.609 37.267 14.842-21.822-10.867-28.266-22.549-5.549-5.502-18.325-21.147-9.341-26.125 13.886z"
@@ -263,7 +229,6 @@ batsymbol = BezierPath(batsymbol_string, fit = true, flipy = true)
 
 scatter(1:10, marker = batsymbol, markersize = 50, color = :black)
 ```
-\end{examplefigure}
 
 ### Polygon markers
 
@@ -273,26 +238,19 @@ It can also take an optional vector of vectors of points, each of which forms a 
 
 In this example, a small circle is cut out of a larger circle:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie, GeometryBasics
-CairoMakie.activate!() # hide
+```@figure, GeometryBasics
 
 
 p_big = decompose(Point2f, Circle(Point2f(0), 1))
 p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
 scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))
 ```
-\end{examplefigure}
 
 ### Marker rotation
 
 Markers can be rotated using the `rotation` attribute, which also allows to pass a vector.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 points = [Point2f(x, y) for y in 1:10 for x in 1:10]
@@ -300,16 +258,12 @@ rotations = range(0, 2pi, length = length(points))
 
 scatter(points, rotation = rotations, markersize = 20, marker = '↑')
 ```
-\end{examplefigure}
 
 ### Vec markersize
 
 You can scale x and y dimension of markers separately by passing a `Vec`.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -328,16 +282,12 @@ end
 
 f
 ```
-\end{examplefigure}
 
 ### Marker space
 
 By default marker sizes are given in pixel units. You can change this by adjusting `markerspace`. For example, you can have a marker scaled in data units by setting `markerspace = :data`.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 
 f = Figure()
@@ -353,15 +303,11 @@ axislegend(ax)
 
 f
 ```
-\end{examplefigure}
 
 ### Airport locations example
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
+```@figure
 using DelimitedFiles
-CairoMakie.activate!() # hide
 
 
 a = readdlm(assetpath("airportlocations.csv"))
@@ -369,7 +315,6 @@ a = readdlm(assetpath("airportlocations.csv"))
 scatter(a[1:50:end, :], marker = '✈',
     markersize = 20, color = :black)
 ```
-\end{examplefigure}
 
 ### Dealing with outline artifacts in GLMakie
 
@@ -380,10 +325,7 @@ Currently there are a few ways to mitigate this problem, but they all come at a 
 - `overdraw = true` will disable depth testing entirely (read and write) for the plot, removing artifacts. This will however change the z-order of markers and allow plots rendered later to show up on top of the scatter plot
 - `depthsorting = true` will sort markers by depth before rendering to fix the issue. This only works within a plot call, so when other plots are involved the issue may reappear.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 ps = rand(Point3f, 500)
 cs = rand(500)

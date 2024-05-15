@@ -1,15 +1,9 @@
 # rangebars
 
-{{doc rangebars}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -21,14 +15,8 @@ rangebars!(vals, lows, highs, color = :red)
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -41,4 +29,3 @@ rangebars!(vals, lows, highs, color = LinRange(0, 1, length(vals)),
 
 f
 ```
-\end{examplefigure}

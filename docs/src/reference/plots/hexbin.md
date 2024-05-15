@@ -1,6 +1,5 @@
 # hexbin
 
-{{doc hexbin}}
 
 ## Examples
 
@@ -9,10 +8,7 @@
 Setting `bins` to an integer sets the number of bins to this value for both x and y.
 The minimum number of bins in one dimension is 2.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -31,14 +27,10 @@ end
 
 f
 ```
-\end{examplefigure}
 
 You can also pass a tuple of integers to control x and y separately.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -57,7 +49,6 @@ end
 
 f
 ```
-\end{examplefigure}
 
 ### Setting the size of cells
 
@@ -67,10 +58,7 @@ In this case, the `bins` setting is ignored.
 The height of a hexagon is larger than its width.
 This is why setting the same size for x and y will result in uneven hexagons.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -89,16 +77,12 @@ end
 
 f
 ```
-\end{examplefigure}
 
 To get evenly sized hexagons, set the cell size to a single number.
 This number defines the cell width, the height will be computed as `2 * step_x / sqrt(3)`.
 Note that the visual appearance of the hexagons will only be even if the x and y axis have the same scaling, which is why we use `aspect = DataAspect()` in these examples.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -117,16 +101,12 @@ end
 
 f
 ```
-\end{examplefigure}
 
 ### Hiding hexagons with low counts
 
 All hexagons with a count lower than `threshold` will be removed:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -142,17 +122,13 @@ for (i, threshold) in enumerate([1, 10, 100, 500])
 end
 f
 ```
-\end{examplefigure}
 
 
 ### Changing the scale of the number of observations in a bin
 
 You can pass a scale function to via the `colorscale` keyword, which will be applied to the bin counts before plotting.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -167,20 +143,15 @@ hexbin(f[1, 2], x, y, bins = 40, colorscale=log10,
     axis = (aspect = DataAspect(), title = "colorscale = log10"))
 f
 ```
-\end{examplefigure}
 
 ### Showing zero count hexagons
 
 By setting `threshold = 0`, all hexagons that fit into the limits of the input data are shown.
 In this example, we add a transparent color to the start of the colormap and stroke each hexagon so the empty hexagons are visible but not too distracting.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using DelimitedFiles
-CairoMakie.activate!() # hide
 
 
 a = map(Point2f, eachrow(readdlm(assetpath("airportlocations.csv"))))
@@ -202,16 +173,12 @@ Colorbar(f[1, 2], hb,
 )
 f
 ```
-\end{examplefigure}
 
 ### Applying weights to observations
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using CairoMakie.Makie # hide
 using CairoMakie.Makie.StatsBase # hide
-CairoMakie.activate!() # hide
 
 using Random
 Random.seed!(1234)
@@ -233,4 +200,3 @@ end
 
 f
 ```
-\end{examplefigure}

@@ -1,15 +1,9 @@
 # linesegments
 
-{{doc linesegments}}
 
 ## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -22,7 +16,6 @@ linesegments!(xs, ys .- 2, linewidth = 5, color = LinRange(1, 5, length(xs)))
 
 f
 ```
-\end{examplefigure}
 
 ### Dealing with outline artifacts in GLMakie
 
@@ -32,10 +25,7 @@ Currently there are a few ways to mitigate this problem, but they all come at a 
 - `transparency = true` will disable depth testing to a degree, resulting in all lines being rendered without artifacts. However with this lines will always have some level of transparency.
 - `overdraw = true` will disable depth testing entirely (read and write) for the plot, removing artifacts. This will however change the z-order of line segments and allow plots rendered later to show up on top of the linesegments plot.
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 ps = rand(Point3f, 500)
 cs = rand(500)

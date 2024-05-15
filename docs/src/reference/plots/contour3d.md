@@ -1,13 +1,9 @@
 # contour3d
 
-{{doc contour3d}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 
 f = Figure()
@@ -21,16 +17,10 @@ contour3d!(xs, ys, +zs, linewidth=2, color=:red2)
 
 f
 ```
-\end{examplefigure}
 
 Omitting the `xs` and `ys` results in the indices of `zs` being used. We can also set arbitrary contour-levels using `levels`:
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis3(f[1, 1], aspect=(0.5,0.5,1), perspectiveness=0.75)
 
@@ -42,4 +32,3 @@ contour3d!(+zs, levels=  .025:0.05:.475,  linewidth=2, color=:red2)
 
 f
 ```
-\end{examplefigure}

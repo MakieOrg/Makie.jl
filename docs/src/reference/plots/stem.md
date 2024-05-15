@@ -1,15 +1,9 @@
 # stem
 
-{{doc stem}}
 
-### Examples
+## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -19,14 +13,8 @@ stem!(xs, sin.(xs))
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -40,14 +28,8 @@ stem!(xs, sin,
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -60,12 +42,8 @@ stem!(xs, sin.(xs),
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 
 f = Figure()
@@ -78,4 +56,3 @@ stem(f[1, 1], 0.5xs, 2 .* sin.(xs), 2 .* cos.(xs),
 
 f
 ```
-\end{examplefigure}

@@ -1,14 +1,9 @@
 # image
 
-{{doc image}}
 
 ## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 using FileIO
 
 img = load(assetpath("cow.png"))
@@ -30,4 +25,3 @@ image(f[2, 2], img',
 
 f
 ```
-\end{examplefigure}

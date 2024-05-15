@@ -1,15 +1,9 @@
 # pie
 
-{{doc pie}}
 
 ## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 data   = [36, 12, 68, 5, 42, 27]
 colors = [:yellow, :orange, :red, :blue, :purple, :green]
 
@@ -24,15 +18,9 @@ f, ax, plt = pie(data,
 
 f
 ```
-\end{examplefigure}
 
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f, ax, plt = pie([π/2, 2π/3, π/4],
                 normalize=false,
                 offset = π/2,
@@ -42,4 +30,3 @@ f, ax, plt = pie([π/2, 2π/3, π/4],
 
 f
 ```
-\end{examplefigure}

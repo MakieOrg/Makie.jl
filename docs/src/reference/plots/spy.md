@@ -1,14 +1,11 @@
 # spy
 
-{{doc spy}}
 
 
 ## Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie, SparseArrays
-CairoMakie.activate!() # hide
+```@figure
+using SparseArrays
 
 
 N = 100 # dimension of the sparse matrix
@@ -23,4 +20,3 @@ ax.title = "Visualization of a random sparse matrix"
 
 f
 ```
-\end{examplefigure}

@@ -1,13 +1,9 @@
 # mesh
 
-{{doc mesh}}
 
 ## Examples
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+```@figure backend=GLMakie
 
 
 vertices = [
@@ -26,14 +22,9 @@ colors = [:red, :green, :blue, :orange]
 
 scene = mesh(vertices, faces, color = colors, shading = NoShading)
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure backend=GLMakie
 using FileIO
-using GLMakie
-GLMakie.activate!() # hide
-
 
 brain = load(assetpath("brain.stl"))
 
@@ -43,7 +34,6 @@ mesh(
     colormap = Reverse(:Spectral)
 )
 ```
-\end{examplefigure}
 
 ## Using GeometryBasics.Mesh and Buffer/Sampler type
 

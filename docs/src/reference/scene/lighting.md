@@ -65,7 +65,6 @@ The different light sources control the `light_direction` and may further adjust
 ### AmbientLight
 
 ```
-{{doc AmbientLight}}
 ```
 
 ```@figure
@@ -86,7 +85,6 @@ fig
 ### DirectionalLight
 
 ```
-{{doc DirectionalLight}}
 ```
 
 ```@figure backend=GLMakie
@@ -111,7 +109,6 @@ fig
 ### PointLight
 
 ```
-{{doc PointLight}}
 ```
 
 ```@figure backend=GLMakie
@@ -170,7 +167,6 @@ fig
 
 ### SpotLight
 ```
-{{doc SpotLight}}
 ```
 
 ```@figure backend=GLMakie
@@ -193,7 +189,6 @@ fig
 
 ### RectLight
 ```
-{{doc RectLight}}
 ```
 
 ```@figure backend=GLMakie
@@ -268,5 +263,4 @@ fig
 ### EnvironmentLight
 
 ```
-{{doc EnvironmentLight}}
 ```

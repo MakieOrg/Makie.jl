@@ -1,13 +1,9 @@
 # tricontourf
 
-{{doc tricontourf}}
 
 ## Examples
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -21,12 +17,8 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 Colorbar(f[1, 2], tr)
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -40,16 +32,12 @@ scatter!(x, y, color = z, colormap = :batlow, strokewidth = 1, strokecolor = :bl
 Colorbar(f[1, 2], tr)
 f
 ```
-\end{examplefigure}
 
 #### Triangulation modes
 
 Manual triangulations can be passed as a 3xN matrix of integers, where each column of three integers specifies the indices of the corners of one triangle in the vector of points.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(123)
@@ -74,17 +62,13 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 
 f
 ```
-\end{examplefigure}
 
 By default, `tricontourf` performs unconstrained triangulations.
 Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) and passing the resulting triangulation as the first argument of `tricontourf`.
 For example, the above annulus can also be plotted as follows:
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelaunayTriangulation
-CairoMakie.activate!() # hide
 using Random
 
 Random.seed!(123)
@@ -105,13 +89,10 @@ f, ax, _ = tricontourf(tri, z;
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
-\end{examplefigure}
 
 Boundary nodes make it possible to support more complicated regions, possibly with holes, than is possible by only providing points themselves.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelaunayTriangulation
 CairoMakie.activate!() # hide 
 
@@ -150,11 +131,8 @@ z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)] # no
 f, ax, _ = tricontourf(tri, z, levels = 30; axis = (; aspect = 1))
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
+```@figure
 using DelaunayTriangulation
 CairoMakie.activate!() # hide 
 
@@ -175,7 +153,6 @@ z = [(x - 3/2)^2 + y^2 for (x, y) in DelaunayTriangulation.each_point(tri)] # no
 f, ax, tr = tricontourf(tri, z, colormap = :matter)
 f
 ```
-\end{examplefigure}
 
 #### Relative mode
 
@@ -183,10 +160,7 @@ Sometimes it's beneficial to drop one part of the range of values, usually towar
 Rather than specifying the levels to include manually, you can set the `mode` attribute
 to `:relative` and specify the levels from 0 to 1, relative to the current minimum and maximum value.
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 
 using Random
 Random.seed!(1234)
@@ -200,4 +174,3 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 Colorbar(f[1, 2], tr)
 f
 ```
-\end{examplefigure}

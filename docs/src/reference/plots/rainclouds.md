@@ -3,13 +3,8 @@
 "Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The
 three together can make an appealing and informative visual, particularly for large N datasets.
 
-{{doc rainclouds}}
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure rainclouds
 using Random
 using Makie: rand_localized
 
@@ -71,11 +66,9 @@ rainclouds(category_labels, data_array;
     plot_boxplots = false, cloud_width=0.5, clouds=hist, hist_bins=50,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
-\end{examplefigure}
 
 
-\begin{examplefigure}{}
-```julia
+```@figure rainclouds
 rainclouds(category_labels, data_array;
     axis = (; ylabel = "Categories of Distributions",
     xlabel = "Samples", title = "My Title"),
@@ -83,10 +76,8 @@ rainclouds(category_labels, data_array;
     plot_boxplots = true, cloud_width=0.5, clouds=hist,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure rainclouds
 rainclouds(category_labels, data_array;
     axis = (;
         xlabel = "Categories of Distributions",
@@ -96,11 +87,9 @@ rainclouds(category_labels, data_array;
     plot_boxplots = true, cloud_width=0.5, clouds=hist,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
-\end{examplefigure}
 
 
-\begin{examplefigure}{}
-```julia
+```@figure rainclouds
 rainclouds(category_labels, data_array;
     axis = (;
         xlabel = "Categories of Distributions",
@@ -110,10 +99,8 @@ rainclouds(category_labels, data_array;
     plot_boxplots = true, cloud_width=0.5, side = :right,
     violin_limits = extrema, color = colors[indexin(category_labels, unique(category_labels))])
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure rainclouds
 rainclouds(category_labels, data_array;
     axis = (;
         xlabel = "Categories of Distributions",
@@ -123,10 +110,8 @@ rainclouds(category_labels, data_array;
     plot_boxplots = true, cloud_width=0.5, side = :right,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure rainclouds
 more_category_labels, more_data_array = mockup_categories_and_data_array(6)
 
 rainclouds(more_category_labels, more_data_array;
@@ -138,10 +123,8 @@ rainclouds(more_category_labels, more_data_array;
     plot_boxplots = true, cloud_width=0.5,
     color = colors[indexin(more_category_labels, unique(more_category_labels))])
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
+```@figure rainclouds
 category_labels, data_array = mockup_categories_and_data_array(6)
 rainclouds(category_labels, data_array;
     axis = (;
@@ -152,14 +135,12 @@ rainclouds(category_labels, data_array;
     plot_boxplots = true, cloud_width=0.5,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
-\end{examplefigure}
 
 4 of these, between 3 distributions
 Left and Right example
 With and Without Box Plot
 
-\begin{examplefigure}{}
-```julia
+```@figure rainclouds
 fig = Figure(size = (800*2, 600*5))
 colors = [Makie.wong_colors(); Makie.wong_colors()]
 
@@ -223,4 +204,3 @@ rainclouds!(
 supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", fontsize=30)
 fig
 ```
-\end{examplefigure}

@@ -1,6 +1,6 @@
 # arrows
 
-### Examples
+## Examples
 
 ```@figure
 f = Figure(size = (800, 800))
