@@ -54,7 +54,27 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     push!(fields_vector, constructor)
 
+    docs_placeholder = gensym()
+
     q = quote
+        # This part is as far as I know the only way to modify the docstring on top of the
+        # recipe, so that we can offer the convenience of automatic augmented docstrings
+        # but combine them with the simplicity of using a normal docstring.
+        # The trick is to mark some variable (in this case a gensymmed placeholder) with the
+        # Core.@__doc__ macro, which causes this variable to get assigned the docstring on top
+        # of the @recipe invocation. From there, it can then be retrieved, modified, and later
+        # attached to plotting function by using @doc again. We also delete the binding to the
+        # temporary variable so no unnecessary docstrings stay in place.
+        Core.@__doc__ $(docs_placeholder) = nothing
+        binding = Docs.Binding(@__MODULE__, $(QuoteNode(docs_placeholder)))
+        user_docstring = if haskey(Docs.meta(@__MODULE__), binding)
+            _docstring = @doc($docs_placeholder)
+            delete!(Docs.meta(@__MODULE__), binding)
+            _docstring
+        else
+            "No docstring defined.\n"
+        end
+
         $structdef
 
         export $name
@@ -90,6 +110,9 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         end
 
         Makie.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+
+        docstring_modified = make_block_docstring($name, user_docstring)
+        @doc docstring_modified $name
     end
 
     esc(q)
@@ -102,32 +125,18 @@ function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
     :(Dict())
 end
 
-block_docs(x) = ""
+function make_block_docstring(T::Type{<:Block}, docstring)
+    """
+    **`$T <: Block`**
 
-function Docs.getdoc(@nospecialize T::Type{<:Block})
-    if T === Block
-        Markdown.parse("""
-            abstract type Block
+    $docstring
 
-        `Block` is an abstract type that groups objects which can be placed in a `Figure`
-        and positioned in its `GridLayout` as rectangular objects.
+    **Attributes**
 
-        Concrete `Block` types should only be defined via the `@Block` macro.
-        """)
-    else
-        s = """
-        **`$T <: Block`**
+    (type `?$T.x` in the REPL for more information about attribute `x`)
 
-        $(block_docs(T))
-
-        **Attributes**
-
-        (type `?$T.x` in the REPL for more information about attribute `x`)
-
-        $(_attribute_list(T))
-        """
-        Markdown.parse(s)
-    end
+    $(_attribute_list(T))
+    """
 end
 
 function _attribute_list(T)

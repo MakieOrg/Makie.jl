@@ -1,15 +1,3 @@
-function block_docs(::Type{Axis})
-    """
-    A 2D axis which can be plotted into.
-
-    **Constructors**
-
-    ```julia
-    Axis(fig_or_scene; palette = nothing, kwargs...)
-    ```
-    """
-end
-
 function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2f, tickpositions::Vector{Point2f})
     result = grid_obs[]
     empty!(result) # reuse array for less allocations
