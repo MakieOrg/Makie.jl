@@ -1,5 +1,7 @@
 # qqnorm
 
+## Examples
+
 Test if `xs` is normally distributed.
 
 ```@figure
