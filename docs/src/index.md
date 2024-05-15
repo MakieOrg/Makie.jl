@@ -12,8 +12,8 @@ hero:
     alt: Makie
   actions:
     - theme: brand
-      text: Introduction
-      link: /introduction
+      text: Getting started
+      link: /tutorials/basic-tutorial
     - theme: alt
       text: View on Github
       link: https://github.com/MakieOrg/Makie.jl
