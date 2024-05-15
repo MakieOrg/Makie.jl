@@ -35,7 +35,7 @@ See also: [`data_limits`](@ref)
 function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     # Assume primitive plot
     if isempty(plot.plots)
-        return Rect3d(iterate_transformed(plot))
+        return apply_transform_and_model(plot, data_limits(plot))
     end
 
     # Assume combined plot
@@ -45,11 +45,6 @@ function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     end
 
     return bb_ref[]
-end
-
-# for convenience
-function transform_bbox(scenelike, lims::Rect)
-    return Rect3d(iterate_transformed(scenelike, point_iterator(lims)))
 end
 
 # same as data_limits except using iterate_transformed
@@ -111,7 +106,7 @@ function boundingbox(plot::Scatter)
         return bb
 
     else
-        return Rect3d(iterate_transformed(plot))
+        return apply_transform_and_model(plot, data_limits(plot))
     end
 end
 
@@ -126,13 +121,4 @@ end
 
 function iterate_transformed(plot, points::AbstractArray{<: VecTypes})
     return apply_transform_and_model(plot, points)
-end
-
-# TODO: Can this be deleted?
-function iterate_transformed(plot, points::T) where T
-    @warn "iterate_transformed with $T"
-    t = transformation(plot)
-    model = model_transform(t) # will auto-promote if points if Float64
-    trans_func = transform_func(t)
-    [to_ndim(Point3d, project(model, apply_transform(trans_func, point, space))) for point in points]
 end

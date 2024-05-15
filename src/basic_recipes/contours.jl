@@ -352,9 +352,9 @@ function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     return Rect3d(mini, maxi .- mini)
 end
 function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}, space::Symbol = :data) where {X, Y, Z}
-    return transform_bbox(plot, data_limits(plot))
+    return apply_transform_and_model(plot, data_limits(plot))
 end
 # TODO: should this have a data_limits overload?
 function boundingbox(plot::Contour3d, space::Symbol = :data)
-    return transform_bbox(plot, data_limits(plot))
+    return apply_transform_and_model(plot, data_limits(plot))
 end

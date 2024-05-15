@@ -222,6 +222,11 @@ function transformationmatrix(translation, scale, rotation::Quaternion)
     trans_scale*rotation
 end
 
+function is_translation_scale_matrix(mat::Mat4{T}) where T
+    return abs(mat[2, 1]) + abs(mat[3, 1]) + abs(mat[1, 2]) + abs(mat[3, 2]) +
+           abs(mat[1, 3]) + abs(mat[2, 3]) < sqrt(eps(T))
+end
+
 #Calculate rotation between two vectors
 function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     # It is important that the inputs are of equal length when

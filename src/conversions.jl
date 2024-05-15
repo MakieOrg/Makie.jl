@@ -16,9 +16,6 @@ function convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
     # Meaning, it needs to be a conversion trait, or it needs single_convert_arguments or expand_dimensions
     CT = conversion_trait(T, args...)
 
-    # Try to expand dimensions first, as this is the most basic step!
-    expanded = expand_dimensions(CT, args...)
-    !isnothing(expanded) && return convert_arguments(T, expanded...; kw...)
     # Try single argument convert after
     arguments_converted = map(convert_single_argument, args)
     if arguments_converted !== args

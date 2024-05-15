@@ -95,4 +95,4 @@ function data_limits(p::VLines)
     return Rect3d(Point3d(xmin, NaN, 0), Vec3d(xmax - xmin, NaN, 0))
 end
 
-boundingbox(p::Union{HLines, VLines}, space::Symbol = :data) = transform_bbox(p, data_limits(p))
+boundingbox(p::Union{HLines, VLines}, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
