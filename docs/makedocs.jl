@@ -167,8 +167,11 @@ makedocs(;
             "how-to/draw-boxes-around-subfigures.md",
             "how-to/save-figure-with-transparency.md",
         ],
-        "API" => "api.md",
-        "Changelog" => "changelog.md",
+        "Resources" => [
+            "API" => "api.md",
+            "Changelog" => "changelog.md",
+            "Ecosystem" => "ecosystem.md",
+        ]
     ],
     warnonly = true,
     pagesonly = true,

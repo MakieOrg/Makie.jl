@@ -3,5 +3,5 @@ __site/
 node_modules/
 package-lock.json
 news.md
-src/news.md
+src/changelog.md
 build/

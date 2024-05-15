@@ -87,86 +87,29 @@ set_theme!() # hide
 <video autoplay loop muted playsinline controls src="./lorenz.mp4" style="max-height: 40vh;"/>
 ```
 
-## Installation and Import
+## Installation
 
-Add one or more of the Makie backend packages [`GLMakie.jl`](/explanations/backends/glmakie/) (OpenGL), [`CairoMakie.jl`](/explanations/backends/cairomakie/) (Cairo), or [`WGLMakie.jl`](/explanations/backends/wglmakie/) (WebGL), [`RPRMakie`](/explanations/backends/rprmakie/) (RadeonProRender) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
+First, choose one (or more) of the four backend packages (more info under [What is a backend](@ref)):
 
-Makie is the core package, and the backends have no user facing functionality.  They only render the final result.  See the [What is a backend](@ref) page for more information.
+- [GLMakie](@ref) (OpenGL based, interactive)
+- [CairoMakie](@ref) (Cairo based, static vector graphics)
+- [WGLMakie](@ref) (WebGL based, runs in the browser)
+- [RPRMakie](@ref) (Experimental ray-tracing using RadeonProRender)
+
+Then install it using Julia's package manager `Pkg`:
 
 ```julia
-]add GLMakie
-using GLMakie
+using Pkg
+Pkg.add("GLMakie")
 ```
 
-To switch to a different backend, for example `CairoMakie`, call `CairoMakie.activate!()`.
+There's no need to install `Makie.jl` separately, it is re-exported by each backend package.
 
 ## First Steps
 
-### Basic Tutorial
-Learn the basics of plotting with Makie.
+If you are new to Makie, have a look at [Getting started with Makie](@ref).
 
-![Basic Tutorial](./assets/basic_tutorial_example.png)
-
-### Layout Tutorial
-Check out how to make complex plots and layouts.
-
-![Layout Tutorial](./assets/layout_tutorial.png)
-
-### Plot Reference
-A visual reference of all available plotting functions and their attributes.
-
-![Plot Reference](./assets/mandelbrot_heatmap.png)
-
-
-## Makie Ecosystem
-
-There are four backends, each of which has particular strengths. You can switch between backends at any time.
-
-### GLMakie.jl
-GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.
-
-![GLMakie.jl](./assets/surface_example.png)
-
-### CairoMakie.jl
-`Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics.
-
-![CairoMakie.jl](./assets/density_example.png)
-
-### WGLMakie.jl
-WebGL-based interactive 2D and 3D plotting that runs within browsers.
-
-![WGLMakie.jl](./assets/wireframe_example.png)
-
-### RPRMakie.jl
-Backend using RadeonProRender for raytracing Makie scenes.
-
-![RPRMakie.jl](./assets/topographie.png)
-
-The differences between backends are explained in more details under [Backends](@ref).
-
-### Extensions and Resources
-
-These packages and sites are maintained by third parties. If you install packages, keep an eye on version conflicts or downgrades as the Makie ecosystem is developing quickly so things break occasionally.
-
-### AlgebraOfGraphics.jl
-Grammar-of-graphics style plotting, inspired by ggplot2.
-
-![AlgebraOfGraphics.jl](./assets/aog_example.png)
-
-### Beautiful Makie
-This third-party gallery contains many advanced examples.
-
-![Beautiful Makie](./assets/beautifulmakie_example.png)
-
-### GraphMakie.jl
-Graphs with two- and three-dimensional layout algorithms.
-
-![GraphMakie.jl](./assets/graphmakie.png)
-
-### GeoMakie.jl
-Geographic plotting utilities including projections.
-
-![GeoMakie.jl](./assets/geomakie_example.png)
+For inspiration, visit [Beautiful Makie](https://beautiful.makie.org/) for a collection of interesting plots.
 
 
 ## Citing Makie
