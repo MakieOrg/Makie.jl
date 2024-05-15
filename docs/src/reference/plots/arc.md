@@ -1,22 +1,12 @@
 # arc
 
-{{doc arc}}
-
 ## Examples
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 arc(Point2f(0), 1, -π, π)
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
+```@figure
 f = Figure() 
 Axis(f[1, 1])
 
@@ -26,13 +16,8 @@ end
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
+```@figure
 f = Figure()
 Axis(f[1, 1])
 
@@ -53,4 +38,9 @@ end
 
 f
 ```
-\end{examplefigure}
+
+## Attributes
+
+```@attrdocs
+Arc
+```

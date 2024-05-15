@@ -6,6 +6,8 @@ ablines!([1, 2, 3], [1, 1.5, 2], color = [:red, :orange, :pink], linestyle=:dash
 current_figure()
 ```
 
+## Attributes
+
 ```@attrdocs
 ABLines
 ```

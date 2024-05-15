@@ -1,15 +1,8 @@
 # arrows
 
-{{doc arrows}}
-
 ### Examples
 
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 f = Figure(size = (800, 800))
 Axis(f[1, 1], backgroundcolor = "black")
 
@@ -24,14 +17,8 @@ arrows!(xs, ys, us, vs, arrowsize = 10, lengthscale = 0.3,
 
 f
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
-
-
+```@figure backend=GLMakie
 ps = [Point3f(x, y, z) for x in -5:2:5 for y in -5:2:5 for z in -5:2:5]
 ns = map(p -> 0.1 * Vec3f(p[2], p[3], p[1]), ps)
 arrows(
@@ -41,13 +28,8 @@ arrows(
     align = :center, axis=(type=Axis3,)
 )
 ```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
-
+```@figure backend=GLMakie
 using LinearAlgebra
 
 ps = [Point3f(x, y, z) for x in -5:2:5 for y in -5:2:5 for z in -5:2:5]
@@ -60,17 +42,10 @@ arrows(
     align = :center, axis=(type=Axis3,)
 )
 ```
-\end{examplefigure}
 
 `arrows` can also take a function `f(x::Point{N})::Point{N}` which returns the arrow vector when given the arrow's origin.
 
-
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-
+```@figure
 fig = Figure(size = (800, 800))
 ax = Axis(fig[1, 1], backgroundcolor = "black")
 xs = LinRange(0, 2pi, 20)
@@ -85,5 +60,9 @@ arrows!(ax, xs, ys, arrow_fun, arrowsize = 10, lengthscale = 0.3,
     arrowcolor = strength, linecolor = strength)
 fig
 ```
-\end{examplefigure}
 
+## Attributes
+
+```@attrdocs
+Arrows
+```
