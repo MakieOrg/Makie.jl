@@ -18,7 +18,7 @@ f
 
 #### Histogram with labels
 
-You can use all the same arguments as \apilink{barplot}:
+You can use all the same arguments as [`barplot`](@ref):
 ```@figure
 data = randn(1000)
 
@@ -59,4 +59,10 @@ hist(fig[1,1], x)
 hist(fig[1,2], x, weights = w)
 
 fig
+```
+
+## Attributes
+
+```@attrdocs
+Hist
 ```

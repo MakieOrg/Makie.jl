@@ -56,3 +56,9 @@ stem(f[1, 1], 0.5xs, 2 .* sin.(xs), 2 .* cos.(xs),
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Stem
+```

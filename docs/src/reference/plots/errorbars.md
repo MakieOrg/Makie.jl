@@ -58,3 +58,9 @@ scatter!(xs, ys, markersize = 3, color = :black)
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Errorbars
+```

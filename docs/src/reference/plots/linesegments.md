@@ -40,4 +40,9 @@ Label(f[3, 2], "overdraw = true", tellwidth = false)
 linesegments(f[4, 2], ps, color = cs, overdraw = true)
 f
 ```
-\end{examplefigure}
+
+## Attributes
+
+```@attrdocs
+LineSegments
+```

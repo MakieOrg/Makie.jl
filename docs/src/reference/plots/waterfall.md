@@ -68,3 +68,9 @@ group = repeat(1:2, inner=5)
 
 waterfall(x, y, dodge=group, color=colors[group], show_direction=true, stack=:x)
 ```
+
+## Attributes
+
+```@attrdocs
+Waterfall
+```

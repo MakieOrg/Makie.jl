@@ -265,3 +265,9 @@ Label(
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Text
+```

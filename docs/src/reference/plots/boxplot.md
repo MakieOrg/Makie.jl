@@ -79,3 +79,9 @@ boxplot!(ax_horiz, categories, values; orientation=:horizontal)
 
 fig
 ```
+
+## Attributes
+
+```@attrdocs
+BoxPlot
+```

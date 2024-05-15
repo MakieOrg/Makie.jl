@@ -200,3 +200,9 @@ end
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Hexbin
+```

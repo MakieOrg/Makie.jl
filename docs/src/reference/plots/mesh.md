@@ -39,7 +39,7 @@ mesh(
 
 We can also create a mesh, to specify normals, uv coordinates:
 
-```julia:mesh
+```@example sampler
 using GeometryBasics, LinearAlgebra, GLMakie, FileIO
 GLMakie.activate!() # hide
 
@@ -81,13 +81,17 @@ wireframe!(ax, gb_mesh, color=(:black, 0.2), linewidth=2, transparency=true)
 record(f, "uv_mesh.mp4", LinRange(0, 1, 100)) do shift
     uv_buff[1:end] = gen_uv(shift)
 end
+nothing # hide
 ```
-\video{uv_mesh, autoplay = true}
+
+```@raw html
+<video autoplay loop muted playsinline controls src="./uv_mesh.mp4" />
+```
 
 The uv coordinates that go out of bounds will get repeated per default.
 One can use a `Sampler` object to change that behaviour:
 
-```julia:mesh
+```@example sampler
 #=
 Possible values:
 :clamp_to_edge (default)
@@ -102,5 +106,15 @@ wireframe!(ax, gb_mesh, color=(:black, 0.2), linewidth=2, transparency=true)
 record(f, "uv_mesh_mirror.mp4", LinRange(0, 1, 100)) do shift
     uv_buff[1:end] = gen_uv(shift)
 end
+nothing # hide
 ```
-\video{uv_mesh_mirror, autoplay = true}
+
+```@raw html
+<video autoplay loop muted playsinline controls src="./uv_mesh_mirror.mp4" />
+```
+
+## Attributes
+
+```@attrdocs
+Mesh
+```

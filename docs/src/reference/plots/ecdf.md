@@ -34,3 +34,9 @@ ecdfplot!(x; weights = w, color=:orange)
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+ECDFPlot
+```

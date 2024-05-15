@@ -75,11 +75,7 @@ f
 
 When using a `Function` of the form `(i, j) -> v` as the `values` argument, it is evaluated over the grid spanned by `x` and `y`.
 
-\begin{examplefigure}{name = "mandelbrot_heatmap"}
-```julia
-using CairoMakie
-
-
+```@figure
 function mandelbrot(x, y)
     z = c = x + y*im
     for i in 1:30.0; abs(z) > 2 && return i; z = z^2 + c; end; 0
@@ -94,7 +90,6 @@ heatmap(-2:0.001:1, -1.1:0.001:1.1, mandelbrot,
 There must be no duplicate combinations of x and y, but it is allowed to leave out values.
 
 ```@figure
-
 xs = [1, 2, 3, 1, 2, 3, 1, 2, 3]
 ys = [1, 1, 1, 2, 2, 2, 3, 3, 3]
 zs = [1, 2, 3, 4, 5, 6, 7, 8, NaN]
@@ -164,4 +159,10 @@ fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
 Colorbar(fig[1, 2], hm)
 
 fig
+```
+
+## Attributes
+
+```@attrdocs
+Heatmap
 ```

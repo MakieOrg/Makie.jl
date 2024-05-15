@@ -32,3 +32,9 @@ contour3d!(+zs, levels=  .025:0.05:.475,  linewidth=2, color=:red2)
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Contour3d
+```

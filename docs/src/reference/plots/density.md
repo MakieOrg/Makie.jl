@@ -97,3 +97,9 @@ density(fig[1,2], x, weights = w)
 
 fig
 ```
+
+## Attributes
+
+```@attrdocs
+Density
+```

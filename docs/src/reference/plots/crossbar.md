@@ -12,3 +12,9 @@ dodge = [1, 2, 1, 2, 1, 2]
 
 crossbar(xs, ys, ymins, ymaxs, dodge = dodge, show_notch = true)
 ```
+
+## Attributes
+
+```@attrdocs
+CrossBar
+```

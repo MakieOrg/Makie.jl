@@ -79,3 +79,9 @@ contourf!(volcano, levels = 10)
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Contourf
+```

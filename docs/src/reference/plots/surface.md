@@ -68,3 +68,9 @@ data = 0.1randn(d,d) + reshape(
 surface(data; shading = NoShading, colormap = :deep)
 surface(data; shading = NoShading, colormap = :deep)
 ```
+
+## Attributes
+
+```@attrdocs
+Surface
+```

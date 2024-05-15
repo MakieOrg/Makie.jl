@@ -3,7 +3,8 @@
 
 ## Examples
 
-```@figureusing Makie.GeometryBasics
+```@figure
+using Makie.GeometryBasics
 
 
 f = Figure()
@@ -14,7 +15,8 @@ poly!(Point2f[(0, 0), (2, 0), (3, 1), (1, 1)], color = :red, strokecolor = :blac
 f
 ```
 
-```@figureusing Makie.GeometryBasics
+```@figure
+using Makie.GeometryBasics
 
 
 f = Figure()
@@ -31,7 +33,8 @@ poly!(p, color = :blue)
 f
 ```
 
-```@figureusing Makie.GeometryBasics
+```@figure
+using Makie.GeometryBasics
 
 
 f = Figure()
@@ -47,7 +50,8 @@ poly!(
 f
 ```
 
-```@figureusing Makie.GeometryBasics
+```@figure
+using Makie.GeometryBasics
 
 
 f = Figure()
@@ -59,7 +63,8 @@ poly!(Circle(Point2f(0, 0), 15f0), color = :pink)
 f
 ```
 
-```@figureusing Makie.GeometryBasics
+```@figure
+using Makie.GeometryBasics
 
 
 f = Figure()
@@ -74,7 +79,8 @@ poly!(ps, color = rand(RGBf, length(ps)))
 f
 ```
 
-```@figureusing Makie.GeometryBasics
+```@figure
+using Makie.GeometryBasics
 
 
 f = Figure()
@@ -91,4 +97,9 @@ poly!(
 
 f
 ```
-\end{examplefigure}
+
+## Attributes
+
+```@attrdocs
+Poly
+```

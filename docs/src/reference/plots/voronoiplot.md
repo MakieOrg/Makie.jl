@@ -102,4 +102,9 @@ smooth_vorn = centroidal_smooth(vorn)
 f, ax, tr = voronoiplot(smooth_vorn, show_generators=false)
 f
 ```
-\end{examplefigure}
+
+## Attributes
+
+```@attrdocs
+Voronoiplot
+```

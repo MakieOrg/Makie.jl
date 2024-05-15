@@ -30,3 +30,9 @@ f, ax, plt = pie([π/2, 2π/3, π/4],
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Pie
+```

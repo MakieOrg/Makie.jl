@@ -204,3 +204,9 @@ rainclouds!(
 supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", fontsize=30)
 fig
 ```
+
+## Attributes
+
+```@attrdocs
+RainClouds
+```

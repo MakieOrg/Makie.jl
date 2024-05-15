@@ -25,3 +25,9 @@ image(f[2, 2], img',
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Image
+```

@@ -15,3 +15,9 @@ stairs(f[3, 1], xs, ys; step=:center, color=:red, linestyle=:dot)
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Stairs
+```

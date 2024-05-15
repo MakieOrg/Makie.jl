@@ -17,3 +17,9 @@ f
 ```
 
 For more examples, see `hist`.
+
+## Attributes
+
+```@attrdocs
+StepHist
+```

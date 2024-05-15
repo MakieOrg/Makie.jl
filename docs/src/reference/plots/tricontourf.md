@@ -94,7 +94,6 @@ Boundary nodes make it possible to support more complicated regions, possibly wi
 
 ```@figure
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
 
 ## Start by defining the boundaries, and then convert to the appropriate interface 
 curve_1 = [
@@ -134,7 +133,6 @@ f
 
 ```@figure
 using DelaunayTriangulation
-CairoMakie.activate!() # hide 
 
 using Random
 Random.seed!(1234)
@@ -173,4 +171,10 @@ f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1)
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 Colorbar(f[1, 2], tr)
 f
+```
+
+## Attributes
+
+```@attrdocs
+Tricontourf
 ```

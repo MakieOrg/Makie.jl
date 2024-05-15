@@ -1,4 +1,4 @@
-# qqplot and qqnorm
+# qqplot
 
 
 ## Examples
@@ -12,10 +12,8 @@ ys = randn(100)
 qqplot(xs, ys, qqline = :identity)
 ```
 
-Test if `ys` is normally distributed.
+## Attributes
 
-```@figure
-ys = 2 .* randn(100) .+ 3
-
-qqnorm(ys, qqline = :fitrobust)
+```@attrdocs
+QQPlot
 ```

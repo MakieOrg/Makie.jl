@@ -28,3 +28,9 @@ volume(fig[1, 1], normed, algorithm = :absorption, absorption=4f0, colormap=colo
 volume(fig[1, 2], normed, algorithm = :mip, colormap=colormap, axis=(type=Axis3, title="Maximum Intensity Projection"))
 fig
 ```
+
+## Attributes
+
+```@attrdocs
+Volume
+```

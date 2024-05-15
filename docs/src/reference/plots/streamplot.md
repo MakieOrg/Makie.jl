@@ -25,3 +25,9 @@ fig, ax, pl = streamplot(f, -1.5..1.5, -1.5..1.5, colormap = :magma)
 streamplot(fig[1,2], f, -1.5 .. 1.5, -1.5 .. 1.5, color=(p)-> RGBAf(p..., 0.0, 1))
 fig
 ```
+
+## Attributes
+
+```@attrdocs
+StreamPlot
+```

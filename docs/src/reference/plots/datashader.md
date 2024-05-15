@@ -221,3 +221,8 @@ The `datashader` recipe makes it very simple to get started, and is also efficie
 But if you still need more manual control, one can also use the underlying `Canvas` API directly for more manual control:
 
 
+## Attributes
+
+```@attrdocs
+DataShader
+```

@@ -49,3 +49,9 @@ end
 
 fig
 ```
+
+## Attributes
+
+```@attrdocs
+VolumeSlices
+```

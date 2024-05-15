@@ -20,3 +20,9 @@ scatterlines!(xs, ys .- 3, marker = :cross, strokewidth = 1,
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+ScatterLines
+```

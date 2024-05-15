@@ -62,4 +62,9 @@ bracket!(ax, 2, 1, 4, 1, text = "Square", style = :square)
 
 f
 ```
-\end{examplefigure}
+
+## Attributes
+
+```@attrdocs
+Bracket
+```

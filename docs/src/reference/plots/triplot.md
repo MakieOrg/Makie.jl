@@ -65,3 +65,9 @@ refine!(tri; max_area=1e-3*get_area(tri))
 f, ax, tr = triplot(tri, show_constrained_edges = true, constrained_edge_linewidth = 4, show_convex_hull = true)
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Triplot
+```

@@ -20,3 +20,9 @@ ax.title = "Visualization of a random sparse matrix"
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Spy
+```

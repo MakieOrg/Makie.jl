@@ -43,3 +43,9 @@ colorscale = ReversibleScale(x -> x^(1 / 10), x -> x^10)
 f, ax, ct = contour(x, y, z; labels=true, levels, colormap=:hsv, colorscale)
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Contour
+```

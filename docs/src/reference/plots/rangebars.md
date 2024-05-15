@@ -29,3 +29,9 @@ rangebars!(vals, lows, highs, color = LinRange(0, 1, length(vals)),
 
 f
 ```
+
+## Attributes
+
+```@attrdocs
+Rangebars
+```
