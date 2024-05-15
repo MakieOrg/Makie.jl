@@ -71,7 +71,7 @@ f
 ```
 
 The default axis has no title or labels, you can pass those as keyword arguments.
-For a whole list of available attributes, check the docstring for \apilink{Axis} (you can also do that by running `?Axis` in the REPL).
+For a whole list of available attributes, check the docstring for [`Axis`](@ref) (you can also do that by running `?Axis` in the REPL).
 Be warned, it's very long!
 
 ```@figure basic
@@ -256,7 +256,7 @@ f
 Other plotting functions have different attributes.
 The function `scatter`, for example, does not only have the `color` attribute, but also a `markersize` attribute.
 
-You can read about all possible attributes by running `?scatter` in the REPL, and examples are shown on the page \myreflink{scatter}.
+You can read about all possible attributes by running `?scatter` in the REPL, and examples are shown on the page [scatter](@ref).
 
 ```@figure basic
 x = range(0, 10, length=100)
@@ -298,7 +298,7 @@ scatter(x, sin,
 ```
 
 Note that the color array does not actually contain colors, rather the numerical values are mapped to the plot's `colormap`.
-There are many different colormaps to choose from, take a look on the \myreflink{Colors} page.
+There are many different colormaps to choose from, take a look on the [Colors](@ref) page.
 
 The values are mapped to colors via the `colorrange` attribute, which by default goes from the minimum to the maximum color value.
 But we can also limit or expand the range manually.
@@ -454,6 +454,6 @@ You can read about the different available plotting functions with examples in t
 
 If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref) section.
 
-If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables & Interaction](@ref) section.
+If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables](@ref) section.
 
 If you want to create animated movies, you can find more information in the [Animations](@ref) section.

@@ -15,9 +15,9 @@ A Scene's plots can be accessed via `scene.plots`.
 
 A Scene's subscenes (also called children) can be accessed through `scene.children`.  This will return an Array of the `Scene`'s child scenes.  A child scene can be created by `childscene = Scene(parentscene)`.
 
-Any `Scene` with an axis also has a `camera` associated with it; this can be accessed through `camera(scene)`, and its controls through `cameracontrols(scene)`.  More documentation about these is in the \myreflink{Cameras} section.
+Any `Scene` with an axis also has a `camera` associated with it; this can be accessed through `camera(scene)`, and its controls through `cameracontrols(scene)`.  More documentation about these is in the [Cameras](@ref) section.
 
-`Scene`s have a configurable size. You can set the size in device-independent pixels by doing `Scene(size = (500, 500))`. (More about sizes, resolutions and units in \myreflink{Figure size and units})
+`Scene`s have a configurable size. You can set the size in device-independent pixels by doing `Scene(size = (500, 500))`. (More about sizes, resolutions and units in [Figure size and units](@ref))
 
 Any keyword argument given to the `Scene` will be propagated to its plots; therefore, you can set the palette or the colormap in the Scene itself.
 

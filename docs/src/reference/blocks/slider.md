@@ -36,7 +36,7 @@ fig
 
 ## Labelled sliders and grids
 
-The functions \apilink{labelslider!} and \apilink{labelslidergrid!} are deprecated, use \apilink{SliderGrid} instead.
+The functions [`labelslider!`](@ref) and [`labelslidergrid!`](@ref) are deprecated, use [`SliderGrid`](@ref) instead.
 
 ## Attributes
 

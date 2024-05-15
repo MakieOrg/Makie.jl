@@ -130,7 +130,7 @@ f
 
 When placing axes with different ticks next to each other it can be desirable to visually align the labels of these axes.
 By default, the space allocated for the ticklabels is minimized.
-This value can be fixed by using the functions \apilink{tight_xticklabel_spacing!}, \apilink{tight_yticklabel_spacing!} or \apilink{tight_ticklabel_spacing!} for both.
+This value can be fixed by using the functions [`tight_xticklabel_spacing!`](@ref), [`tight_yticklabel_spacing!`](@ref) or [`tight_ticklabel_spacing!`](@ref) for both.
 
 Note how x and y labels are misaligned in this figure due to different tick label lengths.
 
