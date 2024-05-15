@@ -111,6 +111,7 @@ If you are new to Makie, have a look at [Getting started with Makie](@ref).
 
 For inspiration, visit [Beautiful Makie](https://beautiful.makie.org/) for a collection of interesting plots.
 
+An overview of third-party packages that expand Makie's capabilities is at [Ecosystem](@ref).
 
 ## Citing Makie
 
@@ -118,7 +119,7 @@ If you use Makie for a scientific publication, please cite [our JOSS paper](http
 
 > Danisch & Krumbiegel, (2021). Makie.jl: Flexible high-performance data visualization for Julia. Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.03349
 
-You can use the following BibTeX entry:
+::: details Show BibTeX
 
 ```
 @article{DanischKrumbiegel2021,
@@ -134,6 +135,8 @@ You can use the following BibTeX entry:
   journal = {Journal of Open Source Software}
 }
 ```
+
+:::
 
 ## Getting Help
 
