@@ -221,7 +221,8 @@ It can also take an optional vector of vectors of points, each of which forms a 
 
 In this example, a small circle is cut out of a larger circle:
 
-```@figure, GeometryBasics
+```@figure
+using GeometryBasics
 p_big = decompose(Point2f, Circle(Point2f(0), 1))
 p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
 scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))

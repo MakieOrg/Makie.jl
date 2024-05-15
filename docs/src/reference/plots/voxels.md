@@ -180,5 +180,5 @@ Very large voxel plots (~4.3 billion voxels or 2048 x 2048 x 1024) can reach thi
 ## Attributes
 
 ```@attrdocs
-Voxel
+Voxels
 ```
