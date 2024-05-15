@@ -4,7 +4,6 @@
 ## Examples
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -19,7 +18,6 @@ f
 ```
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -38,7 +36,6 @@ f
 Manual triangulations can be passed as a 3xN matrix of integers, where each column of three integers specifies the indices of the corners of one triangle in the vector of points.
 
 ```@figure
-
 using Random
 Random.seed!(123)
 
@@ -159,7 +156,6 @@ Rather than specifying the levels to include manually, you can set the `mode` at
 to `:relative` and specify the levels from 0 to 1, relative to the current minimum and maximum value.
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 

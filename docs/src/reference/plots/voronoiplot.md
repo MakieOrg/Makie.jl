@@ -8,7 +8,6 @@ however the cells are not restricted to a rectangular shape. It can be called wi
 point based (like `scatter` or `lines`) or `heatmap`-like inputs.
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 

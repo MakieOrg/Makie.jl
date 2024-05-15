@@ -8,7 +8,6 @@
 #### Basic Example
 
 ```@figure backend=GLMakie
-
 # Same as volume example
 r = LinRange(-1, 1, 100)
 cube = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
@@ -27,7 +26,6 @@ It is given in units of the voxel size (at `gap = 0`) so that `gap = 0` creates 
 Note that this attribute only takes effect at values `gap > 0.01`.
 
 ```@figure backend=GLMakie
-
 chunk = reshape(collect(1:27), 3, 3, 3)
 voxels(chunk, gap = 0.33)
 ```
@@ -41,7 +39,6 @@ All other ids (0x01 - 0xff or 1 - 255) are visible and derive their color from t
 For `plot.color` specifically the voxel id acts as an index into an array of colors:
 
 ```@figure backend=GLMakie
-
 chunk = UInt8[
     1 0 2; 0 0 0; 3 0 4;;;
     0 0 0; 0 0 0; 0 0 0;;;
@@ -56,7 +53,6 @@ f, a, p = voxels(chunk, color = [:white, :red, :green, :blue, :black, :orange, :
 With non `UInt8` inputs, colormap attributes (colormap, colorrange, highclip, lowclip and colorscale) work as usual, with the exception of `nan_color` which is not applicable:
 
 ```@figure backend=GLMakie
-
 chunk = reshape(collect(1:512), 8, 8, 8)
 
 f, a, p = voxels(chunk,
@@ -144,7 +140,6 @@ The voxel plot is a bit different from other plot types which affects how you ca
 First you *can* pass your data as an `Observable` and update that observable as usual:
 
 ```@figure backend=GLMakie
-
 chunk = Observable(ones(8,8,8))
 f, a, p = voxels(chunk, colorrange = (0, 1))
 chunk[] = rand(8,8,8)
@@ -156,7 +151,6 @@ For this you can't index into the plot though, since that will return the conver
 Instead you need to index into `p.args`.
 
 ```@figure backend=GLMakie
-
 f, a, p = voxels(ones(8,8,8), colorrange = (0, 1))
 p.args[end][] = rand(8,8,8)
 f
@@ -167,7 +161,6 @@ This can be quite slow and wasteful if you only want to update a small section o
 In that case you should instead update your input data without triggering an update (using `obs.val`) and then call `local_update(plot, is, js, ks)` to process the update:
 
 ```@figure backend=GLMakie
-
 chunk = Observable(rand(64, 64, 64))
 f, a, p = voxels(chunk, colorrange = (0, 1))
 chunk.val[30:34, :, :] .= NaN # or p.args[end].val

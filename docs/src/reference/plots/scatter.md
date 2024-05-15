@@ -25,8 +25,6 @@ Attributes like `color` and `markersize` can be set in scalar or vector form.
 If you pass a vector of numbers for `color`, the attribute `colorrange` which is by default automatically equal to the extrema of the color values, decides how colors are looked up in the `colormap`.
 
 ```@figure
-
-
 xs = range(0, 10, length = 30)
 ys = 0.5 .* sin.(xs)
 points = Point2f.(xs, ys)
@@ -50,8 +48,6 @@ There are a couple different categories of markers you can use with `scatter`:
 Here is an example plot showing different shapes that are accessible by `Symbol`s, as well as a few characters.
 
 ```@figure
-
-
 markers_labels = [
     (:circle, ":circle"),
     (:rect, ":rect"),
@@ -103,8 +99,6 @@ Therefore, `markersize` cannot be directly understood in terms of a unit like `p
 For `Char` markers, `markersize` is equivalent to the font size when displaying the same characters using `text`.
 
 ```@figure
-
-
 f, ax, sc = scatter(1, 1, marker = 'A', markersize = 50)
 text!(2, 1, text = "A", fontsize = 50, align = (:center, :center))
 xlims!(ax, -1, 4)
@@ -118,8 +112,6 @@ We can visualize this by plotting some `Char`s, `BezierPath`s, `Circle` and `Rec
 You can see that only the special markers `Circle` and `Rect` match the line width because their base size is 1 x 1, however they don't match the `Char`s or `BezierPath`s very well.
 
 ```@figure
-
-
 f, ax, l = lines([0, 1], [1, 1], linewidth = 50, color = :gray80)
 for (marker, x) in zip(['X', 'x', :circle, :rect, :utriangle, Circle, Rect], range(0.1, 0.9, length = 7))
     scatter!(ax, x, 1, marker = marker, markersize = 50, color = :black)
@@ -133,8 +125,6 @@ A marker with a base size of 1 x 1, e.g., will be scaled like `lines` when `mark
 Here, we construct a hexagon polygon with radius `1`, which we can then use to tile a surface in data coordinates by setting `markerspace = :data`.
 
 ```@figure
-
-
 hexagon = Makie.Polygon([Point2f(cos(a), sin(a)) for a in range(1/6 * pi, 13/6 * pi, length = 7)])
 
 points = Point2f[(0, 0), (sqrt(3), 0), (sqrt(3)/2, 1.5)]
@@ -162,8 +152,6 @@ A filled shape should start with [`MoveTo`](@ref) and end with [`ClosePath`](@re
 Here is an example with a simple arrow that is centered on its tip, built from path elements.
 
 ```@figure
-
-
 arrow_path = BezierPath([
     MoveTo(Point(0, 0)),
     LineTo(Point(0.3, -0.3)),
@@ -190,8 +178,6 @@ The holes have to be in clockwise direction if the outside is in anti-clockwise 
 For example, a circle with a square cut out can be made by one `EllipticalArc` that goes anticlockwise, and a square inside which goes clockwise:
 
 ```@figure
-
-
 circle_with_hole = BezierPath([
     MoveTo(Point(1, 0)),
     EllipticalArc(Point(0, 0), 1, 1, 0, 0, 2pi),
@@ -220,8 +206,6 @@ Set `keep_aspect = false` to squeeze the path into the bounding box, disregardin
 Here's an example with an svg string that contains the bat symbol:
 
 ```@figure
-
-
 batsymbol_string = "M96.84 141.998c-4.947-23.457-20.359-32.211-25.862-13.887-11.822-22.963-37.961-16.135-22.041 6.289-3.005-1.295-5.872-2.682-8.538-4.191-8.646-5.318-15.259-11.314-19.774-17.586-3.237-5.07-4.994-10.541-4.994-16.229 0-19.774 21.115-36.758 50.861-43.694.446-.078.909-.154 1.372-.231-22.657 30.039 9.386 50.985 15.258 24.645l2.528-24.367 5.086 6.52H103.205l5.07-6.52 2.543 24.367c5.842 26.278 37.746 5.502 15.414-24.429 29.777 6.951 50.891 23.936 50.891 43.709 0 15.136-12.406 28.651-31.609 37.267 14.842-21.822-10.867-28.266-22.549-5.549-5.502-18.325-21.147-9.341-26.125 13.886z"
 
 batsymbol = BezierPath(batsymbol_string, fit = true, flipy = true)
@@ -238,8 +222,6 @@ It can also take an optional vector of vectors of points, each of which forms a 
 In this example, a small circle is cut out of a larger circle:
 
 ```@figure, GeometryBasics
-
-
 p_big = decompose(Point2f, Circle(Point2f(0), 1))
 p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
 scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))
@@ -250,8 +232,6 @@ scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color
 Markers can be rotated using the `rotation` attribute, which also allows to pass a vector.
 
 ```@figure
-
-
 points = [Point2f(x, y) for y in 1:10 for x in 1:10]
 rotations = range(0, 2pi, length = length(points))
 
@@ -263,8 +243,6 @@ scatter(points, rotation = rotations, markersize = 20, marker = '↑')
 You can scale x and y dimension of markers separately by passing a `Vec`.
 
 ```@figure
-
-
 f = Figure()
 ax = Axis(f[1, 1])
 
@@ -287,8 +265,6 @@ f
 By default marker sizes are given in pixel units. You can change this by adjusting `markerspace`. For example, you can have a marker scaled in data units by setting `markerspace = :data`.
 
 ```@figure
-
-
 f = Figure()
 ax = Axis(f[1, 1])
 limits!(ax, -10, 10, -10, 10)
@@ -325,7 +301,6 @@ Currently there are a few ways to mitigate this problem, but they all come at a 
 - `depthsorting = true` will sort markers by depth before rendering to fix the issue. This only works within a plot call, so when other plots are involved the issue may reappear.
 
 ```@figure backend=GLMakie
-
 ps = rand(Point3f, 500)
 cs = rand(500)
 f = Figure(size = (900, 650))

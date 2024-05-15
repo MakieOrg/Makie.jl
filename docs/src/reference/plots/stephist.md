@@ -4,8 +4,6 @@
 ## Examples
 
 ```@figure backend=GLMakie
-
-
 data = randn(1000)
 
 f = Figure()

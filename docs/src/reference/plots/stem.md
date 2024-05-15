@@ -44,8 +44,6 @@ f
 ```
 
 ```@figure backend=GLMakie
-
-
 f = Figure()
 
 xs = LinRange(0, 4pi, 30)

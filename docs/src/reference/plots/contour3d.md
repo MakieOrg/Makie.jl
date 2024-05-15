@@ -4,8 +4,6 @@
 ## Examples
 
 ```@figure backend=GLMakie
-
-
 f = Figure()
 Axis3(f[1, 1], aspect=(0.5,0.5,1), perspectiveness=0.75)
 

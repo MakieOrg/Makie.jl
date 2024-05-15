@@ -4,8 +4,6 @@
 ## Examples
 
 ```@figure
-
-
 f = Figure()
 Axis(f[1, 1])
 

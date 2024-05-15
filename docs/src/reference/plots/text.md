@@ -12,8 +12,6 @@ This also means that `autolimits!` might cut off your text, because the glyphs d
 You can either plot one string with one position, or a vector of strings with a vector of positions.
 
 ```@figure
-
-
 f = Figure()
 
 Axis(f[1, 1], aspect = DataAspect(), backgroundcolor = :gray50)
@@ -40,8 +38,6 @@ For text whose dimensions are meaningful in data space, set `markerspace = :data
 This means that the boundingbox of the text in data coordinates will include every glyph.
 
 ```@figure
-
-
 f = Figure()
 LScene(f[1, 1])
 
@@ -63,8 +59,6 @@ f
 Text can be aligned with the horizontal alignments `:left`, `:center`, `:right` and the vertical alignments `:bottom`, `:baseline`, `:center`, `:top`.
 
 ```@figure
-
-
 aligns = [(h, v) for v in [:bottom, :baseline, :center, :top]
                  for h in [:left, :center, :right]]
 x = repeat(1:3, 4)
@@ -81,8 +75,6 @@ Text that is left aligned is also left justified.
 You can override this with the `justification` attribute.
 
 ```@figure
-
-
 scene = Scene(camera = campixel!, size = (800, 800))
 
 points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
@@ -123,8 +115,6 @@ This is especially useful with `space = :pixel`, for example to place text toget
 You can specify the end of the barplots in data coordinates, and then offset the text a little bit to the left.
 
 ```@figure
-
-
 f = Figure()
 
 horsepower = [52, 78, 80, 112, 140]
@@ -150,7 +140,6 @@ With `space = :relative`, the position `(0, 0)` refers to the lower left corner 
 A common scenario is to place labels within axes:
 
 ```@figure
-
 f = Figure()
 
 ax1 = Axis(f[1, 1], limits = (1, 2, 3, 4))
@@ -177,8 +166,6 @@ f
 Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 
 ```@figure
-
-
 lines(0.5..20, x -> sin(x) / sqrt(x), color = :black)
 text!(7, 0.38, text = L"\frac{\sin(x)}{\sqrt{x}}", color = :black)
 current_figure()
@@ -188,8 +175,6 @@ current_figure()
 You can also pass L-strings to many objects that use text, for example as labels in the legend.
 
 ```@figure
-
-
 f = Figure()
 ax = Axis(f[1, 1])
 
@@ -213,7 +198,6 @@ Each can also take keyword arguments such as `color` or `font`, to set these att
 The top-level settings for font, color, etc. are taken from the `text` attributes as usual.
 
 ```@figure
-
 f = Figure(fontsize = 30)
 Label(
     f[1, 1],
@@ -243,7 +227,6 @@ You can use the `offset` value for rich text to shift glyphs by an amount propor
 
 
 ```@figure
-
 f = Figure(fontsize = 30)
 Label(
     f[1, 1],

@@ -28,7 +28,6 @@ waterfall(y, show_direction=true, marker_pos=:cross, marker_neg=:hline, directio
 If the `dodge` attribute is provided, bars are stacked by `dodge`.
 
 ```@figurecolors = Makie.wong_colors()
-
 x = repeat(1:2, inner=5)
 y = [6, 4, 2, -8, 3, 5, 1, -2, -3, 7]
 group = repeat(1:5, outer=2)
@@ -39,7 +38,6 @@ waterfall(x, y, dodge=group, color=colors[group])
 It can be easier to compare final results of different groups if they are shown in the background.
 
 ```@figurecolors = Makie.wong_colors()
-
 x = repeat(1:2, inner=5)
 y = [6, 4, 2, -8, 3, 5, 1, -2, -3, 7]
 group = repeat(1:5, outer=2)
@@ -50,7 +48,6 @@ waterfall(x, y, dodge=group, color=colors[group], show_direction=true, show_fina
 The color of the final bars in the background can be modified.
 
 ```@figurecolors = Makie.wong_colors()
-
 x = repeat(1:2, inner=5)
 y = [6, 4, 2, -8, 3, 5, 1, -2, -3, 7]
 group = repeat(1:5, outer=2)
@@ -61,7 +58,6 @@ waterfall(x, y, dodge=group, color=colors[group], show_final=true, final_color=(
 You can also specify to stack grouped waterfall plots by `x`.
 
 ```@figurecolors = Makie.wong_colors()
-
 x = repeat(1:5, outer=2)
 y = [6, 4, 2, -8, 3, 5, 1, -2, -3, 7]
 group = repeat(1:2, inner=5)

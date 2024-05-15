@@ -9,7 +9,6 @@ Setting `bins` to an integer sets the number of bins to this value for both x an
 The minimum number of bins in one dimension is 2.
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -31,7 +30,6 @@ f
 You can also pass a tuple of integers to control x and y separately.
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -59,7 +57,6 @@ The height of a hexagon is larger than its width.
 This is why setting the same size for x and y will result in uneven hexagons.
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -83,7 +80,6 @@ This number defines the cell width, the height will be computed as `2 * step_x /
 Note that the visual appearance of the hexagons will only be even if the x and y axis have the same scaling, which is why we use `aspect = DataAspect()` in these examples.
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -107,7 +103,6 @@ f
 All hexagons with a count lower than `threshold` will be removed:
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -129,7 +124,6 @@ f
 You can pass a scale function to via the `colorscale` keyword, which will be applied to the bin counts before plotting.
 
 ```@figure
-
 using Random
 Random.seed!(1234)
 
@@ -150,7 +144,6 @@ By setting `threshold = 0`, all hexagons that fit into the limits of the input d
 In this example, we add a transparent color to the start of the colormap and stroke each hexagon so the empty hexagons are visible but not too distracting.
 
 ```@figure
-
 using DelimitedFiles
 
 

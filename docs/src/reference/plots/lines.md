@@ -4,8 +4,6 @@
 ## Examples
 
 ```@figure
-
-
 f = Figure()
 Axis(f[1, 1])
 
@@ -23,8 +21,6 @@ f
 ### Linestyles
 
 ```@figure
-
-
 f = Figure()
 Axis(f[1, 1])
 
@@ -46,7 +42,6 @@ f
 ### Linecaps and Joinstyles
 
 ```@figure
-
 f = Figure()
 Axis(f[1, 1])
 
@@ -73,7 +68,6 @@ Currently there are a few ways to mitigate this problem, but they all come at a 
 - `overdraw = true` will disable depth testing entirely (read and write) for the plot, removing artifacts. This will however change the z-order of line segments and allow plots rendered later to show up on top of the lines plot.
 
 ```@figure backend=GLMakie
-
 ps = rand(Point3f, 500)
 cs = rand(500)
 f = Figure(size = (600, 650))

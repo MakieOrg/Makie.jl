@@ -4,8 +4,6 @@
 ## Examples
 
 ```@figure backend=GLMakie
-
-
 fig = Figure()
 ax = LScene(fig[1, 1], show_axis=false)
 
