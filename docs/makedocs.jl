@@ -48,7 +48,6 @@ makedocs(;
         "Home" => "index.md",
         "Reference" => [
             "Blocks" => [
-                "Overview" => "reference/blocks.md",
                 "reference/blocks/axis.md",
                 "reference/blocks/axis3.md",
                 "reference/blocks/box.md",
@@ -67,7 +66,6 @@ makedocs(;
                 "reference/blocks/toggle.md",
             ],
             "Plots" => [
-                "Overview" => "reference/plots.md",
                 "reference/plots/ablines.md",
                 "reference/plots/arc.md",
                 "reference/plots/arrows.md",
@@ -123,7 +121,6 @@ makedocs(;
                 "reference/plots/wireframe.md",  
             ],
             "Scene" => [
-                "Overview" => "reference/scene.md",
                 "reference/scene/lighting.md",
                 "reference/scene/matcap.md",
                 "reference/scene/SSAO.md",
