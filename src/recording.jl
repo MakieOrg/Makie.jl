@@ -181,9 +181,11 @@ end
 function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
     mktempdir() do dir
         path = save(joinpath(dir, "video.mp4"), vs)
+        # <video> only supports infinite looping, so we loop forever even when a finite number is requested
+        loopoption = vs.options.loop ≥ 0 ? "loop" : ""
         print(
             io,
-            """<video autoplay controls><source src="data:video/x-m4v;base64,""",
+            """<video autoplay controls $loopoption><source src="data:video/x-m4v;base64,""",
             base64encode(open(read, path)),
             """" type="video/mp4"></video>"""
         )
