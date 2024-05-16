@@ -20,7 +20,12 @@ function Documenter.Selectors.runner(::Type{ShortDocsBlocks}, node, page, doc)
     el.info = replace(el.info, "@shortdocs" => "@docs")
     Documenter.Selectors.runner(Documenter.Expanders.DocsBlocks, node, page, doc)
 
-    mdasts = first(node.children).element.mdasts
+    docsnode = first(node.children).element
+    if !(docsnode isa Documenter.DocsNode)
+        error("docs node conversion failed for $el")
+    end
+
+    mdasts = docsnode.mdasts
 
     ast_to_look_for = MarkdownAST.@ast MarkdownAST.Paragraph() do
         MarkdownAST.Strong() do

@@ -1,7 +1,7 @@
 # ecdfplot
 
 ```@shortdocs
-ecdf
+ecdfplot
 ```
 
 
