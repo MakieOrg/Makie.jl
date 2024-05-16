@@ -1102,6 +1102,12 @@ end
     fig
 end
 
+@reference_test "hist(...; gap=0.1)" begin
+    fig = Figure(size = (400, 400))
+    hist(fig[1,1], randn(1000); gap=0.1)
+    fig
+end
+
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
