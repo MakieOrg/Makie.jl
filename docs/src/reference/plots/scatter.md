@@ -1,5 +1,9 @@
 # scatter
 
+```@shortdocs
+scatter
+```
+
 
 ## Examples
 

@@ -1,5 +1,9 @@
 # waterfall
 
+```@shortdocs
+waterfall
+```
+
 
 ## Examples
 

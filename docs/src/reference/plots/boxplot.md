@@ -1,5 +1,9 @@
 # boxplot
 
+```@shortdocs
+boxplot
+```
+
 
 ## Examples
 

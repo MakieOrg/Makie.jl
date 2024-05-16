@@ -1,5 +1,9 @@
 # volume
 
+```@shortdocs
+volume
+```
+
 
 ## Examples
 

@@ -1,5 +1,9 @@
 # spy
 
+```@shortdocs
+spy
+```
+
 
 
 ## Examples

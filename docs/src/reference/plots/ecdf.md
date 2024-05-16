@@ -1,5 +1,9 @@
 # ecdfplot
 
+```@shortdocs
+ecdf
+```
+
 
 ## Examples
 

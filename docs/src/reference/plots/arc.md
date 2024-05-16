@@ -1,5 +1,9 @@
 # arc
 
+```@shortdocs
+arc
+```
+
 ## Examples
 
 ```@figure

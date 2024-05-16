@@ -1,5 +1,9 @@
 # series
 
+```@shortdocs
+series
+```
+
 
 ## Examples
 

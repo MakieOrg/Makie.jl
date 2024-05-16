@@ -1,5 +1,9 @@
 # tooltip
 
+```@shortdocs
+tooltip
+```
+
 
 ## Examples
 

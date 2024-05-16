@@ -1,5 +1,9 @@
 # pie
 
+```@shortdocs
+pie
+```
+
 
 ## Examples
 

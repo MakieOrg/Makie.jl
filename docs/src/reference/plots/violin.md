@@ -1,5 +1,9 @@
 # violin
 
+```@shortdocs
+violin
+```
+
 
 ## Examples
 

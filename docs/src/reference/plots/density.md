@@ -1,5 +1,9 @@
 # density
 
+```@shortdocs
+density
+```
+
 
 ## Examples
 

@@ -1,5 +1,9 @@
 # meshscatter
 
+```@shortdocs
+meshscatter
+```
+
 
 ## Examples
 

@@ -1,5 +1,9 @@
 # qqnorm
 
+```@shortdocs
+qqnorm
+```
+
 ## Examples
 
 Test if `xs` is normally distributed.

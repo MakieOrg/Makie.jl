@@ -1,5 +1,9 @@
 # lines
 
+```@shortdocs
+lines
+```
+
 
 ## Examples
 

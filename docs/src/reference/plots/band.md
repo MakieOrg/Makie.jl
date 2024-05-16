@@ -1,5 +1,9 @@
 # band
 
+```@shortdocs
+band
+```
+
 ## Examples
 
 ```@figure

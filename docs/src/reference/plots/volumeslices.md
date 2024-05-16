@@ -1,5 +1,9 @@
 # volumeslices
 
+```@shortdocs
+volumeslices
+```
+
 
 ## Examples
 

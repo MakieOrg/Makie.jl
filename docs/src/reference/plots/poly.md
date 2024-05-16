@@ -1,5 +1,9 @@
 # poly
 
+```@shortdocs
+poly
+```
+
 
 ## Examples
 

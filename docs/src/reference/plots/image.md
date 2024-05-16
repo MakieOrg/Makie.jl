@@ -1,5 +1,9 @@
 # image
 
+```@shortdocs
+image
+```
+
 
 ## Examples
 

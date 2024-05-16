@@ -1,5 +1,9 @@
 # contour3d
 
+```@shortdocs
+contour3d
+```
+
 
 ## Examples
 

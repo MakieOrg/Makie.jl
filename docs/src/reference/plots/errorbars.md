@@ -1,5 +1,9 @@
 # errorbars
 
+```@shortdocs
+errorbars
+```
+
 
 ## Examples
 

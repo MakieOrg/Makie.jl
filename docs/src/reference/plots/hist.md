@@ -1,5 +1,9 @@
 # hist
 
+```@shortdocs
+hist
+```
+
 
 ## Examples
 

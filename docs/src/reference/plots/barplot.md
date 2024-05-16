@@ -1,5 +1,9 @@
 # barplot
 
+```@shortdocs
+barplot
+```
+
 ## Examples
 
 ```@figure

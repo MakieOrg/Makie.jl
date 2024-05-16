@@ -1,5 +1,9 @@
 # voronoiplot
 
+```@shortdocs
+voronoiplot
+```
+
 
 ## Examples
 

@@ -1,5 +1,9 @@
 # wireframe
 
+```@shortdocs
+wireframe
+```
+
 
 ## Examples
 

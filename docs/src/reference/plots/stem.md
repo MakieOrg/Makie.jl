@@ -1,5 +1,9 @@
 # stem
 
+```@shortdocs
+stem
+```
+
 
 ## Examples
 

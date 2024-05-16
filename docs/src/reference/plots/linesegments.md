@@ -1,5 +1,9 @@
 # linesegments
 
+```@shortdocs
+linesegments
+```
+
 
 ## Examples
 

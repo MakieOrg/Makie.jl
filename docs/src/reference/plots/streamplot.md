@@ -1,5 +1,9 @@
 # streamplot
 
+```@shortdocs
+streamplot
+```
+
 
 ## Examples
 

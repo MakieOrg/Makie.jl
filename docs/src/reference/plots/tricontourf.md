@@ -1,5 +1,9 @@
 # tricontourf
 
+```@shortdocs
+tricontourf
+```
+
 
 ## Examples
 

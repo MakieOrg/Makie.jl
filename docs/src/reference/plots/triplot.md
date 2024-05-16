@@ -1,5 +1,9 @@
 # triplot
 
+```@shortdocs
+triplot
+```
+
 
 ## Examples
 

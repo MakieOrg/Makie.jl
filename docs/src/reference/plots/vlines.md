@@ -1,5 +1,9 @@
 # vlines
 
+```@shortdocs
+vlines
+```
+
 ```@figure
 vlines([1, 2, 3])
 ```

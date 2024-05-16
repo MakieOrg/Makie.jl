@@ -1,5 +1,9 @@
 # scatterlines
 
+```@shortdocs
+scatterlines
+```
+
 
 ## Examples
 

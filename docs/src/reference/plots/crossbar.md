@@ -1,5 +1,9 @@
 # crossbar
 
+```@shortdocs
+crossbar
+```
+
 
 ## Examples
 

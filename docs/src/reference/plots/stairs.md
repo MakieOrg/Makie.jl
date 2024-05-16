@@ -1,5 +1,9 @@
 # stairs
 
+```@shortdocs
+stairs
+```
+
 
 ## Examples
 

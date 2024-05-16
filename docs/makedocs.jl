@@ -29,6 +29,7 @@ end
 
 include("figure_block.jl")
 include("attrdocs_block.jl")
+include("shortdocs_block.jl")
 
 makedocs(;
     # modules=[Makie],

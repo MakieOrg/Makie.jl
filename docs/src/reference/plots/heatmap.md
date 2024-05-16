@@ -1,5 +1,9 @@
 # heatmap
 
+```@shortdocs
+heatmap
+```
+
 
 ## Examples
 

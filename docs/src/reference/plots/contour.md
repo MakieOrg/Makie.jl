@@ -1,5 +1,9 @@
 # contour
 
+```@shortdocs
+contour
+```
+
 
 ## Examples
 

@@ -1,5 +1,9 @@
 # stephist
 
+```@shortdocs
+stephist
+```
+
 
 ## Examples
 

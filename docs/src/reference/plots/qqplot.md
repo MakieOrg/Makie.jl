@@ -1,5 +1,9 @@
 # qqplot
 
+```@shortdocs
+qqplot
+```
+
 
 ## Examples
 

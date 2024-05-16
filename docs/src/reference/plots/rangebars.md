@@ -1,5 +1,9 @@
 # rangebars
 
+```@shortdocs
+rangebars
+```
+
 
 ## Examples
 

@@ -1,5 +1,9 @@
 # datashader
 
+```@shortdocs
+datashader
+```
+
 
 ## Examples
 

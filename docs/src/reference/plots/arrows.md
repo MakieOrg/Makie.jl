@@ -1,5 +1,9 @@
 # arrows
 
+```@shortdocs
+arrows
+```
+
 ## Examples
 
 ```@figure

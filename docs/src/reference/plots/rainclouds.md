@@ -1,5 +1,9 @@
 # rainclouds
 
+```@shortdocs
+rainclouds
+```
+
 "Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The
 three together can make an appealing and informative visual, particularly for large N datasets.
 

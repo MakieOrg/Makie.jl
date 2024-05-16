@@ -1,5 +1,9 @@
 # hexbin
 
+```@shortdocs
+hexbin
+```
+
 
 ## Examples
 

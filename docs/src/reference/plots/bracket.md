@@ -1,5 +1,9 @@
 # bracket
 
+```@shortdocs
+bracket
+```
+
 
 ## Examples
 
