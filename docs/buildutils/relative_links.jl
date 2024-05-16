@@ -40,14 +40,14 @@ function make_relative(s, here)
 end
 
 """
-Replaces all absolute links in all html files in the __site folder with
+Replaces all absolute links in all html files in the build folder with
 relative links.
 """
-function make_links_relative()
+function make_links_relative(buildfolder)
     invalid_relative_links = Dict{String,Pair{String,String}}()
 
     function check_local_link!(invalid_relative_links, file_location, link)
-        link_without_id = replace(link, r"#[a-zA-Z0-9!_\-\(\)]*$" => "")
+        link_without_id = replace(link, r"#.*$" => "")
         absolute_link = if startswith(link, "/")
             replace(link_without_id, r"^/+" => "")
         else
@@ -69,7 +69,7 @@ function make_links_relative()
         !startswith(link, "data:") && !startswith(link, r"https?") && !startswith(link, "#")
     end
 
-    cd("__site") do
+    cd(buildfolder) do
         for (root, _, files) in walkdir(".")
             path = join(splitpath(root)[2:end], "/")
 
@@ -128,7 +128,7 @@ function make_links_relative()
     end
 
     if !isempty(invalid_relative_links)
-        error("Found invalid relative links: \n$(join(invalid_relative_links, "\n"))")
+        @warn("Found invalid relative links: \n$(join(invalid_relative_links, "\n"))")
     end
 
     return

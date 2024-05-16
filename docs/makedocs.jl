@@ -11,6 +11,8 @@ using Documenter.MarkdownAST
 using Documenter.MarkdownAST: @ast
 using DocumenterVitepress
 using Markdown
+# using Gumbo
+# using AbstractTrees
 
 # include("buildutils/deploydocs.jl")
 # include("buildutils/relative_links.jl")
@@ -183,7 +185,7 @@ makedocs(;
 # # at the time, link relatively within `stable` so that users don't accidentally
 # # copy & paste versioned links if they started out on `stable`
 # @info "Rewriting all absolute links as relative"
-# make_links_relative()
+# make_links_relative(joinpath("build", "final_site"))
 
 # generate_redirects([
 #     "/reference/index.html" => "/examples/index.html",
