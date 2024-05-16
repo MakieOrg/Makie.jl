@@ -1,6 +1,6 @@
 # How to save a figure with transparency
 
-## CairoMakie
+## Using CairoMakie
 
 In CairoMakie, set the background color to `:transparent` (converts to `RGBAf(0, 0, 0, 0)`) to get a fully transparent background.
 In the following examples, I use a partially transparent blue because a transparent background is indistinguishable from the usual white on a white page.
@@ -11,7 +11,7 @@ Axis(f[1, 1], backgroundcolor = (:tomato, 0.5))
 f
 ```
 
-## GLMakie
+## Using GLMakie
 
 For technical reasons, GLMakie's color buffer does not have an alpha component:
 

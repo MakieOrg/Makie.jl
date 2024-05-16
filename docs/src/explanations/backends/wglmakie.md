@@ -1,4 +1,4 @@
-# [WGLMakie](@id wglmakie)
+# WGLMakie
 
 [WGLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie) is the web-based backend, which is mostly implemented in Julia right now.
 WGLMakie uses [Bonito](https://github.com/SimonDanisch/Bonito.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.

@@ -3,11 +3,11 @@
 Makie can be used on headless systems (such as CI servers).
 This page describes what is required to get different back ends working in headless systems.
 
-## CairoMakie
+## Using CairoMakie
 
 For CairoMakie, there shouldn't be any difference in using it on a remote or locally.
 
-## GLMakie
+## Using GLMakie
 
 For [GLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie) you can either use X11 forwarding to render on the local
 host or use [VirtualGL](https://www.virtualgl.org/) to render on the remote server.
@@ -44,7 +44,7 @@ and then you will have to start julia via VirtualGL
 You can also use GLMakie on CI or servers without a GPU by using `xvfb` for software rendering.
 This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/Makie.jl/blob/8504b27c28c45a522467c7c57f6953c3a680fa6a/.github/workflows/glmakie.yaml#L45-L57).
 
-## WGLMakie
+## Using WGLMakie
 
 For WGLMakie, you can setup a server with Bonito and serve the content from a remote server.
 This also works for creating interactive plots with Documenter.

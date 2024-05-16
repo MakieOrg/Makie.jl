@@ -91,9 +91,9 @@ set_theme!() # hide
 
 First, choose one (or more) of the four backend packages (more info under [What is a backend](@ref)):
 
-- [GLMakie](@ref glmakie) (OpenGL based, interactive)
-- [CairoMakie](@ref cairomakie) (Cairo based, static vector graphics)
-- [WGLMakie](@ref wglmakie) (WebGL based, runs in the browser)
+- [GLMakie](@ref) (OpenGL based, interactive)
+- [CairoMakie](@ref) (Cairo based, static vector graphics)
+- [WGLMakie](@ref) (WebGL based, runs in the browser)
 - [RPRMakie](@ref) (Experimental ray-tracing using RadeonProRender)
 
 Then install it using Julia's package manager `Pkg`:
