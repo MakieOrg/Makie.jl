@@ -1,4 +1,4 @@
-# GLMakie
+# [GLMakie](@id glmakie)
 
 [GLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie) is the native, desktop-based backend, and is the most feature-complete.
 It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
