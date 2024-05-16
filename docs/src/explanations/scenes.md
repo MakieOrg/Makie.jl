@@ -35,7 +35,7 @@ A subscene is no different than a normal Scene, except that it is linked to a "p
 
 Makie offers mutation functions to scale, translate and rotate your Scenes on the fly.
 
-```@docs
+```@docs; canonical=false
 translate!
 rotate!
 scale!
