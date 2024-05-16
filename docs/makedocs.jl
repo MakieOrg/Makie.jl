@@ -33,7 +33,7 @@ include("shortdocs_block.jl")
 
 makedocs(;
     # modules=[Makie],
-    sitename="Makie.jl",
+    sitename="Makie",
     format=DocumenterVitepress.MarkdownVitepress(;
         repo = "https://github.com/MakieOrg/Makie.jl",
         devurl = "dev",
