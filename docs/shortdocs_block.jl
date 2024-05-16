@@ -13,6 +13,8 @@ function unlink_with_all_following_siblings!(node)
     return
 end
 
+# ```@shortdocs is like ```@docs but it cuts off the docstring for the plot functions at the attributes
+# section because all the attributes are already added with examples anyway
 function Documenter.Selectors.runner(::Type{ShortDocsBlocks}, node, page, doc)
     el = node.element
     el.info = replace(el.info, "@shortdocs" => "@docs")
@@ -40,5 +42,4 @@ function Documenter.Selectors.runner(::Type{ShortDocsBlocks}, node, page, doc)
             error("Found no Attributes section in above markdown ast")
         end
     end
-    # Main.Infiltrator.@infiltrate
 end
