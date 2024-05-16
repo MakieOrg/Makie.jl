@@ -122,10 +122,10 @@ end
     display(f)
 end
 ```
-~~~
-<video autoplay mute loop src="/assets/datashader-14million.mp4">
-</video>
-~~~
+
+```@raw html
+<video mute autoplay loop playsinline controls src="/assets/datashader-14million.mp4" />
+```
 
 #### 2.7 billion OSM GPS points
 
@@ -170,10 +170,10 @@ aggregation took 1.117s
 aggregation took 0.866s
 aggregation took 0.724s
 ```
-~~~
-<video mute autoplay loop src="/assets/datashader_2-7_billion.mp4">
-</video>
-~~~
+
+```@raw html
+<video mute autoplay loop playsinline controls src="/assets/datashader_2-7_billion.mp4" />
+```
 
 ### Categorical Data
 
