@@ -1104,7 +1104,7 @@ end
 
 @reference_test "hist(...; gap=0.1)" begin
     fig = Figure(size = (400, 400))
-    hist(fig[1,1], randn(1000); gap=0.1)
+    hist(fig[1,1], RNG.randn(1000); gap=0.1)
     fig
 end
 
