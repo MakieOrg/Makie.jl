@@ -59,7 +59,7 @@ function make_links_relative(buildfolder)
                 push!(invalid_relative_links, absolute_link => (file_location => link))
             end
         else
-            if !isfile(joinpath(absolute_link, "index.html"))
+            if !isfile(absolute_link * ".html")
                 push!(invalid_relative_links, absolute_link => (file_location => link))
             end
         end
