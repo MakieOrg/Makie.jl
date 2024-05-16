@@ -101,7 +101,7 @@ with_theme(demofigure, theme_dark())
 
 ## theme_latexfonts
 
-See also [more general documentation on Makie and LaTeX](\reflink{LaTeX}).
+See also [more general documentation on Makie and LaTeX](@ref LaTeX).
 
 ```@figure theme
 with_theme(demofigure, theme_latexfonts())
