@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - `boundingbox` now relies on `apply_transform(transform, data_limits(plot))` rather than transforming the corner points of the bounding box [#3856](https://github.com/MakieOrg/Makie.jl/pull/3856)
+- Adjusted `Axis` limits to consider transformations more consistently [#3864](https://github.com/MakieOrg/Makie.jl/pull/3864)
 
 ## [0.21.0] - 2024-05-08
 
