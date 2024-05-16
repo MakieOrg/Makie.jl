@@ -16,6 +16,7 @@ To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x84
 ## Activation and screen config
 
 Activate the backend by calling `RPRMakie.activate!()` with the following options:
+
 ```@docs
 RPRMakie.activate!
 ```
@@ -78,9 +79,6 @@ The examples are in [RPRMakie/examples](https://github.com/MakieOrg/Makie.jl/tre
 There are several predefined materials one can use in RadeonProRender.
 RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `MaterialX`.
 
-~~~
-<input id="hidecode5" class="hidecode" type="checkbox">
-~~~
 ```julia
 using GeometryBasics, RPRMakie
 using Colors, FileIO
@@ -129,19 +127,11 @@ emissive.color = Vec3f(4, 2, 2)
 image = colorbuffer(screen)
 save("materials.png", image)
 ```
-~~~
-<label for="hidecode5" class="hidecode"></label>
-~~~
 
-~~~
-<img src="/assets/materials.png">
-~~~
+![Materials]("/assets/materials.png")
 
 ## Advanced custom material (earth_topography.jl)
 
-~~~
-<input id="hidecode4" class="hidecode" type="checkbox">
-~~~
 ```julia
 using NCDatasets, ColorSchemes, RPRMakie
 using ImageShow, FileIO
@@ -197,22 +187,14 @@ cam.fov[] = 23
 
 save("topographie.png", ax.scene)
 ```
-~~~
-<label for="hidecode4" class="hidecode"></label>
-~~~
 
-~~~
-<img src="/assets/topographie.png">
-~~~
+![Topographie]("/assets/topographie.png")
 
 ## RPRMakie interop (opengl_interop.jl)
 
 RPRMakie doesn't support layouting and sub scenes yet, but you can replace a single scene with a RPR rendered, interactive window.
 This is especially handy, to show 2d graphics and interactive UI elements next to a ray traced scene and interactively tune camera and material parameters.
 
-~~~
-<input id="hidecode3" class="hidecode" type="checkbox">
-~~~
 ```julia
 using RPRMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
@@ -304,22 +286,15 @@ begin
     notify(refresh)
 end
 ```
-~~~
-<label for="hidecode3" class="hidecode"></label>
-~~~
 
-~~~
-<video mute autoplay controls src="/assets/opengl_interop.mp4">
-</video>
-~~~
+```@raw html
+<video mute autoplay loop playsinline controls src="/assets/opengl_interop.mp4" />
+```
 
 ## Animations (lego.jl)
 
 Not all objects support updating via Observables yet, but translations, camera etc are already covered and can be used together with Makie's standard animation API.
 
-~~~
-<input id="hidecode2" class="hidecode" type="checkbox">
-~~~
 ```julia
 # Example inspiration and Lego model by https://github.com/Kevin-Mattheus-Moerman
 # https://twitter.com/KMMoerman/status/1417759722963415041
@@ -419,20 +394,13 @@ Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, ang
     translate!(figure["torso"], translation, 0, 20)
 end
 ```
-~~~
-<label for="hidecode2" class="hidecode"></label>
-~~~
 
-~~~
-<video mute autoplay controls src="/assets/lego_walk.mp4">
-</video>
-~~~
+```@raw html
+<video mute autoplay loop playsinline controls src="/assets/lego_walk.mp4" />
+```
 
 ## Earth example
 
-~~~
-<input id="hidecode1" class="hidecode" type="checkbox">
-~~~
 ```julia
 # by Lazaro Alonso
 # taken from: https://lazarusa.github.io/BeautifulMakie/GeoPlots/submarineCables3D/
@@ -506,13 +474,7 @@ scene = with_theme(theme_dark()) do
     return ax.scene
 end
 
-save("submarin_cables.png", scene)
+save("submarine_cables.png", scene)
 ```
-~~~
-<label for="hidecode1" class="hidecode"></label>
-~~~
 
-
-~~~
-<img src="/assets/earth.png">
-~~~
+![Submarine cables]("/assets/submarine_cables.png")
