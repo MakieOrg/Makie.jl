@@ -1,6 +1,6 @@
 # contour3d
 
-```@shortdocs
+```@shortdocs; canonical=false
 contour3d
 ```
 

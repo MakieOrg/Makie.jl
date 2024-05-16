@@ -1,6 +1,6 @@
 # vspan
 
-```@shortdocs
+```@shortdocs; canonical=false
 vspan
 ```
 

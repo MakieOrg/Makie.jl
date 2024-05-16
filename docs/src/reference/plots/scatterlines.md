@@ -1,6 +1,6 @@
 # scatterlines
 
-```@shortdocs
+```@shortdocs; canonical=false
 scatterlines
 ```
 

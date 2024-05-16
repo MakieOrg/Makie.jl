@@ -1,6 +1,6 @@
 # triplot
 
-```@shortdocs
+```@shortdocs; canonical=false
 triplot
 ```
 

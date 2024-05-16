@@ -1,6 +1,6 @@
 # ecdfplot
 
-```@shortdocs
+```@shortdocs; canonical=false
 ecdfplot
 ```
 

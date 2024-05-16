@@ -1,6 +1,6 @@
 # series
 
-```@shortdocs
+```@shortdocs; canonical=false
 series
 ```
 

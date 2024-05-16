@@ -1,6 +1,6 @@
 # errorbars
 
-```@shortdocs
+```@shortdocs; canonical=false
 errorbars
 ```
 

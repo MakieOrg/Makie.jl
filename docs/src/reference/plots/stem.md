@@ -1,6 +1,6 @@
 # stem
 
-```@shortdocs
+```@shortdocs; canonical=false
 stem
 ```
 

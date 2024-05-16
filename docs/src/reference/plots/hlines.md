@@ -1,6 +1,6 @@
 # hlines
 
-```@shortdocs
+```@shortdocs; canonical=false
 hlines
 ```
 

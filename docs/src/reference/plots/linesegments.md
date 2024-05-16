@@ -1,6 +1,6 @@
 # linesegments
 
-```@shortdocs
+```@shortdocs; canonical=false
 linesegments
 ```
 

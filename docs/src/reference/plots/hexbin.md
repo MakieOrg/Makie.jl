@@ -1,6 +1,6 @@
 # hexbin
 
-```@shortdocs
+```@shortdocs; canonical=false
 hexbin
 ```
 

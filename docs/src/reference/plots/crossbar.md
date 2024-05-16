@@ -1,6 +1,6 @@
 # crossbar
 
-```@shortdocs
+```@shortdocs; canonical=false
 crossbar
 ```
 

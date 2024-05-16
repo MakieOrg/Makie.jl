@@ -1,6 +1,6 @@
 # qqnorm
 
-```@shortdocs
+```@shortdocs; canonical=false
 qqnorm
 ```
 

@@ -1,6 +1,6 @@
 # contour
 
-```@shortdocs
+```@shortdocs; canonical=false
 contour
 ```
 

@@ -1,6 +1,6 @@
 # stairs
 
-```@shortdocs
+```@shortdocs; canonical=false
 stairs
 ```
 

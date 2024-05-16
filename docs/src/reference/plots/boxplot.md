@@ -1,6 +1,6 @@
 # boxplot
 
-```@shortdocs
+```@shortdocs; canonical=false
 boxplot
 ```
 

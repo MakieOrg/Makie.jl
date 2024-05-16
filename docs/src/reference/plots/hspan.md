@@ -1,6 +1,6 @@
 # hspan
 
-```@shortdocs
+```@shortdocs; canonical=false
 hspan
 ```
 

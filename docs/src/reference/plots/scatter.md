@@ -1,6 +1,6 @@
 # scatter
 
-```@shortdocs
+```@shortdocs; canonical=false
 scatter
 ```
 

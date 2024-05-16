@@ -1,6 +1,6 @@
 # mesh
 
-```@shortdocs
+```@shortdocs; canonical=false
 mesh
 ```
 

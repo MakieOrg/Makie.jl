@@ -1,6 +1,6 @@
 # barplot
 
-```@shortdocs
+```@shortdocs; canonical=false
 barplot
 ```
 

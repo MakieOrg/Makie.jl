@@ -1,6 +1,6 @@
 # rainclouds
 
-```@shortdocs
+```@shortdocs; canonical=false
 rainclouds
 ```
 

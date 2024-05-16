@@ -1,6 +1,6 @@
 # volumeslices
 
-```@shortdocs
+```@shortdocs; canonical=false
 volumeslices
 ```
 

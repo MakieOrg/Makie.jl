@@ -1,6 +1,6 @@
 # qqplot
 
-```@shortdocs
+```@shortdocs; canonical=false
 qqplot
 ```
 

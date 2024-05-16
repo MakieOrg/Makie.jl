@@ -1,6 +1,6 @@
 # surface
 
-```@shortdocs
+```@shortdocs; canonical=false
 surface
 ```
 

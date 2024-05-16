@@ -1,6 +1,6 @@
 # volume
 
-```@shortdocs
+```@shortdocs; canonical=false
 volume
 ```
 

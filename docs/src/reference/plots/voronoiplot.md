@@ -1,6 +1,6 @@
 # voronoiplot
 
-```@shortdocs
+```@shortdocs; canonical=false
 voronoiplot
 ```
 

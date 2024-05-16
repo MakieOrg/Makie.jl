@@ -1,6 +1,6 @@
 # contourf
 
-```@shortdocs
+```@shortdocs; canonical=false
 contourf
 ```
 

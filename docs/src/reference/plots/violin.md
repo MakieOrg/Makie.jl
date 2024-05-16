@@ -1,6 +1,6 @@
 # violin
 
-```@shortdocs
+```@shortdocs; canonical=false
 violin
 ```
 

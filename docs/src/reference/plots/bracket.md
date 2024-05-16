@@ -1,6 +1,6 @@
 # bracket
 
-```@shortdocs
+```@shortdocs; canonical=false
 bracket
 ```
 

@@ -1,6 +1,6 @@
 # rangebars
 
-```@shortdocs
+```@shortdocs; canonical=false
 rangebars
 ```
 

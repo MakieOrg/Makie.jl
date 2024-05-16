@@ -1,6 +1,6 @@
 # tricontourf
 
-```@shortdocs
+```@shortdocs; canonical=false
 tricontourf
 ```
 

@@ -1,6 +1,6 @@
 # density
 
-```@shortdocs
+```@shortdocs; canonical=false
 density
 ```
 

@@ -1,6 +1,6 @@
 # waterfall
 
-```@shortdocs
+```@shortdocs; canonical=false
 waterfall
 ```
 

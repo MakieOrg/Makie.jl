@@ -1,6 +1,6 @@
 # streamplot
 
-```@shortdocs
+```@shortdocs; canonical=false
 streamplot
 ```
 

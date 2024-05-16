@@ -1,6 +1,6 @@
 # datashader
 
-```@shortdocs
+```@shortdocs; canonical=false
 datashader
 ```
 

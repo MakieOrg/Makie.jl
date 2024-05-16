@@ -1,6 +1,6 @@
 # wireframe
 
-```@shortdocs
+```@shortdocs; canonical=false
 wireframe
 ```
 

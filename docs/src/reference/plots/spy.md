@@ -1,6 +1,6 @@
 # spy
 
-```@shortdocs
+```@shortdocs; canonical=false
 spy
 ```
 

@@ -1,6 +1,6 @@
 # hist
 
-```@shortdocs
+```@shortdocs; canonical=false
 hist
 ```
 

@@ -1,6 +1,6 @@
 # band
 
-```@shortdocs
+```@shortdocs; canonical=false
 band
 ```
 

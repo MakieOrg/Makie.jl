@@ -1,6 +1,6 @@
 # voxels
 
-```@shortdocs
+```@shortdocs; canonical=false
 voxels
 ```
 

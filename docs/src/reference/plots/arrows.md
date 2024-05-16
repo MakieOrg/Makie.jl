@@ -1,6 +1,6 @@
 # arrows
 
-```@shortdocs
+```@shortdocs; canonical=false
 arrows
 ```
 

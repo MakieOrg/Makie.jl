@@ -1,6 +1,6 @@
 # poly
 
-```@shortdocs
+```@shortdocs; canonical=false
 poly
 ```
 

@@ -1,6 +1,6 @@
 # pie
 
-```@shortdocs
+```@shortdocs; canonical=false
 pie
 ```
 

@@ -1,6 +1,6 @@
 # meshscatter
 
-```@shortdocs
+```@shortdocs; canonical=false
 meshscatter
 ```
 

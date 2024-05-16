@@ -1,6 +1,6 @@
 # image
 
-```@shortdocs
+```@shortdocs; canonical=false
 image
 ```
 

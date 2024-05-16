@@ -1,6 +1,6 @@
 # vlines
 
-```@shortdocs
+```@shortdocs; canonical=false
 vlines
 ```
 

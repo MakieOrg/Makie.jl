@@ -1,6 +1,6 @@
 # arc
 
-```@shortdocs
+```@shortdocs; canonical=false
 arc
 ```
 

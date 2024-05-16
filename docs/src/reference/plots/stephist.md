@@ -1,6 +1,6 @@
 # stephist
 
-```@shortdocs
+```@shortdocs; canonical=false
 stephist
 ```
 

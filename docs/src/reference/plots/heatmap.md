@@ -1,6 +1,6 @@
 # heatmap
 
-```@shortdocs
+```@shortdocs; canonical=false
 heatmap
 ```
 

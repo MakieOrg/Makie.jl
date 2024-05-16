@@ -1,6 +1,6 @@
 # tooltip
 
-```@shortdocs
+```@shortdocs; canonical=false
 tooltip
 ```
 

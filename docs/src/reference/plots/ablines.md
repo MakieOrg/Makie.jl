@@ -1,6 +1,6 @@
 # ablines
 
-```@shortdocs
+```@shortdocs; canonical=false
 ablines
 ```
 

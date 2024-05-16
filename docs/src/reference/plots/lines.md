@@ -1,6 +1,6 @@
 # lines
 
-```@shortdocs
+```@shortdocs; canonical=false
 lines
 ```
 
