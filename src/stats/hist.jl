@@ -142,6 +142,8 @@ Plot a histogram of `values`.
     label_formatter = bar_label_formatter
     "Set the direction of the bars."
     direction = :y
+    "Gap between the bars (see barplot)."
+    gap = 0
 end
 
 function pick_hist_edges(vals, bins)
