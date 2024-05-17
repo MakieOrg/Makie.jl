@@ -1102,6 +1102,12 @@ end
     fig
 end
 
+@reference_test "hist(...; gap=0.1)" begin
+    fig = Figure(size = (400, 400))
+    hist(fig[1,1], RNG.randn(1000); gap=0.1)
+    fig
+end
+
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
@@ -1151,10 +1157,10 @@ end
 
     fig = Figure(size = (600, 600))
     # Create a recipe plot
-    ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
+    ax, plot_top = heatmap(fig[1, 1], randn(10, 10), colormap = [:transparent])
     # Plot some recipes at the level below the contour
-    scatterlineplot_1 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
-    scatterlineplot_2 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
+    scatterlineplot_1 = scatterlines!(ax, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
+    scatterlineplot_2 = scatterlines!(ax, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
     # Translate the lowest level plots (scatters)
     translate!(scatterlineplot_1.plots[2], 0, 0, 1)
     translate!(scatterlineplot_2.plots[2], 0, 0, -1)

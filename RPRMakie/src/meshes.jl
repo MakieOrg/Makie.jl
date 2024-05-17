@@ -1,5 +1,5 @@
 function extract_material(matsys, plot)
-    if haskey(plot, :material) && !isnothing(plot.material[])
+    if haskey(plot, :material) && !isnothing(to_value(plot.material))
         if plot.material isa Attributes
             return RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
         else
