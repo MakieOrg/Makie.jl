@@ -40,7 +40,7 @@ makedocs(;
         repo = "https://github.com/MakieOrg/Makie.jl",
         devurl = "dev",
         devbranch = "master",
-        deploy_url = "", # for local testing not setting this has broken links with Makie.jl in them
+        deploy_url = "https://docs.makie.org", # for local testing not setting this has broken links with Makie.jl in them
         description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live.",
     ),
     pages=[
