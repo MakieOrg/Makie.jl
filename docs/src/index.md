@@ -4,7 +4,7 @@
 layout: home
 
 hero:
-  name: Makie.jl
+  name: Makie
   text: 
   tagline: Interactive data visualizations and plotting in Julia 
   image:
