@@ -73,24 +73,20 @@ What it does is purely reset the state for a new multi-page output, which is usu
 
 Here is an example of how to use this in Franklin:
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 using WGLMakie
 using Bonito, Markdown
-Page(exportable=true, offline=true) # for Franklin, you still need to configure
+Page() # for Franklin, you still need to configure
 WGLMakie.activate!()
 Makie.inline!(true) # Make sure to inline plots into Documenter output!
 scatter(1:4, color=1:4)
 ```
-\end{showhtml}
-
 
 As you can see, the output is completely static, because we don't have a running Julia server, as it would be the case with e.g. Pluto.
 To make the plot interactive, we will need to write more parts of WGLMakie in JS, which is an ongoing effort.
 As you can see, the interactivity already keeps working for 3D:
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 N = 60
 function xy_data(x, y)
     r = sqrt(x^2 + y^2)
@@ -103,7 +99,6 @@ surface(
     colormap = :Spectral
 )
 ```
-\end{showhtml}
 
 There are a couple of ways to keep interacting with Plots in a static export.
 
@@ -124,8 +119,7 @@ function update_value!(x, value) end
 
 Currently, only sliders overload the interface:
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 using Observables
 
 App() do session::Session
@@ -146,15 +140,13 @@ App() do session::Session
     return Bonito.record_states(session, DOM.div(slider, fig))
 end
 ```
-\end{showhtml}
 
 ## Execute Javascript directly
 
 Bonito makes it easy to build whole HTML and JS applications.
 You can for example directly register JavaScript function that get run on change.
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 using Bonito
 
 App() do session::Session
@@ -171,7 +163,6 @@ App() do session::Session
     return DOM.div("slider 1: ", s1, slider_val)
 end
 ```
-\end{showhtml}
 
 One can also interpolate plots into JS and update those via JS.
 The problem is, that there isn't an amazing interface yet.
@@ -180,8 +171,7 @@ The good news is, all attributes should be in either `three_scene.material.unifo
 Going forward, we should create an API in WGLMakie, that makes it as easy as in Julia: `plot.attribute = value`.
 But while this isn't in place, logging the the returned object makes it pretty easy to figure out what to do - btw, the JS console + logging is amazing and makes it very easy to play around with the object once logged.
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 using Bonito: on_document_load
 using WGLMakie
 
@@ -245,7 +235,6 @@ App() do session::Session
     return DOM.div(s1, color_slider, markersize, fig)
 end
 ```
-\end{showhtml}
 
 This summarizes the current state of interactivity with WGLMakie inside static pages.
 
@@ -257,8 +246,7 @@ This summarizes the current state of interactivity with WGLMakie inside static p
 There is also a way to show a tooltip in Javascript directly, which needs to be inserted into the HTML dom.
 This means, we actually need to use `Bonito.App` to return a `DOM` object:
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 App() do session
     f, ax, pl = scatter(1:4, markersize=100, color=Float32[0.3, 0.4, 0.5, 0.6])
     custom_info = ["a", "b", "c", "d"]
@@ -283,7 +271,6 @@ App() do session
     return DOM.div(f, tooltip)
 end
 ```
-\end{showhtml}
 
 # Pluto/IJulia
 
@@ -325,8 +312,7 @@ This Style object will only be inserted one time into the DOM in one Session, an
 
 Note, that Bonito already defines something like the above `Rows`:
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 using Colors
 using Bonito
 
@@ -339,12 +325,10 @@ App() do session::Session
     return Row(hue_slider, color_swatch)
 end
 ```
-\end{showhtml}
 
 Bonito also offers a styleable Card component:
 
-\begin{showhtml}{}
-```julia
+```@example wglmakie
 using Markdown
 
 App() do session::Session
@@ -362,10 +346,8 @@ App() do session::Session
     return DOM.div(card)
 end
 ```
-\end{showhtml}
 
 Hopefully, over time there will be helper libraries with lots of stylised elements like the above, to make flashy dashboards with Bonito + WGLMakie.
-
 
 # Export
 
