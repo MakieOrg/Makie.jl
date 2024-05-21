@@ -1329,7 +1329,7 @@ const FONT_CACHE = Dict{String, NativeFont}()
 const FONT_CACHE_LOCK = Base.ReentrantLock()
 
 function load_font(filepath)
-    font = FreeTypeAbstraction.try_load(filepath)
+    font = FreeTypeAbstraction.try_load(String(filepath))
     if isnothing(font)
         error("Could not load font file \"$filepath\"")
     else
@@ -1361,7 +1361,7 @@ function to_font(str::String)
                 return load_font(str)
             end
             # for all other cases, search for the best match on the system
-            fontpath = assetpath("fonts")
+            fontpath = String(assetpath("fonts"))
             font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
             if font === nothing
                 @warn("Could not find font $str, using TeX Gyre Heros Makie")

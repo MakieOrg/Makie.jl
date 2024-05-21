@@ -82,6 +82,8 @@
 - CairoMakie: Fix incorrect scaling factor for SVGs with Cairo_jll 1.18 [#3964](https://github.com/MakieOrg/Makie.jl/pull/3964).
 - Fixed use of Textbox from Bonito [#3924](https://github.com/MakieOrg/Makie.jl/pull/3924)
 
+- Improved relocatability with PackageCompiler [#3882](https://github.com/MakieOrg/Makie.jl/pull/3882)
+
 ## [0.21.2] - 2024-05-22
 
 - Added `cycle` to general attribute allowlist so that it works also with plot types that don't set one in their theme [#3879](https://github.com/MakieOrg/Makie.jl/pull/3879).

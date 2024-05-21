@@ -209,7 +209,7 @@ function alternativefonts()
                 "FiraMono-Medium.ttf"
             ]
             for font in alternatives
-                push!(ALTERNATIVE_FONTS, NativeFont(assetpath("fonts", font)))
+                push!(ALTERNATIVE_FONTS, NativeFont(String(assetpath("fonts", font))))
             end
         end
         return ALTERNATIVE_FONTS

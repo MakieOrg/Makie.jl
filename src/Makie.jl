@@ -105,7 +105,7 @@ const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
-assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
+assetpath(files...) = RelocatableFolders.@path normpath(joinpath(ASSETS_DIR, files...))
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
