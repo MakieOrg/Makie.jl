@@ -60,7 +60,7 @@ function transform_figure_code(code::String; is_continued::Bool, backend::Symbol
 
     (is_continued ? "" : """
     using $backend
-    $backend.activate!() # hide
+    $backend.activate!(; px_per_unit = 2) # hide
     """) *
     """
     import ..MakieDocsHelpers # hide
