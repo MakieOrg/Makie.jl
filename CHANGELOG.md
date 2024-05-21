@@ -2,8 +2,13 @@
 
 ## [Unreleased]
 
-- `boundingbox` now relies on `apply_transform(transform, data_limits(plot))` rather than transforming the corner points of the bounding box [#3856](https://github.com/MakieOrg/Makie.jl/pull/3856)
-- Adjusted `Axis` limits to consider transformations more consistently [#3864](https://github.com/MakieOrg/Makie.jl/pull/3864)
+## [0.21.0] - 2024-05-21
+
+- `boundingbox` now relies on `apply_transform(transform, data_limits(plot))` rather than transforming the corner points of the bounding box [#3856](https://github.com/MakieOrg/Makie.jl/pull/3856).
+- Adjusted `Axis` limits to consider transformations more consistently [#3864](https://github.com/MakieOrg/Makie.jl/pull/3864).
+- Fix problems with incorrectly disabled attributes in recipes [#3870](https://github.com/MakieOrg/Makie.jl/pull/3870), [#3866](https://github.com/MakieOrg/Makie.jl/pull/3866).
+- Fix RPRMakie with Material [#3872](https://github.com/MakieOrg/Makie.jl/pull/3872).
+- Support the loop option in html video output [#3697](https://github.com/MakieOrg/Makie.jl/pull/3697).
 
 ## [0.21.0] - 2024-05-08
 
