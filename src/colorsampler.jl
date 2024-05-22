@@ -132,7 +132,21 @@ apply_scale(scale::AbstractObservable, x) = lift(apply_scale, scale, x)
 apply_scale(::Union{Nothing,typeof(identity)}, x) = x  # noop
 apply_scale(scale, x) = broadcast(scale, x)
 
-function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primitive)
+# Missing handling for `numbers_to_colors`
+numbers_to_colors(::Missing, primitive) = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))::RGBAf
+function numbers_to_colors(numbers::Union{AbstractArray{Missing, N}, Missing},
+                           colormap, colorscale, colorrange::Vec2,
+                           lowclip::Union{Automatic,RGBAf},
+                           highclip::Union{Automatic,RGBAf},
+                           nan_color::RGBAf)::Union{Array{RGBAf, N},RGBAf} where {N}
+    if numbers isa AbstractArray
+        return fill(nan_color, axes(numbers))
+    else # numbers isa single
+        return nan_color
+    end
+end
+
+function numbers_to_colors(numbers::AbstractArray{<: Union{<: Number, Missing}, N}, primitive) where N
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
     _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
     colorscale = get_attribute(primitive, :colorscale)
@@ -151,18 +165,18 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primi
     return numbers_to_colors(numbers, colormap, colorscale, colorrange, lowclip, highclip, nan_color)
 end
 
-function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
-                           colormap, colorscale, colorrange::Vec2,
-                           lowclip::Union{Automatic,RGBAf},
-                           highclip::Union{Automatic,RGBAf},
-                           nan_color::RGBAf)::Union{Array{RGBAf, N},RGBAf} where {N}
+function numbers_to_colors(numbers::Union{AbstractArray{<:Union{Missing, <: Number}, N},Union{Missing, <: Number}},
+                            colormap, colorscale, colorrange::Vec2,
+                            lowclip::Union{Automatic,RGBAf},
+                            highclip::Union{Automatic,RGBAf},
+                            nan_color::RGBAf)::Union{Array{RGBAf, N},RGBAf} where {N}
     cmin, cmax = colorrange
     scaled_cmin = apply_scale(colorscale, cmin)
     scaled_cmax = apply_scale(colorscale, cmax)
 
     return map(numbers) do number
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
-        if isnan(scaled_number)
+        if ismissing(scaled_number) || isnan(scaled_number)
             return nan_color
         elseif !isnothing(lowclip) && scaled_number < scaled_cmin
             return lowclip
@@ -172,15 +186,16 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
         return interpolated_getindex(
             colormap,
             scaled_number,
-            (scaled_cmin, scaled_cmax))
+            (scaled_cmin, scaled_cmax)
+        )
     end
 end
 
 """
     ColorMappingType
 
-* categorical: there are n categories, and n colors are assigned to each category
-* banded: there are ranges edge_start..edge_end, inside which values are mapped to one color
+* categorical: there are `n` categories, and a color is assigned to each category
+* banded: there are ranges `edge_start..edge_end`, inside which values are mapped to one color
 * continuous: colors are mapped continuously to values
 """
 @enum ColorMappingType categorical banded continuous
@@ -245,7 +260,7 @@ colormapping_type(@nospecialize(colormap)) = continuous
 colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
 colormapping_type(::Categorical) = categorical
 
-
+# Create the Observables for a `ColorMapping` struct.
 function _colormapping(
         color_tight::Observable{V},
         @nospecialize(colors_obs),
@@ -262,7 +277,7 @@ function _colormapping(
     raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
     mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing; ignore_equal_values=true)
     colorscale = convert(Observable{Function}, colorscale)
-
+    # This function only updates the colormap observables, not the raw colors themselves.
     function update_colors(cmap, a)
         colors = to_colormap(cmap)
         raw_colors = _to_colormap(cmap) # dont do the scaling from cgrad
@@ -337,8 +352,9 @@ function ColorMapping(
                          colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
 end
 
-function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nospecialize(plot))
-    return ColorMapping(c, color, plot.colormap, plot.colorrange, plot.colorscale, plot.alpha, plot.lowclip,
+function assemble_colors(c::AbstractArray{<:Union{Missing, <: Number}}, @nospecialize(color), @nospecialize(plot))
+    # TODO: this is a hack, what's a better method?
+    return ColorMapping(replace(c, missing => NaN), @lift(replace($color, missing => NaN)), plot.colormap, plot.colorrange, plot.colorscale, plot.alpha, plot.lowclip,
                     plot.highclip, plot.nan_color)
 end
 
@@ -349,6 +365,10 @@ end
 function Base.get(c::ColorMapping, value::Number)
     return numbers_to_colors([value], c.colormap[], c.scale[], c.colorrange_scaled[], lowclip(c)[],
                              highclip(c)[], c.nan_color[])[1]
+end
+
+function Base.get(c::ColorMapping, ::Missing)
+    return c.nan_color[]
 end
 
 function assemble_colors(colortype, color, plot)

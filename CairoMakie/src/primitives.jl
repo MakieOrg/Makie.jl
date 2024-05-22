@@ -3,7 +3,8 @@
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
-    @get_attribute(primitive, (color, linewidth, linestyle))
+    @get_attribute(primitive, (calculated_colors, linewidth, linestyle))
+    color = Makie.to_color(calculated_colors)
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
@@ -940,7 +941,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
-    color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
+    color = Makie.to_color(plot.calculated_colors[])
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     return draw_mesh2D(screen, cols, vs, fs)
 end
@@ -998,7 +999,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
     # Priorize colors of the mesh if present
-    color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
+    color = Makie.to_color(to_value(attributes.calculated_colors))
 
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
@@ -1174,15 +1175,10 @@ end
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
     # Pretend the surface plot is a mesh plot and plot that instead
     mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
-    old = primitive[:color]
-    if old[] === nothing
-        primitive[:color] = primitive[3]
-    end
     if !haskey(primitive, :faceculling)
         primitive[:faceculling] = Observable(-10)
     end
     draw_mesh3D(scene, screen, primitive, mesh)
-    primitive[:color] = old
     return nothing
 end
 
