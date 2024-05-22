@@ -4,7 +4,7 @@
 
 ## [0.21.2] - 2024-05-22
 
-- Added `cycle` to general attribute allowlist so that it works also with plot types that don't set one in their theme [#3876](https://github.com/MakieOrg/Makie.jl/pull/3876).
+- Added `cycle` to general attribute allowlist so that it works also with plot types that don't set one in their theme [#3879](https://github.com/MakieOrg/Makie.jl/pull/3879).
 
 ## [0.21.1] - 2024-05-21
 
