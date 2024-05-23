@@ -7,7 +7,7 @@ Here is a quick tutorial to get you started with Makie!
 Makie is the name of the whole plotting ecosystem and `Makie.jl` is the main package that describes how plots work.
 To actually render and save plots, we need a backend that knows how to translate plots into images or vector graphics.
 
-There are three main backends which you can use to render plots (for more information, have a look at [Backends](@ref)):
+There are three main backends which you can use to render plots (for more information, have a look at [What is a backend](@ref)):
 
 - `CairoMakie.jl` if you want to render vector graphics or high quality 2D images and don't need interactivity or true 3D rendering.
 - `GLMakie.jl` if you need interactive windows and true 3D rendering but no vector output.
@@ -450,9 +450,7 @@ fig
 
 We've only looked at a small subset of Makie's functionality here.
 
-You can read about the different available plotting functions with examples in the [Plotting Functions](@ref) section.
-
-If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref) section.
+If you want to learn about making complex figures with nested sublayouts, have a look at the tutorial [Creating complex layouts](@ref).
 
 If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables](@ref) section.
 

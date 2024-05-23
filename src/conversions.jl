@@ -860,6 +860,7 @@ struct Palette
    Palette(colors) = new(to_color.(colors), zero(Int))
 end
 Palette(name::Union{String, Symbol}, n = 8) = Palette(categorical_colors(name, n))
+
 function to_color(p::Palette)
     N = length(p.colors)
     p.i[] = p.i[] == N ? 1 : p.i[] + 1
@@ -1349,7 +1350,7 @@ to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 """
     to_colormap(b::AbstractVector)
 
-An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
+An `AbstractVector{T}` with any object that `to_color` accepts.
 """
 to_colormap(cm::AbstractVector)::Vector{RGBAf} = map(to_color, cm)
 to_colormap(cm::AbstractVector{<: Colorant}) = convert(Vector{RGBAf}, cm)

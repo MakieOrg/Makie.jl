@@ -287,7 +287,7 @@ end
 ```
 Or also specify a proxy URL, if you have a more complex proxy setup.
 For more advanced setups consult the `?Page` docs and `Bonito.configure_server!`.
-In the [headless](/explanations/headless/index.html#wglmakie) documentation, you can also read more about setting up the Bonito server and port forwarding.
+In the [headless](@ref "Using WGLMakie") documentation, you can also read more about setting up the Bonito server and port forwarding.
 
 ## Styling
 
