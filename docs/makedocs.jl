@@ -193,4 +193,4 @@ devurl = "dev"
 
 params = deployparameters(; repo, devbranch, devurl, push_preview)
 
-deploy(params; target = "./build/final_site")
+deploy(params; target = "../build/final_site")
