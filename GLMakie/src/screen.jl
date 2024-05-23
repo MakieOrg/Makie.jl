@@ -843,8 +843,6 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
     c = screen.close_after_renderloop
     screen.close_after_renderloop = close_after_renderloop
     screen.stop_renderloop = true
-    screen.close_after_renderloop = c
-
     # stop_renderloop! may be called inside renderloop as part of close
     # in which case we should not wait for the task to finish (deadlock)
     if Base.current_task() != screen.rendertask
@@ -853,6 +851,7 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
         screen.rendertask = nothing
     end
     # else, we can't do that much in the rendertask itself
+    screen.close_after_renderloop = c
     return
 end
 
