@@ -327,3 +327,16 @@ end
     fig
 end
 
+@reference_test "Axis limits with translation, scaling and transform_func" begin
+    f = Figure()
+    a = Axis(f[1,1], xscale = log10, yscale = log10)
+    ps = Point2f.([0.1, 0.1, 1000, 1000], [1, 100, 1, 100])
+    hl = linesegments!(a, ps[[1, 3, 2, 4]], color = :red)
+    vl = linesegments!(a, ps, color = :blue)
+    # translation happens before scale! here because scale! acts on scene and
+    # translate! acts on the plot (these are combined by matmult)
+    scale!(a.scene, 0.5, 2, 1.0)
+    translate!(hl, 0, 1, 0)
+    translate!(vl, 1, 0, 0)
+    f
+end

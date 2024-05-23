@@ -719,7 +719,7 @@ end
 
 function attribute_name_allowlist()
     return (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
-            :dim_conversions)
+            :dim_conversions, :cycle)
 end
 
 function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
