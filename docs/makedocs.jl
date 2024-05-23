@@ -6,17 +6,15 @@ Pkg.precompile()
 
 include("copy_changelog.jl")
 
-using Documenter
+using Documenter: Documenter
 using Documenter.MarkdownAST
 using Documenter.MarkdownAST: @ast
 using DocumenterVitepress
 using Markdown
-# using Gumbo
-# using AbstractTrees
 
-# include("buildutils/deploydocs.jl")
-# include("buildutils/relative_links.jl")
-# include("buildutils/redirect_generation.jl")
+
+include("buildutils/deploydocs.jl")
+include("buildutils/redirect_generation.jl")
 
 using CairoMakie
 using WGLMakie
@@ -33,7 +31,7 @@ include("figure_block.jl")
 include("attrdocs_block.jl")
 include("shortdocs_block.jl")
 
-makedocs(;
+Documenter.makedocs(;
     # modules=[Makie],
     sitename="Makie",
     format=DocumenterVitepress.MarkdownVitepress(;
@@ -180,22 +178,19 @@ makedocs(;
     pagesonly = true,
 )
 
-# # by making all links relative, we can forgo the `prepath` setting of Franklin
-# # which means that files in some `vX.Y.Z` subfolder which happens to be `stable`
-# # at the time, link relatively within `stable` so that users don't accidentally
-# # copy & paste versioned links if they started out on `stable`
-# @info "Rewriting all absolute links as relative"
-# make_links_relative(joinpath("build", "final_site"))
+generate_redirects([
+    r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
+    r"/reference/plots/(.*).html" => s"/examples/plotting_functions/\1/index.html",
+    r"/explanations/(.*).html" => s"/documentation/\1/index.html",
+    "/explanations/observables.html" => "/explanations/nodes/index.html",
+], dry_run = false)
 
-# generate_redirects([
-#     "/reference/index.html" => "/examples/index.html",
-#     r"/reference/blocks/(.*)" => s"/examples/blocks/\1",
-#     r"/reference/plots/(.*)" => s"/examples/plotting_functions/\1",
-#     r"/explanations/(.*)" => s"/documentation/\1",
-# ], dry_run = false)
+docs_url = "docs.makie.org"
+repo = "github.com/MakieOrg/Makie.jl.git"
+push_preview = true
+devbranch = "master"
+devurl = "dev"
 
-deploydocs(;
-    repo="github.com/MakieOrg/Makie.jl",
-    devbranch="master",
-    push_preview = true,
-)
+params = deployparameters(; repo, devbranch, devurl, push_preview)
+
+deploy(params; target = "./build/final_site")
