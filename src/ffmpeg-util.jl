@@ -267,7 +267,6 @@ function save(path::String, io::VideoStream; video_options...)
     else
         cp(io.path, path; force=true)
     end
-    rm(io.path)
     return path
 end
 
