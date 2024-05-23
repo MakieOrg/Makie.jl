@@ -180,7 +180,9 @@ Documenter.makedocs(;
 
 @show pwd()
 run(`ls`)
+println()
 run(`ls ..`)
+println()
 cd(@__DIR__)
 
 generate_redirects([
