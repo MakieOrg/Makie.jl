@@ -178,6 +178,11 @@ Documenter.makedocs(;
     pagesonly = true,
 )
 
+@show pwd()
+run(`ls`)
+run(`ls ..`)
+cd(@__DIR__)
+
 generate_redirects([
     r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
     r"/reference/plots/(.*).html" => s"/examples/plotting_functions/\1/index.html",
