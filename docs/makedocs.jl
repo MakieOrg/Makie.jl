@@ -178,12 +178,7 @@ Documenter.makedocs(;
     pagesonly = true,
 )
 
-@show pwd()
-run(`ls`)
-println()
-run(`ls ..`)
-println()
-cd(@__DIR__)
+# DocumenterVitepress moves rendered files from `build/final_site` into `build` on CI by default, but not when running locally
 
 generate_redirects([
     r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
@@ -200,4 +195,4 @@ devurl = "dev"
 
 params = deployparameters(; repo, devbranch, devurl, push_preview)
 
-deploy(params; target = "../build/final_site")
+deploy(params; target = "build")
