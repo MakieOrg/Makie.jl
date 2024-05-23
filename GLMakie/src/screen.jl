@@ -428,7 +428,7 @@ end
 
 # Screen to save a png/jpeg to file or io
 function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=nothing, start_renderloop=false)
-    screen = singleton_screen(config.debugging)
+    screen = screen_from_pool(config.debugging)
     !isnothing(visible) && (config.visible = visible)
     apply_config!(screen, config; start_renderloop=start_renderloop)
     display_scene!(screen, scene)
@@ -437,7 +437,7 @@ end
 
 # Screen that is efficient for `colorbuffer(screen)`
 function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat;  start_renderloop=false)
-    screen = singleton_screen(config.debugging)
+    screen = screen_from_pool(config.debugging)
     config.visible = false
     apply_config!(screen, config; start_renderloop=start_renderloop)
     display_scene!(screen, scene)
