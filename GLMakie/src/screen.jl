@@ -322,6 +322,7 @@ function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
         @debug("reusing singleton screen")
         screen = SINGLETON_SCREEN[1]
+        stop_renderloop!(screen; close_after_renderloop=false)
         empty!(screen)
     else
         @debug("new singleton screen")
@@ -428,7 +429,7 @@ end
 
 # Screen to save a png/jpeg to file or io
 function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=nothing, start_renderloop=false)
-    screen = screen_from_pool(config.debugging)
+    screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
     apply_config!(screen, config; start_renderloop=start_renderloop)
     display_scene!(screen, scene)
@@ -437,7 +438,7 @@ end
 
 # Screen that is efficient for `colorbuffer(screen)`
 function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat;  start_renderloop=false)
-    screen = screen_from_pool(config.debugging)
+    screen = singleton_screen(config.debugging)
     config.visible = false
     apply_config!(screen, config; start_renderloop=start_renderloop)
     display_scene!(screen, scene)
