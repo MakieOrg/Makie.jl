@@ -81,7 +81,7 @@ function onpick end
 Creates an `And` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `And` structs is created.
 
-See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`&`](@ref)
+See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), `&`
 """
 struct And{L, R} <: BooleanOperator
     left::L
@@ -96,7 +96,7 @@ And(left, right::Bool) = right ? left : false
 Creates an `Or` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `Or` structs is created.
 
-See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`|`](@ref)
+See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), `|`
 """
 struct Or{L, R} <: BooleanOperator
     left::L
