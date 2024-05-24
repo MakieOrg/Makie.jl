@@ -31,6 +31,21 @@ include("figure_block.jl")
 include("attrdocs_block.jl")
 include("shortdocs_block.jl")
 
+docs_url = "docs.makie.org"
+repo = "github.com/MakieOrg/Makie.jl.git"
+push_preview = true
+devbranch = "master"
+devurl = "dev"
+
+params = deployparameters(; repo, devbranch, devurl, push_preview)
+deploy_decision = Documenter.DeployDecision(;
+    params.all_ok,
+    params.branch,
+    params.is_preview,
+    params.repo,
+    params.subfolder,
+)
+
 Documenter.makedocs(;
     # modules=[Makie],
     sitename="Makie",
@@ -40,6 +55,7 @@ Documenter.makedocs(;
         devbranch = "master",
         deploy_url = "https://docs.makie.org", # for local testing not setting this has broken links with Makie.jl in them
         description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live.",
+        deploy_decision,
     ),
     pages=[
         "Home" => "index.md",
@@ -186,13 +202,5 @@ generate_redirects([
     r"/explanations/(.*).html" => s"/documentation/\1/index.html",
     "/explanations/observables.html" => "/explanations/nodes/index.html",
 ], dry_run = false)
-
-docs_url = "docs.makie.org"
-repo = "github.com/MakieOrg/Makie.jl.git"
-push_preview = true
-devbranch = "master"
-devurl = "dev"
-
-params = deployparameters(; repo, devbranch, devurl, push_preview)
 
 deploy(params; target = "build")
