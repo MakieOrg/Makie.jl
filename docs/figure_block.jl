@@ -50,6 +50,7 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
         expr.args[1] => expr.args[2]
     end)
     el.info = "@example $blockname"
+    # TODO: there's a bug here that continued blocks don't reliably share the backend and mime type of the first block, so you can run into issues where GLMakie tries to render SVG
     el.code = transform_figure_code(el.code; is_continued, kwargs...)
     Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
 end
