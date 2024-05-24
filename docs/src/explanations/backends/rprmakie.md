@@ -128,7 +128,7 @@ image = colorbuffer(screen)
 save("materials.png", image)
 ```
 
-![Materials](/assets/materials.png)
+![Materials](../../assets/materials.png)
 
 ## Advanced custom material (earth_topography.jl)
 
@@ -188,7 +188,7 @@ cam.fov[] = 23
 save("topographie.png", ax.scene)
 ```
 
-![Topographie](/assets/topographie.png)
+![Topographie](../../assets/topographie.png)
 
 ## RPRMakie interop (opengl_interop.jl)
 
@@ -477,4 +477,4 @@ end
 save("submarine_cables.png", scene)
 ```
 
-![Submarine cables](/assets/submarine_cables.png)
+![Submarine cables](../../assets/submarine_cables.png)
