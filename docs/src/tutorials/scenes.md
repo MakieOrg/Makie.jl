@@ -41,7 +41,7 @@ When using `Scenes` directly, one needs to manually set up the camera
 and center the camera to the content of the scene
 As described in more detail the camera section, we have multiple `cam***!` functions to set a certain projection and camera type for the scene.
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 cam3d!(subwindow)
 meshscatter!(subwindow, rand(Point3f, 10), color=:gray)
 center!(subwindow)
@@ -54,7 +54,7 @@ The easiest way to create an outline is, to make a sub scene with a projection t
 To make a subscene with a certain projection type, Makie offers for each camera function a version without `!`, that will create a subscene, and apply the camera type.
 We call the space that goes from 0..1 `relative` space, so `camrelative` will give this projection:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 subwindow.clear = false
 relative_space = Makie.camrelative(subwindow)
 # this draws a line at the scene window boundary
@@ -64,7 +64,7 @@ scene
 
 We can also now give the parent scene a more exciting background by using `campixel!` and plotting an image to the window:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 campixel!(scene)
 w, h = size(scene) # get the size of the scene in pixels
 # this draws a line at the scene window boundary
@@ -74,7 +74,7 @@ scene
 
 We can fix this by translating the scene further back:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 translate!(scene.plots[1], 0, 0, -10000)
 scene
 ```
@@ -85,7 +85,7 @@ With `clear = true` we wouldn't have this problem!
 
 In GLMakie, we can actually take a look at the depthbuffer, to see how it looks now:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 screen = display(scene) # use display, to get a reference to the screen object
 depth_color = GLMakie.depthbuffer(screen)
 close(screen)
@@ -118,7 +118,7 @@ end
 We've already talked a bit about cameras, but not really how it works.
 Lets start from zero. By default, the scene x/y extends go from -1 to 1.
 So, to draw a rectangle outlining the scene window, the following rectangle does the job:
-```@figure scenes
+```@figure scenes backend=GLMakie
 scene = Scene(backgroundcolor=:gray)
 lines!(scene, Rect2f(-1, -1, 2, 2), linewidth=5, color=:black)
 scene
@@ -132,14 +132,14 @@ cam = Makie.camera(scene) # this is how to access the scenes camera
 
 One can change the mapping, to e.g. draw from -3 to 5 with an orthographic projection matrix:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 cam.projection[] = Makie.orthographicprojection(-3f0, 5f0, -3f0, 5f0, -100f0, 100f0)
 scene
 ```
 
 one can also change the camera to a perspective 3d projection:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 w, h = size(scene)
 nearplane = 0.1f0
 farplane = 100f0
@@ -161,7 +161,7 @@ Besides that, it's a normal scene, which we can use to create subscenes with sma
 
 So, we can use `camrelative` and friends to e.g. plot in the middle of the axis:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 figure, axis, plot_object = scatter(1:4)
 relative_projection = Makie.camrelative(axis.scene);
 scatter!(relative_projection, [Point2f(0.5)], color=:red)
@@ -188,7 +188,7 @@ rotate!
 scale!
 ```
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 scene = Scene()
 cam3d!(scene)
 sphere_plot = mesh!(scene, Sphere(Point3f(0), 0.5), color=:red)
@@ -201,14 +201,14 @@ One can also transform the plot objects directly, which then adds the transforma
 One can add subscenes and interact with those dynamically.
 Makie offers here what's usually referred to as a scene graph.
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 translate!(sphere_plot, Vec3f(0, 0, 1))
 scene
 ```
 
 The scene graph can be used to create rigid transformations, like for a robot arm:
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 parent = Scene()
 cam3d!(parent; clipping_mode = :static)
 
@@ -229,7 +229,7 @@ translate!(s3, 5, 0, 0)
 parent
 ```
 
-```@figure scenes
+```@figure scenes backend=GLMakie
 # Now, rotate the "joints"
 rotate!(s2, Vec3f(0, 1, 0), 0.5)
 rotate!(s3, Vec3f(1, 0, 0), 0.5)
