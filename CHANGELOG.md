@@ -508,7 +508,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 [Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.2...HEAD
 [0.21.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.0...v0.21.2
 [0.21.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.0...v0.21.1
-[0.21.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.9...v0.21.0
+[0.21.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.10...v0.21.0
+[0.20.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.9...v0.20.10
 [0.20.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.8...v0.20.9
 [0.20.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.7...v0.20.8
 [0.20.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.6...v0.20.7
@@ -554,3 +555,4 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 [0.15.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.15.0...v0.15.1
+[0.15.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.14.2...v0.15.0

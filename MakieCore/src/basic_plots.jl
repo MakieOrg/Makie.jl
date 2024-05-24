@@ -620,6 +620,31 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
     depth_shift = -1f-5
 end
 
+"""
+    arrows(points, directions; kwargs...)
+    arrows(x, y, u, v)
+    arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    arrows(x, y, z, u, v, w)
+    arrows(x, y, [z], f::Function)
+
+Plots arrows at the specified points with the specified components.
+`u` and `v` are interpreted as vector components (`u` being the x
+and `v` being the y), and the vectors are plotted with the tails at
+`x`, `y`.
+
+If `x, y, u, v` are `<: AbstractVector`, then each 'row' is plotted
+as a single vector.
+
+If `u, v` are `<: AbstractMatrix`, then `x` and `y` are interpreted as
+specifications for a grid, and `u, v` are plotted as arrows along the
+grid.
+
+`arrows` can also work in three dimensions.
+
+If a `Function` is provided in place of `u, v, [w]`, then it must accept
+a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
+or other array-like output.
+"""
 @recipe Arrows (points, directions) begin
     "Sets the color of arrowheads and lines. Can be overridden separately using `linecolor` and `arrowcolor`."
     color = :black
