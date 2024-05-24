@@ -174,7 +174,7 @@ Documenter.makedocs(;
             "Ecosystem" => "ecosystem.md",
         ]
     ],
-    warnonly = true,
+    warnonly = false,
     pagesonly = true,
 )
 
