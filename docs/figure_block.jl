@@ -54,7 +54,7 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
 end
 
-function transform_figure_code(code::String; is_continued::Bool, backend::Symbol = :CairoMakie, mime=:png)
+function transform_figure_code(code::String; is_continued::Bool, backend::Symbol = :CairoMakie, mime= backend === :CairoMakie ? :svg : :png)
     backend in (:CairoMakie, :GLMakie) || error("Invalid backend $backend")
     mimetype = mime == :svg ? "image/svg+xml" : mime == :png ? "image/png" : error("Unknown mimetype $mime")
 

@@ -44,5 +44,10 @@ export default defineConfig({
       message: 'Made with <a href="https://luxdl.github.io/DocumenterVitepress.jl/dev/" target="_blank"><strong>DocumenterVitepress.jl</strong></a><br>',
       copyright: `© Copyright ${new Date().getUTCFullYear()}.`
     }
+  },
+  vite: {
+    build: {
+      assetsInlineLimit: 0, // observed problems where SVG plots would appear blank due to inlining
+    }
   }
 })
