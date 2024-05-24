@@ -217,7 +217,7 @@ We can also re-use the previous NYC example for a categorical plot:
     display(f)
 end
 ```
-![](/assets/nyc-per-vendor.png)
+![](../../assets/nyc-per-vendor.png)
 
 ### Advanced API
 

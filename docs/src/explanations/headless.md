@@ -48,7 +48,7 @@ This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/Makie.
 
 For WGLMakie, you can setup a server with Bonito and serve the content from a remote server.
 This also works for creating interactive plots with Documenter.
-Check out the [docs](/explanations/backends/wglmakie) for more details about this.
+Check out the [WGLMakie docs](@ref WGLMakie) for more details about this.
 
 If you want to use WGLMakie in VS Code on a remote server, you will have to forward the port
 used by WGLMakie in order for the plot pane integration to work.

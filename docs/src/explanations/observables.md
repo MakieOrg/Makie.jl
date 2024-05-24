@@ -79,7 +79,7 @@ The advantage of using `to_value` is that you can use it in situations where you
 
 ## Chaining `Observable`s With `lift`
 
-You can create a Observable depending on another Observable using [`lift`](@ref).
+You can create a Observable depending on another Observable using `lift`.
 The first argument of `lift` must be a function that computes the value of the output Observable given the values of the input Observables.
 
 ```@example observable
@@ -122,7 +122,7 @@ nothing # hide
 
 ## Shorthand Macro For `lift`
 
-When using [`lift`](@ref), it can be tedious to reference each participating `Observable`
+When using `lift`, it can be tedious to reference each participating `Observable`
 at least three times, once as an argument to `lift`, once as an argument to the closure that
 is the first argument, and at least once inside the closure:
 
