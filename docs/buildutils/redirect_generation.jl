@@ -1,5 +1,5 @@
 function generate_redirects(rules; dry_run = true)
-    htmlpaths = cd("__site") do
+    htmlpaths = cd("build") do
         collect(Iterators.flatmap(walkdir(".")) do (root, dirs, files)
             (chop(joinpath(root, file), head = 1, tail = 0) for file in files if endswith(file, ".html"))
         end)
@@ -34,7 +34,7 @@ function write_redirection_html(redirect_file, existing_file; dry_run)
     
     @info "Adding redirect from $redirect_file to $existing_file"
     if !dry_run
-        cd("__site") do
+        cd("build") do
             filepath = "." * redirect_file
             mkpath(splitdir(filepath)[1])
             open(filepath, "w") do io

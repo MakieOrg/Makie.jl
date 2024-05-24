@@ -3,7 +3,11 @@
 ## [Unreleased]
 - CairoMakie: Add argument `pdf_version` to restrict the PDF version when saving a figure as a PDF [#3845](https://github.com/MakieOrg/Makie.jl/pull/3845).
 
-## [0.21.0] - 2024-05-21
+## [0.21.2] - 2024-05-22
+
+- Added `cycle` to general attribute allowlist so that it works also with plot types that don't set one in their theme [#3879](https://github.com/MakieOrg/Makie.jl/pull/3879).
+
+## [0.21.1] - 2024-05-21
 
 - `boundingbox` now relies on `apply_transform(transform, data_limits(plot))` rather than transforming the corner points of the bounding box [#3856](https://github.com/MakieOrg/Makie.jl/pull/3856).
 - Adjusted `Axis` limits to consider transformations more consistently [#3864](https://github.com/MakieOrg/Makie.jl/pull/3864).
@@ -502,7 +506,11 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.9...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.2...HEAD
+[0.21.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.0...v0.21.2
+[0.21.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.0...v0.21.1
+[0.21.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.10...v0.21.0
+[0.20.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.9...v0.20.10
 [0.20.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.8...v0.20.9
 [0.20.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.7...v0.20.8
 [0.20.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.6...v0.20.7
@@ -548,3 +556,4 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 [0.15.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.15.0...v0.15.1
+[0.15.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.14.2...v0.15.0
