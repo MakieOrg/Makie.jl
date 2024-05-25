@@ -689,7 +689,6 @@ function attribute_examples(::Type{Legend})
     Dict(
         :colgap => [
             Example(
-                name = "Column gaps",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -704,7 +703,6 @@ function attribute_examples(::Type{Legend})
         ],
         :groupgap => [
             Example(
-                name = "Group gaps",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -729,7 +727,6 @@ function attribute_examples(::Type{Legend})
         ],
         :patchsize => [
             Example(
-                name = "Patch size",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -744,7 +741,6 @@ function attribute_examples(::Type{Legend})
         ],
         :patchlabelgap => [
             Example(
-                name = "Gap sizes",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -759,7 +755,6 @@ function attribute_examples(::Type{Legend})
         ],
         :orientation => [
             Example(
-                name = "Orientations",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -774,7 +769,6 @@ function attribute_examples(::Type{Legend})
         ],
         :nbanks => [
             Example(
-                name = "Number of banks with `orientation = :vertical`",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -789,7 +783,6 @@ function attribute_examples(::Type{Legend})
                     """
             ),
             Example(
-                name = "Number of banks with `orientation = :horizontal`",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -809,7 +802,6 @@ function attribute_examples(::Type{Legend})
         ],
         :titleposition => [
             Example(
-                name = "Title positions",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])
@@ -824,7 +816,6 @@ function attribute_examples(::Type{Legend})
         ],
         :rowgap => [
             Example(
-                name = "Row gaps",
                 code = """
                     fig = Figure()
                     ax = Axis(fig[1, 1])

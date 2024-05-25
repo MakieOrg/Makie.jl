@@ -1447,7 +1447,6 @@ function attribute_examples(::Type{Axis})
     Dict(
         :xticks => [
             Example(
-                name = "Common tick types",
                 code = """
                     fig = Figure()
                     Axis(fig[1, 1], xticks = 1:10)
@@ -1459,7 +1458,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yticks => [
             Example(
-                name = "Common tick types",
                 code = """
                     fig = Figure()
                     Axis(fig[1, 1], yticks = 1:10)
@@ -1471,7 +1469,6 @@ function attribute_examples(::Type{Axis})
         ],
         :aspect => [
             Example(
-                name = "Common aspect ratios",
                 code = """
                     using FileIO
 
@@ -1493,7 +1490,6 @@ function attribute_examples(::Type{Axis})
         ],
         :autolimitaspect => [
             Example(
-                name = "Using `autolimitaspect`",
                 code = """
                     f = Figure()
 
@@ -1510,7 +1506,6 @@ function attribute_examples(::Type{Axis})
         ],
         :title => [
             Example(
-                name = "`title` variants",
                 code = """
                     f = Figure()
 
@@ -1527,7 +1522,6 @@ function attribute_examples(::Type{Axis})
         ],
         :titlealign => [
             Example(
-                name = "`titlealign` variants",
                 code = """
                     f = Figure()
 
@@ -1541,7 +1535,6 @@ function attribute_examples(::Type{Axis})
         ],
         :subtitle => [
             Example(
-                name = "`subtitle` variants",
                 code = """
                     f = Figure()
 
@@ -1558,7 +1551,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xlabel => [
             Example(
-                name = "`xlabel` variants",
                 code = """
                     f = Figure()
 
@@ -1575,7 +1567,6 @@ function attribute_examples(::Type{Axis})
         ],
         :ylabel => [
             Example(
-                name = "`ylabel` variants",
                 code = """
                     f = Figure()
 
@@ -1592,7 +1583,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xtrimspine => [
             Example(
-                name = "`xtrimspine` variants",
                 code = """
                     f = Figure()
 
@@ -1615,7 +1605,6 @@ function attribute_examples(::Type{Axis})
         ],
         :ytrimspine => [
             Example(
-                name = "`ytrimspine` variants",
                 code = """
                     f = Figure()
 
@@ -1638,7 +1627,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xaxisposition => [
             Example(
-                name = "`xaxisposition` variants",
                 code = """
                     f = Figure()
 
@@ -1651,7 +1639,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yaxisposition => [
             Example(
-                name = "`yaxisposition` variants",
                 code = """
                     f = Figure()
 
@@ -1664,7 +1651,6 @@ function attribute_examples(::Type{Axis})
         ],
         :limits => [
             Example(
-                name = "`limits` variants",
                 code = """
                     f = Figure()
 
@@ -1683,7 +1669,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yscale => [
             Example(
-                name = "`yscale` variants",
                 code = """
                     f = Figure()
 
@@ -1700,7 +1685,6 @@ function attribute_examples(::Type{Axis})
                     """
             ),
             Example(
-                name = "Pseudo-log scales",
                 code = """
                     f = Figure()
 
@@ -1726,7 +1710,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xscale => [
             Example(
-                name = "`xscale` variants",
                 code = """
                     f = Figure()
 
@@ -1743,7 +1726,6 @@ function attribute_examples(::Type{Axis})
                     """
             ),
             Example(
-                name = "Pseudo-log scales",
                 code = """
                     f = Figure()
 
@@ -1769,7 +1751,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xtickformat => [
             Example(
-                name = "`xtickformat` variants",
                 code = """
                     f = Figure(figure_padding = 50)
 
@@ -1785,7 +1766,6 @@ function attribute_examples(::Type{Axis})
         ],
         :ytickformat => [
             Example(
-                name = "`ytickformat` variants",
                 code = """
                     f = Figure()
 
@@ -1801,7 +1781,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xticksmirrored => [
             Example(
-                name = "`xticksmirrored` on and off",
                 code = """
                     f = Figure()
 
@@ -1814,7 +1793,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yticksmirrored => [
             Example(
-                name = "`yticksmirrored` on and off",
                 code = """
                     f = Figure()
 
@@ -1827,7 +1805,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xminorticks => [
             Example(
-                name = "`xminorticks` variants",
                 code = """
                     f = Figure()
 
@@ -1842,7 +1819,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yminorticks => [
             Example(
-                name = "`yminorticks` variants",
                 code = """
                     f = Figure()
 

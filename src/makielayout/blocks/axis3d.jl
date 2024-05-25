@@ -943,7 +943,6 @@ function attribute_examples(::Type{Axis3})
     Dict(
         :aspect => [
             Example(
-                name = "Three-tuple aspects",
                 code = """
                     fig = Figure()
 
@@ -956,7 +955,6 @@ function attribute_examples(::Type{Axis3})
                     """
             ),
             Example(
-                name = "`:data` and `:equal` aspects",
                 code = """
                     using FileIO
 
@@ -977,7 +975,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :viewmode => [
             Example(
-                name = "`viewmode` variants",
                 code = """
                     fig = Figure()
 
@@ -1001,7 +998,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :perspectiveness => [
             Example(
-                name = "`perspectiveness` values",
                 code = """
                     fig = Figure()
 
@@ -1017,7 +1013,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :azimuth => [
             Example(
-                name = "`azimuth` values",
                 code = """
                     fig = Figure()
 
@@ -1032,7 +1027,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :elevation => [
             Example(
-                name = "`elevation` values",
                 code = """
                     fig = Figure()
 
@@ -1047,7 +1041,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :xreversed => [
             Example(
-                name = "`xreversed` on and off",
                 code = """
                 using FileIO
 
@@ -1067,7 +1060,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :yreversed => [
             Example(
-                name = "`yreversed` on and off",
                 code = """
                     using FileIO
 
@@ -1087,7 +1079,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :zreversed => [
             Example(
-                name = "`zreversed` on and off",
                 code = """
                     using FileIO
 
@@ -1107,7 +1098,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :protrusions => [
             Example(
-                name = "Single protrusion",
                 code = """
                     fig = Figure(backgroundcolor = :gray97)
                     Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
@@ -1117,7 +1107,6 @@ function attribute_examples(::Type{Axis3})
                 """
             ),
             Example(
-                name = "Removing protrusions",
                 code = """
                     fig = Figure(backgroundcolor = :gray97)
                     Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
