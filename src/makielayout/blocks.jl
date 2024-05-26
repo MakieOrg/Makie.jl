@@ -533,11 +533,11 @@ convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)
 
 Base.@kwdef struct Example
-    name::String
     backend::Symbol = :CairoMakie # the backend that is used for rendering
     backend_using::Symbol = backend # the backend that is shown for `using` (for CairoMakie-rendered plots of interactive stuff that should show `using GLMakie`)
     svg::Bool = true # only for CairoMakie
     code::String
+    caption::Union{Nothing,String} = nothing
 end
 
 function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String}, examples::Vector{Example}, default_str)
@@ -554,7 +554,7 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String},
     println(io)
 
     for (i, example) in enumerate(examples)
-        println(io, "**Example $i**: $(example.name)")
+        println(io, "**Example $i**")
         println(io, "```julia")
         # println(io)
         # println(io, "# run in the REPL via Makie.example($type, :$attr, $i)")
@@ -576,7 +576,7 @@ end
 #     return
 # end
 
-function attribute_examples(b::Type{<:Block})
+function attribute_examples(b::Union{Type{<:Block},Type{<:Plot}})
     Dict{Symbol,Vector{Example}}()
 end
 

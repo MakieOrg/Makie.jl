@@ -182,6 +182,8 @@ include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
 
+include("basic_recipes/makiecore_examples/scatter.jl")
+
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
