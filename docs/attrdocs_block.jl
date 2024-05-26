@@ -32,7 +32,7 @@ function attrs_examples_docs_defaults(type::Type{<:Makie.Plot})
     metadata = docatt.d
 
     attrkeys = sort(collect(keys(metadata)))
-    all_examples = Dict{Symbol,Vector{Makie.Example}}()
+    all_examples = Makie.attribute_examples(type)
     all_docs = Dict([(attr => something(meta.docstring, "No docs available.")) for (attr, meta) in metadata])
     all_defaults = Dict([(attr => meta.default_expr) for (attr, meta) in metadata])
 

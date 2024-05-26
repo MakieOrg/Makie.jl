@@ -232,17 +232,6 @@ p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
 scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))
 ```
 
-### Marker rotation
-
-Markers can be rotated using the `rotation` attribute, which also allows to pass a vector.
-
-```@figure
-points = [Point2f(x, y) for y in 1:10 for x in 1:10]
-rotations = range(0, 2pi, length = length(points))
-
-scatter(points, rotation = rotations, markersize = 20, marker = '↑')
-```
-
 ### Vec markersize
 
 You can scale x and y dimension of markers separately by passing a `Vec`.

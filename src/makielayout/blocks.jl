@@ -537,6 +537,7 @@ Base.@kwdef struct Example
     backend_using::Symbol = backend # the backend that is shown for `using` (for CairoMakie-rendered plots of interactive stuff that should show `using GLMakie`)
     svg::Bool = true # only for CairoMakie
     code::String
+    caption::Union{Nothing,String} = nothing
 end
 
 function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String}, examples::Vector{Example}, default_str)
@@ -575,7 +576,7 @@ end
 #     return
 # end
 
-function attribute_examples(b::Type{<:Block})
+function attribute_examples(b::Union{Type{<:Block},Type{<:Plot}})
     Dict{Symbol,Vector{Example}}()
 end
 
