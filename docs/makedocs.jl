@@ -198,8 +198,12 @@ Documenter.makedocs(;
 
 generate_redirects([
     r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
+    r"/reference/blocks/(.*).html" => s"/reference/blocks/\1/index.html",
     r"/reference/plots/(.*).html" => s"/examples/plotting_functions/\1/index.html",
+    r"/reference/plots/(.*).html" => s"/reference/plots/\1/index.html",
     r"/explanations/(.*).html" => s"/documentation/\1/index.html",
+    r"/tutorials/(.*).html" => s"/tutorials/\1/index.html",
+    r"/explanations/(.*).html" => s"/explanations/\1/index.html",
     "/explanations/observables.html" => "/explanations/nodes/index.html",
 ], dry_run = false)
 
