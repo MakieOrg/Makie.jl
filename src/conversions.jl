@@ -71,7 +71,8 @@ function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
 end
 
 function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <: Real}
-    return ([Point{N,float_type(T)}(position)],)
+    _T = @isdefined(T) ? T : Float64
+    return ([Point{N,float_type(_T)}(position)],)
 end
 
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
@@ -425,7 +426,7 @@ function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLik
                            data::RealArray{3})
     return (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(data))
 end
-  
+
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
 
