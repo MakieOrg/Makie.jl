@@ -89,7 +89,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
         pt_per_unit = 0.75,
         antialias = :best,
         visible = true,
-        start_renderloop = false
+        start_renderloop = false,
+        pdf_version = nothing
     ),
 
     GLMakie = Attributes(

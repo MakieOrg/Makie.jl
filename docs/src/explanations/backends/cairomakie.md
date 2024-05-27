@@ -50,3 +50,13 @@ If you zoom in, you will see a pretty badly pixelated image - this is because th
 v = rand(10,2)
 scatter(v[:,1], v[:,2], rasterize = 10, markersize = 30.0)
 ```
+
+#### PDF version
+
+The version of output PDFs can be restricted via the `pdf_version` argument of the screen config. Conveniently, it can be also passed as an argument of the `save` function:
+
+```julia
+using CairoMakie
+fig = Figure()
+save("figure.pdf", fig, pdf_version="1.4")
+```
