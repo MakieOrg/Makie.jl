@@ -29,6 +29,62 @@ gl_color_type_annotation(::Real) = "float"
 gl_color_type_annotation(::Makie.RGB) = "vec3"
 gl_color_type_annotation(::Makie.RGBA) = "vec4"
 
+function generate_indices(positions)
+    valid_obs = Observable(Float32[]) # why does this need to be a float?
+    # valid_obs = Observable(Int32[])
+    indices_obs = const_lift(positions) do ps
+        valid = valid_obs[]
+        resize!(valid, length(ps))
+    
+        indices = Cuint[1]
+        sizehint!(indices, length(ps)+2)
+    
+        last_start_pos = Point2f(NaN)
+        last_start_idx = -1
+        for i in eachindex(ps)
+            p = ps[i]
+            push!(indices, i)
+            valid[i] = isfinite(p)
+            
+            if isfinite(p)
+                if last_start_idx == -1
+                    last_start_idx = length(indices)
+                    last_start_pos = p
+                end
+            elseif length(indices) - last_start_idx > 2 && ps[max(1, i-1)] ≈ last_start_pos
+                indices[last_start_idx-1] = max(1, i-2) # before last valid
+                indices[end] = indices[last_start_idx+1] # after start
+                # need second separator in case next is loop
+                # this_end this_ghost next_ghost next_start
+                push!(indices, i, i)
+                valid[i-2] = 2
+                valid[i] = 0
+                valid[indices[last_start_idx+1]] = 2
+                last_start_idx = -1
+            else
+                # this not loop, but need seperator/ghost for next
+                valid[i] = 0
+                last_start_idx = -1
+            end 
+        end
+    
+        if length(indices) - last_start_idx > 2 && ps[end] ≈ last_start_pos
+            indices[last_start_idx-1] = max(1, length(ps)-1)
+            push!(indices, indices[last_start_idx+1])
+            valid[end-1] = 2
+            valid[indices[last_start_idx+1]] = 2
+        else
+            push!(indices, length(ps))
+            valid[end] = Int(isfinite(ps[end]))
+        end
+
+        notify(valid_obs)
+        return indices .- Cuint(1)
+    end
+
+    return indices_obs, valid_obs
+end
+
 @nospecialize
 function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
     p_vec = if isa(position, GPUArray)
@@ -37,11 +93,13 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         const_lift(vec, position)
     end
 
+    indices, valid_vertex = generate_indices(p_vec)
+
     color_type = gl_color_type_annotation(data[:color])
     resolution = data[:resolution]
 
     @gen_defaults! data begin
-        total_length::Int32 = const_lift(x-> Int32(length(x)), position)
+        total_length::Int32 = const_lift(x -> Int32(length(x) - 2), indices)
         vertex              = p_vec => GLBuffer
         color               = nothing => GLBuffer
         color_map           = nothing => Texture
@@ -53,10 +111,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
         # segment to have neighbouring vertices.
-        indices             = const_lift(p_vec) do p
-            len0 = length(p) - 1
-            return isempty(p) ? Cuint[] : Cuint[0; 0:len0; len0]
-        end => to_index_buffer
+        indices             = indices => to_index_buffer
         transparency = false
         fast         = false
         shader              = GLVisualizeShader(
@@ -70,9 +125,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             )
         )
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
-        valid_vertex        = const_lift(p_vec) do points
-            map(p-> Float32(all(isfinite, p)), points)
-        end => GLBuffer
+        valid_vertex        = valid_vertex => GLBuffer
         lastlen             = const_lift(sumlengths, p_vec, resolution) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
         debug               = false

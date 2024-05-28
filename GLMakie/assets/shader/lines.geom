@@ -196,22 +196,32 @@ void main(void)
         return;
     }
 
-    // We mark each of the four vertices as valid or not. Vertices can be
-    // marked invalid on input (eg, if they contain NaN). We also mark them
-    // invalid if they repeat in the index buffer. This allows us to render to
-    // the very ends of a polyline without clumsy buffering the position data on the
-    // CPU side by repeating the first and last points via the index buffer. It
-    // just requires a little care further down to avoid degenerate normals.
+    // We mark vertices based on their role in a line segment:
+    //  0: the vertex is skipped/invalid (i.e. NaN)
+    //  1: the vertex is valid (part of a plain line segment)
+    //  2: the vertex is either ..
+    //       a loop target if the previous or next vertex is marked 0
+    //       or a normal valid vertex otherwise
+    // isvalid[0] and [3] are used to discern whether a line segment is part
+    // of a continuing line (valid) or a line start/end (invalid). A line only
+    // ends if the previous / next vertex is invalid
+    // isvalid[1] and [2] are used to discern whether a line segment should be
+    // discarded. This should happen if either vertex is invalid or if one of
+    // the vertices is a loop target.
+    // A loop target is an extra vertex placed before/after the shared vertex to 
+    // guide joint generation. Consider for example a closed triangle A B C A. 
+    // To cleanly close the loop both A's need to create a joint as if we had
+    // c A B C A b, but without drawing the c-A and A-b segments. c and b would
+    // be loop targets, matching C and B in position, but only being valid in
+    // isvalid[0] and [3], not as a drawn segment in isvalid[1] and [2].
     bool isvalid[4] = bool[](
-        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
-        g_valid_vertex[1] == 1,
-        g_valid_vertex[2] == 1,
-        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
+        (g_valid_vertex[0] > 0) && g_id[0].y != g_id[1].y,
+        (g_valid_vertex[1] > 0) && !((g_valid_vertex[0] == 0) && (g_valid_vertex[1] == 2)),
+        (g_valid_vertex[2] > 0) && !((g_valid_vertex[2] == 2) && (g_valid_vertex[3] == 0)),
+        (g_valid_vertex[3] > 0) && g_id[2].y != g_id[3].y
     );
 
     if(!isvalid[1] || !isvalid[2]){
-        // If one of the central vertices is invalid or there is a break in the
-        // line, we don't emit anything.
         return;
     }
 
