@@ -49,29 +49,69 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
         transformed_points = apply_transform_and_f32_conversion(f32c, tf, ps, space)
         # TODO: Do this in javascript?
+        empty!(indices[])
         if isempty(transformed_points)
-            empty!(indices[])
             notify(indices)
             return transformed_points
         else
-            sizehint!(empty!(indices[]), length(transformed_points) + 2)
+            sizehint!(indices[], length(transformed_points) + 2)
+
             was_nan = true
-            for i in eachindex(transformed_points)
-                # dublicate first and last element of line selection
-                if isnan(transformed_points[i])
+            loop_start_idx = -1
+            for (i, p) in enumerate(transformed_points)
+                if isnan(p)
+                    # line section end (last was value, now nan)
                     if !was_nan
-                        push!(indices[], i-1) # end of line dublication
+                        # does previous point close loop?
+                        # loop started && 3+ segments && start == end
+                        if loop_start_idx != -1 && (loop_start_idx + 2 < length(indices[])) &&
+                            (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[i-1])
+
+                            #               start -v             v- end
+                            # adjust from       j  j j+1 .. i-2 i-1
+                            # to           nan i-2 j j+1 .. i-2 i-1 j+1 nan
+                            # where start == end thus j == i-1
+                            # if nan is present in a quartet of vertices 
+                            # (nan, i-2, j, i+1) the segment (i-2, j) will not
+                            # be drawn (which we want as that segment would overlap)
+
+                            # tweak dublicated vertices to be loop vertices
+                            push!(indices[], indices[][loop_start_idx+1])
+                            indices[][loop_start_idx-1] = i-2
+                            # nan is inserted at bottom (and not necessary for start/end)
+
+                        else # no loop, dublicate end point
+                            push!(indices[], i-1)
+                        end
                     end
+                    loop_start_idx = -1
                     was_nan = true
-                elseif was_nan
-                    push!(indices[], i) # start of line dublication
+                else
+
+                    if was_nan
+                        # line section start - dublicate point
+                        push!(indices[], i)
+                        # first point in a potential loop
+                        loop_start_idx = length(indices[])+1
+                    end
                     was_nan = false
                 end
 
+                # push normal line point (including nan)
                 push!(indices[], i)
             end
-            push!(indices[], length(transformed_points))
-            notify(indices)
+
+            # Finish line (insert dublicate end point or close loop)
+            if !was_nan
+                if loop_start_idx != -1 && (loop_start_idx + 2 < length(indices[])) &&
+                    (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[end])
+
+                    push!(indices[], indices[][loop_start_idx+1])
+                    indices[][loop_start_idx-1] = length(transformed_points)-1
+                else
+                    push!(indices[], length(transformed_points))
+                end
+            end
 
             return transformed_points[indices[]]
         end
