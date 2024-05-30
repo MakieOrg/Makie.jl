@@ -79,17 +79,17 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
         export $name
 
-        function Makie.is_attribute(::Type{$(name)}, sym::Symbol)
+        function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
             curdeftheme = Makie.fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
-        function Makie.attribute_default_expressions(::Type{$name})
+        function $(Makie).attribute_default_expressions(::Type{$name})
             $(
                 if attrs === nothing
                     Dict{Symbol, String}()
@@ -99,7 +99,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             )
         end
 
-        function Makie._attribute_docs(::Type{$(name)})
+        function $(Makie)._attribute_docs(::Type{$(name)})
             Dict(
                 $(
                     (attrs !== nothing ?
@@ -109,9 +109,9 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             )
         end
 
-        Makie.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
 
-        docstring_modified = make_block_docstring($name, user_docstring)
+        docstring_modified = $(Makie).make_block_docstring($name, user_docstring)
         @doc docstring_modified $name
     end
 
