@@ -1,7 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+
 - CairoMakie: Add argument `pdf_version` to restrict the PDF version when saving a figure as a PDF [#3845](https://github.com/MakieOrg/Makie.jl/pull/3845).
+- Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907)
 
 ## [0.21.2] - 2024-05-22
 
