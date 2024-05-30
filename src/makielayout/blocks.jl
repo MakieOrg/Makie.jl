@@ -14,9 +14,9 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     name = _name isa Symbol ? _name : _name.args[1]
     structdef = quote
         mutable struct $(type_expr)
-            parent::Union{Figure, Scene, Nothing}
-            layoutobservables::Makie.LayoutObservables{GridLayout}
-            blockscene::Scene
+            parent::Union{$(Makie).Figure, $(Makie).Scene, Nothing}
+            layoutobservables::$(Makie).LayoutObservables{GridLayout}
+            blockscene::$(Makie).Scene
         end
     end
 
