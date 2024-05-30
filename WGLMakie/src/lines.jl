@@ -71,7 +71,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                             # adjust from       j  j j+1 .. i-2 i-1
                             # to           nan i-2 j j+1 .. i-2 i-1 j+1 nan
                             # where start == end thus j == i-1
-                            # if nan is present in a quartet of vertices 
+                            # if nan is present in a quartet of vertices
                             # (nan, i-2, j, i+1) the segment (i-2, j) will not
                             # be drawn (which we want as that segment would overlap)
 
@@ -134,22 +134,40 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             output = Vector{Float32}(undef, length(ps))
 
             if !isempty(ps)
-                # clip -> pixel, but we can skip offset
+                # clip -> pixel, but we can skip scene offset
                 scale = Vec2f(0.5 * res[1], 0.5 * res[2])
-                # Initial position
-                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[1], 0f0), 1f0)
+                # position of start of first drawn line segment (TODO: deal with multiple nans at start)
+                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[2], 0f0), 1f0)
                 prev = scale .* Point2f(clip) ./ clip[4]
 
                 # calculate cumulative pixel scale length
-                output[1] = 0f0
-                for i in 2:length(ps)
-                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
-                    current = scale .* Point2f(clip) ./ clip[4]
-                    l = norm(current - prev)
-                    output[i] = ifelse(isnan(l), 0f0, output[i-1] + l)
-                    prev = current
+                output[1] = 0f0 # dublicated point
+                output[2] = 0f0 # start of first line segment
+                i = 3           # end of first line segment, start of second
+                while i < length(ps)
+                    if isfinite(ps[i])
+                        clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
+                        current = scale .* Point2f(clip) ./ clip[4]
+                        l = norm(current - prev)
+                        output[i] = output[i-1] + l
+                        prev = current
+                        i += 1
+                    else
+                        # a vertex section (NaN, A, B, C) does not draw, so
+                        # norm(B - A) should not contribute to line length.
+                        # (norm(B - A) is 0 for capped lines but not for loops)
+                        output[i] = 0f0
+                        output[i+1] = 0f0
+                        if i+2 <= length(ps)
+                            output[min(end, i+2)] = 0f0
+                            clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i+2], 0f0), 1f0)
+                            prev = scale .* Point2f(clip) ./ clip[4]
+                        end
+                        i += 3
+                    end
                 end
             end
+            output[end] = 0f0 # never accessed
 
             return serialize_buffer_attribute(output)
         end
