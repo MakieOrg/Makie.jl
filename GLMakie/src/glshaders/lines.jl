@@ -31,51 +31,74 @@ gl_color_type_annotation(::Makie.RGBA) = "vec4"
 
 function generate_indices(positions)
     valid_obs = Observable(Float32[]) # why does this need to be a float?
-    # valid_obs = Observable(Int32[])
+
     indices_obs = const_lift(positions) do ps
         valid = valid_obs[]
         resize!(valid, length(ps))
 
-        indices = Cuint[1]
+        indices = Cuint[]
         sizehint!(indices, length(ps)+2)
+
+        # This loop identifies sections of line points A B C D E F bounded by
+        # the start/end of the list ps or by NaN and generates indices for them:
+        # if A == F (loop):      E A B C D E F B 0
+        # if A != F (no loop):   0 A B C D E F 0
+        # where 0 is NaN
+        # It marks vertices as invalid (0) if they are NaN, valid (1) if they
+        # are part of a continous line section, or as ghost edges (2) used to
+        # cleanly close a loop. The shader detects successive vertices with
+        # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
+        # 0-E-A-B and F-B from E-F-B-0 which would dublicate E-F and A-B)
 
         last_start_pos = eltype(ps)(NaN)
         last_start_idx = -1
-        for i in eachindex(ps)
-            p = ps[i]
-            push!(indices, i)
-            valid[i] = isfinite(p)
 
-            if isfinite(p)
+        for (i, p) in enumerate(ps)
+            not_nan = isfinite(p)
+            valid[i] = not_nan
+
+            if not_nan
                 if last_start_idx == -1
-                    last_start_idx = length(indices)
+                    # place nan before section of line vertices
+                    # (or dublicate ps[1])
+                    push!(indices, i-1)
+                    last_start_idx = length(indices) + 1
                     last_start_pos = p
                 end
-            elseif length(indices) - last_start_idx > 2 && ps[max(1, i-1)] ≈ last_start_pos
-                indices[last_start_idx-1] = max(1, i-2) # before last valid
-                indices[end] = indices[last_start_idx+1] # after start
-                # need second separator in case next is loop
-                # this_end this_ghost next_ghost next_start
-                push!(indices, i, i)
+                # add line vertex
+                push!(indices, i)
+
+            # case loop (loop index set, loop contains at least 3 segments, start == end)
+            elseif (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+                    (ps[max(1, i-1)] ≈ last_start_pos)
+
+                # add ghost vertices before an after the loop to cleanly connect line
+                indices[last_start_idx-1] = max(1, i-2)
+                push!(indices, indices[last_start_idx+1], i)
+                # mark the ghost vertices
                 valid[i-2] = 2
-                valid[i] = 0
                 valid[indices[last_start_idx+1]] = 2
+                # not in loop anymore
                 last_start_idx = -1
-            else
-                # this not loop, but need seperator/ghost for next
-                valid[i] = 0
+
+            # non-looping line end
+            elseif (last_start_idx != -1) # effective "last index not NaN"
+                push!(indices, i)
                 last_start_idx = -1
+            # else: we don't need to push repeated NaNs
             end
         end
 
-        if length(indices) - last_start_idx > 2 && ps[end] ≈ last_start_pos
-            indices[last_start_idx-1] = max(1, length(ps)-1)
+        # treat ps[end+1] as NaN to correctly finish the line
+        if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+                (ps[end] ≈ last_start_pos)
+
+            indices[last_start_idx-1] = length(ps) - 1
             push!(indices, indices[last_start_idx+1])
             valid[end-1] = 2
             valid[indices[last_start_idx+1]] = 2
-        else
+        elseif last_start_idx != -1
             push!(indices, length(ps))
-            valid[end] = Int(isfinite(ps[end]))
         end
 
         notify(valid_obs)
