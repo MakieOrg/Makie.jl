@@ -15,7 +15,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     structdef = quote
         mutable struct $(type_expr)
             parent::Union{$(Makie).Figure, $(Makie).Scene, Nothing}
-            layoutobservables::$(Makie).LayoutObservables{GridLayout}
+            layoutobservables::$(Makie).LayoutObservables{$(Makie).GridLayout}
             blockscene::$(Makie).Scene
         end
     end
