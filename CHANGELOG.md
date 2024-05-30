@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 - CairoMakie: Add argument `pdf_version` to restrict the PDF version when saving a figure as a PDF [#3845](https://github.com/MakieOrg/Makie.jl/pull/3845).
+- Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
 
 ## [0.21.2] - 2024-05-22
 
