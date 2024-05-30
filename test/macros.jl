@@ -5,14 +5,14 @@ using Test
 import Makie as _MKE # so that we can't get away with literal `Makie.*`, even if it might usually work.
 
 @testset "Makie macros in external module" begin
-    @test_nowarn @eval begin
+    @test_nowarn begin
         _MKE.@recipe(MyTestPlot1234567890) do scene
             _MKE.Attributes(color = :red,)
         end
     end
 
-    @test_nowarn @eval begin
-        _MKE.@Block SliderGrid begin
+    @test_nowarn begin
+        _MKE.@Block __MySliderGrid begin
             @forwarded_layout
             sliders::Vector{_MKE.Slider}
             valuelabels::Vector{_MKE.Label}
