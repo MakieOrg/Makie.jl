@@ -35,17 +35,17 @@ function generate_indices(positions)
     indices_obs = const_lift(positions) do ps
         valid = valid_obs[]
         resize!(valid, length(ps))
-    
+
         indices = Cuint[1]
         sizehint!(indices, length(ps)+2)
-    
-        last_start_pos = Point2f(NaN)
+
+        last_start_pos = eltype(ps)(NaN)
         last_start_idx = -1
         for i in eachindex(ps)
             p = ps[i]
             push!(indices, i)
             valid[i] = isfinite(p)
-            
+
             if isfinite(p)
                 if last_start_idx == -1
                     last_start_idx = length(indices)
@@ -65,9 +65,9 @@ function generate_indices(positions)
                 # this not loop, but need seperator/ghost for next
                 valid[i] = 0
                 last_start_idx = -1
-            end 
+            end
         end
-    
+
         if length(indices) - last_start_idx > 2 && ps[end] ≈ last_start_pos
             indices[last_start_idx-1] = max(1, length(ps)-1)
             push!(indices, indices[last_start_idx+1])
