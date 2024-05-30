@@ -10,11 +10,11 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
-    type_expr = _name isa Expr ? _name : :($_name <: Makie.Block)
+    type_expr = _name isa Expr ? _name : :($_name <: $(Makie).Block)
     name = _name isa Symbol ? _name : _name.args[1]
     structdef = quote
         mutable struct $(type_expr)
-            parent::Union{$(Makie).Figure, $(Makie).Scene, Nothing}
+            parent::Union{$(Figure), $(Scene), Nothing}
             layoutobservables::$(Makie).LayoutObservables{$(Makie).GridLayout}
             blockscene::$(Makie).Scene
         end
@@ -33,7 +33,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     has_forwarded_layout = i_forwarded_layout !== nothing
 
     if has_forwarded_layout
-        splice!(body.args, i_forwarded_layout, [:(layout::GridLayout)])
+        splice!(body.args, i_forwarded_layout, [:(layout::$(GridLayout))])
     end
 
     # append remaining fields
@@ -41,7 +41,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     if attrs !== nothing
         attribute_fields = map(attrs) do a
-            :($(a.symbol)::Observable{$(a.type)})
+            :($(a.symbol)::$(Observable){$(a.type)})
         end
         append!(fields_vector, attribute_fields)
     end
@@ -83,9 +83,9 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
-            sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = Makie.fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
+        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{$(Scene), Nothing})
+            sceneattrs = scene === nothing ? $(Makie).Attributes() : $(Makie).theme(scene)
+            curdeftheme = $(Makie).fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
