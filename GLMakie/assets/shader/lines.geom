@@ -208,8 +208,8 @@ void main(void)
     // isvalid[1] and [2] are used to discern whether a line segment should be
     // discarded. This should happen if either vertex is invalid or if one of
     // the vertices is a loop target.
-    // A loop target is an extra vertex placed before/after the shared vertex to 
-    // guide joint generation. Consider for example a closed triangle A B C A. 
+    // A loop target is an extra vertex placed before/after the shared vertex to
+    // guide joint generation. Consider for example a closed triangle A B C A.
     // To cleanly close the loop both A's need to create a joint as if we had
     // c A B C A b, but without drawing the c-A and A-b segments. c and b would
     // be loop targets, matching C and B in position, but only being valid in
@@ -417,8 +417,8 @@ void main(void)
     // if joint skipped   elongate to new length
     // if normal joint    elongate a lot to let discard/truncation handle joint
     f_extrusion = vec2(
-        !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0][0])),
-        !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1][0]))
+        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0][0])),
+        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1][0]))
     );
 
     // used to compute width sdf
