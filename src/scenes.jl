@@ -150,6 +150,10 @@ function Observables.onany(@nospecialize(f), @nospecialize(scene::Union{Plot,Sce
     return to_deregister
 end
 
+lift(f, @nospecialize(arg::Union{Plot,Scene}), args...; kwargs...) = map(f, arg, args...; kwargs...)
+
+# map! and map are for backward compatibility
+# can move everything to use lift() in the future
 @inline function Base.map!(f, @nospecialize(scene::Union{Plot,Scene}), result::AbstractObservable, os...;
                            update::Bool=true, priority = 0)
     # note: the @inline prevents de-specialization due to the splatting

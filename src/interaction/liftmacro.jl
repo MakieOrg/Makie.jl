@@ -24,22 +24,15 @@ end
 """
 Replaces every subexpression that looks like a observable expression with a substitute symbol stored in `exprdict`.
 """
-function replace_observable_expressions!(exp::Expr, exprdict)
+function replace_observable_expressions(exp::Expr, exprdict)
     if is_interpolated_observable(exp)
-        error("You can't @lift an expression that only consists of a single observable.")
+        exprdict[exp]
     else
-        for (i, arg) in enumerate(exp.args)
-            if is_interpolated_observable(arg)
-                exp.args[i] = exprdict[arg]
-            else
-                replace_observable_expressions!(arg, exprdict)
-            end
-        end
+        Expr(exp.head, replace_observable_expressions.(exp.args, Ref(exprdict))...)
     end
-    return exp
 end
 
-replace_observable_expressions!(x, exprdict) = nothing
+replace_observable_expressions(x, exprdict) = x
 
 """
 Replaces an expression with `lift(argtuple -> expression, args...)`, where `args`
@@ -73,15 +66,11 @@ macro lift(exp)
 
     observable_expr_set = find_observable_expressions(exp)
 
-    if length(observable_expr_set) == 0
-        error("Did not find any interpolated observables. Use '\$(observable)' to interpolate it into the macro.")
-    end
-
     # store expressions with their substitute symbols, gensym them manually to be
     # able to escape the expression later
     observable_expr_arg_dict = Dict(expr => gensym("arg$i") for (i, expr) in enumerate(observable_expr_set))
 
-    replace_observable_expressions!(exp, observable_expr_arg_dict)
+    exp = replace_observable_expressions(exp, observable_expr_arg_dict)
 
     # keep an array for ordering
     observable_expressions_array = collect(keys(observable_expr_arg_dict))
