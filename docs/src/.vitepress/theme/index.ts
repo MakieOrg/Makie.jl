@@ -35,8 +35,7 @@ export default {
         }
 
         // Current version is newest version, so we can rewrite the url
-        // if (window.DOCUMENTER_NEWEST === window.DOCUMENTER_CURRENT_VERSION) {
-        if (window.DOCUMENTER_CURRENT_VERSION.startsWith("previews")) {
+        if (window.DOCUMENTER_NEWEST === window.DOCUMENTER_CURRENT_VERSION) {
           const rewritten_url = window.location.href.replace(
             window.DOCUMENTER_CURRENT_VERSION,
             window.DOCUMENTER_STABLE
