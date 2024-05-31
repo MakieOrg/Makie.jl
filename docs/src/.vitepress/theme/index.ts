@@ -15,18 +15,19 @@ export default {
   },
   async enhanceApp({ app, router, siteData }) {
     enhanceAppWithTabs(app);
-    // Example: Add a global event listener
     // Only run this on the client. Not during build.
+    // this function replaces the version in the URL with the stable prefix whenever a
+    // new route is navigated to. VitePress does not support relative links all over the site,
+    // so urls will go to v0.XY even if we start at stable. This solution is not ideal as
+    // there is a noticeable delay between navigating to a new page and editing the url, but it's
+    // currently better than nothing, as users are bound to copy versioned links to the docs otherwise
+    // which will lead users to outdated docs in the future.
     if (typeof window !== "undefined") {
       watch(
         () => router.route.data.relativePath,
         (path) => {
           // DOCUMENTER_NEWEST is defined in versions.js, DOCUMENTER_CURRENT_VERSION and DOCUMENTER_STABLE
           // in siteinfo.js.
-          // If either of these are undefined something went horribly wrong, so we abort.
-          console.log(window.DOCUMENTER_NEWEST);
-          console.log(window.DOCUMENTER_CURRENT_VERSION);
-          console.log(window.DOCUMENTER_STABLE);
           if (
             window.DOCUMENTER_NEWEST === undefined ||
             window.DOCUMENTER_CURRENT_VERSION === undefined ||
@@ -35,14 +36,8 @@ export default {
             return;
           }
 
-          // // Current version is not a version number, so we can't tell if it's the newest version. Abort.
-          // if (!/v(\d+\.)*\d+/.test(window.DOCUMENTER_CURRENT_VERSION)) {
-          //   return;
-          // }
-
           // Current version is newest version, so we can rewrite the url
-          // if (window.DOCUMENTER_NEWEST === window.DOCUMENTER_CURRENT_VERSION) {
-          if (window.DOCUMENTER_CURRENT_VERSION.startsWith("previews")) {
+          if (window.DOCUMENTER_NEWEST === window.DOCUMENTER_CURRENT_VERSION) {
             const rewritten_url = window.location.href.replace(
               window.DOCUMENTER_CURRENT_VERSION,
               window.DOCUMENTER_STABLE
