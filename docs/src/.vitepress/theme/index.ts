@@ -23,35 +23,39 @@ export default {
     // currently better than nothing, as users are bound to copy versioned links to the docs otherwise
     // which will lead users to outdated docs in the future.
     if (typeof window !== "undefined") {
-      watch(
-        () => router.route.data.relativePath,
-        (path) => {
-          // DOCUMENTER_NEWEST is defined in versions.js, DOCUMENTER_CURRENT_VERSION and DOCUMENTER_STABLE
-          // in siteinfo.js.
-          if (
-            window.DOCUMENTER_NEWEST === undefined ||
-            window.DOCUMENTER_CURRENT_VERSION === undefined ||
-            window.DOCUMENTER_STABLE === undefined
-          ) {
-            return;
-          }
+      function rewriteURL() {
+        // DOCUMENTER_NEWEST is defined in versions.js, DOCUMENTER_CURRENT_VERSION and DOCUMENTER_STABLE
+        // in siteinfo.js.
+        if (
+          window.DOCUMENTER_NEWEST === undefined ||
+          window.DOCUMENTER_CURRENT_VERSION === undefined ||
+          window.DOCUMENTER_STABLE === undefined
+        ) {
+          return;
+        }
 
-          // Current version is newest version, so we can rewrite the url
-          if (window.DOCUMENTER_NEWEST === window.DOCUMENTER_CURRENT_VERSION) {
-            const rewritten_url = window.location.href.replace(
-              window.DOCUMENTER_CURRENT_VERSION,
-              window.DOCUMENTER_STABLE
-            );
-            window.history.replaceState(
-              { additionalInformation: "URL rewritten to stable" },
-              "Makie",
-              rewritten_url
-            );
-            return;
-          }
-        },
-        { immediate: true }
-      );
+        // Current version is newest version, so we can rewrite the url
+        // if (window.DOCUMENTER_NEWEST === window.DOCUMENTER_CURRENT_VERSION) {
+        if (window.DOCUMENTER_CURRENT_VERSION.startsWith("previews")) {
+          const rewritten_url = window.location.href.replace(
+            window.DOCUMENTER_CURRENT_VERSION,
+            window.DOCUMENTER_STABLE
+          );
+          window.history.replaceState(
+            { additionalInformation: "URL rewritten to stable" },
+            "Makie",
+            rewritten_url
+          );
+          return;
+        }
+      }
+
+      // rewrite on router changes through vitepress
+      watch(() => router.route.data.relativePath, rewriteURL, {
+        immediate: true,
+      });
+      // also rewrite at initial load
+      document.addEventListener("DOMContentLoaded", rewriteURL);
     }
   },
 } satisfies Theme;
