@@ -2,6 +2,7 @@
 import { h, watch } from "vue";
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme";
+import SimpleAnalytics from "./SimpleAnalytics.vue"
 
 import { enhanceAppWithTabs } from "vitepress-plugin-tabs/client";
 import "./style.css";
@@ -11,6 +12,7 @@ export default {
   Layout() {
     return h(DefaultTheme.Layout, null, {
       // https://vitepress.dev/guide/extending-default-theme#layout-slots
+      'layout-bottom': () => h(SimpleAnalytics)
     });
   },
   async enhanceApp({ app, router, siteData }) {
