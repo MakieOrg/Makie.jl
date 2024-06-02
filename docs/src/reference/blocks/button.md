@@ -26,6 +26,7 @@ barplot!(counts, color = cgrad(:Spectral)[LinRange(0, 1, 5)])
 ylims!(ax, 0, 20)
 
 fig
+nothing # hide
 ```
 
 ```@setup button
