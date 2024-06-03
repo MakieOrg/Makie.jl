@@ -22903,7 +22903,10 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("wheel", wheel);
     function keydown(event) {
         comm.notify({
-            keydown: event.code
+            keydown: [
+                event.code,
+                event.key
+            ]
         });
         return false;
     }
