@@ -59,7 +59,7 @@ interaction_record(fig, "button_example.mp4", events)
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls="false" src="./button_example.mp4" width="600"/>
+<video autoplay loop muted playsinline src="./button_example.mp4" width="600"/>
 ```
 ## Attributes
 
