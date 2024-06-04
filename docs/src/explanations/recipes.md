@@ -135,6 +135,14 @@ function default_theme(scene, ::MyPlot)
 end
 ```
 
+Furthermore, you can control which kind the axis used for the plot by
+
+```julia
+Makie.args_preferred_axis(::Type{<: MyPlot}, x, y, z) =  Makie.LScene
+```
+
+Note that Makie defaults to `Makie.Axis` as the preferred axis.
+
 As the second part of defining `MyPlot`, you should implement the actual
 plotting of the `MyPlot` object by specializing `plot!`:
 
@@ -143,7 +151,7 @@ function Makie.plot!(myplot::MyPlot)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `myplot`:
     lines!(myplot, rand(10), color = myplot.plot_color)
-    plot!(myplot, myplot.x, myplot.y)
+    plot!(myplot, myplot.x, myplot.y, myplot.z)
     myplot
 end
 ```
