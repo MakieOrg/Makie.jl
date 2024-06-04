@@ -135,12 +135,17 @@ function default_theme(scene, ::MyPlot)
 end
 ```
 
-Furthermore, you can control which kind the axis used for the plot by
+Furthermore, you can control which kind of axis is used for the plot by defining
 
 ```julia
 Makie.args_preferred_axis(::Type{<: MyPlot}, x, y, z) =  Makie.LScene
 ```
 
+or
+
+```julia
+Makie.preferred_axis_type(plot::MyPlot) = Makie.LScene # if you need the entire plot object as information
+``` 
 Note that Makie defaults to `Makie.Axis` as the preferred axis.
 
 As the second part of defining `MyPlot`, you should implement the actual
