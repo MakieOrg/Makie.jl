@@ -269,9 +269,9 @@ Available algorithms are:
     ) begin
     "Sets the volume algorithm that is used."
     algorithm = :mip
-    "Sets the range of values picked up by the IsoValue algorithm."
-    isovalue = 0.5
     "Sets the target value for the IsoValue algorithm."
+    isovalue = 0.5
+    "Sets the range of values picked up by the IsoValue algorithm."
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
