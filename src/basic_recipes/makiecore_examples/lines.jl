@@ -1,4 +1,4 @@
-function attribute_examples(::Type{Scatter})
+function attribute_examples(::Type{Lines})
     Dict(
         :linestyle => [
             Example(
