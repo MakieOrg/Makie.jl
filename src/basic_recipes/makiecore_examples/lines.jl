@@ -9,7 +9,7 @@ function attribute_examples(::Type{Lines})
                     with_updates_suspended(fig.layout) do
                         for (i, ls) in enumerate(linestyles)
                             for (j, gs) in enumerate(gapstyles)
-                                title = gs === :normal ? repr(ls) : "$((ls, gs))"
+                                title = gs === :normal ? repr(ls) : "\$((ls, gs))"
                                 ax = Axis(fig[i, j]; title, yautolimitmargin = (0.2, 0.2))
                                 hidedecorations!(ax)
                                 hidespines!(ax)
@@ -37,7 +37,7 @@ function attribute_examples(::Type{Lines})
                     ax = Axis(fig[1, 1], yautolimitmargin = (0.2, 0.2))
                     for (i, pattern) in enumerate(patterns)
                         lines!(ax, [-i, -i], linestyle = Linestyle(pattern), linewidth = 4)
-                        text!(ax, (1.5, -i), text = "Linestyle($pattern)",
+                        text!(ax, (1.5, -i), text = "Linestyle(\$pattern)",
                             align = (:center, :bottom), offset = (0, 10))
                     end
                     hidedecorations!(ax)
