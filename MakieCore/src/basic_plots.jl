@@ -322,7 +322,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
     
-    For custom patterns have a look at [`Linestyle`](@ref).
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 0.5 linewidth extrusion) or :round."
@@ -356,7 +356,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
     
-    For custom patterns have a look at [`Linestyle`](@ref).
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
@@ -611,7 +611,7 @@ Plots polygons, which are defined by
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
     
-    For custom patterns have a look at [`Linestyle`](@ref).
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
     linecap = @inherit linecap
