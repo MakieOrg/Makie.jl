@@ -317,7 +317,13 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     color = @inherit linecolor
     "Sets the width of the line in screen units"
     linewidth = @inherit linewidth
-    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+    
+    For custom patterns have a look at [`Linestyle`](@ref).
+    """
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 0.5 linewidth extrusion) or :round."
     linecap = @inherit linecap
@@ -345,7 +351,13 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     color = @inherit linecolor
     "Sets the width of the line in pixel units"
     linewidth = @inherit linewidth
-    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+    
+    For custom patterns have a look at [`Linestyle`](@ref).
+    """
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
     linecap = @inherit linecap
@@ -594,7 +606,13 @@ Plots polygons, which are defined by
     strokecolormap = @inherit colormap
     "Sets the width of the outline."
     strokewidth = @inherit patchstrokewidth
-    "Sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+    
+    For custom patterns have a look at [`Linestyle`](@ref).
+    """
     linestyle = nothing
     linecap = @inherit linecap
     joinstyle = @inherit joinstyle
