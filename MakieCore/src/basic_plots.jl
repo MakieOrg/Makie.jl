@@ -327,9 +327,13 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 0.5 linewidth extrusion) or :round."
     linecap = @inherit linecap
-    "Controls whether line joints are rounded (:round) or not (:miter)."
+    """
+    Controls the rendering at corners. Options are `:miter` for sharp corners,
+    `:bevel` for "cut off" corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
-    "Sets the minimum inner joint angle below which miter joints truncate. See also `Makie.miter_distance_to_angle()`"
+    "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
     miter_limit = @inherit miter_limit
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
