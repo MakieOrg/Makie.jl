@@ -325,7 +325,10 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
-    "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 0.5 linewidth extrusion) or :round."
+    """
+    Sets the type of line cap used. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
     """
     Controls the rendering at corners. Options are `:miter` for sharp corners,
