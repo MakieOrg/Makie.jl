@@ -91,3 +91,14 @@ end
         test_cleanup(dates)
     end
 end
+
+@testset "Type constraints (#3938)" begin
+    # Integers cannot be converted to Irrationals,
+    # so if the type of the observable is tightened
+    # somewhere within the pipeline, there should be a 
+    # conversion error!
+    obs = Observable{Vector}([π, π])
+    f, a, p = plot(obs)
+    obs.val = [1, 1] # Integers are not convertible to Irrational, so if the type was "solidified" here, there should be a conversion error
+    @test_nowarn notify(obs)
+end
