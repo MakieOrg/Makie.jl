@@ -4,44 +4,6 @@
 lines
 ```
 
-
-## Examples
-
-```@figure
-f = Figure()
-Axis(f[1, 1])
-
-xs = 0:0.01:10
-ys = 0.5 .* sin.(xs)
-
-lines!(xs, ys)
-lines!(xs, ys .- 1, linewidth = 5)
-lines!(xs, ys .- 2, linewidth = 5, color = ys)
-lines!(xs, ys .- 3, linestyle = :dash)
-
-f
-```
-
-### Linecaps and Joinstyles
-
-```@figure
-f = Figure()
-Axis(f[1, 1])
-
-ps = 0.8 .* Point2f[(-0.2, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5), (-0.5, -0.2)]
-
-for i in 1:3, j in 1:3
-    lines!(
-        ps .+ Point2f(i, -j), linewidth = 20,
-        linecap = (:butt, :square, :round)[i],
-        joinstyle = (:miter, :bevel, :round)[j]
-    )
-    scatterlines!(ps .+ Point2f(i, -j), color = :gray)
-end
-
-f
-```
-
 ### Dealing with outline artifacts in GLMakie
 
 In GLMakie 3D line plots can generate outline artifacts depending on the order line segments are rendered in.
