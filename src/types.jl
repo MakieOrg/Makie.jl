@@ -16,6 +16,12 @@ end
 
 include("interaction/iodevices.jl")
 
+@enum FrameState begin
+    FrameStateUnknown
+    FirstFrame
+    LastFrameSkipped
+    LastFrameRendered
+end
 
 """
 This struct provides accessible `Observable`s to monitor the events
@@ -103,6 +109,18 @@ struct Events
     Whether the mouse is inside the window or not.
     """
     entered_window::Observable{Bool}
+
+    """
+    Triggers once per frame.
+
+    The details differ somewhat by backend:
+    - GLMakie: Triggers after other events have been processed and before a new 
+    frame is submitted to drawing. This means that the other event Observables
+    are up to date when this triggers.
+    - CairoMakie: Triggers once before drawing takes place, i.e. once per `display` or `save`.
+    - WGLMakie: TODO
+    """
+    tick::Observable{FrameState}
 end
 
 function Base.show(io::IO, events::Events)
@@ -132,6 +150,7 @@ function Events()
         Observable(String[]),
         Observable(false),
         Observable(false),
+        Observable(FrameStateUnknown)
     )
 
     connect_states!(events)

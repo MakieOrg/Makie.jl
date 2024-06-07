@@ -10,6 +10,7 @@ unicode_input(scene, native_window) = not_implemented_for(native_window)
 dropped_files(scene, native_window) = not_implemented_for(native_window)
 hasfocus(scene, native_window) = not_implemented_for(native_window)
 entered_window(scene, native_window) = not_implemented_for(native_window)
+frame_tick(scene, native_window) = not_implemented_for(native_window)
 
 function connect_screen(scene::Scene, screen)
 
@@ -27,6 +28,7 @@ function connect_screen(scene::Scene, screen)
     dropped_files(scene, screen)
     hasfocus(scene, screen)
     entered_window(scene, screen)
+    frame_tick(scene, screen)
 
     return
 end
@@ -49,12 +51,13 @@ function disconnect_screen(scene::Scene, screen)
         disconnect!(screen, dropped_files)
         disconnect!(screen, hasfocus)
         disconnect!(screen, entered_window)
+        disconnect!(screen, frame_tick)
     end
     return
 end
 
 """
-Picks a mouse position.  Implemented by the backend.
+Picks a mouse position. Implemented by the backend.
 """
 function pick end
 
@@ -65,7 +68,7 @@ end
 
 """
     onpick(func, plot)
-Calls `func` if one clicks on `plot`.  Implemented by the backend.
+Calls `func` if one clicks on `plot`. Implemented by the backend.
 """
 function onpick end
 
