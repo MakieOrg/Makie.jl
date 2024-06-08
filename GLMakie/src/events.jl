@@ -185,7 +185,7 @@ struct MousePositionUpdater
     hasfocus::Observable{Bool}
 end
 
-function (p::MousePositionUpdater)(::Nothing)
+function (p::MousePositionUpdater)(::Makie.TickState)
     !p.hasfocus[] && return
     nw = to_native(p.screen)
     x, y = GLFW.GetCursorPos(nw)
@@ -293,4 +293,36 @@ end
 
 function Makie.disconnect!(window::GLFW.Window, ::typeof(entered_window))
     GLFW.SetCursorEnterCallback(window, nothing)
+end
+
+# Just for finding the relevant listener
+mutable struct TickCallback
+    last_event_time::UInt64
+    last_frame_time::UInt64
+    TickCallback() = new(time_ns(), time_ns())
+end
+
+function (cb::TickCallback)(x::Makie.TickState)
+    t = time_ns()
+    event_delta_time = 1e-9 * (t - cb.last_event_time)
+    frame_delta_time = 0.0
+
+    if x > Makie.OneTimeRenderTick # Paused, Skipped or rendered frame tick
+        frame_delta_time = 1e-9 * (t - cb.last_frame_time)
+        cb.last_frame_time = t
+    end
+    cb.last_event_time = t
+
+    return Makie.Tick(x, event_delta_time, frame_delta_time)
+end
+
+function Makie.frame_tick(scene::Scene, screen::Screen)
+    # Separating screen ticks from event ticks allows us to sanitize:
+    # Internal on-tick event updates happen first (mouseposition), no blocking
+    # listeners, set order
+    map!(TickCallback(), scene, scene.events.tick, screen.render_tick, priority = typemin(Int))
+end
+function Makie.disconnect!(screen::Screen, ::typeof(Makie.frame_tick))
+    connections = filter(x -> x[2] isa TickCallback, screen.render_tick.listeners)
+    foreach(x -> off(screen.render_tick, x[2]), connections)
 end
