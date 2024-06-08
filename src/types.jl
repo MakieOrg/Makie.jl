@@ -19,16 +19,16 @@ include("interaction/iodevices.jl")
 @enum TickState begin
     UtilityTick         # outside of rendering, e.g. plot insertions
     UnknownTickState    # everything else
-    OneTimeRenderTick   # render outside of renderloop, e.g. colorbuffer()
+    OneTimeRenderTick   # render outside of renderloop, e.g. colorbuffer() (save, record)
     PausedRenderTick    # render loop paused
     SkippedRenderTick   # render skipped due to frame reuse
     RegularRenderTick   # normal render
 end
 
 struct Tick
-    state::TickState
-    event_delta_time::Float64 # always set
-    frame_delta_time::Float64 # 0.0 outside of render loop ticks
+    state::TickState          # flag for the type of tick event
+    event_delta_time::Float64 # updated on any tick event
+    frame_delta_time::Float64 # time between frames, 0.0 for other tick events
 end
 Tick() = Tick(UnknownTickState, 0.0, 0.0)
 
@@ -120,14 +120,7 @@ struct Events
     entered_window::Observable{Bool}
 
     """
-    Triggers once per frame.
-
-    The details differ somewhat by backend:
-    - GLMakie: Triggers after other events have been processed and before a new 
-    frame is submitted to drawing. This means that the other event Observables
-    are up to date when this triggers.
-    - CairoMakie: Triggers once before drawing takes place, i.e. once per `display` or `save`.
-    - WGLMakie: TODO
+    TODO
     """
     tick::Observable{Tick}
 end
