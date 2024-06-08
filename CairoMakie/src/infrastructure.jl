@@ -6,10 +6,15 @@
 #           Drawing pipeline           #
 ########################################
 
+const LAST_RENDER_TIME = Base.RefValue(time_ns())
+
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
     # technically we haven't rendered yet, but we know we will
-    scene.events.tick[] = Makie.Tick(Makie.OneTimeRenderTick, 0.0, 0.0)
+    t = time_ns()
+    delta_time = 1e-9 * (t - LAST_RENDER_TIME[])
+    scene.events.tick[] = Makie.Tick(Makie.OneTimeRenderTick, delta_time, delta_time)
+    LAST_RENDER_TIME[] = t
 
     Cairo.save(screen.context)
     draw_background(screen, scene)

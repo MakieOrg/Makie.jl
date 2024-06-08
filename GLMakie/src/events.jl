@@ -307,7 +307,7 @@ function (cb::TickCallback)(x::Makie.TickState)
     event_delta_time = 1e-9 * (t - cb.last_event_time)
     frame_delta_time = 0.0
 
-    if x > Makie.OneTimeRenderTick # Paused, Skipped or rendered frame tick
+    if x >= Makie.OneTimeRenderTick # Paused, Skipped or rendered frame tick, including colorbuffer() calls
         frame_delta_time = 1e-9 * (t - cb.last_frame_time)
         cb.last_frame_time = t
     end
