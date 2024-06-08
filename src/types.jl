@@ -16,12 +16,21 @@ end
 
 include("interaction/iodevices.jl")
 
-@enum FrameState begin
-    FrameStateUnknown
-    FirstFrame
-    LastFrameSkipped
-    LastFrameRendered
+@enum TickState begin
+    UtilityTick         # outside of rendering, e.g. plot insertions
+    UnknownTickState    # everything else
+    OneTimeRenderTick   # render outside of renderloop, e.g. colorbuffer()
+    PausedRenderTick    # render loop paused
+    SkippedRenderTick   # render skipped due to frame reuse
+    RegularRenderTick   # normal render
 end
+
+struct Tick
+    state::TickState
+    event_delta_time::Float64 # always set
+    frame_delta_time::Float64 # 0.0 outside of render loop ticks
+end
+Tick() = Tick(UnknownTickState, 0.0, 0.0)
 
 """
 This struct provides accessible `Observable`s to monitor the events
@@ -120,7 +129,7 @@ struct Events
     - CairoMakie: Triggers once before drawing takes place, i.e. once per `display` or `save`.
     - WGLMakie: TODO
     """
-    tick::Observable{FrameState}
+    tick::Observable{Tick}
 end
 
 function Base.show(io::IO, events::Events)
@@ -150,7 +159,7 @@ function Events()
         Observable(String[]),
         Observable(false),
         Observable(false),
-        Observable(FrameStateUnknown)
+        Observable(Tick())
     )
 
     connect_states!(events)

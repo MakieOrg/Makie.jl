@@ -8,7 +8,8 @@
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
-    scene.events.tick[] = Makie.FirstFrame
+    # technically we haven't rendered yet, but we know we will
+    scene.events.tick[] = Makie.Tick(Makie.OneTimeRenderTick, 0.0, 0.0)
 
     Cairo.save(screen.context)
     draw_background(screen, scene)
