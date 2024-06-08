@@ -163,11 +163,17 @@ end
     @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()))
 
     # these just shouldn't error
-    lines(1:10, axis = (aspect = DataAspect(),))
-    lines(1:10, axis = Attributes(aspect = DataAspect()))
-    lines(1:10, axis = Dict(:aspect => DataAspect()))
+    @test_nowarn lines(1:10, axis = (aspect = DataAspect(),))
+    @test_nowarn lines(1:10, axis = Attributes(aspect = DataAspect()))
+    @test_nowarn lines(1:10, axis = Dict(:aspect => DataAspect()))
 
     f = Figure()
     @test_throws ArgumentError lines(f[1, 1], 1:10, axis = (aspect = DataAspect()))
     @test_throws ArgumentError lines(f[1, 1][2, 2], 1:10, axis = (aspect = DataAspect()))
+
+    # The axis type needs special treatment, since it's not meant to be changed later on
+    # and must be interpreted as a value on plot creation.
+    @test_nowarn lines(1:10; axis = (; type = LScene))
+    @test_nowarn lines(1:10; axis = (; type = Axis3))
+    @test_nowarn lines(1:10; axis = (; type = PolarAxis))
 end
