@@ -22757,11 +22757,13 @@ function render_scene(scene, picking = false) {
     return scene.scene_children.every((x)=>render_scene(x, picking));
 }
 function start_renderloop(three_scene) {
-    const { fps  } = three_scene.screen;
+    const { fps , renderer  } = three_scene.screen;
     const time_per_frame = 1 / fps * 1000;
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
         if (timestamp - last_time_stamp > time_per_frame) {
+            const canvas = renderer.domElement;
+            canvas.dispatchEvent(new Event('render'));
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
                 return;
@@ -22942,6 +22944,13 @@ function add_canvas_events(screen, comm, resize_to) {
         window.addEventListener("resize", (event)=>resize_callback_throttled());
         resize_callback_throttled();
     }
+    function tick(event) {
+        comm.notify({
+            tick: true
+        });
+        return false;
+    }
+    canvas.addEventListener("render", tick);
 }
 function threejs_module(canvas) {
     let context = canvas.getContext("webgl2", {

@@ -50,6 +50,7 @@ end
 
 function connect_scene_events!(scene::Scene, comm::Observable)
     e = events(scene)
+    last_time = Base.RefValue(time_ns())
     on(comm) do msg
         @async try
             @handle msg.mouseposition begin
@@ -105,10 +106,17 @@ function connect_scene_events!(scene::Scene, comm::Observable)
             @handle msg.resize begin
                 resize!(scene, tuple(resize...))
             end
+            @handle msg.tick begin
+                t = time_ns()    
+                delta_time = 1e-9 * (t - last_time[])
+                e.tick[] = Makie.Tick(Makie.RegularRenderTick, delta_time, delta_time)
+                last_time[] = t
+            end
         catch err
             @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
         end
         return
     end
+
     return
 end
