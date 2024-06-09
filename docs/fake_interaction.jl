@@ -3,6 +3,8 @@ module FakeInteraction
 using Makie
 using GLMakie
 using Makie.Animations
+import ImageTransformations
+import ImageTransformations.Interpolations
 
 export interaction_record
 export MouseTo
@@ -113,17 +115,50 @@ mousepositions_start(obj, startpos) = []
 mousepositions_end(obj, startpos) = []
 mousepositions_frame(obj, startpos, t) = []
 
+function alpha_blend(fg::Makie.RGBA, bg::Makie.RGB)
+    r = (fg.r * fg.alpha + bg.r * (1 - fg.alpha))
+    g = (fg.g * fg.alpha + bg.g * (1 - fg.alpha))
+    b = (fg.b * fg.alpha + bg.b * (1 - fg.alpha))
+    return RGBf(r, g, b)
+end
+
+
+function recordframe_with_cursor_overlay!(io, cursor_pos, viewport, cursor_img, cursor_tip_frac)
+    glnative = Makie.colorbuffer(io.screen, Makie.GLNative)
+    # Make no copy if already Matrix{RGB{N0f8}}
+    # There may be a 1px padding for odd dimensions
+    xdim, ydim = size(glnative)
+    copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+
+    render_cursor!(io.buffer, (xdim, ydim), cursor_pos, viewport, cursor_img, cursor_tip_frac)
+
+    write(io.io, io.buffer)
+    return
+end
+
+function render_cursor!(buffer, sz, cursor_pos, viewport, cursor_img, cursor_tip_frac)
+    cursor_loc_idx = round.(Int, cursor_pos ./ viewport.widths .* sz) .- round.(Int, (1, -1) .* (cursor_tip_frac .* size(cursor_img)))
+    for idx in CartesianIndices(cursor_img)
+        image_idx = Tuple(idx) .* (1, -1) .+ cursor_loc_idx
+        if all((1, 1) .<= image_idx .<= sz)
+            px = buffer[image_idx...]
+            cursor_px = cursor_img[idx]
+            buffer[image_idx...] = alpha_blend(cursor_px, px)
+        end
+    end
+    return
+end
 
 function interaction_record(func, figlike, filepath, events::AbstractVector; fps = 60, update = true, kwargs...)
     content_scene = Makie.get_scene(figlike)
     sz = content_scene.viewport[].widths
-    composite_scene = Scene(; camera = campixel!, size = sz)
-    scr = display(GLMakie.Screen(), composite_scene)
-    img = Observable(zeros(RGBAf, sz...))
-    image!(composite_scene, 0..sz[1], 0..sz[2], img)
+    # composite_scene = Scene(; camera = campixel!, size = sz)
+    # scr = display(GLMakie.Screen(), composite_scene)
+    # img = Observable(zeros(RGBAf, sz...))
+    # image!(composite_scene, 0..sz[1], 0..sz[2], img)
     cursor_position = Observable(sz ./ 2)
     content_scene.events.mouseposition[] = tuple(cursor_position[]...)
-    curs = cursor!(composite_scene, cursor_position)
+    # curs = cursor!(composite_scene, cursor_position)
     if update
         Makie.update_state_before_display!(figlike)
     end
@@ -132,7 +167,11 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
         error("Event list is empty")
     end
 
-    record(composite_scene, filepath; framerate = fps, kwargs...) do io
+    cursor_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "assets", "cursor.png"))'
+    cursor_pressed_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "assets", "cursor_pressed.png"))'
+    cursor_tip_frac = (0.3, 0.15)
+
+    record(content_scene, filepath; framerate = fps, kwargs...) do io
         t = 0.0
         t_event = 0.0
         current_duration = 0.0
@@ -173,15 +212,22 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
                 end
 
                 func(i_frame, t)
-                img[] = rotr90(Makie.colorbuffer(figlike, update = false))
-                if content_scene.events.mousebutton[].action === Makie.Mouse.press
-                    curs.multiplier = 0.8
-                else
-                    curs.multiplier = 1.0
-                end
+                # img[] = rotr90(Makie.colorbuffer(figlike, update = false))
+                # if content_scene.events.mousebutton[].action === Makie.Mouse.press
+                #     curs.multiplier = 0.8
+                # else
+                #     curs.multiplier = 1.0
+                # end
 
-                recordframe!(io)
+                mouse_pressed = content_scene.events.mousebutton[].action === Makie.Mouse.press
 
+                recordframe_with_cursor_overlay!(
+                    io,
+                    content_scene.events.mouseposition[],
+                    content_scene.viewport[],
+                    mouse_pressed ? cursor_pressed_img : cursor_img,
+                    cursor_tip_frac
+                )
                 i_frame += 1
                 t = i_frame / fps
             end
@@ -200,7 +246,6 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
         end
         return
     end
-    close(scr)
     return
 end
 
