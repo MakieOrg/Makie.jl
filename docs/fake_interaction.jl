@@ -3,8 +3,6 @@ module FakeInteraction
 using Makie
 using GLMakie
 using Makie.Animations
-import ImageTransformations
-import ImageTransformations.Interpolations
 
 export interaction_record
 export MouseTo
