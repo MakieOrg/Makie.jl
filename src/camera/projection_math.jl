@@ -401,7 +401,7 @@ function project(scenelike::SceneLike, input_space::Symbol, output_space::Symbol
     output_from_clip = clip_to_space(cam, output_space)
     output_f32c = inv_f32_convert_matrix(scenelike, output_space)
 
-    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, transformed, 0), 1)
+    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
     transformed = output_f32c * output_from_clip * clip_from_input * input_f32c * p4d
     return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end
