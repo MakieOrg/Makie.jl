@@ -232,3 +232,20 @@ end
 
     @test_throws ArgumentError save(filename, Figure(), pdf_version="foo")
 end
+
+@testset "Tick Events" begin
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
+
+    filename = "$(tempname()).pdf"
+    try
+        save(filename, f)
+        tick = events(f).tick[] 
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 1
+        @test tick.time > 1e-9
+        @test tick.delta_time > 1e-9
+    finally
+        rm(filename)
+    end
+end

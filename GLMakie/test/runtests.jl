@@ -37,3 +37,44 @@ include("unit_tests.jl")
     GLMakie.closeall()
     GC.gc(true) # make sure no finalizers act up!
 end
+
+@testset "Tick Events" begin
+    function check_tick(tick, state, count)
+        @test tick.state == state
+        @test tick.count == count
+        @test tick.time > 1e-9
+        @test tick.delta_time > 1e-9
+    end
+
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
+
+    filename = "$(tempname()).png"
+    try
+        Makie.save(filename, f)
+        tick = events(f).tick[] 
+        check_tick(tick, Makie.OneTimeRenderTick, 1)
+    finally
+        rm(filename)
+    end
+
+    f, a, p = scatter(rand(10));
+    tick_record = Makie.Tick[]
+    on(t -> push!(tick_record, t), events(f).tick)
+    screen = GLMakie.Screen(render_on_demand = true, framerate = 30.0, pause_rendering = false, visible = false)
+    display(screen, f.scene)
+    sleep(0.15)
+    GLMakie.pause_renderloop!(screen)
+    sleep(0.1)
+    GLMakie.closeall()
+
+    # Why does it start with a skipped tick?
+    check_tick(tick_record[1], Makie.SkippedRenderTick, 1)
+    check_tick(tick_record[2], Makie.RegularRenderTick, 2)
+    i = 3
+    while (tick_record[i].state == Makie.SkippedRenderTick)
+        check_tick(tick_record[i], Makie.SkippedRenderTick, i)
+        i += 1
+    end
+    check_tick(tick_record[i], Makie.PausedRenderTick, i)
+end

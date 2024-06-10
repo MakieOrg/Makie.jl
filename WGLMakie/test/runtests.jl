@@ -70,3 +70,47 @@ end
     # we used Retain for global_obs, so it should stay as long as root session is open
     @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
 end
+
+@testset "Tick Events" begin
+    function check_tick(tick, state, count)
+        @test tick.state == state
+        @test tick.count == count
+        @test tick.time > 1e-9
+        @test tick.delta_time > 1e-9
+    end
+
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
+    tick_record = Makie.Tick[]
+    on(t -> push!(tick_record, t), events(f).tick)
+
+    filename = "$(tempname()).png"
+    try
+        save(filename, f)
+        # WGLMakie produces a running renderloop when calling colorbuffer so 
+        # we have multiple ticks to deal with
+        idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)        
+        @test idx !== nothing
+        check_tick(tick_record[idx], Makie.OneTimeRenderTick, idx)
+    finally
+        rm(filename)
+    end
+
+    # This produces a lot of pre-render ticks claiming to be normal render ticks
+    f, a, p = scatter(rand(10));
+    tick_record = Makie.Tick[]
+    on(t -> push!(tick_record, t), events(f).tick)
+    screen = display(f)
+    sleep(0.1)
+    close(screen)
+
+    # May have preceeding ticks from previous renderloop
+    start = 1
+    while tick_record[start].count > 1
+        start += 1
+    end
+
+    for i in start:length(tick_record)
+        check_tick(tick_record[i], Makie.RegularRenderTick, i-start+1)
+    end
+end
