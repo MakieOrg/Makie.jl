@@ -8,10 +8,8 @@
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
-    t = time_ns()
-    delta_time = 1e-9 * (t - screen.last_render_time)
-    scene.events.tick[] = Makie.Tick(Makie.OneTimeRenderTick, delta_time, delta_time)
-    screen.last_render_time = t
+    screen.last_time = Makie.next_tick!(
+        scene.events.tick, Makie.OneTimeRenderTick, screen.start_time, screen.last_time)
 
     Cairo.save(screen.context)
     draw_background(screen, scene)

@@ -17,7 +17,7 @@ end
 include("interaction/iodevices.jl")
 
 @enum TickState begin
-    UtilityTick         # outside of rendering, e.g. plot insertions
+    BackendTick         # for ticks only present in backends, e.g. GLMakie plot insertions
     UnknownTickState    # everything else
     OneTimeRenderTick   # render outside of renderloop, e.g. colorbuffer() (save, record)
     PausedRenderTick    # render loop paused
@@ -26,11 +26,19 @@ include("interaction/iodevices.jl")
 end
 
 struct Tick
-    state::TickState          # flag for the type of tick event
-    event_delta_time::Float64 # updated on any tick event
-    frame_delta_time::Float64 # time between frames, 0.0 for other tick events
+    state::TickState    # flag for the type of tick event
+    count::UInt64       # number of ticks since start
+    time::Float64       # time since scene initialization
+    delta_time::Float64 # time since last tick
 end
-Tick() = Tick(UnknownTickState, 0.0, 0.0)
+Tick() = Tick(UnknownTickState, 0, 0.0, 0.0)
+function next_tick!(tick::Observable{Tick}, state, start_time, last_time)
+    t = time_ns()
+    since_start = 1e-9 * (t - start_time)
+    delta_time = 1e-9 * (t - last_time)
+    tick[] = Tick(state, tick[].count + 1, since_start, delta_time)
+    return t
+end
 
 """
 This struct provides accessible `Observable`s to monitor the events

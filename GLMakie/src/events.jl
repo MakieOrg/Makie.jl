@@ -297,30 +297,24 @@ end
 
 # Just for finding the relevant listener
 mutable struct TickCallback
-    last_event_time::UInt64
-    last_frame_time::UInt64
-    TickCallback() = new(time_ns(), time_ns())
+    event::Observable{Makie.Tick}
+    start_time::UInt64
+    last_time::UInt64
+    TickCallback(tick::Observable{Makie.Tick}) = new(tick, time_ns(), time_ns())
 end
 
 function (cb::TickCallback)(x::Makie.TickState)
-    t = time_ns()
-    event_delta_time = 1e-9 * (t - cb.last_event_time)
-    frame_delta_time = 0.0
-
-    if x >= Makie.OneTimeRenderTick # Paused, Skipped or rendered frame tick, including colorbuffer() calls
-        frame_delta_time = 1e-9 * (t - cb.last_frame_time)
-        cb.last_frame_time = t
+    if x > Makie.UnknownTickState # not backend or Unknown
+        cb.last_time = Makie.next_tick!(cb.event, x, cb.start_time, cb.last_time)
     end
-    cb.last_event_time = t
-
-    return Makie.Tick(x, event_delta_time, frame_delta_time)
+    return nothing
 end
 
 function Makie.frame_tick(scene::Scene, screen::Screen)
     # Separating screen ticks from event ticks allows us to sanitize:
     # Internal on-tick event updates happen first (mouseposition), no blocking
     # listeners, set order
-    map!(TickCallback(), scene, scene.events.tick, screen.render_tick, priority = typemin(Int))
+    on(TickCallback(scene.events.tick), scene, screen.render_tick, priority = typemin(Int))
 end
 function Makie.disconnect!(screen::Screen, ::typeof(Makie.frame_tick))
     connections = filter(x -> x[2] isa TickCallback, screen.render_tick.listeners)

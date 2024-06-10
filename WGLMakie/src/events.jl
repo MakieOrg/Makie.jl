@@ -106,10 +106,8 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 resize!(scene, tuple(resize...))
             end
             @handle msg.tick begin
-                t = time_ns()    
-                delta_time = 1e-9 * (t - screen.last_frame_time)
-                e.tick[] = Makie.Tick(Makie.RegularRenderTick, delta_time, delta_time)
-                screen.last_frame_time = t
+                screen.last_time = Makie.next_tick!(
+                    e.tick, Makie.RegularRenderTick, screen.start_time, screen.last_time)
             end
         catch err
             @warn "Error in window event callback" exception=(err, Base.catch_backtrace())

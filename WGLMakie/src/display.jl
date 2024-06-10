@@ -53,9 +53,10 @@ mutable struct Screen <: Makie.MakieScreen
     displayed_scenes::Set{String}
     config::ScreenConfig
     canvas::Union{Nothing,Bonito.HTMLElement}
-    last_frame_time::UInt64
+    start_time::UInt64
+    last_time::UInt64
     function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
-        return new(Channel{Bool}(1), nothing, scene, Set{String}(), config, nothing, time_ns())
+        return new(Channel{Bool}(1), nothing, scene, Set{String}(), config, nothing, time_ns(), time_ns())
     end
 end
 
@@ -278,10 +279,8 @@ function Makie.colorbuffer(screen::Screen)
         Base.display(screen, screen.scene)
     end
     session = get_screen_session(screen; error="Not able to show scene in a browser")
-    t = time_ns()    
-    delta_time = 1e-9 * (t - screen.last_frame_time)
-    screen.scene.events.tick[] = Makie.Tick(Makie.RegularRenderTick, delta_time, delta_time)
-    screen.last_frame_time = t
+    screen.last_time = Makie.next_tick!(
+        screen.scene.events.tick, Makie.RegularRenderTick, screen.start_time, screen.last_time)
     return session2image(session, screen.scene)
 end
 
