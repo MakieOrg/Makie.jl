@@ -16,18 +16,29 @@ end
 
 include("interaction/iodevices.jl")
 
+"""
+    enum TickState
+
+Identifies the source of a tick:
+- `BackendTick`: A tick used for backend purposes which is not present in `event.tick`.
+- `UnknownTickState`: A tick from an uncategorized source (e.g. intialization of Events).
+- `PausedRenderTick`: A tick from a paused renderloop.
+- `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
+- `RegularRenderTick`: A tick from a running renderloop where a new image was produced. 
+- `OneTimeRenderTick`: A tick from a call to `colorbuffer`, i.e. an image request from `save` or `record`.
+"""
 @enum TickState begin
-    BackendTick         # for ticks only present in backends, e.g. GLMakie plot insertions
-    UnknownTickState    # everything else
-    OneTimeRenderTick   # render outside of renderloop, e.g. colorbuffer() (save, record)
-    PausedRenderTick    # render loop paused
-    SkippedRenderTick   # render skipped due to frame reuse
-    RegularRenderTick   # normal render
+    BackendTick
+    UnknownTickState # GLMakie only allows states > UnknownTickState
+    PausedRenderTick
+    SkippedRenderTick
+    RegularRenderTick
+    OneTimeRenderTick
 end
 
 struct Tick
     state::TickState    # flag for the type of tick event
-    count::UInt64       # number of ticks since start
+    count::Int64        # number of ticks since start
     time::Float64       # time since scene initialization
     delta_time::Float64 # time since last tick
 end
@@ -128,7 +139,13 @@ struct Events
     entered_window::Observable{Bool}
 
     """
-    TODO
+    A `tick` is triggered whenever a new frame is requested, i.e. during normal
+    rendering (even if the renderloop is paused) or when an image is produced
+    for `save` or `record`. A Tick contains:
+    - `state` which identifies what caused the tick (see [`TickState`](@ref))
+    - `count` which increments with every tick
+    - `time` which is the total time since the screen has been created 
+    - `delta_time` which is the time since the last frame
     """
     tick::Observable{Tick}
 end
