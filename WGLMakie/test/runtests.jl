@@ -101,7 +101,7 @@ end
     tick_record = Makie.Tick[]
     on(t -> push!(tick_record, t), events(f).tick)
     screen = display(f)
-    sleep(0.1)
+    sleep(0.2)
     close(screen)
 
     # May have preceeding ticks from previous renderloop
