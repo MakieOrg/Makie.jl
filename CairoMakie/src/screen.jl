@@ -171,8 +171,6 @@ mutable struct Screen{SurfaceRenderType} <: Makie.MakieScreen
     antialias::Int # cairo_antialias_t
     visible::Bool
     config::ScreenConfig
-    start_time::UInt64
-    last_time::UInt64
 end
 
 function Base.empty!(screen::Screen)
@@ -315,7 +313,7 @@ function Screen(scene::Scene, config::ScreenConfig, surface::Cairo.CairoSurface)
         restrict_pdf_version!(surface, Int(config.pdf_version))
     end
 
-    return Screen{get_render_type(surface)}(scene, surface, ctx, dsf, aa, config.visible, config, time_ns(), time_ns())
+    return Screen{get_render_type(surface)}(scene, surface, ctx, dsf, aa, config.visible, config)
 end
 
 ########################################

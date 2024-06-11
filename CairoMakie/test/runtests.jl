@@ -237,14 +237,30 @@ end
     f, a, p = scatter(rand(10));
     @test events(f).tick[] == Makie.Tick()
 
-    filename = "$(tempname()).pdf"
+    filename = "$(tempname()).png"
     try
         save(filename, f)
-        tick = events(f).tick[] 
+        tick = events(f).tick[]
         @test tick.state == Makie.OneTimeRenderTick
-        @test tick.count == 1
-        @test tick.time > 1e-9
-        @test tick.delta_time > 1e-9
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
+    finally
+        rm(filename)
+    end
+
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        on(tick -> push!(tick_record, tick), events(f).tick)
+        record(_ -> nothing, f, filename, 1:10, framerate = 30)
+        dt = 1.0 / 30.0
+        for (i, tick) in enumerate(tick_record)
+            @test tick.state == Makie.OneTimeRenderTick
+            @test tick.count == i
+            @test tick.time ≈ dt * i
+            @test tick.delta_time ≈ dt
+        end
     finally
         rm(filename)
     end

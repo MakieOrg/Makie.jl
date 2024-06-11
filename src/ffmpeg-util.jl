@@ -182,6 +182,8 @@ struct VideoStream
     io::Base.PipeEndpoint
     process::Base.Process
     screen::MakieScreen
+    tick::Observable{Tick}
+    frame_counter::RefValue{Int}
     buffer::Matrix{RGB{N0f8}}
     path::String
     options::VideoStreamOptions
@@ -229,7 +231,7 @@ function VideoStream(fig::FigureLike;
     vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
-    return VideoStream(process.in, process, screen, buffer, abspath(path), vso)
+    return VideoStream(process.in, process, screen, events(fig).tick, RefValue(0), buffer, abspath(path), vso)
 end
 
 """
@@ -238,6 +240,9 @@ end
 Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
+    dt = 1.0 / io.options.framerate
+    io.frame_counter[] = io.frame_counter[] + 1
+    io.tick[] = Tick(OneTimeRenderTick, io.frame_counter[], io.frame_counter[] * dt, dt)
     glnative = colorbuffer(io.screen, GLNative)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions

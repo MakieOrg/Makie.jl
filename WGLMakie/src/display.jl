@@ -279,8 +279,6 @@ function Makie.colorbuffer(screen::Screen)
         Base.display(screen, screen.scene)
     end
     session = get_screen_session(screen; error="Not able to show scene in a browser")
-    screen.last_time = Makie.next_tick!(
-        screen.scene.events.tick, Makie.OneTimeRenderTick, screen.start_time, screen.last_time)
     return session2image(session, screen.scene)
 end
 

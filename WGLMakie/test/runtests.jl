@@ -81,36 +81,45 @@ end
 
     f, a, p = scatter(rand(10));
     @test events(f).tick[] == Makie.Tick()
-    tick_record = Makie.Tick[]
-    on(t -> push!(tick_record, t), events(f).tick)
 
     filename = "$(tempname()).png"
     try
+        tick_record = Makie.Tick[]
+        on(tick -> push!(tick_record, tick), events(f).tick)
         save(filename, f)
-        # WGLMakie produces a running renderloop when calling colorbuffer so 
-        # we have multiple ticks to deal with
-        idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)        
-        @test idx !== nothing
-        check_tick(tick_record[idx], Makie.OneTimeRenderTick, idx)
+        idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
+        tick = tick_record[idx]
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
     finally
+        close(f.scene.current_screens[1])
         rm(filename)
     end
 
-    # This produces a lot of pre-render ticks claiming to be normal render ticks
+    
     f, a, p = scatter(rand(10));
-    tick_record = Makie.Tick[]
-    on(t -> push!(tick_record, t), events(f).tick)
-    screen = display(f)
-    sleep(0.2)
-    close(screen)
-
-    # May have preceeding ticks from previous renderloop
-    start = 1
-    while tick_record[start].count > 1
-        start += 1
-    end
-
-    for i in start:length(tick_record)
-        check_tick(tick_record[i], Makie.RegularRenderTick, i-start+1)
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        on(tick -> push!(tick_record, tick), events(f).tick)
+        record(_ -> nothing, f, filename, 1:10, framerate = 30)
+        dt = 1/30
+        # normal and record ticks both show up and they stumble over each other 
+        # at the start...
+        previous_count = 0
+        previous_time = -1.0
+        for (i, tick) in enumerate(filter(tick -> tick.state == Makie.OneTimeRenderTick, tick_record))
+            @test tick.state == Makie.OneTimeRenderTick
+            @test tick.count == i
+            @test tick.time ≈ dt * i
+            @test tick.delta_time ≈ dt
+            previous_count = tick.count
+            previous_time = tick.time
+        end
+    finally
+        close(f.scene.current_screens[1])
+        rm(filename)
     end
 end

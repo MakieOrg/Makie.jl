@@ -51,13 +51,33 @@ end
 
     filename = "$(tempname()).png"
     try
-        Makie.save(filename, f)
-        tick = events(f).tick[] 
-        check_tick(tick, Makie.OneTimeRenderTick, 1)
+        save(filename, f)
+        tick = events(f).tick[]
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
     finally
         rm(filename)
     end
 
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        on(tick -> push!(tick_record, tick), events(f).tick)
+        record(_ -> nothing, f, filename, 1:10, framerate = 30)
+        dt = 1.0 / 30.0
+        for (i, tick) in enumerate(tick_record)
+            @test tick.state == Makie.OneTimeRenderTick
+            @test tick.count == i
+            @test tick.time ≈ dt * i
+            @test tick.delta_time ≈ dt
+        end
+    finally
+        rm(filename)
+    end
+
+    GLMakie.closeall()
     f, a, p = scatter(rand(10));
     tick_record = Makie.Tick[]
     on(t -> push!(tick_record, t), events(f).tick)
