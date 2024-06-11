@@ -82,7 +82,7 @@ module MakieDocsHelpers
         for page in pages
             fileinfos = o.d[page]
             pagename, _ = splitext(basename(page.path))
-            println(io, "### [$(page.title)](@id overview_$(pagename))")
+            println(io, "### $(page.title)") # these links are created too late for Documenter's crossref mechanism, which is good because they should not conflict with the originals
             println(io)
             println(io, """<div :class="\$style.container">""")
             for fileinfo in fileinfos
