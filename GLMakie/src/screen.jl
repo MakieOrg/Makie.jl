@@ -901,18 +901,25 @@ function vsynced_renderloop(screen)
 end
 
 function fps_renderloop(screen::Screen)
+    last_time = time_ns()
+    time_budget = 0.0
     while isopen(screen) && !screen.stop_renderloop
-        if screen.config.pause_renderloop
-            pollevents(screen); sleep(0.1)
-            continue
-        end
-        time_per_frame = 1.0 / screen.config.framerate
         t = time_ns()
-        pollevents(screen) # GLFW poll
-        render_frame(screen)
-        GLFW.SwapBuffers(to_native(screen))
-        t_elapsed = (time_ns() - t) / 1e9
-        diff = time_per_frame - t_elapsed
+        time_per_frame = 1.0 / screen.config.framerate
+        time_budget += time_per_frame - (t - last_time) * 1e-9
+        last_time = t
+
+        pollevents(screen)
+
+        if !screen.config.pause_renderloop
+            pollevents(screen) # GLFW poll
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
+        end
+
+        t_elapsed = (time_ns() - t) * 1e-9
+        diff = time_per_frame - t_elapsed + time_budget
+
         if diff > 0.001 # can't sleep less than 0.001
             sleep(diff)
         else # if we don't sleep, we still need to yield explicitely to other tasks
@@ -930,10 +937,16 @@ function requires_update(screen::Screen)
     return false
 end
 
+
 function on_demand_renderloop(screen::Screen)
+    last_time = time_ns()
+    time_budget = 0.0
     while isopen(screen) && !screen.stop_renderloop
         t = time_ns()
         time_per_frame = 1.0 / screen.config.framerate
+        time_budget += time_per_frame - (t - last_time) * 1e-9
+        last_time = t
+
         pollevents(screen) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
@@ -942,7 +955,7 @@ function on_demand_renderloop(screen::Screen)
         end
 
         t_elapsed = (time_ns() - t) / 1e9
-        diff = time_per_frame - t_elapsed
+        diff = time_per_frame - t_elapsed + time_budget
         if diff > 0.001 # can't sleep less than 0.001
             sleep(diff)
         else # if we don't sleep, we still need to yield explicitely to other tasks
