@@ -36,13 +36,14 @@ module MakieDocsHelpers
         img = Makie.colorbuffer(scene)
         backend = nameof(Makie.current_backend())
         px_per_unit = Makie.to_value(Makie.current_default_theme()[backend][:px_per_unit])
+        size_px = Tuple(round.(Int, reverse(size(img)) ./ px_per_unit))
+
         ntrim = 3 # `restrict` makes dark border pixels which we cut off
         img = @view ImageTransformations.restrict(img)[ntrim:end-ntrim,ntrim:end-ntrim]
         # img = @view ImageTransformations.restrict(img)[ntrim:end-ntrim,ntrim:end-ntrim]
-        final_size_px = Tuple(round.(Int, size(img) ./ px_per_unit))
         io = IOBuffer()
         FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
-        push!(vec, Png(take!(io), final_size_px, id))
+        push!(vec, Png(take!(io), size_px, id))
         return
     end
 
@@ -121,8 +122,6 @@ module MakieDocsHelpers
     end
 end
 
-
-
 function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     title = first(Iterators.filter(page.elements) do el
         el isa Markdown.Header{1}
@@ -166,7 +165,19 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     el.code = transform_figure_code(el.code; id, page = page.source, pagetitle = title, is_continued, kwargs...)
     Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
 
+    last_png = MakieDocsHelpers.FIGURES[MakieDocsHelpers.PageInfo(page.source, title)][end]
+    @assert last_png.id == id
+    size_px = last_png.size_px
+
+    mime = get(kwargs, :mime, :png)
+    image_name = "$id.$mime"
+
     MarkdownAST.insert_before!(node, @ast Documenter.RawNode(:html, "<a id=\"example-$id\" />"))
+    # we save and insert the image manually, just because we want to be able to set width and height.
+    # this makes images look sharp as intended, and it improves the accuracy with which one gets to
+    # image examples from the overview pages, as with annotated width and height the right locations can
+    # be computed even before all the images have been loaded. Otherwise they are usually wrong the first time.
+    MarkdownAST.insert_after!(node, @ast Documenter.RawNode(:html, "<img src=\"./$image_name\" width=\"$(size_px[1])px\" height=\"$(size_px[2])px\"/>"))
 end
 
 function transform_figure_code(code::String; id::String, page::String, pagetitle::String, is_continued::Bool, backend::Symbol = :CairoMakie, mime=:png)
@@ -183,6 +194,7 @@ function transform_figure_code(code::String; id::String, page::String, pagetitle
     $code
     end # hide
     MakieDocsHelpers.register_figure!("$page", "$pagetitle", "$id", var"#result") # hide
-    MakieDocsHelpers.AsMIME(MIME"$mimetype"(), var"#result") # hide
+    save("$id.$mime", var"#result") # hide
+    nothing # hide
     """
 end
