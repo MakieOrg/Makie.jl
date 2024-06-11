@@ -11,8 +11,7 @@ datashader
 
 ```@figure backend=GLMakie
 using DelimitedFiles
-# For saving/showing/inlining into documentation we need to disable async calculation.
-Makie.set_theme!(DataShader = (; async=false))
+
 airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
 fig, ax, ds = datashader(airports,
     colormap=[:white, :black],
@@ -194,7 +193,7 @@ Categories are currently aggregated in one Canvas per category, and then overlay
 normaldist = randn(Point2f, 1_000_000)
 ds1 = normaldist .+ (Point2f(-1, 0),)
 ds2 = normaldist .+ (Point2f(1, 0),)
-fig, ax, pl = datashader(Dict("a" => ds1, "b" => ds2))
+fig, ax, pl = datashader(Dict("a" => ds1, "b" => ds2); async = false)
 hidedecorations!(ax)
 fig
 ```
