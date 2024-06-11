@@ -33,13 +33,13 @@ module MakieDocsHelpers
         vec = get!(Vector, FIGURES, PageInfo(page, pagetitle))
         Makie.update_state_before_display!(figurelike)
         scene = Makie.get_scene(figurelike)
-        size_px = scene.viewport[].widths
         img = Makie.colorbuffer(scene)
-        factor = round.(Int, size(img) ./ size_px)
-        ntrim = 3
+        backend = nameof(Makie.current_backend())
+        px_per_unit = Makie.to_value(Makie.current_default_theme()[backend][:px_per_unit])
+        ntrim = 3 # `restrict` makes dark border pixels which we cut off
         img = @view ImageTransformations.restrict(img)[ntrim:end-ntrim,ntrim:end-ntrim]
         # img = @view ImageTransformations.restrict(img)[ntrim:end-ntrim,ntrim:end-ntrim]
-        final_size_px = Tuple(round.(Int, size(img) ./ factor))
+        final_size_px = Tuple(round.(Int, size(img) ./ px_per_unit))
         io = IOBuffer()
         FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
         push!(vec, Png(take!(io), final_size_px, id))
