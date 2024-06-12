@@ -6,6 +6,14 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 
 layout(lines) in;
+
+// Need to set size of ClipDistance
+in gl_PerVertex {
+    vec4 gl_Position;
+    float gl_PointSize;
+    float gl_ClipDistance[8];
+} gl_in[];
+
 layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 resolution;
@@ -33,6 +41,7 @@ flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
 flat out vec4 f_miter_vecs;
+out float gl_ClipDistance[8];
 
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 2.0 * AA_RADIUS;
@@ -107,6 +116,9 @@ void main(void)
         // TODO: if we just make this a varying output we probably get var linewidths here
         f_linewidth = halfwidth;
         f_id = g_id[x];
+
+        for (int i = 0; i < 8; i++)
+            gl_ClipDistance[i] = gl_in[x].gl_ClipDistance[i];
 
         for (int y = 0; y < 2; y++) {
             // Get offset in y direction & compute vertex position

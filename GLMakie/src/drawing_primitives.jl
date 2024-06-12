@@ -226,7 +226,7 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
                         :lightposition, :material, :axis_cycler,
                         :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
-                          :calculated_colors, :space, :markerspace, :model, :dim_conversions, :material])
+                        :calculated_colors, :space, :markerspace, :model, :dim_conversions, :material])
 
 
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
@@ -237,6 +237,8 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         filtered = filter(plot.attributes) do (k, v)
             return !in(k, EXCLUDE_KEYS)
         end
+
+        # Handle update tracking for render on demand
         track_updates = screen.config.render_on_demand
         if track_updates
             for arg in plot.args
@@ -251,6 +253,8 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
                 screen.requires_update = true
             end
         end
+
+        # Pass along attributes
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
@@ -263,6 +267,27 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         end
         gl_attributes[:space] = plot.space
         gl_attributes[:px_per_unit] = screen.px_per_unit
+
+        # Handle clip planes
+        # Most GPUs support 8, some 6. We always pad the array to 8 so we don't
+        # need to recompile shaders when this changes
+        # https://opengl.gpuinfo.org/displaycapability.php?name=GL_MAX_CLIP_PLANES
+        clip_planes = pop!(gl_attributes, :clip_planes)
+        gl_attributes[:num_clip_planes] = map(x -> min(8, length(x)), plot, clip_planes)
+        gl_attributes[:clip_planes] = map(plot, clip_planes) do planes
+            if length(planes) > 8
+                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+            end
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                output[i] = Makie.gl_plane_format(planes[i])
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0)
+            end
+            return output
+        end
 
         handle_intensities!(screen, gl_attributes, plot)
         connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
@@ -303,7 +328,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         elseif shading == MultiLightShading
             handle_lights(gl_attributes, screen, scene.lights)
         end
-        robj = robj_func(gl_attributes) # <-- here
+        robj = robj_func(gl_attributes)
 
         get!(gl_attributes, :ssao, Observable(false))
         screen.cache2plot[robj.id] = plot

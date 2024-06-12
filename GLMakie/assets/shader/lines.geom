@@ -9,6 +9,14 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{define_fast_path}}
 
 layout(lines_adjacency) in;
+
+// Need to set size of ClipDistance
+in gl_PerVertex {
+    vec4 gl_Position;
+    float gl_PointSize;
+    float gl_ClipDistance[8];
+} gl_in[];
+
 layout(triangle_strip, max_vertices = 4) out;
 
 in {{stripped_color_type}} g_color[];
@@ -34,6 +42,7 @@ flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
 flat out vec4 f_miter_vecs;
+out float gl_ClipDistance[8];
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -79,6 +88,8 @@ void emit_vertex(LineVertex vertex) {
     f_linestart    = vertex.linestart;
     f_linelength   = vertex.linelength;
     f_id           = g_id[vertex.index];
+    for (int i = 0; i < 8; i++)
+        gl_ClipDistance[i] = gl_in[vertex.index].gl_ClipDistance[i];
     EmitVertex();
 }
 

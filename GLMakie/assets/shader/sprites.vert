@@ -90,13 +90,16 @@ out vec4  g_glow_color;
 
 vec4 to_vec4(vec3 x){return vec4(x, 1.0);}
 vec4 to_vec4(vec4 x){return x;}
+void process_clip_planes(vec3 world_pos);
 
 void main(){
     int index         = gl_VertexID;
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    vec4 p = preprojection * model * vec4(pos, 1);
+    vec4 world_pos = model * vec4(pos, 1);
+    process_clip_planes(world_pos.xyz);
+    vec4 p = preprojection * world_pos;
     if (scale_primitive)
         g_position = p.xyz / p.w + mat3(model) * marker_offset;
     else
