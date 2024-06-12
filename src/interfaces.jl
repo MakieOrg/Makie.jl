@@ -377,7 +377,12 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.model = transformationmatrix(plot)
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
+    if to_value(get(attributes(plot), :clip_planes, automatic)) === automatic
+        attributes(plot)[:clip_planes] = map(identity, plot, scene.theme[:clip_planes])
+    end
+
     plot!(plot)
+    
     conversions = get_conversions(plot)
     if !isnothing(conversions)
         connect_conversions!(scene.conversions, conversions)
