@@ -108,6 +108,7 @@ const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 include("documentation/docstringextension.jl")
+include("utilities/Plane.jl")
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
 include("bezier.jl")
@@ -300,6 +301,7 @@ export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..)
 export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
+export Plane3f # other planes aren't used much for Makie
 export widths, decompose
 
 # building blocks for series recipes
