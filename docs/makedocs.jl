@@ -1,6 +1,7 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
+pkg"add https://github.com/jkrumbiegel/Documenter.jl#jk/timeroutputs"
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 Pkg.precompile()
 
@@ -197,7 +198,7 @@ pages = [
 empty!(MakieDocsHelpers.FIGURES)
 
 # filter pages here when working on docs interactively
-# pages = nested_filter(pages, r"reference/blocks/(axis|axis3|overview)")
+pages = nested_filter(pages, r"reference/plots/(lines|overview)")
 
 Documenter.makedocs(;
     sitename="Makie",
@@ -213,6 +214,7 @@ Documenter.makedocs(;
     expandfirst = unnest(nested_filter(pages, r"reference/(plots|blocks)/(?!overview)")),
     warnonly = get(ENV, "CI", "false") != "true",
     pagesonly = true,
+    timings = Documenter.FullTimings,
 )
 
 ##
