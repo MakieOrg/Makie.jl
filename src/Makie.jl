@@ -184,6 +184,7 @@ include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
+include("basic_recipes/makiecore_examples/lines.jl")
 
 # layouting of plots
 include("layouting/transformation.jl")

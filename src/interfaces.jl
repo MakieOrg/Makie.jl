@@ -155,7 +155,7 @@ function apply_expand_dimensions(trait, args, args_obs, deregister)
     if isnothing(expanded)
         return args_obs
     else
-        new_obs = map(Observable, expanded)
+        new_obs = map(Observable{Any}, expanded)
         fs = onany(args_obs...) do args...
             expanded = expand_dimensions(trait, args...)
             for (obs, arg) in zip(new_obs, expanded)
