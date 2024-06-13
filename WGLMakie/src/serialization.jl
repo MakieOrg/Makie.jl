@@ -370,25 +370,27 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     mesh[:cam_space] = to_value(get(plot, key, :data))
 
     # Handle clip planes
-    clip_planes = map(plot, plot.clip_planes) do planes
-        if length(planes) > 8
-            @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
-        end
+    if !(plot isa Volume)
+        clip_planes = map(plot, plot.clip_planes) do planes
+            if length(planes) > 8
+                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+            end
 
-        output = Vector{Vec4f}(undef, 8)
-        for i in 1:min(length(planes), 8)
-            output[i] = Makie.gl_plane_format(planes[i])
-        end
-        for i in min(length(planes), 8)+1:8
-            output[i] = Vec4f(0, 0, 0, -1e10)
-        end
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                output[i] = Makie.gl_plane_format(planes[i])
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e10)
+            end
 
-        return output
-    end
-    uniforms[:clip_planes] = serialize_three(clip_planes[])
-    on(plot, clip_planes) do value
-        updater[] = [:clip_planes, serialize_three(value)]
-        return
+            return output
+        end
+        uniforms[:clip_planes] = serialize_three(clip_planes[])
+        on(plot, clip_planes) do value
+            updater[] = [:clip_planes, serialize_three(value)]
+            return
+        end
     end
 
     return mesh

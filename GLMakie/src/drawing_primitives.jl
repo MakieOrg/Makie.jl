@@ -809,6 +809,10 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     return cached_robj!(screen, scene, plot) do gl_attributes
+        # TODO: clip_planes are more complicated with volume plots, since they
+        # need to affect the ray tracing algorithm. Skipping for now
+        gl_attributes[:num_clip_planes] = Observable(0)
+
         model = plot.model
         x, y, z = plot[1], plot[2], plot[3]
         gl_attributes[:model] = lift(plot, model, x, y, z) do m, xyz...
@@ -826,7 +830,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         Tex(x) = Texture(x; minfilter=interp)
-        @info gl_attributes[:clip_planes]
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
             return draw_volume(screen, Tex(intensity), gl_attributes)

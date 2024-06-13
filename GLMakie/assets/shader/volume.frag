@@ -11,6 +11,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 in vec3 frag_vert;
+in float o_clip_distance[8];
 
 {{volumedata_type}} volumedata;
 

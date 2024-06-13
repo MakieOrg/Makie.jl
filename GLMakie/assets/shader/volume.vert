@@ -16,30 +16,12 @@ out vec3 o_view_normal;
 // out vec3 o_world_pos;
 // out vec3 o_world_normal;
 
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
-out float gl_ClipDistance[8];
-
-void process_clip_planes(vec3 world_pos)
-{
-    // distance = dot(world_pos - plane.point, plane.normal)
-    // precalculated: dot(plane.point, plane.normal) -> plane.w
-    for (int i = 0; i < num_clip_planes; i++)
-        gl_ClipDistance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
-
-    // TODO: can be skipped?
-    for (int i = num_clip_planes; i < 8; i++)
-        gl_ClipDistance[i] = 1.0;
-}
-
-
 void main()
 {
     // TODO set these in volume.frag
     o_view_pos = vec3(0);
     o_view_normal = vec3(0);
     vec4 world_vert = model * vec4(vertices, 1);
-    process_clip_planes(world_vert.xyz);
     frag_vert = world_vert.xyz;
     gl_Position = projectionview * world_vert;
     gl_Position.z += gl_Position.w * depth_shift;
