@@ -127,5 +127,5 @@ end
 @inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
 
 function iterate_transformed(plot, points::AbstractArray{<: VecTypes})
-    return filter(p -> is_clipped(plot.clip_planes[], p), apply_transform_and_model(plot, points))
+    return filter(p -> !is_clipped(plot.clip_planes[], p), apply_transform_and_model(plot, points))
 end
