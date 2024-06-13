@@ -34,6 +34,37 @@ function planes(rect::Rect3f)
     ]
 end
 
-function is_clipped_by(p::VecTypes, plane::Plane3)
+function is_clipped(plane::Plane3, p::VecTypes)
     return dot(plane.normal, to_ndim(Point3f, p, 0)) - plane.distance < 0.0
+end
+function is_clipped(planes::Vector{Plane3}, p::VecTypes)
+    return any(plane -> is_clipped(plane, p), planes)
+end
+
+function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where T
+    ps = corners(rect)
+    temp = copy(ps)
+    mini = minimum(rect)
+    maxi = maximum(rect)
+
+    for plane in planes
+        # project corner points so that none get clipped
+        copyto!(temp, ps)
+        for i in eachindex(temp)
+            d = distance(plane, temp[i])
+            temp[i] -= min(0.0, d) * plane.normal
+        end
+
+        # generate a axis aligned bbox >= projected points
+        bb = Rect3{T}(temp)
+
+        # reductively combine with other bboxes
+        mini = max.(minimum(bb), mini)
+        maxi = min.(maximum(bb), maxi)
+    end
+
+    widths = maxi .- mini
+    dim_valid = widths .> 0.0
+
+    return Rect3{T}(ifelse.(dim_valid, mini, NaN), ifelse.(dim_valid, widths, NaN))
 end
