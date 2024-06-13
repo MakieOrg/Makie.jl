@@ -269,9 +269,9 @@ Available algorithms are:
     ) begin
     "Sets the volume algorithm that is used."
     algorithm = :mip
-    "Sets the range of values picked up by the IsoValue algorithm."
-    isovalue = 0.5
     "Sets the target value for the IsoValue algorithm."
+    isovalue = 0.5
+    "Sets the range of values picked up by the IsoValue algorithm."
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
@@ -317,13 +317,26 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     color = @inherit linecolor
     "Sets the width of the line in screen units"
     linewidth = @inherit linewidth
-    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+    
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
+    """
     linestyle = nothing
-    "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 0.5 linewidth extrusion) or :round."
+    """
+    Sets the type of line cap used. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
-    "Controls whether line joints are rounded (:round) or not (:miter)."
+    """
+    Controls the rendering at corners. Options are `:miter` for sharp corners,
+    `:bevel` for "cut off" corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
-    "Sets the minimum inner joint angle below which miter joints truncate. See also `Makie.miter_distance_to_angle()`"
+    "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
     miter_limit = @inherit miter_limit
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
@@ -345,7 +358,13 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     color = @inherit linecolor
     "Sets the width of the line in pixel units"
     linewidth = @inherit linewidth
-    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+    
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
+    """
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
     linecap = @inherit linecap
@@ -594,7 +613,13 @@ Plots polygons, which are defined by
     strokecolormap = @inherit colormap
     "Sets the width of the outline."
     strokewidth = @inherit patchstrokewidth
-    "Sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+    
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
+    """
     linestyle = nothing
     linecap = @inherit linecap
     joinstyle = @inherit joinstyle
