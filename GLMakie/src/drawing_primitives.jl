@@ -671,7 +671,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
-    elseif to_value(color) isa AbstractMatrix{<: Number}
+    elseif to_value(color) isa AbstractArray{<: Number}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
