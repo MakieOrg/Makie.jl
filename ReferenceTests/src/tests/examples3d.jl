@@ -623,3 +623,52 @@ end
 @reference_test "Heatmap 3D" begin
     heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
 end
+
+
+# Clip Planes
+# TODO: lines don't clip correctly with inversion correction
+@reference_test "Clip planes" begin
+    # Test
+    # - inheritance of clip planes from scene and parent plot (wireframe)
+    # - test clipping of lines, linesegments, mesh, surface, scatter, image, heatmap
+    # - missing: voxel, volume, 
+    f = Figure()
+    a = LScene(f[1, 1])
+    a.scene.theme[:clip_planes][] = Makie.planes(Rect3f(Point3f(-0.75), Vec3f(1.5)))
+    linesegments!(
+        a, Rect3f(Point3f(-0.75), Vec3f(1.5)), clip_planes = Plane3f[], 
+        fxaa = true, transparency = false, linewidth = 3)
+
+    p = mesh!(Sphere(Point3f(0,0,1), 1f0), transparency = false, color = :orange, backlight = 1.0)
+    wireframe!(p[1][], fxaa = true, color = :cyan)
+    r = range(-pi, pi, length = 101)
+    surface!(-pi..pi, -pi..pi, [sin(-x - y) for x in r, y in r], transparency = false)
+    lines!([0, 0], [-2, 2], color = :red, fxaa = true, linewidth = 5)
+    scatter!(-2:0.2:2, zeros(21), color = :red)
+    p = heatmap!(-2..2, -2..2, [sin(x+y) for x in r, y in r], colormap = [:purple, :pink])
+    translate!(p, 0, 0, -0.666)
+    p = image!(-2..2, -2..2, [cos(x+y) for x in r, y in r], colormap = [:red, :orange])
+    translate!(p, 0, 0, -0.333)
+    text!(-1:0.2:1, 1:-0.2:-1, text = ["█" for i in -1:0.2:1], color = :purple)
+    f
+end
+
+# TODO: cut out full voxels, not a cross through
+@reference_test "Clip planes - voxel" begin
+    f = Figure()
+    a = LScene(f[1, 1])
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1), 0.0)]
+    r = -10:10
+    voxels!(a, [cos(sin(x+y)+z) for x in r, y in r, z in r])
+    f
+end
+
+# TODO: not implemented yet
+# @reference_test "Clip planes - volume" begin
+#     f = Figure()
+#     a = LScene(f[1, 1])
+#     a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1), 0.0)]
+#     r = -10:10
+#     volume!(a, -10..10, -10..10, -10..10, [cos(sin(x+y)+z) for x in r, y in r, z in r])
+#     f
+# end
