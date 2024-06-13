@@ -20237,7 +20237,7 @@ function uniform_type(obj) {
     } else if (obj instanceof THREE.Texture) {
         return "sampler2D";
     } else {
-        return;
+        return "invalid";
     }
 }
 function uniforms_to_type_declaration(uniform_dict) {
@@ -20245,7 +20245,7 @@ function uniforms_to_type_declaration(uniform_dict) {
     for(const name in uniform_dict){
         const uniform = uniform_dict[name];
         const type = uniform_type(uniform);
-        result += `uniform ${type} ${name};\n`;
+        if (type != "invalid") result += `uniform ${type} ${name};\n`;
     }
     return result;
 }
@@ -21326,11 +21326,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
-
             out vec3 f_quad_sdf;
             out vec2 f_truncation;              // invalid / not needed
             out float f_linestart;              // constant
             out float f_linelength;
+            out float o_clip_distance[8];
 
             flat out vec2 f_extrusion;          // invalid / not needed
             flat out float f_linewidth;
@@ -21345,6 +21345,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -21354,6 +21355,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
             // Geometry/Position Utils
             ////////////////////////////////////////////////////////////////////////
+
+            vec4 world_space(vec3 point) { return model * vec4(point, 1); }
+            vec4 world_space(vec2 point) { return world_space(vec3(point, 0)); }
 
             vec4 clip_space(vec3 point) {
                 return projectionview * model * vec4(point, 1);
@@ -21375,6 +21379,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Main
             ////////////////////////////////////////////////////////////////////////
 
+            void process_clip_planes(vec3 world_pos) {
+                for (int i = 0; i < 8; i++)
+                    o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+            }
 
             void main() {
                 bool is_end = position.x == 1.0;
@@ -21440,6 +21448,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
 
+                vec4 world_pos = world_space(is_end ? linepoint_end : linepoint_start);
+                process_clip_planes(world_pos.xyz);
 
                 // linecaps
                 f_capmode = ivec2(linecap);
@@ -21484,6 +21494,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             out vec2 f_truncation;
             out float f_linestart;
             out float f_linelength;
+            out float o_clip_distance[8];
 
             flat out vec2 f_extrusion;
             flat out float f_linewidth;
@@ -21498,6 +21509,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -21596,6 +21608,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Geometry/Position Utils
             ////////////////////////////////////////////////////////////////////////
 
+            vec4 world_space(vec3 point) { return model * vec4(point, 1); }
+            vec4 world_space(vec2 point) { return world_space(vec3(point, 0)); }
+
             vec4 clip_space(vec3 point) {
                 return projectionview * model * vec4(point, 1);
             }
@@ -21616,6 +21631,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
             // Main
             ////////////////////////////////////////////////////////////////////////
+
+            void process_clip_planes(vec3 world_pos) {
+                for (int i = 0; i < 8; i++)
+                    o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+            }
 
 
             void main() {
@@ -21850,7 +21870,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
-
+                
+                vec4 world_pos = world_space(is_end ? linepoint_end : linepoint_start);
+                process_clip_planes(world_pos.xyz);
 
                 vec3 offset;
                 int x = int(is_end);
@@ -21943,6 +21965,7 @@ function lines_fragment_shader(uniforms, attributes) {
     in vec2 f_truncation;
     in float f_linestart;
     in float f_linelength;
+    in float o_clip_distance[8];
 
     flat in float f_linewidth;
     flat in vec4 f_pattern_overwrite;
@@ -22066,6 +22089,10 @@ function lines_fragment_shader(uniforms, attributes) {
 
 
     void main(){
+        for (int i = 0; i < 8; i++)
+            if (o_clip_distance[i] < 0.0)
+                discard;
+
         vec4 color;
 
         // f_quad_sdf.x is the distance from p1, negative in v1 direction.

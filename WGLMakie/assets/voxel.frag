@@ -5,6 +5,7 @@ flat in vec3 o_normal;
 in vec3 o_uvw;
 flat in int o_side;
 in vec2 o_tex_uv;
+in float o_clip_distance[8];
 
 in vec3 o_camdir;
 
@@ -90,6 +91,10 @@ vec4 pack_int(uint id, uint index) {
 }
 void main()
 {
+    for (int i = 0; i < 8; i++)
+        if (o_clip_distance[i] < 0.0)
+            discard;
+
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
     if (voxel_uv.x < 0.5 * gap || voxel_uv.x > 1.0 - 0.5 * gap ||
         voxel_uv.y < 0.5 * gap || voxel_uv.y > 1.0 - 0.5 * gap)

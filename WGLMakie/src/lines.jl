@@ -133,6 +133,23 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         end
     end
 
+    # Handle clip planes
+    uniforms[:clip_planes] = map(plot, plot.clip_planes) do planes
+        if length(planes) > 8
+            @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+        end
+
+        output = Vector{Vec4f}(undef, 8)
+        for i in 1:min(length(planes), 8)
+            output[i] = Makie.gl_plane_format(planes[i])
+        end
+        for i in min(length(planes), 8)+1:8
+            output[i] = Vec4f(0, 0, 0, -1e10)
+        end
+
+        return output
+    end
+
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
         :visible => plot.visible,

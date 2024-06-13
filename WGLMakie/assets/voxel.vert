@@ -5,6 +5,7 @@ flat out vec3 o_normal;
 out vec3 o_uvw;
 flat out int o_side;
 out vec2 o_tex_uv;
+out float o_clip_distance[8];
 
 #ifdef DEBUG_RENDER_ORDER
 flat out float plane_render_idx;
@@ -15,6 +16,12 @@ flat out int plane_front;
 out vec3 o_camdir;
 
 uniform mat4 projection, view;
+uniform vec4 clip_planes[8];
+
+void process_clip_planes(vec3 world_pos) {
+    for (int i = 0; i < 8; i++)
+        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+}
 
 const vec3 unit_vecs[3] = vec3[]( vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1) );
 const mat2x3 orientations[3] = mat2x3[](
@@ -136,6 +143,7 @@ void main() {
     // place plane vertices
     vec3 plane_vertex = vec3(size) * (orientations[dim] * get_position()) + displacement;
     vec4 world_pos = get_model() * vec4(plane_vertex, 1.0f);
+    process_clip_planes(world_pos.xyz);
     gl_Position = projection * view * world_pos;
     gl_Position.z += gl_Position.w * get_depth_shift();
 

@@ -2,6 +2,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 in vec3 frag_vert;
+in float o_clip_distance[8];
 
 const float max_distance = 1.3;
 
@@ -227,6 +228,10 @@ vec4 pack_int(uint id, uint index) {
 
 void main()
 {
+    for (int i = 0; i < 8; i++)
+        if (o_clip_distance[i] < 0.0)
+            discard;
+
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = frag_vert;

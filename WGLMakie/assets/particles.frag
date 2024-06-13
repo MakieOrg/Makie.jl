@@ -2,6 +2,7 @@ in vec4 frag_color;
 in vec3 frag_normal;
 in vec3 frag_position;
 in vec3 o_camdir;
+in float o_clip_distance[8];
 
 // Smoothes out edge around 0 light intensity, see GLMakie
 float smooth_zero_max(float x) {
@@ -43,6 +44,10 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
+    for (int i = 0; i < 8; i++)
+        if (o_clip_distance[i] < 0.0)
+            discard;
+
     vec3 L, N, light, color;
     if (get_shading()) {
         L = get_light_direction();

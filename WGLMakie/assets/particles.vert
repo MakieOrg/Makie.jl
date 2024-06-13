@@ -3,11 +3,13 @@ precision mediump float;
 uniform mat4 projection;
 uniform mat4 view;
 uniform vec3 eyeposition;
+uniform vec4 clip_planes[8];
 
 out vec3 frag_normal;
 out vec3 frag_position;
 out vec4 frag_color;
 out vec3 o_camdir;
+out float o_clip_distance[8];
 
 vec3 qmul(vec4 q, vec3 v){
     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
@@ -24,6 +26,11 @@ vec4 to_vec4(vec4 v4){return v4;}
 vec3 to_vec3(vec2 v3){return vec3(v3, 0.0);}
 vec3 to_vec3(vec3 v4){return v4;}
 
+void process_clip_planes(vec3 world_pos) {
+    for (int i = 0; i < 8; i++)
+        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+}
+
 flat out uint frag_instance_id;
 
 void main(){
@@ -34,6 +41,7 @@ void main(){
     rotate(get_rotation(), vertex_position, N);
     vertex_position = to_vec3(get_offset()) + vertex_position;
     vec4 position_world = model * vec4(vertex_position, 1);
+    process_clip_planes(position_world.xyz);
     frag_normal = N;
     frag_color = to_vec4(get_color());
     // direction to camera
