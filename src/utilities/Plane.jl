@@ -37,7 +37,7 @@ end
 function is_clipped(plane::Plane3, p::VecTypes)
     return dot(plane.normal, to_ndim(Point3f, p, 0)) - plane.distance < 0.0
 end
-function is_clipped(planes::Vector{Plane3}, p::VecTypes)
+function is_clipped(planes::Vector{<: Plane3}, p::VecTypes)
     return any(plane -> is_clipped(plane, p), planes)
 end
 
@@ -64,7 +64,7 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
     end
 
     widths = maxi .- mini
-    dim_valid = widths .> 0.0
+    dim_valid = widths .> -100.0 * eps(widths[1])
 
     return Rect3{T}(ifelse.(dim_valid, mini, NaN), ifelse.(dim_valid, widths, NaN))
 end
