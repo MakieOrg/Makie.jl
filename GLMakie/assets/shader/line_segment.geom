@@ -6,14 +6,6 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 
 layout(lines) in;
-
-// Need to set size of ClipDistance
-in gl_PerVertex {
-    vec4 gl_Position;
-    float gl_PointSize;
-    float gl_ClipDistance[8];
-} gl_in[];
-
 layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 resolution;
@@ -24,6 +16,7 @@ uniform int linecap;
 in {{stripped_color_type}} g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
+in float g_clip_distance[][8];
 
 out vec3 f_quad_sdf;
 out vec2 f_truncation;
@@ -118,7 +111,7 @@ void main(void)
         f_id = g_id[x];
 
         for (int i = 0; i < 8; i++)
-            gl_ClipDistance[i] = gl_in[x].gl_ClipDistance[i];
+            gl_ClipDistance[i] = g_clip_distance[x][i];
 
         for (int y = 0; y < 2; y++) {
             // Get offset in y direction & compute vertex position

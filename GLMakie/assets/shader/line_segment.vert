@@ -24,18 +24,18 @@ vec4 to_vec4(vec2 v){return vec4(v, 0, 1);}
 
 uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
-out float gl_ClipDistance[8];
+out float g_clip_distance[8];
 
 void process_clip_planes(vec3 world_pos)
 {
     // distance = dot(world_pos - plane.point, plane.normal)
     // precalculated: dot(plane.point, plane.normal) -> plane.w
     for (int i = 0; i < num_clip_planes; i++)
-        gl_ClipDistance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+        g_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
 
     // TODO: can be skipped?
     for (int i = num_clip_planes; i < 8; i++)
-        gl_ClipDistance[i] = 1.0;
+        g_clip_distance[i] = 1.0;
 }
 
 
