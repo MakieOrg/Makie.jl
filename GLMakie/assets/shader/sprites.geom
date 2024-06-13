@@ -7,13 +7,6 @@
 struct Nothing{ bool _; };
 
 layout(points) in;
-// Need to set size of ClipDistance
-in gl_PerVertex {
-    vec4 gl_Position;
-    float gl_PointSize;
-    float gl_ClipDistance[8];
-} gl_in[];
-
 layout(triangle_strip, max_vertices = 4) out;
 
 mat4 qmat(vec4 quat){
@@ -56,6 +49,7 @@ in vec3 g_position[];
 in vec4 g_rotation[];
 in vec4 g_offset_width[];
 in uvec2 g_id[];
+in float g_clip_distance[][8];
 
 flat out int  f_primitive_index;
 flat out float f_viewport_from_u_scale;
@@ -98,7 +92,7 @@ void emit_vertex(vec4 vertex, vec2 uv)
     f_id              = g_id[0];
     f_sprite_scale    = g_offset_width[0].zw;
     for (int i = 0; i < 8; i++)
-        gl_ClipDistance[i] = gl_in[0].gl_ClipDistance[i];
+        gl_ClipDistance[i] = g_clip_distance[0][i];
     EmitVertex();
 }
 
