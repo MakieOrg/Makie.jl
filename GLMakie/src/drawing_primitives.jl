@@ -269,9 +269,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         gl_attributes[:px_per_unit] = screen.px_per_unit
 
         # Handle clip planes
-        # Most GPUs support 8, some 6. We always pad the array to 8 so we don't
-        # need to recompile shaders when this changes
-        # https://opengl.gpuinfo.org/displaycapability.php?name=GL_MAX_CLIP_PLANES
+        # OpenGL supports up to 8
         clip_planes = pop!(gl_attributes, :clip_planes)
         gl_attributes[:num_clip_planes] = map(x -> min(8, length(x)), plot, clip_planes)
         gl_attributes[:clip_planes] = map(plot, clip_planes) do planes
@@ -284,7 +282,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
                 output[i] = Makie.gl_plane_format(planes[i])
             end
             for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0)
+                output[i] = Vec4f(0, 0, 0, -1e10)
             end
             return output
         end
@@ -504,6 +502,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
         end
+
+        data[:num_clip_planes] = Observable(8)
 
         return draw_lines(screen, positions, data)
     end
@@ -826,6 +826,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         Tex(x) = Texture(x; minfilter=interp)
+        @info gl_attributes[:clip_planes]
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
             return draw_volume(screen, Tex(intensity), gl_attributes)
