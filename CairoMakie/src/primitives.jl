@@ -1011,7 +1011,7 @@ nan2zero(x) = !isnan(x) * x
 
 
 function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0, rotation = Mat4f(I))
-    @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling))
+    @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
 
     matcap = to_value(get(attributes, :matcap, nothing))
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
@@ -1040,7 +1040,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
         scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
         model, shading_bool::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Int
+        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
     )
 end
 
@@ -1048,7 +1048,7 @@ function draw_mesh3D(
         scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
         model, shading, diffuse,
-        specular, shininess, faceculling
+        specular, shininess, faceculling, clip_planes
     )
     ctx = screen.context
     projectionview = Makie.space_to_clip(scene.camera, space, true)
@@ -1067,6 +1067,8 @@ function draw_mesh3D(
         p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
         return to_ndim(Vec4f, model_f32 * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0)), NaN32)
     end
+
+    valid = [is_visible(clip_planes, p) for p in vs]
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
 
@@ -1114,9 +1116,15 @@ function draw_mesh3D(
     zorder = sortperm(average_zs)
 
     # Face culling
-    zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+    if isempty(clip_planes)
+        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+    else
+        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+    end
 
-    draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdirection, light_color, shininess, diffuse, ambient, specular)
+    draw_pattern(
+        ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, 
+        lightdirection, light_color, shininess, diffuse, ambient, specular)
     return
 end
 
@@ -1230,13 +1238,13 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     color = to_color(primitive.calculated_colors[])
     submesh = Attributes(
-        model=model,
+        model = model,
         calculated_colors = color,
-        shading=primitive.shading, diffuse=primitive.diffuse,
-        specular=primitive.specular, shininess=primitive.shininess,
-        faceculling=get(primitive, :faceculling, -10),
-        transformation=Makie.transformation(primitive)
-
+        shading = primitive.shading, diffuse = primitive.diffuse,
+        specular = primitive.specular, shininess = primitive.shininess,
+        faceculling = get(primitive, :faceculling, -10),
+        transformation = Makie.transformation(primitive),
+        clip_planes = primitive.clip_planes
     )
 
     submesh[:model] = model
@@ -1287,11 +1295,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     end, rev=false)
 
     submesh = Attributes(
-        model=model,
-        shading=primitive.shading, diffuse=primitive.diffuse,
-        specular=primitive.specular, shininess=primitive.shininess,
-        faceculling=get(primitive, :faceculling, -10),
-        transformation=Makie.transformation(primitive)
+        model = model,
+        shading = primitive.shading, diffuse = primitive.diffuse,
+        specular = primitive.specular, shininess = primitive.shininess,
+        faceculling = get(primitive, :faceculling, -10),
+        transformation = Makie.transformation(primitive),
+        clip_planes = primitive.clip_planes
     )
 
     for i in zorder
