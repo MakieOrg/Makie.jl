@@ -2,14 +2,67 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene::Scene, transform_func::T, space, point, model::Mat4, yflip::Bool = true) where T
+
+using Makie: apply_transform, transform_func, unclipped_indices, to_model_space
+
+# No, we may need to filter over variables too!
+# function apply_transform_and_clip(
+#         transform_func, model::Mat4, clip_planes::Vector{<: Makie.Plane3}, 
+#         space::Symbol, data
+#     )
+
+#     transformed = Makie.apply_transform(tf, data, space)
+#     if space == :data && !isempty(clip_planes)
+#         imodel = inv(model)
+#         planes = Makie.apply_transform.((imodel,), clip_planes)
+#         filter!(p -> Makie.is_visible(p, planes), transformed)
+#     end
+#     return transformed
+# end
+
+
+function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
     point = Makie.apply_transform(transform_func, point, space)
     _project_position(scene, space, point, model, yflip)
 end
 
 # much faster than dot-ing `project_position` because it skips all the repeated mat * mat
+function project_position(
+        scene::Scene, space::Symbol, ps::Vector{<: VecTypes{N, T1}}, 
+        indices::Vector{<:Integer}, model::Mat4, yflip::Bool = true
+    ) where {N, T1}
+
+    transform = let
+        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        res = scene.camera.resolution[]
+        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+        px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
+        M = Makie.transformationmatrix(px_offset, px_scale) * M
+        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
+    end
+
+    output = Vector{Point2f}(undef, length(indices))
+
+    @inbounds for (i_out, i_in) in enumerate(indices)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i_in], 0), 1)
+        px_pos = transform * p4d
+        output[i_out] = px_pos[Vec(1, 2)] / px_pos[3]
+    end
+
+    return output
+end
+
 function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
+    return project_position(scene, space, ps, eachindex(ps), model, yflip)
+end
+
+function project_position(
+        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes{N, T1}}, 
+        indices::Base.OneTo, model::Mat4, yflip::Bool = true
+    ) where {N, T1}
+
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
         M = Makie.space_to_clip(scene.camera, space) * model * f32convert
@@ -22,7 +75,7 @@ function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N,
 
     output = similar(ps, Point2f)
 
-    @inbounds for i in eachindex(ps)
+    @inbounds for i in indices
         p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i], 0), 1)
         px_pos = transform * p4d
         output[i] = px_pos[Vec(1, 2)] / px_pos[3]

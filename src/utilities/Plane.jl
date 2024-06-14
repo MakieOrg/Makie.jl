@@ -35,10 +35,17 @@ function planes(rect::Rect3f)
 end
 
 function is_clipped(plane::Plane3, p::VecTypes)
-    return dot(plane.normal, to_ndim(Point3f, p, 0)) - plane.distance < 0.0
+    return dot(plane.normal, to_ndim(Point3f, p, 0)) < plane.distance
 end
 function is_clipped(planes::Vector{<: Plane3}, p::VecTypes)
     return any(plane -> is_clipped(plane, p), planes)
+end
+function is_visible(plane::Plane3, p::VecTypes)
+    return dot(plane.normal, to_ndim(Point3f, p, 0)) >= plane.distance
+end
+function is_visible(planes::Vector{<: Plane3}, p::VecTypes)
+    # TODO: this might be worth optimizing for CairoMakie
+    return all(plane -> is_visible(plane, p), planes)
 end
 
 function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where T
@@ -67,4 +74,30 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
     dim_valid = widths .> -100.0 * eps(widths[1])
 
     return Rect3{T}(ifelse.(dim_valid, mini, NaN), ifelse.(dim_valid, widths, NaN))
+end
+
+function apply_transform(transform::Mat4, plane::Plane3{T}) where T
+    origin = Point3{T}(transform * to_ndim(Point4{T}, plane.distance * plane.normal, 1))
+    target = Point3{T}(transform * to_ndim(Point4{T}, (plane.distance + 1) * plane.normal, 1))
+    normal = normalize(target - origin)
+    return Plane3{T}(normal, dot(origin, normal))
+end
+
+function to_model_space(model::Mat4, planes::Vector{<: Plane3})
+    imodel = inv(model)
+    return apply_transform.((imodel,), planes)
+end
+
+function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractArray, space::Symbol)
+    if space == :data && !isempty(clip_planes)
+        indices = sizehint!(UInt32[], length(positions))
+        for i in eachindex(positions)
+            if is_visible(clip_planes, to_ndim(Point3f, positions[i], 0))
+                push!(indices, i)
+            end
+        end
+        return sizehint!(indices, length(indices))
+    else
+        return eachindex(positions)
+    end
 end

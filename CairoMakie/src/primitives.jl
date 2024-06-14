@@ -57,7 +57,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
                     if i > 1
                         prev = clip_points[i-1]
                         v = p - prev
-                        #
                         p2 = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
                         push!(screen_points, clip2screen(res, p2))
                         push!(indices, i)
@@ -394,40 +393,44 @@ end
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
-    @get_attribute(primitive, (markersize, strokecolor, strokewidth, marker, marker_offset, rotation, transform_marker))
+    @get_attribute(primitive, (
+        markersize, strokecolor, strokewidth, marker, marker_offset, rotation, 
+        transform_marker, model, markerspace, space, clip_planes)
+    )
+
     marker = cairo_scatter_marker(primitive.marker[]) # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
-    model = primitive.model[]
     positions = primitive[1][]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4d(I)
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
-
     colors = to_color(primitive.calculated_colors[])
-
-    markerspace = primitive.markerspace[]
-    space = primitive.space[]
     transfunc = Makie.transform_func(primitive)
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
                                marker_offset, rotation, model, positions, size_model, font, markerspace,
-                               space)
+                               space, clip_planes)
 end
 
-function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotation, model, positions, size_model, font, markerspace, space)
-    # TODO Optimization:
-    # avoid calling project functions per element as they recalculate the
-    # combined projection matrix for each element like this
-    broadcast_foreach(positions, colors, markersize, strokecolor,
-            strokewidth, marker, marker_offset, remove_billboard(rotation)) do point, col,
+function draw_atomic_scatter(
+        scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, 
+        marker, marker_offset, rotation, model, positions, size_model, font, 
+        markerspace, space, clip_planes
+    )
+
+    transformed = apply_transform(transfunc, positions, space)
+    indices = unclipped_indices(to_model_space(model, clip_planes), transformed, space)
+    projected_positions = project_position(scene, space, transformed, indices, model)
+
+    Makie.broadcast_foreach_index(projected_positions, indices, colors, markersize, strokecolor,
+            strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
+        isnan(pos) && return
+        
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
-
-        pos = project_position(scene, transfunc, space, point, model)
-        isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
 
@@ -444,6 +447,7 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         end
         Cairo.restore(ctx)
     end
+
     return
 end
 
