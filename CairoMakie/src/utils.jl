@@ -3,7 +3,8 @@
 ################################################################################
 
 
-using Makie: apply_transform, transform_func, unclipped_indices, to_model_space
+using Makie: apply_transform, transform_func, unclipped_indices, to_model_space,
+    broadcast_foreach_index, is_clipped
 
 # No, we may need to filter over variables too!
 # function apply_transform_and_clip(

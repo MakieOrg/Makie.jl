@@ -619,7 +619,7 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
     ctx = screen.context
-    @get_attribute(primitive, (rotation, model, space, markerspace, offset))
+    @get_attribute(primitive, (rotation, model, space, markerspace, offset, clip_planes))
     transform_marker = to_value(get(primitive, :transform_marker, true))::Bool
     position = primitive.position[]
     # use cached glyph info
@@ -627,7 +627,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model, space, markerspace, offset, primitive.transformation, transform_marker
+        model, space, markerspace, offset, primitive.transformation, transform_marker,
+        clip_planes
     )
 
     nothing
@@ -635,14 +636,15 @@ end
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset, transformation, transform_marker
+        model::Mat, space, markerspace, offset, transformation, transform_marker,
+        clip_planes
     )
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
         markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
 
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation, transform_marker)
+        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation, transform_marker, clip_planes)
     end
 end
 
@@ -651,7 +653,7 @@ _deref(x::Ref) = x[]
 
 function draw_glyph_collection(
         scene, ctx, position, glyph_collection, rotation, _model, space,
-        markerspace, offsets, transformation, transform_marker)
+        markerspace, offsets, transformation, transform_marker, clip_planes)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -670,7 +672,9 @@ function draw_glyph_collection(
         # TODO: f32convert may run into issues here if markerspace is :data or
         #       :transformed (repeated application in glyphpos etc)
         transform_func = transformation.transform_func[]
-        p = Makie.apply_transform(transform_func, position, space)
+        p = apply_transform(transform_func, position, space)
+
+        is_clipped(clip_planes, p) && return
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
