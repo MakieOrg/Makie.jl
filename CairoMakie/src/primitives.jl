@@ -850,7 +850,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     w, h = xymax .- xy
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
-        (interpolate || xy_aligned)
+        (interpolate || xy_aligned) && isempty(primitive.clip_planes[])
     use_fast_path = can_use_fast_path && !disable_fast_path
 
     if use_fast_path
@@ -876,7 +876,18 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))
-        xys = project_position(scene, Makie.transform_func(primitive), space, [Point2(x, y) for x in xs, y in ys], model)
+        xys = let
+            ps = [Point2(x, y) for x in xs, y in ys]
+            transformed = apply_transform(transform_func(primitive), ps, space)
+            T = eltype(transformed)
+            planes = to_model_space(model, primitive.clip_planes[])
+            for i in eachindex(transformed)
+                if is_clipped(planes, transformed[i])
+                    transformed[i] = T(NaN)
+                end
+            end
+            project_position(scene, space, transformed, model)
+        end
         colors = to_color(primitive.calculated_colors[])
 
         # Note: xs and ys should have size ni+1, nj+1
@@ -894,6 +905,9 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
         p2 = xys[i+1, j]
         p3 = xys[i+1, j+1]
         p4 = xys[i, j+1]
+        if isnan(p1) || isnan(p2) || isnan(p3) || isnan(p4)
+            continue
+        end
 
         # Rectangles and polygons that are directly adjacent usually show
         # white lines between them due to anti aliasing. To avoid this we
