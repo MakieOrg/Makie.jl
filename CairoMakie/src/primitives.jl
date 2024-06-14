@@ -886,7 +886,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
                     transformed[i] = T(NaN)
                 end
             end
-            project_position(scene, space, transformed, model)
+            _project_position(scene, space, transformed, model, true)
         end
         colors = to_color(primitive.calculated_colors[])
 
