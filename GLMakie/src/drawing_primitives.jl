@@ -503,8 +503,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             data[:color] = pop!(data, :intensity)
         end
 
-        data[:num_clip_planes] = Observable(8)
-
         return draw_lines(screen, positions, data)
     end
 end
@@ -516,6 +514,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
             Vec2f(ppu * origin(viewport))
         end
+
+        # Handled manually without using OpenGL clipping
+        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+        data[:num_clip_planes] = Observable(0)
+
 
         positions = handle_view(plot[1], data)
         # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)

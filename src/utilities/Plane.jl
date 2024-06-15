@@ -101,3 +101,22 @@ function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractAr
         return eachindex(positions)
     end
 end
+
+function perpendicular_vector(v::Vec3)
+    # https://math.stackexchange.com/a/4112622
+    return Vec3(
+        copysign(v[3], v[1]),
+        copysign(v[3], v[2]),
+        -copysign(abs(v[1]) + abs(v[2]), v[3]),
+    )
+end
+
+function to_mesh(plane::Plane3{T}; origin = plane.distance * plane.normal, size = 1) where T
+    scale = size isa VecTypes ? size : Vec2f(size)
+    v1 = scale[1] * normalize(perpendicular_vector(plane.normal))
+    v2 = scale[2] * normalize(cross(v1, plane.normal))
+    ps = Point3f[origin - v1 - v2, origin - v1 + v2, origin + v1 - v2, origin + v1 + v2]
+    ns = [plane.normal for _ in 1:4]
+    fs = GLTriangleFace[(1,2,3), (2, 3, 4)]
+    return GeometryBasics.Mesh(GeometryBasics.meta(ps; normals=ns), fs)
+end
