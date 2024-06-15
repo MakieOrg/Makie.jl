@@ -13,7 +13,7 @@ hero:
   actions:
     - theme: brand
       text: Getting started
-      link: /tutorials/basic-tutorial
+      link: /tutorials/getting-started
     - theme: alt
       text: View on Github
       link: https://github.com/MakieOrg/Makie.jl
