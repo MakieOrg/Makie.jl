@@ -144,7 +144,7 @@ pages = [
         ]
     ],
     "Tutorials" => [
-        "tutorials/basic-tutorial.md",
+        "tutorials/getting-started.md",
         "tutorials/aspect-tutorial.md",
         "tutorials/layout-tutorial.md",
         "tutorials/scenes.md",
@@ -230,6 +230,7 @@ generate_redirects([
     "/explanations/observables.html" => "/explanations/nodes/index.html",
     "/reference/plots/overview.html" => "/reference/plots/index.html",
     "/reference/blocks/overview.html" => "/reference/blocks/index.html",
+    "/tutorials/getting-started.html" => "/tutorials/basic-tutorial.html",
 ], dry_run = false)
 
 deploy(params; target = "build")

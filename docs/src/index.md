@@ -107,7 +107,7 @@ There's no need to install `Makie.jl` separately, it is re-exported by each back
 
 ## First Steps
 
-If you are new to Makie, have a look at [Getting started with Makie](@ref).
+If you are new to Makie, have a look at [Getting started](@ref).
 
 For inspiration, visit [Beautiful Makie](https://beautiful.makie.org/) for a collection of interesting plots.
 
