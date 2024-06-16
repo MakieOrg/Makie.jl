@@ -11,7 +11,7 @@ This tutorial will show you how to get set up and create plots like this:
 You only need an internet connection and a reasonably recent Julia installation.
 If you don't have Julia installed, yet, follow the directions at [julialang.org/downloads/](https://julialang.org/downloads/).
 
-Makie is available for all  Windows, Mac and Linux.
+Makie is available for Windows, Mac and Linux.
 
 ## Installation
 
