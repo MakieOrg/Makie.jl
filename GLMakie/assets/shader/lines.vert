@@ -14,7 +14,7 @@ in float lastlen;
 {{thickness_type}}  thickness;
 {{color_type}}      color;
 
-uniform mat4 projectionview, model;
+uniform mat4 inverse_projectionview, model;
 uniform uint objectid;
 uniform int total_length;
 uniform float px_per_unit;
@@ -34,22 +34,6 @@ int get_valid_vertex(Nothing se){return 1;}
 
 uniform float depth_shift;
 
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
-out float g_clip_distance[8];
-
-void process_clip_planes(vec3 world_pos)
-{
-    // distance = dot(world_pos - plane.point, plane.normal)
-    // precalculated: dot(plane.point, plane.normal) -> plane.w
-    for (int i = 0; i < num_clip_planes; i++)
-        g_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
-
-    // TODO: can be skipped?
-    for (int i = num_clip_planes; i < 8; i++)
-        g_clip_distance[i] = 1.0;
-}
-
 void main()
 {
     g_lastlen = lastlen;
@@ -59,12 +43,10 @@ void main()
     g_thickness = px_per_unit * thickness;
 
     g_color = color;
-    vec4 world_pos = model * to_vec4(vertex);
-    process_clip_planes(world_pos.xyz);
     #ifdef FAST_PATH
-        gl_Position = projectionview * world_pos;
+        gl_Position = model * to_vec4(vertex);
     #else
-        gl_Position = to_vec4(vertex);
+        gl_Position = inverse_projectionview * to_vec4(vertex);
     #endif
     gl_Position.z += gl_Position.w * depth_shift;
 }

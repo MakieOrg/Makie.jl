@@ -89,7 +89,6 @@ void main(void)
     // get start and end point of line segment
     // restrict to visible area (see lines.geom)
     vec3 p1, p2;
-    vec2 clip_factor = vec2(0);
     {
         vec4 _p1 = gl_in[0].gl_Position, _p2 = gl_in[1].gl_Position;
 
@@ -106,12 +105,10 @@ void main(void)
         vec4 v1 = _p2 - _p1;
 
         if (_p1.w < 0.0) {
-            clip_factor.x = (-_p1.w - _p1.z) / (v1.z + v1.w);
-            _p1 = _p1 + clip_factor.x * v1;
+            _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
         }
         if (_p2.w < 0.0) {
-            clip_factor.y = (-_p2.w - _p2.z) / (v1.z + v1.w);
-            _p2 = _p2 + clip_factor.y * v1;
+            _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
         }
 
         // clip -> pixel/screen projection

@@ -474,6 +474,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             Vec2f(ppu * origin(viewport))
         end
 
+        # Handled manually without using OpenGL clipping
+        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+        data[:num_clip_planes] = Observable(0)
+        data[:inverse_projectionview] = map(inv, data[:projectionview])
+
         space = plot.space
         if isnothing(to_value(linestyle))
             data[:pattern] = nothing

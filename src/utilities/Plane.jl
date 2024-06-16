@@ -6,7 +6,9 @@ struct Plane{N, T}
     distance::T
 end
 
-Plane(point::Point{N}, normal::Vec{N}) where N = Plane(normal, dot(point, normal))
+function Plane(point::Point{N}, normal::Vec{N}) where N
+    Plane(normal, dot(point, normal))
+end
 
 const Plane2{T} = Plane{2, T}
 const Plane3{T} = Plane{3, T}

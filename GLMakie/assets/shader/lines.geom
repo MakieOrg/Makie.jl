@@ -49,6 +49,10 @@ uniform int linecap;
 uniform int joinstyle;
 uniform float miter_limit;
 
+uniform mat4 view, projection, projectionview;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
+
 // Constants
 const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 4.0 * AA_RADIUS;
@@ -89,6 +93,35 @@ void emit_vertex(LineVertex vertex) {
 vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
 vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
+
+bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
+{
+    float d1, d2;
+    for(int i = 0; i < _num_clip_planes; i++)
+    {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            isvalid[1] = false;
+            isvalid[2] = false;
+            return true;
+        // one outside - shorten segment
+        } else if (d1 < 0.0) {
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+            isvalid[0] = false;
+        } else if (d2 < 0.0) {
+            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+            isvalid[3] = false;
+        }
+    }
+
+    return false;
+} 
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,11 +264,21 @@ void main(void)
     // moving them to the edge of the visible area.
     vec3 p0, p1, p2, p3;
     {
-        // All in clip space
+        // Not in clip space yet
         vec4 clip_p0 = gl_in[0].gl_Position; // start of previous segment
         vec4 clip_p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
         vec4 clip_p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
         vec4 clip_p3 = gl_in[3].gl_Position; // end of next segment
+
+        // Shorten segments to fit clip planes
+        // returns true if segments are fully clipped
+        if (process_clip_planes(clip_p1, clip_p2, isvalid))
+            return;
+
+        clip_p0 = projectionview * clip_p0;
+        clip_p1 = projectionview * clip_p1;
+        clip_p2 = projectionview * clip_p2;
+        clip_p3 = projectionview * clip_p3;
 
         vec4 v1 = clip_p2 - clip_p1;
 
