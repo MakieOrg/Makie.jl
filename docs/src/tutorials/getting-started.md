@@ -8,39 +8,37 @@ This tutorial will show you how to get set up and create plots like this:
 
 ## Requirements
 
-You only need to have a reasonably recent Julia installed on your system.
-If you don't have that, yet, follow the directions at [julialang.org/downloads/](https://julialang.org/downloads/). Makie is available for Windows, Mac and Linux.
+You only need an internet connection and a reasonably recent Julia installation.
+If you don't have Julia installed, yet, follow the directions at [julialang.org/downloads/](https://julialang.org/downloads/).
+
+Makie is available for all  Windows, Mac and Linux.
 
 ## Installation
 
 We will be using the [CairoMakie](@ref) package in this tutorial.
 
-Makie offers multiple [backend packages](@ref "What is a backend") that each have different strengths.
-CairoMakie is good at static 2D graphics and it should run on most computers as it uses only the CPU and does not need a GPU.
+!!! info
+    Makie offers multiple [backend packages](@ref "What is a backend") that each have different strengths.
+    CairoMakie is good at static 2D graphics and it should run on most computers as it uses only the CPU and does not need a GPU.
 
-First, create an empty folder somewhere on your system and call it `makie_tutorial`.
+First, create a new folder somewhere on your system and call it `makie_tutorial`.
 We are going to use that folder to install CairoMakie and to save plots.
 
-Installing CairoMakie works the same as with any other typical Julia package.
-First, start a Julia REPL somewhere, for example in your terminal or IDE.
+Now, start Julia, for example by executing the command `julia` in a terminal.
 
-Next, switch the active working directory to the `makie_tutorial` folder.
-Execute this command in the REPL, but be sure to replace the path with the location where you created the `makie_tutorial` folder, for example:
+In the Julia REPL (the **R**ead-**E**val-**P**rint-**L**oop which is what Julia's command line interface is called), change the active working directory to the `makie_tutorial` folder by executing this command, but be sure to replace the path with the location where you created the `makie_tutorial` folder:
 
 ```julia
 cd("path/to/the/folder/makie_tutorial")
 ```
 
-We want to start from a clean slate, so we install CairoMakie into a new environment which we are going to create in our new, empty folder.
-This way, we can be sure that there can be no problems because of other, already installed Julia packages.
-
-First, make the `Pkg` package manager library available
+Now, make the `Pkg` package manager library available
 
 ```julia
 using Pkg
 ```
 
-Next, activate the current directory, denoted by `"."` (this means our `makie_tutorial` folder) as the active Pkg environment:
+Next, activate the current directory, also called `"."` (this means our `makie_tutorial` folder), as a Pkg environment:
 
 ```julia
 Pkg.activate(".")
@@ -52,9 +50,10 @@ Now, we can install CairoMakie and all its dependencies by running:
 Pkg.add("CairoMakie")
 ```
 
-This command will probably take a while to finish.
-After it has completed, you should find a `Project.toml` and a `Manifest.toml` file in the `makie_tutorial` folder.
-Those files "are" your new environment, the actual packages you have just installed are stored somewhere else, in a central location.
+This command will probably take a while to finish. You will need an internet connection so all the necessary files can be downloaded.
+
+After this process has completed, you should find a `Project.toml` and a `Manifest.toml` file in the `makie_tutorial` folder.
+Those files describe the new environment, the downloaded packages are stored somewhere else, in a central, shared location.
 
 If everything has worked, you should be able to load CairoMakie now:
 
