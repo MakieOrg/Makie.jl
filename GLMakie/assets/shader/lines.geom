@@ -84,8 +84,6 @@ void emit_vertex(LineVertex vertex) {
     f_linestart    = vertex.linestart;
     f_linelength   = vertex.linelength;
     f_id           = g_id[vertex.index];
-    for (int i = 0; i < 8; i++)
-        gl_ClipDistance[i] = g_clip_distance[vertex.index][i];
     EmitVertex();
 }
 

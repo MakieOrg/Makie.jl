@@ -1,6 +1,5 @@
 
 # For clipping Planes
-# TODO: Consider moving this to GeometryBasics?
 struct Plane{N, T}
     normal::Vec{N, T}
     distance::T
