@@ -126,9 +126,9 @@ function to_clip_space(cam::Camera, planes::Vector{<: Plane3})
     return to_clip_space(cam.projectionview[], planes)
 end
 
-function to_clip_space(pv::Mat4, planes::Vector{<: Plane3})
+function to_clip_space(pv::Mat4, planes::Vector{T}) where {T <: Plane3}
     ipv = inv(pv)
-    return [to_clip_space(pv, ipv, plane) for plane in planes]
+    return T[to_clip_space(pv, ipv, plane) for plane in planes]
 end
 
 to_clip_space(cam::Camera, plane::Plane3) = to_clip_space(cam.projectionview[], plane)

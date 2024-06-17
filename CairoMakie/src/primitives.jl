@@ -26,82 +26,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         end
     end
 
-    space = to_value(get(primitive, :space, :data))
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
-    projected_positions, indices = let
-        # Standard transform from input space to clip space
-        points = Makie.apply_transform(Makie.transform_func(primitive), positions, space)
-        res = scene.camera.resolution[]
-        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
-        clip_points = map(p -> transform * to_ndim(Vec4d, to_ndim(Vec3d, p, 0), 1), points)
-
-        # yflip and clip -> screen/pixel coords
-        function clip2screen(res, p)
-            s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] / p[4] .+ 0.5f0
-            return res .* s
-        end
-
-        screen_points = sizehint!(Vector{Vec2f}(undef, 0), length(clip_points))
-        indices = sizehint!(Vector{Int}(undef, 0), length(clip_points))
-
-        # Adjust points such that they are always in front of the camera.
-        # TODO: Consider skipping this if there is no perspetive projection.
-        # (i.e. use project_position.(..., positions) and indices = eachindex(positions))
-        for (i, p) in enumerate(clip_points)
-            if p[4] < 0.0               # point behind camera and ...
-                if primitive isa Lines  # ... part of a continuous line
-                    # create an extra point for the incoming line segment at the
-                    # near clipping plane (i.e. on line prev --> this)
-                    if i > 1
-                        prev = clip_points[i-1]
-                        v = p - prev
-                        p2 = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
-                        push!(screen_points, clip2screen(res, p2))
-                        push!(indices, i)
-                    end
-
-                    # disconnect the line
-                    push!(screen_points, Vec2f(NaN))
-
-                    # and create another point for the outgoing line segment at
-                    # the near clipping plane (on this ---> next)
-                    if i < length(clip_points)
-                        next = clip_points[i+1]
-                        v = next - p
-                        p2 = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
-                        push!(screen_points, clip2screen(res, p2))
-                        push!(indices, i)
-                    end
-
-                else                    # ... part of a discontinuous set of segments
-                    if iseven(i)
-                        # if this is the last point of the segment we move towards
-                        # the previous (start) point
-                        prev = clip_points[i-1]
-                        v = p - prev
-                        p = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
-                        push!(screen_points, clip2screen(res, p))
-                    else
-                        # otherwise we move to the next (end) point
-                        next = clip_points[i+1]
-                        v = next - p
-                        p = p + (-p[4] - p[3]) / (v[3] + v[4]) * v
-                        push!(screen_points, clip2screen(res, p))
-                    end
-                end
-            else
-                # otherwise we can just draw the point
-                push!(screen_points, clip2screen(res, p))
-            end
-
-            # we always have at least one point
-            push!(indices, i)
-        end
-
-        screen_points, indices
-    end
+    # TODO: If we have neither perspective projection not clip_planes we can 
+    #       use the normal projection_position() here
+    projected_positions, indices = project_line_points(scene, primitive, positions)
 
     color = to_color(primitive.calculated_colors[])
 

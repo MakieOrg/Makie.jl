@@ -147,6 +147,148 @@ end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
+function project_line_points(scene, plot::T, positions) where {T <: Union{Lines, LineSegments}}
+    @get_attribute(plot, (space, model))
+
+    # Standard transform from input space to clip space
+    points = Makie.apply_transform(transform_func(plot), positions, space)
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
+    clip_points = map(p -> transform * to_ndim(Vec4d, to_ndim(Vec3d, p, 0), 1), points)
+    
+    # yflip and clip -> screen/pixel coords
+    res = scene.camera.resolution[]
+    function clip2screen(p)
+        s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] .+ 0.5f0
+        return res .* s
+    end
+
+    # clip planes in clip space
+    clip_planes = Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])
+    
+    # outputs
+    screen_points = sizehint!(Vector{Vec2f}(undef, 0), length(clip_points))
+    indices = Vector{Int}(undef, 0)
+
+    # Handling one segment per iteration
+    if plot isa Lines
+
+        sizehint!(indices, length(clip_points))
+
+        last_is_nan = true
+        for i in 1:length(clip_points)-1
+            hidden = false
+            disconnect1 = false
+            disconnect2 = false
+
+            p4d1 = clip_points[i]
+            p4d2 = clip_points[i+1]
+            v = p4d2 - p4d1
+
+            # Handle near/far clipping
+            if p4d1[4] <= 0.0
+                disconnect1 = true
+                p4d1 = p4d1 + (-p4d1[4] - p4d1[3]) / (v[3] + v[4]) * v
+            end
+            if p4d2[4] <= 0.0
+                disconnect2 = true
+                p4d2 = p4d2 + (-p4d2[4] - p4d2[3]) / (v[3] + v[4]) * v
+            end
+
+            p1 = Vec3f(p4d1) / p4d1[4]
+            p2 = Vec3f(p4d2) / p4d2[4]
+
+            for plane in clip_planes
+                d1 = Makie.distance(plane, p1)
+                d2 = Makie.distance(plane, p2)
+
+                if (d1 <= 0.0) && (d2 <= 0.0)
+                    # start and end clipped by one plane -> not visible
+                    hidden = true
+                    break;
+                elseif (d1 < 0.0) && (d2 > 0.0)
+                    # p1 clipped, move it towards p2 until unclipped
+                    disconnect1 = true
+                    p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
+                elseif (d1 > 0.0) && (d2 < 0.0)
+                    # p2 clipped, move it towards p1 until unclipped
+                    disconnect2 = true
+                    p2 = p2 - d2 * (p1 - p2) / (d1 - d2)
+                end
+            end
+
+            if hidden && !last_is_nan
+                # if segment hidden make sure the line separates
+                last_is_nan = true
+                push!(screen_points, Vec2f(NaN))
+                push!(indices, i)
+            elseif !hidden
+                # if not hidden, always push the first element to 1:end-1 line points
+                
+                # if the start of the segment is disconnected (moved), make sure the 
+                # line separates before it
+                if disconnect1 && !last_is_nan
+                    push!(screen_points, Vec2f(NaN))
+                    push!(indices, i)
+                end
+                
+                last_is_nan = false
+                push!(screen_points, clip2screen(p1))
+                push!(indices, i)
+
+                # if the end of the segment is disconnected (moved), add the adjusted 
+                # point and separate it from from the next segment
+                if disconnect2
+                    last_is_nan = true
+                    push!(screen_points, clip2screen(p2), Vec2f(NaN))
+                    push!(indices, i+1)
+                end
+            end
+        end
+
+        # If last_is_nan == true, the last segment is either hidden or the moved 
+        # end point has been added. If it is false we're missing the last regular 
+        # clip_points
+        if !last_is_nan
+            push!(screen_points, clip2screen(Vec3f(clip_points[end]) / clip_points[end][4]))
+            push!(indices, length(clip_points))
+        end
+
+    else  # LineSegments
+        
+        for i in 1:2:length(clip_points)-1
+            p1 = Vec3f(clip_points[i]) / clip_points[i][4]
+            p2 = Vec3f(clip_points[i+1]) / clip_points[i+1][4]
+
+            for plane in clip_planes
+                d1 = Makie.distance(plane, p1)
+                d2 = Makie.distance(plane, p2)
+
+                if (d1 <= 0.0) && (d2 <= 0.0)
+                    # start and end clipped by one plane -> not visible
+                    # to keep index order we just set p1 and p2 to NaN and insert anyway
+                    p1 = Vec2f(NaN)
+                    p2 = Vec2f(NaN)
+                    break;
+                elseif (d1 < 0.0) && (d2 > 0.0)
+                    # p1 clipped, move it towards p2 until unclipped
+                    p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
+                elseif (d1 > 0.0) && (d2 < 0.0)
+                    # p2 clipped, move it towards p1 until unclipped
+                    p2 = p2 - d2 * (p1 - p2) / (d1 - d2)
+                end
+            end
+
+            # no need to disconnected segments, just insert adjusted points
+            push!(screen_points, clip2screen(p1), clip2screen(p2))
+        end
+
+    end
+
+    return screen_points, indices
+end
+
+
 ########################################
 #          Rotation handling           #
 ########################################
