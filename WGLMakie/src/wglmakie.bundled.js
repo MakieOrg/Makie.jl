@@ -21330,7 +21330,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             out vec2 f_truncation;              // invalid / not needed
             out float f_linestart;              // constant
             out float f_linelength;
-            out float o_clip_distance[8];
 
             flat out vec2 f_extrusion;          // invalid / not needed
             flat out float f_linewidth;
@@ -21374,15 +21373,36 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2)
+            {
+                float d1, d2;
+                for (int i = 0; i < 8; i++) {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        return;
+                    }
+                    
+                    // one outside - shorten segment
+                    else if (d1 < 0.0)
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+                    else if (d2 < 0.0)
+                        p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+                }
+
+                return;
+            }
+
 
             ////////////////////////////////////////////////////////////////////////
             // Main
             ////////////////////////////////////////////////////////////////////////
 
-            void process_clip_planes(vec3 world_pos) {
-                for (int i = 0; i < 8; i++)
-                    o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
-            }
 
             void main() {
                 bool is_end = position.x == 1.0;
@@ -21399,12 +21419,20 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec3 p1, p2;
                 {
                     vec4 _p1 = clip_space(linepoint_start), _p2 = clip_space(linepoint_end);
+
                     vec4 v1 = _p2 - _p1;
 
                     if (_p1.w < 0.0)
                         _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
                     if (_p2.w < 0.0)
                         _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+
+                    _p1 /= _p1.w;
+                    _p2 /= _p2.w;
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(_p1, _p2);
 
                     p1 = screen_space(_p1);
                     p2 = screen_space(_p2);
@@ -21447,9 +21475,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
-
-                vec4 world_pos = world_space(is_end ? linepoint_end : linepoint_start);
-                process_clip_planes(world_pos.xyz);
 
                 // linecaps
                 f_capmode = ivec2(linecap);
@@ -21494,7 +21519,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             out vec2 f_truncation;
             out float f_linestart;
             out float f_linelength;
-            out float o_clip_distance[8];
 
             flat out vec2 f_extrusion;
             flat out float f_linewidth;
@@ -21627,16 +21651,38 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
             float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
+            {
+                float d1, d2;
+                for(int i = 0; i < 8; i++)
+                {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+            
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        isvalid[1] = false;
+                        isvalid[2] = false;
+                        return;
+                    // one outside - shorten segment
+                    } else if (d1 < 0.0) {
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+                        isvalid[0] = false;
+                    } else if (d2 < 0.0) {
+                        p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+                        isvalid[3] = false;
+                    }
+                }
+            
+                return;
+            } 
 
             ////////////////////////////////////////////////////////////////////////
             // Main
             ////////////////////////////////////////////////////////////////////////
-
-            void process_clip_planes(vec3 world_pos) {
-                for (int i = 0; i < 8; i++)
-                    o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
-            }
-
 
             void main() {
                 bool is_end = position.x == 1.0;
@@ -21684,6 +21730,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         isvalid[3] = false;
                         clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
                     }
+
+                    clip_p1 /= clip_p1.w;
+                    clip_p2 /= clip_p2.w;
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(clip_p1, clip_p2, isvalid);
 
                     // transform clip -> screen space, applying xyz / w normalization (which
                     // is now save as all vertices are in front of the camera)
@@ -21870,9 +21923,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
-                
-                vec4 world_pos = world_space(is_end ? linepoint_end : linepoint_start);
-                process_clip_planes(world_pos.xyz);
 
                 vec3 offset;
                 int x = int(is_end);
@@ -21965,7 +22015,6 @@ function lines_fragment_shader(uniforms, attributes) {
     in vec2 f_truncation;
     in float f_linestart;
     in float f_linelength;
-    in float o_clip_distance[8];
 
     flat in float f_linewidth;
     flat in vec4 f_pattern_overwrite;
@@ -22089,10 +22138,6 @@ function lines_fragment_shader(uniforms, attributes) {
 
 
     void main(){
-        for (int i = 0; i < 8; i++)
-            if (o_clip_distance[i] < 0.0)
-                discard;
-
         vec4 color;
 
         // f_quad_sdf.x is the distance from p1, negative in v1 direction.
