@@ -97,8 +97,8 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
     for(int i = 0; i < _num_clip_planes; i++)
     {
         // distance from clip planes with negative clipped
-        d1 = dot(p1.xyz / p1.w, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(p2.xyz / p2.w, clip_planes[i].xyz) - clip_planes[i].w;
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
 
         // both outside - clip everything
         if (d1 < 0.0 && d2 < 0.0) {
@@ -286,6 +286,9 @@ void main(void)
             isvalid[3] = false;
             clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
         }
+
+        clip_p1 /= clip_p1.w;
+        clip_p2 /= clip_p2.w;
 
         // Shorten segments to fit clip planes
         // returns true if segments are fully clipped
