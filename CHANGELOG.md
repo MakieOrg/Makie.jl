@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.21.3] - 2024-06-17
+
 - Fix stack overflows when using `markerspace = :data` with `scatter` [#3960](https://github.com/MakieOrg/Makie.jl/issues/3960).
 - CairoMakie: Fix broken SVGs when using non-interpolated image primitives, for example Colorbars, with recent Cairo versions [#3967](https://github.com/MakieOrg/Makie.jl/pull/3967).
 - CairoMakie: Add argument `pdf_version` to restrict the PDF version when saving a figure as a PDF [#3845](https://github.com/MakieOrg/Makie.jl/pull/3845).
@@ -510,8 +512,9 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.2...HEAD
-[0.21.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.0...v0.21.2
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.3...HEAD
+[0.21.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.2...v0.21.3
+[0.21.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.1...v0.21.2
 [0.21.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.10...v0.21.0
 [0.20.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.20.9...v0.20.10
