@@ -145,3 +145,16 @@ end
     @test data_limits(p) ≈ bb1
     @test boundingbox(p) ≈ bb3
 end
+
+@testset "issue 3960" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    triangle = BezierPath([
+        MoveTo(Point(0, 0)),
+        LineTo(Point(1, 0)),
+        LineTo(Point(0, 1)),
+        ClosePath()
+    ])
+    sc = scatter!(ax, Point(0, 0), marker=triangle, markerspace=:data)
+    data_limits(sc) # doesn't stackoverflow
+end

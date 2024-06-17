@@ -718,7 +718,7 @@ premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
 premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
 premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Heatmap, Image}))
+function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::Union{Heatmap, Image})) where RT
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
@@ -794,8 +794,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         Cairo.scale(ctx, w / s.width, h / s.height)
         Cairo.set_source_surface(ctx, s, 0, 0)
         p = Cairo.get_source(ctx)
-        # this is needed to avoid blurry edges
-        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+        if RT !== SVG
+            # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
+            # setting seems to create broken SVGs
+            Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+        end
         filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
         Cairo.pattern_set_filter(p, filt)
         Cairo.fill(ctx)
