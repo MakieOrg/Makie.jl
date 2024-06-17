@@ -257,8 +257,20 @@ function project_line_points(scene, plot::T, positions) where {T <: Union{Lines,
     else  # LineSegments
         
         for i in 1:2:length(clip_points)-1
-            p1 = Vec3f(clip_points[i]) / clip_points[i][4]
-            p2 = Vec3f(clip_points[i+1]) / clip_points[i+1][4]
+            p4d1 = clip_points[i]
+            p4d2 = clip_points[i+1]
+            v = p4d2 - p4d1
+
+            # Handle near/far clipping
+            if p4d1[4] <= 0.0
+                p4d1 = p4d1 + (-p4d1[4] - p4d1[3]) / (v[3] + v[4]) * v
+            end
+            if p4d2[4] <= 0.0
+                p4d2 = p4d2 + (-p4d2[4] - p4d2[3]) / (v[3] + v[4]) * v
+            end
+
+            p1 = Vec3f(p4d1) / p4d1[4]
+            p2 = Vec3f(p4d2) / p4d2[4]
 
             for plane in clip_planes
                 d1 = Makie.distance(plane, p1)
