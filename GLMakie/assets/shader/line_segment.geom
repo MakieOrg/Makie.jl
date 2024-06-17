@@ -40,6 +40,7 @@ const float AA_RADIUS = 0.8;
 const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
 uniform mat4 projectionview;
+uniform float depth_shift;
 uniform int _num_clip_planes;
 uniform vec4 clip_planes[8];
 
@@ -100,6 +101,9 @@ void main(void)
         // remaining world -> clip projection 
         _p1 = projectionview * _p1;
         _p2 = projectionview * _p2;
+
+        _p1.z += _p1.w * depth_shift;
+        _p2.z += _p2.w * depth_shift;
         
         // Handle near/far clip planes
         vec4 v1 = _p2 - _p1;
