@@ -477,7 +477,20 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         # Handled manually without using OpenGL clipping
         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
         data[:num_clip_planes] = Observable(0)
-        data[:inverse_projectionview] = map(inv, data[:projectionview])
+        pop!(data, :clip_planes)
+        data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes) do pv, planes
+            clip_planes = Makie.to_clip_space(pv, planes)
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                output[i] = Makie.gl_plane_format(clip_planes[i])
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+            return output
+        end
+        
 
         space = plot.space
         if isnothing(to_value(linestyle))

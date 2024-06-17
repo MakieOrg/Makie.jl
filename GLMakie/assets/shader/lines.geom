@@ -100,8 +100,8 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
     for(int i = 0; i < _num_clip_planes; i++)
     {
         // distance from clip planes with negative clipped
-        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d1 = dot(p1.xyz / p1.w, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz / p2.w, clip_planes[i].xyz) - clip_planes[i].w;
 
         // both outside - clip everything
         if (d1 < 0.0 && d2 < 0.0) {
@@ -264,21 +264,11 @@ void main(void)
     // moving them to the edge of the visible area.
     vec3 p0, p1, p2, p3;
     {
-        // Not in clip space yet
+        // Not in clip
         vec4 clip_p0 = gl_in[0].gl_Position; // start of previous segment
         vec4 clip_p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
         vec4 clip_p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
         vec4 clip_p3 = gl_in[3].gl_Position; // end of next segment
-
-        // Shorten segments to fit clip planes
-        // returns true if segments are fully clipped
-        if (process_clip_planes(clip_p1, clip_p2, isvalid))
-            return;
-
-        clip_p0 = projectionview * clip_p0;
-        clip_p1 = projectionview * clip_p1;
-        clip_p2 = projectionview * clip_p2;
-        clip_p3 = projectionview * clip_p3;
 
         vec4 v1 = clip_p2 - clip_p1;
 
@@ -299,6 +289,11 @@ void main(void)
             isvalid[3] = false;
             clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
         }
+
+        // Shorten segments to fit clip planes
+        // returns true if segments are fully clipped
+        if (process_clip_planes(clip_p1, clip_p2, isvalid))
+            return;
 
         // transform clip -> screen space, applying xyz / w normalization (which
         // is now save as all vertices are in front of the camera)

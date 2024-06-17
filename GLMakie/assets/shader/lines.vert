@@ -14,7 +14,7 @@ in float lastlen;
 {{thickness_type}}  thickness;
 {{color_type}}      color;
 
-uniform mat4 inverse_projectionview, model;
+uniform mat4 projectionview, model;
 uniform uint objectid;
 uniform int total_length;
 uniform float px_per_unit;
@@ -44,9 +44,9 @@ void main()
 
     g_color = color;
     #ifdef FAST_PATH
-        gl_Position = model * to_vec4(vertex);
+        gl_Position = projectionview * model * to_vec4(vertex);
     #else
-        gl_Position = inverse_projectionview * to_vec4(vertex);
+        gl_Position = to_vec4(vertex);
     #endif
     gl_Position.z += gl_Position.w * depth_shift;
 }
