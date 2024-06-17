@@ -653,6 +653,34 @@ end
     f
 end
 
+@reference_test "Line Clipping" begin
+    plane = Plane3f(normalize(Vec3f(1)), 0)
+
+    f,a,p = mesh(
+        Makie.to_mesh(plane, size = 1.5), color = (:black, 0.5),
+        transparency = true, visible = true
+    )
+
+    cam3d!(a.scene, center = false)
+
+    attr = (color = :red, linewidth = 5, fxaa = true)
+    linesegments!(a, Rect3f(Point3f(-1), Vec3f(2)); attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in range(0, 2pi, length=101)]; attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in 1:4:80]; attr...)
+    lines!(a, [Point3f(-1), Point3f(1)]; attr...)
+
+    attr = (color = RGBf(0,1,0), overdraw = true, clip_planes = [plane], linewidth = 5, fxaa = true)
+    linesegments!(a, Rect3f(Point3f(-1), Vec3f(2)), ; attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in range(0, 2pi, length=101)]; attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in 1:4:80]; attr...)
+    lines!(a, [Point3f(-1), Point3f(1)]; attr...)
+
+    lines!(a, [Point3f(1, -1, 0), Point3f(-1, 1, 0)], color = :black, overdraw = true)
+
+    update_cam!(a.scene, Vec3f(1.5, 4, 2), Vec3f(0))
+    f
+end
+
 # TODO: cut out full voxels, not a cross through
 @reference_test "Clip planes - voxel" begin
     f = Figure()
