@@ -3,9 +3,8 @@
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
-    @get_attribute(primitive, (color, linewidth, linestyle))
+    @get_attribute(primitive, (color, linewidth, linestyle, space, model))
     ctx = screen.context
-    model = primitive[:model][]
     positions = primitive[1][]
 
     isempty(positions) && return
@@ -218,8 +217,8 @@ end
 function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
     colors = colors[indices]
     linewidths = linewidths[indices]
-    @assert length(positions) == length(colors)
-    @assert length(linewidths) == length(colors)
+    @assert length(positions) == length(colors) "$(length(positions)) != $(length(colors))"
+    @assert length(linewidths) == length(colors) "$(length(linewidths)) != $(length(colors))"
 
     prev_color = colors[begin]
     prev_linewidth = linewidths[begin]

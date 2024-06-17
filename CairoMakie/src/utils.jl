@@ -241,7 +241,7 @@ function project_line_points(scene, plot::T, positions) where {T <: Union{Lines,
                 if disconnect2
                     last_is_nan = true
                     push!(screen_points, clip2screen(p2), Vec2f(NaN))
-                    push!(indices, i+1)
+                    push!(indices, i+1, i+1)
                 end
             end
         end
