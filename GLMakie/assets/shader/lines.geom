@@ -16,7 +16,6 @@ in float g_lastlen[];
 in uvec2 g_id[];
 in int g_valid_vertex[];
 in float g_thickness[];
-in float g_clip_distance[][8];
 
 out highp vec3 f_quad_sdf;
 out vec2 f_truncation;
