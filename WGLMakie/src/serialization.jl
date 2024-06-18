@@ -371,6 +371,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
 
     # Handle clip planes
     if !(plot isa Volume)
+
         clip_planes = map(plot, plot.clip_planes) do planes
             if length(planes) > 8
                 @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
@@ -391,6 +392,46 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             updater[] = [:clip_planes, serialize_three(value)]
             return
         end
+
+    else
+
+        # TODO: better solution (ShaderAbstractions doesn't like Vector uniforms)
+        model2 = lift(plot, plot.model, plot[1], plot[2], plot[3]) do m, xyz...
+            mi = minimum.(xyz)
+            maxi = maximum.(xyz)
+            w = maxi .- mi
+            m2 = Mat4f(w[1], 0, 0, 0, 0, w[2], 0, 0, 0, 0, w[3], 0, mi[1], mi[2], mi[3], 1)
+            return convert(Mat4f, m) * m2
+        end
+
+        clip_planes = map(plot, model2, plot.clip_planes) do model, planes
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            modelinv = inv(model)
+            @assert modelinv[4, 4] == 1
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(model2[]) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+
+            return output
+        end
+
+        uniforms[:clip_planes] = serialize_three(clip_planes[])
+        on(plot, clip_planes) do value
+            updater[] = [:clip_planes, serialize_three(value)]
+            return
+        end
+        
     end
 
     return mesh

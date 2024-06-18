@@ -490,7 +490,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             end
             return output
         end
-        
 
         space = plot.space
         if isnothing(to_value(linestyle))
@@ -830,10 +829,6 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     return cached_robj!(screen, scene, plot) do gl_attributes
-        # TODO: clip_planes are more complicated with volume plots, since they
-        # need to affect the ray tracing algorithm. Skipping for now
-        gl_attributes[:num_clip_planes] = Observable(0)
-
         model = plot.model
         x, y, z = plot[1], plot[2], plot[3]
         gl_attributes[:model] = lift(plot, model, x, y, z) do m, xyz...
@@ -848,6 +843,33 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             )
             return convert(Mat4f, m) * m2
         end
+        gl_attributes[:modelinv] = const_lift(inv, gl_attributes[:model])
+
+        # Handled manually without using OpenGL clipping
+        gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
+        gl_attributes[:num_clip_planes] = Observable(0)
+        pop!(gl_attributes, :clip_planes)
+        gl_attributes[:clip_planes] = map(plot, gl_attributes[:modelinv], plot.clip_planes) do modelinv, planes
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            @assert modelinv[4, 4] == 1
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(gl_attributes[:model][]) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+
+            return output
+        end
+
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         Tex(x) = Texture(x; minfilter=interp)

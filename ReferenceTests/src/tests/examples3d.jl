@@ -692,11 +692,28 @@ end
 end
 
 # TODO: not implemented yet
-# @reference_test "Clip planes - volume" begin
-#     f = Figure()
-#     a = LScene(f[1, 1])
-#     a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1), 0.0)]
-#     r = -10:10
-#     volume!(a, -10..10, -10..10, -10..10, [cos(sin(x+y)+z) for x in r, y in r, z in r])
-#     f
-# end
+@reference_test "Clip planes - volume" begin
+    f = Figure(size = (600, 400))
+    r = -10:10
+    data = [1 - (1 + cos(x^2) + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
+    clip_planes = [Plane3f(Vec3f(-1), 0.0)]
+    
+    attr = (clip_planes = clip_planes, axis = (show_axis = false,))
+
+    volume(f[1, 1], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :iso, isovalue = 1.0, isorange = 0.1)
+    volume(f[2, 1], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :absorption)
+
+    volume(f[1, 2], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :mip)
+    volume(f[2, 2], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :absorptionrgba)
+
+    volume(f[1, 3], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :additive)
+    volume(f[2, 3], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :indexedabsorption)
+    
+    f
+end
