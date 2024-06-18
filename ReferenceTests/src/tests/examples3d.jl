@@ -424,12 +424,13 @@ end
 
 @reference_test "Normals of a Cat" begin
     x = loadasset("cat.obj")
-    mesh(x, color=:black)
+    f, a, p = mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
         p => p .+ Point(normalize(n) .* 0.05f0)
     end
     linesegments!(pos, color=:blue)
-    current_figure()
+    Makie.update_state_before_display!(f)
+    f
 end
 
 @reference_test "Sphere Mesh" begin
