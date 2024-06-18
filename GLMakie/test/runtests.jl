@@ -46,6 +46,8 @@ end
         @test tick.delta_time > 1e-9
     end
 
+    GLMakie.closeall()
+
     f, a, p = scatter(rand(10));
     @test events(f).tick[] == Makie.Tick()
 
@@ -67,6 +69,12 @@ end
         on(tick -> push!(tick_record, tick), events(f).tick)
         record(_ -> nothing, f, filename, 1:10, framerate = 30)
         dt = 1.0 / 30.0
+
+        if first(tick_record).state != Makie.OneTimeRenderTick
+            popfirst!(tick_record)
+        end
+        @assert length(tick_record) == 10 "tick record too long: $(length(tick_record)) > 10"
+
         for (i, tick) in enumerate(tick_record)
             @test tick.state == Makie.OneTimeRenderTick
             @test tick.count == i
@@ -78,6 +86,7 @@ end
     end
 
     GLMakie.closeall()
+    
     f, a, p = scatter(rand(10));
     tick_record = Makie.Tick[]
     on(t -> push!(tick_record, t), events(f).tick)
