@@ -21355,9 +21355,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Geometry/Position Utils
             ////////////////////////////////////////////////////////////////////////
 
-            vec4 world_space(vec3 point) { return model * vec4(point, 1); }
-            vec4 world_space(vec2 point) { return world_space(vec3(point, 0)); }
-
             vec4 clip_space(vec3 point) {
                 return projectionview * model * vec4(point, 1);
             }
@@ -21378,8 +21375,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float d1, d2;
                 for (int i = 0; i < 8; i++) {
                     // distance from clip planes with negative clipped
-                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
-                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
 
                     // both outside - clip everything
                     if (d1 < 0.0 && d2 < 0.0) {
@@ -21426,9 +21423,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
                     if (_p2.w < 0.0)
                         _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
-
-                    _p1 /= _p1.w;
-                    _p2 /= _p2.w;
 
                     // Shorten segments to fit clip planes
                     // returns true if segments are fully clipped
@@ -21632,9 +21626,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             // Geometry/Position Utils
             ////////////////////////////////////////////////////////////////////////
 
-            vec4 world_space(vec3 point) { return model * vec4(point, 1); }
-            vec4 world_space(vec2 point) { return world_space(vec3(point, 0)); }
-
             vec4 clip_space(vec3 point) {
                 return projectionview * model * vec4(point, 1);
             }
@@ -21657,8 +21648,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 for(int i = 0; i < 8; i++)
                 {
                     // distance from clip planes with negative clipped
-                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
-                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
             
                     // both outside - clip everything
                     if (d1 < 0.0 && d2 < 0.0) {
@@ -21730,9 +21721,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         isvalid[3] = false;
                         clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
                     }
-
-                    clip_p1 /= clip_p1.w;
-                    clip_p2 /= clip_p2.w;
 
                     // Shorten segments to fit clip planes
                     // returns true if segments are fully clipped

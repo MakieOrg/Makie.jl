@@ -159,7 +159,7 @@ function project_line_points(scene, plot::T, positions) where {T <: Union{Lines,
     # yflip and clip -> screen/pixel coords
     res = scene.camera.resolution[]
     function clip2screen(p)
-        s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] .+ 0.5f0
+        s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] / p[4].+ 0.5f0
         return res .* s
     end
 
@@ -181,26 +181,23 @@ function project_line_points(scene, plot::T, positions) where {T <: Union{Lines,
             disconnect1 = false
             disconnect2 = false
 
-            p4d1 = clip_points[i]
-            p4d2 = clip_points[i+1]
-            v = p4d2 - p4d1
+            p1 = clip_points[i]
+            p2 = clip_points[i+1]
+            v = p2 - p1
 
             # Handle near/far clipping
-            if p4d1[4] <= 0.0
+            if p1[4] <= 0.0
                 disconnect1 = true
-                p4d1 = p4d1 + (-p4d1[4] - p4d1[3]) / (v[3] + v[4]) * v
+                p1 = p1 + (-p1[4] - p1[3]) / (v[3] + v[4]) * v
             end
-            if p4d2[4] <= 0.0
+            if p2[4] <= 0.0
                 disconnect2 = true
-                p4d2 = p4d2 + (-p4d2[4] - p4d2[3]) / (v[3] + v[4]) * v
+                p2 = p2 + (-p2[4] - p2[3]) / (v[3] + v[4]) * v
             end
-
-            p1 = Vec3f(p4d1) / p4d1[4]
-            p2 = Vec3f(p4d2) / p4d2[4]
 
             for plane in clip_planes
-                d1 = Makie.distance(plane, p1)
-                d2 = Makie.distance(plane, p2)
+                d1 = dot(plane.normal, Vec3f(p1)) - plane.distance * p1[4]
+                d2 = dot(plane.normal, Vec3f(p2)) - plane.distance * p2[4]
 
                 if (d1 <= 0.0) && (d2 <= 0.0)
                     # start and end clipped by one plane -> not visible
@@ -250,37 +247,34 @@ function project_line_points(scene, plot::T, positions) where {T <: Union{Lines,
         # end point has been added. If it is false we're missing the last regular 
         # clip_points
         if !last_is_nan
-            push!(screen_points, clip2screen(Vec3f(clip_points[end]) / clip_points[end][4]))
+            push!(screen_points, clip2screen(clip_points[end]))
             push!(indices, length(clip_points))
         end
 
     else  # LineSegments
         
         for i in 1:2:length(clip_points)-1
-            p4d1 = clip_points[i]
-            p4d2 = clip_points[i+1]
-            v = p4d2 - p4d1
+            p1 = clip_points[i]
+            p2 = clip_points[i+1]
+            v = p2 - p1
 
             # Handle near/far clipping
-            if p4d1[4] <= 0.0
-                p4d1 = p4d1 + (-p4d1[4] - p4d1[3]) / (v[3] + v[4]) * v
+            if p1[4] <= 0.0
+                p1 = p1 + (-p1[4] - p1[3]) / (v[3] + v[4]) * v
             end
-            if p4d2[4] <= 0.0
-                p4d2 = p4d2 + (-p4d2[4] - p4d2[3]) / (v[3] + v[4]) * v
+            if p2[4] <= 0.0
+                p2 = p2 + (-p2[4] - p2[3]) / (v[3] + v[4]) * v
             end
-
-            p1 = Vec3f(p4d1) / p4d1[4]
-            p2 = Vec3f(p4d2) / p4d2[4]
 
             for plane in clip_planes
-                d1 = Makie.distance(plane, p1)
-                d2 = Makie.distance(plane, p2)
+                d1 = dot(plane.normal, Vec3f(p1)) - plane.distance * p1[4]
+                d2 = dot(plane.normal, Vec3f(p2)) - plane.distance * p2[4]
 
                 if (d1 <= 0.0) && (d2 <= 0.0)
                     # start and end clipped by one plane -> not visible
                     # to keep index order we just set p1 and p2 to NaN and insert anyway
-                    p1 = Vec2f(NaN)
-                    p2 = Vec2f(NaN)
+                    p1 = Vec4f(NaN)
+                    p2 = Vec4f(NaN)
                     break;
                 elseif (d1 < 0.0) && (d2 > 0.0)
                     # p1 clipped, move it towards p2 until unclipped
