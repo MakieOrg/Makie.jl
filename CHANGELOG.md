@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added "clip_planes" as a new generic plot and scene attribute. Up to 8 world space planes can be specified to hide sections of a plot. [#3958](https://github.com/MakieOrg/Makie.jl/pull/3958)
+
 ## [0.21.3] - 2024-06-17
 
 - Fix stack overflows when using `markerspace = :data` with `scatter` [#3960](https://github.com/MakieOrg/Makie.jl/issues/3960).
