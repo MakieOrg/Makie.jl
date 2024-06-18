@@ -50,31 +50,50 @@ function is_visible(planes::Vector{<: Plane3}, p::VecTypes)
 end
 
 function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where T
-    ps = corners(rect)
-    temp = copy(ps)
-    mini = minimum(rect)
-    maxi = maximum(rect)
+    bb = rect
+
+    edges = [
+        (1, 2), (1, 3), (1, 5),
+        (2, 4), (2, 6),
+        (3, 4), (3, 7),
+        (5, 6), (5, 7),
+        (4, 8), (6, 8), (7, 8)
+    ]
 
     for plane in planes
-        # project corner points so that none get clipped
-        copyto!(temp, ps)
-        for i in eachindex(temp)
-            d = distance(plane, temp[i])
-            temp[i] -= min(0.0, d) * plane.normal
+        ps = Makie.corners(bb)
+        distances = Makie.distance.((plane,), ps)
+
+        if (all(distances .<= 0.0))
+            return Rect3{T}()
+        end
+
+        temp = similar(ps)
+
+        # find points on the clip plane
+        for (i, j) in edges
+            if distances[i] * distances[j] <= 0.0 # sign change
+                # d(t) = m t + b, find t where distance d(t) = 0
+                t = - distances[i] / (distances[j]  - distances[i])
+                
+                # interpolating in clip_space does not work...
+                p = (ps[j] - ps[i]) * t + ps[i]
+                push!(temp, p)
+            end
+        end
+
+        # unclipped points in bbox
+        for i in 1:8
+            if distances[i] > 0.0
+                push!(temp, ps[i])
+            end
         end
 
         # generate a axis aligned bbox >= projected points
         bb = Rect3{T}(temp)
-
-        # reductively combine with other bboxes
-        mini = max.(minimum(bb), mini)
-        maxi = min.(maximum(bb), maxi)
     end
 
-    widths = maxi .- mini
-    dim_valid = widths .> -100.0 * eps(widths[1])
-
-    return Rect3{T}(ifelse.(dim_valid, mini, NaN), ifelse.(dim_valid, widths, NaN))
+    return bb
 end
 
 function apply_transform(transform::Mat4, plane::Plane3{T}) where T
