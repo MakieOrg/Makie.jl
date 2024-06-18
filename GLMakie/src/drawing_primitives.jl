@@ -916,6 +916,32 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             )
         end
 
+        # Handled manually without using OpenGL clipping
+        gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
+        gl_attributes[:num_clip_planes] = Observable(0)
+        pop!(gl_attributes, :clip_planes)
+        gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes) do model, planes
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            modelinv = inv(model)
+            @assert modelinv[4, 4] == 1
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(model) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+
+            return output
+        end
+
         # color attribute adjustments
         pop!(gl_attributes, :lowclip, nothing)
         pop!(gl_attributes, :highclip, nothing)

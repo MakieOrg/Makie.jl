@@ -16,6 +16,7 @@ flat in int plane_front;
 #endif
 
 uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
 
 vec4 debug_color(uint id) {
     return vec4(
@@ -82,6 +83,25 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     );
 }
 
+bool is_clipped()
+{
+    float d1, d2;
+    vec3 size = vec3(textureSize(voxel_id, 0).xyz);
+    vec3 xyz = vec3(ivec3(o_uvw * size));
+    for (int i = 0; i < num_clip_planes; i++) {
+        // distance from clip planes with negative clipped
+        d1 = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 || d2 < 0.0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 flat in uint frag_instance_id;
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
@@ -91,11 +111,11 @@ vec4 pack_int(uint id, uint index) {
     unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
     return unpack;
 }
+
 void main()
 {
-    for (int i = 0; i < num_clip_planes; i++)
-        if (o_clip_distance[i] < 0.0)
-            discard;
+    if (is_clipped())
+        discard;
 
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
     if (voxel_uv.x < 0.5 * gap || voxel_uv.x > 1.0 - 0.5 * gap ||

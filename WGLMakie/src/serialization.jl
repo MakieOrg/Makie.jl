@@ -370,37 +370,38 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     mesh[:cam_space] = to_value(get(plot, key, :data))
 
     # Handle clip planes
-    if !(plot isa Volume)
-
-        clip_planes = map(plot, plot.clip_planes) do planes
-            if length(planes) > 8
-                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
-            end
+    if plot isa Voxels
+        
+        clip_planes = map(
+                plot, plot.converted..., plot.model, plot.clip_planes
+            ) do xs, ys, zs, chunk, model, planes
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            mini = minimum.((xs, ys, zs))
+            width = maximum.((xs, ys, zs)) .- mini
+            _model = Mat4f(model) *
+                Makie.scalematrix(Vec3f(width ./ size(chunk))) *
+                Makie.translationmatrix(Vec3f(mini))
+            modelinv = inv(_model)
+            @assert modelinv[4, 4] == 1
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
-                output[i] = Makie.gl_plane_format(planes[i])
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(_model) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
             end
             for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e10)
+                output[i] = Vec4f(0, 0, 0, -1e9)
             end
 
             return output
         end
-        
-        uniforms[:clip_planes] = serialize_three(clip_planes[])
-        on(plot, clip_planes) do value
-            updater[] = [:clip_planes, serialize_three(value)]
-            return
-        end
 
-        uniforms[:num_clip_planes] = serialize_three(length(plot.clip_planes[]))
-        on(plot, plot.clip_planes) do planes
-            updater[] = [:num_clip_planes, serialize_three(length(planes))]
-            return
-        end
-
-    else
+    elseif plot isa Volume
 
         # TODO: better solution (ShaderAbstractions doesn't like Vector uniforms)
         model2 = lift(plot, plot.model, plot[1], plot[2], plot[3]) do m, xyz...
@@ -433,18 +434,36 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             return output
         end
 
-        uniforms[:clip_planes] = serialize_three(clip_planes[])
-        on(plot, clip_planes) do value
-            updater[] = [:clip_planes, serialize_three(value)]
-            return
-        end
-        
-        uniforms[:num_clip_planes] = serialize_three(length(plot.clip_planes[]))
-        on(plot, plot.clip_planes) do planes
-            updater[] = [:num_clip_planes, serialize_three(length(planes))]
-            return
+    else
+
+        clip_planes = map(plot, plot.clip_planes) do planes
+            if length(planes) > 8
+                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+            end
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                output[i] = Makie.gl_plane_format(planes[i])
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e10)
+            end
+
+            return output
         end
 
+    end
+
+    uniforms[:clip_planes] = serialize_three(clip_planes[])
+    on(plot, clip_planes) do value
+        updater[] = [:clip_planes, serialize_three(value)]
+        return
+    end
+    
+    uniforms[:num_clip_planes] = serialize_three(length(plot.clip_planes[]))
+    on(plot, plot.clip_planes) do planes
+        updater[] = [:num_clip_planes, serialize_three(length(planes))]
+        return
     end
 
     return mesh

@@ -31,23 +31,6 @@ uniform float depth_shift;
 uniform bool depthsorting;
 uniform float gap;
 
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
-out float gl_ClipDistance[8];
-
-void process_clip_planes(vec3 world_pos)
-{
-    // distance = dot(world_pos - plane.point, plane.normal)
-    // precalculated: dot(plane.point, plane.normal) -> plane.w
-    for (int i = 0; i < num_clip_planes; i++)
-        gl_ClipDistance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
-
-    // TODO: can be skipped?
-    for (int i = num_clip_planes; i < 8; i++)
-        gl_ClipDistance[i] = 1.0;
-}
-
-
 const vec3 unit_vecs[3] = vec3[]( vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1) );
 const mat2x3 orientations[3] = mat2x3[](
     mat2x3(0, 1, 0, 0, 0, 1), // xy -> _yz (x normal)
@@ -166,7 +149,6 @@ void main() {
     vec3 plane_vertex = size * (orientations[dim] * vertices) + displacement;
     vec4 world_pos = model * vec4(plane_vertex, 1.0f);
     o_world_pos = world_pos.xyz;
-    process_clip_planes(world_pos.xyz);
     gl_Position = projectionview * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 
