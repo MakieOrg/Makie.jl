@@ -15,6 +15,8 @@ flat in int plane_dim;
 flat in int plane_front;
 #endif
 
+uniform int num_clip_planes;
+
 vec4 debug_color(uint id) {
     return vec4(
         float((id & uint(225)) >> uint(5)) / 5.0,
@@ -91,7 +93,7 @@ vec4 pack_int(uint id, uint index) {
 }
 void main()
 {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_clip_planes; i++)
         if (o_clip_distance[i] < 0.0)
             discard;
 

@@ -19,6 +19,8 @@ in vec4 frag_uv_offset_width;
 flat in uint frag_instance_id;
 in float o_clip_distance[8];
 
+uniform int num_clip_planes;
+
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
@@ -104,7 +106,7 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_clip_planes; i++)
         if (o_clip_distance[i] < 0.0)
             discard;
 

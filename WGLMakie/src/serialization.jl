@@ -387,9 +387,16 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
 
             return output
         end
+        
         uniforms[:clip_planes] = serialize_three(clip_planes[])
         on(plot, clip_planes) do value
             updater[] = [:clip_planes, serialize_three(value)]
+            return
+        end
+
+        uniforms[:num_clip_planes] = serialize_three(length(plot.clip_planes[]))
+        on(plot, plot.clip_planes) do planes
+            updater[] = [:num_clip_planes, serialize_three(length(planes))]
             return
         end
 
@@ -432,6 +439,12 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             return
         end
         
+        uniforms[:num_clip_planes] = serialize_three(length(plot.clip_planes[]))
+        on(plot, plot.clip_planes) do planes
+            updater[] = [:num_clip_planes, serialize_three(length(planes))]
+            return
+        end
+
     end
 
     return mesh

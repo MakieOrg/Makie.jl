@@ -191,11 +191,11 @@ uniform uint objectid;
 
 const float typemax = 100000000000000000000000000000000000000.0;
 
-
+uniform int num_clip_planes;
 bool process_clip_planes(inout vec3 p1, inout vec3 p2)
 {
     float d1, d2;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < num_clip_planes; i++) {
         // distance from clip planes with negative clipped
         d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
         d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;

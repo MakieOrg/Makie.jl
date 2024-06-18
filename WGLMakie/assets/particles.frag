@@ -4,6 +4,8 @@ in vec3 frag_position;
 in vec3 o_camdir;
 in float o_clip_distance[8];
 
+uniform int num_clip_planes;
+
 // Smoothes out edge around 0 light intensity, see GLMakie
 float smooth_zero_max(float x) {
     const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
@@ -44,7 +46,7 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_clip_planes; i++)
         if (o_clip_distance[i] < 0.0)
             discard;
 

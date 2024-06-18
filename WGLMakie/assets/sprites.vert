@@ -1,5 +1,6 @@
 uniform mat4 projection;
 uniform mat4 view;
+uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
 
 uniform float atlas_tex_dim;
@@ -61,7 +62,7 @@ float _determinant(mat2 m) {
 }
 
 void process_clip_planes(vec3 world_pos) {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_clip_planes; i++)
         o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
 }
 

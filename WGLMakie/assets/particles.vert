@@ -3,6 +3,7 @@ precision mediump float;
 uniform mat4 projection;
 uniform mat4 view;
 uniform vec3 eyeposition;
+uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
 
 out vec3 frag_normal;
@@ -27,7 +28,7 @@ vec3 to_vec3(vec2 v3){return vec3(v3, 0.0);}
 vec3 to_vec3(vec3 v4){return v4;}
 
 void process_clip_planes(vec3 world_pos) {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_clip_planes; i++)
         o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
 }
 

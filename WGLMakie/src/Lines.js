@@ -91,7 +91,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             void process_clip_planes(inout vec4 p1, inout vec4 p2)
             {
                 float d1, d2;
-                for (int i = 0; i < 8; i++) {
+                for (int i = 0; i < int(num_clip_planes); i++) {
                     // distance from clip planes with negative clipped
                     d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
                     d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
@@ -368,7 +368,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             void process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
             {
                 float d1, d2;
-                for(int i = 0; i < 8; i++)
+                for(int i = 0; i < int(num_clip_planes); i++)
                 {
                     // distance from clip planes with negative clipped
                     d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;

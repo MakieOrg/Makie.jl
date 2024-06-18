@@ -17,9 +17,10 @@ out vec3 o_camdir;
 
 uniform mat4 projection, view;
 uniform vec4 clip_planes[8];
+uniform int num_clip_planes;
 
 void process_clip_planes(vec3 world_pos) {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_clip_planes; i++)
         o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
 }
 

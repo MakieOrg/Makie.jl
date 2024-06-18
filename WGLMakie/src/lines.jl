@@ -134,6 +134,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     end
 
     # Handle clip planes
+    uniforms[:num_clip_planes] = map(length, plot, plot.clip_planes)
     uniforms[:clip_planes] = map(plot, scene.camera.projectionview, plot.clip_planes) do pv, planes
         if length(planes) > 8
             @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)

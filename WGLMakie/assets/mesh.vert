@@ -8,6 +8,7 @@ out float o_clip_distance[8];
 uniform mat4 projection;
 uniform mat4 view;
 uniform vec3 eyeposition;
+uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
 
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
@@ -64,7 +65,7 @@ vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
 }
 
 void process_clip_planes(vec3 world_pos) {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_clip_planes; i++)
         o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
 }
 
