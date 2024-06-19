@@ -141,8 +141,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 prev = scale .* Point2f(clip) ./ clip[4]
 
                 # calculate cumulative pixel scale length
-                output[1] = 0f0 # dublicated point
-                output[2] = 0f0 # start of first line segment
+                output[1] = 0f0   # dublicated point
+                output[2] = 0f0   # start of first line segment
+                output[end] = 0f0 # dublicated end point
                 i = 3           # end of first line segment, start of second
                 while i < length(ps)
                     if isfinite(ps[i])
@@ -167,7 +168,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                     end
                 end
             end
-            output[end] = 0f0 # never accessed
 
             return serialize_buffer_attribute(output)
         end
