@@ -36,6 +36,15 @@ Identifies the source of a tick:
     OneTimeRenderTick
 end
 
+"""
+    struct TickState
+
+Contains information for tick events:
+- `state::TickState`: identifies what caused the tick (see Makie.TickState)
+- `count::Int64`: number of ticks produced since the start of rendering (display or record)
+- `time::Float64`: time that has passed since the first tick
+- `delta_time`: time that has passed since the last tick
+"""
 struct Tick
     state::TickState    # flag for the type of tick event
     count::Int64        # number of ticks since start
@@ -142,7 +151,7 @@ struct Events
     A `tick` is triggered whenever a new frame is requested, i.e. during normal
     rendering (even if the renderloop is paused) or when an image is produced
     for `save` or `record`. A Tick contains:
-    - `state` which identifies what caused the tick (see [`TickState`](@ref))
+    - `state` which identifies what caused the tick (see Makie.TickState)
     - `count` which increments with every tick
     - `time` which is the total time since the screen has been created 
     - `delta_time` which is the time since the last frame
