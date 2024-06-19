@@ -145,13 +145,18 @@ end
 """
 function record(func, figlike::FigureLike, path::AbstractString; kw_args...)
     format = lstrip(splitext(path)[2], '.')
+    # safeguard against other tick sources messing with recordings
+    cb = on(tick -> Consume(tick.state != OneTimeRenderTick), events(figlike).tick, priority = typemax(Int))
     io = Record(func, figlike; format=format, visible=true, kw_args...)
+    off(cb)
     save(path, io)
 end
 
 function record(func, figlike::FigureLike, path::AbstractString, iter; kw_args...)
     format = lstrip(splitext(path)[2], '.')
+    cb = on(tick -> Consume(tick.state != OneTimeRenderTick), events(figlike).tick, priority = typemax(Int))
     io = Record(func, figlike, iter; format=format, kw_args...)
+    off(cb)
     save(path, io)
 end
 
