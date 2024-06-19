@@ -58,6 +58,7 @@ Events from the backend are stored in Observables within the `Events` struct. Yo
 - `keyboardstate::Observable{Keyboard.Button}`: Contains all currently pressed keys.
 - `unicode_input::Observable{Char}`: Contains the most recently typed character.
 - `dropped_files::Observable{Vector{String}}`: Contains a list of filepaths to a collection files dragged into the window.
+- `tick::Observable{Makie.Tick}`: Contains the most recent `Makie.Tick`. A `tick` is produced for every frame rendered, i.e. at regular intervals for interactive figures, when a image is saved or when `record()` is used.
 
 ## Mouse Interaction
 
@@ -397,3 +398,37 @@ record(scene, "test.mp4"; framerate = fps) do io
     end
 end
 ```
+
+## Tick Events
+
+Tick events are produced by the renderloop in GLMakie and WGLMakie, as well as `Makie.save` and `Makie.record` for all backends. They allow you to synchronize tasks such as animations with rendering. A Tick contains the following information:
+
+- `state::Makie.TickState`: Describes the situation in which the tick was produced. These include:
+    - `Makie.UnknownTickState`: A catch-all for uncategorized ticks. Currently only used for initialization of the tick event.
+    - `Makie.PausedRenderTick`: A tick originating from a paused renderloop in GLMakie. (This refers to the last attempt to draw a frame.)
+    - `Makie.SkippedRenderTick`: A tick originating from a `render_on_demand = true` renderloop in GLMakie where the last frame has been reused. (This happens when nothing about the displayed frame has changed. For animation you may consider this a regular render tick.)
+    - `Makie.RegularRenderTick`: A tick from a renderloop where the last frame has been redrawn.
+    - `Makie.OneTimeRenderTick`: A tick produced before generating an image for `Makie.save` and `Makie.record`.
+- `count::Int64`: Number of ticks produced since the first. During `record` this is relative to the first recorded frame.
+- `time::Float64`: The time that has passed since the first tick in seconds. During `record` this is relative to the first recorded frame and increments based on the `framerate` set in record.
+- `delta_time::Float64`: The time that has passed since the last tick in seconds. During `record` this is `1 / framerate`.
+
+For an animation you will generally not need to worry about tick state. You can simply update the relevant data as needed.
+```julia
+on(events(fig).tick) do tick
+    # For a simulation you may want to use delta times for updates:
+    position[] = position[] + tick.delta_time * velocity
+
+    # For a solved system you may want to use the total time to compute the current state:
+    position[] = trajectory(tick.time)
+
+    # For a data record you may want to use count to move to the next data point(s)
+    position[] = position_record[mod1(tick.count, end)]
+end
+```
+
+For an interactive figure this will produce an animation synchronized with real time. Within `record` the tick times match up the set `framerate` such that the animation in the produced video matches up with real time. 
+
+The only exception here is WGLMakie which currently runs the render loop during recording. Because of that `RegularRenderTick` and `OneTimeRenderTick` will mix during `record`, with the former being based on real time and the latter based on video time. If you do not restrict to `OneTimeRenderTick` here the resulting video will run faster than real time with `tick.delta_time` and may jump with `tick.time` and `tick.count`.
+
+For reference, a `tick` generally happens after other events have been processed and before the next frame will be drawn. In WGLMakie the order is unpredictable due to asynchronous event handling in javascript and the time it takes to move data between Julia and javascript. 

@@ -42,8 +42,8 @@ end
 Contains information for tick events:
 - `state::TickState`: identifies what caused the tick (see Makie.TickState)
 - `count::Int64`: number of ticks produced since the start of rendering (display or record)
-- `time::Float64`: time that has passed since the first tick
-- `delta_time`: time that has passed since the last tick
+- `time::Float64`: time that has passed since the first tick in seconds
+- `delta_time`: time that has passed since the last tick in seconds
 """
 struct Tick
     state::TickState    # flag for the type of tick event
