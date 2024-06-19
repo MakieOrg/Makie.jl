@@ -433,15 +433,11 @@ end
 For an interactive figure this will produce an animation synchronized with real time. 
 Within `record` the tick times match up the set `framerate` such that the animation in the produced video matches up with real time. 
 
-The only exception here is WGLMakie with the lower level recording functions (anything not wrapped by `record()`). 
-WGLMakie still runs a regular render loop while recording, which produces `RegularRenderTick` alongside `OneTimeRenderTick`. 
-Both being present may cause the animation to jump around (if based on time or count) or run faster (based on delta_time).
-To avoid this `record()` actively filters out `RegularRenderTick` with
-```julia
-cb = on(tick -> Consume(tick.state != OneTimeRenderTick), events(figlike).tick, priority = typemax(Int))
-```
-but the lower level functions do not.
-If you want to use these functions with WGLMakie you will likely need to add that line before you start recording frames and `off(cb)` afterwards.
+Note that the underlying `VideoStream` filters tick events other than `state = OneTimeRenderTick`.
+This is done to prevent jumping (wrong count, time) or acceleration (extra ticks) of animations in videos due to extra ticks.
+(This is specifically an issue with WGLMakie, as it still runs a normal renderloop while recording.)
+Ticks will no longer be filtered once the `VideoStream` object is deleted or the video is saved.
+The behavior can also be turned off by setting `filter_ticks = false`.
 
 For reference, a `tick` generally happens after other events have been processed and before the next frame will be drawn. 
 In WGLMakie the order is unpredictable due to asynchronous event handling in javascript and the time it takes to move data between Julia and javascript. 
