@@ -252,16 +252,27 @@ end
     filename = "$(tempname()).mp4"
     try
         tick_record = Makie.Tick[]
-        on(tick -> push!(tick_record, tick), events(f).tick)
-        record(_ -> nothing, f, filename, 1:10, framerate = 30)
+        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
         dt = 1.0 / 30.0
+
         for (i, tick) in enumerate(tick_record)
             @test tick.state == Makie.OneTimeRenderTick
-            @test tick.count == i
-            @test tick.time ≈ dt * i
+            @test tick.count == i-1
+            @test tick.time ≈ dt * (i-1)
             @test tick.delta_time ≈ dt
         end
     finally
         rm(filename)
     end
+
+    # test destruction of tick overwrite
+    f, a, p = scatter(rand(10));
+    let
+        io = VideoStream(f)
+        @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+        nothing
+    end
+    tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+    events(f).tick[] = tick
+    @test events(f).tick[] == tick
 end

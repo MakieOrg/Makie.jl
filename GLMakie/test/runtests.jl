@@ -46,52 +46,58 @@ end
         @test tick.delta_time > 1e-9
     end
 
-        f, a, p = scatter(rand(10));
-        @test events(f).tick[] == Makie.Tick()
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
 
-        filename = "$(tempname()).png"
-        try
-            save(filename, f)
-            tick = events(f).tick[]
+    filename = "$(tempname()).png"
+    try
+        save(filename, f)
+        tick = events(f).tick[]
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
+    finally
+        rm(filename)
+    end
+
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        dt = 1.0 / 30.0
+
+        for (i, tick) in enumerate(tick_record)
             @test tick.state == Makie.OneTimeRenderTick
-            @test tick.count == 0
-            @test tick.time == 0.0
-            @test tick.delta_time == 0.0
-        finally
-            rm(filename)
-        end
-
-        filename = "$(tempname()).mp4"
-        try
-            tick_record = Makie.Tick[]
-            on(tick -> push!(tick_record, tick), events(f).tick)
-            record(_ -> nothing, f, filename, 1:10, framerate = 30)
-            dt = 1.0 / 30.0
-
-        i = 1
-        for tick in tick_record
-            if tick.state == Makie.OneTimeRenderTick
-                @test tick.count == i
-                @test tick.time ≈ dt * i
-                @test tick.delta_time ≈ dt
-                i += 1
-            end
+            @test tick.count == i-1
+            @test tick.time ≈ dt * (i-1)
+            @test tick.delta_time ≈ dt
         end
     finally
         rm(filename)
     end
 
-    GLMakie.closeall()
+    # test destruction of tick overwrite
+    f, a, p = scatter(rand(10));
+    let
+        io = VideoStream(f)
+        @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+        nothing
+    end
+    tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+    events(f).tick[] = tick
+    @test events(f).tick[] == tick
+
     
-        f, a, p = scatter(rand(10));
-        tick_record = Makie.Tick[]
-        on(t -> push!(tick_record, t), events(f).tick)
-        screen = GLMakie.Screen(render_on_demand = true, framerate = 30.0, pause_rendering = false, visible = false)
-        display(screen, f.scene)
-        sleep(0.15)
-        GLMakie.pause_renderloop!(screen)
-        sleep(0.1)
-        GLMakie.closeall()
+    f, a, p = scatter(rand(10));
+    tick_record = Makie.Tick[]
+    on(t -> push!(tick_record, t), events(f).tick)
+    screen = GLMakie.Screen(render_on_demand = true, framerate = 30.0, pause_rendering = false, visible = false)
+    display(screen, f.scene)
+    sleep(0.15)
+    GLMakie.pause_renderloop!(screen)
+    sleep(0.1)
+    GLMakie.closeall()
 
         # Why does it start with a skipped tick?
     i = 1
