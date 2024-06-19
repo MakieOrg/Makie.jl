@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- validate plot attributes later, for axis specific plot attributes [#3974](https://github.com/MakieOrg/Makie.jl/pull/3974).
 - Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907)
 
 ## [0.21.3] - 2024-06-17
