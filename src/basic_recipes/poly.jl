@@ -135,7 +135,9 @@ end
 
 function to_lines(polygon::AbstractVector{<: VecTypes})
     result = Point2d.(polygon)
-    isempty(result) || push!(result, polygon[1])
+    if !isempty(result) && !(result[1] ≈ result[end])
+        push!(result, polygon[1])
+    end
     return result
 end
 
@@ -175,7 +177,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
             return sc
         end
     end
-
+    @info outline[]
     lines!(
         plot, outline, visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
