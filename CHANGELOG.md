@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907)
+
 ## [0.21.3] - 2024-06-17
 
 - Fix stack overflows when using `markerspace = :data` with `scatter` [#3960](https://github.com/MakieOrg/Makie.jl/issues/3960).

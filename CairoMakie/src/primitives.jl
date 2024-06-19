@@ -202,6 +202,8 @@ project_command(c::ClosePath, scene, space, model) = c
 
 function draw_single(primitive::Lines, ctx, positions)
     n = length(positions)
+    start = positions[begin]
+    
     @inbounds for i in 1:n
         p = positions[i]
         # only take action for non-NaNs
@@ -209,10 +211,14 @@ function draw_single(primitive::Lines, ctx, positions)
             # new line segment at beginning or if previously NaN
             if i == 1 || isnan(positions[i-1])
                 Cairo.move_to(ctx, p...)
+                start = p
             else
                 Cairo.line_to(ctx, p...)
                 # complete line segment at end or if next point is NaN
                 if i == n || isnan(positions[i+1])
+                    if p ≈ start
+                        Cairo.close_path(ctx)
+                    end
                     Cairo.stroke(ctx)
                 end
             end
@@ -298,7 +304,8 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
     prev_position = positions[begin]
     prev_nan = isnan(prev_position)
     prev_continued = false
-
+    start = positions[begin]
+    
     if !prev_nan
         # first is not nan, move_to
         Cairo.move_to(ctx, positions[begin]...)
@@ -315,6 +322,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
             # this is nan
             if prev_continued
                 # and this is prev_continued, so set source and stroke to finish previous line
+                (prev_position ≈ start) && Cairo.close_path(ctx)
                 Cairo.set_line_width(ctx, this_linewidth)
                 !isnothing(dash) && Cairo.set_dash(ctx, dash .* this_linewidth)
                 Cairo.set_source_rgba(ctx, red(prev_color), green(prev_color), blue(prev_color), alpha(prev_color))
@@ -328,6 +336,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
             if !this_nan
                 # but this is not nan, so move to this position
                 Cairo.move_to(ctx, this_position...)
+                start = this_position
             else
                 # and this is also nan, do nothing
             end
@@ -342,6 +351,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
 
                     if i == lastindex(positions)
                         # this is the last element so stroke this
+                        (this_position ≈ start) && Cairo.close_path(ctx)
                         Cairo.set_line_width(ctx, this_linewidth)
                         !isnothing(dash) && Cairo.set_dash(ctx, dash .* this_linewidth)
                         Cairo.set_source_rgba(ctx, red(this_color), green(this_color), blue(this_color), alpha(this_color))
