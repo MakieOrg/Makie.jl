@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- validate plot attributes later, for axis specific plot attributes [#3974](https://github.com/MakieOrg/Makie.jl/pull/3974).
+
 ## [0.21.3] - 2024-06-17
 
 - Fix stack overflows when using `markerspace = :data` with `scatter` [#3960](https://github.com/MakieOrg/Makie.jl/issues/3960).
