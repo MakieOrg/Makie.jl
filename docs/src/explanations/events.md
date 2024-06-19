@@ -401,7 +401,9 @@ end
 
 ## Tick Events
 
-Tick events are produced by the renderloop in GLMakie and WGLMakie, as well as `Makie.save` and `Makie.record` for all backends. They allow you to synchronize tasks such as animations with rendering. A Tick contains the following information:
+Tick events are produced by the renderloop in GLMakie and WGLMakie, as well as `Makie.save` and `Makie.record` for all backends. 
+They allow you to synchronize tasks such as animations with rendering. 
+A Tick contains the following information:
 
 - `state::Makie.TickState`: Describes the situation in which the tick was produced. These include:
     - `Makie.UnknownTickState`: A catch-all for uncategorized ticks. Currently only used for initialization of the tick event.
@@ -413,7 +415,8 @@ Tick events are produced by the renderloop in GLMakie and WGLMakie, as well as `
 - `time::Float64`: The time that has passed since the first tick in seconds. During `record` this is relative to the first recorded frame and increments based on the `framerate` set in record.
 - `delta_time::Float64`: The time that has passed since the last tick in seconds. During `record` this is `1 / framerate`.
 
-For an animation you will generally not need to worry about tick state. You can simply update the relevant data as needed.
+For an animation you will generally not need to worry about tick state. 
+You can simply update the relevant data as needed.
 ```julia
 on(events(fig).tick) do tick
     # For a simulation you may want to use delta times for updates:
@@ -427,8 +430,18 @@ on(events(fig).tick) do tick
 end
 ```
 
-For an interactive figure this will produce an animation synchronized with real time. Within `record` the tick times match up the set `framerate` such that the animation in the produced video matches up with real time. 
+For an interactive figure this will produce an animation synchronized with real time. 
+Within `record` the tick times match up the set `framerate` such that the animation in the produced video matches up with real time. 
 
-The only exception here is WGLMakie which currently runs the render loop during recording. Because of that `RegularRenderTick` and `OneTimeRenderTick` will mix during `record`, with the former being based on real time and the latter based on video time. If you do not restrict to `OneTimeRenderTick` here the resulting video will run faster than real time with `tick.delta_time` and may jump with `tick.time` and `tick.count`.
+The only exception here is WGLMakie with the lower level recording functions (anything not wrapped by `record()`). 
+WGLMakie still runs a regular render loop while recording, which produces `RegularRenderTick` alongside `OneTimeRenderTick`. 
+Both being present may cause the animation to jump around (if based on time or count) or run faster (based on delta_time).
+To avoid this `record()` actively filters out `RegularRenderTick` with
+```julia
+cb = on(tick -> Consume(tick.state != OneTimeRenderTick), events(figlike).tick, priority = typemax(Int))
+```
+but the lower level functions do not.
+If you want to use these functions with WGLMakie you will likely need to add that line before you start recording frames and `off(cb)` afterwards.
 
-For reference, a `tick` generally happens after other events have been processed and before the next frame will be drawn. In WGLMakie the order is unpredictable due to asynchronous event handling in javascript and the time it takes to move data between Julia and javascript. 
+For reference, a `tick` generally happens after other events have been processed and before the next frame will be drawn. 
+In WGLMakie the order is unpredictable due to asynchronous event handling in javascript and the time it takes to move data between Julia and javascript. 
