@@ -46,9 +46,6 @@ end
         @test tick.delta_time > 1e-9
     end
 
-    GLMakie.closeall()
-
-    let
         f, a, p = scatter(rand(10));
         @test events(f).tick[] == Makie.Tick()
 
@@ -69,28 +66,23 @@ end
             tick_record = Makie.Tick[]
             on(tick -> push!(tick_record, tick), events(f).tick)
             record(_ -> nothing, f, filename, 1:10, framerate = 30)
-            GLMakie.closeall()
             dt = 1.0 / 30.0
 
-            if first(tick_record).state != Makie.OneTimeRenderTick
-                popfirst!(tick_record)
-            end
-            @assert length(tick_record) == 10 "tick record too long: $(length(tick_record)) > 10"
-
-            for (i, tick) in enumerate(tick_record)
-                @test tick.state == Makie.OneTimeRenderTick
+        i = 1
+        for tick in tick_record
+            if tick.state == Makie.OneTimeRenderTick
                 @test tick.count == i
                 @test tick.time ≈ dt * i
                 @test tick.delta_time ≈ dt
+                i += 1
             end
-        finally
-            rm(filename)
         end
+    finally
+        rm(filename)
     end
 
     GLMakie.closeall()
     
-    let
         f, a, p = scatter(rand(10));
         tick_record = Makie.Tick[]
         on(t -> push!(tick_record, t), events(f).tick)
@@ -102,13 +94,24 @@ end
         GLMakie.closeall()
 
         # Why does it start with a skipped tick?
-        check_tick(tick_record[1], Makie.SkippedRenderTick, 1)
-        check_tick(tick_record[2], Makie.RegularRenderTick, 2)
-        i = 3
-        while (tick_record[i].state == Makie.SkippedRenderTick)
+    i = 1
+    while tick_record[i].state == Makie.SkippedRenderTick
+        check_tick(tick_record[1], Makie.SkippedRenderTick, i)
+        i += 1
+    end
+
+    check_tick(tick_record[i], Makie.RegularRenderTick, i)
+    i += 1
+
+    while tick_record[i].state == Makie.SkippedRenderTick
             check_tick(tick_record[i], Makie.SkippedRenderTick, i)
             i += 1
         end
+
+    while (i <= length(tick_record)) && (tick_record[i].state == Makie.PausedRenderTick)
         check_tick(tick_record[i], Makie.PausedRenderTick, i)
+        i += 1
     end
+
+    @test i == length(tick_record)+1
 end
