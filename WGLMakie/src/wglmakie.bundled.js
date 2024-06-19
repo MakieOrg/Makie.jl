@@ -21825,12 +21825,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 }
 
                 // Used to elongate sdf to include joints
-                // if start/end         elongate slightly so that there is no AA gap in loops
+                // if start/end         no elongation
                 // if joint skipped     elongate to new length
                 // if normal joint      elongate a lot to let shape/truncation handle joint
                 f_extrusion = vec2(
-                    !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0])),
-                    !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1]))
+                    !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0])),
+                    !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1]))
                 );
 
                 // used to compute width sdf
@@ -22903,7 +22903,10 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("wheel", wheel);
     function keydown(event) {
         comm.notify({
-            keydown: event.code
+            keydown: [
+                event.code,
+                event.key
+            ]
         });
         return false;
     }

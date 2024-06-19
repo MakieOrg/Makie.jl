@@ -276,7 +276,7 @@ function add_canvas_events(screen, comm, resize_to) {
 
     function keydown(event) {
         comm.notify({
-            keydown: event.code,
+            keydown: [event.code, event.key],
         });
         return false;
     }
