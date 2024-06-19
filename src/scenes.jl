@@ -454,7 +454,8 @@ function Base.push!(plot::Plot, subplot)
     push!(plot.plots, subplot)
 end
 
-function Base.push!(scene::Scene, @nospecialize(plot::AbstractPlot))
+function Base.push!(scene::Scene, @nospecialize(plot::Plot{Typ})) where Typ
+    MakieCore.validate_attribute_keys(Plot{Typ}, plot.kw)
     push!(scene.plots, plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
