@@ -631,8 +631,7 @@ end
 @reference_test "Clip planes" begin
     # Test
     # - inheritance of clip planes from scene and parent plot (wireframe)
-    # - test clipping of lines, linesegments, mesh, surface, scatter, image, heatmap
-    # - missing: voxel, volume, 
+    # - test clipping of linesegments, mesh, surface, scatter, image, heatmap
     f = Figure()
     a = LScene(f[1, 1])
     a.scene.theme[:clip_planes][] = Makie.planes(Rect3f(Point3f(-0.75), Vec3f(1.5)))
@@ -685,9 +684,9 @@ end
 @reference_test "Clip planes - voxel" begin
     f = Figure()
     a = LScene(f[1, 1])
-    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1), 0.0)]
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-2, -1, -0.5), 0.0), Plane3f(Vec3f(-0.5, -1, -2), 0.0)]
     r = -10:10
-    voxels!(a, [cos(sin(x+y)+z) for x in r, y in r, z in r])
+    p = voxels!(a, [cos(sin(x+y)+z) for x in r, y in r, z in r])
     f
 end
 
