@@ -177,7 +177,6 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
             return sc
         end
     end
-    @info outline[]
     lines!(
         plot, outline, visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
