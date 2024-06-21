@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added `events.tick` to allow linking actions like animations to the renderloop. [#3948](https://github.com/MakieOrg/Makie.jl/pull/3948)
 - Fixes for Menu and DataInspector [#3975](https://github.com/MakieOrg/Makie.jl/pull/3975)
 - Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907)
 

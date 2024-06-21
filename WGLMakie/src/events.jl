@@ -48,7 +48,7 @@ function code_to_keyboard(code::String)
     end
 end
 
-function connect_scene_events!(scene::Scene, comm::Observable)
+function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
         @async try
@@ -113,5 +113,19 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         end
         return
     end
+
+    # This produces bad timings just like sleep...
+    screen.tick_callback = Makie.TickCallback(e.tick)
+    screen.tick_clock = Timer(0.0, interval = 1.0 / 30.0) do timer
+        if isopen(screen)
+            screen.tick_callback(Makie.RegularRenderTick)
+            # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
+        else
+            close(timer)
+            screen.tick_clock = nothing
+        end
+        return
+    end
+
     return
 end

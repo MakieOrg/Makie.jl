@@ -10,7 +10,7 @@ function Base.display(screen::Screen, scene::Scene; connect=true)
     else
         @assert screen.root_scene === scene "internal error. Scene already displayed by screen but not as root scene"
     end
-    pollevents(screen)
+    pollevents(screen, Makie.BackendTick)
     return screen
 end
 
