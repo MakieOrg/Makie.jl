@@ -73,6 +73,30 @@ Calls `func` if one clicks on `plot`. Implemented by the backend.
 function onpick end
 
 
+mutable struct TickCallback
+    event::Observable{Makie.Tick}
+    start_time::UInt64
+    last_time::UInt64
+    TickCallback(tick::Observable{Makie.Tick}) = new(tick, time_ns(), time_ns())
+end
+TickCallback(scene::SceneLike) = TickCallback(events(scene).tick)
+
+function (cb::TickCallback)(x::Makie.TickState)
+    if x > Makie.UnknownTickState # not backend or Unknown
+        cb.last_time = Makie.next_tick!(cb.event, x, cb.start_time, cb.last_time)
+    end
+    return nothing
+end
+
+function next_tick!(tick::Observable{Tick}, state::TickState, start_time::UInt64, last_time::UInt64)
+    t = time_ns()
+    since_start = 1e-9 * (t - start_time)
+    delta_time = 1e-9 * (t - last_time)
+    tick[] = Tick(state, tick[].count + 1, since_start, delta_time)
+    return t
+end
+
+
 ################################################################################
 ### ispressed logic
 ################################################################################

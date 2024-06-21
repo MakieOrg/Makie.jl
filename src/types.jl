@@ -52,13 +52,7 @@ struct Tick
     delta_time::Float64 # time since last tick
 end
 Tick() = Tick(UnknownTickState, 0, 0.0, 0.0)
-function next_tick!(tick::Observable{Tick}, state, start_time, last_time)
-    t = time_ns()
-    since_start = 1e-9 * (t - start_time)
-    delta_time = 1e-9 * (t - last_time)
-    tick[] = Tick(state, tick[].count + 1, since_start, delta_time)
-    return t
-end
+
 
 """
 This struct provides accessible `Observable`s to monitor the events

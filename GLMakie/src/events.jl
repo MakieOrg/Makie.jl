@@ -295,26 +295,12 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(entered_window))
     GLFW.SetCursorEnterCallback(window, nothing)
 end
 
-# Just for finding the relevant listener
-mutable struct TickCallback
-    event::Observable{Makie.Tick}
-    start_time::UInt64
-    last_time::UInt64
-    TickCallback(tick::Observable{Makie.Tick}) = new(tick, time_ns(), time_ns())
-end
-
-function (cb::TickCallback)(x::Makie.TickState)
-    if x > Makie.UnknownTickState # not backend or Unknown
-        cb.last_time = Makie.next_tick!(cb.event, x, cb.start_time, cb.last_time)
-    end
-    return nothing
-end
-
 function Makie.frame_tick(scene::Scene, screen::Screen)
     # Separating screen ticks from event ticks allows us to sanitize:
-    # Internal on-tick event updates happen first (mouseposition), no blocking
-    # listeners, set order
-    on(TickCallback(scene.events.tick), scene, screen.render_tick, priority = typemin(Int))
+    # Internal on-tick event updates happen first (mouseposition), 
+    # consuming in event.tick listeners doesn't affect backend ticks,
+    # more control/consistent order
+    on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))
 end
 function Makie.disconnect!(screen::Screen, ::typeof(Makie.frame_tick))
     connections = filter(x -> x[2] isa TickCallback, screen.render_tick.listeners)
