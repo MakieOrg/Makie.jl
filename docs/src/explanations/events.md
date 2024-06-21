@@ -440,4 +440,4 @@ Ticks will no longer be filtered once the `VideoStream` object is deleted or the
 The behavior can also be turned off by setting `filter_ticks = false`.
 
 For reference, a `tick` generally happens after other events have been processed and before the next frame will be drawn. 
-In WGLMakie the order is unpredictable due to asynchronous event handling in javascript and the time it takes to move data between Julia and javascript. 
+The exception is WGLMakie which runs an independent timer to avoid excessive message passing between Javascript and Julia.

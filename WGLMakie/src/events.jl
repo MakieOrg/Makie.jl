@@ -108,12 +108,21 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
             @handle msg.resize begin
                 resize!(scene, tuple(resize...))
             end
-            @handle msg.tick begin
-                screen.last_time = Makie.next_tick!(
-                    e.tick, Makie.RegularRenderTick, screen.start_time, screen.last_time)
-            end
         catch err
             @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
+        end
+        return
+    end
+
+    # This produces bad timings just like sleep...
+    screen.tick_callback = Makie.TickCallback(e.tick)
+    screen.tick_clock = Timer(0.0, interval = 1.0 / 30.0) do timer
+        if isopen(screen)
+            screen.tick_callback(Makie.RegularRenderTick)
+            # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
+        else
+            close(timer)
+            screen.tick_clock = nothing
         end
         return
     end

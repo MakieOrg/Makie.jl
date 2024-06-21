@@ -63,14 +63,12 @@ export function render_scene(scene, picking = false) {
 
 function start_renderloop(three_scene) {
     // extract the first scene for screen, which should be shared by all scenes!
-    const { fps, renderer } = three_scene.screen;
+    const { fps } = three_scene.screen;
     const time_per_frame = (1 / fps) * 1000; // default is 30 fps
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
         if (timestamp - last_time_stamp > time_per_frame) {
-            const canvas = renderer.domElement;
-            canvas.dispatchEvent( new Event('render') );
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
                 // if scenes don't render it means they're not displayed anymore
@@ -330,12 +328,6 @@ function add_canvas_events(screen, comm, resize_to) {
         // Fire the resize event once at the start to auto-size our window
         resize_callback_throttled();
     }
-
-    function tick(event) {
-        comm.notify({ tick: true, });
-        return false;
-    }
-    canvas.addEventListener("render", tick);
 }
 
 function threejs_module(canvas) {
