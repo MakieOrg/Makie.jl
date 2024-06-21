@@ -303,6 +303,6 @@ function Makie.frame_tick(scene::Scene, screen::Screen)
     on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))
 end
 function Makie.disconnect!(screen::Screen, ::typeof(Makie.frame_tick))
-    connections = filter(x -> x[2] isa TickCallback, screen.render_tick.listeners)
+    connections = filter(x -> x[2] isa Makie.TickCallback, screen.render_tick.listeners)
     foreach(x -> off(screen.render_tick, x[2]), connections)
 end
