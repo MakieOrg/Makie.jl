@@ -57,8 +57,8 @@ with z-elevation for each level.
     MakieCore.documented_attributes(Contour)...
 end
 
-angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
-    atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+# result in [-π, π]
+angle(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
 
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
