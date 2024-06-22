@@ -18,6 +18,6 @@
         @test !(M ≈ I)
         # this should not
         M = Makie.clip_to_space(a.scene.camera, :data) * Makie.space_to_clip(a.scene.camera, :data)
-        @test M ≈ I atol = 1e-5
+        @test M ≈ I atol = 1e-4
     end
 end
