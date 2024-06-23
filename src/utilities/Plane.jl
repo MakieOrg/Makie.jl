@@ -168,6 +168,7 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
 
     distances = Makie.distance.((plane,), world_corners)
     w = maximum(distances) - minimum(distances)
+    w = ifelse(abs(w) < 1000.0 * eps(w), 1f0, w)
 
     # clip plane transformation may fail if plane is too close to bbox corner/line/plane
     # so we handle this explicitly here:
@@ -194,7 +195,7 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
                 # d(t) = m t + b, find t where distance d(t) = 0
                 t = - distances[i] / (distances[j]  - distances[i])
                 
-                # interpolating in clip_space does not work...
+                # interpolating in clip_space does not work
                 p = pv * to_ndim(Point4f, (world_corners[j] - world_corners[i]) * t + world_corners[i], 1)
                 push!(zero_points, p[Vec(1,2,3)] / p[4])
 
@@ -205,8 +206,11 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
         origin = sum(zero_points) / length(zero_points)
 
         # with at least one point < or > 0.0 and each point having 3 connections
-        # it should be impossible to get less than 3 points
-        @assert length(zero_points) > 2
+        # it should be impossible to get less than 3 points. Should...
+        # @assert length(zero_points) > 2
+        if length(zero_points) < 3
+            return Makie.Plane(Vec3f(0), sum(distance) > 0.0 ? -1f9 : 1f9)
+        end
 
         # Get plane normal vectors from zero points (using all points because why not)
         normals = Vec3f[]
