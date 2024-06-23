@@ -129,7 +129,7 @@ void main(void)
     // Set invalid / ignored outputs
     f_truncation = vec2(-1e12);     // no truncated joint
     f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0); // no joints to overwrite
-    f_extrusion = vec2(0.5);        // no joints needing extrusion
+    f_extrusion = vec2(0.0);        // no joints needing extrusion
     f_linepoints = vec4(-1e12);
     f_miter_vecs = vec4(-1);
 

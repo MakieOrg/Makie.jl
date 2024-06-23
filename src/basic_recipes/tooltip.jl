@@ -206,44 +206,44 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
         shift = if placement === :left
             Vec2f[
-                (l, b + 0.5h), (l, t), (r, t),
+                (l, b), (l, t), (r, t),
                 (r,     b + align * h + 0.5s),
                 (r + s, b + align * h),
                 (r,     b + align * h - 0.5s),
-                (r, b), (l, b), (l, b + 0.5h)
+                (r, b), (l, b)
             ]
         elseif placement === :right
             Vec2f[
-                (l + 0.5w, b), (l, b),
+                (r, b), (l, b),
                 (l,   b + align * h - 0.5s),
                 (l-s, b + align * h),
                 (l,   b + align * h + 0.5s),
-                (l, t), (r, t), (r, b), (l + 0.5w, b)
+                (l, t), (r, t), (r, b)
             ]
         elseif placement in (:below, :down, :bottom)
             Vec2f[
-                (l, b + 0.5h), (l, t),
+                (l, b), (l, t),
                 (l + align * w - 0.5s, t),
                 (l + align * w,        t+s),
                 (l + align * w + 0.5s, t),
-                (r, t), (r, b), (l, b), (l, b + 0.5h)
+                (r, t), (r, b), (l, b)
             ]
         elseif placement in (:above, :up, :top)
             Vec2f[
-                (l, b + 0.5h), (l, t), (r, t), (r, b),
+                (l, b), (l, t), (r, t), (r, b),
                 (l + align * w + 0.5s, b),
                 (l + align * w,        b-s),
                 (l + align * w - 0.5s, b),
-                (l, b), (l, b + 0.5h)
+                (l, b)
             ]
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
             Vec2f[
-                (l, b + 0.5h), (l, t), (r, t), (r, b),
+                (l, b), (l, t), (r, t), (r, b),
                 (l + align * w + 0.5s, b),
                 (l + align * w,        b-s),
                 (l + align * w - 0.5s, b),
-                (l, b), (l, b + 0.5h)
+                (l, b)
             ]
         end
 
@@ -252,7 +252,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     lines!(
         p, outline,
-        color = p.outline_color, space = :pixel,
+        color = p.outline_color, space = :pixel, miter_limit = pi/18,
         linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,

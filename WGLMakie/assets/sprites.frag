@@ -156,10 +156,11 @@ void main() {
     if (picking) {
         if (final_color.a > 0.1) {
             fragment_color = pack_int(object_id, frag_instance_id);
+        } else {
+            discard;
         }
         return;
     }
-
 
     if (final_color.a <= 0.0){
         discard;
