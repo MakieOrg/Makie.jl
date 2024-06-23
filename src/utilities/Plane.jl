@@ -16,8 +16,21 @@ const Plane3f = Plane{3, Float32}
 const Plane2d = Plane{2, Float64}
 const Plane3d = Plane{3, Float64}
 
-function distance(plane::Plane{N}, point::VecTypes{N}) where N
-    return dot(point, plane.normal) - plane.distance
+function distance(plane::Plane{N, T}, point::VecTypes) where {N, T}
+    return dot(to_ndim(Point{N, T}, point, 0), plane.normal) - plane.distance
+end
+
+function min_clip_distance(planes::Vector{<: Plane}, point::VecTypes)
+    # returns the smallest absolute distance between the point and the clip planes
+    # if the point is clipped by any plane, only negative distances are considered
+    min_dist = Inf
+    for plane in planes
+        d = distance(plane, point)
+        if ((min_dist >= 0) && (d < min_dist)) || ((min_dist < 0) && (d > min_dist))
+            min_dist = d
+        end
+    end
+    return min_dist
 end
 
 gl_plane_format(plane::Plane3) = to_ndim(Vec4f, plane.normal, plane.distance)

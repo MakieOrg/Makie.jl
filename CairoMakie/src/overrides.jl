@@ -52,7 +52,8 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
-    points = project_position.(Ref(poly), space, points, Ref(model))
+    points = clip_poly(poly.clip_planes[], points, space, model)
+    points = _project_position(scene, space, points, model, true)
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
@@ -163,7 +164,9 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_polygon.(Ref(poly), space, polygons, Ref(model))
+    projected_polys = map(polygons) do polygon
+        return project_polygon(poly, space, polygon, poly.clip_planes[], model)
+    end
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -183,7 +186,9 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_multipolygon.(Ref(poly), space, polygons, Ref(model))
+    projected_polys = map(polygons) do polygon 
+        project_multipolygon(poly, space, polygon, poly.clip_planes[], model)
+    end
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -219,6 +224,7 @@ function draw_plot(scene::Scene, screen::Screen,
         points = vcat(lowerpoints, reverse(upperpoints))
         model = band.model[]
         space = to_value(get(band, :space, :data))
+        points = clip_poly(band.clip_planes[], points, space, model)
         points = project_position.(Ref(band), space, points, Ref(model))
         Cairo.move_to(screen.context, points[1]...)
         for p in points[2:end]
@@ -257,7 +263,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     polygons = pol[1][]
     model = pol.model[]
     space = to_value(get(pol, :space, :data))
-    projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(model))
+    projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(tric.clip_planes[]), Ref(model))
 
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))

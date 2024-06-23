@@ -116,17 +116,50 @@ function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
     return Rect(mini, maxi .- mini)
 end
 
-function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, model) where {N, T}
+function clip_poly(clip_planes::Vector{Plane3f}, ps::Vector{PT}, space::Symbol, model::Mat4) where {PT <: Point2}
+    if isempty(clip_planes) || !Makie.is_data_space(space)
+        return ps
+    end
+
+    planes = to_model_space(model, clip_planes)
+    last_distance = Makie.min_clip_distance(planes, first(ps))
+    last_point = first(ps)
+    output = sizehint!(PT[], length(ps))
+
+    for p in ps
+        d = Makie.min_clip_distance(planes, p)
+        if (last_distance < 0) && (d >= 0) # clipped -> unclipped
+            # point between last and this on clip plane
+            clip_point = - last_distance * (p - last_point) / (d - last_distance) + last_point
+            push!(output, clip_point, p)
+        elseif (last_distance >= 0) && (d < 0) # unclipped -> clipped
+            clip_point = - last_distance * (p - last_point) / (d - last_distance) + last_point
+            push!(output, clip_point)
+        elseif (last_distance >= 0) && (d >= 0) # unclipped -> unclipped
+            push!(output, p)
+        end
+        last_point = p
+        last_distance = d
+    end
+
+    return output
+end
+
+function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, clip_planes, model) where {N, T}
     PT = Point{N, Makie.float_type(T)}
     ext = decompose(PT, poly.exterior)
     project(p) = PT(project_position(scenelike, space, p, model))
-    ext_proj = PT[project(p) for p in ext]
-    interiors_proj = Vector{PT}[PT[project(p) for p in decompose(PT, points)] for points in poly.interiors]
+
+    ext_proj = PT[project(p) for p in clip_poly(clip_planes, ext, space, model)]
+    interiors_proj = Vector{PT}[
+        PT[project(p) for p in clip_poly(clip_planes, decompose(PT, points), space, model)] 
+        for points in poly.interiors]
+
     return Polygon(ext_proj, interiors_proj)
 end
 
-function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, model) where MP <: MultiPolygon
-    return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(model)))
+function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, clip_planes, model) where MP <: MultiPolygon
+    return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(clip_planes), Ref(model)))
 end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
