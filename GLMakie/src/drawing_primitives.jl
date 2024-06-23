@@ -271,8 +271,12 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         # Handle clip planes
         # OpenGL supports up to 8
         clip_planes = pop!(gl_attributes, :clip_planes)
-        gl_attributes[:num_clip_planes] = map(x -> min(8, length(x)), plot, clip_planes)
-        gl_attributes[:clip_planes] = map(plot, clip_planes) do planes
+        gl_attributes[:num_clip_planes] = map(plot, clip_planes, gl_attributes[:space]) do planes, space
+            return Makie.is_data_space(space) ? min(8, length(planes)) : 0
+        end
+        gl_attributes[:clip_planes] = map(plot, clip_planes, gl_attributes[:space]) do planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
             if length(planes) > 8
                 @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
             end
@@ -282,7 +286,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
                 output[i] = Makie.gl_plane_format(planes[i])
             end
             for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e10)
+                output[i] = Vec4f(0, 0, 0, -1e9)
             end
             return output
         end
@@ -473,12 +477,15 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
             Vec2f(ppu * origin(viewport))
         end
+        space = plot.space
 
         # Handled manually without using OpenGL clipping
         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
         data[:num_clip_planes] = Observable(0)
         pop!(data, :clip_planes)
-        data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes) do pv, planes
+        data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes, space) do pv, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
             clip_planes = Makie.to_clip_space(pv, planes)
 
             output = Vector{Vec4f}(undef, 8)
@@ -491,7 +498,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             return output
         end
 
-        space = plot.space
         if isnothing(to_value(linestyle))
             data[:pattern] = nothing
             data[:fast] = true
@@ -849,7 +855,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
         gl_attributes[:num_clip_planes] = Observable(0)
         pop!(gl_attributes, :clip_planes)
-        gl_attributes[:clip_planes] = map(plot, gl_attributes[:modelinv], plot.clip_planes) do modelinv, planes
+        gl_attributes[:clip_planes] = map(plot, gl_attributes[:modelinv], plot.clip_planes, plot.space) do modelinv, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8] 
+
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
@@ -920,7 +928,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
         gl_attributes[:num_clip_planes] = Observable(0)
         pop!(gl_attributes, :clip_planes)
-        gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes) do model, planes
+        gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes, plot.space) do model, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8] 
+
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal

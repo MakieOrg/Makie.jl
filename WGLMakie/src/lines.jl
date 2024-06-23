@@ -192,8 +192,13 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     end
 
     # Handle clip planes
-    uniforms[:num_clip_planes] = map(length, plot, plot.clip_planes)
-    uniforms[:clip_planes] = map(plot, scene.camera.projectionview, plot.clip_planes) do pv, planes
+    uniforms[:num_clip_planes] = map(plot, plot.clip_planes, plot.space) do planes, space
+        return Makie.is_data_space(space) ? length(planes) : 0
+    end
+    
+    uniforms[:clip_planes] = map(plot, scene.camera.projectionview, plot.clip_planes, plot.space) do pv, planes, space
+        Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
         if length(planes) > 8
             @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
         end

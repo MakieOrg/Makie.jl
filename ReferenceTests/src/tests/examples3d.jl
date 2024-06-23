@@ -716,3 +716,19 @@ end
     
     f
 end
+
+@referance_test "Clip planes - only data space" begin
+    f = Figure()
+    a = LScene(f[1, 1])
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1, 0, 0), 0), Plane3f(Vec3f(-1, 0, 0), -100)]
+
+    # verify that clipping is working
+    wireframe!(a, Rect3f(Point3f(-1), Vec3f(2)))
+
+    # verify that space != :data is excluded
+    lines!(a, -1..1, sin, space = :clip)
+    linesegments!(a, [100, 200, 300, 400], [100, 100, 100, 100], space = :pixel)
+    scatter!(a, [0.2, 0.8], [0.4, 0.6], space = :relative)
+
+    f
+end

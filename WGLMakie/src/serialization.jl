@@ -373,8 +373,11 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     if plot isa Voxels
         
         clip_planes = map(
-                plot, plot.converted..., plot.model, plot.clip_planes
-            ) do xs, ys, zs, chunk, model, planes
+                plot, plot.converted..., plot.model, plot.clip_planes, plot.space
+            ) do xs, ys, zs, chunk, model, planes, space
+    
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
@@ -412,7 +415,9 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             return convert(Mat4f, m) * m2
         end
 
-        clip_planes = map(plot, model2, plot.clip_planes) do model, planes
+        clip_planes = map(plot, model2, plot.clip_planes, plot.space) do model, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
@@ -436,7 +441,9 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
 
     else
 
-        clip_planes = map(plot, plot.clip_planes) do planes
+        clip_planes = map(plot, plot.clip_planes, plot.space) do planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
             if length(planes) > 8
                 @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
             end
@@ -460,9 +467,12 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
         return
     end
     
-    uniforms[:num_clip_planes] = serialize_three(length(plot.clip_planes[]))
-    on(plot, plot.clip_planes) do planes
-        updater[] = [:num_clip_planes, serialize_three(length(planes))]
+    uniforms[:num_clip_planes] = serialize_three(
+        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0    
+    )
+    onany(plot, plot.clip_planes, plot.space) do planes, space
+        N = Makie.is_data_space(space) ? length(planes) : 0
+        updater[] = [:num_clip_planes, serialize_three(N)]
         return
     end
 

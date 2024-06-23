@@ -612,7 +612,7 @@ function draw_glyph_collection(
         transform_func = transformation.transform_func[]
         p = apply_transform(transform_func, position, space)
 
-        is_clipped(clip_planes, p) && return
+        Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
@@ -821,12 +821,19 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
             ps = [Point2(x, y) for x in xs, y in ys]
             transformed = apply_transform(transform_func(primitive), ps, space)
             T = eltype(transformed)
-            planes = to_model_space(model, primitive.clip_planes[])
+
+            planes = if Makie.is_data_space(space)
+                to_model_space(model, primitive.clip_planes[])
+            else
+                Plane3f[]
+            end
+            
             for i in eachindex(transformed)
                 if is_clipped(planes, transformed[i])
                     transformed[i] = T(NaN)
                 end
             end
+            
             _project_position(scene, space, transformed, model, true)
         end
         colors = to_color(primitive.calculated_colors[])
@@ -1009,7 +1016,11 @@ function draw_mesh3D(
         return to_ndim(Vec4f, model_f32 * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0)), NaN32)
     end
 
-    valid = [is_visible(clip_planes, p) for p in vs]
+    valid = if Makie.is_data_space(space)
+        [is_visible(clip_planes, p) for p in vs]
+    else
+        Bool[]
+    end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
 
@@ -1057,7 +1068,7 @@ function draw_mesh3D(
     zorder = sortperm(average_zs)
 
     # Face culling
-    if isempty(clip_planes)
+    if isempty(clip_planes) || !Makie.is_data_space(space)
         zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
     else
         zorder = filter(i -> all(valid[meshfaces[i]]), zorder)

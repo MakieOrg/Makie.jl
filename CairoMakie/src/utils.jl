@@ -6,22 +6,6 @@
 using Makie: apply_transform, transform_func, unclipped_indices, to_model_space,
     broadcast_foreach_index, is_clipped, is_visible
 
-# No, we may need to filter over variables too!
-# function apply_transform_and_clip(
-#         transform_func, model::Mat4, clip_planes::Vector{<: Makie.Plane3}, 
-#         space::Symbol, data
-#     )
-
-#     transformed = Makie.apply_transform(tf, data, space)
-#     if space == :data && !isempty(clip_planes)
-#         imodel = inv(model)
-#         planes = Makie.apply_transform.((imodel,), clip_planes)
-#         filter!(p -> Makie.is_visible(p, planes), transformed)
-#     end
-#     return transformed
-# end
-
-
 function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
     point = Makie.apply_transform(transform_func, point, space)
@@ -164,7 +148,11 @@ function project_line_points(scene, plot::T, positions) where {T <: Union{Lines,
     end
 
     # clip planes in clip space
-    clip_planes = Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])
+    clip_planes = if Makie.is_data_space(space)
+        Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])
+    else
+        Makie.Plane3f[]
+    end
     
     # outputs
     screen_points = sizehint!(Vector{Vec2f}(undef, 0), length(clip_points))
