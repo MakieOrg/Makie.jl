@@ -717,7 +717,7 @@ end
     f
 end
 
-@referance_test "Clip planes - only data space" begin
+@reference_test "Clip planes - only data space" begin
     f = Figure()
     a = LScene(f[1, 1])
     a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1, 0, 0), 0), Plane3f(Vec3f(-1, 0, 0), -100)]
