@@ -1458,7 +1458,7 @@ end
     fig
 end
 
-@referance_test "Clip planes - CairoMakie overrides" begin
+@reference_test "Clip planes - CairoMakie overrides" begin
     f = Figure()
     a = Axis(f[1, 1])
     a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(1, 0, 0), 0)]
