@@ -5,8 +5,14 @@ struct Plane{N, T}
     distance::T
 end
 
-function Plane(point::Point{N}, normal::Vec{N}) where N
-    Plane(normal, dot(point, normal))
+function Plane(point::Point{N, T1}, normal::Vec{N, T2}) where {N, T1, T2}
+    return Plane{N, promote_type(T1, T2)}(point, normal)
+end
+function Plane{N}(point::Point{N, T1}, normal::Vec{N, T2}) where {N, T1, T2}
+    return Plane{N, promote_type(T1, T2)}(point, normal)
+end
+function Plane{N, T}(point::Point{N}, normal::Vec{N}) where {N, T}
+    return Plane{N, T}(normal, dot(point, normal))
 end
 
 const Plane2{T} = Plane{2, T}
