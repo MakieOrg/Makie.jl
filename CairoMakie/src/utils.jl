@@ -116,7 +116,7 @@ function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
     return Rect(mini, maxi .- mini)
 end
 
-function clip_poly(clip_planes::Vector{Plane3f}, ps::Vector{PT}, space::Symbol, model::Mat4) where {PT <: Point2}
+function clip_poly(clip_planes::Vector{Plane3f}, ps::Vector{PT}, space::Symbol, model::Mat4) where {PT <: VecTypes{2}}
     if isempty(clip_planes) || !Makie.is_data_space(space)
         return ps
     end
@@ -143,6 +143,27 @@ function clip_poly(clip_planes::Vector{Plane3f}, ps::Vector{PT}, space::Symbol, 
     end
 
     return output
+end
+
+function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, model::Mat4)
+    if !Makie.is_data_space(space) || isempty(clip_planes)
+        return shape
+    end
+    
+    xy = origin(shape)
+    w, h = widths(shape)
+    ps = [xy, xy + Vec2(w, 0), xy + Vec2f(w, h), xy + Vec2(0, h)]
+    if any(p -> Makie.is_clipped(clip_planes, p), ps)
+        push!(ps, xy)
+        ps = clip_poly(clip_planes, ps, space, model)
+        return BezierPath([MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()])
+    else
+        return shape
+    end
+end
+
+function clip_shape(clip_planes::Vector{Plane3f}, shape::BezierPath, space::Symbol, model::Mat4)
+    return shape
 end
 
 function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, clip_planes, model) where {N, T}
