@@ -31,8 +31,9 @@ is_cairomakie_atomic_plot(plot::Poly) = true
 
 
 function draw_poly_as_mesh(scene, screen, poly)
-    draw_plot(scene, screen, poly.plots[1])
-    draw_plot(scene, screen, poly.plots[2])
+    for i in eachindex(poly.plots)
+        draw_plot(scene, screen, poly.plots[i])
+    end
 end
 
 # As a general fallback, draw all polys as meshes.
