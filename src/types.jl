@@ -380,6 +380,19 @@ struct GlyphCollection
     strokecolors::ScalarOrVector{RGBAf}
     strokewidths::ScalarOrVector{Float32}
 
+    function GlyphCollection(
+        glyphs::Vector{UInt64},
+        fonts::Vector{FTFont},
+        origins::Vector{Point3f},
+        extents::Vector{GlyphExtent},
+        scales::ScalarOrVector{Vec2f},
+        rotations::ScalarOrVector{Quaternionf},
+        colors::ScalarOrVector{RGBAf},
+        strokecolors::ScalarOrVector{RGBAf},
+        strokewidths::ScalarOrVector{Float32})
+
+        return new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+    end
     function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,
             colors, strokecolors, strokewidths)
 
@@ -391,12 +404,12 @@ struct GlyphCollection
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
 
-        rotations = convert_attribute(rotations, key"rotation"())
-        fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        colors = convert_attribute(colors, key"color"())
-        strokecolors = convert_attribute(strokecolors, key"color"())
+        rotations = to_rotation(rotations)
+        fonts = map(to_font, fonts)
+        colors = to_color(colors)
+        strokecolors = to_color(strokecolors)
         strokewidths = Float32.(strokewidths)
-        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+        return new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
     end
 end
 

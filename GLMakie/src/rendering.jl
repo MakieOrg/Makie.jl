@@ -97,7 +97,7 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
-
+    GC.safepoint()
     return
 end
 

@@ -348,9 +348,9 @@ plottype(::MultiPolygon) = Lines
 # all the plotting functions that get a plot type
 const PlotFunc = Type{<:AbstractPlot}
 
-function plot!(::Plot{F, Args}) where {F, Args}
+function plot!(P::Plot{F, Args}) where {F, Args}
     if !(F in atomic_functions)
-        error("No recipe for $(F) with args: $(Args)")
+        error("No recipe for $(F) with args: $(Args) ($(P))")
     end
 end
 
