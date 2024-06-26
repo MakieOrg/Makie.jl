@@ -163,6 +163,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Bool
     rendertask::Union{Task, Nothing}
+    timer::BudgetedTimer
     px_per_unit::Observable{Float32}
 
     screen2scene::Dict{WeakRef, ScreenID}
@@ -202,7 +203,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
         s = size(framebuffer)
         screen = new{GLWindow}(
             glscreen, shader_cache, framebuffer,
-            config, stop_renderloop, rendertask,
+            config, stop_renderloop, rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
@@ -895,20 +896,14 @@ function vsynced_renderloop(screen)
         end
         pollevents(screen) # GLFW poll
         render_frame(screen)
-        GLFW.SwapBuffers(to_native(screen))
         yield()
+        GLFW.SwapBuffers(to_native(screen))
     end
 end
 
 function fps_renderloop(screen::Screen)
-    last_time = time_ns()
-    time_budget = 0.0
+    reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop
-        t = time_ns()
-        time_per_frame = 1.0 / screen.config.framerate
-        time_budget += time_per_frame - (t - last_time) * 1e-9
-        last_time = t
-
         pollevents(screen)
 
         if !screen.config.pause_renderloop
@@ -917,14 +912,7 @@ function fps_renderloop(screen::Screen)
             GLFW.SwapBuffers(to_native(screen))
         end
 
-        t_elapsed = (time_ns() - t) * 1e-9
-        diff = time_per_frame - t_elapsed + time_budget
-
-        if diff > 0.001 # can't sleep less than 0.001
-            sleep(diff)
-        else # if we don't sleep, we still need to yield explicitely to other tasks
-            yield()
-        end
+        sleep(screen.timer)
     end
 end
 
@@ -938,15 +926,12 @@ function requires_update(screen::Screen)
 end
 
 
-function on_demand_renderloop(screen::Screen)
-    last_time = time_ns()
-    time_budget = 0.0
-    while isopen(screen) && !screen.stop_renderloop
-        t = time_ns()
-        time_per_frame = 1.0 / screen.config.framerate
-        time_budget += time_per_frame - (t - last_time) * 1e-9
-        last_time = t
+# const time_record = sizehint!(Float64[], 100_000)
 
+function on_demand_renderloop(screen::Screen)
+    # last_time = time_ns()
+    reset!(screen.timer, 1.0 / screen.config.framerate)
+    while isopen(screen) && !screen.stop_renderloop
         pollevents(screen) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
@@ -954,13 +939,11 @@ function on_demand_renderloop(screen::Screen)
             GLFW.SwapBuffers(to_native(screen))
         end
 
-        t_elapsed = (time_ns() - t) / 1e9
-        diff = time_per_frame - t_elapsed + time_budget
-        if diff > 0.001 # can't sleep less than 0.001
-            sleep(diff)
-        else # if we don't sleep, we still need to yield explicitely to other tasks
-            yield()
-        end
+        sleep(screen.timer)
+
+        # t = time_ns()
+        # push!(time_record, 1e-9 * (t - last_time))
+        # last_time = t
     end
     cause = screen.stop_renderloop ? "stopped renderloop" : "closing window"
     @debug("Leaving renderloop, cause: $(cause)")
