@@ -207,6 +207,14 @@ function project_line_points(scene, plot::T, positions) where {T <: Union{Lines,
     else
         Makie.Plane3f[]
     end
+
+    # Fix lines with points far outside the clipped region not drawing at all
+    # TODO this can probably be done more efficiently by checking -1 ≤ x, y ≤ 1 
+    #      directly and calculating intersections directly (1D)
+    push!(clip_planes,
+        Plane3f(Vec3f(-1, 0, 0), -1f0), Plane3f(Vec3f(+1, 0, 0), -1f0),
+        Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
+    )
     
     # outputs
     screen_points = sizehint!(Vector{Vec2f}(undef, 0), length(clip_points))
