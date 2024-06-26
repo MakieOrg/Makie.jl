@@ -897,6 +897,7 @@ function vsynced_renderloop(screen)
         pollevents(screen) # GLFW poll
         render_frame(screen)
         yield()
+        GC.safepoint()
         GLFW.SwapBuffers(to_native(screen))
     end
 end
@@ -911,7 +912,8 @@ function fps_renderloop(screen::Screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
-
+        
+        GC.safepoint()
         sleep(screen.timer)
     end
 end
@@ -939,6 +941,7 @@ function on_demand_renderloop(screen::Screen)
             GLFW.SwapBuffers(to_native(screen))
         end
 
+        GC.safepoint()
         sleep(screen.timer)
 
         # t = time_ns()
