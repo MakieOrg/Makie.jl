@@ -128,6 +128,8 @@ end
 project_command(c::ClosePath, scene, space, model) = c
 
 function draw_single(primitive::Lines, ctx, positions)
+    isempty(positions) && return
+
     n = length(positions)
     start = positions[begin]
     
@@ -221,6 +223,8 @@ function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArr
 end
 
 function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
+    isempty(indices) && return
+    
     colors = colors[indices]
     linewidths = linewidths[indices]
     @assert length(positions) == length(colors) "$(length(positions)) != $(length(colors))"
