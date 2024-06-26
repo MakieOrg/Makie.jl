@@ -84,8 +84,28 @@ end
     fig
 end
 
-#@reference_test "Miter Limit"
-begin
+@reference_test "Line loops" begin
+    # check for issues with self-overlap of line segments with loops, interplay
+    # between loops, lines, nan separation
+    loop(p) = Point2f[p, p .+ Point2f(0.8, 0), p .+ Point2f(0, 0.8), p, Point2f(NaN)]
+    line(p) = Point2f[p, p .+ Point2f(0.8, 0), p .+ Point2f(0, 0.8), Point2f(NaN)]
+
+    nan = [Point2f(NaN)]
+    ps = vcat(
+        nan, nan, nan, loop((0, -1)), loop((1, -1)),
+        line((-1, 0)), line((0, 0)),
+        nan, nan, line((1, 0)), nan,
+        loop((-1, 1)), nan, loop((0, 1)),
+        nan, [Point2f(1, 1)], nan
+    )
+
+    f, a, p = lines(loop((-1, -1)), linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!(ps, linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!(vcat(nan, nan, line((1, 1)), nan), linewidth = 20, linecap = :round, alpha = 0.5)
+    f
+end
+
+@reference_test "Miter Limit" begin
     ps = [Point2f(0, -0.5), Point2f(1, -0.5)]
     for phi in [160, -130, 121, 50, 119, -90] # these are 180-miter_angle
         R = Makie.Mat2f(cosd(phi), sind(phi), -sind(phi), cosd(phi))
