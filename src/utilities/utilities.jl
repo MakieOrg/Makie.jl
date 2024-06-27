@@ -219,6 +219,47 @@ end
 
 
 """
+    broadcast_foreach_index(f, arg, indices, args...)
+
+Like broadcast_foreach but with indexing. The first arg is assumed to already 
+have indices applied while the remaining ones use the given indices. 
+
+    Effectively calls:
+```
+for (raw_idx, idx) in indices
+    f(arg[raw_idx], attr_broadcast_getindex(args, idx)...)
+end
+```
+"""
+@generated function broadcast_foreach_index(f, arg1, indices, args...)
+    N = length(args)
+    quote
+        lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
+        maxlen = maximum(lengths)
+        any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
+        if any_wrong_length
+            error("All non scalars need same length, Found lengths for each argument: $lengths, $(map(typeof, args))")
+        end
+        if (maxlen > 1) && (length(last(indices)) > maxlen) # assuming indices sorted
+            error("Indices must be in range. Found $(last(indices)) > $maxlen.")
+        end
+        if length(indices) != length(arg1)
+            error("First arg out of bounds.")
+        end
+        # skip if there's a zero length element (like an empty annotations collection, etc)
+        # this differs from standard broadcasting logic in which all non-scalar shapes have to match
+        0 in lengths && return
+
+        for (raw, i) in enumerate(indices)
+            Base.Cartesian.@ncall $N f arg1[raw] (j -> attr_broadcast_getindex(args[j], i))
+        end
+
+        return
+    end
+end
+
+
+"""
     from_dict(::Type{T}, dict)
 Creates the type `T` from the fields in dict.
 Automatically converts to the correct types.

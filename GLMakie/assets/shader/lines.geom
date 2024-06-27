@@ -34,6 +34,7 @@ flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
 flat out vec4 f_miter_vecs;
+out float gl_ClipDistance[8];
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -46,6 +47,10 @@ uniform vec2 scene_origin;
 uniform int linecap;
 uniform int joinstyle;
 uniform float miter_limit;
+
+uniform mat4 view, projection, projectionview;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
 
 // Constants
 const float AA_RADIUS = 0.8;
@@ -85,6 +90,37 @@ void emit_vertex(LineVertex vertex) {
 vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
 vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
+
+bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
+{
+    float d1, d2;
+    for(int i = 0; i < _num_clip_planes; i++)
+    {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            isvalid[1] = false;
+            isvalid[2] = false;
+            return true;
+        // one outside - shorten segment
+        } else if (d1 < 0.0) {
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+            f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+            isvalid[0] = false;
+        } else if (d2 < 0.0) {
+            p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+            f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+            isvalid[3] = false;
+        }
+    }
+
+    return false;
+} 
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +261,10 @@ void main(void)
         return;
     }
 
+    // line start/end colors for color sampling
+    f_color1 = g_color[1];
+    f_color2 = g_color[2];
+
     // Time to generate our quad. For this we need to find out how far a join
     // extends the line. First let's get some vectors we need.
 
@@ -237,7 +277,7 @@ void main(void)
     // moving them to the edge of the visible area.
     vec3 p0, p1, p2, p3;
     {
-        // All in clip space
+        // Not in clip
         vec4 clip_p0 = gl_in[0].gl_Position; // start of previous segment
         vec4 clip_p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
         vec4 clip_p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
@@ -256,12 +296,19 @@ void main(void)
             //   p.z + t * v.z = +-(p.w + t * v.w)
             // where (-) gives us the result for the near clipping plane as p.z
             // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
-            clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+            clip_p1  = clip_p1  + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+            f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
         if (clip_p2.w < 0.0) {
             isvalid[3] = false;
-            clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+            clip_p2  = clip_p2  + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+            f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
+
+        // Shorten segments to fit clip planes
+        // returns true if segments are fully clipped
+        if (process_clip_planes(clip_p1, clip_p2, isvalid))
+            return;
 
         // transform clip -> screen space, applying xyz / w normalization (which
         // is now save as all vertices are in front of the camera)
@@ -423,10 +470,6 @@ void main(void)
 
     // used to compute width sdf
     f_linewidth = halfwidth;
-
-    // for color sampling
-    f_color1 = g_color[1];
-    f_color2 = g_color[2];
 
     // handle very thin lines by adjusting alpha rather than linewidth/sdfs
     f_alpha_weight = min(1.0, g_thickness[1] / AA_RADIUS);

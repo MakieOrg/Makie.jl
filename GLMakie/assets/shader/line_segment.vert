@@ -27,6 +27,5 @@ void main()
     g_id = uvec2(objectid, gl_VertexID + 1);
     g_color = color;
     g_thickness = px_per_unit * thickness;
-    gl_Position = projectionview * model * to_vec4(vertex);
-    gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position = model * to_vec4(vertex);
 }

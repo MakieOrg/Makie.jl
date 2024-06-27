@@ -42,7 +42,7 @@ export function uniform_type(obj) {
     } else if (obj instanceof THREE.Texture) {
         return "sampler2D";
     } else {
-        return;
+        return "invalid";
     }
 }
 
@@ -51,7 +51,8 @@ export function uniforms_to_type_declaration(uniform_dict) {
     for (const name in uniform_dict) {
         const uniform = uniform_dict[name];
         const type = uniform_type(uniform);
-        result += `uniform ${type} ${name};\n`;
+        if (type != "invalid")
+            result += `uniform ${type} ${name};\n`;
     }
     return result;
 }

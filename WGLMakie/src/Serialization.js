@@ -453,7 +453,7 @@ function create_material(scene, program) {
         transparent: true,
         glslVersion: THREE.GLSL3,
         depthTest: !program.overdraw.value,
-        depthWrite: !program.transparency.value,
+        depthWrite: !program.transparency.value
     });
 }
 
