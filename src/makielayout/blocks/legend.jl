@@ -226,6 +226,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 # plot the symbols belonging to this entry
                 symbolplots = AbstractPlot[]
                 for element in e.elements
+                    element isa DefaultElement && continue
                     append!(symbolplots,
                             legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
                 end
@@ -305,6 +306,11 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     return [pol]
 end
 
+
+function legendelement_plots!(scene, element::DefaultElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    # we don't plot anything
+end
+
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
     if s in fieldnames(LegendEntry)
         getfield(lentry, s)
@@ -365,6 +371,10 @@ function PolyElement(;kwargs...)
     _legendelement(PolyElement, Attributes(kwargs))
 end
 
+function DefaultElement(;kwargs...)
+    _legendelement(DefaultElement, Attributes(kwargs))
+end
+
 function _legendelement(T::Type{<:LegendElement}, a::Attributes)
     _rename_attributes!(T, a)
     T(a)
@@ -392,6 +402,7 @@ _renaming_mapping(::Type{PolyElement}) = Dict(
     :colormap => :polycolormap,
     :colorrange => :polycolorrange,
 )
+_renaming_mapping(::Type{DefaultElement}) = Dict{Symbol,Symbol}()
 
 function _rename_attributes!(T, a)
     m = _renaming_mapping(T)
@@ -460,6 +471,10 @@ function legendelements(plot::Band, legend)
         polycolormap = plot.colormap,
         polycolorrange = plot.colorrange,
     )]
+end
+
+function legendelements(plot::AbstractPlot, legend)
+    LegendElement[DefaultElement()]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack
