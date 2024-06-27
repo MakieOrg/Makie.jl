@@ -228,7 +228,7 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
         # it should be impossible to get less than 3 points. Should...
         # @assert length(zero_points) > 2
         if length(zero_points) < 3
-            return Makie.Plane(Vec3f(0), sum(distance) > 0.0 ? -1f9 : 1f9)
+            return Makie.Plane(Vec3f(0), sum(distances) > 0.0 ? -1f9 : 1f9)
         end
 
         # Get plane normal vectors from zero points (using all points because why not)

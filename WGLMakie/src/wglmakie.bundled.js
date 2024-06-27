@@ -21386,10 +21386,16 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     
                     // one outside - shorten segment
                     else if (d1 < 0.0)
+                    {
                         // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
-                        p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+                    }
                     else if (d2 < 0.0)
-                        p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+                    {
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+                    }
                 }
 
                 return;
@@ -21412,6 +21418,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
+                // color at line start/end for interpolation
+                f_color1 = color_start;
+                f_color2 = color_end;
+
                 // restrict to visible area (see other shader)
                 vec3 p1, p2;
                 {
@@ -21419,10 +21429,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                     vec4 v1 = _p2 - _p1;
 
-                    if (_p1.w < 0.0)
+                    if (_p1.w < 0.0) {
                         _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
-                    if (_p2.w < 0.0)
+                        f_color1 = f_color1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
+                    if (_p2.w < 0.0) {
                         _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
 
                     // Shorten segments to fit clip planes
                     // returns true if segments are fully clipped
@@ -21494,9 +21508,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = 0.0;
                 f_linelength = segment_length;
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
@@ -21660,10 +21672,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     // one outside - shorten segment
                     } else if (d1 < 0.0) {
                         // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
-                        p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
                         isvalid[0] = false;
                     } else if (d2 < 0.0) {
-                        p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
                         isvalid[3] = false;
                     }
                 }
@@ -21688,6 +21702,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 bool[4] isvalid = bool[4](true, true, true, true);
+
+                // color at start/end of segment
+                f_color1 = color_start;
+                f_color2 = color_end;
 
                 // To apply pixel space linewidths we transform line vertices to pixel space
                 // here. This is dangerous with perspective projection as p.xyz / p.w sends
@@ -21716,10 +21734,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         // where (-) gives us the result for the near clipping plane as p.z
                         // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
                         clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+                        f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
                     if (clip_p2.w < 0.0) {
                         isvalid[3] = false;
                         clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
 
                     // Shorten segments to fit clip planes
@@ -21966,9 +21986,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = shape_factor * halfwidth * extrusion[0];
                 f_linelength = max(1.0, segment_length - shape_factor * halfwidth * (extrusion[0] - extrusion[1]));
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position

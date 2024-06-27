@@ -25,16 +25,15 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         end
     end
 
+    # color is now a color or an array of colors
+    # if it's an array of colors, each segment must be stroked separately
+    color = to_color(primitive.calculated_colors[])
+
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
     # TODO: If we have neither perspective projection not clip_planes we can 
     #       use the normal projection_position() here
-    projected_positions, indices = project_line_points(scene, primitive, positions)
-
-    color = to_color(primitive.calculated_colors[])
-
-    # color is now a color or an array of colors
-    # if it's an array of colors, each segment must be stroked separately
+    projected_positions, indices, color = project_line_points(scene, primitive, positions, color)
 
     # The linestyle can be set globally, as we do here.
     # However, there is a discrepancy between Makie
@@ -184,7 +183,7 @@ end
 
 # if color is not an array
 function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, indices, dash)
-    draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths, indices, dash)
+    draw_multi(primitive, ctx, positions, [color for _ in positions], linewidths, indices, dash)
 end
 
 function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
@@ -225,7 +224,6 @@ end
 function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
     isempty(indices) && return
     
-    colors = colors[indices]
     linewidths = linewidths[indices]
     @assert length(positions) == length(colors) "$(length(positions)) != $(length(colors))"
     @assert length(linewidths) == length(colors) "$(length(linewidths)) != $(length(colors))"

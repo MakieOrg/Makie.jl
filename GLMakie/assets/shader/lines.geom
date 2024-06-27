@@ -109,10 +109,12 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
         // one outside - shorten segment
         } else if (d1 < 0.0) {
             // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
-            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+            p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+            f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
             isvalid[0] = false;
         } else if (d2 < 0.0) {
-            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+            p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+            f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
             isvalid[3] = false;
         }
     }
@@ -259,6 +261,10 @@ void main(void)
         return;
     }
 
+    // line start/end colors for color sampling
+    f_color1 = g_color[1];
+    f_color2 = g_color[2];
+
     // Time to generate our quad. For this we need to find out how far a join
     // extends the line. First let's get some vectors we need.
 
@@ -290,11 +296,13 @@ void main(void)
             //   p.z + t * v.z = +-(p.w + t * v.w)
             // where (-) gives us the result for the near clipping plane as p.z
             // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
-            clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+            clip_p1  = clip_p1  + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+            f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
         if (clip_p2.w < 0.0) {
             isvalid[3] = false;
-            clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+            clip_p2  = clip_p2  + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+            f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
 
         // Shorten segments to fit clip planes
@@ -462,10 +470,6 @@ void main(void)
 
     // used to compute width sdf
     f_linewidth = halfwidth;
-
-    // for color sampling
-    f_color1 = g_color[1];
-    f_color2 = g_color[2];
 
     // handle very thin lines by adjusting alpha rather than linewidth/sdfs
     f_alpha_weight = min(1.0, g_thickness[1] / AA_RADIUS);

@@ -59,11 +59,17 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2)
         }
         
         // one outside - shorten segment
-        else if (d1 < 0.0)
+        else if (d1 < 0.0) 
+        {
             // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
-            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+            p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+            f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+        }
         else if (d2 < 0.0)
-            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+        {
+            p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+            f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+        }
     }
 
     return false;
@@ -87,6 +93,9 @@ void main(void)
         return;
     }
 
+    f_color1 = g_color[0];
+    f_color2 = g_color[1];
+
     // get start and end point of line segment
     // restrict to visible area (see lines.geom)
     vec3 p1, p2;
@@ -109,10 +118,12 @@ void main(void)
         vec4 v1 = _p2 - _p1;
 
         if (_p1.w < 0.0) {
-            _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
+            _p1      = _p1      + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
+            f_color1 = f_color1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
         if (_p2.w < 0.0) {
-            _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+            _p2      = _p2      + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+            f_color2 = f_color2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
 
         // clip -> pixel/screen projection
@@ -134,8 +145,6 @@ void main(void)
     f_miter_vecs = vec4(-1);
 
     // constants
-    f_color1 = g_color[0];
-    f_color2 = g_color[1];
     f_alpha_weight = min(1.0, g_thickness[0] / AA_RADIUS);
     f_linestart = 0;                // no corners so no joint extrusion to consider
     f_linelength = segment_length;  // and also no changes in line length
