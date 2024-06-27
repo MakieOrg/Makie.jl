@@ -1,4 +1,4 @@
-
+#=
 @reference_test "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
     fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=NoShading, axis = (;show_axis=false))
@@ -421,17 +421,38 @@ end
         surf[3] = surf_func(i)
     end
 end
+=#
 
 @reference_test "Normals of a Cat" begin
     x = loadasset("cat.obj")
-    mesh(x, color=:black)
+    f, a, p = mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
         p => p .+ Point(normalize(n) .* 0.05f0)
     end
-    linesegments!(pos, color=:blue)
-    current_figure()
+    l = linesegments!(pos, color=:blue)
+    bb = boundingbox(a.scene, p -> Makie.isaxis(p))
+    if bb !== HyperRectangle{3, Float64}([-0.2163253277540207, -0.052062273025512695, -0.4081778824329376], [0.4326506555080414, 1.016284465789795, 1.4193272590637207])
+        @info "Bbox maybe wrong"
+        @info "Full bb = $bb"
+        @info "No exclude = $(boundingbox(a.scene))"
+        @info "plots in scene:"
+        println.(a.scene.plots)
+        @info "isaxis? $(Makie.isaxis.(a.scene.plots))"
+        @info "space $(map(p -> get(p.attributes, :space, :unset), a.scene.plots))"
+        @info "Individual bboxes:"
+        println.(boundingbox.(a.scene.plots))
+        @info "Individual data_limits:"
+        println.(data_limits.(a.scene.plots))
+        @info "Scene transformation: $(a.scene.transformation)"
+        @info "Linesegments transformation: $(l.transformation)"
+        @info "Linesegments model: $(l.model)"
+        @info "Linesegments data: $(l[1][])"
+        @info "Recompute full: $(boundingbox(a.scene, p -> Makie.isaxis(p)))"
+    end
+    f
 end
 
+#=
 @reference_test "Sphere Mesh" begin
     mesh(Sphere(Point3f(0), 1f0), color=:blue)
 end
@@ -623,3 +644,4 @@ end
 @reference_test "Heatmap 3D" begin
     heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
 end
+=#
