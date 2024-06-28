@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Changed camera variables to Float64 for increased accuracy [#3984](https://github.com/MakieOrg/Makie.jl/pull/3984) 
 - Allow CairoMakie to render `poly` overloads that internally don't use two child plots [#3986](https://github.com/MakieOrg/Makie.jl/pull/3986).
 - Fixes for Menu and DataInspector [#3975](https://github.com/MakieOrg/Makie.jl/pull/3975).
 - Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907).
