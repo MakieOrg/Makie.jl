@@ -1,0 +1,389 @@
+[input]
+base_directory = "../.."
+html_selector = ".franklin-content"
+url_prefix = "/v0.18.4/"
+
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/J77Nj0ubaXcMhDvfGm9o.html"
+    title = "404"
+    url = "404.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/thEsWPYs0AJSDTIMX87s.html"
+    title = "Home"
+    url = "index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/yHibnECfxNCL6qcLUlCx.html"
+    title = "API"
+    url = "api/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/jrryVCVUrj9zvvHaYBp4.html"
+    title = "Documentation"
+    url = "documentation/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/bG2oil4FzstnIWl8uNXX.html"
+    title = "Animations"
+    url = "documentation/animation/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/e09caTrT7HfanSoZjFqD.html"
+    title = "Backends"
+    url = "documentation/backends/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Tn54HQMFvlCHrs5gFj4N.html"
+    title = "CairoMakie"
+    url = "documentation/backends/cairomakie/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/bY7MB0ieKLwILceIo3us.html"
+    title = "GLMakie"
+    url = "documentation/backends/glmakie/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/deJQsvrq21dlyg6GOQWe.html"
+    title = "RPRMakie"
+    url = "documentation/backends/rprmakie/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/mQB3ONUFAFqskovVgFdD.html"
+    title = "WGLMakie"
+    url = "documentation/backends/wglmakie/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/mkPNh0sVaUYr2eoKYECL.html"
+    title = "Blocks"
+    url = "documentation/blocks/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/BEWrYvpkz2SY7Xg3c34v.html"
+    title = "Cameras"
+    url = "documentation/cameras/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/kgmIfI5jiH6R2hlNNHAt.html"
+    title = "Colors"
+    url = "documentation/colors/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/sr4474r8Rq8YWs2mzlzq.html"
+    title = "Events"
+    url = "documentation/events/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Ha7AqihkLbowhgho2R8i.html"
+    title = "Frequently Asked Questions"
+    url = "documentation/faq/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/mlivK3821zZ4iwvA5SqY.html"
+    title = "Figures"
+    url = "documentation/figure/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/ALXoTE3MbVkGRyllxnlv.html"
+    title = "Exporting a Figure with physical dimensions"
+    url = "documentation/figure_size/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/ipkM3FONTIuFzxbRbMuh.html"
+    title = "Headless"
+    url = "documentation/headless/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/w0FGwIJc2wZeaum8P4um.html"
+    title = "Inspecting Data"
+    url = "documentation/inspector/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/H9yQRTEbD7EacJYPhBNQ.html"
+    title = "LaTeX"
+    url = "documentation/latex/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Z8jFSyoEiYQLRj94yjNf.html"
+    title = "How layouts work"
+    url = "documentation/layouting/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/7LUWJwlUBIvYRsaKLwNP.html"
+    title = "Lighting"
+    url = "documentation/lighting/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/2G2QbBy9RV9yqWw3VmuY.html"
+    title = "Observables & Interaction"
+    url = "documentation/nodes/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/GR3rGwYR31jpGrhGRpRF.html"
+    title = "Plot Method Signatures"
+    url = "documentation/plot_method_signatures/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/gSvkGAKjthAqjwkOfoin.html"
+    title = "Plot Recipes"
+    url = "documentation/recipes/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/0If5RZyQdvIdz6RTBgOb.html"
+    title = "Scenes"
+    url = "documentation/scenes/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/GBOxFqFArPWZxLHPLmDf.html"
+    title = "Theming"
+    url = "documentation/theming/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/aXdFYSGuidlUcgnfhYJt.html"
+    title = "Predefined themes"
+    url = "documentation/theming/predefined_themes/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/ZAOoCajNCWlnQXN3uIgK.html"
+    title = "Basic transparency"
+    url = "documentation/transparency/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/GwQEkND5dSWRUNTvDSff.html"
+    title = "Examples"
+    url = "examples/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/RGVejMebymF0U2ojtbiq.html"
+    title = "Blocks & Widgets"
+    url = "examples/blocks/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/6GY4lbetWhrqwerQrWrw.html"
+    title = "Axis"
+    url = "examples/blocks/axis/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/lkg7gOL1ZNmJDZnx8B7P.html"
+    title = "Axis3"
+    url = "examples/blocks/axis3/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/RoCmTSmFSvNPoacsNzzd.html"
+    title = "Box"
+    url = "examples/blocks/box/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/BkWUqQrp11SBDU0C1DQH.html"
+    title = "Button"
+    url = "examples/blocks/button/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/tMXz9kpwSTSff2ZaA5DP.html"
+    title = "Colorbar"
+    url = "examples/blocks/colorbar/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Q3oWaY80KTmFDBOf8GTY.html"
+    title = "GridLayout"
+    url = "examples/blocks/gridlayout/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/sZo0vB60gN1WcGomiIe7.html"
+    title = "IntervalSlider"
+    url = "examples/blocks/intervalslider/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/GEM1MmqxwmxCv8PAVFED.html"
+    title = "Label"
+    url = "examples/blocks/label/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/3t6UZCBAOUCE6CpS5jK6.html"
+    title = "Legend"
+    url = "examples/blocks/legend/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/6jGrt6tqrynW94Ce47mI.html"
+    title = "LScene"
+    url = "examples/blocks/lscene/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/oQPBTEhp080QreLo27oE.html"
+    title = "Menu"
+    url = "examples/blocks/menu/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/gA1DkEkde8ZzlNr4Iwbu.html"
+    title = "Slider"
+    url = "examples/blocks/slider/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/y3nb7BvwlL4o4hb4ZUKz.html"
+    title = "SliderGrid"
+    url = "examples/blocks/slidergrid/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/jeuQqC6RQYafNR2YIkY7.html"
+    title = "Textbox"
+    url = "examples/blocks/textbox/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/qKpxo3V2dlcANMwqYM2X.html"
+    title = "Toggle"
+    url = "examples/blocks/toggle/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/1RBOLSxokYLVI9RVGrSd.html"
+    title = "Plotting functions"
+    url = "examples/plotting_functions/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/8obfcEM7OjCmp78y1r36.html"
+    title = "ablines"
+    url = "examples/plotting_functions/ablines/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/ubix4lmFwTUxoLI88bR4.html"
+    title = "arrows"
+    url = "examples/plotting_functions/arrows/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/ddZV5DHY2Bm5Ui5IA39d.html"
+    title = "band"
+    url = "examples/plotting_functions/band/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/NkHatvhnRmkdvQO5JRNC.html"
+    title = "barplot"
+    url = "examples/plotting_functions/barplot/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/7ZE0V0rkt2LmwTxnlHxw.html"
+    title = "boxplot"
+    url = "examples/plotting_functions/boxplot/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/7sDVbs2XrYcKj3Ssk2f8.html"
+    title = "contour"
+    url = "examples/plotting_functions/contour/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/BpIka3RXk16jBt1HWl23.html"
+    title = "contour3d"
+    url = "examples/plotting_functions/contour3d/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/6THQPbKEosNDEvWHfMux.html"
+    title = "contourf"
+    url = "examples/plotting_functions/contourf/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/K7AKhEEUmCz4nYNTd97i.html"
+    title = "crossbar"
+    url = "examples/plotting_functions/crossbar/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Gwtt2jyWRVWSHpd8U4kZ.html"
+    title = "density"
+    url = "examples/plotting_functions/density/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/4RYuGOLjpSFxwevfFEPo.html"
+    title = "ecdfplot"
+    url = "examples/plotting_functions/ecdf/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/UsUF01LKXZXvTRO6ncKx.html"
+    title = "errorbars"
+    url = "examples/plotting_functions/errorbars/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/WQeo7m5ge90UuDtYW5kr.html"
+    title = "heatmap"
+    url = "examples/plotting_functions/heatmap/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/lqvHXwh2W4MSO6hIzkVG.html"
+    title = "hexbin"
+    url = "examples/plotting_functions/hexbin/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/tT2mu6OjCQrtyJF7zDlW.html"
+    title = "hist"
+    url = "examples/plotting_functions/hist/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/FkwK27RzYGpUf1vFAIcu.html"
+    title = "hlines and vlines"
+    url = "examples/plotting_functions/hvlines/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/bTwiHRi3h0tQ0s22Jq4T.html"
+    title = "hspan and vspan"
+    url = "examples/plotting_functions/hvspan/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Kr9HGDhZ1hY22h1Hw6Bm.html"
+    title = "image"
+    url = "examples/plotting_functions/image/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/DaYVsGb1MaX5KZiYlLj1.html"
+    title = "lines"
+    url = "examples/plotting_functions/lines/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/dATeE8rmCoEA67hRr9yG.html"
+    title = "linesegments"
+    url = "examples/plotting_functions/linesegments/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/fgDBa9m5mjAYOQ2d7FCE.html"
+    title = "mesh"
+    url = "examples/plotting_functions/mesh/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/l7hvE4w5d2J4m3UyRMED.html"
+    title = "meshscatter"
+    url = "examples/plotting_functions/meshscatter/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/QLQo5vA0KZD7YJmU2iYs.html"
+    title = "pie"
+    url = "examples/plotting_functions/pie/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/SNh0szT9yFZhcimMzum0.html"
+    title = "poly"
+    url = "examples/plotting_functions/poly/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/PszoM3yrBLegXQkKO5Cc.html"
+    title = "qqplot and qqnorm"
+    url = "examples/plotting_functions/qqplot/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/2qDUKKx3QPWmlg7urOuB.html"
+    title = "rainclouds"
+    url = "examples/plotting_functions/rainclouds/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/n1QigiZ91Uis01hFqVsV.html"
+    title = "rangebars"
+    url = "examples/plotting_functions/rangebars/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/mRK8xqggnjU1zo43AoRn.html"
+    title = "scatter"
+    url = "examples/plotting_functions/scatter/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Ee4od5eYjFOFvaNuKCfS.html"
+    title = "scatterlines"
+    url = "examples/plotting_functions/scatterlines/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/e9p8Y7CYXhCDbHEeu9mU.html"
+    title = "series"
+    url = "examples/plotting_functions/series/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/NZxBgCGy3sC5lrnhJkZl.html"
+    title = "spy"
+    url = "examples/plotting_functions/spy/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/VtSh4DCky8qrUE8Cazac.html"
+    title = "stairs"
+    url = "examples/plotting_functions/stairs/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/AP2rQMKKAdbSVKuTCp3X.html"
+    title = "stem"
+    url = "examples/plotting_functions/stem/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/2E6HsU4FMN6lWQWtLp6l.html"
+    title = "streamplot"
+    url = "examples/plotting_functions/streamplot/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/FqoiX40eY3IZ2lXP4ERZ.html"
+    title = "surface"
+    url = "examples/plotting_functions/surface/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/vfTVmlO1sem3TTjCblt0.html"
+    title = "text"
+    url = "examples/plotting_functions/text/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/Xyvrzgik4H4c4ykDdBAj.html"
+    title = "tooltip"
+    url = "examples/plotting_functions/tooltip/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/sYa0Cj3ZcZ13Oswn1mgc.html"
+    title = "tricontourf"
+    url = "examples/plotting_functions/tricontourf/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/xtZwA0AkOff4FilR9y8i.html"
+    title = "violin"
+    url = "examples/plotting_functions/violin/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/MlToQlbT0TRADkIhPZyi.html"
+    title = "volume"
+    url = "examples/plotting_functions/volume/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/lQBJYxu9idXKd05Uq39S.html"
+    title = "volumeslices"
+    url = "examples/plotting_functions/volumeslices/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/lBnZjUZmqWWIlmeJi1xZ.html"
+    title = "waterfall"
+    url = "examples/plotting_functions/waterfall/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/6zCkVcQPy9sIvhTQelwS.html"
+    title = "wireframe"
+    url = "examples/plotting_functions/wireframe/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/z5pjEjG1sUuxUvGIauWk.html"
+    title = "Search"
+    url = "search/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/mSm0l60aIEbK2AqFsqQP.html"
+    title = "Tutorials"
+    url = "tutorials/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/OkCFIFoD88ZpHxSTdiwr.html"
+    title = "Aspect ratio and size control tutorial"
+    url = "tutorials/aspect-tutorial/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/2SUyFuECif2LQvUsDuV7.html"
+    title = "Basic Tutorial"
+    url = "tutorials/basic-tutorial/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/33YSSq3QM0Ubxg832BrI.html"
+    title = "Layout Tutorial"
+    url = "tutorials/layout-tutorial/index.html"
+    [[input.files]]
+    path = "/tmp/jl_HNkDON/3sWj8zfnfllOwDZBG6k8.html"
+    title = "Scene tutorial"
+    url = "tutorials/scenes/index.html"
