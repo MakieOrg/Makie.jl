@@ -21825,12 +21825,12 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 }
 
                 // Used to elongate sdf to include joints
-                // if start/end         elongate slightly so that there is no AA gap in loops
+                // if start/end         no elongation
                 // if joint skipped     elongate to new length
                 // if normal joint      elongate a lot to let shape/truncation handle joint
                 f_extrusion = vec2(
-                    !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0])),
-                    !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1]))
+                    !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0])),
+                    !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1]))
                 );
 
                 // used to compute width sdf
@@ -22903,7 +22903,10 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("wheel", wheel);
     function keydown(event) {
         comm.notify({
-            keydown: event.code
+            keydown: [
+                event.code,
+                event.key
+            ]
         });
         return false;
     }
@@ -23121,6 +23124,35 @@ function pick_native(scene, _x, _y, _w, _h) {
         plots
     ];
 }
+function get_picking_buffer(scene) {
+    const { renderer , picking_target  } = scene.screen;
+    const [w, h] = [
+        picking_target.width,
+        picking_target.height
+    ];
+    renderer.setRenderTarget(picking_target);
+    set_picking_uniforms(scene, 1, true);
+    render_scene(scene, true);
+    renderer.setRenderTarget(null);
+    const nbytes = w * h * 4;
+    const pixel_bytes = new Uint8Array(nbytes);
+    renderer.readRenderTargetPixels(picking_target, 0, 0, w, h, pixel_bytes);
+    const reinterpret_view = new DataView(pixel_bytes.buffer);
+    const picked_plots_array = [];
+    for(let i = 0; i < pixel_bytes.length / 4; i++){
+        const id = reinterpret_view.getUint16(i * 4);
+        const index = reinterpret_view.getUint16(i * 4 + 2);
+        picked_plots_array.push([
+            id,
+            index
+        ]);
+    }
+    return {
+        picked_plots_array,
+        w,
+        h
+    };
+}
 function pick_closest(scene, xy, range) {
     const { renderer  } = scene.screen;
     const [width, height] = [
@@ -23279,6 +23311,7 @@ export { deserialize_scene as deserialize_scene, threejs_module as threejs_modul
 export { render_scene as render_scene };
 export { wglerror as wglerror };
 export { pick_native as pick_native };
+export { get_picking_buffer as get_picking_buffer };
 export { pick_closest as pick_closest };
 export { pick_sorted as pick_sorted };
 export { pick_native_uuid as pick_native_uuid };

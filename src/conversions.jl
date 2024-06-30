@@ -927,12 +927,18 @@ end
 A type that can be used as value for the `linestyle` keyword argument
 of plotting functions to arbitrarily customize the linestyle.
 
-The `value` is a vector of positions where the line flips from being drawn or not
-and vice versa. The values of `value` are in units of linewidth.
+The `value` is a vector specifying the boundaries of the dashes in the line.
+Values 1 and 2 demarcate the first dash, values 2 and 3 the first gap, and so on.
+This means that usually, a pattern should have an odd number of values so that there's
+always a gap after a dash.
 
-For example, with `value = [0.0, 4.0, 6.0, 9.5]`
-you start drawing at 0, stop at 4 linewidths, start again at 6, stop at 9.5,
-then repeat with 0 and 9.5 being treated as the same position.
+Here's an example in ASCII code. If we specify `[0, 3, 6, 11, 16]` then we get the following
+pattern:
+
+```
+#  0  3   6   11   16  3  6   11
+#   ---   -----     ---   -----
+```
 """
 struct Linestyle
     value::Vector{Float32}
