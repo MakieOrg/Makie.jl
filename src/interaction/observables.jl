@@ -1,5 +1,15 @@
-# lift makes it easier to search + replace observable code, while `map` is really hard to differentiate from `map(f, array)`
-const lift = map
+# mimick Observables.jl map() signature to forward directly:
+lift(f, arg::AbstractObservable, args...; kwargs...) = map(f, arg, args...; kwargs...)
+# handle the general case:
+function lift(f, args...; kwargs...)
+    if !any(a -> isa(a, AbstractObservable), args)
+        # there are no observables
+        f(args...)
+    else
+        # there are observables, but not in the first position
+        lift((_, as...) -> f(as...), Observable(nothing), args...; kwargs...)
+    end
+end
 
 """
 Observables.off but without throwing an error

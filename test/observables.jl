@@ -1,7 +1,17 @@
 @testset "lift macro" begin
+    u_noobs = "a"
     x = Observable(1.0)
     y = Observable(2.0)
     z = (x = x, y = y)
+
+    noobs = @lift u_noobs * "b"
+    @test noobs == "ab"
+
+    noobs = @lift $u_noobs * "b"
+    @test noobs == "ab"
+
+    xx = @lift $x
+    @test xx[] == 1.0
 
     t1 = @lift($x + $y)
     @test t1[] == 3.0
