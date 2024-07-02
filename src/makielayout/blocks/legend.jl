@@ -300,7 +300,8 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
         strokecolor = attrs.polystrokecolor, inspectable = false,
-        colormap = attrs.polycolormap, colorrange = attrs.polycolorrange)
+        colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
+        linestyle = attrs.linestyle)
 
     return [pol]
 end
@@ -437,7 +438,7 @@ function legendelements(plot::Scatter, legend)
     )]
 end
 
-function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
+function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
     color = extract_color(plot, legend[:polycolor])
     LegendElement[PolyElement(
         color = color,
@@ -461,6 +462,19 @@ function legendelements(plot::Band, legend)
         polycolorrange = plot.colorrange,
     )]
 end
+
+function legendelements(plot::Union{Poly, Density}, legend)
+    color = Makie.extract_color(plot, legend[:polycolor])
+    LegendElement[Makie.PolyElement(
+        color = color,
+        strokecolor = Makie.choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
+        strokewidth = Makie.choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+        linestyle = plot.linestyle,
+    )]
+end
+
 
 # if there is no specific overload available, we go through the child plots and just stack
 # those together as a simple fallback
