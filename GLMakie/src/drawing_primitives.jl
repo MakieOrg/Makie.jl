@@ -629,8 +629,8 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::Image)
     return cached_robj!(screen, scene, plot) do gl_attributes
         position = lift(plot, plot[1], plot[2]) do x, y
-            xmin, xmax = extrema(x)
-            ymin, ymax = extrema(y)
+            xmin, xmax = Makie.endpoints(x)
+            ymin, ymax = Makie.endpoints(y)
             rect =  Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2d, rect)
         end

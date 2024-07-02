@@ -359,7 +359,8 @@ function print_range_warning(side::String, value)
 end
 
 to_interval(x::Tuple{<: Real, <: Real}) = float_convert(x[1]) .. float_convert(x[2])
-function to_interval(x::Union{Interval,AbstractVector,ClosedInterval})
+to_interval(x::Interval) = float_convert(leftendpoint(x)) .. float_convert(rightendpoint(x))
+function to_interval(x::Union{AbstractVector})
     return float_convert(minimum(x)) .. float_convert(maximum(x))
 end
 

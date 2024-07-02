@@ -92,6 +92,11 @@ end
     @test bb.origin ≈ Point3f(0)
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
 
+    fig, ax, p = image(1..0, 1:10, rand(10, 10))
+    bb = boundingbox(p)
+    @test bb.origin ≈ Point3f(0, 1, 0)
+    @test bb.widths ≈ Vec3f(1.0, 9.0, 0)
+
     # text transforms to pixel space atm (TODO)
     fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1])

@@ -784,6 +784,10 @@ end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
+image_axis(xs::AbstractVector, N) = regularly_spaced_array_to_range(xs)
+image_axis(xs::Makie.Interval, N) = range(Makie.endpoints(xs)..., length = N+1)
+image_axis(xs, N) = range(extrema(xs)..., length = N+1)
+
 function premultiplied_rgba(a::AbstractArray{<:ColorAlpha})
     map(premultiplied_rgba, a)
 end
@@ -796,20 +800,8 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
-    if !(xs isa AbstractVector)
-        l, r = extrema(xs)
-        N = size(image, 1)
-        xs = range(l, r, length = N+1)
-    else
-        xs = regularly_spaced_array_to_range(xs)
-    end
-    if !(ys isa AbstractVector)
-        l, r = extrema(ys)
-        N = size(image, 2)
-        ys = range(l, r, length = N+1)
-    else
-        ys = regularly_spaced_array_to_range(ys)
-    end
+    xs = image_axis(xs, size(image, 1))
+    ys = image_axis(ys, size(image, 2))
     model = primitive.model[]::Mat4d
     interpolate = to_value(primitive.interpolate)
 
