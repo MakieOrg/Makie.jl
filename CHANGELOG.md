@@ -13,6 +13,7 @@
 - Fix stack overflows when using `markerspace = :data` with `scatter` [#3960](https://github.com/MakieOrg/Makie.jl/issues/3960).
 - CairoMakie: Fix broken SVGs when using non-interpolated image primitives, for example Colorbars, with recent Cairo versions [#3967](https://github.com/MakieOrg/Makie.jl/pull/3967).
 - CairoMakie: Add argument `pdf_version` to restrict the PDF version when saving a figure as a PDF [#3845](https://github.com/MakieOrg/Makie.jl/pull/3845).
+- Fix DataInspector using invalid attribute strokewidth for plot type Wireframe [#3917](https://github.com/MakieOrg/Makie.jl/pull/3917).
 - CairoMakie: Fix incorrect scaling factor for SVGs with Cairo_jll 1.18 [#3964](https://github.com/MakieOrg/Makie.jl/pull/3964).
 - Fixed use of Textbox from Bonito [#3924](https://github.com/MakieOrg/Makie.jl/pull/3924)
 
