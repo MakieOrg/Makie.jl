@@ -53,7 +53,7 @@ function Makie.plot!(plot::Band)
         end
     end
     attr = Attributes(plot)
-    attr[:color] = meshcolor
+    attr[:color] = @lift ($meshcolor, $(attr[:alpha]))
     mesh!(plot, attr, coordinates, connectivity)
 end
 
