@@ -4,6 +4,7 @@
 
 - Fixes for Menu and DataInspector [#3975](https://github.com/MakieOrg/Makie.jl/pull/3975)
 - Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907)
+- Support images with reversed axes [#3989](https://github.com/MakieOrg/Makie.jl/pull/3989)
 
 ## [0.21.3] - 2024-06-17
 
