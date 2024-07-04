@@ -313,9 +313,25 @@ function add_canvas_events(screen, comm, resize_to) {
             [width, height] = get_body_size();
         } else if (resize_to == "parent") {
             [width, height] = get_parent_size(canvas);
+        } else if (resize_to.length == 2) {
+            [width, height] = get_parent_size(canvas);
+            const [_width, _height] = resize_to;
+            const [f_width, f_height] = [
+                screen.renderer._width,
+                screen.renderer._height,
+            ];
+            console.log(`rwidht: ${_width}, rheight: ${_height}`);
+            width = _width == "parent" ? width : f_width;
+            height = _height == "parent" ? height : f_height;
+            console.log(`widht: ${width}, height: ${height}`);
+        } else {
+            console.warn("Invalid resize_to option");
+            return;
         }
-        // Send the resize event to Julia
-        comm.notify({ resize: [width / winscale, height / winscale] });
+        if (height > 0 && width > 0) {
+            // Send the resize event to Julia
+            comm.notify({ resize: [width / winscale, height / winscale] });
+        }
     }
     if (resize_to) {
         const resize_callback_throttled = throttle_function(
@@ -326,7 +342,9 @@ function add_canvas_events(screen, comm, resize_to) {
             resize_callback_throttled()
         );
         // Fire the resize event once at the start to auto-size our window
-        resize_callback_throttled();
+        // Without setTimeout, the parent doesn't have the right size yet?
+        // TODO, there should be a way to do this cleanly
+        setTimeout(resize_callback, 50);
     }
 }
 
