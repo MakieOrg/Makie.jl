@@ -133,10 +133,10 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     # Handle transform_func early so tessellation is in cartesian space.
     vorn = map(p, p.transformation.transform_func, ps, smooth) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
-        tri = DelTri.triangulate(transformed)
-        vorn = DelTri.voronoi(tri)
+        tri = DelTri.triangulate(transformed; randomise = false)
+        vorn = DelTri.voronoi(tri, clip = smooth)
         if smooth
-            vorn = DelTri.centroidal_smooth(vorn)
+            vorn = DelTri.centroidal_smooth(vorn; randomise = false)
         end
         return vorn
     end

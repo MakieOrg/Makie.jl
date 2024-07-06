@@ -1254,7 +1254,7 @@ end
 #         (7.0, 7.8), (7.0, 7.4)]
 #     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
 #     tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
-#     refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
+#     refine!(tri, max_area = 1e-3get_area(tri), rng = RNG.STABLE_RNG)
 #     fig, ax, sc = triplot(tri,
 #         show_points=true,
 #         show_constrained_edges=true,
@@ -1353,11 +1353,6 @@ end
     fig
 end
 
-#=
-
-After DelaunayTriangulation@1.0.4, this test started to show slightly randomized triangulations.
-Until this gets fixed, we're disabling it.
-
 @reference_test "Voronoiplot with a nonlinear transform" begin
     f = Figure()
     ax = PolarAxis(f[1, 1], theta_as_x = false)
@@ -1371,7 +1366,7 @@ Until this gets fixed, we're disabling it.
     Makie.rlims!(ax, 12)
     f
 end
-=#
+
 
 @reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
     points = [(-3.0, 7.0), (1.0, 6.0), (-1.0, 3.0), (-2.0, 4.0), (3.0, -2.0), (5.0, 5.0), (-4.0, -3.0), (3.0, 8.0)]
