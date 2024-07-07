@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed tuple argument for `WGLMakie.activate!(resize_to=(:parent, nothing))` [#4009](https://github.com/MakieOrg/Makie.jl/pull/4009).
+- validate plot attributes later, for axis specific plot attributes [#3974](https://github.com/MakieOrg/Makie.jl/pull/3974).
 
 ## [0.21.4] - 2024-07-02
 
