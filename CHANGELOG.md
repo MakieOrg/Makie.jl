@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.21.5] - 2024-07-07
+
 - Fixed tuple argument for `WGLMakie.activate!(resize_to=(:parent, nothing))` [#4009](https://github.com/MakieOrg/Makie.jl/pull/4009).
 - validate plot attributes later, for axis specific plot attributes [#3974](https://github.com/MakieOrg/Makie.jl/pull/3974).
 
@@ -525,7 +527,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.4...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.5...HEAD
+[0.21.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.4...v0.21.5
 [0.21.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.3...v0.21.4
 [0.21.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.2...v0.21.3
 [0.21.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.1...v0.21.2
