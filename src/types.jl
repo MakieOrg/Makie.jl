@@ -218,22 +218,22 @@ struct Camera
     """
     projection used to convert pixel to device units
     """
-    pixel_space::Observable{Mat4f}
+    pixel_space::Observable{Mat4d}
 
     """
     View matrix is usually used to rotate, scale and translate the scene
     """
-    view::Observable{Mat4f}
+    view::Observable{Mat4d}
 
     """
     Projection matrix is used for any perspective transformation
     """
-    projection::Observable{Mat4f}
+    projection::Observable{Mat4d}
 
     """
     just projection * view
     """
-    projectionview::Observable{Mat4f}
+    projectionview::Observable{Mat4d}
 
     """
     resolution of the canvas this camera draws to
