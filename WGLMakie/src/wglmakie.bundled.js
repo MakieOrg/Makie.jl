@@ -23124,6 +23124,35 @@ function pick_native(scene, _x, _y, _w, _h) {
         plots
     ];
 }
+function get_picking_buffer(scene) {
+    const { renderer , picking_target  } = scene.screen;
+    const [w, h] = [
+        picking_target.width,
+        picking_target.height
+    ];
+    renderer.setRenderTarget(picking_target);
+    set_picking_uniforms(scene, 1, true);
+    render_scene(scene, true);
+    renderer.setRenderTarget(null);
+    const nbytes = w * h * 4;
+    const pixel_bytes = new Uint8Array(nbytes);
+    renderer.readRenderTargetPixels(picking_target, 0, 0, w, h, pixel_bytes);
+    const reinterpret_view = new DataView(pixel_bytes.buffer);
+    const picked_plots_array = [];
+    for(let i = 0; i < pixel_bytes.length / 4; i++){
+        const id = reinterpret_view.getUint16(i * 4);
+        const index = reinterpret_view.getUint16(i * 4 + 2);
+        picked_plots_array.push([
+            id,
+            index
+        ]);
+    }
+    return {
+        picked_plots_array,
+        w,
+        h
+    };
+}
 function pick_closest(scene, xy, range) {
     const { renderer  } = scene.screen;
     const [width, height] = [
@@ -23282,6 +23311,7 @@ export { deserialize_scene as deserialize_scene, threejs_module as threejs_modul
 export { render_scene as render_scene };
 export { wglerror as wglerror };
 export { pick_native as pick_native };
+export { get_picking_buffer as get_picking_buffer };
 export { pick_closest as pick_closest };
 export { pick_sorted as pick_sorted };
 export { pick_native_uuid as pick_native_uuid };
