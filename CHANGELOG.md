@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed tuple argument for `WGLMakie.activate!(resize_to=(:parent, nothing))` [#4009](https://github.com/MakieOrg/Makie.jl/pull/4009).
+
 ## [0.21.4] - 2024-07-02
 
 - Fixed support for GLFW 3.4 on OSX [#3999](https://github.com/MakieOrg/Makie.jl/issues/3999).
