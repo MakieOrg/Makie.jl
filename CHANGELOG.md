@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- validate plot attributes later, for axis specific plot attributes [#3974](https://github.com/MakieOrg/Makie.jl/pull/3974).
+
 ## [0.21.4] - 2024-07-02
 
 - Fixed support for GLFW 3.4 on OSX [#3999](https://github.com/MakieOrg/Makie.jl/issues/3999).
