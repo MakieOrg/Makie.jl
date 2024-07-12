@@ -189,11 +189,12 @@ mutable struct DataInspector
     selection::AbstractPlot
 
     obsfuncs::Vector{Any}
+    lock::Threads.ReentrantLock
 end
 
 
 function DataInspector(scene::Scene, plot::AbstractPlot, attributes)
-    x = DataInspector(scene, attributes, AbstractPlot[], plot, plot, Any[])
+    x = DataInspector(scene, attributes, AbstractPlot[], plot, plot, Any[], Threads.ReentrantLock())
     # finalizer(cleanup, x) # doesn't get triggered when this is dereferenced
     x
 end
@@ -297,31 +298,33 @@ DataInspector(; kwargs...) = DataInspector(current_figure(); kwargs...)
 
 function on_hover(inspector)
     parent = inspector.root
-    (inspector.attributes.enabled[] && is_mouseinside(parent)) || return Consume(false)
+    lock(inspector.lock) do
+        (inspector.attributes.enabled[] && is_mouseinside(parent)) || return Consume(false)
 
-    mp = mouseposition_px(parent)
-    should_clear = true
-    for (plt, idx) in pick_sorted(parent, mp, inspector.attributes.range[])
-        if to_value(get(plt.attributes, :inspectable, true))
-            # show_data should return true if it created a tooltip
-            if show_data_recursion(inspector, plt, idx)
-                should_clear = false
-                break
+        mp = mouseposition_px(parent)
+        should_clear = true
+        for (plt, idx) in pick_sorted(parent, mp, inspector.attributes.range[])
+            if to_value(get(plt.attributes, :inspectable, true))
+                # show_data should return true if it created a tooltip
+                if show_data_recursion(inspector, plt, idx)
+                    should_clear = false
+                    break
+                end
             end
         end
-    end
 
-    if should_clear
-        plot = inspector.selection
-        if to_value(get(plot, :inspector_clear, automatic)) !== automatic
-            plot[:inspector_clear][](inspector, plot)
+        if should_clear
+            plot = inspector.selection
+            if to_value(get(plot, :inspector_clear, automatic)) !== automatic
+                plot[:inspector_clear][](inspector, plot)
+            end
+            inspector.plot.visible[] = false
+            inspector.attributes.indicator_visible[] = false
+            inspector.plot.offset.val = inspector.attributes.offset[]
         end
-        inspector.plot.visible[] = false
-        inspector.attributes.indicator_visible[] = false
-        inspector.plot.offset.val = inspector.attributes.offset[]
-    end
 
-    return Consume(false)
+        return Consume(false)
+    end
 end
 
 
@@ -824,7 +827,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
                 scene, bbox, model = model, color = a.indicator_color,
-                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
             translate!(p, Vec3f(0, 0, a.depth[]))

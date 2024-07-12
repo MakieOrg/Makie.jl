@@ -415,7 +415,7 @@ f
 
 ### Scaling axes relatively
 
-The fake eeg data we have created has more datapoints on day 1 than day 2.
+The fake EEG data we have created has more datapoints on day 2 than day 1.
 We want to scale the axes so that they both have the same zoom level.
 We can do this by setting the column widths to `Auto(x)` where x is a number proportional to the number of data points of the axis.
 This way, both will have the same relative scaling.

@@ -72,7 +72,7 @@ function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.DirectionalL
         else
             dir = normalize(dir)
         end
-        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
+        quart = Makie.rotation_between(Vec3f(dir), Vec3f(0,0,-1))
         transform!(directionallight, Makie.rotationmatrix4(quart))
     end
     map(light.color) do c

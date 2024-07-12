@@ -257,7 +257,10 @@ function empty_screen(debugging::Bool; reuse=true)
         rethrow(e)
     end
 
-    GLFW.SetWindowIcon(window, Makie.icon())
+    # GLFW doesn't support setting the icon on OSX
+    if !Sys.isapple()
+        GLFW.SetWindowIcon(window, Makie.icon())
+    end
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
