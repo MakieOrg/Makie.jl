@@ -34,18 +34,21 @@ using Packing
 using SignedDistanceFields
 using Markdown
 using DocStringExtensions # documentation
+using Scratch
 using StructArrays
 # Text related packages
 using FreeType
 using FreeTypeAbstraction
-using UnicodeFun
 using LinearAlgebra
 using Statistics
 using MakieCore
 using OffsetArrays
 using Downloads
 using ShaderAbstractions
+using Dates
 
+import Unitful
+import UnicodeFun
 import RelocatableFolders
 import StatsBase
 import Distributions
@@ -58,11 +61,10 @@ import FileIO
 import SparseArrays
 import TriplotBase
 import DelaunayTriangulation as DelTri
-import Setfield
 import REPL
 import MacroTools
 
-using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
+using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
 
 using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
@@ -88,16 +90,16 @@ using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
                   get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
-import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
-import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
+import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
+import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
-
+import MakieCore: RealVector, RealMatrix, RealArray, FloatType
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
-const RealVector{T} = AbstractVector{T} where T <: Number
+
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
@@ -107,6 +109,7 @@ assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
+include("utilities/stable-hashing.jl")
 include("bezier.jl")
 include("types.jl")
 include("utilities/texture_atlas.jl")
@@ -117,7 +120,14 @@ include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
+
+include("dim-converts/dim-converts.jl")
+include("dim-converts/unitful-integration.jl")
+include("dim-converts/categorical-integration.jl")
+include("dim-converts/dates-integration.jl")
+
 include("scenes.jl")
+include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("conversions.jl")
@@ -167,15 +177,20 @@ include("basic_recipes/tricontourf.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
+include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
 
+include("basic_recipes/makiecore_examples/scatter.jl")
+include("basic_recipes/makiecore_examples/lines.jl")
+
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
-include("layouting/layouting.jl")
+include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")
+include("layouting/text_boundingbox.jl")
 
 # Declaritive SpecApi
 include("specapi.jl")
@@ -233,6 +248,7 @@ export xtickrange, ytickrange, ztickrange
 export xticks!, yticks!, zticks!
 export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
+export Categorical
 
 # Observable/Signal related
 export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
@@ -240,7 +256,6 @@ export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
 export broadcast_foreach, to_vector, replace_automatic!
-
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
 export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categorical_colors, resample_cmap
@@ -294,13 +309,16 @@ export PlotSpec
 export plot!, plot
 export abline! # until deprecation removal
 
-
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record, Record
 export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients
+
+# other "available" functions
+export available_plotting_methods, available_marker_symbols
+
 
 export Pattern
 export ReversibleScale
@@ -317,6 +335,9 @@ end
 function logo()
     FileIO.load(assetpath("logo.png"))
 end
+
+# populated by __init__()
+makie_cache_dir = ""
 
 function __init__()
     # Make GridLayoutBase default row and colgaps themeable when using Makie
@@ -335,6 +356,8 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
         "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+
+    global makie_cache_dir = @get_scratch!("makie")
 end
 
 include("figures.jl")
@@ -348,9 +371,9 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
-export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
+export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
+export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
+export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 

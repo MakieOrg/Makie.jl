@@ -143,7 +143,7 @@ end
 #   instead of the whole Scene
 # - Recognize when a screen is an image surface, and set scale to render the plot
 #   at the scale of the device pixel
-function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Plot, scale::Number = 1)
+function draw_plot_as_image(scene::Scene, screen::Screen{RT}, primitive::Plot, scale::Number = 1) where RT
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
     # Extract scene width in device indepentent units
@@ -163,8 +163,11 @@ function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Plot, scale
     # Cairo.scale(screen.context, w / scr.surface.width, h / scr.surface.height)
     Cairo.set_source_surface(screen.context, scr.surface, 0, 0)
     p = Cairo.get_source(scr.context)
-    # this is needed to avoid blurry edges
-    Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+    if RT !== SVG
+        # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
+        # setting seems to create broken SVGs
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+    end
     # Set filter doesn't work!?
     Cairo.pattern_set_filter(p, Cairo.FILTER_BILINEAR)
     Cairo.fill(screen.context)

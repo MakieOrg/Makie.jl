@@ -9,39 +9,42 @@ end
 
 Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
 If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
-
-The attribute levels can be either
-
-    an Int that produces n equally wide levels or bands
-
-    an AbstractVector{<:Real} that lists n consecutive edges from low to high, which result in n-1 levels or bands
-
-To add contour labels, use `labels = true`, and pass additional label attributes such as `labelcolor`, `labelsize`, `labelfont` or `labelformatter`.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Contour) do scene
-    attr = Attributes(;
-        color = nothing,
-        levels = 5,
-        linewidth = 1.0,
-        linestyle = nothing,
-        enable_depth = true,
-        transparency = false,
-        labels = false,
+@recipe Contour begin
+    """
+    The color of the contour lines. If `nothing`, the color is determined by the numerical values of the
+    contour levels in combination with `colormap` and `colorrange`.
+    """
+    color = nothing
+    """
+    Controls the number and location of the contour lines. Can be either
 
-        labelfont = theme(scene, :font),
-        labelcolor = nothing,  # matches color by default
-        labelformatter = contour_label_formatter,
-        labelsize = 10,  # arbitrary
-    )
-
-
-    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
-    MakieCore.generic_plot_attributes!(attr)
-
-    return attr
+    - an `Int` that produces n equally wide levels or bands
+    - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
+    """
+    levels = 5
+    linewidth = 1.0
+    linestyle = nothing
+    linecap = @inherit linecap
+    joinstyle = @inherit joinstyle
+    miter_limit = @inherit miter_limit
+    enable_depth = true
+    """
+    If `true`, adds text labels to the contour lines.
+    """
+    labels = false
+    "The font of the contour labels."
+    labelfont = @inherit font
+    "Color of the contour labels, if `nothing` it matches `color` by default."
+    labelcolor = nothing  # matches color by default
+    """
+    Formats the numeric values of the contour levels to strings.
+    """
+    labelformatter = contour_label_formatter
+    "Font size of the contour labels"
+    labelsize = 10 # arbitrary
+    MakieCore.mixin_colormap_attributes()...
+    MakieCore.mixin_generic_plot_attributes()...
 end
 
 """
@@ -49,19 +52,17 @@ end
 
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Contour3d) do scene
-    default_theme(scene, Contour)
+@recipe Contour3d begin
+    MakieCore.documented_attributes(Contour)...
 end
 
-angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
-    atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+# result in [-π, π]
+angle(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
 
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
+    # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
     (
         lev,
@@ -159,6 +160,12 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     pop!(attr, :labelsize)
     pop!(attr, :labelcolor)
     pop!(attr, :labelformatter)
+    pop!(attr, :color)
+    pop!(attr, :linestyle)
+    pop!(attr, :linewidth)
+    pop!(attr, :linecap)
+    pop!(attr, :joinstyle)
+    pop!(attr, :miter_limit)
     volume!(plot, attr, x, y, z, volume)
 end
 
@@ -196,11 +203,9 @@ end
 function has_changed(old_args, new_args)
     length(old_args) === length(new_args) || return true
     for (old, new) in zip(old_args, new_args)
-        if old != new
-            return true
-        end
+        old != new && return true
     end
-    return false
+    false
 end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
@@ -230,8 +235,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         # We need to copy, since the values may get mutated in place
         if has_changed(old_values, args)
             old_values = map(copy, args)
-            _points, _colors, _lev_pos_col = contourlines(args..., T)
-            points[] = _points; colors[] = _colors; lev_pos_col[] = _lev_pos_col
+            points[], colors[], lev_pos_col[] = contourlines(args..., T)
             return
         end
     end
@@ -256,10 +260,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
-        pos = texts.positions.val; empty!(pos)
-        rot = texts.rotation.val; empty!(rot)
-        col = texts.color.val; empty!(col)
-        lbl = texts.text.val; empty!(lbl)
+        pos = texts.positions[]; empty!(pos)
+        rot = texts.rotation[]; empty!(rot)
+        col = texts.color[]; empty!(col)
+        lbl = texts.text[]; empty!(lbl)
         for (lev, (p1, p2, p3), color) in lev_pos_col
             px_pos1 = project(scene, apply_transform(transform_func(plot), p1, space))
             px_pos3 = project(scene, apply_transform(transform_func(plot), p3, space))
@@ -274,7 +278,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             push!(col, labelcolor === nothing ? color : to_color(labelcolor))
             push!(rot, rot_from_vert)
             push!(lbl, labelformatter(lev))
-            push!(pos, p1)
+            p = p2  # try to position label around center
+            isnan(p) && (p = p1)
+            isnan(p) && (p = p3)
+            push!(pos, p)
         end
         notify(texts.text)
         return
@@ -285,12 +292,16 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
             px_pos = project(scene, apply_transform(transform_func(plot), pt, space))
-            Rect2f(boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot)))
+            bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
+            isfinite_rect(bb) || return Rect2f()
+            Rect2f(bb)
         end
     end
 
     masked_lines = lift(labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
+        # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
+        count(isnan, segments) > length(segments) / 10 && return segments
         n = 1
         bb = bboxes[n]
         nlab = length(bboxes)
@@ -321,6 +332,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         color = colors,
         linewidth = plot.linewidth,
         linestyle = plot.linestyle,
+        linecap = plot.linecap,
+        joinstyle = plot.joinstyle,
+        miter_limit = plot.miter_limit,
         visible=plot.visible,
         transparency=plot.transparency,
         overdraw=plot.overdraw,
@@ -331,11 +345,16 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    axes = (x[1], x[2])
-    extremata = map(extrema∘to_value, axes)
-    minpoint = Point2f(first.(extremata)...)
-    widths = last.(extremata) .- first.(extremata)
-    rect = Rect2f(minpoint, Vec2f(widths))
-    return unique(decompose(Point, rect))
+function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    mini_maxi = extrema_nan.((plot[1][], plot[2][]))
+    mini = Vec3d(first.(mini_maxi)..., 0)
+    maxi = Vec3d(last.(mini_maxi)..., 0)
+    return Rect3d(mini, maxi .- mini)
+end
+function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}, space::Symbol = :data) where {X, Y, Z}
+    return apply_transform_and_model(plot, data_limits(plot))
+end
+# TODO: should this have a data_limits overload?
+function boundingbox(plot::Contour3d, space::Symbol = :data)
+    return apply_transform_and_model(plot, data_limits(plot))
 end

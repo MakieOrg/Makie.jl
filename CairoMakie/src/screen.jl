@@ -68,6 +68,15 @@ function surface_from_output_type(type::RenderType, io, w, h)
     end
 end
 
+@enum PDFVersion PDFv14 PDFv15 PDFv16 PDFv17
+function pdfversion(version::AbstractString)
+    version == "1.4" && return PDFv14
+    version == "1.5" && return PDFv15
+    version == "1.6" && return PDFv16
+    version == "1.7" && return PDFv17
+    throw(ArgumentError("PDF version must be one of '1.4', '1.5', '1.6', '1.7' (received '$version')"))
+end
+
 """
 Supported options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`
 """
@@ -81,10 +90,11 @@ end
 to_cairo_antialias(aa::Int) = aa
 
 """
-* `px_per_unit = 2.0`: see [figure docs](https://docs.makie.org/stable/documentation/figure_size/).
-* `pt_per_unit = 0.75`: see [figure docs](https://docs.makie.org/stable/documentation/figure_size/).
+* `px_per_unit = 2.0`
+* `pt_per_unit = 0.75`
 * `antialias::Union{Symbol, Int} = :best`: antialias modus Cairo uses to draw. Applicable options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`.
 * `visible::Bool`: if true, a browser/image viewer will open to display rendered output.
+* `pdf_version::String = nothing`: the version of output PDFs. Applicable options are `"1.4"`, `"1.5"`, `"1.6"`, `"1.7"`, or `nothing`, which leaves the PDF version unrestricted.
 """
 struct ScreenConfig
     px_per_unit::Float64
@@ -92,15 +102,27 @@ struct ScreenConfig
     antialias::Symbol
     visible::Bool
     start_renderloop::Bool # Only used to satisfy the interface for record using `Screen(...; start_renderloop=false)` for GLMakie
+    pdf_version::Union{Nothing, PDFVersion}
+
+    function ScreenConfig(px_per_unit::Real, pt_per_unit::Real,
+            antialias::Symbol, visible::Bool, start_renderloop::Bool,
+            pdf_version::Union{Nothing, AbstractString})
+        v = isnothing(pdf_version) ? nothing : pdfversion(pdf_version)
+        new(px_per_unit, pt_per_unit, antialias, visible, start_renderloop, v)
+    end
 end
 
+css_px_per_unit(pt_per_unit) = pt_per_unit / 0.75
+
 function device_scaling_factor(rendertype, sc::ScreenConfig)
-    isv = is_vector_backend(convert(RenderType, rendertype))
-    return isv ? sc.pt_per_unit : sc.px_per_unit
+    rt = convert(RenderType, rendertype)
+    isv = is_vector_backend(rt)
+    # from version 1.18 on, Cairo saves SVGs without the pt unit specified, so they are actually in CSS px now
+    return rt === SVG ? css_px_per_unit(sc.pt_per_unit) : isv ? sc.pt_per_unit : sc.px_per_unit
 end
 
 function device_scaling_factor(surface::Cairo.CairoSurface, sc::ScreenConfig)
-    return is_vector_backend(surface) ? sc.pt_per_unit : sc.px_per_unit
+    return device_scaling_factor(get_render_type(surface), sc)
 end
 
 const LAST_INLINE = Ref{Union{Makie.Automatic,Bool}}(Makie.automatic)
@@ -213,6 +235,11 @@ function apply_config!(screen::Screen, config::ScreenConfig)
     aa = to_cairo_antialias(config.antialias)
     Cairo.set_antialias(context, aa)
     set_miter_limit(context, 2.0)
+
+    if get_render_type(surface) === PDF && !isnothing(config.pdf_version)
+        restrict_pdf_version!(surface, Int(config.pdf_version))
+    end
+
     screen.antialias = aa
     screen.device_scaling_factor = dsf
     screen.config = config
@@ -285,6 +312,11 @@ function Screen(scene::Scene, config::ScreenConfig, surface::Cairo.CairoSurface)
     aa = to_cairo_antialias(config.antialias)
     Cairo.set_antialias(ctx, aa)
     set_miter_limit(ctx, 2.0)
+
+    if get_render_type(surface) === PDF && !isnothing(config.pdf_version)
+        restrict_pdf_version!(surface, Int(config.pdf_version))
+    end
+
     return Screen{get_render_type(surface)}(scene, surface, ctx, dsf, aa, config.visible, config)
 end
 

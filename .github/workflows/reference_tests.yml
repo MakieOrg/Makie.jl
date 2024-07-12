@@ -1,0 +1,227 @@
+name: Backends
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+    branches:
+      - master
+  push:
+    tags:
+      - '*'
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  cairomakie:
+    name: CairoMakie Julia ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - '1' # automatically expands to the latest stable 1.x release of Julia
+        os:
+          - ubuntu-20.04
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
+      - name: Run the tests
+        continue-on-error: true
+        run: >
+          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReferenceImages_CairoMakie_${{ matrix.version }}
+          path: ./CairoMakie/test/reference_images/
+      - name: Fail after artifacts if tests failed
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v4
+        with:
+          file: lcov.info
+
+  glmakie:
+    name: GLMakie Julia ${{ matrix.version }}
+    env:
+      MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - '1' # automatically expands to the latest stable 1.x release of Julia
+        os:
+          - ubuntu-20.04
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
+      - name: Run the tests
+        id: referencetests
+        continue-on-error: true
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReferenceImages_GLMakie_${{ matrix.version }}
+          path: |
+            ./GLMakie/test/reference_images/
+      - name: Fail after artifacts if tests failed
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v4
+        with:
+          file: lcov.info
+
+  wglmakie:
+    name: WGLMakie Julia ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - '1' # automatically expands to the latest stable 1.x release of Julia
+        os:
+          - ubuntu-20.04
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+      - name: Run the tests
+        continue-on-error: true
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReferenceImages_WGLMakie_${{ matrix.version }}
+          path: ./WGLMakie/test/reference_images/
+      - name: Fail after artifacts if tests failed
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v4
+        with:
+          file: lcov.info
+
+  consolidation:
+    name: Merge artifacts
+    runs-on: ubuntu-20.04
+    if: ${{ always() }} # run even if any of the three backend test jobs failed
+    needs: [cairomakie, glmakie, wglmakie]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReferenceImages_WGLMakie_1
+          path: ./ReferenceImages/WGLMakie
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReferenceImages_CairoMakie_1
+          path: ./ReferenceImages/CairoMakie
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReferenceImages_GLMakie_1
+          path: ./ReferenceImages/GLMakie
+      - name: Consolidate reference image folders
+        run: |
+          baseDir="./ReferenceImages"
+
+          # Create new top-level directory for combined files
+          mkdir -p "./ReferenceImagesCombined"
+
+          # Copy the reference folder from GLMakie, it's the same for all backends
+          cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
+
+          # Initialize empty files for concatenation
+          > "./ReferenceImagesCombined/scores.tsv"
+          > "./ReferenceImagesCombined/new_files.txt"
+
+          # Loop through the directories and concatenate the files, and copy recorded folders
+          for dir in WGLMakie CairoMakie GLMakie; do
+              # Concatenate scores.tsv and new_files.txt
+              cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
+              cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
+
+              # Copy recorded folder
+              mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
+              cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
+          done
+
+          echo "Files and folders have been successfully combined into ReferenceImagesCombined."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReferenceImages
+          path: ./ReferenceImagesCombined/
+      - name: Save number of missing refimages to file
+        env:
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p ./n_missing
+          N_MISSING=$(wc -l < ./ReferenceImagesCombined/new_files.txt)
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v4
+        with:
+          name: n_missing_refimages
+          path: n_missing/

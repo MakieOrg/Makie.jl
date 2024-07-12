@@ -21,9 +21,9 @@ include("interaction/iodevices.jl")
 This struct provides accessible `Observable`s to monitor the events
 associated with a Scene.
 
-Functions that act on a `Observable` must return `Consume()` if the function
+Functions that act on an `Observable` must return `Consume()` if the function
 consumes an event. When an event is consumed it does
-not trigger other observer functions. The order in which functions are exectued
+not trigger other observer functions. The order in which functions are executed
 can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:
@@ -218,22 +218,22 @@ struct Camera
     """
     projection used to convert pixel to device units
     """
-    pixel_space::Observable{Mat4f}
+    pixel_space::Observable{Mat4d}
 
     """
     View matrix is usually used to rotate, scale and translate the scene
     """
-    view::Observable{Mat4f}
+    view::Observable{Mat4d}
 
     """
     Projection matrix is used for any perspective transformation
     """
-    projection::Observable{Mat4f}
+    projection::Observable{Mat4d}
 
     """
     just projection * view
     """
-    projectionview::Observable{Mat4f}
+    projectionview::Observable{Mat4d}
 
     """
     resolution of the canvas this camera draws to
@@ -241,9 +241,9 @@ struct Camera
     resolution::Observable{Vec2f}
 
     """
-    Focal point of the camera, used for e.g. camera synchronized light direction.
+    Direction in which the camera looks.
     """
-    lookat::Observable{Vec3f}
+    view_direction::Observable{Vec3f}
 
     """
     Eye position of the camera, used for e.g. ray tracing.
@@ -266,18 +266,19 @@ $(TYPEDFIELDS)
 """
 struct Transformation <: Transformable
     parent::RefValue{Transformation}
-    translation::Observable{Vec3f}
-    scale::Observable{Vec3f}
+    translation::Observable{Vec3d}
+    scale::Observable{Vec3d}
     rotation::Observable{Quaternionf}
-    model::Observable{Mat4f}
-    parent_model::Observable{Mat4f}
+    model::Observable{Mat4d}
+    parent_model::Observable{Mat4d}
     # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
+
     function Transformation(translation, scale, rotation, transform_func)
-        translation_o = convert(Observable{Vec3f}, translation)
-        scale_o = convert(Observable{Vec3f}, scale)
+        translation_o = convert(Observable{Vec3d}, translation)
+        scale_o = convert(Observable{Vec3d}, scale)
         rotation_o = convert(Observable{Quaternionf}, rotation)
-        parent_model = Observable(Mat4f(I))
+        parent_model = Observable(Mat4d(I))
         model = map(translation_o, scale_o, rotation_o, parent_model) do t, s, r, p
             return p * transformationmatrix(t, s, r)
         end
@@ -288,18 +289,15 @@ struct Transformation <: Transformable
 end
 
 function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
+                        scale=Vec3d(1),
+                        translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1))
-    return Transformation(translation,
-                          scale,
-                          rotation,
-                          transform_func)
+    return Transformation(translation, scale, rotation, transform_func)
 end
 
 function Transformation(parent::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
+                        scale=Vec3d(1),
+                        translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1),
                         transform_func=nothing)
     connect_func = isnothing(transform_func)
@@ -461,3 +459,14 @@ struct Cycler
 end
 
 Cycler() = Cycler(IdDict{Type,Int}())
+
+
+# Float32 conversions
+struct LinearScaling
+    scale::Vec{3, Float64}
+    offset::Vec{3, Float64}
+end
+struct Float32Convert
+    scaling::Observable{LinearScaling}
+    resolution::Float32
+end

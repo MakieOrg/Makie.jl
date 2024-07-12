@@ -1,10 +1,7 @@
 using Makie:
-    NoConversion,
-    convert_arguments,
-    conversion_trait,
-    convert_single_argument,
     to_vertices,
-    categorical_colors
+    categorical_colors,
+    (..)
 
 @testset "Conversions" begin
     # NoConversion
@@ -29,27 +26,26 @@ end
 @testset "to_vertices" begin
     X1 = [Point(rand(3)...) for i = 1:10]
     V1 = to_vertices(X1)
-    @test Float32(X1[7][1]) == V1[7][1]
+    @test (X1[7][1]) == V1[7][1]
 
     X2 = [tuple(rand(3)...) for i = 1:10]
     V2 = to_vertices(X2)
-    @test Float32(X2[7][1]) == V2[7][1]
-
+    @test (X2[7][1]) == V2[7][1]
     X4 = rand(2,10)
     V4 = to_vertices(X4)
-    @test Float32(X4[1,7]) == V4[7][1]
+    @test (X4[1,7]) == V4[7][1]
 
     X5 = rand(3,10)
     V5 = to_vertices(X5)
-    @test Float32(X5[1,7]) == V5[7][1]
+    @test (X5[1,7]) == V5[7][1]
 
     X6 = rand(10,2)
     V6 = to_vertices(X6)
-    @test Float32(X6[7,1]) == V6[7][1]
+    @test (X6[7,1]) == V6[7][1]
 
     X7 = rand(10,3)
     V7 = to_vertices(X7)
-    @test Float32(X7[7,1]) == V7[7][1]
+    @test (X7[7,1]) == V7[7][1]
 end
 
 @testset "GeometryBasics Lines & Polygons" begin
@@ -111,6 +107,15 @@ end
     mpol_emtpy = MultiPolygon(typeof(pol_emtpy)[])
     p_empty = convert_arguments(Makie.PointBased(), mpol_emtpy)
     @test p_empty[1] == pts_empty
+end
+
+@testset "intervals" begin
+    x = [1, 5, 10]
+    y = [1..2, 1..3, 2..3]
+    @test convert_arguments(Band, x, y) == (Point2f.([1, 5, 10], [1, 1, 2]), Point2f.([1, 5, 10], [2, 3, 3]))
+    @test convert_arguments(Rangebars, x, y) == (Vec3f.([1,5,10], [1,1,2], [2,3,3]),)
+    @test convert_arguments(HSpan, 1..2) == (1f0, 2f0)
+    @test convert_arguments(VSpan, 1..2) == (1f0, 2f0)
 end
 
 @testset "functions" begin
@@ -177,7 +182,8 @@ end
 @testset "single conversions" begin
     myvector = MyVector(collect(1:10))
     mynestedvector = MyNestedVector(MyVector(collect(11:20)))
-    @test_throws ErrorException convert_arguments(Lines, myvector, mynestedvector)
+    @test convert_arguments(Lines, myvector, mynestedvector) ===
+                                (myvector, mynestedvector)
 
     Makie.convert_single_argument(v::MyNestedVector) = v.v
     Makie.convert_single_argument(v::MyVector) = v.v
@@ -333,8 +339,8 @@ end
         @test convert_arguments(Image, m3)         == (0f0..10f0, 0f0..6f0, o3)
         @test convert_arguments(Image, v1, r2, m3) == (1f0..10f0, 1f0..6f0, o3)
         @test convert_arguments(Image, i1, v2, m3) == (1f0..10f0, 1f0..6f0, o3)
-        @test_throws ErrorException convert_arguments(Image, m1, m2, m3)
-        @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
+        @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
+        @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end
 
     @testset "VertexGrid conversion" begin
@@ -356,8 +362,12 @@ end
         @test convert_arguments(Heatmap, r1, i2, m3) == (o1, o2, o3)
         @test convert_arguments(Heatmap, v1, r2, m3) == (o1, o2, o3)
         @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0f0:10f0), o2, o3)
-        @test_throws ErrorException convert_arguments(Heatmap, m1, m2, m3)
-        @test_throws ErrorException convert_arguments(Heatmap, m1, m2)
+        # TODO, this throws ERROR: MethodError: no method matching adjust_axes(::CellGrid, ::Matrix{Int64}, ::Matrix{Int64}, ::Matrix{Float64})
+        # Is this what we want to test for?
+        @test_throws MethodError convert_arguments(Heatmap, m1, m2, m3) === (m1, m2, m3)
+        @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
+        # https://github.com/MakieOrg/Makie.jl/issues/3515
+        @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) == (0.5:8.5, 0.5:8.5, zeros(8, 8))
     end
 end
 

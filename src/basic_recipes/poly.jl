@@ -3,15 +3,34 @@ const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, Ve
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
 convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
-convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
-convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
+
+function convert_pointlike(args...)
+    return convert_arguments(PointBased(), args...)
+end
+
+function convert_arguments(::Type{<:Poly}, x::RealVector, y::RealVector)
+    return convert_pointlike(x, y)
+end
+
+function convert_arguments(::Type{<:Poly}, path::AbstractVector{<:VecTypes})
+    return convert_pointlike(path)
+end
+
+function convert_arguments(::Type{<:Poly}, path::BezierPath)
+    return convert_pointlike(path)
+end
+
+
+function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray)
+    return convert_arguments(Mesh, vertices, indices)
+end
+
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
-
     mesh!(
-        plot, lift(triangle_mesh, plot, plot[1]),
+        plot, plot[1],
         color = plot.color,
         colormap = plot.colormap,
         colorscale = plot.colorscale,
@@ -30,7 +49,8 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
     wireframe!(
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
-        linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
+        linewidth = plot[:strokewidth], linecap = plot[:linecap],
+        visible = plot[:visible], overdraw = plot[:overdraw],
         inspectable = plot[:inspectable], transparency = plot[:transparency],
         colormap = plot[:strokecolormap]
     )
@@ -38,18 +58,20 @@ end
 
 # Poly conversion
 function poly_convert(geometries::AbstractVector, transform_func=identity)
+    # TODO is this a problem with Float64 meshes?
     isempty(geometries) && return typeof(GeometryBasics.Mesh(Point2f[], GLTriangleFace[]))[]
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry, transform_func=identity)
-    return GeometryBasics.triangle_mesh(geometry)
+function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
+    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
 
 function poly_convert(polys::AbstractVector{<:Polygon}, transform_func=identity)
     # GLPlainMesh2D is not concrete?
+    # TODO is this a problem with Float64 meshes?
     T = GeometryBasics.Mesh{2, Float32, GeometryBasics.Ngon{2, Float32, 3, Point2f}, SimpleFaceView{2, Float32, 3, GLIndex, Point2f, GLTriangleFace}}
     return isempty(polys) ? T[] : poly_convert.(polys, (transform_func,))
 end
@@ -62,8 +84,10 @@ poly_convert(mesh::GeometryBasics.Mesh, transform_func=identity) = mesh
 
 function poly_convert(polygon::Polygon, transform_func=identity)
     outer = metafree(coordinates(polygon.exterior))
-    points = Vector{Point2f}[apply_transform(transform_func, outer)]
-    points_flat = Point2f[outer;]
+    # TODO consider applying f32 convert here too. We would need to identify this though...
+    PT = float_type(outer)
+    points = Vector{PT}[apply_transform(transform_func, outer)]
+    points_flat = PT[outer;]
     for inner in polygon.interiors
         inner_points = metafree(coordinates(inner))
         append!(points_flat, inner_points)
@@ -77,12 +101,12 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     return GeometryBasics.Mesh(points_flat, faces)
 end
 
-function poly_convert(polygon::AbstractVector{<:VecTypes}, transform_func=identity)
-    point2f = convert(Vector{Point2f}, polygon)
-    points_transformed = apply_transform(transform_func, point2f)
+function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=identity) where {T}
+    points = convert(Vector{Point2{float_type(T)}}, polygon)
+    points_transformed = apply_transform(transform_func, points)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
-    return GeometryBasics.Mesh(point2f, faces)
+    return GeometryBasics.Mesh(points, faces)
 end
 
 function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
@@ -96,22 +120,24 @@ to_lines(polygon) = convert_arguments(Lines, polygon)[1]
 to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
 function to_lines(meshes::AbstractVector)
-    line = Point2f[]
+    line = Point2d[]
     for (i, mesh) in enumerate(meshes)
         points = to_lines(mesh)
         append!(line, points)
         # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
-            push!(line, Point2f(NaN))
+            push!(line, Point2d(NaN))
         end
     end
     return line
 end
 
 function to_lines(polygon::AbstractVector{<: VecTypes})
-    result = Point2f.(polygon)
-    isempty(result) || push!(result, polygon[1])
+    result = Point2d.(polygon)
+    if !isempty(result) && !(result[1] ≈ result[end])
+        push!(result, polygon[1])
+    end
     return result
 end
 
@@ -151,12 +177,13 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
             return sc
         end
     end
-
     lines!(
         plot, outline, visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
         colormap = plot.strokecolormap,
-        linewidth = plot.strokewidth, space = plot.space,
+        linewidth = plot.strokewidth, linecap = plot.linecap,
+        joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
+        space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5
     )
@@ -164,7 +191,7 @@ end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
-    attributes = Attributes(
+    attrs = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
         space = plot.space, ssao = plot.ssao,
@@ -183,6 +210,8 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors, Float32}}()
 
+    interpolate_in_fragment_shader = Observable(false)
+
     map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
         if colors isa AbstractVector && length(colors) == length(num_meshes)
@@ -196,23 +225,27 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
                 end
             end
             # For GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
-            attributes[:interpolate_in_fragment_shader] = false
+            interpolate_in_fragment_shader[] = false
             return result
         else
             # If we have colors per vertex, we need to interpolate in fragment shader
-            attributes[:interpolate_in_fragment_shader] = true
+            interpolate_in_fragment_shader[] = true
             return to_color(colors)
         end
     end
-    attributes[:color] = mesh_colors
+    attrs[:color] = mesh_colors
     transform_func = plot.transformation.transform_func
     bigmesh = lift(plot, meshes, transform_func) do meshes, tf
         if isempty(meshes)
+            # TODO: Float64
             return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
         else
             triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
             return merge(triangle_meshes)
         end
     end
-    return mesh!(plot, attributes, bigmesh)
+    mpl = mesh!(plot, attrs, bigmesh)
+    # splice in internal attribute after creation to avoid validation
+    attributes(mpl)[:interpolate_in_fragment_shader] = interpolate_in_fragment_shader
+    return mpl
 end

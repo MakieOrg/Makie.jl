@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - sd/beta-20
   push:
     tags:
       - '*'
@@ -33,15 +32,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
+          pkg"registry up"
+          Pkg.update()
           # dev mono repo versions
           pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
       - name: Run the tests
@@ -50,7 +51,7 @@ jobs:
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("RPRMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: ./RPRMakie/test/recorded
@@ -58,6 +59,6 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           file: lcov.info

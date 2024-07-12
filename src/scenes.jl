@@ -68,6 +68,9 @@ mutable struct Scene <: AbstractScene
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
+    "A transformation rescaling data to a Float32-save range."
+    float32convert::Union{Nothing, Float32Convert}
+
     "The plots contained in the Scene."
     plots::Vector{AbstractPlot}
 
@@ -88,6 +91,8 @@ mutable struct Scene <: AbstractScene
     lights::Vector{AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     cycler::Cycler
+
+    conversions::DimConversions
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -114,6 +119,7 @@ mutable struct Scene <: AbstractScene
             camera,
             camera_controls,
             transformation,
+            nothing,
             plots,
             theme,
             children,
@@ -123,7 +129,8 @@ mutable struct Scene <: AbstractScene
             ssao,
             convert(Vector{AbstractLight}, lights),
             Observables.ObserverFunction[],
-            Cycler()
+            Cycler(),
+            DimConversions()
         )
         finalizer(free, scene)
         return scene
@@ -443,11 +450,13 @@ function Base.empty!(scene::Scene; free=false)
 end
 
 function Base.push!(plot::Plot, subplot)
+    MakieCore.validate_attribute_keys(subplot)
     subplot.parent = plot
     push!(plot.plots, subplot)
 end
 
-function Base.push!(scene::Scene, @nospecialize(plot::AbstractPlot))
+function Base.push!(scene::Scene, @nospecialize(plot::Plot))
+    MakieCore.validate_attribute_keys(plot)
     push!(scene.plots, plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
@@ -466,9 +475,6 @@ end
 function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
-    end
-    for arg in plot.args
-        Observables.clear(arg)
     end
     foreach(free, plot.plots)
     empty!(plot.plots)
@@ -550,10 +556,9 @@ end
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
-    bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding
-    bb = Rect3f(minimum(bb) .- padd, w .+ 2padd)
+    bb = Rect3d(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     scene
 end
@@ -565,7 +570,7 @@ parent_scene(x::Scene) = x
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
 function is2d(scene::SceneLike)
-    lims = data_limits(scene)
+    lims = boundingbox(scene)
     lims === nothing && return nothing
     return is2d(lims)
 end

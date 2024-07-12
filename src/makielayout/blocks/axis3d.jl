@@ -46,6 +46,7 @@ function initialize_block!(ax::Axis3)
         Makie.set_proj_view!(cam, proj, view)
         scene.transformation.model[] = model
         cam.eyeposition[] = eyepos
+        cam.view_direction[] = -normalize(eyepos)
     end
 
     ticknode_1 = Observable{Any}()
@@ -792,7 +793,9 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any, Any})
-    lims
+    _convert_single_limit(x) = x
+    _convert_single_limit(x::Interval) = endpoints(x)
+    map(_convert_single_limit, lims)
 end
 
 
@@ -837,6 +840,10 @@ function zautolimits(ax::Axis3)
     end
     zlims
 end
+
+Makie.xlims!(ax::Axis3, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
+Makie.ylims!(ax::Axis3, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
+Makie.zlims!(ax::Axis3, zlims::Interval) = Makie.zlims!(ax, endpoints(zlims))
 
 function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
     if length(xlims) != 2
@@ -936,7 +943,6 @@ function attribute_examples(::Type{Axis3})
     Dict(
         :aspect => [
             Example(
-                name = "Three-tuple aspects",
                 code = """
                     fig = Figure()
 
@@ -949,7 +955,6 @@ function attribute_examples(::Type{Axis3})
                     """
             ),
             Example(
-                name = "`:data` and `:equal` aspects",
                 code = """
                     using FileIO
 
@@ -970,7 +975,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :viewmode => [
             Example(
-                name = "`viewmode` variants",
                 code = """
                     fig = Figure()
 
@@ -994,7 +998,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :perspectiveness => [
             Example(
-                name = "`perspectiveness` values",
                 code = """
                     fig = Figure()
 
@@ -1010,7 +1013,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :azimuth => [
             Example(
-                name = "`azimuth` values",
                 code = """
                     fig = Figure()
 
@@ -1025,7 +1027,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :elevation => [
             Example(
-                name = "`elevation` values",
                 code = """
                     fig = Figure()
 
@@ -1040,7 +1041,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :xreversed => [
             Example(
-                name = "`xreversed` on and off",
                 code = """
                 using FileIO
 
@@ -1060,7 +1060,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :yreversed => [
             Example(
-                name = "`yreversed` on and off",
                 code = """
                     using FileIO
 
@@ -1080,7 +1079,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :zreversed => [
             Example(
-                name = "`zreversed` on and off",
                 code = """
                     using FileIO
 
@@ -1100,7 +1098,6 @@ function attribute_examples(::Type{Axis3})
         ],
         :protrusions => [
             Example(
-                name = "Single protrusion",
                 code = """
                     fig = Figure(backgroundcolor = :gray97)
                     Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
@@ -1110,7 +1107,6 @@ function attribute_examples(::Type{Axis3})
                 """
             ),
             Example(
-                name = "Removing protrusions",
                 code = """
                     fig = Figure(backgroundcolor = :gray97)
                     Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell

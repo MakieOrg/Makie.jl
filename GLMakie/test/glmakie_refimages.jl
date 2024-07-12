@@ -6,29 +6,6 @@ using GLMakie.ShaderAbstractions: Sampler
 using GLMakie.GeometryBasics
 using ReferenceTests.RNG
 
-# A test case for wide lines and mitering at joints
-@reference_test "Miter Joints for line rendering" begin
-    scene = Scene()
-    cam2d!(scene)
-    r = 4
-    sep = 4*r
-    scatter!(scene, (sep+2*r)*[-1,-1,1,1], (sep+2*r)*[-1,1,-1,1])
-
-    for i=-1:1
-        for j=-1:1
-            angle = pi/2 + pi/4*i
-            x = r*[-cos(angle/2),0,-cos(angle/2)]
-            y = r*[-sin(angle/2),0,sin(angle/2)]
-
-            linewidth = 40 * 2.0^j
-            lines!(scene, x .+ sep*i, y .+ sep*j, color=RGBAf(0,0,0,0.5), linewidth=linewidth)
-            lines!(scene, x .+ sep*i, y .+ sep*j, color=:red)
-        end
-    end
-    center!(scene)
-    scene
-end
-
 @reference_test "Sampler type" begin
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
@@ -60,7 +37,7 @@ end
     end
 
     fig, ax, p = meshscatter(pos,
-        rotations=rot,
+        rotation=rot,
         color=color,
         markersize=size,
         axis = (; scenekw = (;limits=Rect3f(Point3(0), Point3(1))))
@@ -82,7 +59,7 @@ end
         end
     end
     fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0; color=:black)
-    screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false), fig.scene)
+    screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false, visible=false), fig.scene)
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     @test isnothing(screen.rendertask)
@@ -161,6 +138,33 @@ end
     scene = Scene(lights = lights, camera = cam3d!, size = (400, 400))
     p = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
     update_cam!(scene, Vec3f(0, 0, 7), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
+
+    scene
+end
+
+@reference_test "Signed Distance Field - FXAA interaction" begin
+    scene = Scene(size = (300, 200), camera = campixel!)
+
+    # scatter/text shader
+    xs = 20:20:280
+    ys = fill(170, length(xs))
+    zs = range(3, 1, length=length(xs))
+    scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = false)
+    ys = fill(130, length(xs))
+    scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = true)
+    ys = fill(90, length(xs))
+    scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, depthsorting = true)
+
+    # lines/linesegments shader
+    xs = 20:10:270
+    ys = [50 + shift for _ in 1:13 for shift in (-10, 10)]
+    zs = range(3, 1, length=length(xs))
+    lines!(scene, xs, ys, zs, color = :blue, linewidth = 4, fxaa = false)
+    ys = [20 + shift for _ in 1:13 for shift in (-10, 10)]
+    lines!(scene, xs, ys, zs, color = :blue, linewidth = 4, fxaa = true)
+
+    # create some harder contrasts
+    mesh!(scene, Rect2f(0, 0, 300, 200), color = :red)
 
     scene
 end

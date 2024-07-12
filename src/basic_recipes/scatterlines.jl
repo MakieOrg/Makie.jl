@@ -2,38 +2,40 @@
     scatterlines(xs, ys, [zs]; kwargs...)
 
 Plots `scatter` markers and `lines` between them.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(ScatterLines) do scene
-    s_theme = default_theme(scene, Scatter)
-    l_theme = default_theme(scene, Lines)
-    Attributes(
-        color = l_theme.color,
-        colormap = l_theme.colormap,
-        colorscale = l_theme.colorscale,
-        colorrange = get(l_theme.attributes, :colorrange, automatic),
-        linestyle = l_theme.linestyle,
-        linewidth = l_theme.linewidth,
-        markercolor = automatic,
-        markercolormap = s_theme.colormap,
-        markercolorrange = get(s_theme.attributes, :colorrange, automatic),
-        markersize = s_theme.markersize,
-        strokecolor = s_theme.strokecolor,
-        strokewidth = s_theme.strokewidth,
-        marker = s_theme.marker,
-        inspectable = theme(scene, :inspectable),
-        cycle = [:color],
-    )
+@recipe ScatterLines begin
+    "The color of the line, and by default also of the scatter markers."
+    color = @inherit linecolor
+    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    linestyle = nothing
+    "Sets the width of the line in screen units"
+    linewidth = @inherit linewidth
+    linecap = @inherit linecap
+    joinstyle = @inherit joinstyle
+    miter_limit = @inherit miter_limit
+    markercolor = automatic
+    markercolormap = automatic
+    markercolorrange = automatic
+    "Sets the size of the marker."
+    markersize = @inherit markersize
+    "Sets the color of the outline around a marker."
+    strokecolor = @inherit markerstrokecolor
+    "Sets the width of the outline around a marker."
+    strokewidth = @inherit markerstrokewidth
+    "Sets the scatter marker."
+    marker = @inherit marker
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
+    cycle = [:color]
 end
+
+conversion_trait(::Type{<: ScatterLines}) = PointBased()
 
 
 function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
 
     # markercolor is the same as linecolor if left automatic
-    # RGBColors -> union of all colortypes that `to_color` accepts + returns
-    real_markercolor = Observable{RGBColors}()
+    real_markercolor = Observable{Any}()
     map!(real_markercolor, p.color, p.markercolor) do col, mcol
         if mcol === automatic
             return to_color(col)
@@ -42,10 +44,23 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         end
     end
 
+    real_markercolormap = Observable{Any}()
+    map!(real_markercolormap, p.colormap, p.markercolormap) do col, mcol
+        mcol === automatic ? col : mcol
+    end
+
+    real_markercolorrange = Observable{Any}()
+    map!(real_markercolorrange, p.colorrange, p.markercolorrange) do col, mcol
+        mcol === automatic ? col : mcol
+    end
+
     lines!(p, p[1:N]...;
         color = p.color,
         linestyle = p.linestyle,
         linewidth = p.linewidth,
+        linecap = p.linecap,
+        joinstyle = p.joinstyle,
+        miter_limit = p.miter_limit,
         colormap = p.colormap,
         colorscale = p.colorscale,
         colorrange = p.colorrange,
@@ -57,9 +72,9 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         strokewidth = p.strokewidth,
         marker = p.marker,
         markersize = p.markersize,
-        colormap = p.markercolormap,
+        colormap = real_markercolormap,
         colorscale = p.colorscale,
-        colorrange = p.markercolorrange,
+        colorrange = real_markercolorrange,
         inspectable = p.inspectable
     )
 end

@@ -119,6 +119,20 @@ end
     f
 end
 
+# https://github.com/MakieOrg/Makie.jl/issues/3579
+@reference_test "Axis yticksmirrored" begin
+    f = Figure(size = (200, 200))
+    Axis(f[1, 1], yticksmirrored = true, yticksize = 10, ytickwidth = 4, spinewidth = 5)
+    Colorbar(f[1, 2])
+    f
+end
+@reference_test "Axis xticksmirrored" begin
+    f = Figure(size = (200, 200))
+    Axis(f[1, 1], xticksmirrored = true, xticksize = 10, xtickwidth = 4, spinewidth = 5)
+    Colorbar(f[0, 1], vertical = false)
+    f
+end
+
 @reference_test "Legend draw order" begin
     with_theme(Lines = (linewidth = 10,)) do
         f = Figure()
@@ -131,6 +145,25 @@ end
         Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), backgroundcolor = :gray50);
         f
     end
+end
+
+@reference_test "Legend with scalar colors" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    for i in 1:3
+        lines!(ax, (1:3) .+ i, color = i, colorrange = (0, 4), colormap = :Blues, label = "Line $i", linewidth = 3)
+    end
+    for i in 1:3
+        scatter!(ax, (1:3) .+ i .+ 3, color = i, colorrange = (0, 4), colormap = :plasma, label = "Scatter $i", markersize = 15)
+    end
+    for i in 1:3
+        barplot!(ax, (1:3) .+ i .+ 8, fillto = (1:3) .+ i .+ 7.5, color = i, colorrange = (0, 4), colormap = :tab10, label = "Barplot $i")
+    end
+    for i in 1:3
+        poly!(ax, [Rect2f((j, i .+ 12 + j), (0.5, 0.5)) for j in 1:3], color = i, colorrange = (0, 4), colormap = :heat, label = "Poly $i")
+    end
+    Legend(f[1, 2], ax)
+    f
 end
 
 @reference_test "LaTeXStrings in Axis3 plots" begin
@@ -190,6 +223,8 @@ end
         rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
+        thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
+        rticks = ([0.0, 2.5, 5.0, 7.5, 10.0], ["0.0", "2.5", "5.0", "7.5", rich("10.0", color = :orange)])
     )
     f
 end
@@ -247,7 +282,7 @@ end
     values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
 
     # TO not make this fail in CairoMakie, we dont actually plot the volume
-    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    _f, ax, cp = contour(-1..1, -1..1, -1..1, values; levels=10, colormap=:viridis)
     Colorbar(fig[2, 1], cp; size=300)
 
     _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)
@@ -290,4 +325,18 @@ end
     hidedecorations!(ax)
     axislegend(ax)
     fig
+end
+
+@reference_test "Axis limits with translation, scaling and transform_func" begin
+    f = Figure()
+    a = Axis(f[1,1], xscale = log10, yscale = log10)
+    ps = Point2f.([0.1, 0.1, 1000, 1000], [1, 100, 1, 100])
+    hl = linesegments!(a, ps[[1, 3, 2, 4]], color = :red)
+    vl = linesegments!(a, ps, color = :blue)
+    # translation happens before scale! here because scale! acts on scene and
+    # translate! acts on the plot (these are combined by matmult)
+    scale!(a.scene, 0.5, 2, 1.0)
+    translate!(hl, 0, 1, 0)
+    translate!(vl, 1, 0, 0)
+    f
 end

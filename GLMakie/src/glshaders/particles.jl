@@ -41,6 +41,22 @@ is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
 
+intensity_convert(intensity, verts) = intensity
+function intensity_convert(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        GLBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        TextureBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+
 
 
 @nospecialize
@@ -58,6 +74,7 @@ function draw_mesh_particle(screen, p, data)
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
     end
+
 
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
@@ -176,6 +193,20 @@ function draw_scatter(screen, (marker, position), data)
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
 
+    if to_value(pop!(data, :depthsorting, false))
+        data[:indices] = map(
+            data[:projectionview], data[:preprojection], data[:model],
+            position
+        ) do pv, pp, m, pos
+            T = pv * pp * m
+            depth_vals = map(pos) do p
+                p4d = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
+                p4d[3] / p4d[4]
+            end
+            UInt32.(sortperm(depth_vals, rev = true) .- 1)
+        end |> indexbuffer
+    end
+
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
@@ -194,6 +225,7 @@ function draw_scatter(screen, (marker, position), data)
             return shape
         end
     end
+
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -226,6 +258,7 @@ function draw_scatter(screen, (marker, position), data)
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
+
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)

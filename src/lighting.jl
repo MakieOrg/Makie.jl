@@ -149,7 +149,7 @@ end
     RectLight(color, center::Point3f, b1::Vec3f, b2::Vec3f[, direction = -normal])
 
 Creates a RectLight with a given color. The first constructor derives the light
-from a `Rect2` extending in x and y direction. The second specifies the `center`
+from a `Rect2` extending in x and y directions. The second specifies the `center`
 of the rect (or more accurately parallelogram) with `b1` and `b2` specifying the
 width and height vectors (including scale).
 
@@ -240,7 +240,7 @@ function default_shading!(plot, lights::Vector{<: AbstractLight})
         else
             shading = automatic
         end
-        @warn "`shading = $prev` is not valid. Use `automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
+        @warn "`shading = $prev` is not valid. Use `Makie.automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
     end
 
     # automatic conversion

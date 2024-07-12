@@ -8,29 +8,37 @@ complex and slower to draw than standard paths with single color.
 """
 function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # dispatch on input arguments to poly to use smarter drawing methods than
-    # meshes if possible
-    return draw_poly(scene, screen, poly, to_value.(poly.args)...)
+    # meshes if possible.
+    # however, since recipes exist, we can't explicitly handle all cases here
+    # so, we should also take a look at converted 
+    # First, we check whether a `draw_poly` method exists for the input arguments
+    # before conversion:
+    return if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.args))...})
+        draw_poly(scene, screen, poly, to_value.(poly.args)...)
+    # If not, we check whether a `draw_poly` method exists for the arguments after conversion
+    # (`plot.converted`).  This allows anything which decomposes to be checked for.
+    elseif Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.converted))...})
+        draw_poly(scene, screen, poly, to_value.(poly.converted)...)
+    # In the worst case, we return to drawing the polygon as a mesh + lines.
+    else
+        draw_poly_as_mesh(scene, screen, poly)
+    end
 end
 
 # Override `is_cairomakie_atomic_plot` to allow `poly` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
 is_cairomakie_atomic_plot(plot::Poly) = true
 
-"""
-Fallback method for args without special treatment.
-"""
-function draw_poly(scene::Scene, screen::Screen, poly, args...)
-    draw_poly_as_mesh(scene, screen, poly)
-end
 
 function draw_poly_as_mesh(scene, screen, poly)
-    draw_plot(scene, screen, poly.plots[1])
-    draw_plot(scene, screen, poly.plots[2])
+    for i in eachindex(poly.plots)
+        draw_plot(scene, screen, poly.plots[i])
+    end
 end
 
-
-# in the rare case of per-vertex colors redirect to mesh drawing
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::AbstractArray, model, strokecolor, strokewidth)
+# As a general fallback, draw all polys as meshes.
+# This also applies for e.g. per-vertex color.
+function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     draw_poly_as_mesh(scene, screen, poly)
 end
 
@@ -45,7 +53,7 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
-    points = project_position.(Ref(scene), space, points, Ref(model))
+    points = project_position.(Ref(poly), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
@@ -78,7 +86,7 @@ draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_pol
 function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2,BezierPath}})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_shapes = project_shape.(Ref(scene), space, shapes, Ref(model))
+    projected_shapes = project_shape.(Ref(poly), space, shapes, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
 
@@ -150,6 +158,7 @@ function polypath(ctx, polygon)
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
+draw_poly(scene::Scene, screen::Screen, poly, multipolygon::MultiPolygon) = draw_poly(scene, screen, poly, multipolygon.polygons)
 draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
@@ -175,7 +184,7 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = project_multipolygon.(Ref(poly), space, polygons, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -211,7 +220,7 @@ function draw_plot(scene::Scene, screen::Screen,
         points = vcat(lowerpoints, reverse(upperpoints))
         model = band.model[]
         space = to_value(get(band, :space, :data))
-        points = project_position.(Ref(scene), space, points, Ref(model))
+        points = project_position.(Ref(band), space, points, Ref(model))
         Cairo.move_to(screen.context, points[1]...)
         for p in points[2:end]
             Cairo.line_to(screen.context, p...)
@@ -249,7 +258,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     polygons = pol[1][]
     model = pol.model[]
     space = to_value(get(pol, :space, :data))
-    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+    projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(model))
 
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))

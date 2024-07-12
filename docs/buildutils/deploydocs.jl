@@ -24,7 +24,7 @@ function deployparameters(; repo, push_preview, devbranch, devurl)
     )
 end
 
-function deploy(params; root = Documenter.Utilities.currentdir(), target)
+function deploy(params; root = Documenter.currentdir(), target)
     if !params.all_ok
         @warn "Deploy decision status not all ok. Not deploying."
         return

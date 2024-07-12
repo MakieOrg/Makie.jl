@@ -85,11 +85,14 @@ function connect_scene_events!(scene::Scene, comm::Observable)
                 e.scroll[] = Float64.((sign.(scroll)...,))
             end
             @handle msg.keydown begin
-                button = code_to_keyboard(keydown)
+                button = code_to_keyboard(keydown[1])
                 # don't add unknown buttons...we can't work with them
                 # and they won't get removed
                 if button != Keyboard.unknown
                     e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
+                end
+                if length(keydown[2])==1 && isascii(keydown[2])
+                    e.unicode_input[] = keydown[2][1]
                 end
             end
             @handle msg.keyup begin

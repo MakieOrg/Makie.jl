@@ -5,7 +5,6 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     c = cam_controls
     l, u, p, fov = c.lookat[], c.upvector[], c.eyeposition[], c.fov[]
     far, near, res = c.far[], c.near[], cam.resolution[]
-    fov = 45f0 # The current camera ignores fov updates
     new_vals = (; l, u, p, fov, far, near, res)
     new_vals == oldvals && return oldvals
     wd = norm(l - p)
@@ -14,8 +13,8 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     lookat!(camera, p, l, u)
     RPR.rprCameraSetFarPlane(camera, far)
     RPR.rprCameraSetNearPlane(camera, near)
-    h = norm(res)
-    RPR.rprCameraSetFocalLength(camera, (30*h)/fov)
+    focal_length = res[2] / (2 * tand(fov / 2)) # fov is vertical
+    RPR.rprCameraSetFocalLength(camera, focal_length)
     # RPR_CAMERA_FSTOP
     # RPR_CAMERA_MODE
     return new_vals
@@ -73,7 +72,7 @@ function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.DirectionalL
         else
             dir = normalize(dir)
         end
-        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
+        quart = Makie.rotation_between(Vec3f(dir), Vec3f(0,0,-1))
         transform!(directionallight, Makie.rotationmatrix4(quart))
     end
     map(light.color) do c
