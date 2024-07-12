@@ -300,8 +300,8 @@ function Transformation(parent::Transformable;
                         translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1),
                         transform_func=nothing)
-    connect_func = isnothing(transform_func)
-    trans = isnothing(transform_func) ? identity : transform_func
+    connect_func = !isnothing(transform_func)
+    trans = connect_func ? transform_func : identity
 
     trans = Transformation(translation,
                            scale,
