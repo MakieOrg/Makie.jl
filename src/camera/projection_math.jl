@@ -223,9 +223,22 @@ function transformationmatrix(translation, scale, rotation::Quaternion{T}) where
 end
 
 function is_translation_scale_matrix(mat::Mat4{T}) where T
-    return abs(mat[2, 1]) + abs(mat[3, 1]) + abs(mat[1, 2]) + abs(mat[3, 2]) +
-           abs(mat[1, 3]) + abs(mat[2, 3]) < sqrt(eps(T))
+    # Checks that matrix has form: (* being any number)
+    #   *  0  0  *
+    #   0  *  0  *
+    #   0  0  *  *
+    #   0  0  0  1
+    T0 = zero(T)
+    return (mat[2, 1] == T0) && (mat[3, 1] == T0) && (mat[4, 1] == T0) &&
+           (mat[1, 2] == T0) && (mat[3, 2] == T0) && (mat[4, 2] == T0) &&
+           (mat[1, 3] == T0) && (mat[2, 3] == T0) && (mat[4, 3] == T0) &&
+           (mat[4, 4] == one(T))
 end
+
+# these assume just a scale and translation component
+unsafe_extract_scale(mat::Mat4{T}) where {T}       = Vec3{T}(mat[1, 1], mat[2, 2], mat[3, 3])
+unsafe_extract_translation(mat::Mat4{T}) where {T} = Vec3{T}(mat[1, 4], mat[2, 4], mat[3, 4])
+
 
 #Calculate rotation between two vectors
 function rotation(u::Vec{3, T}, v::Vec{3, T}) where T

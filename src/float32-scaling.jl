@@ -70,9 +70,36 @@ inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(in
 
 
 # returns Matrix R such that M * ls = ls * R
-patch_model(::Nothing, M::Mat4d) = Mat4f(M)
-function patch_model(ls::LinearScaling, M::Mat4d)
-    return Mat4f(f32_convert_matrix(ls) * M * f32_convert_matrix(inv(ls)))
+# patch_model(::Nothing, M::Mat4d) = Mat4f(M)
+# function patch_model(ls::LinearScaling, M::Mat4d)
+#     # return Mat4f(f32_convert_matrix(ls) * M * f32_convert_matrix(inv(ls)))
+#     # return Mat4f(f32_convert_matrix(ls) * Mat4d(I) * f32_convert_matrix(inv(ls)))
+#     return Mat4f(I)
+# end
+
+patch_model(@nospecialize(plot)) = patch_model(plot, f32_conversion(plot), plot.model)
+
+function patch_model(@nospecialize(plot), f32c::Nothing, model::Observable)
+    return Observable(nothing), map(Mat4f, model)
+end
+
+function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observable) # Observable{Any} :(
+    f32c_obs = Observable{LinearScaling}()
+    model_obs = Observable{Mat4f}(Mat4f(I))
+
+    onany(plot, f32c.scaling, model, update = true) do f32c, model
+        if is_translation_scale_matrix(model)
+            scale = Makie.unsafe_extract_scale(model)
+            trans = Makie.unsafe_extract_translation(model)
+            f32c_obs[] = Makie.LinearScaling(
+                scale * f32c.scale, f32c.scale * trans + f32c.offset
+            )
+        else
+            f32c_obs[] = f32c
+        end
+    end
+
+    return f32c_obs, model_obs
 end
 
 
@@ -197,7 +224,8 @@ function f32_conversion_obs(scene::Scene)
         return scene.float32convert.scaling
     end
 end
-f32_conversion_obs(plot::AbstractPlot) = f32_conversion_obs(parent_scene(plot))
+# f32_conversion_obs(plot::AbstractPlot) = f32_conversion_obs(parent_scene(plot))
+f32_conversion_obs(plot::AbstractPlot) = plot.attributes[:_f32_conversion]
 
 f32_conversion(plot::AbstractPlot) = f32_conversion(parent_scene(plot))
 f32_conversion(scene::Scene) = scene.float32convert
@@ -207,49 +235,119 @@ patch_model(scene::SceneLike, M::Mat4d) = patch_model(f32_conversion(scene), M)
 
 # TODO consider mirroring f32convert to plot attributes
 function apply_transform_and_f32_conversion(
-        scene::Scene, plot::AbstractPlot, data,
-        space::Observable = get(plot, :space, Observable(:data))
+        plot::AbstractPlot, f32c, data,
+        space::Observable = get(plot, :space, Observable(:data)),
+        model::Observable = plot[:model]
     )
     return map(
         apply_transform_and_f32_conversion, plot,
-        f32_conversion_obs(scene), transform_func_obs(plot), data, space
+        f32c, transform_func_obs(plot), model, data, space
     )
 end
 
 # For Vector{<: Real} applying to x/y/z dimension
 function apply_transform_and_f32_conversion(
-        scene::Scene, plot::AbstractPlot, data, dim::Integer,
-        space::Observable = get(plot, :space, Observable(:data))
+        plot::AbstractPlot, f32c, data, dim::Integer,
+        space::Observable = get(plot, :space, Observable(:data)),
+        model::Observable = plot[:model]
     )
     return map(
         apply_transform_and_f32_conversion, plot,
-        f32_conversion_obs(scene), transform_func_obs(plot), data, dim, space
+        f32c, transform_func_obs(plot), model, data, dim, space
     )
 end
 
 function apply_transform_and_f32_conversion(
-        float32convert::Union{Nothing, Float32Convert, LinearScaling},
-        transform_func, data, space::Symbol
+        float32convert::Nothing, transform_func, model::Mat4d, data, space::Symbol
     )
-    tf = space == :data ? transform_func : identity
-    f32c = space in (:data, :transformed) ? float32convert : nothing
+    return apply_transform(transform_func, data, space)
+end
+
+function apply_transform_and_f32_conversion(
+        float32convert::Union{Float32Convert, LinearScaling},
+        transform_func, model::Mat4d, data, space::Symbol
+    )
     # avoid intermediate arrays. TODO: Is transform_func strictly per element?
-    return [Makie.f32_convert(f32c, apply_transform(tf, x)) for x in data]
+    tf = space == :data ? transform_func : identity
+    if space in (:data, :transformed)
+        if is_translation_scale_matrix(model)
+            # translation and scale of model have been moved to f32convert, so
+            # just apply that
+            return [f32_convert(float32convert, apply_transform(tf, x)) for x in data]
+        else
+            # model contains rotation which stops us from applying f32convert 
+            # before model
+            return map(data) do input
+                transformed = apply_transform_and_model(model, tf, input)
+                return f32_convert(float32convert, transformed)
+            end
+        end
+    else
+        # Neither f32c nor model applies after outside of :data and :transformed 
+        # space, so no transformation necessary
+        return data
+    end
 end
 
 function apply_transform_and_f32_conversion(
-        float32convert::Union{Nothing, Float32Convert, LinearScaling},
-        transform_func, data, dim::Integer, space::Symbol
+        float32convert::Nothing,
+        transform_func, model::Mat4d, data, dim::Integer, space::Symbol
     )
     tf = space == :data ? transform_func : identity
-    f32c = space in (:data, :transformed) ? float32convert : nothing
     if dim == 1
-        return [Makie.f32_convert(f32c, apply_transform(tf, Point2(x, 0))[1], dim) for x in data]
+        return [apply_transform(tf, Point2(x, 0))[1] for x in data]
     elseif dim == 2
-        return [Makie.f32_convert(f32c, apply_transform(tf, Point2(0, x))[2], dim) for x in data]
+        return [apply_transform(tf, Point2(0, x))[2] for x in data]
     elseif dim == 3
-        return [Makie.f32_convert(f32c, apply_transform(tf, Point3(0, 0, x))[3], dim) for x in data]
+        return [apply_transform(tf, Point3(0, 0, x))[3] for x in data]
     else
         error("The transform_func and float32 conversion can only be applied along dimensions 1, 2 or 3, not $dim")
+    end
+end
+
+function apply_transform_and_f32_conversion(
+        float32convert::Union{Nothing, Float32Convert, LinearScaling},
+        transform_func, model::Mat4d, data, dim::Integer, space::Symbol
+    )
+    
+    dim in (1, 2, 3) || error("The transform_func and float32 conversion can only be applied along dimensions 1, 2 or 3, not $dim")
+    
+    tf = space == :data ? transform_func : identity
+    
+    if space in (:data, :transformed)
+        if is_translation_scale_matrix(model)
+            # translation and scale of model have been moved to f32convert, so
+            # just apply that
+            if dim == 1
+                return [f32_convert(float32convert, apply_transform(tf, Point2(x, 0))[1], dim) for x in data]
+            elseif dim == 2
+                return [f32_convert(float32convert, apply_transform(tf, Point2(0, x))[2], dim) for x in data]
+            else
+                return [f32_convert(float32convert, apply_transform(tf, Point3(0, 0, x))[3], dim) for x in data]
+            end
+        else
+            # model contains rotation which stops us from applying f32convert 
+            # before model
+            if dim == 1
+                return map(data) do input
+                    transformed = apply_transform_and_model(model, tf, Point2(input, 0))
+                    return f32_convert(float32convert, transformed, 1)
+                end
+            elseif dim == 2
+                return map(data) do input
+                    transformed = apply_transform_and_model(model, tf, Point2(0, input))
+                    return f32_convert(float32convert, transformed, 2)
+                end
+            else
+                return map(data) do input
+                    transformed = apply_transform_and_model(model, tf, Point3(0, 0, input))
+                    return f32_convert(float32convert, transformed, 3)
+                end
+            end
+        end
+    else
+        # Neither f32c nor model applies after outside of :data and :transformed 
+        # space, so no transformation necessary
+        return data
     end
 end
