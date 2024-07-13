@@ -1,10 +1,11 @@
 """
     pie(values; kwargs...)
+    pie(point, values; kwargs...)
     pie(x, y, values; kwargs...)
 
 Creates a pie chart from the given `values`.
 """
-@recipe Pie (points,) begin
+@recipe Pie (xs, ys, values) begin
     "If `true`, the sum of all values is normalized to 2π (a full circle)."
     normalize = true
     color = :gray
@@ -23,21 +24,19 @@ Creates a pie chart from the given `values`.
     MakieCore.mixin_generic_plot_attributes()...
 end
 
-conversion_trait(::Type{<:Pie}) = PointBased()
-convert_arguments(::Type{<:Pie}, values::Vector) = (Point3d.(0, 0, getindex.(values, 1)),)
-convert_arguments(::Type{<:Pie}, xs, ys, values::Vector) = begin
-    xs = length(xs) == 1 ? fill(only(xs), length(values)) : xs
-    ys = length(ys) == 1 ? fill(only(ys), length(values)) : ys
-    return (Point3d.(xs, ys, values),)
-end
+convert_arguments(::Type{<:Pie}, values::Vector) = (0, 0, values)
+convert_arguments(::Type{<:Pie}, point::Point, values::Vector) = (point[1], point[2], values)
+convert_arguments(::Type{<:Pie}, point, values::Vector) = (getindex.(point, 1), getindex.(point, 2), values)
+convert_arguments(::Type{<:Pie}, xs, ys, values::Vector) = (xs, ys, values)
 
 function plot!(plot::Pie)
-    values = plot[1]
+    xs = plot[1]
+    ys = plot[2]
+    values = plot[3]
 
-    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset_radius, plot.offset, plot.normalize) do vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
-        xs = getindex.(vals, 1)
-        ys = getindex.(vals, 2)
-        vals = getindex.(vals, 3)
+    polys = lift(plot, xs, ys, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset_radius, plot.offset, plot.normalize) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
+        xs = length(xs) == 1 ? fill(only(xs), length(vals)) : xs
+        ys = length(ys) == 1 ? fill(only(ys), length(vals)) : ys
         offset_radius = length(offset_radius) == 1 ? fill(only(offset_radius), length(vals)) : offset_radius
 
         T = eltype(vals)
