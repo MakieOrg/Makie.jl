@@ -879,3 +879,35 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         return draw_voxels(screen, tex, gl_attributes)
     end
 end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::GLPlot)
+    return cached_robj!(screen, scene, plot) do gl_attributes
+        draw_glplot(screen, plot, gl_attributes)
+
+        # gl_attributes[:arguments] = plot.converted
+        # gl_attributes[:]
+        # model = plot.model
+        # x, y, z = plot[1], plot[2], plot[3]
+        # gl_attributes[:model] = lift(plot, model, x, y, z) do m, xyz...
+        #     mi = minimum.(xyz)
+        #     maxi = maximum.(xyz)
+        #     w = maxi .- mi
+        #     m2 = Mat4f(
+        #         w[1], 0, 0, 0,
+        #         0, w[2], 0, 0,
+        #         0, 0, w[3], 0,
+        #         mi[1], mi[2], mi[3], 1
+        #     )
+        #     return convert(Mat4f, m) * m2
+        # end
+        # interp = to_value(pop!(gl_attributes, :interpolate))
+        # interp = interp ? :linear : :nearest
+        # Tex(x) = Texture(x; minfilter=interp)
+        # if haskey(gl_attributes, :intensity)
+        #     intensity = pop!(gl_attributes, :intensity)
+        #     return draw_volume(screen, Tex(intensity), gl_attributes)
+        # else
+        #     return draw_volume(screen, Tex(plot[4]), gl_attributes)
+        # end
+    end
+end
