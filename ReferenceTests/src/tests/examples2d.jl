@@ -373,6 +373,34 @@ end
     pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
 end
 
+@reference_test "Pie Position" begin
+    fig = Makie.Figure()
+    ax = Makie.Axis(fig[1, 1]; autolimitaspect=1)
+
+    vs = 0:6
+    cs = Makie.wong_colors()
+    Δx = [1, 1, 1, -1, -1, -1, 1] ./ 10
+    Δy = [1, 1, 1, 1, 1, -1, -1] ./ 10
+    Δr1 = [0, 0, 0.2, 0, 0.2, 0, 0]
+    Δr2 = [0, 0, 0.2, 0, 0, 0, 0]
+
+    Makie.pie!(ax, vs; color=cs, x=0, y=0)
+    Makie.pie!(ax, vs; color=cs, x=3 .+ Δx, y=0)
+    Makie.pie!(ax, vs; color=cs, x=0, y=3 .+ Δy)
+    Makie.pie!(ax, vs; color=cs, x=3 .+ Δx, y=3 .+ Δy)
+
+    Makie.pie!(ax, vs; color=cs, x=7, y=0, r=Δr1)
+    Makie.pie!(ax, vs; color=cs, x=7, y=3, r=0.2)
+    Makie.pie!(ax, vs; color=cs, x=10 .+ Δx, y=3 .+ Δy, r=0.2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=10, y=0, r=Δr1, normalize=false, offset=π/2)
+
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=0.5, y=-4, r=Δr2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=3.5, y=-4 .+ Δy, r=Δr2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=6.5 .+ Δx, y=-4, r=Δr2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=9.5 .+ Δx, y=-4 .+ Δy, r=Δr2, normalize=false, offset=π/2)
+    fig
+end
+
 @reference_test "intersecting polygon" begin
     x = LinRange(0, 2pi, 100)
     poly(Point2f.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
