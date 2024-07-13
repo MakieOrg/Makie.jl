@@ -36,6 +36,29 @@ f
 ```
 
 ```@figure
+import Makie, CairoMakie
+
+fig = Makie.Figure()
+ax = Makie.Axis(fig[1, 1]; autolimitaspect=1)
+
+kw = (; offset_radius=0.4, strokecolor=:transparent, strokewidth=0)
+Makie.pie!(ax, ones(7); radius=sqrt.(2:8) * 3, kw..., color=Makie.wong_colors(0.8)[1:7])
+
+vs = [2, 3, 4, 5, 6, 7, 8]
+vs_inner = [1, 1, 1, 1, 2, 2, 2]
+rs = 8
+rs_inner = sqrt.(vs_inner ./ vs) * rs
+
+lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:white, background_color=:transparent)
+# draw the inner pie twice since `color` can not be vector of `LinePattern` currently
+Makie.pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.8)[eachindex(vs)])
+Makie.pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
+Makie.pie!(ax, 20, 0, vs; radius=rs, inner_radius=rs_inner, kw..., color=Makie.wong_colors(0.8)[eachindex(vs)])
+
+display(fig)
+```
+
+```@figure
 fig = Makie.Figure()
 ax = Makie.Axis(fig[1, 1]; autolimitaspect=1)
 

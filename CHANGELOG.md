@@ -4,6 +4,7 @@
 
 - Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
 - Add position for `pie` plot [#4027](https://github.com/MakieOrg/Makie.jl/pull/4027).
+- Allow segment-specific radius for `pie` plot [#4028](https://github.com/MakieOrg/Makie.jl/pull/4028).
 
 ## [0.21.5] - 2024-07-07
 
