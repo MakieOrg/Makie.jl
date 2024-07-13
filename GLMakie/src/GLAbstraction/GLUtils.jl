@@ -75,7 +75,7 @@ macro gen_defaults!(dict, args)
                         doc_strings = :(doc_strings[$key_sym] = $elem)
                     elseif isa(elem, Symbol)
                         opengl_convert_target = quote
-                            if GLAbstraction.matches_target($elem, $key_name)
+                            if $(GLAbstraction).matches_target($elem, $key_name)
                                 gl_convert_targets[$key_sym] = $elem
                             end
                         end
