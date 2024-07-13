@@ -34,11 +34,11 @@ end
 function plot!(plot::Pie)
     values = plot[1]
 
-    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize, plot.offset_radius) do vals, vertex_per_deg, radius, inner_radius, offset, normalize, rs
+    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset_radius, plot.offset, plot.normalize) do vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
         xs = getindex.(vals, 1)
         ys = getindex.(vals, 2)
         vals = getindex.(vals, 3)
-        rs = length(rs) == 1 ? fill(only(rs), length(vals)) : rs
+        offset_radius = length(offset_radius) == 1 ? fill(only(offset_radius), length(vals)) : offset_radius
 
         T = eltype(vals)
 
@@ -51,7 +51,7 @@ function plot!(plot::Pie)
         end
 
         # create vector of a vector of points for each piece
-        vertex_arrays = map(boundaries[1:end-1], boundaries[2:end], xs, ys, rs) do sta, en, x, y, r
+        vertex_arrays = map(boundaries[1:end-1], boundaries[2:end], xs, ys, offset_radius) do sta, en, x, y, r
             x += cos((en + sta) / 2 + offset) * r
             y += sin((en + sta) / 2 + offset) * r
             distance = en - sta
