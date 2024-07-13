@@ -1,9 +1,10 @@
 """
     pie(values; kwargs...)
+    pie(x, y, values; kwargs...)
 
 Creates a pie chart from the given `values`.
 """
-@recipe Pie (values,) begin
+@recipe Pie (points,) begin
     "If `true`, the sum of all values is normalized to 2π (a full circle)."
     normalize = true
     color = :gray
@@ -17,23 +18,27 @@ Creates a pie chart from the given `values`.
     inner_radius = 0
     "The angular offset of the first pie segment from the (1, 0) vector in radians."
     offset = 0
-    "Position of pie segments (x-value, scalar or `length(values)` vector)"
-    x = 0
-    "Position of pie segments (y-value, scalar or `length(values)` vector)"
-    y = 0
     "Position of pie segments (r-value as polar coordinate, scalar or `length(values)` vector)"
     r = 0
     MakieCore.mixin_generic_plot_attributes()...
 end
 
-function plot!(plot::Pie)
+conversion_trait(::Type{<:Pie}) = PointBased()
+convert_arguments(::Type{<:Pie}, values::Vector) = (Point3d.(0, 0, getindex.(values, 1)),)
+convert_arguments(::Type{<:Pie}, xs, ys, values::Vector) = begin
+    xs = length(xs) == 1 ? fill(only(xs), length(values)) : xs
+    ys = length(ys) == 1 ? fill(only(ys), length(values)) : ys
+    return (Point3d.(xs, ys, values),)
+end
 
+function plot!(plot::Pie)
     values = plot[1]
 
-    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize, plot.x, plot.y, plot.r) do vals, vertex_per_deg, radius, inner_radius, offset, normalize, x, y, r
-        xs = length(x) == 1 ? fill(only(x), length(vals)) : x
-        ys = length(y) == 1 ? fill(only(y), length(vals)) : y
-        rs = length(r) == 1 ? fill(only(r), length(vals)) : r
+    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize, plot.r) do vals, vertex_per_deg, radius, inner_radius, offset, normalize, rs
+        xs = getindex.(vals, 1)
+        ys = getindex.(vals, 2)
+        vals = getindex.(vals, 3)
+        rs = length(rs) == 1 ? fill(only(rs), length(vals)) : rs
 
         T = eltype(vals)
 
