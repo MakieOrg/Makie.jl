@@ -18,8 +18,8 @@ Creates a pie chart from the given `values`.
     inner_radius = 0
     "The angular offset of the first pie segment from the (1, 0) vector in radians."
     offset = 0
-    "Position of pie segments (r-value as polar coordinate, scalar or `length(values)` vector)"
-    r = 0
+    "The offset of each pie segment from the center along the radius"
+    offset_radius = 0
     MakieCore.mixin_generic_plot_attributes()...
 end
 
@@ -34,7 +34,7 @@ end
 function plot!(plot::Pie)
     values = plot[1]
 
-    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize, plot.r) do vals, vertex_per_deg, radius, inner_radius, offset, normalize, rs
+    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize, plot.offset_radius) do vals, vertex_per_deg, radius, inner_radius, offset, normalize, rs
         xs = getindex.(vals, 1)
         ys = getindex.(vals, 2)
         vals = getindex.(vals, 3)

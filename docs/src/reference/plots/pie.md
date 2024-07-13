@@ -52,20 +52,20 @@ Makie.pie!(ax, 3 .+ Δx, 0, vs; color=cs)
 Makie.pie!(ax, 0, 3 .+ Δy, vs; color=cs)
 Makie.pie!(ax, 3 .+ Δx, 3 .+ Δy, vs; color=cs)
 
-Makie.pie!(ax, 7, 0, vs; color=cs, r=Δr1)
-Makie.pie!(ax, 7, 3, vs; color=cs, r=0.2)
-Makie.pie!(ax, 10 .+ Δx, 3 .+ Δy, vs; color=cs, r=0.2)
-Makie.pie!(ax, 10, 0, vs_; color=cs, r=Δr1, normalize=false, offset=π/2)
+Makie.pie!(ax, 7, 0, vs; color=cs, offset_radius=Δr1)
+Makie.pie!(ax, 7, 3, vs; color=cs, offset_radius=0.2)
+Makie.pie!(ax, 10 .+ Δx, 3 .+ Δy, vs; color=cs, offset_radius=0.2)
+Makie.pie!(ax, 10, 0, vs_; color=cs, offset_radius=Δr1, normalize=false, offset=π/2)
 
-Makie.pie!(ax, 0.5, -3, vs_; color=cs, r=Δr2, normalize=false, offset=π/2)
-Makie.pie!(ax, 3.5, -3 .+ Δy, vs_; color=cs, r=Δr2, normalize=false, offset=π/2)
-Makie.pie!(ax, 6.5 .+ Δx, -3, vs_; color=cs, r=Δr2, normalize=false, offset=π/2)
-Makie.pie!(ax, 9.5 .+ Δx, -3 .+ Δy, vs_; color=cs, r=Δr2, normalize=false, offset=π/2)
+Makie.pie!(ax, 0.5, -3, vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
+Makie.pie!(ax, 3.5, -3 .+ Δy, vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
+Makie.pie!(ax, 6.5 .+ Δx, -3, vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
+Makie.pie!(ax, 9.5 .+ Δx, -3 .+ Δy, vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
 
-Makie.pie!(ax, 0.5, -6, vs_; inner_radius=0.2, color=cs, r=0.2, normalize=false, offset=π/2)
-Makie.pie!(ax, 3.5, -6 .+ Δy, vs_; inner_radius=0.2, color=cs, r=0.2, normalize=false, offset=π/2)
-Makie.pie!(ax, 6.5 .+ Δx, -6, vs_; inner_radius=0.2, color=cs, r=0.2, normalize=false, offset=π/2)
-Makie.pie!(ax, 9.5 .+ Δx, -6 .+ Δy, vs_; inner_radius=0.2, color=cs, r=0.2, normalize=false, offset=π/2)
+Makie.pie!(ax, 0.5, -6, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
+Makie.pie!(ax, 3.5, -6 .+ Δy, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
+Makie.pie!(ax, 6.5 .+ Δx, -6, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
+Makie.pie!(ax, 9.5 .+ Δx, -6 .+ Δy, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
 
 fig
 ```
