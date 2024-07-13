@@ -394,10 +394,15 @@ end
     Makie.pie!(ax, vs; color=cs, x=10 .+ Δx, y=3 .+ Δy, r=0.2)
     Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=10, y=0, r=Δr1, normalize=false, offset=π/2)
 
-    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=0.5, y=-4, r=Δr2, normalize=false, offset=π/2)
-    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=3.5, y=-4 .+ Δy, r=Δr2, normalize=false, offset=π/2)
-    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=6.5 .+ Δx, y=-4, r=Δr2, normalize=false, offset=π/2)
-    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=9.5 .+ Δx, y=-4 .+ Δy, r=Δr2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=0.5, y=-3, r=Δr2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=3.5, y=-3 .+ Δy, r=Δr2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=6.5 .+ Δx, y=-3, r=Δr2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); color=cs, x=9.5 .+ Δx, y=-3 .+ Δy, r=Δr2, normalize=false, offset=π/2)
+
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); inner_radius=0.2, color=cs, x=0.5, y=-6, r=0.2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); inner_radius=0.2, color=cs, x=3.5, y=-6 .+ Δy, r=0.2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); inner_radius=0.2, color=cs, x=6.5 .+ Δx, y=-6, r=0.2, normalize=false, offset=π/2)
+    Makie.pie!(ax, vs ./ sum(vs) .* (3/2*π); inner_radius=0.2, color=cs, x=9.5 .+ Δx, y=-6 .+ Δy, r=0.2, normalize=false, offset=π/2)
     fig
 end
 
