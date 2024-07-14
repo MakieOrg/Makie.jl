@@ -491,6 +491,11 @@ function Base.delete!(screen::Screen, scene::Scene)
     for plot in scene.plots
         delete!(screen, scene, plot)
     end
+    Makie.detach!(screen, scene)
+    return
+end
+
+function Makie.detach!(screen::Screen, scene)
     filter!(x -> x !== screen, scene.current_screens)
     if haskey(screen.screen2scene, WeakRef(scene))
         deleted_id = pop!(screen.screen2scene, WeakRef(scene))
@@ -520,7 +525,6 @@ function Base.delete!(screen::Screen, scene::Scene)
             end
         end
     end
-    return
 end
 
 function destroy!(rob::RenderObject)

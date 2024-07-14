@@ -496,6 +496,8 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     free(plot)
 end
 
+function detach! end
+
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events
 events(scene::SceneLike) = events(scene.parent)
