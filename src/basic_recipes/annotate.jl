@@ -11,6 +11,7 @@ end
         shrink = (5.0, 5.0),
         clipstart = automatic,
         align = (:left, :bottom),
+        arrow = automatic,
     )
 end
 
@@ -56,7 +57,12 @@ function Makie.plot!(p::Annotate)
         shrink_path(base_path, shrink)
     end
 
-    lines!(p, shrunk_path, space = :pixel, color = p.color)
+    plotspec = lift(shrunk_path, p.arrow) do path, arrowspec
+        annotation_arrow_plotspec(arrowspec, path)
+    end
+
+    plot!(p, plotspec)
+    # lines!(p, shrunk_path, space = :pixel, color = p.color)
 end
 
 Makie.data_limits(p::Annotate) = Rect3f(Rect2f([p[1][], p[2][]]))
@@ -261,4 +267,8 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     else
         return (true, closest_intersection)
     end
+end
+
+function annotation_arrow_plotspec(::Automatic, path::BezierPath)
+    SpecApi.Lines(path)
 end
