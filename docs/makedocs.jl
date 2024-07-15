@@ -197,7 +197,7 @@ pages = [
 empty!(MakieDocsHelpers.FIGURES)
 
 # filter pages here when working on docs interactively
-# pages = nested_filter(pages, r"reference/blocks/(axis|axis3|overview)")
+pages = nested_filter(pages, r"index")
 
 Documenter.makedocs(;
     sitename="Makie",
