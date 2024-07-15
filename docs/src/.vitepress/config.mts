@@ -18,8 +18,6 @@ const nav = [
   }
 ]
 
-console.log(nav);
-
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   base: baseTemp.base,
