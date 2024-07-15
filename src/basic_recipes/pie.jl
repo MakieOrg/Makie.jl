@@ -24,10 +24,14 @@ Creates a pie chart from the given `values`.
     MakieCore.mixin_generic_plot_attributes()...
 end
 
-convert_arguments(::Type{<:Pie}, values::Vector) = (0, 0, values)
-convert_arguments(::Type{<:Pie}, point::Point, values::Vector) = (point[1], point[2], values)
-convert_arguments(::Type{<:Pie}, point, values::Vector) = (getindex.(point, 1), getindex.(point, 2), values)
-convert_arguments(::Type{<:Pie}, xs, ys, values::Vector) = (xs, ys, values)
+convert_arguments(PT::Type{<:Pie}, values::RealVector) = convert_arguments(PT, 0.0, 0.0, values)
+convert_arguments(PT::Type{<:Pie}, point::VecTypes{2}, values::RealVector) = convert_arguments(PT, point[1], point[2], values)
+convert_arguments(PT::Type{<:Pie}, ps::AbstractVector{<:VecTypes{2}}, values::RealVector) = convert_arguments(PT, getindex.(ps, 1), getindex.(ps, 2), values)
+convert_arguments(::Type{<:Pie}, xs::Union{Real,RealVector}, ys::Union{Real,RealVector}, values::RealVector) = begin
+    xs = length(xs) == 1 ? fill(only(xs), length(values)) : xs
+    ys = length(ys) == 1 ? fill(only(ys), length(values)) : ys
+    return (float_convert(xs), float_convert(ys), float_convert(values))
+end
 
 function plot!(plot::Pie)
     xs = plot[1]
@@ -35,8 +39,6 @@ function plot!(plot::Pie)
     values = plot[3]
 
     polys = lift(plot, xs, ys, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset_radius, plot.offset, plot.normalize) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
-        xs = length(xs) == 1 ? fill(only(xs), length(vals)) : xs
-        ys = length(ys) == 1 ? fill(only(ys), length(vals)) : ys
         radius = length(radius) == 1 ? fill(only(radius), length(vals)) : radius
         inner_radius = length(inner_radius) == 1 ? fill(only(inner_radius), length(vals)) : inner_radius
         offset_radius = length(offset_radius) == 1 ? fill(only(offset_radius), length(vals)) : offset_radius
@@ -61,17 +63,17 @@ function plot!(plot::Pie)
 
             # curve points
             points = map(LinRange(sta, en, nvertices)) do rad
-                Point2f(cos(rad + offset) * r + x, sin(rad + offset) * r + y)
+                Point2(cos(rad + offset) * r + x, sin(rad + offset) * r + y)
             end
 
             # add inner points (either curve or one point)
             if inner_r != 0
                 inner_points = map(LinRange(en, sta, nvertices)) do rad
-                    Point2f(cos(rad + offset) * inner_r + x, sin(rad + offset) * inner_r + y)
+                    Point2(cos(rad + offset) * inner_r + x, sin(rad + offset) * inner_r + y)
                 end
                 append!(points, inner_points)
             else
-                push!(points, Point2f(x, y))
+                push!(points, Point2(x, y))
             end
 
             points
