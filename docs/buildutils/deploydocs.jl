@@ -124,8 +124,9 @@ function push_build(;
         version_folders = filter(all_folders) do x
             tryparse(VersionNumber, x) !== nothing
         end
+        sort!(version_folders, by = VersionNumber, rev = true)
 
-        max_version = sort!(version_folders, by = VersionNumber)[end]
+        max_version = version_folders[begin]
 
         open(joinpath(dirname, "versions.js"), "w") do io
             println(io, """
