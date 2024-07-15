@@ -30,7 +30,7 @@ const waitForGlobalDocumenterVars = () => {
 onMounted(async () => {
     const globalvars = await waitForGlobalDocumenterVars();
     versions.value = globalvars.versions.map((v) => {
-        return {text: v, link: `/${v}/`}
+        return {text: v, link: `${window.location.origin}/${v}/`}
     });
     currentVersion.value = globalvars.currentVersion;
 });
