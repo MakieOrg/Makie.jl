@@ -134,6 +134,11 @@ end
     rm("test.mp4")
 end
 
+@testset "plotlist no ambiguity" begin
+    plotlist([Makie.SpecApi.Scatter(1:10)])
+    plotlist!([Makie.SpecApi.Scatter(1:10)])
+end
+
 
 excludes = Set([
     "Colored Mesh",
