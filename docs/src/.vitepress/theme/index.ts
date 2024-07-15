@@ -3,6 +3,7 @@ import { h, watch } from "vue";
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme";
 import SimpleAnalytics from "./SimpleAnalytics.vue"
+import VersionPicker from "./VersionPicker.vue"
 
 import { enhanceAppWithTabs } from "vitepress-plugin-tabs/client";
 import "./style.css";
@@ -17,6 +18,7 @@ export default {
   },
   async enhanceApp({ app, router, siteData }) {
     enhanceAppWithTabs(app);
+    app.component('VersionPicker', VersionPicker);
     // Only run this on the client. Not during build.
     // this function replaces the version in the URL with the stable prefix whenever a
     // new route is navigated to. VitePress does not support relative links all over the site,
