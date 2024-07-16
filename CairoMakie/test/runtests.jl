@@ -136,7 +136,7 @@ end
 
 @testset "plotlist no ambiguity" begin
     f = plotlist([Makie.SpecApi.Scatter(1:10)])
-    save("test.png", f)
+    Makie.colorbuffer(f; backend=CairoMakie)
     plotlist!([Makie.SpecApi.Scatter(1:10)])
 end
 
