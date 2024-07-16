@@ -178,7 +178,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
 end
 
 
-struct VideoStream
+mutable struct VideoStream
     io::Base.PipeEndpoint
     process::Base.Process
     screen::MakieScreen
@@ -229,7 +229,11 @@ function VideoStream(fig::FigureLike;
     vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
-    return VideoStream(process.in, process, screen, buffer, abspath(path), vso)
+    result = VideoStream(process.in, process, screen, buffer, abspath(path), vso)
+    finalizer(result) do x
+        @async rm(x.path; force=true)
+    end
+    return result
 end
 
 """
