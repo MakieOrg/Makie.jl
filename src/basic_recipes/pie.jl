@@ -27,7 +27,8 @@ end
 convert_arguments(PT::Type{<:Pie}, values::RealVector) = convert_arguments(PT, 0.0, 0.0, values)
 convert_arguments(PT::Type{<:Pie}, point::VecTypes{2}, values::RealVector) = convert_arguments(PT, point[1], point[2], values)
 convert_arguments(PT::Type{<:Pie}, ps::AbstractVector{<:VecTypes{2}}, values::RealVector) = convert_arguments(PT, getindex.(ps, 1), getindex.(ps, 2), values)
-convert_arguments(::Type{<:Pie}, xs::Union{Real,RealVector}, ys::Union{Real,RealVector}, values::RealVector) = begin
+
+function convert_arguments(::Type{<:Pie}, xs::Union{Real,RealVector}, ys::Union{Real,RealVector}, values::RealVector)
     xs = length(xs) == 1 ? fill(only(xs), length(values)) : xs
     ys = length(ys) == 1 ? fill(only(ys), length(values)) : ys
     return (float_convert(xs), float_convert(ys), float_convert(values))
