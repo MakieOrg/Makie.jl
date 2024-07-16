@@ -135,7 +135,8 @@ end
 end
 
 @testset "plotlist no ambiguity" begin
-    plotlist([Makie.SpecApi.Scatter(1:10)])
+    f = plotlist([Makie.SpecApi.Scatter(1:10)])
+    save("test.png", f)
     plotlist!([Makie.SpecApi.Scatter(1:10)])
 end
 
