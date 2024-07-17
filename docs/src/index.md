@@ -5,8 +5,8 @@ layout: home
 
 hero:
   name: Makie
-  text: 
-  tagline: Interactive data visualizations and plotting in Julia 
+  text:
+  tagline: Interactive data visualizations and plotting in Julia
   image:
     src: logo.svg
     alt: Makie
@@ -65,8 +65,8 @@ colors = Observable(Int[])
 set_theme!(theme_black())
 
 fig, ax, l = lines(points, color = colors,
-    colormap = :inferno, transparency = true, 
-    axis = (; type = Axis3, protrusions = (0, 0, 0, 0), 
+    colormap = :inferno, transparency = true,
+    axis = (; type = Axis3, protrusions = (0, 0, 0, 0),
               viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
 
 record(fig, "lorenz.mp4", 1:120) do frame
@@ -91,8 +91,8 @@ set_theme!() # hide
 
 First, choose one (or more) of the four backend packages (more info under [What is a backend](@ref)):
 
-- [GLMakie](@ref) (OpenGL based, interactive)
-- [CairoMakie](@ref) (Cairo based, static vector graphics)
+- ** [GLMakie](@ref) (OpenGL based, interactive, most feature complete and prefered backend) **
+- [CairoMakie](@ref) (Cairo based, static vector graphics for publications)
 - [WGLMakie](@ref) (WebGL based, runs in the browser)
 - [RPRMakie](@ref) (Experimental ray-tracing using RadeonProRender)
 
