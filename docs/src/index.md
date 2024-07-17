@@ -91,7 +91,7 @@ set_theme!() # hide
 
 First, choose one (or more) of the four backend packages (more info under [What is a backend](@ref)):
 
-- ** [GLMakie](@ref) (OpenGL based, interactive, most feature complete and prefered backend) **
+- ** [GLMakie](@ref) (OpenGL based, interactive, most feature complete and preferred backend) **
 - [CairoMakie](@ref) (Cairo based, static vector graphics for publications)
 - [WGLMakie](@ref) (WebGL based, runs in the browser)
 - [RPRMakie](@ref) (Experimental ray-tracing using RadeonProRender)
