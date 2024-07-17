@@ -3,6 +3,7 @@ GLMakie.activate!(float=true, render_on_demand=false, vsync=true)
 frag = read(joinpath(@__DIR__, "clouds.frag"), String)
 img = load(joinpath(@__DIR__, "noise.png"))
 begin
+    GLMakie.closeall()
     s=Scene()
     shadertoy!(s,
         Rect2f(-1, -1, 2, 2), frag;
@@ -14,9 +15,10 @@ begin
 end
 
 begin
+    GLMakie.closeall()
     s = Scene()
     shadertoy!(s, Rect2f(-1, -1, 2, 2), read(joinpath(@__DIR__, "raytracing.frag"), String))
-    s
+    scren = display(s)
 end
 
 begin

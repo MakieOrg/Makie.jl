@@ -785,4 +785,6 @@ end
     `GLMakie.closeall()` to be overwritten.
     """
     uniforms = Dict{Symbol,Any}()
+    mixin_generic_plot_attributes()...
+    fxaa = false
 end

@@ -107,7 +107,7 @@ vec4 render(in vec3 ro, in vec3 rd) {
     return vec4(col, 1.0);
 }
 
-void mainImage(in vec2 fragCoord) {
+vec4 mainImage(in vec2 fragCoord) {
     vec2 p = (-iResolution.xy + 2.0 * gl_FragCoord.xy) / iResolution.y;
     vec2 m = iMouse.xy / iResolution.xy;
 
@@ -118,5 +118,5 @@ void mainImage(in vec2 fragCoord) {
     // ray
     vec3 rd = ca * normalize(vec3(p.xy, 1.5));
 
-    fragment_color = render(ro, rd);
+    return render(ro, rd);
 }

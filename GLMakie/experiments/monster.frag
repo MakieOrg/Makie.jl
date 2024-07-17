@@ -113,7 +113,7 @@ mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
     return mat3( cu, cv, cw );
 }
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
+vec4 mainImage(in vec2 fragCoord )
 {
     vec2 q = fragCoord.xy / iResolution.xy;
     vec2 p = -1.0 + 2.0 * q;
@@ -213,5 +213,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // vigneting
     col *= 0.5 + 0.5*pow( 16.0*q.x*q.y*(1.0-q.x)*(1.0-q.y), 0.1 );
 
-    fragColor = vec4( col, 1.0 );
+    return vec4( col, 1.0 );
 }

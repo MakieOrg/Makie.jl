@@ -271,7 +271,7 @@ vec3 cv = normalize(cross(cu, cw));
 return mat3(cu, cv, cw);
 }
 
-void mainImage(in vec2 fragCoord) {
+vec4 mainImage(in vec2 fragCoord) {
 vec2 q = gl_FragCoord.xy / iResolution.xy;
 vec2 p = - 1.0 + 2.0 * q;
 p.x *= iResolution.x / iResolution.y;
@@ -294,5 +294,5 @@ vec3 col = render(ro, rd);
 
 col = pow(col, vec3(0.4545));
 
-fragment_color = vec4(col, 1.0);
+        return vec4(col, 1.0);
 }
