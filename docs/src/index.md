@@ -1,4 +1,4 @@
-````@raw html
+![image](https://github.com/user-attachments/assets/2a2ffe40-ecc1-4531-94b3-12d66503586e)````@raw html
 ---
 # https://vitepress.dev/reference/default-theme-home-page
 layout: home
@@ -89,11 +89,12 @@ set_theme!() # hide
 
 ## Installation
 
-First, choose one (or more) of the four backend packages (more info under [What is a backend](@ref)):
+Makie offers four different backends (more info under [What is a backend](@ref)).
+We suggest GLMakie for GPU-accelerated, interactive plots, and CairoMakie for static vector graphics.
 
-- **[GLMakie](@ref) (OpenGL based, interactive, most feature complete and preferred backend)**
-- [CairoMakie](@ref) (Cairo based, static vector graphics for publications)
-- [WGLMakie](@ref) (WebGL based, runs in the browser)
+- [GLMakie](@ref) (OpenGL based, interactive)
+- [CairoMakie](@ref) (Cairo based, static vector graphics)
+- [WGLMakie](@ref) (WebGL based, displays plots in the browser)
 - [RPRMakie](@ref) (Experimental ray-tracing using RadeonProRender)
 
 Then install it using Julia's package manager `Pkg`:
