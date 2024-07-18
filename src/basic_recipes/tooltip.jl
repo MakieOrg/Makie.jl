@@ -173,20 +173,20 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         scale!(mp, s, s, s)
 
         if placement === :left
-            translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], o[3]))
+            translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], o[3] - 1f0))
             rotate!(mp, qrotation(Vec3f(0,0,1), 0.5pi))
         elseif placement === :right
-            translate!(mp, Vec3f(o[1], o[2] + align * w[2], 0))
+            translate!(mp, Vec3f(o[1], o[2] + align * w[2], o[3] - 1f0))
             rotate!(mp, qrotation(Vec3f(0,0,1), -0.5pi))
         elseif placement in (:below, :down, :bottom)
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2] + w[2], o[3]))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2] + w[2], o[3] - 1f0))
             rotate!(mp, Quaternionf(0,0,1,0)) # pi
         elseif placement in (:above, :up, :top)
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3] - 1f0))
             rotate!(mp, Quaternionf(0,0,0,1)) # 0
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3] - 1f0))
             rotate!(mp, Quaternionf(0,0,0,1))
         end
         return
@@ -197,12 +197,6 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     outline = map(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
         l, b, z = origin(bb); w, h, _ = widths(bb)
         r, t = (l, b) .+ (w, h)
-
-        # We start/end at half width/height here to avoid corners like this:
-        #     ______
-        #   _|
-        #  |    ____
-        #  |   |
 
         shift = if placement === :left
             Vec2f[
