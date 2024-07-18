@@ -12,23 +12,26 @@ spy(0..1, 0..1, x)
 ```
 """
 @recipe Spy (x, y, z) begin
-    marker = automatic
+    marker = Rect
     markersize = automatic
     framecolor = :black
+    framevisible = true
     framesize = 1
+    color = nothing
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
 
-function convert_arguments(::Type{<: Spy}, x::SparseArrays.AbstractSparseArray)
-    (0..size(x, 1), 0..size(x, 2), x)
-end
-function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
-    (x, y, z)
+function convert_arguments(::Type{<:Spy}, args...)
+    x, y, z = convert_arguments(Heatmap, args...)
+    return (x, y, SparseArrays.sparse(z))
 end
 
-function calculated_attributes!(::Type{<: Spy}, plot)
+function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
+    return (x, y, z)
 end
+
+needs_tight_limits(::Spy) = true
 
 function plot!(p::Spy)
     rect = lift(p, p.x, p.y) do x, y
@@ -49,30 +52,31 @@ function plot!(p::Spy)
     # TODO correctly align marker
     xycol = lift(p, rect, p.z, markersize) do rect, z, markersize
         x, y, color = SparseArrays.findnz(z)
+        mhalf = markersize ./ 2
         points = map(x, y) do x, y
-            (((Point2f(x, y) .- 1) ./ Point2f(size(z) .- 1)) .*
-            widths(rect) .+ minimum(rect))
+            p01 = (Point2f(x, y) .- 1) ./ Point2f(size(z))
+            return (p01 .* widths(rect)) .+ minimum(rect) .+ mhalf
         end
         points, convert(Vector{Float32}, color)
     end
-
-    replace_automatic!(p, :colorrange) do
-        lift(p, xycol) do (xy, col)
-            extrema_nan(col)
-        end
-    end
-
-    marker = lift(p, p.marker) do x
-        return x === automatic ? FastPixel() : x
+    color = map(p, p.color, xycol) do color, xycol
+        return isnothing(color) ? xycol[2] : color
     end
 
     scatter!(
         p,
-        lift(first, p, xycol), color = lift(last, p, xycol),
-        marker = marker, markersize = markersize, colorrange = p.colorrange,
-        colormap = p.colormap, colorscale = p.colorscale,inspectable = p.inspectable, visible = p.visible
+        lift(first, p, xycol);
+        color = color,
+        markerspace = :data,
+        marker = p.marker, markersize = markersize,
+        inspectable = p.inspectable, visible = p.visible,
+        MakieCore.colormap_attributes(p)...,
     )
 
-    lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable,
-           visible = p.visible)
+    lines!(p, rect,
+        color = p.framecolor,
+        linewidth = p.framesize,
+        inspectable = p.inspectable,
+        visible=p.framevisible
+    )
 end

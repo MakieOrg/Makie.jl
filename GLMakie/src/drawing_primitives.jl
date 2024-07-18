@@ -423,8 +423,21 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             if haskey(gl_attributes, :intensity)
                 gl_attributes[:color] = pop!(gl_attributes, :intensity)
             end
+            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model,
+                             :projectionview, :projection, :view, :visible, :resolution])
             filter!(gl_attributes) do (k, v,)
-                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview, :visible)
+                return (k in to_keep)
+            end
+            gl_attributes[:markerspace] = lift(plot.markerspace) do space
+                space == :pixel && return Int32(0)
+                space == :data && return Int32(1)
+                return error("Unsupported markerspace for FastPixel marker: $space")
+            end
+            camc = scene.camera_controls
+            if camc isa Camera3D
+                gl_attributes[:upvector] = lift(x-> Vec3f(normalize(x)), camc.upvector)
+            else
+                gl_attributes[:upvector] = Vec3f(0, 1, 0) # 2d camera has always y up
             end
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
