@@ -751,6 +751,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_proj_view!(camera(scene), proj, view)
 
     scene.camera.eyeposition[] = Vec3f(cam.eyeposition[])
+    scene.camera.upvector[] = Vec3f(cam.upvector[])
     scene.camera.view_direction[] = Vec3f(normalize(cam.lookat[] - cam.eyeposition[]))
 end
 

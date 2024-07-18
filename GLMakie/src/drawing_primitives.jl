@@ -385,10 +385,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         positions = handle_view(plot[1], gl_attributes)
         positions = apply_transform_and_f32_conversion(scene, plot, positions)
         # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, space)
+        cam = scene.camera
 
         if plot isa Scatter
             mspace = plot.markerspace
-            cam = scene.camera
             gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
                                                  cam.resolution) do space, mspace, _, _
                 return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
@@ -433,12 +433,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 space == :data && return Int32(1)
                 return error("Unsupported markerspace for FastPixel marker: $space")
             end
-            camc = scene.camera_controls
-            if camc isa Camera3D
-                gl_attributes[:upvector] = lift(x-> Vec3f(normalize(x)), camc.upvector)
-            else
-                gl_attributes[:upvector] = Vec3f(0, 1, 0) # 2d camera has always y up
-            end
+            gl_attributes[:upvector] = lift(x-> Vec3f(normalize(x)), cam.upvector)
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
             if plot isa MeshScatter
