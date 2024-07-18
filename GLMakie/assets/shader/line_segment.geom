@@ -1,8 +1,6 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
-{{define_fast_path}}
-
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -13,38 +11,38 @@ layout(triangle_strip, max_vertices = 4) out;
 uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
+uniform int linecap;
 
-in vec4 g_color[];
+in {{stripped_color_type}} g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
 
-out float f_thickness;
-out vec4 f_color;
-out vec2 f_uv;
+out vec3 f_quad_sdf;
+out vec2 f_truncation;
+out float f_linestart;
+out float f_linelength;
+
+flat out float f_linewidth;
+flat out vec4 f_pattern_overwrite;
 flat out uvec2 f_id;
-flat out vec2 f_uv_minmax;
+flat out vec2 f_extrusion;
+flat out {{stripped_color_type}} f_color1;
+flat out {{stripped_color_type}} f_color2;
+flat out float f_alpha_weight;
+flat out float f_cumulative_length;
+flat out ivec2 f_capmode;
+flat out vec4 f_linepoints;
+flat out vec4 f_miter_vecs;
 
-#define AA_THICKNESS 4.0
+const float AA_RADIUS = 0.8;
+const float AA_THICKNESS = 2.0 * AA_RADIUS;
 
-// Get pattern values
-float fetch(Nothing _, float u){return 10000000.0;}
-float fetch(sampler1D pattern, float u){return texture(pattern, u).x;}
-
-vec3 screen_space(vec4 vertex)
-{
-    return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+vec3 screen_space(vec4 vertex) {
+    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
 }
 
-void emit_vertex(vec3 position, vec2 uv, int index)
-{
-    vec4 inpos = gl_in[index].gl_Position;
-    f_uv = uv;
-    f_color = g_color[index];
-    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    f_id = g_id[index];
-    f_thickness = g_thickness[index];
-    EmitVertex();
-}
+vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
+vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -54,54 +52,85 @@ void main(void)
     o_view_pos = vec3(0);
     o_view_normal = vec3(0);
 
-    // get the four vertices passed to the shader:
-    vec3 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
-    vec3 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
+    // we generate very thin lines for linewidth 0, so we manually skip them:
+    if (g_thickness[0] == 0.0 && g_thickness[1] == 0.0) {
+        return;
+    }
 
-    float thickness_aa0 = g_thickness[0] + AA_THICKNESS;
-    float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
-    // determine the direction of each of the 3 segments (previous, current, next)
-    vec3 vun0 = p1 - p0;
-    vec3 v0 = vun0 / length(vun0.xy);
-    // determine the normal of each of the 3 segments (previous, current, next)
-    vec3 n0 = vec3(-v0.y, v0.x, 0);
-    float l = length(p1 - p0);
-    float px2u = 0.5 / pattern_length;
-    float u = l * px2u;
+    // get start and end point of line segment
+    // restrict to visible area (see lines.geom)
+    vec3 p1, p2;
+    {
+        vec4 _p1 = gl_in[0].gl_Position, _p2 = gl_in[1].gl_Position;
+        vec4 v1 = _p2 - _p1;
 
-    vec3 AA_offset = AA_THICKNESS * v0;
-    float AA = AA_THICKNESS * px2u;
+        if (_p1.w < 0.0)
+            _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
+        if (_p2.w < 0.0)
+            _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
 
-    /*                  0              v0              l
-                        |             -->              |
-     -thickness_aa0 - .----------------------------------. - -thickness_aa1
-    -g_thickness[0] - | .------------------------------. | - -g_thickness[1]
-                      | |                              | |
-                n0 ↑  | |                              | |
-                      | |                              | |
-    +g_thickness[0] - | '------------------------------' | - +g_thickness[1]
-     +thickness_aa0 - '----------------------------------' - +thickness_aa1
-                      |                                  |
-                -AA_THICKNESS                    l + AA_THICKNESS
-    */
+        p1 = screen_space(_p1);
+        p2 = screen_space(_p2);
+    }
 
-    #ifdef FAST_PATH
-        // For solid lines the uv cordinates are used as a signed distance field.
-        // We keep the values positive to draw a solid line and add limits to
-        // f_uv_minmax to add anti-aliasing at the start and end of the line
-        f_uv_minmax = vec2(u, 2*u);
-        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  u - AA, -thickness_aa0), 0);
-        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  u - AA,  thickness_aa0), 0);
-        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(2*u + AA, -thickness_aa1), 1);
-        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(2*u + AA,  thickness_aa1), 1);
-    #else
-        // For patterned lines AA is mostly done by the pattern sampling. We
-        // still set f_uv_minmax here to ensure that cut off patterns als have
-        // anti-aliasing at the start/end of this segment
-        f_uv_minmax = vec2(0, u);
-        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  - AA, -thickness_aa0), 0);
-        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  - AA,  thickness_aa0), 0);
-        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(u + AA, -thickness_aa1), 1);
-        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(u + AA,  thickness_aa1), 1);
-    #endif
+    // get vector in line direction and vector in linewidth direction
+    vec3 v1 = (p2 - p1);
+    float segment_length = length(p2.xy - p1.xy);
+    v1 /= segment_length;
+    vec2 n1 = normal_vector(v1);
+
+    // Set invalid / ignored outputs
+    f_truncation = vec2(-1e12);     // no truncated joint
+    f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0); // no joints to overwrite
+    f_extrusion = vec2(0.0);        // no joints needing extrusion
+    f_linepoints = vec4(-1e12);
+    f_miter_vecs = vec4(-1);
+
+    // constants
+    f_color1 = g_color[0];
+    f_color2 = g_color[1];
+    f_alpha_weight = min(1.0, g_thickness[0] / AA_RADIUS);
+    f_linestart = 0;                // no corners so no joint extrusion to consider
+    f_linelength = segment_length;  // and also no changes in line length
+    f_cumulative_length = 0.0;      // resets for each new segment
+
+    // linecaps
+    f_capmode = ivec2(linecap);
+
+    // Generate vertices
+
+    for (int x = 0; x < 2; x++) {
+        // pass on linewidth and id (picking) for the current line vertex
+        float halfwidth = 0.5 * max(AA_RADIUS, g_thickness[x]);
+        // Get offset in line direction
+        float v_offset = (2 * x - 1) * (halfwidth + AA_THICKNESS);
+        // TODO: if we just make this a varying output we probably get var linewidths here
+        f_linewidth = halfwidth;
+        f_id = g_id[x];
+
+        for (int y = 0; y < 2; y++) {
+            // Get offset in y direction & compute vertex position
+            float n_offset = (2 * y - 1) * (halfwidth + AA_THICKNESS);
+            vec3 position = vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0);
+            gl_Position = vec4(2.0 * position.xy / resolution - 1.0, position.z, 1.0);
+
+            // Generate SDF's
+
+            // distance from quad vertex to line control points
+            vec2 VP1 = position.xy - p1.xy;
+            vec2 VP2 = position.xy - p2.xy;
+
+            // sdf of this segment
+            f_quad_sdf.x = dot(VP1, -v1.xy);
+            f_quad_sdf.y = dot(VP2,  v1.xy);
+            f_quad_sdf.z = n_offset;
+
+            // finalize vertex
+            EmitVertex();
+        }
+    }
+
+    EndPrimitive();
+
+    return;
 }

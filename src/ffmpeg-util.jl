@@ -1,7 +1,7 @@
 # TODO move to something like FFMPEGUtil.jl ?
 
 """
-- `format = "mkv"`: The format of the video. If a path is present, will be inferred form the file extension.
+- `format = "mkv"`: The format of the video. If a path is present, will be inferred from the file extension.
     Can be one of the following:
     * `"mkv"`  (open standard, the default)
     * `"mp4"`  (good for Web, most supported format)
@@ -13,7 +13,7 @@
     as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
 - `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
-    smaller numbers giving higher quality and larger file sizes (lower compression), and and
+    smaller numbers giving higher quality and larger file sizes (lower compression), and
     higher numbers giving lower quality and smaller file sizes (higher compression). The
     minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
@@ -24,14 +24,14 @@
 you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
 applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
-- `loop = 0`: Number of times the video is repeated, for a `gif`. Defaults to `0`, which
-means infinite looping. A value of `-1` turns off looping, and a value of `n > 0` and above
-means `n` repetitions (i.e. the video is played `n+1` times).
+- `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
+means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
+means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
     !!! warning
     `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
     is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
-    valid when `format` is `"mp4"` or `"webm"`, and `loop` is only valid when `format` is `"gif"`.
+    valid when `format` is `"mp4"` or `"webm"`.
 """
 struct VideoStreamOptions
     format::String
@@ -63,15 +63,12 @@ struct VideoStreamOptions
             (compression === nothing) && (compression = 20)
         end
 
-        if format == "gif"
-            (loop === nothing) && (loop = 0)
-        end
+        (loop === nothing) && (loop = 0)
 
         # items are name, value, allowed_formats
         allowed_kwargs = [("compression", compression, ("mp4", "webm")),
                           ("profile", profile, ("mp4",)),
-                          ("pixel_format", pixel_format, ("mp4",)),
-                          ("loop", loop, ("gif",))]
+                          ("pixel_format", pixel_format, ("mp4",))]
 
         for (name, value, allowed_formats) in allowed_kwargs
             if !(format in allowed_formats) && value !== nothing

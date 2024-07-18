@@ -7,6 +7,8 @@
 using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
+pkg"registry up"
+Pkg.update()
 using Statistics, GitHub, Printf, BenchmarkTools, Markdown, HypothesisTests
 using BenchmarkTools.JSON
 Package = ARGS[1]

@@ -417,9 +417,9 @@ end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
-        color = extract_color(plot, legend.linecolor),
-        linestyle = choose_scalar(plot.linestyle, legend.linestyle),
-        linewidth = choose_scalar(plot.linewidth, legend.linewidth),
+        color = extract_color(plot, legend[:linecolor]),
+        linestyle = choose_scalar(plot.linestyle, legend[:linestyle]),
+        linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
     )]
@@ -427,22 +427,22 @@ end
 
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
-        color = extract_color(plot, legend.markercolor),
-        marker = choose_scalar(plot.marker, legend.marker),
-        markersize = choose_scalar(plot.markersize, legend.markersize),
-        strokewidth = choose_scalar(plot.strokewidth, legend.markerstrokewidth),
-        strokecolor = choose_scalar(plot.strokecolor, legend.markerstrokecolor),
+        color = extract_color(plot, legend[:markercolor]),
+        marker = choose_scalar(plot.marker, legend[:marker]),
+        markersize = choose_scalar(plot.markersize, legend[:markersize]),
+        strokewidth = choose_scalar(plot.strokewidth, legend[:markerstrokewidth]),
+        strokecolor = choose_scalar(plot.strokecolor, legend[:markerstrokecolor]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
     )]
 end
 
 function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
-    color = extract_color(plot, legend.polycolor)
+    color = extract_color(plot, legend[:polycolor])
     LegendElement[PolyElement(
         color = color,
-        strokecolor = choose_scalar(plot.strokecolor, legend.polystrokecolor),
-        strokewidth = choose_scalar(plot.strokewidth, legend.polystrokewidth),
+        strokecolor = choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
+        strokewidth = choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
     )]
@@ -453,7 +453,7 @@ function legendelements(plot::Band, legend)
     return LegendElement[PolyElement(;
         polycolor = choose_scalar(
             plot.color,
-            legend.polystrokecolor
+            legend[:polystrokecolor]
         ),
         polystrokecolor = :transparent,
         polystrokewidth = 0,
@@ -630,12 +630,14 @@ end
 axislegend(ax = current_axis(); kwargs...) = axislegend(ax, ax; kwargs...)
 
 axislegend(title::AbstractString; kwargs...) = axislegend(current_axis(), current_axis(), title; kwargs...)
+axislegend(ax, title::AbstractString; kwargs...) = axislegend(ax, ax, title; kwargs...)
 
 """
     axislegend(ax, args...; position = :rt, kwargs...)
     axislegend(ax, args...; position = (1, 1), kwargs...)
     axislegend(ax = current_axis(); kwargs...)
     axislegend(title::AbstractString; kwargs...)
+    axislegend(ax, title::AbstractString; kwargs...)
 
 Create a legend that sits inside an Axis's plot area.
 
@@ -681,4 +683,150 @@ end
 
 function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
+end
+
+function attribute_examples(::Type{Legend})
+    Dict(
+        :colgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default", nbanks = 2)
+                    Legend(fig[1, 3], ax, "colgap = 40", nbanks = 2, colgap = 40)
+                    fig
+                    """
+            )
+        ],
+        :groupgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lin = lines!(ax, 1:10, linestyle = :dash)
+                    pol = poly!(ax, [(5, 0), (10, 0), (7.5, 5)])
+                    sca = scatter!(ax, 4:13)
+                    Legend(fig[1, 2],
+                        [[lin], [pol], [sca]],
+                        [["Line"], ["Poly"], ["Scatter"]],
+                        ["Default", "Group 2", "Group 3"];
+
+                    )
+                    Legend(fig[1, 3],
+                        [[lin], [pol], [sca]],
+                        [["Line"], ["Poly"], ["Scatter"]],
+                        ["groupgap = 30", "Group 2", "Group 3"];
+                        groupgap = 30,
+                    )
+                    fig
+                    """
+            )
+        ],
+        :patchsize => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default")
+                    Legend(fig[1, 3], ax, "(40, 20)", patchsize = (40, 20))
+                    fig
+                    """
+            )
+        ],
+        :patchlabelgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default")
+                    Legend(fig[1, 3], ax, "patchlabelgap\n= 20", patchlabelgap = 20)
+                    fig
+                    """
+            )
+        ],
+        :orientation => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[2, 1], ax, "orientation\n= :horizontal", orientation = :horizontal)
+                    Legend(fig[1, 2], ax, "orientation\n= :vertical", orientation = :vertical)
+                    fig
+                    """
+            )
+        ],
+        :nbanks => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    grid = GridLayout(fig[1, 2], tellheight = false)
+                    Legend(grid[1, 1], ax, "nbanks = 1", nbanks = 1, tellheight = true)
+                    Legend(grid[1, 2], ax, "nbanks = 2", nbanks = 2, tellheight = true)
+                    Legend(grid[2, :], ax, "nbanks = 3", nbanks = 3, tellheight = true)
+                    fig
+                    """
+            ),
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    grid = GridLayout(fig[2, 1], tellwidth = false)
+                    Legend(grid[1, 1], ax, "nbanks = 1", nbanks = 1,
+                        orientation = :horizontal, tellwidth = true)
+                    Legend(grid[2, 1], ax, "nbanks = 2", nbanks = 2,
+                        orientation = :horizontal, tellwidth = true)
+                    Legend(grid[:, 2], ax, "nbanks = 3", nbanks = 3,
+                        orientation = :horizontal, tellwidth = true)
+                    fig
+                    """
+            ),
+        ],
+        :titleposition => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "titleposition\n= :top", titleposition = :top)
+                    Legend(fig[1, 3], ax, "titleposition\n= :left", titleposition = :left)
+                    fig
+                    """
+            ),
+        ],
+        :rowgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default")
+                    Legend(fig[1, 3], ax, "rowgap = 10", rowgap = 10)
+                    fig
+                    """
+            ),
+        ],
+    )
 end

@@ -63,24 +63,28 @@ function serialize_three(array::Buffer)
     return serialize_three(flatten_buffer(array))
 end
 
-serialize_three(array::AbstractArray{UInt8}) = vec(array)
-serialize_three(array::AbstractArray{Int32}) = vec(array)
-serialize_three(array::AbstractArray{UInt32}) = vec(array)
-serialize_three(array::AbstractArray{Float32}) = vec(array)
-serialize_three(array::AbstractArray{Float16}) = vec(array)
-serialize_three(array::AbstractArray{Float64}) = vec(array)
+function serialize_three(array::AbstractArray{T}) where {T<:Union{UInt8,Int32,UInt32,Float32,Float16,Float64}}
+    vec(convert(Array, array))
+end
 
 function serialize_three(p::Makie.AbstractPattern)
     return serialize_three(Makie.to_image(p))
 end
 
+three_format(::Type{<:Integer}) = "RedIntegerFormat"
 three_format(::Type{<:Real}) = "RedFormat"
 three_format(::Type{<:RGB}) = "RGBFormat"
 three_format(::Type{<:RGBA}) = "RGBAFormat"
 
+three_format(::Type{<: Makie.VecTypes{1}}) = "RedFormat"
+three_format(::Type{<: Makie.VecTypes{2}}) = "RGFormat"
+three_format(::Type{<: Makie.VecTypes{3}}) = "RGBFormat"
+three_format(::Type{<: Makie.VecTypes{4}}) = "RGBAFormat"
+
 three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
 three_type(::Type{N0f8}) = "UnsignedByteType"
+three_type(::Type{UInt8}) = "UnsignedByteType"
 
 function three_filter(sym::Symbol)
     sym === :linear && return "LinearFilter"
@@ -283,7 +287,7 @@ function serialize_scene(scene::Scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        dict = Dict((f => lift(serialize_three, scene, getfield(cam_controls, f)) for f in fields))
+        dict = Dict((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
         dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution)
         dict
     else
@@ -373,6 +377,6 @@ function serialize_camera(scene::Scene)
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]
-        return [vec(collect(view)), vec(collect(proj)), Int32[res...], Float32[ep...]]
+        return [vec(collect(Mat4f(view))), vec(collect(Mat4f(proj))), Int32[res...], Float32[ep...]]
     end
 end

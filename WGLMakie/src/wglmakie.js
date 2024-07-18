@@ -23,7 +23,16 @@ export function render_scene(scene, picking = false) {
     const { camera, renderer, px_per_unit } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
-        console.log("EXITING WGL");
+        console.log("removing WGL context, canvas is not in the DOM anymore!");
+        if (scene.screen.texture_atlas) {
+            // we need a better observable API to deregister callbacks,
+            // Right now one can only deregister a callback from within the callback by returning false.
+            // So we notify the whole texture atlas with the texture that needs to go & deregister.
+            const data = TEXTURE_ATLAS[0].value;
+            TEXTURE_ATLAS[0].notify(scene.screen.texture_atlas, true);
+            TEXTURE_ATLAS[0].value = data;
+            scene.screen.texture_atlas = undefined;
+        }
         delete_three_scene(scene);
         renderer.state.reset();
         renderer.dispose();
@@ -267,7 +276,7 @@ function add_canvas_events(screen, comm, resize_to) {
 
     function keydown(event) {
         comm.notify({
-            keydown: event.code,
+            keydown: [event.code, event.key],
         });
         return false;
     }
@@ -304,9 +313,25 @@ function add_canvas_events(screen, comm, resize_to) {
             [width, height] = get_body_size();
         } else if (resize_to == "parent") {
             [width, height] = get_parent_size(canvas);
+        } else if (resize_to.length == 2) {
+            [width, height] = get_parent_size(canvas);
+            const [_width, _height] = resize_to;
+            const [f_width, f_height] = [
+                screen.renderer._width,
+                screen.renderer._height,
+            ];
+            console.log(`rwidht: ${_width}, rheight: ${_height}`);
+            width = _width == "parent" ? width : f_width;
+            height = _height == "parent" ? height : f_height;
+            console.log(`widht: ${width}, height: ${height}`);
+        } else {
+            console.warn("Invalid resize_to option");
+            return;
         }
-        // Send the resize event to Julia
-        comm.notify({ resize: [width / winscale, height / winscale] });
+        if (height > 0 && width > 0) {
+            // Send the resize event to Julia
+            comm.notify({ resize: [width / winscale, height / winscale] });
+        }
     }
     if (resize_to) {
         const resize_callback_throttled = throttle_function(
@@ -317,7 +342,9 @@ function add_canvas_events(screen, comm, resize_to) {
             resize_callback_throttled()
         );
         // Fire the resize event once at the start to auto-size our window
-        resize_callback_throttled();
+        // Without setTimeout, the parent doesn't have the right size yet?
+        // TODO, there should be a way to do this cleanly
+        setTimeout(resize_callback, 50);
     }
 }
 
@@ -345,6 +372,9 @@ function threejs_module(canvas) {
         canvas: canvas,
         context: context,
         powerPreference: "high-performance",
+        precision: "highp",
+        alpha: true,
+        logarithmicDepthBuffer: true
     });
 
     renderer.debug.onShaderError = on_shader_error;
@@ -442,6 +472,7 @@ function create_scene(
         px_per_unit,
         scalefactor,
         winscale,
+        texture_atlas: undefined
     };
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
@@ -553,6 +584,36 @@ export function pick_native(scene, _x, _y, _w, _h) {
     return [plot_matrix, plots];
 }
 
+// For debugging the pixelbuffer
+export function get_picking_buffer(scene) {
+    const { renderer, picking_target } = scene.screen;
+    const [w, h] = [picking_target.width, picking_target.height];
+    // render the scene
+    renderer.setRenderTarget(picking_target);
+    set_picking_uniforms(scene, 1, true);
+    render_scene(scene, true);
+    renderer.setRenderTarget(null); // reset render target
+    const nbytes = w * h * 4;
+    const pixel_bytes = new Uint8Array(nbytes);
+    //read the pixel
+    renderer.readRenderTargetPixels(
+        picking_target,
+        0, // x
+        0, // y
+        w, // width
+        h, // height
+        pixel_bytes
+    );
+    const reinterpret_view = new DataView(pixel_bytes.buffer);
+    const picked_plots_array = []
+    for (let i = 0; i < pixel_bytes.length / 4; i++) {
+        const id = reinterpret_view.getUint16(i * 4);
+        const index = reinterpret_view.getUint16(i * 4 + 2);
+        picked_plots_array.push([id, index]);
+    }
+    return {picked_plots_array, w, h};
+}
+
 export function pick_closest(scene, xy, range) {
     const { renderer } = scene.screen;
     const [ width, height ] = [renderer._width, renderer._height];
@@ -628,7 +689,6 @@ export function pick_sorted(scene, xy, range) {
             if (plot_index >= 0 && d < distances[plot_index]) {
                 distances[plot_index] = d;
             }
-
         }
     }
 
@@ -704,6 +764,7 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
+    TEXTURE_ATLAS,
 };
 
 export {

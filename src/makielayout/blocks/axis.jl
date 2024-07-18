@@ -1,15 +1,3 @@
-function block_docs(::Type{Axis})
-    """
-    A 2D axis which can be plotted into.
-
-    **Constructors**
-
-    ```julia
-    Axis(fig_or_scene; palette = nothing, kwargs...)
-    ```
-    """
-end
-
 function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2f, tickpositions::Vector{Point2f})
     result = grid_obs[]
     empty!(result) # reuse array for less allocations
@@ -72,16 +60,18 @@ function register_events!(ax, scene)
     return
 end
 
-function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
+function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
-    farclip = 10_000f0
+    farclip  =  10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims)
-
-    left, bottom = minimum(tlims)
-    width, height = widths(tlims)
-
+    update_limits!(scene.float32convert, tlims) # update float32 scaling
+    lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
+    left, bottom = minimum(lims32)
+    width, height = widths(lims32)  
+  
+    camera = scene.camera
     eyeposition = Vec3f(left + 0.5 * width, bottom + 0.5 * height, -nearclip)
     view = Makie.translationmatrix(-eyeposition)
 
@@ -112,7 +102,7 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
     end
 
     local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
-        boundingbox(subtitlet).widths[2] + subtitlegap
+        boundingbox(subtitlet, :data).widths[2] + subtitlegap
     else
         0f0
     end
@@ -137,8 +127,8 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
         top = xaxisprotrusion
     end
 
-    titleheight = boundingbox(titlet).widths[2] + titlegap
-    subtitleheight = boundingbox(subtitlet).widths[2] + subtitlegap
+    titleheight = boundingbox(titlet, :data).widths[2] + titlegap
+    subtitleheight = boundingbox(subtitlet, :data).widths[2] + subtitlegap
 
     titlespace = if !titlevisible || iswhitespace(title)
         0f0
@@ -163,15 +153,15 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-    blockscene = ax.blockscene
 
+    blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
+    targetlimits = Observable{Rect2d}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
+    finallimits = Observable{Rect2d}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
 
@@ -189,6 +179,11 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scene = Scene(blockscene, viewport=scenearea)
     ax.scene = scene
+    # transfer conversions from axis to scene if there are any
+    # or the other way around
+    connect_conversions!(scene.conversions, ax)
+
+    setfield!(scene, :float32convert, Float32Convert())
 
     if !isnothing(palette)
         # Backwards compatibility for when palette was part of axis!
@@ -260,8 +255,10 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(update_axis_camera, blockscene, camera(scene), scene.transformation.transform_func, finallimits,
-          ax.xreversed, ax.yreversed; priority=-2)
+    onany(blockscene, scene.transformation.transform_func, finallimits,
+          ax.xreversed, ax.yreversed; priority=-2) do args...
+        update_axis_camera(scene, args...)
+    end
 
     xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
                            ignore_equal_values=true) do xaxisposition, area
@@ -329,12 +326,13 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
         label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
-        ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
+        ticklabelspace = ax.xticklabelspace, dim_convert = ax.dim1_conversion, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         )
+
     ax.xaxis = xaxis
 
     yaxis = LineAxis(blockscene, endpoints = yaxis_endpoints, limits = ylims,
@@ -342,7 +340,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
         label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
-        ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
+        ticklabelspace = ax.yticklabelspace, dim_convert = ax.dim2_conversion, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
             tickcolor = ax.ytickcolor,
@@ -586,7 +584,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mxlims...))
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
     end
     ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
         l = if yauto
@@ -602,7 +600,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mylims...))
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
     end
 
     if ax isa Axis3
@@ -654,7 +652,9 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any})
-    lims
+    _convert_single_limit(x) = x
+    _convert_single_limit(x::Interval) = endpoints(x)
+    map(_convert_single_limit, lims)
 end
 
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
@@ -844,13 +844,32 @@ function getlimits(la::Axis, dim)
         # only use visible plots for limits
         return !to_value(get(plot, :visible, true))
     end
+
     # get all data limits, minus the excluded plots
-    boundingbox = Makie.data_limits(la.scene, exclude)
+    tf = la.scene.transformation.transform_func[]
+    itf = inverse_transform(tf)
+    if itf === nothing
+        @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
+        bb = data_limits(la.scene, exclude)
+    else
+        # get limits with transform_func and model applied
+        bb = boundingbox(la.scene, exclude)
+        # then undo transform_func so that ticks can handle transform_func
+        # without ignoring translations, scaling or rotations from model
+        try
+            bb = apply_transform(itf, bb)
+        catch e
+            # TODO: Is this necessary?
+            @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
+            bb = data_limits(la.scene, exclude)
+        end
+    end
+
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    Makie.isfinite_rect(boundingbox) || return nothing
+    isfinite_rect(bb, dim) || return nothing
 
     # otherwise start with the first box
-    mini, maxi = minimum(boundingbox), maximum(boundingbox)
+    mini, maxi = minimum(bb), maximum(bb)
     return (mini[dim], maxi[dim])
 end
 
@@ -1223,7 +1242,11 @@ function Base.show(io::IO, ax::Axis)
     print(io, "Axis ($nplots plots)")
 end
 
+Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
+Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
+
 function Makie.xlims!(ax::Axis, xlims)
+    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2] && xlims[1] !== nothing
@@ -1234,14 +1257,15 @@ function Makie.xlims!(ax::Axis, xlims)
     else
         ax.xreversed[] = false
     end
-    mlims = convert_limit_attribute(ax.limits[])
 
+    mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
     nothing
 end
 
 function Makie.ylims!(ax::Axis, ylims)
+    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2] && ylims[1] !== nothing
@@ -1253,7 +1277,6 @@ function Makie.ylims!(ax::Axis, ylims)
         ax.yreversed[] = false
     end
     mlims = convert_limit_attribute(ax.limits[])
-
     ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
     nothing
@@ -1262,7 +1285,8 @@ end
 """
     xlims!(ax, low, high)
     xlims!(ax; low = nothing, high = nothing)
-    xlims!(ax, xlims)
+    xlims!(ax, (low, high))
+    xlims!(ax, low..high)
 
 Set the x-axis limits of axis `ax` to `low` and `high` or a tuple
 `xlims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1273,7 +1297,8 @@ Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
 """
     ylims!(ax, low, high)
     ylims!(ax; low = nothing, high = nothing)
-    ylims!(ax, ylims)
+    ylims!(ax, (low, high))
+    ylims!(ax, low..high)
 
 Set the y-axis limits of axis `ax` to `low` and `high` or a tuple
 `ylims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1284,7 +1309,8 @@ Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
 """
     zlims!(ax, low, high)
     zlims!(ax; low = nothing, high = nothing)
-    zlims!(ax, zlims)
+    zlims!(ax, (low, high))
+    zlims!(ax, low..high)
 
 Set the z-axis limits of axis `ax` to `low` and `high` or a tuple
 `zlims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1389,19 +1415,20 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
-    BBox(userlimits...)
+    BBox(Float64.(userlimits)...)
 end
 
 defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
 
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
-    xl = defaultlimits(userlimits[1], xscale)
-    yl = defaultlimits(userlimits[2], yscale)
-    BBox(xl..., yl...)
+    xl = Float64.(defaultlimits(userlimits[1], xscale))
+    yl = Float64.(defaultlimits(userlimits[2], yscale))
+    return BBox(xl..., yl...)
 end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)
 defaultlimits(limits::Tuple{Real, Real}, scale) = limits
+defaultlimits(limits::Interval, scale) = endpoints(limits)
 defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(scale)[2])
 defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
@@ -1425,7 +1452,6 @@ function attribute_examples(::Type{Axis})
     Dict(
         :xticks => [
             Example(
-                name = "Common tick types",
                 code = """
                     fig = Figure()
                     Axis(fig[1, 1], xticks = 1:10)
@@ -1437,7 +1463,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yticks => [
             Example(
-                name = "Common tick types",
                 code = """
                     fig = Figure()
                     Axis(fig[1, 1], yticks = 1:10)
@@ -1449,7 +1474,6 @@ function attribute_examples(::Type{Axis})
         ],
         :aspect => [
             Example(
-                name = "Common aspect ratios",
                 code = """
                     using FileIO
 
@@ -1471,7 +1495,6 @@ function attribute_examples(::Type{Axis})
         ],
         :autolimitaspect => [
             Example(
-                name = "Using `autolimitaspect`",
                 code = """
                     f = Figure()
 
@@ -1488,7 +1511,6 @@ function attribute_examples(::Type{Axis})
         ],
         :title => [
             Example(
-                name = "`title` variants",
                 code = """
                     f = Figure()
 
@@ -1505,7 +1527,6 @@ function attribute_examples(::Type{Axis})
         ],
         :titlealign => [
             Example(
-                name = "`titlealign` variants",
                 code = """
                     f = Figure()
 
@@ -1519,7 +1540,6 @@ function attribute_examples(::Type{Axis})
         ],
         :subtitle => [
             Example(
-                name = "`subtitle` variants",
                 code = """
                     f = Figure()
 
@@ -1536,7 +1556,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xlabel => [
             Example(
-                name = "`xlabel` variants",
                 code = """
                     f = Figure()
 
@@ -1553,7 +1572,6 @@ function attribute_examples(::Type{Axis})
         ],
         :ylabel => [
             Example(
-                name = "`ylabel` variants",
                 code = """
                     f = Figure()
 
@@ -1570,7 +1588,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xtrimspine => [
             Example(
-                name = "`xtrimspine` variants",
                 code = """
                     f = Figure()
 
@@ -1593,7 +1610,6 @@ function attribute_examples(::Type{Axis})
         ],
         :ytrimspine => [
             Example(
-                name = "`ytrimspine` variants",
                 code = """
                     f = Figure()
 
@@ -1616,7 +1632,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xaxisposition => [
             Example(
-                name = "`xaxisposition` variants",
                 code = """
                     f = Figure()
 
@@ -1629,7 +1644,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yaxisposition => [
             Example(
-                name = "`yaxisposition` variants",
                 code = """
                     f = Figure()
 
@@ -1642,7 +1656,6 @@ function attribute_examples(::Type{Axis})
         ],
         :limits => [
             Example(
-                name = "`limits` variants",
                 code = """
                     f = Figure()
 
@@ -1661,7 +1674,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yscale => [
             Example(
-                name = "`yscale` variants",
                 code = """
                     f = Figure()
 
@@ -1678,7 +1690,6 @@ function attribute_examples(::Type{Axis})
                     """
             ),
             Example(
-                name = "Pseudo-log scales",
                 code = """
                     f = Figure()
 
@@ -1704,7 +1715,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xscale => [
             Example(
-                name = "`xscale` variants",
                 code = """
                     f = Figure()
 
@@ -1721,7 +1731,6 @@ function attribute_examples(::Type{Axis})
                     """
             ),
             Example(
-                name = "Pseudo-log scales",
                 code = """
                     f = Figure()
 
@@ -1747,7 +1756,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xtickformat => [
             Example(
-                name = "`xtickformat` variants",
                 code = """
                     f = Figure(figure_padding = 50)
 
@@ -1763,7 +1771,6 @@ function attribute_examples(::Type{Axis})
         ],
         :ytickformat => [
             Example(
-                name = "`ytickformat` variants",
                 code = """
                     f = Figure()
 
@@ -1779,7 +1786,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xticksmirrored => [
             Example(
-                name = "`xticksmirrored` on and off",
                 code = """
                     f = Figure()
 
@@ -1792,7 +1798,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yticksmirrored => [
             Example(
-                name = "`yticksmirrored` on and off",
                 code = """
                     f = Figure()
 
@@ -1805,7 +1810,6 @@ function attribute_examples(::Type{Axis})
         ],
         :xminorticks => [
             Example(
-                name = "`xminorticks` variants",
                 code = """
                     f = Figure()
 
@@ -1820,7 +1824,6 @@ function attribute_examples(::Type{Axis})
         ],
         :yminorticks => [
             Example(
-                name = "`yminorticks` variants",
                 code = """
                     f = Figure()
 

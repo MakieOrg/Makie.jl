@@ -8,10 +8,35 @@ function project_position(scene::Scene, transform_func::T, space, point, model::
     _project_position(scene, space, point, model, yflip)
 end
 
-function _project_position(scene::Scene, space, point, model, yflip::Bool)
+# much faster than dot-ing `project_position` because it skips all the repeated mat * mat
+function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
+    transform = let
+        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        res = scene.camera.resolution[]
+        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+        px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
+        M = Makie.transformationmatrix(px_offset, px_scale) * M
+        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
+    end
+
+    output = similar(ps, Point2f)
+
+    @inbounds for i in eachindex(ps)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i], 0), 1)
+        px_pos = transform * p4d
+        output[i] = px_pos[Vec(1, 2)] / px_pos[3]
+    end
+
+    return output
+end
+
+function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, yflip::Bool) where {N, T1 <: Real}
+    T = promote_type(Float32, T1) # always Float, at least Float32
     res = scene.camera.resolution[]
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
+    p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
@@ -29,12 +54,12 @@ function project_position(@nospecialize(scenelike), space, point, model, yflip::
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
-function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
-    project_scale(scene, space, Vec2f(s), model)
+function project_scale(scene::Scene, space, s::Number, model = Mat4d(I))
+    project_scale(scene, space, Vec2d(s), model)
 end
 
-function project_scale(scene::Scene, space, s, model = Mat4f(I))
-    p4d = model * to_ndim(Vec4f, s, 0f0)
+function project_scale(scene::Scene, space, s, model = Mat4d(I))
+    p4d = model * to_ndim(Vec4d, s, 0)
     if is_data_space(space)
         @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
         return p .* scene.camera.resolution[] .* 0.5
@@ -53,13 +78,13 @@ function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
     return Rect(mini, maxi .- mini)
 end
 
-function project_polygon(@nospecialize(scenelike), space, poly::P, model) where P <: Polygon
-    ext = decompose(Point2f, poly.exterior)
-    interiors = decompose.(Point2f, poly.interiors)
-    Polygon(
-        Point2f.(project_position.(Ref(scenelike), space, ext, Ref(model))),
-        [Point2f.(project_position.(Ref(scenelike), space, interior, Ref(model))) for interior in interiors],
-    )
+function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, model) where {N, T}
+    PT = Point{N, Makie.float_type(T)}
+    ext = decompose(PT, poly.exterior)
+    project(p) = PT(project_position(scenelike, space, p, model))
+    ext_proj = PT[project(p) for p in ext]
+    interiors_proj = Vector{PT}[PT[project(p) for p in decompose(PT, points)] for points in poly.interiors]
+    return Polygon(ext_proj, interiors_proj)
 end
 
 function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, model) where MP <: MultiPolygon
@@ -153,6 +178,19 @@ end
 function set_source(ctx::Cairo.CairoContext, color::Colorant)
     return Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 end
+
+########################################
+#        Marker conversion API         #
+########################################
+
+"""
+    cairo_scatter_marker(marker)
+
+Convert a Makie marker to a Cairo-compatible marker.  This defaults to calling 
+`Makie.to_spritemarker`, but can be overridden for specific markers that can 
+be directly rendered to vector formats using Cairo.
+"""
+cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #
@@ -250,9 +288,9 @@ Finds a font that can represent the unicode character!
 Returns Makie.defaultfont() if not representable!
 """
 function best_font(c::Char, font = Makie.defaultfont())
-    if Makie.FreeType.FT_Get_Char_Index(font, c) == 0
+    if Base.@lock font.lock Makie.FreeType.FT_Get_Char_Index(font, c) == 0
         for afont in Makie.alternativefonts()
-            if Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
+            if Base.@lock afont.lock Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
                 return afont
             end
         end

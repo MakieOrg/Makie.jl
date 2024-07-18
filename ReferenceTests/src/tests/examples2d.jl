@@ -767,8 +767,8 @@ end
     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
     edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
-    tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
-    z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)]
+    tri = triangulate(points; boundary_nodes = boundary_nodes, segments = edges, check_arguments = false)
+    z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)]
     f, ax, _ = tricontourf(tri, z, levels = 30)
     f
 end
@@ -783,7 +783,7 @@ end
     end
     boundary_nodes, points = convert_boundary_points_to_indices(xy)
     tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
-    z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)]
+    z = [(x - 3/2)^2 + y^2 for (x, y) in DelaunayTriangulation.each_point(tri)]
 
     f, ax, tr = tricontourf(tri, z, colormap = :matter)
     f
@@ -1068,6 +1068,46 @@ end
     f
 end
 
+@reference_test "Histogram" begin
+    data = sin.(1:1000)
+
+    fig = Figure(size = (900, 900))
+    hist(fig[1, 1], data)
+    hist(fig[1, 2], data, bins = 30, color = :orange)
+    a, p = hist(fig[1, 3], data, bins = 10, color = :transparent, strokecolor = :red, strokewidth = 4.0)
+    a.xgridcolor[] = RGBAf(0,0,0,1); a.ygridcolor[] = RGBAf(0,0,0,1)
+
+    hist(fig[2, 1], data, normalization = :pdf, direction = :x)
+    hist(fig[2, 2], data, normalization = :density, color = 1:15)
+    hist(fig[2, 3], data, normalization = :probability, scale_to = :flip)
+
+    hist(fig[3, 1], data, offset = 20.0)
+    hlines!(0.0, color = :black, linewidth = 3)
+    hist(fig[3, 2], data, fillto = 1.0, scale_to = -5.0, direction = :x)
+    vlines!(0.0, color = :black, linewidth = 3)
+    hist(fig[3, 3], data, bar_labels = :y, label_size = 10, bins = 10)
+
+    hist(
+        fig[4, 1], data, scale_to = :flip, offset = 20,
+        bar_labels = :x, label_size = 12, label_color = :green
+    )
+    hlines!(0.0, color = :black, linewidth = 3)
+    i12 = mod1.(1:10, 2)
+    hist(fig[4, 2], data, scale_to = :flip, bins = 10, direction = :x,
+        bar_labels = :x, label_size = [14, 10][i12],
+        label_color = [:yellow, :blue][i12], label_offset = [-30, 10][i12]
+    )
+    hist(fig[4, 3], data, weights = 1.0 ./ (2.0 .+ data))
+
+    fig
+end
+
+@reference_test "hist(...; gap=0.1)" begin
+    fig = Figure(size = (400, 400))
+    hist(fig[1,1], RNG.randn(1000); gap=0.1)
+    fig
+end
+
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
@@ -1117,10 +1157,10 @@ end
 
     fig = Figure(size = (600, 600))
     # Create a recipe plot
-    ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
+    ax, plot_top = heatmap(fig[1, 1], randn(10, 10), colormap = [:transparent])
     # Plot some recipes at the level below the contour
-    scatterlineplot_1 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
-    scatterlineplot_2 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
+    scatterlineplot_1 = scatterlines!(ax, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
+    scatterlineplot_2 = scatterlines!(ax, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
     # Translate the lowest level plots (scatters)
     translate!(scatterlineplot_1.plots[2], 0, 0, 1)
     translate!(scatterlineplot_2.plots[2], 0, 0, -1)
@@ -1282,7 +1322,7 @@ end
 @reference_test "Voronoiplot for a tessellation with a custom bounding box" begin
     pts = 25RNG.randn(2, 50)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    vorn = voronoi(tri, false)
+    vorn = voronoi(tri, clip = false)
     fig, ax, sc = voronoiplot(vorn,
         show_generators=true,
         colormap=:RdBu,
@@ -1300,7 +1340,7 @@ end
 @reference_test "Voronoiplots with clipped tessellation and unbounded polygons" begin
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    vorn = voronoi(tri, true)
+    vorn = voronoi(tri, clip = true)
     fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2), markersize = 20, strokewidth = 4)
 
     # used to be bugged
@@ -1313,10 +1353,15 @@ end
     fig
 end
 
+#=
+
+After DelaunayTriangulation@1.0.4, this test started to show slightly randomized triangulations.
+Until this gets fixed, we're disabling it.
+
 @reference_test "Voronoiplot with a nonlinear transform" begin
     f = Figure()
     ax = PolarAxis(f[1, 1], theta_as_x = false)
-    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    points = Point2d[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
@@ -1326,6 +1371,7 @@ end
     Makie.rlims!(ax, 12)
     f
 end
+=#
 
 @reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
     points = [(-3.0, 7.0), (1.0, 6.0), (-1.0, 3.0), (-2.0, 4.0), (3.0, -2.0), (5.0, 5.0), (-4.0, -3.0), (3.0, 8.0)]
@@ -1390,5 +1436,30 @@ end
     fig = Figure(size=(227, 170))
     ax = Axis(fig[1, 1]; yticks = 0:.2:1, yminorticksvisible = true)
     ylims!(ax, 0, 1)
+    fig
+end
+
+@reference_test "contourf bug #3683" begin
+    x = y = LinRange(0, 1, 4)
+    ymin, ymax = 0.4, 0.6
+    steepness = 0.1
+    f(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
+    z = [f(_x, _y) for _x in x, _y in y]
+
+    fig, ax, cof = contourf(x, y, z, levels = 2)
+    Colorbar(fig[1, 2], cof)
+    fig
+end
+
+@reference_test "Violin plots differently scaled" begin
+    fig = Figure()
+    xs = vcat([fill(i, i * 1000) for i in 1:4]...)
+    ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
+    for (i, scale) in enumerate([:area, :count, :width])
+        ax = Axis(fig[i, 1])
+        violin!(ax, xs, ys; scale, show_median=true)
+        Makie.xlims!(0.2, 4.8)
+        ax.title = "scale=:$(scale)"
+    end
     fig
 end

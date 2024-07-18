@@ -224,6 +224,7 @@ end
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
         thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
+        rticks = ([0.0, 2.5, 5.0, 7.5, 10.0], ["0.0", "2.5", "5.0", "7.5", rich("10.0", color = :orange)])
     )
     f
 end
@@ -281,7 +282,7 @@ end
     values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
 
     # TO not make this fail in CairoMakie, we dont actually plot the volume
-    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    _f, ax, cp = contour(-1..1, -1..1, -1..1, values; levels=10, colormap=:viridis)
     Colorbar(fig[2, 1], cp; size=300)
 
     _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)
@@ -326,3 +327,16 @@ end
     fig
 end
 
+@reference_test "Axis limits with translation, scaling and transform_func" begin
+    f = Figure()
+    a = Axis(f[1,1], xscale = log10, yscale = log10)
+    ps = Point2f.([0.1, 0.1, 1000, 1000], [1, 100, 1, 100])
+    hl = linesegments!(a, ps[[1, 3, 2, 4]], color = :red)
+    vl = linesegments!(a, ps, color = :blue)
+    # translation happens before scale! here because scale! acts on scene and
+    # translate! acts on the plot (these are combined by matmult)
+    scale!(a.scene, 0.5, 2, 1.0)
+    translate!(hl, 0, 1, 0)
+    translate!(vl, 1, 0, 0)
+    f
+end

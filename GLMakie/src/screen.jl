@@ -257,7 +257,10 @@ function empty_screen(debugging::Bool; reuse=true)
         rethrow(e)
     end
 
-    GLFW.SetWindowIcon(window, Makie.icon())
+    # GLFW doesn't support setting the icon on OSX
+    if !Sys.isapple()
+        GLFW.SetWindowIcon(window, Makie.icon())
+    end
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
@@ -497,7 +500,7 @@ function Base.delete!(screen::Screen, scene::Scene)
 
         # Remap scene IDs to a continuous range by replacing the largest ID
         # with the one that got removed
-        if deleted_id-1 != length(screen.screens)
+        if deleted_id - 1 != length(screen.screens)
             key, max_id = first(screen.screen2scene)
             for p in screen.screen2scene
                 if p[2] > max_id

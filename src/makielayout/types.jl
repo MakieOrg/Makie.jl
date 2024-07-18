@@ -56,7 +56,6 @@ struct WilkinsonTicks
     simplicity_weight::Float64
     coverage_weight::Float64
     niceness_weight::Float64
-    min_px_dist::Float64
 end
 
 """
@@ -150,15 +149,15 @@ mutable struct RectangleZoom
     active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
-    from::Union{Nothing, Point2f}
-    to::Union{Nothing, Point2f}
-    rectnode::Observable{Rect2f}
+    from::Union{Nothing, Point2d}
+    to::Union{Nothing, Point2d}
+    rectnode::Observable{Rect2d}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
 function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
+                         nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
@@ -197,12 +196,21 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
+"""
+A 2D axis which can be plotted into.
+
+**Constructors**
+
+```julia
+Axis(fig_or_scene; palette = nothing, kwargs...)
+```
+"""
 @Block Axis <: AbstractAxis begin
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2f}
-    finallimits::Observable{Rect2f}
+    targetlimits::Observable{Rect2d}
+    finallimits::Observable{Rect2d}
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -212,6 +220,15 @@ end
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
         """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
@@ -292,9 +309,9 @@ end
         "The font family of the yticklabels."
         yticklabelfont = :regular
         "The color of xticklabels."
-        xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        xticklabelcolor = @inherit(:textcolor, :black)
         "The color of yticklabels."
-        yticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        yticklabelcolor = @inherit(:textcolor, :black)
         "The font size of the xticklabels."
         xticklabelsize::Float64 = @inherit(:fontsize, 16f0)
         "The font size of the yticklabels."
@@ -336,9 +353,9 @@ end
         "The width of the ytick marks."
         ytickwidth::Float64 = 1f0
         "The color of the xtick marks."
-        xtickcolor::RGBAf = RGBf(0, 0, 0)
+        xtickcolor = RGBf(0, 0, 0)
         "The color of the ytick marks."
-        ytickcolor::RGBAf = RGBf(0, 0, 0)
+        ytickcolor = RGBf(0, 0, 0)
         "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
         xticksmirrored::Bool = false
         "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
@@ -366,9 +383,9 @@ end
         "The width of the y grid lines."
         ygridwidth::Float64 = 1f0
         "The color of the x grid lines."
-        xgridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The color of the y grid lines."
-        ygridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        ygridcolor = RGBAf(0, 0, 0, 0.12)
         "The linestyle of the x grid lines."
         xgridstyle = nothing
         "The linestyle of the y grid lines."
@@ -382,9 +399,9 @@ end
         "The width of the y minor grid lines."
         yminorgridwidth::Float64 = 1f0
         "The color of the x minor grid lines."
-        xminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        xminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The color of the y minor grid lines."
-        yminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        yminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The linestyle of the x minor grid lines."
         xminorgridstyle = nothing
         "The linestyle of the y minor grid lines."
@@ -583,7 +600,7 @@ end
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
-        xminortickcolor::RGBAf = :black
+        xminortickcolor = :black
         """
         The tick locator for the minor ticks of the x axis.
 
@@ -602,7 +619,7 @@ end
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
-        yminortickcolor::RGBAf = :black
+        yminortickcolor = :black
         """
         The tick locator for the minor ticks of the y axis.
 
@@ -677,6 +694,22 @@ function RectangleZoom(ax::Axis; kw...)
     end
 end
 
+"""
+Create a colorbar that shows a continuous or categorical colormap with ticks
+chosen according to the colorrange.
+
+You can set colorrange and colormap manually, or pass a plot object as the second argument
+to copy its respective attributes.
+
+## Constructors
+
+```julia
+Colorbar(fig_or_scene; kwargs...)
+Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
+```
+"""
 @Block Colorbar begin
     axis::LineAxis
     @attributes begin
@@ -907,6 +940,42 @@ end
     end
 end
 
+"""
+A grid of horizontal `Slider`s, where each slider has one name label on the left,
+and a value label on the right.
+
+Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
+and `label`, and optionally a `format` for the value label. Beyond that, you can set
+any keyword that `Slider` takes, such as `startvalue`.
+
+The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
+a function.
+
+## Constructors
+
+```julia
+SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
+```
+
+## Examples
+
+```julia
+sg = SliderGrid(fig[1, 1],
+    (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
+    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
+    (label = "Phase", range = 0:0.01:2pi,
+        format = x -> string(round(x/pi, digits = 2), "π"))
+)
+```
+
+Working with slider values:
+
+```julia
+on(sg.sliders[1].value) do val
+    # do something with `val`
+end
+```
+"""
 @Block SliderGrid begin
     @forwarded_layout
     sliders::Vector{Slider}
@@ -1056,6 +1125,52 @@ end
     end
 end
 
+"""
+A drop-down menu with multiple selectable options. You can pass options
+with the keyword argument `options`.
+
+Options are given as an iterable of elements.
+For each element, the option label in the menu is determined with `optionlabel(element)`
+and the option value with `optionvalue(element)`. These functions can be
+overloaded for custom types. The default is that tuples of two elements are expected to be label and value,
+where `string(label)` is used as the label, while for all other objects, label = `string(object)` and value = object.
+
+When an item is selected in the menu, the menu's `selection` attribute is set to
+`optionvalue(selected_element)`. When nothing is selected, that value is `nothing`.
+
+You can set the initial selection by passing one of the labels with the `default` keyword.
+
+## Constructors
+
+```julia
+Menu(fig_or_scene; default = nothing, kwargs...)
+```
+
+## Examples
+
+Menu with string entries, second preselected:
+
+```julia
+menu1 = Menu(fig[1, 1], options = ["first", "second", "third"], default = "second")
+```
+
+Menu with two-element entries, label and function:
+
+```julia
+funcs = [sin, cos, tan]
+labels = ["Sine", "Cosine", "Tangens"]
+
+menu2 = Menu(fig[1, 1], options = zip(labels, funcs))
+```
+
+Executing a function when a selection is made:
+
+```julia
+on(menu2.selection) do selected_function
+    # do something with the selected function
+end
+```
+"""
 @Block Menu begin
     @attributes begin
         "The height setting of the menu."
@@ -1189,7 +1304,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         framewidth = 1f0
         "Controls if the legend border is visible."
         framevisible = true
-        "The size of the rectangles containing the legend markers."
+        "The size of the rectangles containing the legend markers. It can help to increase the width if line patterns are not clearly visible with the default size."
         patchsize = (20f0, 20f0)
         "The color of the border of the patches containing the legend markers."
         patchstrokecolor = :transparent
@@ -1265,6 +1380,19 @@ end
 @Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1346,7 +1474,7 @@ end
         cornerradius = 5
         "Corner segments of one rounded corner."
         cornersegments = 20
-        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."
+        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(T, string)`."
         validator = str -> true
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
@@ -1363,6 +1491,18 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1651,6 +1791,15 @@ end
     target_r0::Observable{Float32}
     @attributes begin
         # Generic
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
 
         "The height setting of the scene."
         height = nothing

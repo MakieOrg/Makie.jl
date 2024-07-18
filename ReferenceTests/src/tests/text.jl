@@ -90,7 +90,7 @@ end
             align = (halign, :center),
             justification = justification)
 
-        bb = boundingbox(t)
+        bb = boundingbox(t, :pixel)
         wireframe!(scene, bb, color = (:red, 0.2))
     end
 
@@ -119,7 +119,7 @@ end
         markerspace = :data
     )
 
-    wireframe!(scene, boundingbox(t1), color = (:blue, 0.3))
+    wireframe!(scene, boundingbox(t1, :data), color = (:blue, 0.3))
 
     t2 = text!(scene,
         fill("makie", 4),
@@ -130,7 +130,7 @@ end
         markerspace = :pixel
     )
 
-    wireframe!(scene, boundingbox(t2), color = (:red, 0.3))
+    wireframe!(scene, boundingbox(t2, :pixel), color = (:red, 0.3))
 
     scene
 end
@@ -149,7 +149,7 @@ end
             markerspace = :data
         )
 
-        wireframe!(scene, boundingbox(t), color = (:blue, 0.3))
+        wireframe!(scene, boundingbox(t, :data), color = (:blue, 0.3))
 
         t2 = text!(scene,
             "makie",
@@ -161,7 +161,7 @@ end
         )
 
         # these boundingboxes should be invisible because they only enclose the anchor
-        wireframe!(scene, boundingbox(t2), color = (:red, 0.3))
+        wireframe!(scene, boundingbox(t2, :pixel), color = (:red, 0.3))
 
     end
     scene
@@ -186,12 +186,12 @@ end
     t1 = text!(scene, "Line1\nLine 2\n\nLine4",
         position = (200, 400), align = (:center, :center), markerspace = :data)
 
-    wireframe!(scene, boundingbox(t1), color = (:red, 0.3))
+    wireframe!(scene, boundingbox(t1, :data), color = (:red, 0.3))
 
     t2 = text!(scene, "\nLine 2\nLine 3\n\n\nLine6\n\n",
         position = (400, 400), align = (:center, :center), markerspace = :data)
 
-    wireframe!(scene, boundingbox(t2), color = (:blue, 0.3))
+    wireframe!(scene, boundingbox(t2, :data), color = (:blue, 0.3))
 
     scene
 end
@@ -283,7 +283,7 @@ end
         position = Point2f(50, 50),
         rotation = 0.0,
         markerspace = :data)
-    wireframe!(s, boundingbox(t), color=:black)
+    wireframe!(s, boundingbox(t, :data), color=:black)
     s
 end
 
@@ -367,4 +367,16 @@ end
     ax.ylabel[] = L"\lim_{x\to\infty} f(x)"
     ax.zlabel[] = L"\sum_{n=1}^{\infty} 2^{-n} = 1"
     fig
+end
+
+# test #3232
+@reference_test "texture atlas update" begin
+    scene = Scene(size = (250, 100))
+    campixel!(scene)
+    p = text!(scene, "test", fontsize = 85)
+    st = Stepper(scene)
+    Makie.step!(st)
+    p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
+    Makie.step!(st)
+    st
 end
