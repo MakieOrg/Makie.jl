@@ -424,7 +424,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 gl_attributes[:color] = pop!(gl_attributes, :intensity)
             end
             to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model,
-                             :projectionview, :projection, :view, :visible, :resolution])
+                             :projectionview, :projection, :view, :visible, :resolution, :transparency])
             filter!(gl_attributes) do (k, v,)
                 return (k in to_keep)
             end
