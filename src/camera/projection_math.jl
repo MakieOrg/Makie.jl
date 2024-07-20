@@ -235,10 +235,6 @@ function is_translation_scale_matrix(mat::Mat4{T}) where T
            (mat[4, 4] == one(T))
 end
 
-# these assume just a scale and translation component
-unsafe_extract_scale(mat::Mat4{T}) where {T}       = Vec3{T}(mat[1, 1], mat[2, 2], mat[3, 3])
-unsafe_extract_translation(mat::Mat4{T}) where {T} = Vec3{T}(mat[1, 4], mat[2, 4], mat[3, 4])
-
 """
     decompose_translation_scale_rotation_matrix(transform::Mat4)
 
