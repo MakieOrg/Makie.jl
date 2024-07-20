@@ -239,6 +239,52 @@ end
 unsafe_extract_scale(mat::Mat4{T}) where {T}       = Vec3{T}(mat[1, 1], mat[2, 2], mat[3, 3])
 unsafe_extract_translation(mat::Mat4{T}) where {T} = Vec3{T}(mat[1, 4], mat[2, 4], mat[3, 4])
 
+"""
+    decompose_translation_scale_rotation_matrix(transform::Mat4)
+
+Decomposes a transformation matrix into a translation vector, scale vector and
+rotation Quaternion. Note that this is only valid for a transformation matrix
+created with matching order, i.e. 
+`transform = translation_matrix * scale_matrix * rotation_matrix`. The model 
+matrix created by `Transformation` is one such matrix.
+"""
+function decompose_translation_scale_rotation_matrix(model::Mat4{T}) where T
+    trans = Vec3{T}(model[Vec(1,2,3), 4])
+    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+    if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
+        scale = Vec3{T}(diag(m33))
+        rot = Quaternion{T}(0, 0, 0, 1)
+        return trans, scale, rot
+    else
+        # m33 = Scale * Rotation; Scale * Rotation * Rotation' * Scale' = Scale^2
+        scale = Vec3{T}(sqrt.(diag(m33 * m33')))
+        R = Diagonal(1 ./ scale) * m33
+
+        # inverse of Mat4(q::Quaternion)
+        xz = 0.5 * (R[1, 3] + R[3, 1])
+        sy = 0.5 * (R[1, 3] - R[3, 1])
+        yz = 0.5 * (R[2, 3] + R[3, 2])
+        sx = 0.5 * (R[3, 2] - R[2, 3])
+        xy = 0.5 * (R[1, 2] + R[2, 1])
+        sz = 0.5 * (R[2, 1] - R[1, 2])
+
+        m = max(abs(xy), abs(xz), abs(yz))
+        if abs(xy) == m
+            q4 = sqrt(0.5 * sx * sy / xy)
+        elseif abs(xz) == m
+            q4 = sqrt(0.5 * sx * sz / xz)
+        else
+            q4 = sqrt(0.5 * sy * sz / yz)
+        end
+
+        q1 = 0.5 * sx / q4
+        q2 = 0.5 * sy / q4
+        q3 = 0.5 * sz / q4
+        rot = Quaternion{T}(q1, q2, q3, q4)
+
+        return trans, scale, rot
+    end
+end
 
 #Calculate rotation between two vectors
 function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
