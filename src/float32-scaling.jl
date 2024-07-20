@@ -269,7 +269,7 @@ function f32_conversion_obs(scene::Scene)
     end
 end
 # f32_conversion_obs(plot::AbstractPlot) = f32_conversion_obs(parent_scene(plot))
-f32_conversion_obs(plot::AbstractPlot) = plot.attributes[:_f32_conversion]
+# f32_conversion_obs(plot::AbstractPlot) = plot.attributes[:_f32_conversion]
 
 f32_conversion(plot::AbstractPlot) = f32_conversion(parent_scene(plot))
 f32_conversion(scene::Scene) = scene.float32convert
@@ -304,7 +304,7 @@ end
 function apply_transform_and_f32_conversion(
         float32convert::Nothing, transform_func, model::Mat4d, data, space::Symbol
     )
-    return apply_transform(transform_func, data, space)
+    return f32_convert(nothing, apply_transform(transform_func, data, space))
 end
 
 function apply_transform_and_f32_conversion(
@@ -339,11 +339,11 @@ function apply_transform_and_f32_conversion(
     )
     tf = space == :data ? transform_func : identity
     if dim == 1
-        return [apply_transform(tf, Point2(x, 0))[1] for x in data]
+        return Float32[apply_transform(tf, Point2(x, 0))[1] for x in data]
     elseif dim == 2
-        return [apply_transform(tf, Point2(0, x))[2] for x in data]
+        return Float32[apply_transform(tf, Point2(0, x))[2] for x in data]
     elseif dim == 3
-        return [apply_transform(tf, Point3(0, 0, x))[3] for x in data]
+        return Float32[apply_transform(tf, Point3(0, 0, x))[3] for x in data]
     else
         error("The transform_func and float32 conversion can only be applied along dimensions 1, 2 or 3, not $dim")
     end

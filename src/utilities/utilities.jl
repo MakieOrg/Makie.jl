@@ -413,14 +413,20 @@ Creates points on the grid spanned by x, y, z.
 Allows to supply `f`, which gets applied to every point.
 """
 function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    g = map(CartesianIndices(z)) do i
-        return f(Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
-    end
-    return vec(g)
+    return f(matrix_grid(x, y, z))
 end
 
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
+    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+    matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
+    ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
+    return vec(ps)
 end
 
 ############################################################

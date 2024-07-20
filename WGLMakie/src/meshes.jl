@@ -1,10 +1,11 @@
-function vertexbuffer(x, f32c, trans, space)
+function vertexbuffer(x, f32c, transform_func, model, space)
     pos = decompose(Point, x)
-    return apply_transform_and_f32_conversion(f32c, trans, pos, space)
+    transformed = apply_transform_and_f32_conversion(f32c, transform_func, model, pos, space)
+    return transformed
 end
 
-function vertexbuffer(x::Observable, @nospecialize(p))
-    return Buffer(lift(vertexbuffer, p, x, f32_conversion_obs(p), transform_func_obs(p), get(p, :space, :data)))
+function vertexbuffer(x::Observable, @nospecialize(plot), f32c::Observable)
+    return Buffer(lift(vertexbuffer, plot, x, f32c, transform_func_obs(plot), plot.model, plot.space))
 end
 
 facebuffer(x) = faces(x)
@@ -67,8 +68,6 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     get!(uniforms, :light_direction, Vec3f(1))
     get!(uniforms, :light_color, Vec3f(1))
 
-    uniforms[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
-
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
     get!(uniforms, :shading, to_value(get(plot, :shading, NoShading)) != NoShading)
@@ -120,7 +119,9 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     end
 
     faces = facebuffer(mesh_signal)
-    positions = vertexbuffer(mesh_signal, plot)
+    f32c, model = Makie.patch_model(plot)
+    uniforms[:model] = model
+    positions = vertexbuffer(mesh_signal, plot, f32c)
     attributes[:faces] = faces
     attributes[:positions] = positions
 
