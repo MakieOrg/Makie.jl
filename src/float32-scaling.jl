@@ -366,7 +366,7 @@ function apply_transform_and_f32_conversion(
     trans, scale = decompose_translation_scale_matrix(model)
     if is_float_safe(scale, trans) && is_identity_transform(float32convert)
         # model applied on GPU, float32convert skippable
-        return get_index.(apply_transform(transform_func, data, space), dim)
+        return getindex.(apply_transform(transform_func, data, space), dim)
     
     elseif is_translation_scale_matrix(model)
         # translation and scale of model have been moved to f32convert, so just apply that
