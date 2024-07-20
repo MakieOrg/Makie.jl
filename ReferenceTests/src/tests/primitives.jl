@@ -678,8 +678,8 @@ end
 end
 
 @reference_test "Plot transform overwrite" begin
-    # Tests that (primitive) plots can have different transform function to their
-    # parent scene (identity in this case)
+    # Tests that (primitive) plots can have different transform function 
+    # (identity) from their parent scene (log10, log10)
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)

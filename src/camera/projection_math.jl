@@ -286,6 +286,27 @@ function decompose_translation_scale_rotation_matrix(model::Mat4{T}) where T
     end
 end
 
+"""
+    decompose_translation_scale_matrix(transform::Mat4)
+
+Like `decompose_translation_scale_rotation_matrix(transform)` but skips the 
+extraction of the rotation component. This still works if a rotation is involved
+and requires the same order of operations, i.e. 
+`transform = translation_matrix * scale_matrix * rotation_matrix`.
+"""
+function decompose_translation_scale_matrix(model::Mat4{T}) where T
+    trans = Vec3{T}(model[Vec(1,2,3), 4])
+    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+    if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
+        scale = Vec3{T}(diag(m33))
+        return trans, scale
+    else
+        # m33 = Scale * Rotation; Scale * Rotation * Rotation' * Scale' = Scale^2
+        scale = Vec3{T}(sqrt.(diag(m33 * m33')))
+        return trans, scale
+    end
+end
+
 #Calculate rotation between two vectors
 function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     # It is important that the inputs are of equal length when

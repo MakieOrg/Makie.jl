@@ -11,6 +11,7 @@
 # muladd is no better than a * b + c etc
 # Don't apply Float32 here so we can still work with full precision by calling these directly
 @inline (ls::LinearScaling)(x::Real, dim::Integer) = ls.scale[dim] * x + ls.offset[dim]
+@inline (ls::LinearScaling)(p::VecTypes, dim::Integer) = ls.scale[dim] * p[dim] + ls.offset[dim]
 @inline (ls::LinearScaling)(p::VecTypes{2}) = ls.scale[Vec(1, 2)] .* p + ls.offset[Vec(1, 2)]
 @inline (ls::LinearScaling)(p::VecTypes{3}) = ls.scale .* p + ls.offset
 
@@ -34,6 +35,7 @@ end
     return Rect{N, Float32}(mini, maxi - mini)
 end
 
+# TODO: Should this apply in world space? Should we split world space into world64 and world32?
 @inline function f32_convert(ls::LinearScaling, data, space::Symbol)
     return space in (:data, :transformed) ? f32_convert(ls, data) : f32_convert(nothing, data)
 end
@@ -68,19 +70,35 @@ function f32_convert_matrix(ls::LinearScaling, space::Symbol)
 end
 inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(inv(ls), space)
 
+is_identity_transform(ls::LinearScaling) = (ls.scale == Vec3d(1)) && (ls.offset == Vec3d(0))
+is_identity_transform(ls::Nothing) = true # Float32Convert with scaling == nothing is neutral/identity
 
-# returns Matrix R such that M * ls = ls * R
-# patch_model(::Nothing, M::Mat4d) = Mat4f(M)
-# function patch_model(ls::LinearScaling, M::Mat4d)
-#     # return Mat4f(f32_convert_matrix(ls) * M * f32_convert_matrix(inv(ls)))
-#     # return Mat4f(f32_convert_matrix(ls) * Mat4d(I) * f32_convert_matrix(inv(ls)))
-#     return Mat4f(I)
-# end
+"""
+    patch_model(plot)
+    patch_model(plot, f32c, model)
 
+The (default) order of operations is: 
+
+1. `plot.transformation.transform_func`
+2. `plot.transformation.model`
+3. `scene.float32convert`
+4. `camera.projectionview`
+
+But we want to apply the `float32convert` before `model` so that that can be 
+applied on the GPU. This function evaluates if this is possible and returns an 
+adjusted `LinearScaling` Observable for `apply_transform_and_f32_conversion()`
+and an adjusted `model` matrix Observable for the GPU.
+"""
 patch_model(@nospecialize(plot)) = patch_model(plot, f32_conversion(plot), plot.model)
 
 function patch_model(@nospecialize(plot), f32c::Nothing, model::Observable)
     return Observable(nothing), map(Mat4f, model)
+end
+
+# TODO: How do we actually judge this well?
+function is_float_safe(scale, trans)
+    resolution = 1e4
+    return all(scale .> resolution .* eps.(Float32.(trans)))
 end
 
 function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observable) # Observable{Any} :(
@@ -90,25 +108,38 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
     onany(plot, f32c.scaling, model, update = true) do f32c, model
         # Neutral f32c can mean that data and model cancel each other and we 
         # still have Float32 preicsion issues inbetween.
+
+        # works with rotation component as well
+        trans, scale = decompose_translation_scale_matrix(model)
+        is_rot_free = is_translation_scale_matrix(model)
+
+        if is_float_safe(scale, trans) && is_identity_transform(f32c)
+            # model should not have Float32 Problems and f32c can be skipped
+            # (model can have rotation here)
+            f32c_obs[] = f32c
+            model_obs[] = Mat4f(model)
+
+        # elseif is_float_safe(scale, trans) && is_rot_free
+            # model can be applied on GPU and we can pull f32c through the 
+            # model matrix, but this would change the f32c so it's effectively
+            # the same as just doing this:
         
-        # Model has no rotation so we can extract scale + translation and move 
-        # it to the f32c. This should be cheap since we're always applying f32c.
-        if is_translation_scale_matrix(model)
-            scale = Makie.unsafe_extract_scale(model)
-            trans = Makie.unsafe_extract_translation(model)
+        elseif is_rot_free
+            # Model has no rotation so we can extract scale + translation and move 
+            # it to the f32c.
             f32c_obs[] = Makie.LinearScaling(
                 scale * f32c.scale, f32c.scale * trans + f32c.offset
             )
-        else
-            # Otherwise we fully apply model on the CPU side with the untouched
-            # f32c afterwards
-            f32c_obs[] = f32c
-        end
-        # model_obs[] = Mat4f(I)
+            model_obs[] = Mat4f(I)
 
-        # TODO: Optimization:
-        # - keep model matrix when it's Float32-safe w/o rotation.
-        # - keep it w/ rotation if f32c is neutral as well (i.e. 1 scale, 0 offset)
+        else
+            # We have float32 Problems and the model matrix contains rotation,
+            # so we cannot pull f32c through it. Instead we must apply it on the
+            # CPU side
+            f32c_obs[] = f32c
+            model_obs[] = Mat4f(I)
+        end
+
         return
     end
 
@@ -277,32 +308,27 @@ function apply_transform_and_f32_conversion(
 end
 
 function apply_transform_and_f32_conversion(
-        float32convert::Union{Float32Convert, LinearScaling},
+        float32convert::LinearScaling,
         transform_func, model::Mat4d, data, space::Symbol
     )
     # TODO:
     # - Optimization: avoid intermediate arrays 
     # - Is transform_func strictly per element?
-    # - Optimization: Skip f32_convert if conversion is neutral (1 scale, 0 offset)
-    #                 (should probably happen here to avoid checking per element)
 
-    tf = space == :data ? transform_func : identity
-    if space in (:data, :transformed, :world) # maybe split :world64 and :world32?
-        if is_translation_scale_matrix(model)
-            # translation and scale of model have been moved to f32convert, so just apply that
-            return [f32_convert(float32convert, apply_transform(tf, x)) for x in data]
-        else
-            # model contains rotation which stops us from applying f32convert 
-            # before model
-            return map(data) do input
-                transformed = apply_transform_and_model(model, tf, input, space)
-                return f32_convert(float32convert, transformed)
-            end
-        end
+    trans, scale = decompose_translation_scale_matrix(model)
+    if is_float_safe(scale, trans) && is_identity_transform(float32convert)
+        # model applied on GPU, float32convert skippable
+        return apply_transform(transform_func, data, space)
+
+    elseif is_translation_scale_matrix(model)
+        # translation and scale of model have been moved to f32convert, so just apply that
+        return f32_convert(float32convert, apply_transform(transform_func, data, space), space)
+
     else
-        # Neither f32c nor model applies after outside of :data and :transformed 
-        # space, so no transformation necessary
-        return data
+        # model contains rotation which stops us from applying f32convert 
+        # before model
+        transformed = apply_transform_and_model(model, transform_func, input, space)
+        return f32_convert(float32convert, transformed)
     end
 end
 
@@ -329,42 +355,26 @@ function apply_transform_and_f32_conversion(
     
     dim in (1, 2, 3) || error("The transform_func and float32 conversion can only be applied along dimensions 1, 2 or 3, not $dim")
     
-    tf = space == :data ? transform_func : identity
-    
-    if space in (:data, :transformed, :world)
-        if is_translation_scale_matrix(model)
-            # translation and scale of model have been moved to f32convert, so
-            # just apply that
-            if dim == 1
-                return [f32_convert(float32convert, apply_transform(tf, Point2(x, 0))[1], dim) for x in data]
-            elseif dim == 2
-                return [f32_convert(float32convert, apply_transform(tf, Point2(0, x))[2], dim) for x in data]
-            else
-                return [f32_convert(float32convert, apply_transform(tf, Point3(0, 0, x))[3], dim) for x in data]
-            end
-        else
-            # model contains rotation which stops us from applying f32convert 
-            # before model
-            if dim == 1
-                return map(data) do input
-                    transformed = apply_transform_and_model(model, tf, Point2(input, 0), space)
-                    return f32_convert(float32convert, transformed, 1)
-                end
-            elseif dim == 2
-                return map(data) do input
-                    transformed = apply_transform_and_model(model, tf, Point2(0, input), space)
-                    return f32_convert(float32convert, transformed, 2)
-                end
-            else
-                return map(data) do input
-                    transformed = apply_transform_and_model(model, tf, Point3(0, 0, input), space)
-                    return f32_convert(float32convert, transformed, 3)
-                end
-            end
-        end
+    dimpoints = if dim == 1
+        Point2.(data, 0)
+    elseif dim == 2
+        Point2.(0, data)
     else
-        # Neither f32c nor model applies after outside of :data and :transformed 
-        # space, so no transformation necessary
-        return data
+        Point3.(0, 0, data)
+    end
+
+    trans, scale = decompose_translation_scale_matrix(model)
+    if is_float_safe(scale, trans) && is_identity_transform(float32convert)
+        # model applied on GPU, float32convert skippable
+        return get_index.(apply_transform(transform_func, data, space), dim)
+    
+    elseif is_translation_scale_matrix(model)
+        # translation and scale of model have been moved to f32convert, so just apply that
+        return f32_convert(float32convert, apply_transform(transform_func, dimpoints, space), dim)
+
+    else
+        # model contains rotation which stops us from applying f32convert before model
+        transformed = apply_transform_and_model(model, transform_func, dimpoints, space)
+        return f32_convert(float32convert, transformed, dim)
     end
 end
