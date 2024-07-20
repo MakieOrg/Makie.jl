@@ -1,9 +1,12 @@
 """
-spy(x::Range, y::Range, z::AbstractSparseArray)
+spy(z::AbstractSparseArray)
+spy(x_range::NTuple{2, Number}, y_range::NTuple{2, Number}, z::AbstractSparseArray)
+spy(x_range::ClosedInterval, y_range::ClosedInterval, z::AbstractSparseArray)
 
 Visualizes big sparse matrices.
 Usage:
 ```julia
+using SparseArrays, GLMakie
 N = 200_000
 x = sprand(Float64, N, N, (3(10^6)) / (N*N));
 spy(x)
@@ -22,13 +25,22 @@ spy(0..1, 0..1, x)
     MakieCore.mixin_colormap_attributes()...
 end
 
-function convert_arguments(::Type{<:Spy}, args...)
-    x, y, z = convert_arguments(Heatmap, args...)
-    return (x, y, SparseArrays.sparse(z))
+function data_limits(plot::Spy)
+    data_limits(plot.plots[2])
 end
 
-function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
-    return (x, y, z)
+function boundingbox(p::Spy, space::Symbol=:data)
+    boundingbox(p.plots[2], space)
+end
+
+function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix)
+    return convert_arguments(Spy, (0, size(matrix, 1)), (0, size(matrix, 2)), matrix)
+end
+
+function convert_arguments(::Type{<:Spy}, xs, ys, matrix::AbstractMatrix)
+    x = to_interval(xs, "x")
+    y = to_interval(ys, "y")
+    return (x, y, convert(SparseArrays.SparseMatrixCSC, matrix))
 end
 
 needs_tight_limits(::Spy) = true
