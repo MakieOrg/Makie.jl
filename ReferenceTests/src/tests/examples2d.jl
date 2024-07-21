@@ -1219,59 +1219,57 @@ end
     fig
 end
 
-# TODO: as noted in https://github.com/MakieOrg/Makie.jl/pull/3520#issuecomment-1873382060
-# this test has some issues with random number generation across Julia 1.6 and 1, for now
-# it's disabled until someone has time to look into it
-
-# @reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
-#     curve_1 = [[
-#         (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
-#         (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
-#         (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
-#         (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
-#         (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
-#         (-4.0, 0.0), (0.0, 0.0),
-#     ]]
-#     curve_2 = [[
-#         (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
-#         (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
-#         (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
-#     ]]
-#     curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
-#     curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
-#     curves = [curve_1, curve_2, curve_3, curve_4]
-#     points = [
-#         (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
-#         (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
-#         (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
-#         (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
-#         (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
-#         (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
-#         (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
-#         (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
-#         (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
-#         (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
-#         (7.0, 7.8), (7.0, 7.4)]
-#     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
-#     tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
-#     refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
-#     fig, ax, sc = triplot(tri,
-#         show_points=true,
-#         show_constrained_edges=true,
-#         constrained_edge_linewidth=2,
-#         strokewidth=0.2,
-#         markersize=15,
-#         point_color=:blue,
-#         show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
-#         marker='x',
-#         bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
-#     fig
-# end
+@reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
+    curve_1 = [[
+        (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
+        (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
+        (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
+        (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
+        (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
+        (-4.0, 0.0), (0.0, 0.0),
+    ]]
+    curve_2 = [[
+        (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
+        (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
+        (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
+    ]]
+    curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
+    curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
+    curves = [curve_1, curve_2, curve_3, curve_4]
+    points = [
+        (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
+        (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
+        (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
+        (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
+        (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
+        (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
+        (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
+        (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
+        (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
+        (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
+        (7.0, 7.8), (7.0, 7.4)]
+    boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+    tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri,
+        show_points=true,
+        show_constrained_edges=true,
+        constrained_edge_linewidth=2,
+        strokewidth=0.2,
+        markersize=15,
+        markercolor=:blue,
+        show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
+        marker='x',
+        bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
+    fig
+end
 
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]] 
+    noise = i -> 1f-4 * (isodd(i) ? 1 : -1) * i/sqrt(50) # should have small discrepancy
+    points = points .+ [Point2f(noise(i), noise(i)) for i in eachindex(points)]
+    # The noise forces the triangulation to be unique. Not using RNG to not disrupt the RNG stream later
     tr = triplot!(ax, points)
     f
 end
@@ -1309,9 +1307,8 @@ end
 end
 
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
-    points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
+    points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0),(0.2,0.2),(0.25,0.6),(0.5,0.3),(0.1,0.15)]
     tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
-    refine!(tri; max_area=1e-2, min_angle = 29.871, rng = RNG.STABLE_RNG)
     vorn = voronoi(tri)
     smooth_vorn = centroidal_smooth(vorn; maxiters = 250, rng = RNG.STABLE_RNG)
     cmap = cgrad(:matter)
@@ -1353,15 +1350,12 @@ end
     fig
 end
 
-#=
-
-After DelaunayTriangulation@1.0.4, this test started to show slightly randomized triangulations.
-Until this gets fixed, we're disabling it.
-
 @reference_test "Voronoiplot with a nonlinear transform" begin
     f = Figure()
     ax = PolarAxis(f[1, 1], theta_as_x = false)
     points = Point2d[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    noise = i -> 1f-4 * (isodd(i) ? 1 : -1) * i/sqrt(50) # should have small discrepancy
+    points = points .+ [Point2f(noise(i), noise(i)) for i in eachindex(points)] # make triangulation unique
     polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
@@ -1371,7 +1365,7 @@ Until this gets fixed, we're disabling it.
     Makie.rlims!(ax, 12)
     f
 end
-=#
+
 
 @reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
     points = [(-3.0, 7.0), (1.0, 6.0), (-1.0, 3.0), (-2.0, 4.0), (3.0, -2.0), (5.0, 5.0), (-4.0, -3.0), (3.0, 8.0)]
