@@ -119,10 +119,15 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
             f32c_obs[] = f32c
             model_obs[] = Mat4f(model)
 
-        # elseif is_float_safe(scale, trans) && is_rot_free
+        elseif is_float_safe(scale, trans) && is_rot_free
             # model can be applied on GPU and we can pull f32c through the 
-            # model matrix, but this would change the f32c so it's effectively
-            # the same as just doing this:
+            # model matrix. This can be merged with the option below, but 
+            # keeping them separate improves compatability with transform_marker
+            scale = Vec3d(model[1, 1], model[2, 2], model[3, 3]) # existing scale is missing signs
+            f32c_obs[] = Makie.LinearScaling(
+                f32c.scale, ((f32c.scale .- 1) .* trans .+ f32c.offset) ./ scale
+            )
+            model_obs[] = model
         
         elseif is_rot_free
             # Model has no rotation so we can extract scale + translation and move 

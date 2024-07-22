@@ -192,26 +192,34 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
                     # Verify State
                     r1 = @test a.scene.float32convert.scaling[] != Makie.LinearScaling(Vec3d(1), Vec3d(0))
-                    r2 = @test Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[]) == (model_scale == 10.0)
+                    safe_model = model_scale == 10.0
+                    r2 = @test Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[]) == safe_model
 
                     # compute expected f32c convert and transformed data
                     # (should follow is_rot_free branches)
                     scale = p.transformation.scale[]
                     trans = p.transformation.translation[]
                     input_f32c = a.scene.float32convert.scaling[]
-                    expected_f32c =  Makie.LinearScaling(
-                        scale * input_f32c.scale, input_f32c.scale * trans + input_f32c.offset
-                    )
                     transformed = let
                         ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
                         f32_convert(input_f32c, ps)
                     end
-
                     f32c, model = patch_model(p)
-                    r3 = @test f32c[].scale ≈ expected_f32c.scale
-                    r4 = @test f32c[].offset ≈ expected_f32c.offset
-                    r5 = @test model[] == Mat4f(I)
-                    r6 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+
+                    if safe_model
+                        r3 = @test f32c[].scale == input_f32c.scale
+                        r4 = @test f32c[].offset ≈ ((input_f32c.scale .- 1) .* trans .+ input_f32c.offset) ./ scale
+                        r5 = @test model[] == Mat4f(p.model[])
+
+                        ps = apply_transform_and_f32_conversion(p, f32c, p.converted[1])[]
+                        ps = [to_ndim(Point3f, model[] * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1), NaN) for p in ps]
+                        r6 = @test ps ≈ transformed rtol = 1e-6
+                    else
+                        r3 = @test f32c[].scale ≈ scale * input_f32c.scale
+                        r4 = @test f32c[].offset ≈ input_f32c.scale * trans + input_f32c.offset
+                        r5 = @test model[] == Mat4f(I)
+                        r6 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+                    end
 
                     # For debugging
                     if any(r -> r isa Test.Fail, (r1, r2, r3, r4, r5, r6))
@@ -221,6 +229,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                         println("input_f32c = $(input_f32c)")
                         println("f32c = $(f32c[])")
                         println("model = $(p.model[])")
+                        println("transformed = $transformed")
                     end
                 end
             end
