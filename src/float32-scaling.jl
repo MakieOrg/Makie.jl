@@ -109,7 +109,7 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
         # Neutral f32c can mean that data and model cancel each other and we 
         # still have Float32 preicsion issues inbetween.
 
-        # works with rotation component as well
+        # works with rotation component as well, but drops signs on scale
         trans, scale = decompose_translation_scale_matrix(model)
         is_rot_free = is_translation_scale_matrix(model)
 
@@ -127,6 +127,7 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
         elseif is_rot_free
             # Model has no rotation so we can extract scale + translation and move 
             # it to the f32c.
+            scale = Vec3d(model[1, 1], model[2, 2], model[3, 3]) # existing scale is missing signs
             f32c_obs[] = Makie.LinearScaling(
                 scale * f32c.scale, f32c.scale * trans + f32c.offset
             )
