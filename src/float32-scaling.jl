@@ -98,7 +98,7 @@ end
 # TODO: How do we actually judge this well?
 function is_float_safe(scale, trans)
     resolution = 1e4
-    return all(scale .> resolution .* eps.(Float32.(trans)))
+    return all(abs.(scale) .> resolution .* eps.(Float32.(trans)))
 end
 
 function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observable) # Observable{Any} :(
@@ -323,12 +323,13 @@ function apply_transform_and_f32_conversion(
 
     elseif is_translation_scale_matrix(model)
         # translation and scale of model have been moved to f32convert, so just apply that
-        return f32_convert(float32convert, apply_transform(transform_func, data, space), space)
+        transformed = apply_transform(transform_func, data, space)
+        return f32_convert(float32convert, to_ndim.(Point3d, transformed, 0), space)
 
     else
         # model contains rotation which stops us from applying f32convert 
         # before model
-        transformed = apply_transform_and_model(model, transform_func, input, space)
+        transformed = apply_transform_and_model(model, transform_func, data, space)
         return f32_convert(float32convert, transformed)
     end
 end
