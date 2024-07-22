@@ -121,7 +121,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
             scene = Scene()
             scene.float32convert = nothing
             p = scatter!(scene, rand(10))
-            Makie.update_state_before_display!(f)
+            Makie.update_state_before_display!(scene)
             # COV_EXCL_STOP
 
             # safe model
@@ -283,9 +283,42 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         end
 
 
-        # TODO: test edge case where data is not safe and model is not safe but together they are safe
-        # TODO: test dim versions
-        # TODO: include z in dim versions (heatmap, image, surface?)
+        @testset "edge case - unsafe data and model with safe world space" begin
+            for _ in 1:10
+                # Prepare example
+                # COV_EXCL_START
+                scale = rand(Vec2d) .+ 1.0
+                trans = 1e9 .* rand(Vec2d) .- 1
+                f, a, p = scatter([scale .* (rand(Point2d) .+ trans) for _ in 1:10])
+                scale!(p, (1.0 ./ scale)..., 1.0)
+                translate!(p, -trans..., 0.0)
+                Makie.update_state_before_display!(f)
+                # COV_EXCL_STOP
+
+                # Verify State
+                @test a.scene.float32convert.scaling[] == Makie.LinearScaling(Vec3d(1), Vec3d(0))
+                @test !Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[])
+
+                # compute expected f32c convert and transformed data
+                # (should follow else branches)
+                scale = p.transformation.scale[]
+                trans = p.transformation.translation[]
+                input_f32c = a.scene.float32convert.scaling[]
+                expected_f32c =  Makie.LinearScaling(
+                    scale * input_f32c.scale, input_f32c.scale * trans + input_f32c.offset
+                )
+                transformed = let
+                    ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
+                    f32_convert(input_f32c, ps)
+                end
+
+                f32c, model = patch_model(p)
+                @test f32c[].scale ≈ expected_f32c.scale
+                @test f32c[].offset ≈ expected_f32c.offset
+                @test model[] == Mat4f(I)
+                @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+            end
+        end
     end
 
 end
