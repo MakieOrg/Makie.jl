@@ -1132,6 +1132,7 @@ end
     hidespines!(ax)
     colormap = :tab10
     colorrange = (1, 10)
+    nan_color = :cyan
     for i in -1:13
         color = i == 13 ? NaN : i
         lowclip = i == 0 ? Makie.automatic : :bisque
