@@ -164,9 +164,9 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
         if isnan(scaled_number)
             return nan_color
-        elseif !isnothing(lowclip) && scaled_number < scaled_cmin
+        elseif lowclip !== automatic && scaled_number < scaled_cmin
             return lowclip
-        elseif !isnothing(highclip) && scaled_number > scaled_cmax
+        elseif highclip !== automatic && scaled_number > scaled_cmax
             return highclip
         end
         return interpolated_getindex(
@@ -363,7 +363,6 @@ end
 
 function assemble_colors(::Number, color, plot)
     plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value. Pass an explicit colorrange.")
-
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
     return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
                       cm.nan_color)
