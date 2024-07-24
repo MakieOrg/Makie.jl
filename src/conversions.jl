@@ -787,7 +787,7 @@ function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{1}, ::Val{N})
     if T == Tout && N == 3
         return reinterpret(Point{N, T}, elconvert(T, vec(verts)))
     else
-        return Point{N,Tout}[ntuple(j -> Tout(verts[i, j]), N) for i in 1:size(verts, 2)]
+        return Point{N,Tout}[ntuple(j -> Tout(verts[j, i]), N) for i in 1:size(verts, 2)]
     end
 end
 
