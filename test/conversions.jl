@@ -46,6 +46,11 @@ end
     X7 = rand(10,3)
     V7 = to_vertices(X7)
     @test (X7[7,1]) == V7[7][1]
+
+    # I dont like this, but this was the original behavior
+    # AND it stopped working because of type unstable code,
+    # so I guess its worth it
+    @test Makie.to_vertices(fill(0, (0, 3))) == Point{3, Float64}[]
 end
 
 @testset "GeometryBasics Lines & Polygons" begin
