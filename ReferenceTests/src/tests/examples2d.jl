@@ -1464,8 +1464,6 @@ end
     fig
 end
 
-using SparseArrays
-
 @reference_test "Spy" begin
     f = Figure()
     data = RNG.rand(10, 10)
