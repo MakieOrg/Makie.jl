@@ -93,6 +93,7 @@ mutable struct Scene <: AbstractScene
     cycler::Cycler
 
     conversions::DimConversions
+    mutation_lock::ReentrantLock
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -130,7 +131,8 @@ mutable struct Scene <: AbstractScene
             convert(Vector{AbstractLight}, lights),
             Observables.ObserverFunction[],
             Cycler(),
-            DimConversions()
+            DimConversions(),
+            ReentrantLock()
         )
         finalizer(free, scene)
         return scene
@@ -419,33 +421,36 @@ function free(scene::Scene)
 end
 
 function Base.empty!(scene::Scene; free=false)
-    foreach(empty!, copy(scene.children))
-    # clear plots of this scene
-    for plot in copy(scene.plots)
-        delete!(scene, plot)
-    end
+    lock(scene.mutation_lock) do
 
-    # clear all child scenes
-    if !isnothing(scene.parent)
-        filter!(x-> x !== scene, scene.parent.children)
-    end
+        foreach(empty!, copy(scene.children))
+        # clear plots of this scene
+        for plot in copy(scene.plots)
+            delete!(scene, plot)
+        end
 
-    empty!(scene.children)
-    empty!(scene.plots)
-    empty!(scene.theme)
-    # conditional, since in free we dont want this!
-    free || merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+        # clear all child scenes
+        if !isnothing(scene.parent)
+            filter!(x-> x !== scene, scene.parent.children)
+        end
 
-    disconnect!(scene.camera)
-    scene.camera_controls = EmptyCamera()
+        empty!(scene.children)
+        empty!(scene.plots)
+        empty!(scene.theme)
+        # conditional, since in free we dont want this!
+        free || merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
 
-    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
-        Observables.clear(getfield(scene.transformation, fieldname))
+        disconnect!(scene.camera)
+        scene.camera_controls = EmptyCamera()
+
+        for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
+            Observables.clear(getfield(scene.transformation, fieldname))
+        end
+        for obsfunc in scene.deregister_callbacks
+            Observables.off(obsfunc)
+        end
+        empty!(scene.deregister_callbacks)
     end
-    for obsfunc in scene.deregister_callbacks
-        Observables.off(obsfunc)
-    end
-    empty!(scene.deregister_callbacks)
     return nothing
 end
 
@@ -456,10 +461,12 @@ function Base.push!(plot::Plot, subplot)
 end
 
 function Base.push!(scene::Scene, @nospecialize(plot::Plot))
-    MakieCore.validate_attribute_keys(plot)
-    push!(scene.plots, plot)
-    for screen in scene.current_screens
-        Base.invokelatest(insert!, screen, scene, plot)
+    lock(scene.mutation_lock) do
+        MakieCore.validate_attribute_keys(plot)
+        push!(scene.plots, plot)
+        for screen in scene.current_screens
+            Base.invokelatest(insert!, screen, scene, plot)
+        end
     end
 end
 
@@ -485,15 +492,17 @@ function free(plot::AbstractPlot)
 end
 
 function Base.delete!(scene::Scene, plot::AbstractPlot)
-    len = length(scene.plots)
-    filter!(x -> x !== plot, scene.plots)
-    if length(scene.plots) == len
-        error("$(typeof(plot)) not in scene!")
+    lock(scene.mutation_lock) do
+        len = length(scene.plots)
+        filter!(x -> x !== plot, scene.plots)
+        if length(scene.plots) == len
+            error("$(typeof(plot)) not in scene!")
+        end
+        for screen in scene.current_screens
+            delete!(screen, scene, plot)
+        end
+        free(plot)
     end
-    for screen in scene.current_screens
-        delete!(screen, scene, plot)
-    end
-    free(plot)
 end
 
 events(x) = events(get_scene(x))
