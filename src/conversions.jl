@@ -47,7 +47,11 @@ function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N, PT
     return Point{N,T}[ismissing(x) ? Point{N,T}(NaN) : Point{N,T}(x) for x in a]
 end
 
-convert_single_argument(a::AbstractArray{Any}) = convert_single_argument([x for x in a])
+function convert_single_argument(a::AbstractArray{Any})
+    isempty(a) && return a
+    return convert_single_argument([x for x in a])
+end
+
 # Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
 convert_single_argument(a::AbstractArray{T}) where {T<:Real} = a
 convert_single_argument(a::AbstractArray{<:Point{N, T}}) where {N, T} = a

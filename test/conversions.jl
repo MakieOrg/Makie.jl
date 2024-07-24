@@ -199,6 +199,8 @@ end
         convert_arguments(Lines, [Point(1, 2), missing, Point(3, 4)]),
         (Point2f[(1.0, 2.0), (NaN, NaN), (3.0, 4.0)],)
     )
+    x = Any[]
+    @test x === Makie.convert_single_argument(x) # should not be converted (and also not stackoverflow!)
 end
 
 @testset "categorical colors" begin
