@@ -323,7 +323,6 @@ function to_world(scene::SceneLike, point::VecTypes{2})
     cam = camera(scene)
     x = _to_world(
         Point2d(point[1], point[2]),
-        # inv(transformationmatrix(scene)[]) *
         inv(Mat4d(cam.projectionview[])),
         Vec2d(cam.resolution[])
     )
