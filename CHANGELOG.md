@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Added the `zoom_translates_lookat` setting to LScene's 3D camera. If set to true the camera no longer moves away from or towards lookat when zooming, avoiding issues with it clipping into a shape. [#3793](https://github.com/MakieOrg/Makie.jl/pull/3793)
+- Improved accuracy of framerate settings in GLMakie [#3954](https://github.com/MakieOrg/Makie.jl/pull/3954)
 - Fix label_formatter being called twice in barplot [#4046](https://github.com/MakieOrg/Makie.jl/pull/4046).
 - Fix error with automatic `highclip` or `lowclip` and scalar colors [#4048](https://github.com/MakieOrg/Makie.jl/pull/4048).
 - Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
