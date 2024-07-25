@@ -114,15 +114,13 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
         return
     end
 
-    # This produces bad timings just like sleep...
-    screen.tick_callback = Makie.TickCallback(e.tick)
-    screen.tick_clock = Timer(0.0, interval = 1.0 / 30.0) do timer
+    tick_callback = Makie.TickCallback(e.tick)
+    Makie.start!(screen.tick_clock) do timer
         if isopen(screen)
-            screen.tick_callback(Makie.RegularRenderTick)
+            tick_callback(Makie.RegularRenderTick)
             # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
-            close(timer)
-            screen.tick_clock = nothing
+            stop!(timer)
         end
         return
     end
