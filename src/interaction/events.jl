@@ -81,7 +81,7 @@ function onpick end
 Creates an `And` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `And` structs is created.
 
-See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`&`](@ref)
+See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), `&`
 """
 struct And{L, R} <: BooleanOperator
     left::L
@@ -96,7 +96,7 @@ And(left, right::Bool) = right ? left : false
 Creates an `Or` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `Or` structs is created.
 
-See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`|`](@ref)
+See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), `|`
 """
 struct Or{L, R} <: BooleanOperator
     left::L
@@ -110,7 +110,7 @@ Or(left, right::Bool) = right ? true : left
 
 Creates a `Not` struct with the given argument for later evaluation.
 
-See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), [`!`](@ref)
+See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), `!`
 """
 struct Not{T} <: BooleanOperator
     x::T
@@ -132,7 +132,7 @@ button under a `Not` must not be pressed and that this follows automatically
 from the subset of buttons that must be pressed.
 
 See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
+`&`, `|`, `!`
 """
 struct Exclusively <: BooleanOperator
     x::Set{Union{Keyboard.Button, Mouse.Button}}
@@ -255,8 +255,8 @@ of it's current state. For example, when reacting to a mousebutton event, you ca
 pass `event.button` so that a key combination including that button still evaluates
 as true.
 
-See also: [`waspressed`](@ref) [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
+See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
+`&`, `|`, `!`
 """
 ispressed(events::Events, mb::Mouse.Button, waspressed = nothing) = mb in events.mousebuttonstate || mb == waspressed
 ispressed(events::Events, key::Keyboard.Button, waspressed = nothing) = key in events.keyboardstate || key == waspressed

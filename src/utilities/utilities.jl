@@ -414,7 +414,7 @@ Allows to supply `f`, which gets applied to every point.
 """
 function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
     g = map(CartesianIndices(z)) do i
-        return f(Point3f(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
+        return f(Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
     end
     return vec(g)
 end
@@ -469,4 +469,74 @@ function available_plotting_methods()
         end
     end
     return meths
+end
+
+function extract_method_arguments(m::Method)
+    tv, decls, file, line = Base.arg_decl_parts(m)
+    tnames = map(decls[3:end]) do (n, t)
+        return string(n, "::", t)
+    end
+    return join(tnames, ", ")
+end
+
+function available_conversions(PlotType)
+    result = []
+    for m in methods(convert_arguments, (PlotType, Vararg{Any}))
+        push!(result, extract_method_arguments(m))
+    end
+    for m in methods(convert_arguments, (typeof(Makie.conversion_trait(PlotType)), Vararg{Any}))
+        push!(result, extract_method_arguments(m))
+    end
+    return result
+end
+
+mindist(x, a, b) = min(abs(a - x), abs(b - x))
+function gappy(x, ps)
+    n = length(ps)
+    x <= first(ps) && return first(ps) - x
+    for j in 1:(n - 1)
+        p0 = ps[j]
+        p1 = ps[min(j + 1, n)]
+        if p0 <= x && p1 >= x
+            return mindist(x, p0, p1) * (isodd(j) ? 1 : -1)
+        end
+    end
+    return last(ps) - x
+end
+
+
+# This is used to map a vector of `points` to a signed distance field. The
+# points mark transition between "on" and "off" section of the pattern.
+
+# The output should be periodic so the signed distance field value
+# representing points[1] should be equal to the one representing points[end].
+# => range(..., length = resolution+1)[1:end-1]
+
+# points[end] should still represent the full length of the pattern though,
+# so we need rescaling by ((resolution + 1) / resolution)
+function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real=100)
+    scaled = ((resolution + 1) / resolution) .* linestyle
+    r = range(first(scaled); stop=last(scaled), length=resolution + 1)[1:(end - 1)]
+    return Float16[-gappy(x, scaled) for x in r]
+end
+
+"""
+    shared_attributes(plot::Plot, target::Type{<:Plot})
+
+Extracts all attributes from `plot` that are shared with the `target` plot type.
+"""
+function shared_attributes(plot::Plot, target::Type{<:Plot})
+    valid_attributes = attribute_names(target)
+    existing_attributes = attribute_names(typeof(plot))
+    to_drop = setdiff(existing_attributes, valid_attributes)
+    return drop_attributes(plot, to_drop)
+end
+
+function drop_attributes(plot::Plot, to_drop::Symbol...)
+    return drop_attributes(plot, Set(to_drop))
+end
+
+function drop_attributes(plot::Plot, to_drop::Set{Symbol})
+    attr = attributes(attributes(plot))
+    return Attributes([(k => v) for (k, v) in attr if !(k in to_drop)])
 end

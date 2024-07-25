@@ -74,3 +74,10 @@ function get_render_type(surface::Cairo.CairoSurface)
     typ == Cairo.CAIRO_SURFACE_TYPE_IMAGE && return IMAGE
     return IMAGE # By default assume that the render type is IMAGE
 end
+
+function restrict_pdf_version!(surface::Cairo.CairoSurface, v::Integer)
+    @assert surface.ptr != C_NULL
+    0 ≤ v ≤ 3 || throw(ArgumentError("version must be 0, 1, 2, or 3 (received $v)"))
+    ccall((:cairo_pdf_surface_restrict_to_version, Cairo.libcairo), Nothing,
+          (Ptr{UInt8}, Int32), surface.ptr, v)
+end

@@ -48,6 +48,9 @@ const MAKIE_DEFAULT_THEME = Attributes(
     linecolor = :black,
     linewidth = 1.5,
     linestyle = nothing,
+    linecap = :butt,
+    joinstyle = :miter,
+    miter_limit = pi/3,
     patchcolor = RGBAf(0, 0, 0, 0.6),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
@@ -86,7 +89,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
         pt_per_unit = 0.75,
         antialias = :best,
         visible = true,
-        start_renderloop = false
+        start_renderloop = false,
+        pdf_version = nothing
     ),
 
     GLMakie = Attributes(

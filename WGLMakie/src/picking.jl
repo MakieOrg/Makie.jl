@@ -16,8 +16,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     if isempty(matrix)
         return empty
     else
-        all_children = Makie.collect_atomic_plots(scene)
-        lookup = Dict(Pair.(js_uuid.(all_children), all_children))
+        lookup = plot_lookup(scene)
         return map(matrix) do (uuid, index)
             !haskey(lookup, uuid) && return (nothing, 0)
             return (lookup[uuid], Int(index) + 1)
@@ -40,6 +39,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_closest(scene, $(xy_vec), $(range)))
     """)
     lookup = plot_lookup(scene)
+    !haskey(lookup, selection[1]) && return (nothing, 0)
     return (lookup[selection[1]], selection[2] + 1)
 end
 
@@ -55,11 +55,12 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isnothing(selection) && return Tuple{Union{Nothing,AbstractPlot},Int}[]
     lookup = plot_lookup(scene)
     return map(selection) do (plot_id, index)
+        !haskey(lookup, plot_id) && return (nothing, 0)
         return (lookup[plot_id], index + 1)
     end
 end
 
-function Makie.pick(scene::Scene, screen::Screen, xy)
+function Makie.pick(::Scene, screen::Screen, xy)
     plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
     return plot_matrix[1, 1]
 end

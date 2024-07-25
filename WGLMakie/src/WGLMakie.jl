@@ -27,6 +27,7 @@ using Makie: attribute_per_char, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
+using Makie: apply_transform_and_f32_conversion, f32_conversion_obs, f32_convert
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
@@ -42,6 +43,7 @@ include("lines.jl")
 include("meshes.jl")
 include("imagelike.jl")
 include("picking.jl")
+include("voxel.jl")
 
 const LAST_INLINE = Base.RefValue{Union{Automatic, Bool}}(Makie.automatic)
 

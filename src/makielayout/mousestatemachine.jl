@@ -55,10 +55,10 @@ Fields:
 struct MouseEvent
     type::MouseEventType
     t::Float64
-    data::Point2f
+    data::Point2d
     px::Point2f
     prev_t::Float64
-    prev_data::Point2f
+    prev_data::Point2d
     prev_px::Point2f
 end
 
@@ -190,7 +190,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     dblclick_max_interval = 0.2
 
     mouseevent = Observable{MouseEvent}(
-        MouseEvent(MouseEventTypes.out, 0.0, Point2f(0, 0), Point2f(0, 0), 0.0, Point2f(0, 0), Point2f(0, 0))
+        MouseEvent(MouseEventTypes.out, 0.0, Point2d(0, 0), Point2f(0, 0), 0.0, Point2d(0, 0), Point2f(0, 0))
     )
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
@@ -210,7 +210,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         consumed = false
         t = time()
         data = mouseposition(scene)
-        px = Makie.mouseposition_px(scene)
+        px = mouseposition_px(scene)
         mouse_inside = is_mouse_over_relevant_area()
 
         # last_mouseevent can only be up or down
@@ -286,10 +286,9 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         # TODO: this could probably be simplified by just using event.button
         # though that would probably change the way this handles a bit
         pressed_buttons = events(scene).mousebuttonstate
-
         # mouse went down, this can either happen inside or outside the objects of interest
         # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)
-        if event.action == Mouse.press && _isstandardmousebutton(first(pressed_buttons))
+        if event.action == Mouse.press && !isempty(pressed_buttons) && _isstandardmousebutton(first(pressed_buttons))
             if length(pressed_buttons) == 1
                 button = first(pressed_buttons)
                 mouse_downed_button[] = button

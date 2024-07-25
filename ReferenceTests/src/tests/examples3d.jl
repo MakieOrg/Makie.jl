@@ -55,7 +55,7 @@ end
     rot = qrotation(Vec3f(1, 0, 0), 0.5pi) * qrotation(Vec3f(0, 1, 0), 0.7pi)
     meshscatter(
         1:3, 1:3, fill(0, 3, 3),
-        marker=catmesh, color=img, markersize=1, rotations=rot,
+        marker=catmesh, color=img, markersize=1, rotation=rot,
         axis=(type=LScene, show_axis=false)
     )
 end
@@ -131,8 +131,8 @@ end
 @reference_test "Ellipsoid marker sizes" begin # see PR #3722
     pts = Point3f[[0, 0, 0], [1, 0, 0]]
     markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
-    rotations = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
-    meshscatter(pts; markersize, rotations, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
+    rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
+    meshscatter(pts; markersize, rotation, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
 end
 
 @reference_test "Record Video" begin
@@ -355,7 +355,7 @@ end
     fig, ax, meshplot = meshscatter(
         pG[edges[:, 1]],
         color=colorsC, marker=meshC,
-        markersize=sizesC,  rotations=rotationsC,
+        markersize=sizesC,  rotation=rotationsC,
     )
     meshscatter!(
         ax, pG,
@@ -380,7 +380,7 @@ end
 @reference_test "image scatter" begin
     scatter(
         1:10, 1:10, RNG.rand(10, 10) .* 10,
-        rotations=normalize.(RNG.rand(Quaternionf, 10 * 10)),
+        rotation=normalize.(RNG.rand(Quaternionf, 10 * 10)),
         markersize=20,
         # can also be an array of images for each point
         # need to be the same size for best performance, though
@@ -392,6 +392,15 @@ end
     large_sphere = Sphere(Point3f(0), 1f0)
     positions = decompose(Point3f, large_sphere)
     meshscatter(positions, color=RGBAf(0.9, 0.2, 0.4, 1), markersize=0.05)
+end
+
+@reference_test "Text glow and overdraw" begin
+    p1 = Point3f(0,0,0)
+    p2 = Point3f(1,0,0)
+    f, ax, pl = meshscatter([p1, p2]; markersize=0.3, color=[:purple, :yellow])
+    text!(ax, p1; text="A", align=(:center, :center), glowwidth=10.0, glowcolor=:white, color=:black, fontsize=40, overdraw=true)
+    text!(ax, p2; text="B", align=(:center, :center), glowwidth=20.0, glowcolor=(:black, 0.6), color=:white, fontsize=40, overdraw=true)
+    f
 end
 
 @reference_test "Animated surface and wireframe" begin

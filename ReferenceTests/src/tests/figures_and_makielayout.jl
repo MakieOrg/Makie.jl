@@ -282,7 +282,7 @@ end
     values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
 
     # TO not make this fail in CairoMakie, we dont actually plot the volume
-    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    _f, ax, cp = contour(-1..1, -1..1, -1..1, values; levels=10, colormap=:viridis)
     Colorbar(fig[2, 1], cp; size=300)
 
     _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)
@@ -327,3 +327,16 @@ end
     fig
 end
 
+@reference_test "Axis limits with translation, scaling and transform_func" begin
+    f = Figure()
+    a = Axis(f[1,1], xscale = log10, yscale = log10)
+    ps = Point2f.([0.1, 0.1, 1000, 1000], [1, 100, 1, 100])
+    hl = linesegments!(a, ps[[1, 3, 2, 4]], color = :red)
+    vl = linesegments!(a, ps, color = :blue)
+    # translation happens before scale! here because scale! acts on scene and
+    # translate! acts on the plot (these are combined by matmult)
+    scale!(a.scene, 0.5, 2, 1.0)
+    translate!(hl, 0, 1, 0)
+    translate!(vl, 1, 0, 0)
+    f
+end

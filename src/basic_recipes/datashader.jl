@@ -273,7 +273,7 @@ end
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
-    Please be vary of bugs in the implementation and open issues if you encounter odd behaviour.
+    Please be wary of bugs in the implementation and open issues if you encounter odd behaviour.
 
 Points can be any array type supporting iteration & getindex, including memory mapped arrays.
 If you have separate arrays for x and y coordinates and want to avoid conversion and copy, consider using:
@@ -282,60 +282,61 @@ using Makie.StructArrays
 points = StructArray{Point2f}((x, y))
 datashader(points)
 ```
-Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower then just copying it into a new array.
+Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower than just copying the data into a new array.
 
 For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
-
-## Attributes
-
-### Specific to `DataShader`
-
-- `agg = AggCount()` can be `AggCount()`, `AggAny()` or `AggMean()`. User extendable by overloading:
-
-
-    ```Julia
-        struct MyAgg{T} <: Makie.AggOp end
-        MyAgg() = MyAgg{Float64}()
-        Makie.Aggregation.null(::MyAgg{T}) where {T} = zero(T)
-        Makie.Aggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
-        Makie.Aggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
-        Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
-    ```
-
-- `method = AggThreads()` can be `AggThreads()` or `AggSerial()`.
-- `async::Bool = true` will calculate get_aggregation in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in documenter.
-
-- `operation::Function = automatic` Defaults to `Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`operation(final_aggregation_result)`).
-- `local_operation::Function = identity` function which gets call on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
-
-- `point_transform::Function = identity` function which gets applied to every point before aggregating it.
-- `binsize::Number = 1` factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a corser image.
-- `show_timings::Bool = false` show how long it takes to aggregate each frame.
-- `interpolate::Bool = true` If the resulting image should be displayed interpolated.
-
-$(Base.Docs.doc(MakieCore.colormap_attributes!))
-
-$(Base.Docs.doc(MakieCore.generic_plot_attributes!))
 """
-@recipe(DataShader, points) do scene
-    attr = Theme(
+@recipe DataShader (points,) begin
+    """
+    Can be `AggCount()`, `AggAny()` or `AggMean()`. User-extensible by overloading:
 
-        agg = AggCount(),
-        method = AggThreads(),
-        async = true,
-        # Defaults to equalize_histogram
-        # just set to automatic, so that if one sets local_operation, one doesn't do equalize_histogram on top of things.
-        operation=automatic,
-        local_operation=identity,
+    ```julia
+    struct MyAgg{T} <: Makie.AggOp end
+    MyAgg() = MyAgg{Float64}()
+    Makie.Aggregation.null(::MyAgg{T}) where {T} = zero(T)
+    Makie.Aggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
+    Makie.Aggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
+    Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
+    ```
+    """
+    agg = AggCount()
+    """
+    Can be `AggThreads()` or `AggSerial()` for threaded vs. serial aggregation.
+    """
+    method = AggThreads()
+    """
+    Will calculate `get_aggregation` in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in Documenter.
+    """
+    async = true
+    # Defaults to equalize_histogram
+    # just set to automatic, so that if one sets local_operation, one doesn't do equalize_histogram on top of things.
+    """
+    Defaults to `Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`operation(final_aggregation_result)`).
+    """
+    operation=automatic
+    """
+    Function which gets called on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
+    """
+    local_operation=identity
 
-        point_transform = identity,
-        binsize = 1,
-        show_timings = false,
-
-        interpolate = true
-    )
-    MakieCore.generic_plot_attributes!(attr)
-    return MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
+    """
+    Function which gets applied to every point before aggregating it.
+    """
+    point_transform = identity
+    """
+    Factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a coarser image.
+    """
+    binsize = 1
+    """
+    Set to `true` to show how long it takes to aggregate each frame.
+    """
+    show_timings = false
+    """
+    If the resulting image should be displayed interpolated.
+    """
+    interpolate = true
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
 end
 
 function fast_bb(points, f)
@@ -376,7 +377,7 @@ end
 
 function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
+    limits = projview_to_2d_limits(p)
     viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
     canvas = canvas_obs(limits, viewport, p.agg, p.binsize)
     p._boundingbox = lift(fast_bb, p.points, p.point_transform)
@@ -400,8 +401,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         return
     end
     p.raw_colorrange = colorrange
-    image!(p, canvas_with_aggregation;
-        operation=p.operation, local_operation=p.local_operation, interpolate=p.interpolate,
+    image!(p, canvas_with_aggregation, p.operation, p.local_operation;
+        interpolate=p.interpolate,
         MakieCore.generic_plot_attributes(p)...,
         MakieCore.colormap_attributes(p)...)
     return p
@@ -431,7 +432,7 @@ end
 
 function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
     scene = parent_scene(p)
-    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview; ignore_equal_values=true)
+    limits = projview_to_2d_limits(p)
     viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
     canvas = canvas_obs(limits, viewport, Observable(AggCount{Float32}()), p.binsize)
     p._boundingbox = lift(p.points, p.point_transform) do cats, func
@@ -458,20 +459,19 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors
     op = map(total -> (x -> log10(x + 1) / log10(total + 1)), toal_value)
-    for (k, canvas) in canvases
+
+    for (k, canv) in canvases
         color = colors[k]
         cmap = [(color, 0.0), (color, 1.0)]
-        image!(p, canvas; colorrange=Vec2f(0, 1), colormap=cmap, operation=identity, local_operation=op)
+        image!(p, canv, identity, op; colorrange=Vec2f(0, 1), colormap=cmap)
     end
     return p
 end
 
 data_limits(p::DataShader) =  p._boundingbox[]
+boundingbox(p::DataShader, space::Symbol = :data) = apply_transform_and_model(p, p._boundingbox[])
 
-used_attributes(::Canvas) = (:operation, :local_operation)
-
-function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas;
-                           operation=automatic, local_operation=identity)
+function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)
     pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
     return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel)
