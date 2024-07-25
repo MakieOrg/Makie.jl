@@ -510,18 +510,15 @@ function draw_atomic(screen::Screen, scene::Scene,
     return cached_robj!(screen, scene, plot) do gl_attributes
         glyphcollection = plot[1]
 
-        transfunc = Makie.transform_func_obs(plot)
-        pos = gl_attributes[:position]
+        pos = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), gl_attributes[:position])
         space = plot.space
         markerspace = plot.markerspace
         offset = pop!(gl_attributes, :offset, Vec2f(0))
         atlas = gl_texture_atlas()
 
         # calculate quad metrics
-        glyph_data = lift(
-                plot, pos, glyphcollection, offset, f32_conversion_obs(scene), transfunc, space
-            ) do pos, gc, offset, f32c, transfunc, space
-            return Makie.text_quads(atlas, pos, to_value(gc), offset, f32c, transfunc, space)
+        glyph_data = lift(plot, pos, glyphcollection, offset) do pos, gc, offset
+            return Makie.text_quads(atlas, pos, to_value(gc), offset)
         end
 
         # unpack values from the one signal:

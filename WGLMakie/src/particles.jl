@@ -244,14 +244,13 @@ value_or_first(x) = x
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
     f32c, model = Makie.patch_model(plot)
-    transfunc = transform_func_obs(plot)
-    pos = plot.position
+    pos = apply_transform_and_f32_conversion(plot, f32c, plot.position)
     space = plot.space
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
-    glyph_data = lift(plot, pos, glyphcollection, offset, f32c, transfunc, space; ignore_equal_values=true) do pos, gc, offset, f32c, transfunc, space
-        Makie.text_quads(atlas, pos, to_value(gc), offset, f32c, transfunc, space)
+    glyph_data = lift(plot, pos, glyphcollection, offset; ignore_equal_values=true) do pos, gc, offset
+        Makie.text_quads(atlas, pos, to_value(gc), offset)
     end
 
     # unpack values from the one signal:
