@@ -670,6 +670,7 @@ float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_ty
 float_type(a::Type, rest::Type...) = promote_type(map(float_type, (a, rest...))...)
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
+float_type(::Type{Bool}) = Float32
 float_type(::Type{<:Real}) = Float64
 float_type(::Type{<:Union{Int8,UInt8,Int16,UInt16}}) = Float32
 float_type(::Type{<:Union{Float16}}) = Float32

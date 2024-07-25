@@ -34,7 +34,8 @@ function boundingbox(p::Spy, space::Symbol=:data)
 end
 
 function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
-    return convert_arguments(Spy, T.((0, size(matrix, 1))), T.((0, size(matrix, 2))), matrix)
+    Tr = Makie.float_type(T)
+    return convert_arguments(Spy, Tr.((0, size(matrix, 1))), Tr.((0, size(matrix, 2))), matrix)
 end
 
 function convert_arguments(::Type{<:Spy}, xs, ys, matrix::AbstractMatrix)
