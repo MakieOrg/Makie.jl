@@ -704,7 +704,7 @@ end
     fig
 end
 
-@reference_test "Scatter with FastPixel"
+@reference_test "Scatter with FastPixel" begin
     f = Figure()
     for (i, space, msize) in [(1, :pixel, 20), (2, :data, 0.5)]
         for (j, data, AT) in [(1, rand(Point3f, 10), Axis3), (2, rand(Point3f, 10), LScene), (3, rand(Point2f, 10), Axis)]
