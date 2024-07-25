@@ -298,6 +298,8 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     color = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
     invert_normals = false
+    "[(G)LMakie only] Specifies whether the surface matrix gets sampled with interpolation."
+    interpolate = true
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -321,7 +323,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
-    
+
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
@@ -362,7 +364,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
-    
+
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
@@ -617,7 +619,7 @@ Plots polygons, which are defined by
     Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
-    
+
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
