@@ -29,17 +29,13 @@ To avoid lag spikes from hurrying the timer for multiple iterations/invocations
 only the difference to the nearest multiple of `target_delta_time` is counted. 
 E.g. if two calls to `sleep(timer)` are 2.3 delta times apart, 0.3 will be 
 relevant difference for the budget.
-
-Note that the constructor measures the time of one `Base.sleep(0.0001)` so it 
-can better estimate the necessary sleep time. As such 
-`sleep(BudgetedTimer(some_time))` is not accurat eand should be avoided.
 """
-function BudgetedTimer(delta_time::AbstractFloat)
-    return BudgetedTimer(identity, delta_time, false, nothing)
+function BudgetedTimer(delta_time::AbstractFloat; min_sleep = 0.015)
+    return BudgetedTimer(identity, delta_time, false, nothing, min_sleep)
 end
 
-function BudgetedTimer(callback, delta_time::AbstractFloat, start = true)
-    timer = BudgetedTimer(callback, delta_time, true, nothing)
+function BudgetedTimer(callback, delta_time::AbstractFloat, start = true; min_sleep = 0.015)
+    timer = BudgetedTimer(callback, delta_time, true, nothing, min_sleep)
     if start
         timer.task = @async while timer.running
             timer.callback()
