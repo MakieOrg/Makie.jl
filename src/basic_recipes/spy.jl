@@ -33,8 +33,8 @@ function boundingbox(p::Spy, space::Symbol=:data)
     boundingbox(p.plots[2], space)
 end
 
-function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix)
-    return convert_arguments(Spy, (0, size(matrix, 1)), (0, size(matrix, 2)), matrix)
+function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
+    return convert_arguments(Spy, T.((0, size(matrix, 1))), T.((0, size(matrix, 2))), matrix)
 end
 
 function convert_arguments(::Type{<:Spy}, xs, ys, matrix::AbstractMatrix)
