@@ -298,7 +298,7 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     color = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
     invert_normals = false
-    "[(G)LMakie only] Specifies whether the surface matrix gets sampled with interpolation."
+    "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
     interpolate = true
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...

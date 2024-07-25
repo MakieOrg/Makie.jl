@@ -1466,3 +1466,18 @@ end
     end
     fig
 end
+
+@reference_test "Surface interpolate=true/false" begin
+    r = 0:0.01:1
+    Z = broadcast((x,y)-> 0.1 * x, r, r')
+    C = zeros(size(Z)) #colour matrix
+    C[:, 5:10] .= 1
+    C[:, 40:45] .= 2
+    C[:, 70:75] .= 3
+    C[:, 90:95] .= 4
+    f, ax, s = surface(r, r, zeros(size(Z)); interpolate=true, color=C, lowclip=:blue, colorrange=(1, 4),
+                       shading=NoShading, axis=(;title="interpolate=true"))
+    surface(f[1, 2], r, r, zeros(size(Z)); interpolate=false, color=C, lowclip=:blue, colorrange=(1, 4),
+                       shading=NoShading, axis=(;title="interpolate=false"))
+    f
+end
