@@ -1467,7 +1467,7 @@ end
     fig
 end
 
-@reference_test "Surface interpolate=true/false" begin
+@reference_test "Surface interpolate attribute" begin
     r = 0:0.01:1
     Z = broadcast((x,y)-> 0.1 * x, r, r')
     C = zeros(size(Z)) #colour matrix
