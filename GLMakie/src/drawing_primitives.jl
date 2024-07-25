@@ -464,9 +464,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             data[:pattern] = linestyle
             data[:fast] = false
 
-            pop!(data, :f32c) # we can do things in order here
-            pvm = lift(plot, data[:projectionview], data[:model], f32_conversion_obs(scene), space) do pv, model, f32c, space
-                pv * Makie.f32_convert_matrix(f32c, space) * model
+            # TODO: Skip patch_model() when this branch is used
+            pop!(data, :f32c)
+            pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
+                Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
             end
             transform_func = transform_func_obs(plot)
             positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
