@@ -163,6 +163,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Bool
     rendertask::Union{Task, Nothing}
+    timer::BudgetedTimer
     px_per_unit::Observable{Float32}
 
     screen2scene::Dict{WeakRef, ScreenID}
@@ -202,7 +203,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
         s = size(framebuffer)
         screen = new{GLWindow}(
             glscreen, shader_cache, framebuffer,
-            config, stop_renderloop, rendertask,
+            config, stop_renderloop, rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
@@ -257,7 +258,10 @@ function empty_screen(debugging::Bool; reuse=true)
         rethrow(e)
     end
 
-    GLFW.SetWindowIcon(window, Makie.icon())
+    # GLFW doesn't support setting the icon on OSX
+    if !Sys.isapple()
+        GLFW.SetWindowIcon(window, Makie.icon())
+    end
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
@@ -894,29 +898,25 @@ function vsynced_renderloop(screen)
         end
         pollevents(screen, Makie.RegularRenderTick) # GLFW poll
         render_frame(screen)
-        GLFW.SwapBuffers(to_native(screen))
         yield()
+        GC.safepoint()
+        GLFW.SwapBuffers(to_native(screen))
     end
 end
 
 function fps_renderloop(screen::Screen)
+    reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop
         if screen.config.pause_renderloop
-            pollevents(screen, Makie.PausedRenderTick); sleep(0.1)
-            continue
+            pollevents(screen, Makie.PausedRenderTick)
+        else
+            pollevents(screen, Makie.RegularRenderTick)
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
         end
-        time_per_frame = 1.0 / screen.config.framerate
-        t = time_ns()
-        pollevents(screen, Makie.RegularRenderTick) # GLFW poll
-        render_frame(screen)
-        GLFW.SwapBuffers(to_native(screen))
-        t_elapsed = (time_ns() - t) / 1e9
-        diff = time_per_frame - t_elapsed
-        if diff > 0.001 # can't sleep less than 0.001
-            sleep(diff)
-        else # if we don't sleep, we still need to yield explicitely to other tasks
-            yield()
-        end
+        
+        GC.safepoint()
+        sleep(screen.timer)
     end
 end
 
@@ -929,11 +929,14 @@ function requires_update(screen::Screen)
     return false
 end
 
+
+# const time_record = sizehint!(Float64[], 100_000)
+
 function on_demand_renderloop(screen::Screen)
     tick_state = Makie.UnknownTickState
+    # last_time = time_ns()
+    reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop
-        t = time_ns()
-        time_per_frame = 1.0 / screen.config.framerate
         pollevents(screen, tick_state) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
@@ -944,13 +947,12 @@ function on_demand_renderloop(screen::Screen)
             tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
         end
 
-        t_elapsed = (time_ns() - t) / 1e9
-        diff = time_per_frame - t_elapsed
-        if diff > 0.001 # can't sleep less than 0.001
-            sleep(diff)
-        else # if we don't sleep, we still need to yield explicitely to other tasks
-            yield()
-        end
+        GC.safepoint()
+        sleep(screen.timer)
+
+        # t = time_ns()
+        # push!(time_record, 1e-9 * (t - last_time))
+        # last_time = t
     end
     cause = screen.stop_renderloop ? "stopped renderloop" : "closing window"
     @debug("Leaving renderloop, cause: $(cause)")

@@ -3,14 +3,31 @@
 ## [Unreleased]
 
 - Added `events.tick` to allow linking actions like animations to the renderloop. [#3948](https://github.com/MakieOrg/Makie.jl/pull/3948)
-- Fixes for Menu and DataInspector [#3975](https://github.com/MakieOrg/Makie.jl/pull/3975)
-- Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907)
+- Improved accuracy of framerate settings in GLMakie [#3954](https://github.com/MakieOrg/Makie.jl/pull/3954)
+- Fix label_formatter being called twice in barplot [#4046](https://github.com/MakieOrg/Makie.jl/pull/4046).
+- Fix error with automatic `highclip` or `lowclip` and scalar colors [#4048](https://github.com/MakieOrg/Makie.jl/pull/4048).
+- Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
+- Correct a method ambiguity in `insert!` which was causing `PlotList` to fail on CairoMakie. [#4038](https://github.com/MakieOrg/Makie.jl/pull/4038)
+
+## [0.21.5] - 2024-07-07
+
+- Fixed tuple argument for `WGLMakie.activate!(resize_to=(:parent, nothing))` [#4009](https://github.com/MakieOrg/Makie.jl/pull/4009).
+- validate plot attributes later, for axis specific plot attributes [#3974](https://github.com/MakieOrg/Makie.jl/pull/3974).
+
+## [0.21.4] - 2024-07-02
+
+- Fixed support for GLFW 3.4 on OSX [#3999](https://github.com/MakieOrg/Makie.jl/issues/3999).
+- Changed camera variables to Float64 for increased accuracy [#3984](https://github.com/MakieOrg/Makie.jl/pull/3984)
+- Allow CairoMakie to render `poly` overloads that internally don't use two child plots [#3986](https://github.com/MakieOrg/Makie.jl/pull/3986).
+- Fixes for Menu and DataInspector [#3975](https://github.com/MakieOrg/Makie.jl/pull/3975).
+- Add line-loop detection and rendering to GLMakie and WGLMakie [#3907](https://github.com/MakieOrg/Makie.jl/pull/3907).
 
 ## [0.21.3] - 2024-06-17
 
 - Fix stack overflows when using `markerspace = :data` with `scatter` [#3960](https://github.com/MakieOrg/Makie.jl/issues/3960).
 - CairoMakie: Fix broken SVGs when using non-interpolated image primitives, for example Colorbars, with recent Cairo versions [#3967](https://github.com/MakieOrg/Makie.jl/pull/3967).
 - CairoMakie: Add argument `pdf_version` to restrict the PDF version when saving a figure as a PDF [#3845](https://github.com/MakieOrg/Makie.jl/pull/3845).
+- Fix DataInspector using invalid attribute strokewidth for plot type Wireframe [#3917](https://github.com/MakieOrg/Makie.jl/pull/3917).
 - CairoMakie: Fix incorrect scaling factor for SVGs with Cairo_jll 1.18 [#3964](https://github.com/MakieOrg/Makie.jl/pull/3964).
 - Fixed use of Textbox from Bonito [#3924](https://github.com/MakieOrg/Makie.jl/pull/3924)
 
@@ -517,7 +534,9 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.3...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.5...HEAD
+[0.21.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.4...v0.21.5
+[0.21.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.3...v0.21.4
 [0.21.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.2...v0.21.3
 [0.21.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.1...v0.21.2
 [0.21.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.0...v0.21.1

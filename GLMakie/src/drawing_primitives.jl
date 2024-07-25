@@ -139,14 +139,14 @@ function to_glvisualize_key(k)
 end
 
 function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space])
-    for key in (:pixel_space, :eyeposition)
-        # Overwrite these, user defined attributes shouldn't use those!
-        gl_attributes[key] = lift(identity, plot, getfield(cam, key))
-    end
+    # Overwrite these, user defined attributes shouldn't use those!
+    gl_attributes[:pixel_space] = lift(Mat4f, plot, cam.pixel_space)
+    gl_attributes[:eyeposition] = lift(identity, plot, cam.eyeposition)
+
     get!(gl_attributes, :view) do
         # get!(cam.calculated_values, Symbol("view_$(space[])")) do
             return lift(plot, cam.view, space) do view, space
-                return is_data_space(space) ? view : Mat4f(I)
+                return is_data_space(space) ? Mat4f(view) : Mat4f(I)
             end
         # end
     end
@@ -169,14 +169,14 @@ function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space]
     get!(gl_attributes, :projection) do
         # return get!(cam.calculated_values, Symbol("projection_$(space[])")) do
             return lift(plot, cam.projection, cam.pixel_space, space) do _, _, space
-                return Makie.space_to_clip(cam, space, false)
+                return Mat4f(Makie.space_to_clip(cam, space, false))
             end
         # end
     end
     get!(gl_attributes, :projectionview) do
         # get!(cam.calculated_values, Symbol("projectionview_$(space[])")) do
             return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-                Makie.space_to_clip(cam, space, true)
+                return Mat4f(Makie.space_to_clip(cam, space, true))
             end
         # end
     end
@@ -391,7 +391,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             cam = scene.camera
             gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
                                                  cam.resolution) do space, mspace, _, _
-                return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
+                return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
             end
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
@@ -574,7 +574,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         cam = scene.camera
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-            Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
+            Mat4f(Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s))
         end
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)

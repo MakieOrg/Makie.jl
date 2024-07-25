@@ -216,9 +216,9 @@ function transformationmatrix(translation, scale)
     )
 end
 
-function transformationmatrix(translation, scale, rotation::Quaternion)
+function transformationmatrix(translation, scale, rotation::Quaternion{T}) where T
     trans_scale = transformationmatrix(translation, scale)
-    rotation = Mat4f(rotation)
+    rotation = Mat4{T}(rotation)
     trans_scale*rotation
 end
 
@@ -314,8 +314,8 @@ function project(proj_view::Mat4{T1}, resolution::Vec2, point::Point{N, T2}) whe
     clip = proj_view * p4d
     # at this point the visible range is strictly -1..1 so FLoat64 doesn't matter
     p = (clip ./ clip[4])[Vec(1, 2)]
-    p = Vec2f(p[1], p[2])
-    return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
+    p = Vec2{T}(p[1], p[2])
+    return (0.5 .* (p .+ 1) .* (resolution .- 1)) .+ 1
 end
 
 # TODO: consider warning here to discourage risky functions
@@ -341,9 +341,9 @@ function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
     elseif is_pixel_space(space)
         return cam.pixel_space[]
     elseif is_relative_space(space)
-        return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+        return Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
     elseif is_clip_space(space)
-        return Mat4f(I)
+        return Mat4d(I)
     else
         error("Space $space not recognized. Must be one of $(spaces())")
     end
@@ -354,11 +354,11 @@ function clip_to_space(cam::Camera, space::Symbol)
         return inv(cam.projectionview[])
     elseif is_pixel_space(space)
         w, h = cam.resolution[]
-        return Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
+        return Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
     elseif is_relative_space(space)
-        return Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
+        return Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
     elseif is_clip_space(space)
-        return Mat4f(I)
+        return Mat4d(I)
     else
         error("Space $space not recognized. Must be one of $(spaces())")
     end
@@ -401,7 +401,7 @@ function project(scenelike::SceneLike, input_space::Symbol, output_space::Symbol
     output_from_clip = clip_to_space(cam, output_space)
     output_f32c = inv_f32_convert_matrix(scenelike, output_space)
 
-    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, transformed, 0), 1)
+    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
     transformed = output_f32c * output_from_clip * clip_from_input * input_f32c * p4d
     return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end
