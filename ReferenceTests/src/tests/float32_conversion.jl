@@ -129,6 +129,7 @@ end
     fig = Figure()
     ax = Axis(fig[1, 1])
 
+    # TODO: broken in GLMakie (bad placement), CairoMakie (not supported)
     p = heatmap!(ax, -0.75 .. -0.25, -0.75 .. -0.25, [1 2; 3 4], colormap = [:lightblue, :yellow])
     translate!(p, 1e9, 1e8, 0)
     rotate!(p, Vec3f(0,0,1), pi/4)

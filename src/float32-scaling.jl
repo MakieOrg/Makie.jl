@@ -24,8 +24,8 @@ end
     return [to_ndim(Point{N, Float32}, ls(p), 0) for p in ps]
 end
 
-@inline f32_convert(ls::LinearScaling, x::Real, dim::Integer) = Float32(ls(x, dim))
-@inline function f32_convert(ls::LinearScaling, xs::AbstractArray{<: Real}, dim::Integer)
+@inline f32_convert(ls::LinearScaling, x::Union{Real, VecTypes}, dim::Integer) = Float32(ls(x, dim))
+@inline function f32_convert(ls::LinearScaling, xs::AbstractArray{<: Union{Real, VecTypes}}, dim::Integer)
     return [Float32(ls(x, dim)) for x in xs]
 end
 
@@ -379,11 +379,14 @@ function apply_transform_and_f32_conversion(
     
     elseif is_translation_scale_matrix(model)
         # translation and scale of model have been moved to f32convert, so just apply that
-        return f32_convert(float32convert, apply_transform(transform_func, dimpoints, space), dim)
+        transformed = apply_transform(transform_func, dimpoints, space)
+        return f32_convert(float32convert, transformed, dim, space)
 
     else
         # model contains rotation which stops us from applying f32convert before model
+        # also stops us from separating dimensions
+        @error("Cannot correctly transform 1D data when a model matrix with rotation needs to be applied on the CPU.")
         transformed = apply_transform_and_model(model, transform_func, dimpoints, space)
-        return f32_convert(float32convert, transformed, dim)
+        return f32_convert(float32convert, transformed, dim, space)
     end
 end

@@ -592,19 +592,16 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         mat = plot[3]
         space = plot.space # needs to happen before connect_camera! call
         xypos = lift(plot, pop!(gl_attributes, :f32c), t, plot.model, plot[1], plot[2], space) do f32c, t, model, x, y, space
+            # TODO: fix heatmaps for transforms that mix dimensions:
+            # - transform_func's like Polar
+            # - model matrices with rotation & Float32 precisionissues
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
-            # Only if transform doesn't do anything, we can stay linear in 1/2D
-            if Makie.is_identity_transform(t)
-                return (Makie.f32_convert(f32c, x1d, 1), Makie.f32_convert(f32c, y1d, 2))
-            else
-                # If we do any transformation, we have to assume things aren't on the grid anymore
-                # so x + y need to become matrices.
-                x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
-                y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
+            
+            x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
+            y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
 
-                return (x1d, y1d)
-            end
+            return (x1d, y1d)
         end
         xpos = lift(first, plot, xypos)
         ypos = lift(last, plot, xypos)
