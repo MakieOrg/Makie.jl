@@ -23010,18 +23010,34 @@ function add_canvas_events(screen, comm, resize_to) {
             [width, height] = get_body_size();
         } else if (resize_to == "parent") {
             [width, height] = get_parent_size(canvas);
+        } else if (resize_to.length == 2) {
+            [width, height] = get_parent_size(canvas);
+            const [_width, _height] = resize_to;
+            const [f_width, f_height] = [
+                screen.renderer._width,
+                screen.renderer._height
+            ];
+            console.log(`rwidht: ${_width}, rheight: ${_height}`);
+            width = _width == "parent" ? width : f_width;
+            height = _height == "parent" ? height : f_height;
+            console.log(`widht: ${width}, height: ${height}`);
+        } else {
+            console.warn("Invalid resize_to option");
+            return;
         }
-        comm.notify({
-            resize: [
-                width / winscale,
-                height / winscale
-            ]
-        });
+        if (height > 0 && width > 0) {
+            comm.notify({
+                resize: [
+                    width / winscale,
+                    height / winscale
+                ]
+            });
+        }
     }
     if (resize_to) {
         const resize_callback_throttled = throttle_function(resize_callback, 100);
         window.addEventListener("resize", (event)=>resize_callback_throttled());
-        resize_callback_throttled();
+        setTimeout(resize_callback, 50);
     }
 }
 function threejs_module(canvas) {

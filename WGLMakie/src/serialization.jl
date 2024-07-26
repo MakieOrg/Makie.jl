@@ -287,7 +287,7 @@ function serialize_scene(scene::Scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        dict = Dict((f => lift(serialize_three, scene, getfield(cam_controls, f)) for f in fields))
+        dict = Dict((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
         dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution)
         dict
     else
@@ -485,6 +485,6 @@ function serialize_camera(scene::Scene)
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]
-        return [vec(collect(view)), vec(collect(proj)), Int32[res...], Float32[ep...]]
+        return [vec(collect(Mat4f(view))), vec(collect(Mat4f(proj))), Int32[res...], Float32[ep...]]
     end
 end

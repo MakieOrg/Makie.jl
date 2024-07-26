@@ -637,7 +637,6 @@ end
     heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
 end
 
-
 # Clip Planes
 # TODO: lines don't clip correctly with inversion correction
 @reference_test "Clip planes" begin
@@ -692,7 +691,6 @@ end
     f
 end
 
-# TODO: cut out full voxels, not a cross through
 @reference_test "Clip planes - voxel" begin
     f = Figure()
     a = LScene(f[1, 1])
@@ -702,7 +700,6 @@ end
     f
 end
 
-# TODO: not implemented yet
 @reference_test "Clip planes - volume" begin
     f = Figure(size = (600, 400))
     r = -10:10
@@ -741,6 +738,11 @@ end
     lines!(a, -1..1, sin, space = :clip)
     linesegments!(a, [100, 200, 300, 400], [100, 100, 100, 100], space = :pixel)
     scatter!(a, [0.2, 0.8], [0.4, 0.6], space = :relative)
+    f
+end
 
+@reference_test "Surface interpolate attribute" begin
+    f, ls1, pl = surface(Makie.peaks(20); interpolate=true, axis=(; show_axis=false))
+    ls2, pl = surface(f[1, 2], Makie.peaks(20); interpolate=false, axis=(; show_axis=false))
     f
 end

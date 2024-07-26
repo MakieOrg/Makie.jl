@@ -827,7 +827,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
                 scene, bbox, model = model, color = a.indicator_color,
-                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
             translate!(p, Vec3f(0, 0, a.depth[]))
