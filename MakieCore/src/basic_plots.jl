@@ -630,7 +630,10 @@ Plots polygons, which are defined by
     shading = NoShading
 
     cycle = [:color => :patchcolor]
-
+    """
+    Depth shift of stroke plot. This is useful to avoid z-fighting between the stroke and the fill.
+    """
+    stroke_depth_shift = -1.0f-5
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
 end
