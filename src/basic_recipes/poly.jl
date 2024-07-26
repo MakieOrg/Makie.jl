@@ -44,15 +44,16 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         overdraw = plot.overdraw,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
-        space = plot.space
+        space = plot.space,
+        depth_shift = plot.depth_shift
     )
     wireframe!(
         plot, plot[1],
-        color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
-        linewidth = plot[:strokewidth], linecap = plot[:linecap],
-        visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency],
-        colormap = plot[:strokecolormap]
+        color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
+        linewidth = plot.strokewidth, linecap = plot.linecap,
+        visible = plot.visible, overdraw = plot.overdraw,
+        inspectable = plot.inspectable, transparency = plot.transparency,
+        colormap = plot.strokecolormap, depth_shift=plot.stroke_depth_shift
     )
 end
 
@@ -161,6 +162,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         transparency = plot.transparency,
         inspectable = plot.inspectable,
         space = plot.space,
+        depth_shift = plot.depth_shift
     )
 
     outline = lift(to_lines, plot, geometries)
@@ -185,7 +187,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = -1f-5
+        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
     )
 end
 
@@ -195,13 +197,14 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
         space = plot.space, ssao = plot.ssao,
-        alpha=plot.alpha,
+        alpha = plot.alpha,
         lowclip = get(plot, :lowclip, automatic),
         highclip = get(plot, :highclip, automatic),
         nan_color = get(plot, :nan_color, :transparent),
         colormap = get(plot, :colormap, nothing),
         colorscale = get(plot, :colorscale, identity),
-        colorrange = get(plot, :colorrange, automatic)
+        colorrange = get(plot, :colorrange, automatic),
+        deft_shift = plot.depth_shift
     )
 
     num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
