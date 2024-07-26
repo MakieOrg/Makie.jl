@@ -638,8 +638,7 @@ end
 end
 
 # Clip Planes
-# TODO: lines don't clip correctly with inversion correction
-@reference_test "Clip planes" begin
+@reference_test "Clip planes - general" begin
     # Test
     # - inheritance of clip planes from scene and parent plot (wireframe)
     # - test clipping of linesegments, mesh, surface, scatter, image, heatmap
@@ -663,7 +662,8 @@ end
     f
 end
 
-@reference_test "Line Clipping" begin
+@reference_test "Clip planes - lines" begin
+    # red vs green matters here, not light vs dark
     plane = Plane3f(normalize(Vec3f(1)), 0)
 
     f,a,p = mesh(
@@ -732,12 +732,12 @@ end
     a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1, 0, 0), 0), Plane3f(Vec3f(-1, 0, 0), -100)]
 
     # verify that clipping is working
-    wireframe!(a, Rect3f(Point3f(-1), Vec3f(2)))
+    wireframe!(a, Rect3f(Point3f(-1), Vec3f(2)), color = :green, linewidth = 5)
 
     # verify that space != :data is excluded
-    lines!(a, -1..1, sin, space = :clip)
-    linesegments!(a, [100, 200, 300, 400], [100, 100, 100, 100], space = :pixel)
-    scatter!(a, [0.2, 0.8], [0.4, 0.6], space = :relative)
+    lines!(a, -1..1, sin, space = :clip, color = :gray, linewidth = 5)
+    linesegments!(a, [100, 200, 300, 400], [100, 100, 100, 100], space = :pixel, color = :gray, linewidth = 5)
+    scatter!(a, [0.2, 0.8], [0.4, 0.6], space = :relative, color = :gray, markersize = 20)
     f
 end
 
