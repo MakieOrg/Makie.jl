@@ -3,6 +3,10 @@
 struct Plane{N, T}
     normal::Vec{N, T}
     distance::T
+
+    function Plane{N, T}(normal::Vec{N, T}, distance::T) where {N, T <: Real}
+        return new{N, T}(normalize(normal), distance)
+    end
 end
 
 """
@@ -20,9 +24,19 @@ function Plane{N}(point::Point{N, T1}, normal::Vec{N, T2}) where {N, T1, T2}
     return Plane{N, promote_type(T1, T2)}(point, normal)
 end
 function Plane{N, T}(point::Point{N}, normal::Vec{N}) where {N, T}
+    normal = normalize(normal)
     return Plane{N, T}(normal, dot(point, normal))
 end
-Plane(normal::Vec{N, T}, distance::Real) where {N, T <: Real} = Plane{N, T}(normal, T(distance))
+
+function Plane(normal::VecTypes{N, T}, distance::Real) where {N, T <: Real}
+    return Plane{N, T}(normal, T(distance))
+end
+function Plane{N}(normal::VecTypes{N, T}, distance::Real) where {N, T <: Real}
+    return Plane{N, T}(normal, T(distance))
+end
+function Plane{N, T}(normal::VecTypes{N, T}, distance::Real) where {N, T <: Real}
+    return Plane{N, T}(Vec{N, T}(normal), T(distance))
+end
 
 const Plane2{T} = Plane{2, T}
 const Plane3{T} = Plane{3, T}
@@ -50,7 +64,7 @@ function min_clip_distance(planes::Vector{<: Plane}, point::VecTypes)
     min_dist = Inf
     for plane in planes
         d = distance(plane, point)
-        if ((min_dist >= 0) && (d < min_dist)) || ((min_dist < 0) && (d > min_dist))
+        if ((min_dist >= 0) && (d < min_dist)) || ((min_dist < 0) && (d < 0) && (d > min_dist))
             min_dist = d
         end
     end
@@ -60,7 +74,7 @@ end
 gl_plane_format(plane::Plane3) = to_ndim(Vec4f, plane.normal, plane.distance)
 
 """
-    palnes(rect::Rect3)
+    planes(rect::Rect3)
 
 Converts a 3D rect into a set of planes. Using these as clip planes will remove 
 everything outside the rect.
@@ -193,17 +207,23 @@ function perpendicular_vector(v::Vec3)
     )
 end
 
+function closest_point_on_plane(plane::Plane3, point::VecTypes)
+    p = to_ndim(Point3f, point, 0)
+    return p - plane.normal * distance(plane, p)
+end
+
 """
-    to_mesh(plane[; origin = plane.distance * plane.normal, scale = 1])
+    to_mesh(plane[; origin = Point3f(0), scale = 1])
 
 Generates a mesh corresponding to a finite section of the `plane` centered at 
 `origin` and extending by `scale` in each direction.
 """
-function to_mesh(plane::Plane3{T}; origin = plane.distance * plane.normal, scale = 1) where T
+function to_mesh(plane::Plane3{T}; origin = Point3f(0), scale = 1) where T
     _scale = scale isa VecTypes ? scale : Vec2f(scale)
+    _origin = origin - plane.normal * distance(plane, origin)
     v1 = _scale[1] * normalize(perpendicular_vector(plane.normal))
     v2 = _scale[2] * normalize(cross(v1, plane.normal))
-    ps = Point3f[origin - v1 - v2, origin - v1 + v2, origin + v1 - v2, origin + v1 + v2]
+    ps = Point3f[_origin - v1 - v2, _origin - v1 + v2, _origin + v1 - v2, _origin + v1 + v2]
     ns = [plane.normal for _ in 1:4]
     fs = GLTriangleFace[(1,2,3), (2, 3, 4)]
     return GeometryBasics.Mesh(GeometryBasics.meta(ps; normals=ns), fs)
