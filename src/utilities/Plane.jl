@@ -5,6 +5,14 @@ struct Plane{N, T}
     distance::T
 end
 
+"""
+    Plane(point::Point, normal::Vec)
+    Plane(normal::Vec, distance::Real)
+
+Creates a Plane with the given `normal` containing the given `point`. The 
+internal representation uses a `distance = dot(point, normal)` which can also be
+constructed directly.
+"""
 function Plane(point::Point{N, T1}, normal::Vec{N, T2}) where {N, T1, T2}
     return Plane{N, promote_type(T1, T2)}(point, normal)
 end
@@ -14,6 +22,7 @@ end
 function Plane{N, T}(point::Point{N}, normal::Vec{N}) where {N, T}
     return Plane{N, T}(normal, dot(point, normal))
 end
+Plane(normal::Vec{N, T}, distance::Real) where {N, T <: Real} = Plane{N, T}(normal, T(distance))
 
 const Plane2{T} = Plane{2, T}
 const Plane3{T} = Plane{3, T}
@@ -22,13 +31,22 @@ const Plane3f = Plane{3, Float32}
 const Plane2d = Plane{2, Float64}
 const Plane3d = Plane{3, Float64}
 
+"""
+    distance(plane, point)
+
+Calculates the closest distance of a point from a plane.
+"""
 function distance(plane::Plane{N, T}, point::VecTypes) where {N, T}
     return dot(to_ndim(Point{N, T}, point, 0), plane.normal) - plane.distance
 end
 
+"""
+    min_clip_distance(planes::Vector{<: Plane}, point)
+
+Returns the smallest absolute distance between the point each clip plane. If 
+the point is clipped by any plane, only negative distances are considered.
+"""
 function min_clip_distance(planes::Vector{<: Plane}, point::VecTypes)
-    # returns the smallest absolute distance between the point and the clip planes
-    # if the point is clipped by any plane, only negative distances are considered
     min_dist = Inf
     for plane in planes
         d = distance(plane, point)
@@ -41,7 +59,13 @@ end
 
 gl_plane_format(plane::Plane3) = to_ndim(Vec4f, plane.normal, plane.distance)
 
-function planes(rect::Rect3f)
+"""
+    palnes(rect::Rect3)
+
+Converts a 3D rect into a set of planes. Using these as clip planes will remove 
+everything outside the rect.
+"""
+function planes(rect::Rect3)
     mini = minimum(rect)
     maxi = maximum(rect)
     return [
@@ -54,12 +78,23 @@ function planes(rect::Rect3f)
     ]
 end
 
+"""
+    is_clipped(plane, point)
+
+Returns true if the given plane or vector of planes clips the given point.
+"""
 function is_clipped(plane::Plane3, p::VecTypes)
     return dot(plane.normal, to_ndim(Point3f, p, 0)) < plane.distance
 end
 function is_clipped(planes::Vector{<: Plane3}, p::VecTypes)
     return any(plane -> is_clipped(plane, p), planes)
 end
+
+"""
+    is_clipped(plane, point)
+
+Returns true if the given plane or vector of planes do not clip the given point.
+"""
 function is_visible(plane::Plane3, p::VecTypes)
     return dot(plane.normal, to_ndim(Point3f, p, 0)) >= plane.distance
 end
@@ -68,8 +103,13 @@ function is_visible(planes::Vector{<: Plane3}, p::VecTypes)
     return all(plane -> is_visible(plane, p), planes)
 end
 
+"""
+    apply_clipping_planes(planes, bbox)
+
+Cuts down a axis aligned bounding box to fit into the given clip planes.
+"""
 function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where T
-    bb = rect
+    bb = copy(rect)
 
     edges = [
         (1, 2), (1, 3), (1, 5),
@@ -80,8 +120,8 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
     ]
 
     for plane in planes
-        ps = Makie.corners(bb)
-        distances = Makie.distance.((plane,), ps)
+        ps = corners(bb)
+        distances = distance.((plane,), ps)
 
         if (all(distances .<= 0.0))
             return Rect3{T}()
@@ -94,8 +134,6 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
             if distances[i] * distances[j] <= 0.0 # sign change
                 # d(t) = m t + b, find t where distance d(t) = 0
                 t = - distances[i] / (distances[j]  - distances[i])
-                
-                # interpolating in clip_space does not work...
                 p = (ps[j] - ps[i]) * t + ps[i]
                 push!(temp, p)
             end
@@ -141,6 +179,11 @@ function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractAr
     end
 end
 
+"""
+    perpendicular_vector(vec::Vec3)
+
+Generates a vector perpendicular to the given vector.
+"""
 function perpendicular_vector(v::Vec3)
     # https://math.stackexchange.com/a/4112622
     return Vec3(
@@ -150,10 +193,16 @@ function perpendicular_vector(v::Vec3)
     )
 end
 
-function to_mesh(plane::Plane3{T}; origin = plane.distance * plane.normal, size = 1) where T
-    scale = size isa VecTypes ? size : Vec2f(size)
-    v1 = scale[1] * normalize(perpendicular_vector(plane.normal))
-    v2 = scale[2] * normalize(cross(v1, plane.normal))
+"""
+    to_mesh(plane[; origin = plane.distance * plane.normal, scale = 1])
+
+Generates a mesh corresponding to a finite section of the `plane` centered at 
+`origin` and extending by `scale` in each direction.
+"""
+function to_mesh(plane::Plane3{T}; origin = plane.distance * plane.normal, scale = 1) where T
+    _scale = scale isa VecTypes ? scale : Vec2f(scale)
+    v1 = _scale[1] * normalize(perpendicular_vector(plane.normal))
+    v2 = _scale[2] * normalize(cross(v1, plane.normal))
     ps = Point3f[origin - v1 - v2, origin - v1 + v2, origin + v1 - v2, origin + v1 + v2]
     ns = [plane.normal for _ in 1:4]
     fs = GLTriangleFace[(1,2,3), (2, 3, 4)]

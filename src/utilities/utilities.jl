@@ -218,15 +218,16 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
 end
 
 
+# used for lines in CairoMakie
 """
     broadcast_foreach_index(f, arg, indices, args...)
 
 Like broadcast_foreach but with indexing. The first arg is assumed to already 
 have indices applied while the remaining ones use the given indices. 
 
-    Effectively calls:
+Effectively calls:
 ```
-for (raw_idx, idx) in indices
+for (raw_idx, idx) in enumerate(indices)
     f(arg[raw_idx], attr_broadcast_getindex(args, idx)...)
 end
 ```
