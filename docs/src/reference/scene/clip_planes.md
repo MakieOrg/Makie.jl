@@ -2,18 +2,12 @@
 
 A clip plane is a plane which separates space into two sections, one which is drawn and one which is not.
 Makie allows you to specify up to 8 clip planes on the scene or plot level.
-These clip planes are given in world space, meaning they interact with a plot object after the `transform_func` (e.g. `log` scaling) and the `model` matrix (i.e. `translate!()`, `rotate!()` and `scale!()`) have been applied.
+These clip planes are given in world space, meaning they interact with a plot object after the `transform_func` (e.g. `log` scaling) and the `model` matrix (i.e. `translate!(plot, ...)`, `rotate!(plot, ...)` and `scale!(plot, ...)`) have been applied.
 They do not interact with a plot if `plot.space[] in (:pixel, :relative, :clip)`.
 
 ## Examples
 
 ```@figure backend=GLMakie
-xs = Observable(collect(1:1000))
-ys = map(identity, xs)
-
-data = collect(1:1000)
-@allocated xs[] = data
-
 box = Rect3f(Point3f(-1), Vec3f(2))
 sphere = Sphere(Point3f(0), 0.5f0)
 points = [0.7f0 * Point3f(cos(x) * sin(y), cos(x) * cos(y), sin(x)) for x in 0:8 for y in 0:8]
