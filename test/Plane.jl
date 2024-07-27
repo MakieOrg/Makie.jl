@@ -131,7 +131,7 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
 
         planes = Makie.planes(Rect3f(Point3f(0.5), Vec3f(1)))
         bb = Makie.apply_clipping_planes(planes, bbox)
-        @test all(abs.(minimum(bb)) .< Vec3f(1e-7))
+        @test minimum(bb) ≈ Vec3f(0.5)
         @test maximum(bb) ≈ Vec3f(1.0)
 
         # to_clip_space()
