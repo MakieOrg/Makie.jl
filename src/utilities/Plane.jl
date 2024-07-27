@@ -109,7 +109,7 @@ end
 Cuts down a axis aligned bounding box to fit into the given clip planes.
 """
 function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where T
-    bb = copy(rect)
+    bb = rect
 
     edges = [
         (1, 2), (1, 3), (1, 5),
@@ -234,16 +234,16 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
         Point3f(p4d) / p4d[4]
     end
 
-    distances = Makie.distance.((plane,), world_corners)
+    distances = distance.((plane,), world_corners)
     w = maximum(distances) - minimum(distances)
     w = ifelse(abs(w) < 1000.0 * eps(w), 1f0, w)
 
     # clip plane transformation may fail if plane is too close to bbox corner/line/plane
     # so we handle this explicitly here:
     if all(distances .>= -0.01w) # bbox is not clipped
-        return Makie.Plane(Vec3f(0), -1f9) # always pass
+        return Plane(Vec3f(0), -1f9) # always pass
     elseif all(distances .< 0.01w) # bbox is clipped
-        return Makie.Plane(Vec3f(0),  1f9) # never pass
+        return Plane(Vec3f(0),  1f9) # never pass
 
     else
         # edges of the bbox cube
@@ -277,7 +277,7 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
         # it should be impossible to get less than 3 points. Should...
         # @assert length(zero_points) > 2
         if length(zero_points) < 3
-            return Makie.Plane(Vec3f(0), sum(distances) > 0.0 ? -1f9 : 1f9)
+            return Plane(Vec3f(0), sum(distances) > 0.0 ? -1f9 : 1f9)
         end
 
         # Get plane normal vectors from zero points (using all points because why not)
@@ -295,6 +295,6 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
         end
         normal = normalize(sum(normals))
 
-        return Makie.Plane(origin, normal)
+        return Plane(origin, normal)
     end
 end
