@@ -667,7 +667,7 @@ end
     plane = Plane3f(normalize(Vec3f(1)), 0)
 
     f,a,p = mesh(
-        Makie.to_mesh(plane, size = 1.5), color = (:black, 0.5),
+        Makie.to_mesh(plane, scale = 1.5), color = (:black, 0.5),
         transparency = true, visible = true
     )
 
