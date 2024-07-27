@@ -133,6 +133,8 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
         (4, 8), (6, 8), (7, 8)
     ]
 
+    temp = sizehint!(Point3{T}[], length(edges))
+
     for plane in planes
         ps = corners(bb)
         distances = distance.((plane,), ps)
@@ -141,7 +143,7 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
             return Rect3{T}()
         end
 
-        temp = similar(ps)
+        empty!(temp)
 
         # find points on the clip plane
         for (i, j) in edges
