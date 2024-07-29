@@ -72,6 +72,8 @@ function draw_mesh_particle(screen, p, data)
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
+        # Can we make this a uniform or a instance attribute?
+        uv_transform = nothing => TextureBuffer # scale, translation
         texturecoordinates = nothing
     end
 
@@ -87,7 +89,6 @@ function draw_mesh_particle(screen, p, data)
         matcap = nothing => Texture
         fetch_pixel = false
         interpolate_in_fragment_shader = false
-        uv_scale = Vec2f(1) => TextureBuffer
         backlight = 0f0
 
         instances = const_lift(length, position)
