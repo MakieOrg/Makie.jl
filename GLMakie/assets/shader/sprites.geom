@@ -60,6 +60,7 @@ flat out vec4 f_glow_color;
 flat out uvec2 f_id;
 out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
+flat out vec2 f_sprite_scale;
 
 uniform mat4 projection, view, model;
 
@@ -84,10 +85,10 @@ void emit_vertex(vec4 vertex, vec2 uv)
     f_uv_texture_bbox = g_uv_texture_bbox[0];
     f_primitive_index = g_primitive_index[0];
     f_color           = g_color[0];
-    f_bg_color        = vec4(g_color[0].rgb, 0);
     f_stroke_color    = g_stroke_color[0];
     f_glow_color      = g_glow_color[0];
     f_id              = g_id[0];
+    f_sprite_scale    = g_offset_width[0].zw;
     EmitVertex();
 }
 
@@ -97,12 +98,12 @@ mat2 diagm(vec2 v){
 }
 
 out vec3 o_view_pos;
-out vec3 o_normal;
+out vec3 o_view_normal;
 
 void main(void)
 {
     o_view_pos = vec3(0);
-    o_normal = vec3(0);
+    o_view_normal = vec3(0);
 
     // emit quad as triangle strip
     // v3. ____ . v4
@@ -157,7 +158,7 @@ void main(void)
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = abs(o_w.z);
+    float sprite_from_u_scale = min(abs(o_w.z), abs(o_w.w));
     f_viewport_from_u_scale = viewport_from_sprite_scale * sprite_from_u_scale;
     f_distancefield_scale = get_distancefield_scale(distancefield);
 

@@ -6,7 +6,7 @@ function svg_has_image(x)
         save(path, x)
         # this is rough but an easy way to catch rasterization,
         # if an image element is present in the svg
-        return !occursin("<image id=", read(path, String))
+        return occursin("<image id=", read(path, String))
     end
 end
 
@@ -18,13 +18,14 @@ end
     pl = poly!(ax, Makie.GeometryBasics.Polygon(pts))
 
     @testset "Unrasterized SVG" begin
-        @test svg_has_image(fig)
+        @test !svg_has_image(fig)
     end
 
     @testset "Rasterized SVG" begin
         lp.rasterize = true
-        @test !svg_has_image(fig)
+        @test svg_has_image(fig)
         lp.rasterize = 10
-        @test !svg_has_image(fig)
+        @test svg_has_image(fig)
     end
+
 end

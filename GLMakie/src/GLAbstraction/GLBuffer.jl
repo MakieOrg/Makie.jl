@@ -5,7 +5,6 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
     usage::GLenum
     context::GLContext
     # TODO maybe also delay upload to when render happens?
-    requires_update::Observable{Bool}
     observers::Vector{Observables.ObserverFunction}
 
     function GLBuffer{T}(ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
@@ -18,8 +17,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
 
         obj = new(
             id, (buff_length,), buffertype, usage, current_context(),
-            Observable(true), Observables.ObserverFunction[])
-
+            Observables.ObserverFunction[])
         finalizer(free, obj)
         obj
     end
@@ -68,7 +66,6 @@ function GLBuffer(
     au = ShaderAbstractions.updater(buffer)
     obsfunc = on(au.update) do (f, args)
         f(b, args...) # forward setindex! etc
-        b.requires_update[] = true
         return
     end
     push!(b.observers, obsfunc)

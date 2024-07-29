@@ -62,9 +62,9 @@
                     <button class="mode-button">Showing recorded</button>
                     `
                     if (path.endsWith(".png")){
-                        div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${path}">`
+                        div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${encodeURIComponent(path)}">`
                     } else if (path.endsWith(".mp4")){
-                        div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${path}">`
+                        div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${encodeURIComponent(path)}">`
                     }
                 })
 
@@ -78,7 +78,7 @@
                             img.dataset.version = "recorded"
                             but.innerHTML = "Showing recorded"
                         }
-                        img.src = img.dataset.version + '/' + img.dataset.image
+                        img.src = encodeURIComponent(img.dataset.version + '/' + img.dataset.image)
                     }
                 })
 
@@ -103,9 +103,9 @@
                     <span>${path}</span>
                     `
                     if (path.endsWith(".png")){
-                        div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${path}">`
+                        div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${encodeURIComponent(path)}">`
                     } else if (path.endsWith(".mp4")){
-                        div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${path}">`
+                        div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${encodeURIComponent(path)}">`
                     }
                 })
 

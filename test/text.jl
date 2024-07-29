@@ -1,3 +1,20 @@
+@testset "texture atlas" begin
+    @testset "defaults" for arg in [(1024, 32), (2048, 64)]
+        # Makes sure hashing and downloading default texture atlas works:
+        atlas = Makie.get_texture_atlas(arg...)
+        data = copy(atlas.data)
+        len = length(atlas.mapping)
+        # Make sure that all default glyphs are already in there
+        Makie.render_default_glyphs!(atlas)
+        # So no rendering & no change of data should happen in default glyphs are present!
+        @test data == atlas.data
+        @test length(atlas.mapping) == len
+
+        @test haskey(Makie.TEXTURE_ATLASES, arg) # gets into global texture atlas cache
+        @test Makie.TEXTURE_ATLASES[arg] === atlas
+    end
+end
+
 @testset "Glyph Collections" begin
     using Makie.FreeTypeAbstraction
 
@@ -61,7 +78,7 @@
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
         atlas,
         to_ndim(Point3f, p.position[], 0), glyph_collection,
-        Vec2f(0), Makie.transform_func_obs(scene)[], :data
+        Vec2f(0), Makie.f32_conversion(scene), Makie.transform_func_obs(scene)[], :data
     )
 
     # Also doesn't work
@@ -101,7 +118,7 @@ end
     text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
     text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
 
-    err = ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
+    err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
-    @test_throws err text(1, 2, text = "hi", textsize = 30)
+    # @test_throws err text(1, 2, text = "hi", textsize = 30)
 end

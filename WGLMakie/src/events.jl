@@ -54,7 +54,7 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         @async try
             @handle msg.mouseposition begin
                 x, y = Float64.((mouseposition...,))
-                e.mouseposition[] = (x, size(scene)[2] - y)
+                e.mouseposition[] = (x, y)
             end
             @handle msg.mousedown begin
                 # This can probably be done better from the JS side?
@@ -85,11 +85,14 @@ function connect_scene_events!(scene::Scene, comm::Observable)
                 e.scroll[] = Float64.((sign.(scroll)...,))
             end
             @handle msg.keydown begin
-                button = code_to_keyboard(keydown)
+                button = code_to_keyboard(keydown[1])
                 # don't add unknown buttons...we can't work with them
                 # and they won't get removed
                 if button != Keyboard.unknown
                     e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
+                end
+                if length(keydown[2])==1 && isascii(keydown[2])
+                    e.unicode_input[] = keydown[2][1]
                 end
             end
             @handle msg.keyup begin
@@ -101,6 +104,9 @@ function connect_scene_events!(scene::Scene, comm::Observable)
                 else
                     e.keyboardbutton[] = KeyEvent(code_to_keyboard(keyup), Keyboard.release)
                 end
+            end
+            @handle msg.resize begin
+                resize!(scene, tuple(resize...))
             end
         catch err
             @warn "Error in window event callback" exception=(err, Base.catch_backtrace())

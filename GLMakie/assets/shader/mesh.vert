@@ -14,10 +14,9 @@ uniform bool interpolate_in_fragment_shader = false;
 
 in vec3 normals;
 
-uniform vec3 lightposition;
 uniform mat4 projection, view, model;
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange);
 
 uniform uint objectid;
@@ -66,5 +65,5 @@ void main()
     o_uv = vec2(1.0 - tex_uv.y, tex_uv.x) * uv_scale;
     o_color = to_color(vertex_color, color_map, color_norm);
     vec3 v = to_3d(vertices);
-    render(model * vec4(v, 1), normals, view, projection, lightposition);
+    render(model * vec4(v, 1), normals, view, projection);
 }

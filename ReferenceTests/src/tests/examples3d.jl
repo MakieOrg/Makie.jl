@@ -1,15 +1,16 @@
 
 @reference_test "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, axis = (;show_axis=false))
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=NoShading, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
+    cameracontrols(ax).settings.center[] = false # avoid recenter on display
     fig
 end
 
 @reference_test "Image on Geometry (Earth)" begin
     earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
-    mesh(m, color=earth, shading=false)
+    mesh(m, color=earth, shading=NoShading)
 end
 
 @reference_test "Orthographic Camera" begin
@@ -29,19 +30,12 @@ end
     meshes = map(colormesh, rectangles)
     fig, ax, meshplot = mesh(merge(meshes))
     scene = ax.scene
-    center!(scene)
     cam = cameracontrols(scene)
-    dir = widths(data_limits(scene)) ./ 2.
-    dir_scaled = Vec3f(
-        dir[1] * scene.transformation.scale[][1],
-        0.0,
-        dir[3] * scene.transformation.scale[][2],
-    )
+    cam.settings[:projectiontype][] = Makie.Orthographic
+    cam.settings.center[] = false # This would be set by update_cam!()
     cam.upvector[] = (0.0, 0.0, 1.0)
-    cam.lookat[] = minimum(data_limits(scene)) + dir_scaled
-    cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
-    cam.attributes[:projectiontype][] = Makie.Orthographic
-    cam.zoom_mult[] = 0.61f0
+    cam.lookat[] = Vec3f(0.595, 1.5, 0.5)
+    cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 0.61, cam.lookat[][3])
     update_cam!(scene, cam)
     fig
 end
@@ -67,7 +61,7 @@ end
 end
 
 @reference_test "Load Mesh" begin
-    mesh(loadasset("cat.obj"))
+    mesh(loadasset("cat.obj"); color=:black)
 end
 
 @reference_test "Colored Mesh" begin
@@ -132,6 +126,13 @@ end
 @reference_test "Marker sizes" begin
     colors = Makie.resample(to_colormap(:Spectral), 20)
     scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
+end
+
+@reference_test "Ellipsoid marker sizes" begin # see PR #3722
+    pts = Point3f[[0, 0, 0], [1, 0, 0]]
+    markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
+    rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
+    meshscatter(pts; markersize, rotation, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
 end
 
 @reference_test "Record Video" begin
@@ -201,7 +202,6 @@ end
     x = [cospi(φ) * sinpi(θ) for θ in θ, φ in φ]
     y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
     z = [cospi(θ) for θ in θ, φ in φ]
-    RNG.rand([-1f0, 1f0], 3)
     pts = vec(Point3f.(x, y, z))
     f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end
@@ -241,6 +241,30 @@ end
     fig
 end
 
+@reference_test "colorscale (surface)" begin
+    x = y = range(-1, 1; length = 20)
+    f(x, y) = exp(-(x^2 + y^2)^2)
+    fig = Figure()
+    surface(fig[1, 1], x, y, f; colorscale = identity)
+    surface(fig[1, 2], x, y, f; colorscale = log10)
+    fig
+end
+
+@reference_test "colorscale (poly)" begin
+    X = [0.0 1 1 2; 1 1 2 2; 0 0 1 1]
+    Y = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    Z = [1.0 1 1 1; 1 0 1 0; 0 0 0 0]
+    C = [0.5 1.0 1.0 0.5; 1.0 0.5 0.5 0.1667; 0.333 0.333 0.5 0.5] .^ 3
+
+    vertices = connect(reshape([X[:] Y[:] Z[:]]', :), Point3f)
+    indices = connect(1:length(X), TriangleFace)
+
+    fig = Figure()
+    poly!(Axis3(fig[1, 1]), vertices, indices; color=C[:], colorscale=identity)
+    poly!(Axis3(fig[1, 2]), vertices, indices; color=C[:], colorscale=log10)
+    fig
+end
+
 @reference_test "FEM mesh 3D" begin
     cat = loadasset("cat.obj")
     vertices = decompose(Point3f, cat)
@@ -258,7 +282,7 @@ end
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
-    scene = Scene(resolution=(500, 500), camera=cam3d!)
+    scene = Scene(size=(500, 500), camera=cam3d!)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
     psurf = surface!(scene, vx, vy, f)
     axis3d!(scene, frame = (linewidth = 2.0,))
@@ -331,7 +355,7 @@ end
     fig, ax, meshplot = meshscatter(
         pG[edges[:, 1]],
         color=colorsC, marker=meshC,
-        markersize=sizesC,  rotations=rotationsC,
+        markersize=sizesC,  rotation=rotationsC,
     )
     meshscatter!(
         ax, pG,
@@ -356,7 +380,7 @@ end
 @reference_test "image scatter" begin
     scatter(
         1:10, 1:10, RNG.rand(10, 10) .* 10,
-        rotations=normalize.(RNG.rand(Quaternionf, 10 * 10)),
+        rotation=normalize.(RNG.rand(Quaternionf, 10 * 10)),
         markersize=20,
         # can also be an array of images for each point
         # need to be the same size for best performance, though
@@ -368,6 +392,15 @@ end
     large_sphere = Sphere(Point3f(0), 1f0)
     positions = decompose(Point3f, large_sphere)
     meshscatter(positions, color=RGBAf(0.9, 0.2, 0.4, 1), markersize=0.05)
+end
+
+@reference_test "Text glow and overdraw" begin
+    p1 = Point3f(0,0,0)
+    p2 = Point3f(1,0,0)
+    f, ax, pl = meshscatter([p1, p2]; markersize=0.3, color=[:purple, :yellow])
+    text!(ax, p1; text="A", align=(:center, :center), glowwidth=10.0, glowcolor=:white, color=:black, fontsize=40, overdraw=true)
+    text!(ax, p2; text="B", align=(:center, :center), glowwidth=20.0, glowcolor=(:black, 0.6), color=:white, fontsize=40, overdraw=true)
+    f
 end
 
 @reference_test "Animated surface and wireframe" begin
@@ -428,8 +461,8 @@ end
 
 @reference_test "Line GIF" begin
     us = range(0, stop=1, length=100)
-    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
-    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true)
+    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)); color=:black)
+    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true, color=:black)
     lineplots = [p]
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
@@ -499,7 +532,8 @@ end
     fig, ax, pl = volume(
         r, r, r,          # coordinates to plot on
         ρ,                # charge density (functions as colorant)
-        algorithm=:mip  # maximum-intensity-projection
+        algorithm=:mip,  # maximum-intensity-projection
+        colorrange=(0, 1),
     )
     ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
     fig.scene.backgroundcolor[] = to_color(:black)
@@ -508,7 +542,7 @@ end
 
 @reference_test "Depth Shift" begin
     # Up to some artifacts from fxaa the left side should be blue and the right red.
-    fig = Figure(resolution = (800, 400))
+    fig = Figure(size = (800, 400))
 
     prim = Rect3(Point3f(0), Vec3f(1))
     ps  = RNG.rand(Point3f, 10) .+ Point3f(0, 0, 1)
@@ -566,8 +600,9 @@ end
         end
     end
     cam = cameracontrols(ax.scene)
-    cam.attributes.fov[] = 22f0
+    cam.fov[] = 22f0
     update_cam!(ax.scene, cam, Vec3f(0.625, 0, 3.5), Vec3f(0.625, 0, 0), Vec3f(0, 1, 0))
+    cameracontrols(ax).settings.center[] = false # avoid recenter on display
     fig
 end
 
@@ -576,10 +611,21 @@ end
     fig = Figure()
     for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
         mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
-        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
+        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = NoShading)
         linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
         text!(ax, 0, 0.52, text = "Clip Space", align = (:center, :bottom), space = :clip)
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig
+end
+
+# TODO: get 3D images working in CairoMakie and test them here too
+@reference_test "Heatmap 3D" begin
+    heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
+end
+
+@reference_test "Surface interpolate attribute" begin
+    f, ls1, pl = surface(Makie.peaks(20); interpolate=true, axis=(; show_axis=false))
+    ls2, pl = surface(f[1, 2], Makie.peaks(20); interpolate=false, axis=(; show_axis=false))
+    f
 end

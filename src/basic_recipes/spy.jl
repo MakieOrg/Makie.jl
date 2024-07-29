@@ -10,20 +10,14 @@ spy(x)
 # or if you want to specify the range of x and y:
 spy(0..1, 0..1, x)
 ```
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Spy, x, y, z) do scene
-    Attributes(
-        marker = automatic,
-        markersize = automatic,
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        framecolor = :black,
-        framesize = 1,
-        inspectable = theme(scene, :inspectable),
-        visible = theme(scene, :visible)
-    )
+@recipe Spy (x, y, z) begin
+    marker = automatic
+    markersize = automatic
+    framecolor = :black
+    framesize = 1
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
 end
 
 function convert_arguments(::Type{<: Spy}, x::SparseArrays.AbstractSparseArray)
@@ -76,7 +70,7 @@ function plot!(p::Spy)
         p,
         lift(first, p, xycol), color = lift(last, p, xycol),
         marker = marker, markersize = markersize, colorrange = p.colorrange,
-        colormap = p.colormap, inspectable = p.inspectable, visible = p.visible
+        colormap = p.colormap, colorscale = p.colorscale,inspectable = p.inspectable, visible = p.visible
     )
 
     lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable,

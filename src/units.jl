@@ -18,7 +18,7 @@
 #########
 
 function to_screen(scene::Scene, mpos)
-    return Point2f(mpos) .- Point2f(minimum(pixelarea(scene)[]))
+    return Point2f(mpos) .- Point2f(minimum(viewport(scene)[]))
 end
 
 number(x::Unit) = x.value

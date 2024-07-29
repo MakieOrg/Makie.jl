@@ -2,6 +2,7 @@
     timeseries(x::Observable{{Union{Number, Point2}}})
 
 Plots a sampled signal.
+
 Usage:
 ```julia
 signal = Observable(1.0)
@@ -20,11 +21,9 @@ end
 
 ```
 """
-@recipe(TimeSeries, signal) do scene
-    Attributes(
-        history = 100;
-        default_theme(scene, Lines)...
-    )
+@recipe TimeSeries (signal,) begin
+    history = 100
+    MakieCore.documented_attributes(Lines)...
 end
 
 signal2point(signal::Number, start) = Point2f(time() - start, signal)

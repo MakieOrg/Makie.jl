@@ -55,8 +55,6 @@ So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
-    renderobject.requires_update = false
-    
     if renderobject.visible
         renderobject.prerenderfunction()
         program = vertexarray.program

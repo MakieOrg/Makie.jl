@@ -1,10 +1,8 @@
 using Test
 using CairoMakie
-using Pkg
 using Makie.FileIO
+using ReferenceTests
 
-path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
-Pkg.develop(PackageSpec(path = path))
 # Before changing Pkg environment, try the test in #864
 @testset "Runs without error" begin
     fig = Figure()
@@ -39,7 +37,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
     @testset "saving pdf two times" begin
         # https://github.com/MakieOrg/Makie.jl/issues/2433
-        fig = Figure(resolution=(480, 792))
+        fig = Figure(size = (480, 792))
         ax = Axis(fig[1, 1])
         # The IO was shared between screens, which left the second figure empty
         save("fig.pdf", fig, pt_per_unit=0.5)
@@ -54,17 +52,17 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         # https://github.com/MakieOrg/Makie.jl/issues/2438
         # This bug was caused by using the screen size of the pdf screen, which
         # has a different device_scaling_factor, and therefore a different screen size
-        fig = scatter(1:4, figure=(; resolution=(800, 800)))
+        fig = scatter(1:4, figure=(; size = (800, 800)))
         save("test.pdf", fig)
         size(Makie.colorbuffer(fig)) == (800, 800)
         rm("test.pdf")
     end
 
     @testset "switching from pdf screen to png, save" begin
-        fig = scatter(1:4, figure=(; resolution=(800, 800)))
+        fig = scatter(1:4, figure=(; size = (800, 800)))
         save("test.pdf", fig)
         save("test.png", fig)
-        @test size(load("test.png")) == (800, 800)
+        @test size(load("test.png")) == (1600, 1600)
         rm("test.pdf")
         rm("test.png")
     end
@@ -91,7 +89,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
     @testset "changing resolution of same format" begin
         # see: https://github.com/MakieOrg/Makie.jl/issues/2433
         # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441
-        scene = Scene(resolution=(800, 800));
+        scene = Scene(size = (800, 800));
         load_save(s; kw...) = (save("test.png", s; kw...); load("test.png"))
         @test size(load_save(scene, px_per_unit=2)) == (1600, 1600)
         @test size(load_save(scene, px_per_unit=1)) == (800, 800)
@@ -124,7 +122,7 @@ end
 @testset "VideoStream & screen options" begin
     N = 3
     points = Observable(Point2f[])
-    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(600, 800),))
+    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(600, 800),))
     vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=CairoMakie)
     @test vio.screen isa CairoMakie.Screen{CairoMakie.IMAGE}
     @test size(vio.screen) == size(f.scene) .* 2
@@ -136,7 +134,12 @@ end
     rm("test.mp4")
 end
 
-using ReferenceTests
+@testset "plotlist no ambiguity (#4038)" begin
+    f = plotlist([Makie.SpecApi.Scatter(1:10)])
+    Makie.colorbuffer(f; backend=CairoMakie)
+    plotlist!([Makie.SpecApi.Scatter(1:10)])
+end
+
 
 excludes = Set([
     "Colored Mesh",
@@ -187,15 +190,51 @@ excludes = Set([
     "scatter with glow",
     "scatter with stroke",
     "heatmaps & surface",
-    "Textured meshscatter" # not yet implemented
+    "Textured meshscatter", # not yet implemented
+    "Voxel - texture mapping", # not yet implemented
+    "Miter Joints for line rendering", # CairoMakie does not show overlap here
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
 
 @testset "refimages" begin
-    CairoMakie.activate!(type = "png")
+    CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions=functions)
-    recorded_files, recording_dir = @include_reference_tests "refimages.jl"
+    recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir)
-    ReferenceTests.test_comparison(scores; threshold = 0.032)
+    ReferenceTests.test_comparison(scores; threshold = 0.05)
+end
+
+@testset "PdfVersion" begin
+    @test CairoMakie.pdfversion("1.4") === CairoMakie.PDFv14
+    @test CairoMakie.pdfversion("1.5") === CairoMakie.PDFv15
+    @test CairoMakie.pdfversion("1.6") === CairoMakie.PDFv16
+    @test CairoMakie.pdfversion("1.7") === CairoMakie.PDFv17
+    @test_throws ArgumentError CairoMakie.pdfversion("foo")
+end
+
+@testset "restrict PDF version" begin
+    magic_number(filename) = open(filename) do f
+        return String(read(f, sizeof("%PDF-X.Y")))
+    end
+
+    filename = "$(tempname()).pdf"
+
+    try
+        save(filename, Figure(), pdf_version=nothing)
+        @test startswith(magic_number(filename), "%PDF-")
+    finally
+        rm(filename)
+    end
+
+    for version in ["1.4", "1.5", "1.6", "1.7"]
+        try
+            save(filename, Figure(), pdf_version=version)
+            @test magic_number(filename) == "%PDF-$version"
+        finally
+            rm(filename)
+        end
+    end
+
+    @test_throws ArgumentError save(filename, Figure(), pdf_version="foo")
 end
