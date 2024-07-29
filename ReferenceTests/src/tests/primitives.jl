@@ -709,8 +709,19 @@ end
     
     f = Figure()
     heatmap(f[1, 1], 1:4, 1:4, img, colormap = :viridis)
-    heatmap(f[2, 1], 1:4, 4:-1:1, img, colormap = :viridis)
+    heatmap(f[2, 1], 1:4, 4..1, img, colormap = :viridis)
     heatmap(f[1, 2], 4:-1:1, 1:4, img, colormap = :viridis)
-    heatmap(f[2, 2], 4:-1:1, 4:-1:1, img, colormap = :viridis)
+    heatmap(f[2, 2], 4:-1:1, [4, 3, 2, 1], img, colormap = :viridis)
+    f
+end
+
+@reference_test "Reverse image axes" begin
+    img = [2 0 0 3; 0 0 0 0; 1 1 0 0; 1 1 0 4]
+    
+    f = Figure()
+    image(f[1, 1], 1:4, 1:4, img, colormap = :viridis)
+    image(f[2, 1], 1:4, 4..1, img, colormap = :viridis)
+    image(f[1, 2], 4:-1:1, 1:4, img, colormap = :viridis)
+    image(f[2, 2], 4:-1:1, [4, 3, 2, 1], img, colormap = :viridis)
     f
 end
