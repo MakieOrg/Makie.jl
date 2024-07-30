@@ -20,9 +20,9 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange);
 
 uniform uint objectid;
-uniform vec2 uv_scale;
 
 flat out uvec2 o_id;
+flat out int o_InstanceID;
 out vec2 o_uv;
 out vec4 o_color;
 
@@ -62,6 +62,7 @@ void main()
     vec2 tex_uv = to_2d(texturecoordinates);
     o_uv = vec2(1.0 - tex_uv.y, tex_uv.x);
     o_color = to_color(vertex_color, color_map, color_norm);
+    o_InstanceID = 0;
     vec3 v = to_3d(vertices);
     render(model * vec4(v, 1), normals, view, projection);
 }

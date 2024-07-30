@@ -148,6 +148,7 @@ vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, ivec2 uv){
 
 uniform uint objectid;
 flat out uvec2 o_id;
+flat out int o_InstanceID;
 out vec4 o_color;
 out vec2 o_uv;
 
@@ -161,6 +162,7 @@ void main()
     {{position_calc}}
 
     o_id = uvec2(objectid, index1D+1);
+    o_InstanceID = 0;
     o_uv = index01;
     vec3 normalvec = {{normal_calc}};
 

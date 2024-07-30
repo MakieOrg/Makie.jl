@@ -33,6 +33,7 @@ uniform uint objectid;
 uniform int len;
 
 flat out uvec2 o_id;
+flat out int o_InstanceID;
 out vec4 o_color;
 out vec2 o_uv;
 
@@ -93,13 +94,11 @@ vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, N
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 
 {{uv_transform_type}} uv_transform;
-vec2 get_uv(Nothing transform, int index, Nothing uv){ return vec2(0.0); }
-vec2 get_uv(Nothing transform, int index, vec2 uv){    return vec2(1.0 - uv.y, uv.x); }
-vec2 get_uv(samplerBuffer transforms, int index, Nothing uv){ return vec2(0.0); }
-vec2 get_uv(samplerBuffer transforms, int index, vec2 uv){
-    vec4 transform = texelFetch(transforms, index);
-    return transform.xy * vec2(1.0 - uv.y, uv.x) + transform.zw;
-}
+vec4 get_uv_transform(Nothing transform, int index){ return vec4(1.0, 1.0, 0.0, 0.0); }
+vec4 get_uv_transform(vec4 transform, int index){ return transform; }
+vec4 get_uv_transform(samplerBuffer transforms, int index){ return texelFetch(transforms, index); }
+vec2 get_uv(vec4 st, Nothing uv){ return vec2(0.0); }
+vec2 get_uv(vec4 st, vec2 uv){ return st.xy * vec2(1.0 - uv.y, uv.x) + st.zw; }
 
 
 void main(){
@@ -112,7 +111,8 @@ void main(){
     {{position_calc}}
     o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
-    o_uv = get_uv(uv_transform, index, texturecoordinates);
+    o_uv = get_uv(get_uv_transform(uv_transform, index), texturecoordinates);
+    o_InstanceID = index;
     rotate(rotation, index, V, N);
     render(model * vec4(pos + V, 1), N, view, projection);
 }

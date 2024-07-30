@@ -12,6 +12,7 @@ in vec3 o_view_normal;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
+flat in int o_InstanceID;
 
 {{matcap_type}} matcap;
 {{image_type}} image;
@@ -79,18 +80,23 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_norm, sampler1D color_map, s
 }
 
 uniform bool fetch_pixel;
-uniform vec2 uv_scale;
+{{uv_transform_type}} uv_transform;
+vec4 get_uv_transform(Nothing transform, int index){ return vec4(1.0, 1.0, 0.0, 0.0); }
+vec4 get_uv_transform(vec4 transform, int index){ return transform; }
+vec4 get_uv_transform(samplerBuffer transforms, int index){ return texelFetch(transforms, index); }
 
 vec4 get_pattern_color(sampler1D color) {
+    vec4 st = get_uv_transform(uv_transform, o_InstanceID);
     int size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = st.xy * gl_FragCoord.xy + st.zw;
     int idx = int(mod(pos.x, size));
     return texelFetch(color, idx, 0);
 }
 
 vec4 get_pattern_color(sampler2D color){
+    vec4 st = get_uv_transform(uv_transform, o_InstanceID);
     ivec2 size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = st.xy * gl_FragCoord.xy + st.zw;
     return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
 }
 
