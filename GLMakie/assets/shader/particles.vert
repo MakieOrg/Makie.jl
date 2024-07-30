@@ -94,20 +94,20 @@ vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, N
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 
 {{uv_transform_type}} uv_transform;
-// since we use textures instead of instance buffers we can't pass a mat3x2 directly
-{{uv_transform_type2}} uv_transform2; 
-vec2 apply_uv_transform(Nothing _, Nothing __, int i, vec2 uv){ return uv; }
-vec2 apply_uv_transform(mat3x2 transform, Nothing _, int i,  vec2 uv){ return transform * vec3(uv, 1); }
-vec2 apply_uv_transform(samplerBuffer transforms, samplerBuffer offsets, int index, vec2 uv){
-    vec4 mat_data = texelFetch(transforms, index);
-    mat2 transform = mat2(mat_data.xy, mat_data.zw);
-    vec2 offset = texelFetch(offsets, index).xy;
-    return transform * uv + offset;
+vec2 apply_uv_transform(Nothing t1, int i, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, int i, vec2 uv){ return transform * vec3(uv, 1); }
+vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3x2 transform;
+    transform[0] = texelFetch(transforms, 3 * index + 0).xy;
+    transform[1] = texelFetch(transforms, 3 * index + 1).xy;
+    transform[2] = texelFetch(transforms, 3 * index + 2).xy;
+    return transform * vec3(uv, 1);
 }
 
 vec2 get_uv(int index, Nothing uv){ return vec2(0.0); }
 vec2 get_uv(int index, vec2 uv){
-    return apply_uv_transform(uv_transform, uv_transform2, index, uv);
+    return apply_uv_transform(uv_transform, index, uv);
 }
 
 void main(){

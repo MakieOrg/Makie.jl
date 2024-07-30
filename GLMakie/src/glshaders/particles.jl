@@ -79,16 +79,19 @@ function draw_mesh_particle(screen, p, data)
     if to_value(data[:uv_transform]) isa Vector
         transforms = pop!(data, :uv_transform)
         @gen_defaults! data begin
-            uv_transform  = map(ts -> Vec4f[t[Vec(1, 2, 3, 4)] for t in ts], transforms) => TextureBuffer
-            uv_transform2 = map(ts -> Vec2f[t[Vec(5, 6)] for t in ts], transforms) => TextureBuffer
+            uv_transform = map(transforms) do transforms
+                # 3x Vec2 should match the element order of glsl mat3x2
+                output = Vector{Vec2f}(undef, 3 * length(transforms))
+                for i in eachindex(transforms)
+                    output[3 * (i-1) + 1] = transforms[i][Vec(1, 2)]
+                    output[3 * (i-1) + 2] = transforms[i][Vec(3, 4)]
+                    output[3 * (i-1) + 3] = transforms[i][Vec(5, 6)]
+                end
+                return output
+            end => TextureBuffer
         end
-        @info "Branch 1"
-    else
-        @gen_defaults! data begin
-            uv_transform = Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
-            uv_transform2 = nothing
-        end
-        @info "Branch 2"
+    else 
+        # handled automatically
     end
 
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
