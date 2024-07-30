@@ -13,6 +13,7 @@
 - Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
 - Correct a method ambiguity in `insert!` which was causing `PlotList` to fail on CairoMakie. [#4038](https://github.com/MakieOrg/Makie.jl/pull/4038)
 - Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
+- Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
 
 ## [0.21.5] - 2024-07-07
 
