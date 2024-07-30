@@ -33,8 +33,8 @@ vec2 to_2d(float v){return vec2(v, 0);}
 vec2 to_2d(vec2 v){return v;}
 
 {{uv_transform_type}} uv_transform;
-vec4 get_uv_transform(Nothing transform){ return vec4(1.0, 1.0, 0.0, 0.0); }
-vec4 get_uv_transform(vec4 transform)   { return transform; }
+vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, vec2 uv){ return transform * vec3(uv, 1); }
 
 vec4 to_color(vec3 c, Nothing color_map, Nothing color_norm){
     return vec4(c, 1);
@@ -64,8 +64,7 @@ void main()
 {
     o_id = uvec2(objectid, gl_VertexID+1);
     vec2 tex_uv = to_2d(texturecoordinates);
-    vec4 st = get_uv_transform(uv_transform);
-    o_uv = st.xy * vec2(1.0 - tex_uv.y, tex_uv.x) + st.zw;
+    o_uv = apply_uv_transform(uv_transform, tex_uv);
     o_color = to_color(vertex_color, color_map, color_norm);
     o_InstanceID = 0;
     vec3 v = to_3d(vertices);

@@ -41,8 +41,8 @@ vec2 linear_index(ivec2 dims, int index, vec2 offset);
 vec4 linear_texture(sampler2D tex, int index, vec2 offset);
 
 {{uv_transform_type}} uv_transform;
-vec4 get_uv_transform(Nothing transform){ return vec4(1.0, 1.0, 0.0, 0.0); }
-vec4 get_uv_transform(vec4 transform)   { return transform; }
+vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, vec2 uv){ return transform * vec3(uv, 1); }
 
 // Normal generation
 
@@ -165,8 +165,7 @@ void main()
 
     o_id = uvec2(objectid, index1D+1);
     o_InstanceID = 0;
-    vec4 st = get_uv_transform(uv_transform);
-    o_uv = st.xy * index01 + st.zw;
+    o_uv = apply_uv_transform(uv_transform, index01);
     vec3 normalvec = {{normal_calc}};
 
     o_color = vec4(0.0);
