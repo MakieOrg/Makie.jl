@@ -665,6 +665,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
         gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
         get!(gl_attributes, :fetch_pixel, true)
+        # different default with Patterns (no swapping and flipping of axes)
+        gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
+            if uv_transform === Makie.automatic
+                return Mat{2,3,Float32}(1,0,0,1,0,0)
+            else
+                return convert_attribute(uv_transform, key"uv_transform"())
+            end
+        end
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
