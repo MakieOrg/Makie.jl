@@ -901,6 +901,7 @@ to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
 
 convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)

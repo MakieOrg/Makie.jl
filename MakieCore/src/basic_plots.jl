@@ -209,6 +209,7 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
+    uv_transform = automatic
     colormap = [:black, :white]
 end
 

@@ -637,9 +637,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         gl_attributes[:vertices] = apply_transform_and_f32_conversion(scene, plot, position)
         rect = Rect2f(0, 0, 1, 1)
         gl_attributes[:faces] = decompose(GLTriangleFace, rect)
-        gl_attributes[:texturecoordinates] = map(decompose_uv(rect)) do uv
-            return 1.0f0 .- Vec2f(uv[2], uv[1])
-        end
+        gl_attributes[:texturecoordinates] = decompose_uv(rect)
         get!(gl_attributes, :shading, NoShading)
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
