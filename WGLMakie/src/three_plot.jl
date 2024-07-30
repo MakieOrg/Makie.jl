@@ -33,7 +33,9 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], scene, viewport(scene))
-    canvas = DOM.m("canvas"; tabindex="0", style="display: block")
+    # Pass `dataLmSuppressShortcuts=true` to ensure JupyterLab does not capture keyboard shortcuts
+    # see: https://jupyterlab.readthedocs.io/en/4.2.x/extension/notebook.html#keyboard-interaction-model
+    canvas = DOM.m("canvas"; tabindex="0", style="display: block", dataLmSuppressShortcuts=true)
     wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
