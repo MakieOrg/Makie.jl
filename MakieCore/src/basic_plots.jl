@@ -300,6 +300,8 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     invert_normals = false
     "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
     interpolate = true
+    "Sets a UVTransform consisting of scaling and translation for generated texture coordinates."
+    uv_transform = nothing
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -393,6 +395,8 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
     interpolate = true
     cycle = [:color => :patchcolor]
     matcap = nothing
+    "Sets a UVTransform consisting of scaling and translation for texture coordinates."
+    uv_transform = nothing
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -471,9 +475,9 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     markersize = 0.1
     "Sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually."
     rotation = 0.0
-    "Sets a transform for texture coordinates."
-    uv_transform = nothing
     cycle = [:color]
+    "Sets a UVTransform consisting of scaling and translation for texture coordinates. This applies per scattered mesh if a vector is passed"
+    uv_transform = nothing
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
