@@ -95,8 +95,11 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 {{uv_transform_type}} uv_transform;
 vec2 get_uv(Nothing transform, int index, Nothing uv){ return vec2(0.0); }
 vec2 get_uv(Nothing transform, int index, vec2 uv){    return vec2(1.0 - uv.y, uv.x); }
-vec2 get_uv(vec4 transform,    int index, Nothing uv){ return vec2(0.0); }
-vec2 get_uv(vec4 transform,    int index, vec2 uv){    return transform.xy * vec2(1.0 - uv.y, uv.x) + transform.zw; }
+vec2 get_uv(samplerBuffer transforms, int index, Nothing uv){ return vec2(0.0); }
+vec2 get_uv(samplerBuffer transforms, int index, vec2 uv){
+    vec4 transform = texelFetch(transforms, index);
+    return transform.xy * vec2(1.0 - uv.y, uv.x) + transform.zw;
+}
 
 
 void main(){
