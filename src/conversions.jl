@@ -363,8 +363,9 @@ function print_range_warning(side::String, value)
 end
 
 to_interval(x::Tuple{<: Real, <: Real}) = float_convert(x[1]) .. float_convert(x[2])
-function to_interval(x::Union{Interval,AbstractVector,ClosedInterval})
-    return float_convert(minimum(x)) .. float_convert(maximum(x))
+to_interval(x::Interval) = float_convert(leftendpoint(x)) .. float_convert(rightendpoint(x))
+function to_interval(x::Union{AbstractVector})
+    return float_convert(first(x)) .. float_convert(last(x))
 end
 
 
@@ -652,7 +653,8 @@ end
 #                               Helper Functions                               #
 ################################################################################
 
-to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
+to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
 Converts the element array type to `T1` without making a copy if the element type matches
