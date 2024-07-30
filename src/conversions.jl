@@ -895,6 +895,18 @@ to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
 
+struct UVTransform
+    scale::Vec2f
+    translation::Vec2f
+end
+# TODO: merge with uv_offset_width?
+convert_attribute(x::UVTransform, ::key"uv_transform") = Vec4f(x.scale[1], x.scale[2], x.translation[1], x.translation[2])
+convert_attribute(x::Vector{UVTransform}, k::key"uv_transform") = convert_attribute.(x, (k,))
+convert_attribute(x::Vec4f, k::key"uv_transform") = x
+convert_attribute(x::Vector{Vec4f}, k::key"uv_transform") = x
+
+
+
 convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
 convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
 
