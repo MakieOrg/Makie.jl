@@ -471,6 +471,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     markersize = 0.1
     "Sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually."
     rotation = 0.0
+    "Sets a transform for texture coordinates."
+    uv_transform = nothing
     cycle = [:color]
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
