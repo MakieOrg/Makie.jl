@@ -97,7 +97,7 @@ import MakieCore: RealVector, RealMatrix, RealArray, FloatType
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
-export Linestyle, UVTransform
+export Linestyle
 
 
 const RGBAf = RGBA{Float32}

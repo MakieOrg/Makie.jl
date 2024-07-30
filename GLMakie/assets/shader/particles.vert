@@ -94,12 +94,21 @@ vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, N
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 
 {{uv_transform_type}} uv_transform;
-vec4 get_uv_transform(Nothing transform, int index){ return vec4(1.0, 1.0, 0.0, 0.0); }
-vec4 get_uv_transform(vec4 transform, int index){ return transform; }
-vec4 get_uv_transform(samplerBuffer transforms, int index){ return texelFetch(transforms, index); }
-vec2 get_uv(vec4 st, Nothing uv){ return vec2(0.0); }
-vec2 get_uv(vec4 st, vec2 uv){ return st.xy * vec2(1.0 - uv.y, uv.x) + st.zw; }
+// since we use textures instead of instance buffers we can't pass a mat3x2 directly
+{{uv_transform_type2}} uv_transform2; 
+vec2 apply_uv_transform(Nothing _, Nothing __, int i, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, Nothing _, int i,  vec2 uv){ return transform * vec3(uv, 1); }
+vec2 apply_uv_transform(samplerBuffer transforms, samplerBuffer offsets, int index, vec2 uv){
+    vec4 mat_data = texelFetch(transforms, index);
+    mat2 transform = mat2(mat_data.xy, mat_data.zw);
+    vec2 offset = texelFetch(offsets, index).xy;
+    return transform * uv + offset;
+}
 
+vec2 get_uv(int index, Nothing uv){ return vec2(0.0); }
+vec2 get_uv(int index, vec2 uv){
+    return apply_uv_transform(uv_transform, uv_transform2, index, uv);
+}
 
 void main(){
     int index = gl_InstanceID;
@@ -111,7 +120,7 @@ void main(){
     {{position_calc}}
     o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
-    o_uv = get_uv(get_uv_transform(uv_transform, index), texturecoordinates);
+    o_uv = get_uv(index, texturecoordinates);
     o_InstanceID = index;
     rotate(rotation, index, V, N);
     render(model * vec4(pos + V, 1), N, view, projection);

@@ -895,17 +895,53 @@ to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
 
-struct UVTransform
-    scale::Vec2f
-    translation::Vec2f
+## UV Transforms
+
+convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
+convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Mat3f, k::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
+convert_attribute(x::Mat{2, 3, Float32}, k::key"uv_transform") = x
+convert_attribute(x::Nothing, k::key"uv_transform") = x
+
+# these return Mat3f's so they can be multiplied
+uv_transform(packed::Tuple) = uv_transform(packed...)
+# prefer scale as single argument since it may be useful for patterns
+# while just translation is mostly useless
+uv_transform(scale::VecTypes{2, <: Real}) = uv_transform(Vec2f(0), scale)
+function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real})
+    return Mat3f(
+        scale[1], 0, 0,
+        0, scale[2], 0,
+        translation[1], translation[2], 1
+    )
 end
-# TODO: merge with uv_offset_width?
-convert_attribute(x::UVTransform, ::key"uv_transform") = Vec4f(x.scale[1], x.scale[2], x.translation[1], x.translation[2])
-convert_attribute(x::Vector{UVTransform}, k::key"uv_transform") = convert_attribute.(x, (k,))
-convert_attribute(x::Vec4f, k::key"uv_transform") = x
-convert_attribute(x::Vector{Vec4f}, k::key"uv_transform") = x
-
-
+function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real}, angle::Real)
+    return Mat3f(
+         scale[1] * cos(angle), scale[2] * sin(anlge), 0,
+        -scale[1] * sin(angle), scale[2] * cos(angle), 0,
+        translation[1], translation[2],                1
+    )
+end
+function uv_transform(angle::Real)
+    return Mat3f(
+         cos(angle), sin(anlge), 0,
+        -sin(angle), cos(angle), 0,
+        0, 0, 1
+    )
+end
+function uv_transform(action::Symbol)
+    # TODO: do some explicitly named operations
+    # TODO: check these
+    if action == :rotr90
+        return uv_transform(pi/2)
+    elseif action == :rotl90
+        return uv_transform(-pi/2)
+    elseif action == :swap_xy
+        return Mat3f(0,1,0, 1,0,0, 0,0,1)
+    else
+        error("Transformation :$action not recognized.")
+    end
+end
 
 convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
 convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x

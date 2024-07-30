@@ -72,11 +72,24 @@ function draw_mesh_particle(screen, p, data)
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
-        # Can we make this a uniform or a instance attribute?
-        uv_transform = nothing => TextureBuffer # scale, translation
         texturecoordinates = nothing
     end
 
+    # TODO: use instance attributes
+    if to_value(data[:uv_transform]) isa Vector
+        transforms = pop!(data, :uv_transform)
+        @gen_defaults! data begin
+            uv_transform  = map(ts -> Vec4f[t[Vec(1, 2, 3, 4)] for t in ts], transforms) => TextureBuffer
+            uv_transform2 = map(ts -> Vec2f[t[Vec(5, 6)] for t in ts], transforms) => TextureBuffer
+        end
+        @info "Branch 1"
+    else
+        @gen_defaults! data begin
+            uv_transform = Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
+            uv_transform2 = nothing
+        end
+        @info "Branch 2"
+    end
 
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
