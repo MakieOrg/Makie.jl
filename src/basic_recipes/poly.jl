@@ -204,7 +204,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         colormap = get(plot, :colormap, nothing),
         colorscale = get(plot, :colorscale, identity),
         colorrange = get(plot, :colorrange, automatic),
-        deft_shift = plot.depth_shift
+        depth_shift = plot.depth_shift
     )
 
     num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes

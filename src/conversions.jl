@@ -243,6 +243,24 @@ function convert_arguments(PB::PointBased, pol::Polygon)
     return (arr,)
 end
 
+function convert_arguments(::Type{<:LineSegments}, pol::Polygon{N,T}) where {N,T}
+    converted = convert_arguments(LineSegments, pol.exterior)[1]
+    result = Point{N, float_type(T)}[]
+    for ptup in TupleView{2,1}(converted)
+        push!(result, ptup...)
+    end
+    push!(result, result[end], converted[1])
+    return (result,)
+end
+
+function convert_arguments(::Type{<:LineSegments}, mp::Union{Array{<:Polygon{N, T}}, MultiPolygon{N, T}}) where {N, T}
+    arr = Point{N, float_type(T)}[]
+    for idx in 1:length(mp)
+        append!(arr, convert_arguments(LineSegments, mp[idx])[1])
+    end
+    return (arr,)
+end
+
 """
 
     convert_arguments(PB, Union{Array{<:Polygon}, MultiPolygon})
