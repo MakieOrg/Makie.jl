@@ -947,10 +947,10 @@ function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
     # TODO: check these
     if action == :rotr90
-        return uv_transform(pi/2)
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
     elseif action == :rotl90
-        return uv_transform(-pi/2)
-    elseif action == :swap_xy
+        return Mat3f(0,1,0, -1,0,0, 1,0,1)
+    elseif action in (:swap_xy, :transpose)
         return Mat3f(0,1,0, 1,0,0, 0,0,1)
     elseif action in (:flip_x, :invert_x)
         return Mat3f(-1,0,0, 0,1,0, 1,0,1)
