@@ -904,6 +904,7 @@ to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 # convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
 
 # defaults matching master
+# Note - defaults with Patterns should be identity (handled in backends)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") =  Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") =  Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = nothing
@@ -917,6 +918,7 @@ convert_attribute(x::Nothing, ::key"uv_transform") = x
 
 # these return Mat3f's so they can be multiplied
 uv_transform(packed::Tuple) = uv_transform(packed...)
+uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
 # prefer scale as single argument since it may be useful for patterns
 # while just translation is mostly useless
 uv_transform(scale::VecTypes{2, <: Real}) = uv_transform(Vec2f(0), scale)
