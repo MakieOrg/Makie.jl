@@ -950,6 +950,12 @@ function uv_transform(action::Symbol)
         return uv_transform(-pi/2)
     elseif action == :swap_xy
         return Mat3f(0,1,0, 1,0,0, 0,0,1)
+    elseif action in (:flip_x, :invert_x)
+        return Mat3f(-1,0,0, 0,1,0, 1,0,1)
+    elseif action in (:flip_y, :invert_y)
+        return Mat3f(1,0,0, 0,-1,0, 0,1,1)
+    elseif action in (:flip_xy, :invert_xy)
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
     else
         error("Transformation :$action not recognized.")
     end
