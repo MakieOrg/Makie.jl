@@ -911,9 +911,9 @@ convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Fl
 
 convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
-convert_attribute(x::Mat3f, k::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
-convert_attribute(x::Mat{2, 3, Float32}, k::key"uv_transform") = x
-convert_attribute(x::Nothing, k::key"uv_transform") = x
+convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
+convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
+convert_attribute(x::Nothing, ::key"uv_transform") = x
 
 # these return Mat3f's so they can be multiplied
 uv_transform(packed::Tuple) = uv_transform(packed...)
@@ -929,14 +929,14 @@ function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: R
 end
 function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real}, angle::Real)
     return Mat3f(
-         scale[1] * cos(angle), scale[2] * sin(anlge), 0,
+         scale[1] * cos(angle), scale[2] * sin(angle), 0,
         -scale[1] * sin(angle), scale[2] * cos(angle), 0,
         translation[1], translation[2],                1
     )
 end
 function uv_transform(angle::Real)
     return Mat3f(
-         cos(angle), sin(anlge), 0,
+         cos(angle), sin(angle), 0,
         -sin(angle), cos(angle), 0,
         0, 0, 1
     )
