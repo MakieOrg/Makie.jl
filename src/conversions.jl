@@ -958,9 +958,11 @@ function uv_transform(action::Symbol)
         return Mat3f(1,0,0, 0,-1,0, 0,1,1)
     elseif action in (:flip_xy, :invert_xy)
         return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
-    elseif action in (:meshscatter, :mesh, :surface, :image)
+    elseif action in (:meshscatter, :mesh, :image)
         M = convert_attribute(automatic, key"uv_transform"(), Key{action}())
-        return Mat3f(M[1,1], M[1,2], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
+        return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
+    elseif action == :surface
+        return Mat3f(I)
     else
         error("Transformation :$action not recognized.")
     end
