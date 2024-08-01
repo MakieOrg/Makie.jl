@@ -923,6 +923,32 @@ function convert_attribute(angle::Real, ::key"uv_transform")
     # should not translate at all.
     error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
 end
+
+"""
+    uv_transform(I::UniformScaling)
+    uv_transform([translation::VecTypes{2} = Vec2f(0)], scale::VecTypes{2})
+    uv_transform(angle::Real)
+    uv_transform(action::Symbol)
+
+Creates a 3x3 transformation matrix based on the given translation and scale,
+rotation angle (around z axis) or named action. These actions assume `0 < uv < 1`
+and thus may not work correctly with Patterns. They include
+- `:rotr90` corresponding to `rotr90(texture)`
+- `:rotl90` corresponding to `rotl90(texture)`
+- `:rot180` corresponding to `rot180(texture)`
+- `:swap_xy, :transpose` which corresponds to transposing the texture
+- `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
+- `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+
+Note that you can easily chain operations returned by `uv_transforms` as they 
+are 3x3 matrices. For example you could rotate an image texture by any angle
+using
+```julia
+T = Makie.uv_transform(Vec2f(0.5), Vec2f(1)) * # move back to a 0..1 range (unit scale)
+    Makie.uv_transform(pi/4) *                 # rotate around center
+    Makie.uv_transform(Vec2f(-0.5), Vec2f(1))  # move uvs from 0..1 to -0.5..0.5 (unit scale)
+```
+"""
 uv_transform(packed::Tuple) = uv_transform(packed...)
 uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
 # prefer scale as single argument since it may be useful for patterns
