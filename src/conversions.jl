@@ -929,23 +929,8 @@ function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: R
         translation[1], translation[2], 1
     )
 end
-function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real}, angle::Real)
-    return Mat3f(
-         scale[1] * cos(angle), scale[2] * sin(angle), 0,
-        -scale[1] * sin(angle), scale[2] * cos(angle), 0,
-        translation[1], translation[2],                1
-    )
-end
-function uv_transform(angle::Real)
-    return Mat3f(
-         cos(angle), sin(angle), 0,
-        -sin(angle), cos(angle), 0,
-        0, 0, 1
-    )
-end
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
-    # TODO: check these
     if action == :rotr90
         return Mat3f(0,-1,0, 1,0,0, 0,1,1)
     elseif action == :rotl90

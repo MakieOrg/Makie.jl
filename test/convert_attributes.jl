@@ -22,14 +22,6 @@ using Makie: Mat, convert_attribute, uv_transform, automatic
         @test convert_attribute(wrap((Vec2f(-1,-2), Vec2f(2,3))), key) == 
             wrap(Mat{2, 3, Float32}(2,0,0,3,-1,-2))
         @test convert_attribute(wrap(I), key) == wrap(Mat{2, 3, Float32}(1,0,0,1,0,0))
-        @test convert_attribute(wrap(1.0), key) == 
-            wrap(Mat{2, 3, Float32}(cos(1.0),sin(1.0),-sin(1.0),cos(1.0),0,0))
-
-        T = Makie.translationmatrix(Vec3f(-1, -2, 0))
-        S = Makie.scalematrix(Vec3f(3, 4, 0))
-        R = Makie.rotationmatrix_z(1.8f0)
-        M = (T * S * R)[Vec(1,2), Vec(1,2,4)]
-        @test convert_attribute(wrap((Vec2f(-1,-2), Vec2f(3,4), 1.8)), key) ≈ wrap(M)
 
         @test convert_attribute(wrap(:rotr90), key)  == wrap(Mat{2, 3, Float32}(0, -1, 1, 0, 0, 1))
         @test convert_attribute(wrap(:rotl90), key)  == wrap(Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0))
