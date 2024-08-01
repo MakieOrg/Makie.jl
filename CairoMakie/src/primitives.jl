@@ -941,7 +941,6 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
-    @get_attribute(primitive, (uv_transform,))
     mesh = primitive[1][]
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive, mesh)
@@ -949,19 +948,21 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         if !haskey(primitive, :faceculling)
             primitive[:faceculling] = Observable(-10)
         end
+        uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
         draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
     end
     return nothing
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
-    @get_attribute(plot, (uv_transform, ))
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
     vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+    # Note: This assume the function is only called from mesh plots
+    uv_transform = Makie.convert_attribute(plot[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
     end
@@ -1031,7 +1032,6 @@ function draw_mesh3D(
 
     # Priorize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
-
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
     model = attributes.model[]::Mat4d
@@ -1204,7 +1204,6 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
-    @get_attribute(primitive, (uv_transform,))
     # Pretend the surface plot is a mesh plot and plot that instead
     mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     old = primitive[:color]
@@ -1214,6 +1213,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     if !haskey(primitive, :faceculling)
         primitive[:faceculling] = Observable(-10)
     end
+    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"surface"())
     draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
     primitive[:color] = old
     return nothing
@@ -1226,7 +1226,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, marker, markersize, rotation, uv_transform))
+    @get_attribute(primitive, (model, marker, markersize, rotation))
 
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
@@ -1252,6 +1252,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     submesh[:model] = model
     scales = primitive[:markersize][]
+    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
     for i in zorder
         p = pos[i]
         if color isa AbstractVector
