@@ -1,4 +1,4 @@
-using Makie: Mat, convert_attribute, uv_transform, automatic
+using Makie: Mat, Mat3f, convert_attribute, uv_transform, automatic
 
 @testset "uv_transform" begin
     key = Makie.key"uv_transform"()
@@ -6,7 +6,7 @@ using Makie: Mat, convert_attribute, uv_transform, automatic
     # defaults matching previous Makie versions
     @test convert_attribute(automatic, key, Makie.key"meshscatter"()) == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
     @test convert_attribute(automatic, key, Makie.key"mesh"()) == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
-    @test convert_attribute(automatic, key, Makie.key"surface"()) === Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+    @test convert_attribute(automatic, key, Makie.key"surface"()) == Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
     @test convert_attribute(automatic, key, Makie.key"image"()) == Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 
     # General Pipeline
@@ -37,5 +37,5 @@ using Makie: Mat, convert_attribute, uv_transform, automatic
     @test uv_transform(:meshscatter)[Vec(1,2), Vec(1,2,3)] == convert_attribute(automatic, key, Makie.key"meshscatter"())
     @test uv_transform(:mesh)[Vec(1,2), Vec(1,2,3)]        == convert_attribute(automatic, key, Makie.key"mesh"())
     @test uv_transform(:image)[Vec(1,2), Vec(1,2,3)]       == convert_attribute(automatic, key, Makie.key"image"())
-    @test uv_transform(:surface) == Mat3f(I)
+    @test uv_transform(:surface)[Vec(1,2), Vec(1,2,3)]     == convert_attribute(automatic, key, Makie.key"surface"())
 end
