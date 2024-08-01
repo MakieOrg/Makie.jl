@@ -69,9 +69,15 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[k] = lift_convert(k, v, plot)
     end
 
-    handle_color!(plot, uniform_dict, per_instance, :color)
-    handle_color_getter!(uniform_dict, per_instance)
+    handle_color!(plot, uniform_dict, per_instance)
+    # handle_color_getter!(uniform_dict, per_instance)
     instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
+    uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
+
+    if haskey(uniform_dict, :color) && haskey(per_instance, :color)
+        to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
+        to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
+    end
 
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
@@ -95,7 +101,18 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     uniform_dict[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
 
-    return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uniform_dict[:uv_transform] = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:meshscatter}())
+        # why transpose?
+        if M === nothing
+            return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(I)
+        else
+            return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+        end
+    end
+
+    return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
 
