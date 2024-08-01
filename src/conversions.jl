@@ -916,7 +916,13 @@ convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
 convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
 convert_attribute(x::Nothing, ::key"uv_transform") = x
 
-# these return Mat3f's so they can be multiplied
+function convert_attribute(angle::Real, ::key"uv_transform")
+    # To rotate an image with uvs in the 0..1 range we need to translate, 
+    # rotate, translate back.
+    # For patterns and in terms of what's actually happening to the uvs we 
+    # should not translate at all.
+    error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
+end
 uv_transform(packed::Tuple) = uv_transform(packed...)
 uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
 # prefer scale as single argument since it may be useful for patterns
@@ -929,12 +935,21 @@ function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: R
         translation[1], translation[2], 1
     )
 end
+function uv_transform(angle::Real)
+    return Mat3f(
+         cos(angle), sin(angle), 0,
+        -sin(angle), cos(angle), 0,
+        0, 0, 1
+    )
+end
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
     if action == :rotr90
         return Mat3f(0,-1,0, 1,0,0, 0,1,1)
     elseif action == :rotl90
         return Mat3f(0,1,0, -1,0,0, 1,0,1)
+    elseif action == :rot180
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
     elseif action in (:swap_xy, :transpose)
         return Mat3f(0,1,0, 1,0,0, 0,0,1)
     elseif action in (:flip_x, :invert_x)
