@@ -703,3 +703,35 @@ end
 
     fig
 end
+
+@reference_test "uv_transform" begin
+    fig = Figure(size = (400, 400))
+    img = [RGBf(1,0,0) RGBf(0,1,0); RGBf(0,0,1) RGBf(1,1,1)]
+
+    function create_block(f, gl, args...; kwargs...)
+        ax, p = f(gl[1, 1], args..., uv_transform = I; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[1, 2], args..., uv_transform = :rotr90; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 1], args..., uv_transform = (Vec2f(0.5), Vec2f(0.5)); kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 2], args..., uv_transform = Makie.Mat{2,3,Float32}(-1,0,0,-1,1,1); kwargs...)
+        hidedecorations!(ax)
+    end
+    
+    gl = fig[1, 1] = GridLayout()
+    create_block(mesh, gl, Rect2f(0, 0, 1, 1), color = img)
+    
+    gl = fig[1, 2] = GridLayout()
+    create_block(surface, gl, 0..1, 0..1, zeros(10, 10), color = img)
+    
+    gl = fig[2, 1] = GridLayout()
+    create_block(
+        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img, 
+        marker = Makie.uv_normal_mesh(Rect2f(0,0,1,1)), markersize = 1.0)
+
+    gl = fig[2, 2] = GridLayout()
+    create_block(image, gl, 0..1, 0..1, img)
+
+    fig
+end
