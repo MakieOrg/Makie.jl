@@ -119,6 +119,16 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
     end
 
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:mesh}())
+        if M === nothing
+            return Mat3f(I)
+        else
+            return Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+        end
+    end
+
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal, plot)
     attributes[:faces] = faces
