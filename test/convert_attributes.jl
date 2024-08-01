@@ -4,9 +4,9 @@ using Makie: Mat, convert_attribute, uv_transform, automatic
     key = Makie.key"uv_transform"()
 
     # defaults matching previous Makie versions
-    @test convert_attribute(automatic, key, Makie.key"meshscatter"()) ==  Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
-    @test convert_attribute(automatic, key, Makie.key"mesh"()) ==  Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
-    @test convert_attribute(automatic, key, Makie.key"surface"()) === nothing
+    @test convert_attribute(automatic, key, Makie.key"meshscatter"()) == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+    @test convert_attribute(automatic, key, Makie.key"mesh"()) == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+    @test convert_attribute(automatic, key, Makie.key"surface"()) === Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
     @test convert_attribute(automatic, key, Makie.key"image"()) == Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 
     # General Pipeline
