@@ -209,6 +209,12 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
+    """
+    Sets a transform for uv coordinates, which controls how the image is mapped to its rectangular area. 
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    """
     uv_transform = automatic
     colormap = [:black, :white]
 end
@@ -301,7 +307,12 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     invert_normals = false
     "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
     interpolate = true
-    "Sets a UVTransform consisting of scaling and translation for generated texture coordinates."
+    """
+    Sets a transform for uv coordinates, which controls how a texture is mapped to a surface. 
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    """
     uv_transform = automatic
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
@@ -396,7 +407,12 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
     interpolate = true
     cycle = [:color => :patchcolor]
     matcap = nothing
-    "Sets a UVTransform consisting of scaling and translation for texture coordinates."
+    """
+    Sets a transform for uv coordinates, which controls how a texture is mapped to a mesh. 
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    """
     uv_transform = automatic
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
@@ -477,7 +493,15 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     "Sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually."
     rotation = 0.0
     cycle = [:color]
-    "Sets a UVTransform consisting of scaling and translation for texture coordinates. This applies per scattered mesh if a vector is passed"
+    """
+    Sets a transform for uv coordinates, which controls how a texture is mapped to the scattered mesh.
+    Note that the mesh needs to include uv coordinates for this, which is not the case by default 
+    for geometry primitives. You can use `GeometryBasics.uv_normal_mesh(prim)` with, for example `prim = Rect2f(0, 0, 1, 1)`. 
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    It can also be set per scattered mesh by passing a `Vector` of any of the above.
+    """
     uv_transform = automatic
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
