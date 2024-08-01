@@ -907,7 +907,7 @@ to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 # Note - defaults with Patterns should be identity (handled in backends)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
-convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = nothing
+convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 
 convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
@@ -984,11 +984,11 @@ function uv_transform(action::Symbol)
         return Mat3f(1,0,0, 0,-1,0, 0,1,1)
     elseif action in (:flip_xy, :invert_xy)
         return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
-    elseif action in (:meshscatter, :mesh, :image)
+    elseif action in (:meshscatter, :mesh, :image, :surface)
         M = convert_attribute(automatic, key"uv_transform"(), Key{action}())
         return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
-    elseif action == :surface
-        return Mat3f(I)
+    # elseif action == :surface
+        # return Mat3f(I)
     else
         error("Transformation :$action not recognized.")
     end

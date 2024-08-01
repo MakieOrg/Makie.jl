@@ -165,7 +165,8 @@ void main()
 
     o_id = uvec2(objectid, index1D+1);
     o_InstanceID = 0;
-    o_uv = apply_uv_transform(uv_transform, index01);
+    // match up with mesh
+    o_uv = apply_uv_transform(uv_transform, vec2(index01.x, 1 - index01.y));
     vec3 normalvec = {{normal_calc}};
 
     o_color = vec4(0.0);
