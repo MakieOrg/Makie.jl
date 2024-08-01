@@ -268,7 +268,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
             x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wsize)
             return color[x, y]
         end
-
+        # TODO This is wrong and doesn't actually interpolate
         # Inside the triangle sampling the color image
         return FaceIterator(cvec, faces)
     end
