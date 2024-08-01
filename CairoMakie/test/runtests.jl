@@ -193,7 +193,6 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "Voxel - texture mapping", # not yet implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
-    "uv_transform", # not yet implemented
 ])
 
 functions = [:volume, :volume!, :uv_mesh]

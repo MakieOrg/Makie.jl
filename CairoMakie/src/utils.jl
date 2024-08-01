@@ -261,13 +261,14 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         # let next level extend and fill with CairoPattern
         return color
     elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
-        wsize = reverse(size(color))
+        wsize = size(color)
         wh = wsize .- 1
+        # nearest
         cvec = map(uv) do uv
             x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wsize)
-            return color[end - (y - 1), x]
+            return color[x, y]
         end
-        # TODO This is wrong and doesn't actually interpolate
+
         # Inside the triangle sampling the color image
         return FaceIterator(cvec, faces)
     end
