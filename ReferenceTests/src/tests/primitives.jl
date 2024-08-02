@@ -735,3 +735,27 @@ end
 
     fig
 end
+
+@testset "per element uv_transform" begin
+    cow = loadasset("cow.png")
+
+    N = 8; M = 10
+    f = Figure(size = (500, 400))
+    a, p = meshscatter(
+        f[1, 1],
+        [Point2f(x, y) for x in 1:M for y in 1:N],
+        color = cow,
+        uv_transform = [
+            Makie.uv_transform(:rotl90) * 
+            Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
+            for x in range(0, 1, length = M+1)[1:M] 
+            for y in range(0, 1, length = N+1)[1:N]
+        ],
+        markersize = Vec3f(0.9, 0.9, 1),
+        marker = uv_normal_mesh(Rect2f(-0.5, -0.5, 1, 1))
+    )
+    hidedecorations!(a)
+    xlims!(a, 0.3, M+0.7)
+    ylims!(a, 0.3, N+0.7)
+    f
+end
