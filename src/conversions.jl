@@ -1714,7 +1714,10 @@ scatter(..., marker=FastPixel())
 For significantly faster plotting times for large amount of points.
 Note, that this will draw markers always as 1 pixel.
 """
-struct FastPixel end
+struct FastPixel
+    marker_type::Cint
+end
+FastPixel() = FastPixel(1)
 
 """
 Vector of anything that is accepted as a single marker will give each point its own marker.

@@ -433,6 +433,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 space == :data && return Int32(1)
                 return error("Unsupported markerspace for FastPixel marker: $space")
             end
+            gl_attributes[:marker_shape] = lift(x -> x.marker_type, plot.marker)
             gl_attributes[:upvector] = lift(x-> Vec3f(normalize(x)), cam.upvector)
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
