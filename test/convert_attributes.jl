@@ -18,17 +18,23 @@ using Makie: Mat, Mat3f, convert_attribute, uv_transform, automatic
         M3 = Mat3f(1,2,0, 3,4,0, 5,6,0)
         @test convert_attribute(wrap(M3), key) == wrap(M)
 
+        # transformationmatrix-like
         @test convert_attribute(wrap(Vec2f(2,3)), key) == wrap(Mat{2, 3, Float32}(2,0,0,3,0,0))
         @test convert_attribute(wrap((Vec2f(-1,-2), Vec2f(2,3))), key) == 
             wrap(Mat{2, 3, Float32}(2,0,0,3,-1,-2))
         @test convert_attribute(wrap(I), key) == wrap(Mat{2, 3, Float32}(1,0,0,1,0,0))
 
+        # Named
         @test convert_attribute(wrap(:rotr90), key)  == wrap(Mat{2, 3, Float32}(0, -1, 1, 0, 0, 1))
         @test convert_attribute(wrap(:rotl90), key)  == wrap(Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0))
         @test convert_attribute(wrap(:swap_xy), key) == wrap(Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0))
         @test convert_attribute(wrap(:flip_x), key)  == wrap(Mat{2, 3, Float32}(-1, 0, 0, 1, 1, 0))
         @test convert_attribute(wrap(:flip_y), key)  == wrap(Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1))
         @test convert_attribute(wrap(:flip_xy), key) == wrap(Mat{2, 3, Float32}(-1, 0, 0, -1, 1, 1))
+
+        # Chaining
+        @test convert_attribute(wrap((:flip_x, :flip_xy, :flip_y)), key) == wrap(Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0))
+        @test convert_attribute(wrap((:rotr90, :swap_xy)), key) == wrap(Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1))
     end
     
     @test convert_attribute(nothing, key) === nothing

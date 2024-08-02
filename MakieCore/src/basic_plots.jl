@@ -214,6 +214,7 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
     any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    They can also be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
     colormap = [:black, :white]
@@ -312,6 +313,7 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
     any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    They can also be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
     mixin_generic_plot_attributes()...
@@ -412,6 +414,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
     any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    They can also be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
     mixin_generic_plot_attributes()...
@@ -500,7 +503,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
     any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
-    It can also be set per scattered mesh by passing a `Vector` of any of the above.
+    It can also be set per scattered mesh by passing a `Vector` of any of the above and operations
+    can be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
     mixin_generic_plot_attributes()...

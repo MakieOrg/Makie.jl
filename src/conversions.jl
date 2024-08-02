@@ -912,6 +912,7 @@ convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Fl
 
 convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}, k::key"uv_transform") = convert_attribute(uv_transform(x[1], x[2]), k)
 convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
 convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
 convert_attribute(x::Nothing, ::key"uv_transform") = x
@@ -925,34 +926,28 @@ function convert_attribute(angle::Real, ::key"uv_transform")
 end
 
 """
-    uv_transform(I::UniformScaling)
-    uv_transform([translation::VecTypes{2} = Vec2f(0)], scale::VecTypes{2})
-    uv_transform(angle::Real)
-    uv_transform(action::Symbol)
+    uv_transform(args::Tuple)
+    uv_transform(args...)
 
-Creates a 3x3 transformation matrix based on the given translation and scale,
-rotation angle (around z axis) or named action. These actions assume `0 < uv < 1`
-and thus may not work correctly with Patterns. They include
-- `:rotr90` corresponding to `rotr90(texture)`
-- `:rotl90` corresponding to `rotl90(texture)`
-- `:rot180` corresponding to `rot180(texture)`
-- `:swap_xy, :transpose` which corresponds to transposing the texture
-- `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
-- `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
-
-Note that you can easily chain operations returned by `uv_transforms` as they 
-are 3x3 matrices. For example you could rotate an image texture by any angle
-using
-```julia
-T = Makie.uv_transform(Vec2f(0.5), Vec2f(1)) * # move back to a 0..1 range (unit scale)
-    Makie.uv_transform(pi/4) *                 # rotate around center
-    Makie.uv_transform(Vec2f(-0.5), Vec2f(1))  # move uvs from 0..1 to -0.5..0.5 (unit scale)
-```
+Returns a 3x3 uv transformation matrix combinign all the given arguments. This 
+lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
+like matrices `(op3, op2, op1)`.
 """
-uv_transform(packed::Tuple) = uv_transform(packed...)
+uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
+uv_transform(packed...) = uv_transform(packed)
 uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+
+
 # prefer scale as single argument since it may be useful for patterns
 # while just translation is mostly useless
+"""
+    uv_transform(scale::VecTypes{2})
+    uv_transform(translation::VecTypes{2}, scale::VecTypes{2})
+    uv_transform(angle::Real)
+
+Creates a 3x3 uv transformation matrix based on the given translation and scale
+or rotation angle (around z axis).
+"""
 uv_transform(scale::VecTypes{2, <: Real}) = uv_transform(Vec2f(0), scale)
 function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real})
     return Mat3f(
@@ -968,6 +963,19 @@ function uv_transform(angle::Real)
         0, 0, 1
     )
 end
+
+"""
+    uv_transform(action::Symbol)
+
+Creates a 3x3 uv transformation matrix from a given named action. They assume 
+`0 < uv < 1` and thus may not work correctly with Patterns. The actions include
+- `:rotr90` corresponding to `rotr90(texture)`
+- `:rotl90` corresponding to `rotl90(texture)`
+- `:rot180` corresponding to `rot180(texture)`
+- `:swap_xy, :transpose` which corresponds to transposing the texture
+- `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
+- `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+"""
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
     if action == :rotr90
