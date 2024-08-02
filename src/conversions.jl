@@ -912,7 +912,6 @@ convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Fl
 
 convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
-convert_attribute(x::Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}, k::key"uv_transform") = convert_attribute(uv_transform(x[1], x[2]), k)
 convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
 convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
 convert_attribute(x::Nothing, ::key"uv_transform") = x
@@ -932,6 +931,9 @@ end
 Returns a 3x3 uv transformation matrix combinign all the given arguments. This 
 lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
 like matrices `(op3, op2, op1)`.
+
+Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to 
+`uv_transform(translation, scale)` as a special case.
 """
 uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
 uv_transform(packed...) = uv_transform(packed)
@@ -948,6 +950,7 @@ uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
 Creates a 3x3 uv transformation matrix based on the given translation and scale
 or rotation angle (around z axis).
 """
+uv_transform(x::Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}) = uv_transform(x[1], x[2])
 uv_transform(scale::VecTypes{2, <: Real}) = uv_transform(Vec2f(0), scale)
 function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real})
     return Mat3f(
