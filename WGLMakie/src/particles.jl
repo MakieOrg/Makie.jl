@@ -102,14 +102,23 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
-    uniform_dict[:uv_transform] = map(plot, plot[:uv_transform]) do x
+    uv_transform = map(plot, plot[:uv_transform]) do x
         M = convert_attribute(x, Key{:uv_transform}(), Key{:meshscatter}())
         # why transpose?
+        T = Mat3f(0,1,0, 1,0,0, 0,0,1)
         if M === nothing
-            return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(I)
-        else
-            return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+            return T
+        elseif M isa Mat
+            return T * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+        elseif M isa Vector
+            return [T * Mat3f(m[1], m[2], 0, m[3], m[4], 0, m[5], m[6], 1) for m in M]
         end
+    end
+
+    if to_value(uv_transform) isa Vector
+        per_instance[:uv_transform] = Buffer(uv_transform)
+    else
+        uniform_dict[:uv_transform] = uv_transform
     end
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),

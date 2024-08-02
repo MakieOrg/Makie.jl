@@ -34,7 +34,6 @@ excludes = Set([
     "Image Scatter different sizes",
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
-    "uv_transform", # TODO (meshscatter textures, uv_transform, ...)
 ])
 Makie.inline!(Makie.automatic)
 
