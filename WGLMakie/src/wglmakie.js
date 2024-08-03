@@ -638,7 +638,7 @@ export function pick_closest(scene, xy, range) {
     let pindex = 0;
     for (let i = 1; i <= dx; i++) {
         for (let j = 1; j <= dx; j++) {
-            const d = (x - i) ^ (2 + (y - j)) ^ 2;
+            const d = (x - i) ^ 2 + (y - j) ^ 2;
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             if (d < min_dist && plot_uuid) {
@@ -677,7 +677,7 @@ export function pick_sorted(scene, xy, range) {
     let pindex = 0;
     for (let i = 1; i <= dx; i++) {
         for (let j = 1; j <= dx; j++) {
-            const d = (x - i) ^ (2 + (y - j)) ^ 2;
+            const d = (x - i) ^ 2 + (y - j) ^ 2;
             if (plot_matrix.length <= pindex) {
                 continue;
             }
