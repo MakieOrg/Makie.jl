@@ -214,9 +214,9 @@ function barplot_labels(xpositions, ypositions, offset, bar_labels, in_y_directi
     if bar_labels isa Symbol && bar_labels in (:x, :y)
         bar_labels = map(xpositions, ypositions) do x, y
             if bar_labels === :x
-                label_formatter.(x)
+                x
             else
-                label_formatter.(y)
+                y
             end
         end
     end
