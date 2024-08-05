@@ -588,6 +588,21 @@ end
     f
 end
 
+@reference_test "Surface invert_normals" begin
+    fig = Figure(size = (400, 200))
+    for (i, invert) in ((1, false), (2, true))
+        surface(
+            fig[1, i],
+            range(-1, 1, length = 21), 
+            -cos.(range(-pi, pi, length = 21)), 
+            [sin(y) for x in range(-0.5pi, 0.5pi, length = 21), y in range(-0.5pi, 0.5pi, length = 21)],
+            axis = (show_axis = false, ),
+            invert_normals = invert
+        )
+    end
+    fig
+end
+
 @reference_test "barplot with TeX-ed labels" begin
     fig = Figure(size = (800, 800))
     lab1 = L"\int f(x) dx"
