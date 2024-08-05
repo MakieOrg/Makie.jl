@@ -310,6 +310,10 @@ function on_hover(inspector)
                     should_clear = false
                     break
                 end
+            elseif (plotfunc(plt) === text && plt.parent.parent == inspector.plot) || (plotfunc(plt) === mesh && plt.parent == inspector.plot)
+                # prevent tooltip flickering when mouse hovers over the current inspectors tooltip
+                should_clear = false
+                break
             end
         end
 
