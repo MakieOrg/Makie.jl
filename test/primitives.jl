@@ -3,9 +3,9 @@
     f, ax, pl = ablines(fill(0), fill(1))
     reset_limits!(ax)
     points = pl.plots[1][1]
-    @test points[] == [Point2f(0), Point2f(10)]
+    @test Point2f.(points[]) == [Point2f(0), Point2f(10)]
     limits!(ax, 5, 15, 6, 17)
-    @test points[] == [Point2f(5), Point2f(15)]
+    @test Point2f.(points[]) == [Point2f(5), Point2f(15)]
 end
 
 @testset "arrows" begin
