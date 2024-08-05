@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Data inspector fixes (mostly for bar plots) [#4087](https://github.com/MakieOrg/Makie.jl/pull/4087)
 - Fixed incorrect distance calculation in `pick_closest` in WGLMakie [#4082](https://github.com/MakieOrg/Makie.jl/pull/4082).
 - Suppress keyboard shortcuts and context menu in JupyterLab output [#4068](https://github.com/MakieOrg/Makie.jl/pull/4068).
 - Introduce stroke_depth_shift + forward normal depth_shift for Poly [#4058](https://github.com/MakieOrg/Makie.jl/pull/4058).
