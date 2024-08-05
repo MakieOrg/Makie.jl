@@ -18,15 +18,9 @@ void main(){
         alpha  = 1.0;
     } else if (marker_shape == 2) {
         alpha = 1.0 - smoothstep(0.0, 1.0, len);// Smoothstep for smooth transition
-    } else if (marker_shape == 3) {
+    } else {
         alpha = 1.0 - smoothstep(0.0, 1.0, len);// Ensure alpha is in [0, 1] range
         gl_FragDepth -= abs(projection[3][2] * alpha);
-        alpha = 1;
-    } else {
-        alpha = 1.0 - smoothstep(-1.0, 1.0, len);// Ensure alpha is in [0, 1] range
-        float d = abs(projection[3][2] * alpha * 0.001);
-        gl_FragDepth -= d;
-        // color.rgb = vec3(color.r, alpha, d);
         alpha = 1;
     }
     write2framebuffer(vec4(color.rgb, alpha * color.a), o_objectid);

@@ -716,8 +716,9 @@ end
                 ax isa Axis && (ax.aspect = DataAspect())
                 ax.title = "$space"
             end
-            scatter!(ax, data, markersize=msize, markerspace=space, marker=Makie.FastPixel())
-            scatter!(ax, data; markersize=msize, markerspace=space, marker=Circle, depth_shift=-0.01f0)
+            scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel(),
+                     depth_shift=0.1f0)
+            scatter!(ax, data; markersize=msize, markerspace=space, marker=Circle, depth_shift=-0.1f0)
         end
     end
     f
