@@ -707,8 +707,9 @@ end
 @reference_test "Scatter with FastPixel" begin
     f = Figure()
     row =  [(1, :pixel, 20), (2, :data, 0.5)]
-    column = [(1, RNG.rand(Point3f, 10), Axis3), (2, RNG.rand(Point3f, 10), LScene),
-                              (3, RNG.rand(Point2f, 10), Axis)]
+    points3d = decompose(Point3f, Rect3(Point3f(0), Vec3f(1)))
+    column = [(1, points3d, Axis3), (2, points3d, LScene),
+                              (3, 1:4, Axis)]
     for (i, space, msize) in row
         for (j, data, AT) in column
             ax = AT(f[i, j])
@@ -716,9 +717,12 @@ end
                 ax isa Axis && (ax.aspect = DataAspect())
                 ax.title = "$space"
             end
-            scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel(),
-                     depth_shift=0.1f0)
-            scatter!(ax, data; markersize=msize, markerspace=space, marker=Circle, depth_shift=-0.1f0)
+            scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel())
+            padding = space == :pixel ? 1 : 0.01
+            scatter!(ax, data;
+                     markersize=msize + padding, markerspace=space, marker=Rect,
+                 strokewidth=2, strokecolor=:red, color=:transparent,
+            )
         end
     end
     f

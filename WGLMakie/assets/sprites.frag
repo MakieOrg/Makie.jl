@@ -123,7 +123,7 @@ void main() {
     } else if(shape == ROUNDED_RECTANGLE)
         signed_distance = rounded_rectangle(frag_uv, vec2(0.2), vec2(0.8));
     else if(shape == RECTANGLE)
-        signed_distance = 1.0; // rectangle(f_uv);
+        signed_distance = rectangle(frag_uv); // rectangle(f_uv);
     else if(shape == TRIANGLE)
         signed_distance = triangle(frag_uv);
 
