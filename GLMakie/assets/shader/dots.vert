@@ -53,7 +53,7 @@ void main(){
         vec3 scale_vec = upvector * scale.x;
         vec4 up_clip = projectionview * model * vec4(position.xyz + scale_vec, 1);
         float yup = length((clip_pos.xyz / clip_pos.w) - (up_clip.xyz / up_clip.w));
-        gl_PointSize = 0.5 * yup * resolution.y;
+        gl_PointSize = ceil(0.5 * yup * resolution.y);
     }
 
     colorize(color_map, color, color_norm);
