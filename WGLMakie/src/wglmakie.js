@@ -631,14 +631,14 @@ export function pick_closest(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
     const plot_matrix = plot_data.data;
-    let min_dist = range ^ 2;
+    let min_dist = Math.pow(range, 2);
     let selection = [null, 0];
     const x = xy[0] + 1 - x0;
     const y = xy[1] + 1 - y0;
     let pindex = 0;
     for (let i = 1; i <= dx; i++) {
         for (let j = 1; j <= dx; j++) {
-            const d = (x - i) ^ 2 + (y - j) ^ 2;
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             if (d < min_dist && plot_uuid) {
@@ -671,13 +671,13 @@ export function pick_sorted(scene, xy, range) {
         return null;
     }
     const plot_matrix = plot_data.data;
-    const distances = selected.map((x) => range ^ 2);
+    const distances = selected.map((x) => Math.pow(range, 2));
     const x = xy[0] + 1 - x0;
     const y = xy[1] + 1 - y0;
     let pindex = 0;
     for (let i = 1; i <= dx; i++) {
         for (let j = 1; j <= dx; j++) {
-            const d = (x - i) ^ 2 + (y - j) ^ 2;
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             if (plot_matrix.length <= pindex) {
                 continue;
             }
