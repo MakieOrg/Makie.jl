@@ -848,6 +848,9 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     end
 
     pos = plot[1][][idx]
+    if plot.direction[] === :x
+        pos = reverse(pos)
+    end
     if to_value(get(plot, :inspector_label, automatic)) == automatic
         tt.text[] = position2string(pos)
     else
