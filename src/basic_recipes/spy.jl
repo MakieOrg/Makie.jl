@@ -26,11 +26,13 @@ spy(0..1, 0..1, x)
 end
 
 function data_limits(plot::Spy)
-    data_limits(plot.plots[2])
+    xmin, xmax = minmax(endpoints(plot.x[])...)
+    ymin, ymax = minmax(endpoints(plot.y[])...)
+    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
 
 function boundingbox(p::Spy, space::Symbol=:data)
-    boundingbox(p.plots[2], space)
+    return apply_transform_and_model(p, data_limits(p))
 end
 
 function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
@@ -48,16 +50,16 @@ needs_tight_limits(::Spy) = true
 
 function plot!(p::Spy)
     rect = lift(p, p.x, p.y) do x, y
-        xe = extrema(x)
-        ye = extrema(y)
-        Rect2f((xe[1], ye[1]), (xe[2] - xe[1], ye[2] - ye[1]))
+        xe = minmax(endpoints(x)...)
+        ye = minmax(endpoints(y)...)
+        Rect2((xe[1], ye[1]), (xe[2] - xe[1], ye[2] - ye[1]))
     end
     # TODO FastPixel isn't accepting marker size in data coordinates
     # but instead in pixel - so we need to fix that in GLMakie for consistency
     # and make this nicer when redoing unit support
     markersize = lift(p, p.markersize, rect, p.z) do msize, rect, z
         if msize === automatic
-            widths(rect) ./ Vec2f(size(z))
+            widths(rect) ./ Vec2(size(z))
         else
             msize
         end
@@ -67,7 +69,7 @@ function plot!(p::Spy)
         x, y, color = SparseArrays.findnz(z)
         mhalf = markersize ./ 2
         points = map(x, y) do x, y
-            p01 = (Point2f(x, y) .- 1) ./ Point2f(size(z))
+            p01 = (Point2(x, y) .- 1) ./ Point2(size(z))
             return (p01 .* widths(rect)) .+ minimum(rect) .+ mhalf
         end
         points, convert(Vector{Float32}, color)
