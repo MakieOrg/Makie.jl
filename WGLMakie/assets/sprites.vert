@@ -10,6 +10,7 @@ out float frag_distancefield_scale;
 out vec4 frag_uv_offset_width;
 
 flat out uint frag_instance_id;
+flat out vec2 f_sprite_scale;
 
 #define ANTIALIAS_RADIUS 0.8
 
@@ -64,7 +65,7 @@ void main(){
 
     vec2 bbox_radius = 0.5 * get_markersize();
     vec2 sprite_bbox_centre = get_quad_offset() + bbox_radius;
-
+    f_sprite_scale = get_markersize();
     mat4 pview = projection * view;
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
 

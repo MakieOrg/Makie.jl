@@ -204,7 +204,7 @@ function Camera3D(scene::Scene; kwargs...)
 
     # Keyboard controls
     # ticks every so often to get consistent position updates.
-    on(cam.pulser) do prev_time
+    on(camera(scene), cam.pulser) do prev_time
         current_time = time()
         active = on_pulse(scene, cam, current_time - prev_time)
         @async if active && cam.selected[]
@@ -506,8 +506,6 @@ function add_mouse_controls!(scene, cam::Camera3D)
         end
         return Consume(false)
     end
-
-
 end
 
 
@@ -749,8 +747,8 @@ function update_cam!(scene::Scene, cam::Camera3D)
     end
 
     set_proj_view!(camera(scene), proj, view)
-
     scene.camera.eyeposition[] = Vec3f(cam.eyeposition[])
+    scene.camera.upvector[] = upvector
     scene.camera.view_direction[] = Vec3f(normalize(cam.lookat[] - cam.eyeposition[]))
 end
 

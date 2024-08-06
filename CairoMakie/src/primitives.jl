@@ -203,7 +203,7 @@ project_command(c::ClosePath, scene, space, model) = c
 function draw_single(primitive::Lines, ctx, positions)
     n = length(positions)
     start = positions[begin]
-    
+
     @inbounds for i in 1:n
         p = positions[i]
         # only take action for non-NaNs
@@ -305,7 +305,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
     prev_nan = isnan(prev_position)
     prev_continued = false
     start = positions[begin]
-    
+
     if !prev_nan
         # first is not nan, move_to
         Cairo.move_to(ctx, positions[begin]...)
@@ -413,9 +413,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     size_model = transform_marker ? model : Mat4d(I)
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
-
     colors = to_color(primitive.calculated_colors[])
-
     markerspace = primitive.markerspace[]
     space = primitive.space[]
     transfunc = Makie.transform_func(primitive)
@@ -531,7 +529,8 @@ function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidt
     nothing
 end
 
-function draw_marker(ctx, ::Type{<: Rect}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, scale, strokecolor, strokewidth,
+                     marker_offset, rotation)
     s2 = Point2((scale .* (1, -1))...)
     pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
