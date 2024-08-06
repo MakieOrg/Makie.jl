@@ -32,7 +32,7 @@ function data_limits(plot::Spy)
 end
 
 function boundingbox(p::Spy, space::Symbol=:data)
-    boundingbox(p.plots[2], space)
+    return apply_transform_and_model(p, data_limits(p))
 end
 
 function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
