@@ -26,7 +26,9 @@ spy(0..1, 0..1, x)
 end
 
 function data_limits(plot::Spy)
-    data_limits(plot.plots[2])
+    xmin, xmax = minmax(endpoints(p.x[])...)
+    ymin, ymax = minmax(endpoints(p.y[])...)
+    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax-xmin, ymax-ymin, 0))
 end
 
 function boundingbox(p::Spy, space::Symbol=:data)
