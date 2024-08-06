@@ -22773,24 +22773,6 @@ function start_renderloop(three_scene) {
     render_scene(three_scene);
     renderloop();
 }
-function throttle_function(func, delay) {
-    let prev = 0;
-    let future_id = undefined;
-    function inner_throttle(...args) {
-        const now = new Date().getTime();
-        if (future_id !== undefined) {
-            clearTimeout(future_id);
-            future_id = undefined;
-        }
-        if (now - prev > delay) {
-            prev = now;
-            return func(...args);
-        } else {
-            future_id = setTimeout(()=>inner_throttle(...args), now - prev + 1);
-        }
-    }
-    return inner_throttle;
-}
 function get_body_size() {
     const bodyStyle = window.getComputedStyle(document.body);
     const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
@@ -22870,7 +22852,7 @@ function add_canvas_events(screen, comm, resize_to) {
             ]
         });
     }
-    const notify_mouse_throttled = throttle_function(mouse_callback, 40);
+    const notify_mouse_throttled = Bonito.throttle_function(mouse_callback, 40);
     function mousemove(event) {
         notify_mouse_throttled(event);
         return false;
@@ -22960,7 +22942,7 @@ function add_canvas_events(screen, comm, resize_to) {
         }
     }
     if (resize_to) {
-        const resize_callback_throttled = throttle_function(resize_callback, 100);
+        const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
         window.addEventListener("resize", (event)=>resize_callback_throttled());
         setTimeout(resize_callback, 50);
     }
