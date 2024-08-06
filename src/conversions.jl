@@ -47,7 +47,11 @@ function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N, PT
     return Point{N,T}[ismissing(x) ? Point{N,T}(NaN) : Point{N,T}(x) for x in a]
 end
 
-convert_single_argument(a::AbstractArray{Any}) = convert_single_argument([x for x in a])
+function convert_single_argument(a::AbstractArray{Any})
+    isempty(a) && return a
+    return convert_single_argument([x for x in a])
+end
+
 # Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
 convert_single_argument(a::AbstractArray{T}) where {T<:Real} = a
 convert_single_argument(a::AbstractArray{<:Point{N, T}}) where {N, T} = a
@@ -769,35 +773,27 @@ function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
     return map(Point{N, float_type(T)}, verts)
 end
 
-function to_vertices(verts::AbstractMatrix{<: Real})
+function to_vertices(verts::AbstractMatrix{T}) where {T<:Real}
+    T_out = float_type(T)
     if size(verts, 1) in (2, 3)
-        to_vertices(verts, Val(1))
+        to_vertices(verts, T_out, Val(1), Val(size(verts, 1)))
     elseif size(verts, 2) in (2, 3)
-        to_vertices(verts, Val(2))
+        to_vertices(verts, T_out, Val(2), Val(size(verts, 2)))
     else
         error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Real
-    N = size(verts, 1)
-    if T == float_type(T) && N == 3
-        reinterpret(Point{N, T}, elconvert(T, vec(verts)))
+function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{1}, ::Val{N}) where {T <: Real, Tout, N}
+    if T == Tout && N == 3
+        return reinterpret(Point{N, T}, elconvert(T, vec(verts)))
     else
-        let N = Val(N); lverts = verts; T_out = float_type(T)
-            broadcast(1:size(verts, 2), N) do vidx, n
-                Point(ntuple(i-> T_out(lverts[i, vidx]), n))
-            end
-        end
+        return Point{N,Tout}[ntuple(j -> Tout(verts[j, i]), N) for i in 1:size(verts, 2)]
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Real
-    let N = Val(size(verts, 2));  lverts = verts; T_out = float_type(T)
-        broadcast(1:size(verts, 1), N) do vidx, n
-            Point(ntuple(i-> T_out(lverts[vidx, i]), n))
-        end
-    end
+function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{2}, ::Val{N}) where {T<:Real, Tout, N}
+    return Point{N, Tout}[ntuple(j-> Tout(verts[i, j]), N) for i in 1:size(verts, 1)]
 end
 
 

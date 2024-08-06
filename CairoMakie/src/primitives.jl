@@ -1026,6 +1026,10 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
         shading_bool = shading != NoShading
     end
 
+    if to_value(get(attributes, :invert_normals, false))
+        meshnormals .= -meshnormals
+    end
+
     draw_mesh3D(
         scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
