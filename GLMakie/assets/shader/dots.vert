@@ -52,8 +52,8 @@ void main(){
         // to have a billboard, we project the upvector
         vec3 scale_vec = upvector * scale.x;
         vec4 up_clip = pvm * vec4(position.xyz + scale_vec, 1);
-        float yup = (abs(up_clip.y - clip_pos.y) / up_clip.w);
-        gl_PointSize = floor(0.5 * yup *  resolution.y);
+        float yup = (abs(up_clip.y - clip_pos.y) / clip_pos.w);
+        gl_PointSize = ceil(0.5 * yup *  resolution.y);
     }
 
     colorize(color_map, color, color_norm);
