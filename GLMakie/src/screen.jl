@@ -350,7 +350,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     GLFW.SetWindowTitle(glw, config.title)
 
     if !isnothing(config.monitor)
-        GLFW.SetWindowMonitor(glw, config.monitor)
+        video_mode = GLFW.GetVideoMode(config.monitor)
+        GLFW.SetWindowMonitor(glw, config.monitor, 0, 0, video_mode.width, video_mode.height, video_mode.refreshrate)
     end
     screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
