@@ -14,13 +14,37 @@ spy(x)
 spy(0..1, 0..1, x)
 ```
 """
-@recipe Spy (x, y, z) begin
+@recipe Spy (x::ClosedInterval, y::ClosedInterval, z::RealMatrix) begin
+    """
+    Can be any of the markers supported by `scatter!`.
+    Note, for huge sparse arrays, one should use `FastPixel`, which is a very fast, but can only render square markers.
+    So, without `Axis(...; aspect=1)`, the markers won't have the correct size.
+    Compare:
+    ```julia
+    data = sprand(10, 10, 0.5)
+    f = Figure()
+    spy(f[1, 1], data; marker=FastPixel())
+    spy(f[1, 2], data; marker=FastPixel(), axis=(; aspect=1))
+    f
+    ```
+    """
     marker = Rect
+    """
+    markersize=automatic, will make the marker size fit the data - but can also be set manually.
+    """
     markersize = automatic
+    """
+    By default a frame will be drawn around the data, which uses the `framecolor` attribute for its color.
+    """
     framecolor = :black
+    """
+    Whether or not to draw the frame.
+    """
     framevisible = true
+    """
+    The linewidth of the frame
+    """
     framesize = 1
-    color = nothing
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
@@ -48,7 +72,7 @@ end
 
 needs_tight_limits(::Spy) = true
 
-function plot!(p::Spy)
+function Makie.plot!(p::Spy)
     rect = lift(p, p.x, p.y) do x, y
         xe = minmax(endpoints(x)...)
         ye = minmax(endpoints(y)...)
@@ -92,6 +116,6 @@ function plot!(p::Spy)
         color = p.framecolor,
         linewidth = p.framesize,
         inspectable = p.inspectable,
-        visible=p.framevisible
+        visible = p.framevisible
     )
 end
