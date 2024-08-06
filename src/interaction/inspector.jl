@@ -839,8 +839,6 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
-            wf_depth = a.depth[] * 0.999 # put the wireframe below the tooltip
-            translate!(p, Vec3f(0, 0, wf_depth))
             push!(inspector.temp_plots, p)
         elseif !isempty(inspector.temp_plots)
             p = inspector.temp_plots[1]
