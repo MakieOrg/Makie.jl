@@ -45,6 +45,10 @@ spy(0..1, 0..1, x)
     The linewidth of the frame
     """
     framesize = 1
+    """
+    Per default the color of the markers will be determined by the value in the matrix, but can be overwritten via `color`.
+    """
+    color = nothing
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
