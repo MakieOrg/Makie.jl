@@ -849,7 +849,10 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         a.indicator_visible[] = true
     end
 
-    pos = plot[1][][idx]
+    # We pass the input space position to user defined
+    # functions to keep the user from dealing with
+    # log space scaling in their function.
+    pos = plot[1][][idx] # input space position/data
     if plot.direction[] === :x
         pos = reverse(pos)
     end
