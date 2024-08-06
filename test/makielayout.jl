@@ -509,7 +509,16 @@ end
         ax.yscale = identity
         ax.yscale = log10
         ax.yscale = identity
-        @test true
+
+        # Setting negative limits and changing to a standard log scale should fail
+        xlims!(ax, -10, 10)
+        @test_throws ErrorException ax.xscale = log
+        @test_throws ErrorException ax.xscale = log2
+        @test_throws ErrorException ax.xscale = log10
+
+        # But setting it to pseudolog10 or Symlog10 should work
+        ax.xscale = Makie.pseudolog10
+        ax.xscale = Makie.Symlog10(5)
     catch e
         @test false
         rethrow(e)

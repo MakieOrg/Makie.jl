@@ -585,7 +585,7 @@ function get_ticks(tickfunction::Function, _, formatter, vmin, vmax)
     return tickvalues, ticklabels
 end
 
-_logbase(::typeof(log10)) = "10"
+_logbase(::Union{typeof(log10), typeof(pseudolog10), typeof(Symlog10)}) = "10"
 _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
 
