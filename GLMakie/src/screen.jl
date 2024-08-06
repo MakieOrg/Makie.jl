@@ -145,6 +145,8 @@ function activate!(; inline=LAST_INLINE[], screen_config...)
     return
 end
 
+const unimplemented_error = "GLMakie doesn't own screen.glscreen! If you're embedding GLMakie with a custom window type you must specialize this function for your window type."
+
 """
     Screen(; screen_config...)
 
@@ -306,8 +308,7 @@ const SCREEN_REUSE_POOL = Set{Screen}()
 
 function reopen!(screen::Screen)
     if !screen.owns_glscreen
-        # This is a noop if the screen isn't a GLFW window we own
-        return screen
+        error(unimplemented_error)
     end
 
     @debug("reopening screen")
@@ -420,8 +421,7 @@ end
 
 function set_screen_visibility!(screen::Screen, visible::Bool)
     if !screen.owns_glscreen
-        # This is a noop if the screen isn't a GLFW window we own
-        return
+        error(unimplemented_error)
     end
 
     set_screen_visibility!(screen.glscreen, visible)
