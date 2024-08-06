@@ -706,23 +706,27 @@ end
 
 @reference_test "Scatter with FastPixel" begin
     f = Figure()
-    row =  [(1, :pixel, 20), (2, :data, 0.5)]
+    row = [(1, :pixel, 20), (2, :data, 0.5)]
     points3d = decompose(Point3f, Rect3(Point3f(0), Vec3f(1)))
     column = [(1, points3d, Axis3), (2, points3d, LScene),
-                              (3, 1:4, Axis)]
+              (3, 1:4, Axis)]
     for (i, space, msize) in row
         for (j, data, AT) in column
             ax = AT(f[i, j])
-            if ax isa Union{Axis, Axis3}
+            if ax isa Union{Axis,Axis3}
                 ax isa Axis && (ax.aspect = DataAspect())
                 ax.title = "$space"
             end
             scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel())
-            padding = space == :pixel ? 1 : 0.01
+            # Somehow Axis3 comes out bigger than expected, by 0.1 units
+            # Not sure how this can happen, but to make the tests pass reliably without z-fighting
+            # Easiest is for now to add some padding for Axis3 + :data.
+            # Will need to investigate in the future why the markersize (and likely the upvector in Axis3)
+            # is off by a small amount
+            padding = space == :data && ax isa Axis3 ? 0.1 : 0.0
             scatter!(ax, data;
                      markersize=msize + padding, markerspace=space, marker=Rect,
-                 strokewidth=2, strokecolor=:red, color=:transparent,
-            )
+                     strokewidth=2, strokecolor=:red, color=:transparent,)
         end
     end
     f

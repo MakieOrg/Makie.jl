@@ -17,7 +17,7 @@ in float frag_uvscale;
 in float frag_distancefield_scale;
 in vec4 frag_uv_offset_width;
 flat in uint frag_instance_id;
-
+flat in vec2 f_sprite_scale;
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
@@ -45,8 +45,9 @@ float circle(vec2 uv){
     return 0.5-length(uv-vec2(0.5));
 }
 
-float rectangle(vec2 uv){
-    vec2 d = max(-uv, uv-vec2(1));
+float rectangle(vec2 uv) {
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(-uv, uv - vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
 
