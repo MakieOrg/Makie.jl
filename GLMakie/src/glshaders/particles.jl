@@ -138,7 +138,7 @@ This is supposed to be the fastest way of displaying particles!
 function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
-        color_map    = nothing  => Texture
+        color_map    = nothing => Texture
         color        = nothing => GLBuffer
         color_norm   = nothing
         scale        = 2f0
@@ -153,7 +153,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         )
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = PointSizeRender(data[:scale])
+    data[:prerender] = ()-> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
     return assemble_shader(data)
 end
 

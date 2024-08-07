@@ -31,7 +31,10 @@ function create_shader(mscene::Scene, plot::Surface)
         f = Vec2f(1 / Nx, 1 / Ny)
         [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
     end)
-    normals = Buffer(lift(Makie.nan_aware_normals, plot, ps, fs))
+    normals = Buffer(lift(plot, ps, fs, plot.invert_normals) do ps, fs, invert
+        ns = Makie.nan_aware_normals(ps, fs)
+        return invert ? -ns : ns 
+    end)
 
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
     uniforms = Dict(:uniform_color => color, :color => false)

@@ -4056,7 +4056,7 @@ var xp = {
     }
     update(e, t) {
         this.parent === null && this.updateMatrixWorld();
-        let { renderTarget: n , activeMipmapLevel: i  } = this;
+        let { renderTarget: n, activeMipmapLevel: i } = this;
         this.coordinateSystem !== e.coordinateSystem && (this.coordinateSystem = e.coordinateSystem, this.updateCoordinateSystem());
         let [r, a, o, c, l, h] = this.children, u = e.getRenderTarget(), d = e.getActiveCubeFace(), f = e.getActiveMipmapLevel(), m = e.xr.enabled;
         e.xr.enabled = !1;
@@ -9069,8 +9069,8 @@ var Ls = class extends Cs {
         }, i = fh(e, t, n);
         if (this._pingPongRenderTarget === null || this._pingPongRenderTarget.width !== e || this._pingPongRenderTarget.height !== t) {
             this._pingPongRenderTarget !== null && this._dispose(), this._pingPongRenderTarget = fh(e, t, n);
-            let { _lodMax: r  } = this;
-            ({ sizeLods: this._sizeLods , lodPlanes: this._lodPlanes , sigmas: this._sigmas  } = o_(r)), this._blurMaterial = c_(r, e, t);
+            let { _lodMax: r } = this;
+            ({ sizeLods: this._sizeLods, lodPlanes: this._lodPlanes, sigmas: this._sigmas } = o_(r)), this._blurMaterial = c_(r, e, t);
         }
         return i;
     }
@@ -9143,7 +9143,7 @@ var Ls = class extends Cs {
         }
         for(let R = 0; R < p.length; R++)p[R] = p[R] / v;
         d.envMap.value = e.texture, d.samples.value = g, d.weights.value = p, d.latitudinal.value = a === "latitudinal", o && (d.poleAxis.value = o);
-        let { _lodMax: x  } = this;
+        let { _lodMax: x } = this;
         d.dTheta.value = m, d.mipInt.value = x - n;
         let y = this._sizeLods[i], b = 3 * y * (i > x - Hi ? i - x + Hi : 0), w = 4 * (this._cubeSize - y);
         lr(t, b, w, 3 * y, 2 * y), c.setRenderTarget(t), c.render(u, $a);
@@ -12779,7 +12779,7 @@ function G0(s1, e, t, n) {
 }
 var Ro = class {
     constructor(e = {}){
-        let { canvas: t = tp() , context: n = null , depth: i = !0 , stencil: r = !0 , alpha: a = !1 , antialias: o = !1 , premultipliedAlpha: c = !0 , preserveDrawingBuffer: l = !1 , powerPreference: h = "default" , failIfMajorPerformanceCaveat: u = !1  } = e;
+        let { canvas: t = tp(), context: n = null, depth: i = !0, stencil: r = !0, alpha: a = !1, antialias: o = !1, premultipliedAlpha: c = !0, preserveDrawingBuffer: l = !1, powerPreference: h = "default", failIfMajorPerformanceCaveat: u = !1 } = e;
         this.isWebGLRenderer = !0;
         let d;
         n !== null ? d = n.getContextAttributes().alpha : d = a;
@@ -14952,7 +14952,7 @@ var ia = class extends Zt {
             ], u = new Array(3), d = {}, f = [];
             for(let m = 0; m < c; m += 3){
                 a ? (l[0] = a.getX(m), l[1] = a.getX(m + 1), l[2] = a.getX(m + 2)) : (l[0] = m, l[1] = m + 1, l[2] = m + 2);
-                let { a: _ , b: g , c: p  } = Mr;
+                let { a: _, b: g, c: p } = Mr;
                 if (_.fromBufferAttribute(o, l[0]), g.fromBufferAttribute(o, l[1]), p.fromBufferAttribute(o, l[2]), Mr.getNormal(ao), u[0] = `${Math.round(_.x * i)},${Math.round(_.y * i)},${Math.round(_.z * i)}`, u[1] = `${Math.round(g.x * i)},${Math.round(g.y * i)},${Math.round(g.z * i)}`, u[2] = `${Math.round(p.x * i)},${Math.round(p.y * i)},${Math.round(p.z * i)}`, !(u[0] === u[1] || u[1] === u[2] || u[2] === u[0])) for(let v = 0; v < 3; v++){
                     let x = (v + 1) % 3, y = u[v], b = u[x], w = Mr[h[v]], R = Mr[h[x]], I = `${y}_${b}`, M = `${b}_${y}`;
                     M in d && d[M] ? (ao.dot(d[M].normal) <= r && (f.push(w.x, w.y, w.z), f.push(R.x, R.y, R.z)), d[M] = null) : I in d || (d[I] = {
@@ -14963,7 +14963,7 @@ var ia = class extends Zt {
                 }
             }
             for(let m in d)if (d[m]) {
-                let { index0: _ , index1: g  } = d[m];
+                let { index0: _, index1: g } = d[m];
                 vr.fromBufferAttribute(o, _), yr.fromBufferAttribute(o, g), f.push(vr.x, vr.y, vr.z), f.push(yr.x, yr.y, yr.z);
             }
             this.setAttribute("position", new ve(f, 3));
@@ -16752,7 +16752,7 @@ var fn = {}, Mc = class extends Error {
                     start (p) {
                         v();
                         function v() {
-                            u.read().then(({ done: x , value: y  })=>{
+                            u.read().then(({ done: x, value: y })=>{
                                 if (x) p.close();
                                 else {
                                     _ += y.byteLength;
@@ -20989,7 +20989,7 @@ class OrbitControls extends sn {
     }
 }
 function events2unitless(screen, event) {
-    const { canvas , winscale , renderer  } = screen;
+    const { canvas, winscale, renderer } = screen;
     const rect = canvas.getBoundingClientRect();
     const x = (event.clientX - rect.left) / winscale;
     const y = (event.clientY - rect.top) / winscale;
@@ -21013,11 +21013,14 @@ function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     const [w, h] = makie_camera.resolution.value;
     const camera = new yt(cam3d.fov.value, w / h, 0.01, 100.0);
     const center = new A(...cam3d.lookat.value);
-    camera.up = new A(...cam3d.upvector.value);
+    camera.up = new A(0, 0, 1);
     camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
     const use_orbit_cam = ()=>!(Bonito.can_send_to_julia && Bonito.can_send_to_julia());
     const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e)=>in_scene(scene, e));
+    controls.target = center.clone();
+    controls.target0 = center.clone();
+    scene.orbitcontrols = controls;
     controls.addEventListener("change", (e)=>{
         const view = camera.matrixWorldInverse;
         const projection = camera.projectionMatrix;
@@ -22365,11 +22368,11 @@ function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-    const { px_per_unit  } = scene.screen;
+    const { px_per_unit } = scene.screen;
     plot_data.uniforms.resolution = cam.resolution;
     plot_data.uniforms.px_per_unit = new mod.Uniform(px_per_unit);
     if (plot_data.uniforms.preprojection) {
-        const { space , markerspace  } = plot_data;
+        const { space, markerspace } = plot_data;
         plot_data.uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
     }
     if (scene.camera_relative_light) {
@@ -22446,7 +22449,7 @@ function create_texture_from_data(data) {
 function create_texture(scene, data) {
     const buffer = data.data;
     if (buffer == "texture_atlas") {
-        const { texture_atlas  } = scene.screen;
+        const { texture_atlas } = scene.screen;
         if (texture_atlas) {
             return texture_atlas;
         } else {
@@ -22665,7 +22668,7 @@ function connect_attributes(mesh, updater) {
 function deserialize_scene(data, screen) {
     const scene = new mod.Scene();
     scene.screen = screen;
-    const { canvas  } = screen;
+    const { canvas } = screen;
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
@@ -22704,7 +22707,7 @@ function deserialize_scene(data, screen) {
 }
 function delete_plot(plot) {
     delete plot_cache[plot.plot_uuid];
-    const { parent  } = plot;
+    const { parent } = plot;
     if (parent) {
         parent.remove(plot);
     }
@@ -22720,7 +22723,7 @@ function delete_three_scene(scene) {
 }
 window.THREE = mod;
 function render_scene(scene, picking = false) {
-    const { camera , renderer , px_per_unit  } = scene.screen;
+    const { camera, renderer, px_per_unit } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("removing WGL context, canvas is not in the DOM anymore!");
@@ -22757,7 +22760,7 @@ function render_scene(scene, picking = false) {
     return scene.scene_children.every((x)=>render_scene(x, picking));
 }
 function start_renderloop(three_scene) {
-    const { fps  } = three_scene.screen;
+    const { fps } = three_scene.screen;
     const time_per_frame = 1 / fps * 1000;
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
@@ -22772,24 +22775,6 @@ function start_renderloop(three_scene) {
     }
     render_scene(three_scene);
     renderloop();
-}
-function throttle_function(func, delay) {
-    let prev = 0;
-    let future_id = undefined;
-    function inner_throttle(...args) {
-        const now = new Date().getTime();
-        if (future_id !== undefined) {
-            clearTimeout(future_id);
-            future_id = undefined;
-        }
-        if (now - prev > delay) {
-            prev = now;
-            return func(...args);
-        } else {
-            future_id = setTimeout(()=>inner_throttle(...args), now - prev + 1);
-        }
-    }
-    return inner_throttle;
 }
 function get_body_size() {
     const bodyStyle = window.getComputedStyle(document.body);
@@ -22860,7 +22845,7 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
     Bonito.Connection.send_warning(err);
 }
 function add_canvas_events(screen, comm, resize_to) {
-    const { canvas , winscale  } = screen;
+    const { canvas, winscale } = screen;
     function mouse_callback(event) {
         const [x, y] = events2unitless(screen, event);
         comm.notify({
@@ -22870,7 +22855,7 @@ function add_canvas_events(screen, comm, resize_to) {
             ]
         });
     }
-    const notify_mouse_throttled = throttle_function(mouse_callback, 40);
+    const notify_mouse_throttled = Bonito.throttle_function(mouse_callback, 40);
     function mousemove(event) {
         notify_mouse_throttled(event);
         return false;
@@ -22902,6 +22887,9 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     canvas.addEventListener("wheel", wheel);
     function keydown(event) {
+        if (event.code === "Space") {
+            event.preventDefault();
+        }
         comm.notify({
             keydown: [
                 event.code,
@@ -22957,7 +22945,7 @@ function add_canvas_events(screen, comm, resize_to) {
         }
     }
     if (resize_to) {
-        const resize_callback_throttled = throttle_function(resize_callback, 100);
+        const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
         window.addEventListener("resize", (event)=>resize_callback_throttled());
         setTimeout(resize_callback, 50);
     }
@@ -22989,7 +22977,7 @@ function threejs_module(canvas) {
     return renderer;
 }
 function set_render_size(screen, width, height) {
-    const { renderer , canvas , scalefactor , winscale , px_per_unit  } = screen;
+    const { renderer, canvas, scalefactor, winscale, px_per_unit } = screen;
     const [swidth, sheight] = [
         winscale * width,
         winscale * height
@@ -23007,7 +22995,7 @@ function set_render_size(screen, width, height) {
     return;
 }
 function add_picking_target(screen) {
-    const { picking_target , canvas  } = screen;
+    const { picking_target, canvas } = screen;
     const [w, h] = [
         canvas.width,
         canvas.height
@@ -23060,8 +23048,8 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
 }
 function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_to_plot) {
     scene.children.forEach((plot, index)=>{
-        const { material  } = plot;
-        const { uniforms  } = material;
+        const { material } = plot;
+        const { uniforms } = material;
         if (picking) {
             uniforms.object_id.value = last_id + index;
             uniforms.picking.value = true;
@@ -23086,7 +23074,7 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_t
     return next_id;
 }
 function pick_native(scene, _x, _y, _w, _h) {
-    const { renderer , picking_target , px_per_unit  } = scene.screen;
+    const { renderer, picking_target, px_per_unit } = scene.screen;
     [_x, _y, _w, _h] = [
         _x,
         _y,
@@ -23141,7 +23129,7 @@ function pick_native(scene, _x, _y, _w, _h) {
     ];
 }
 function get_picking_buffer(scene) {
-    const { renderer , picking_target  } = scene.screen;
+    const { renderer, picking_target } = scene.screen;
     const [w, h] = [
         picking_target.width,
         picking_target.height
@@ -23170,7 +23158,7 @@ function get_picking_buffer(scene) {
     };
 }
 function pick_closest(scene, xy, range) {
-    const { renderer  } = scene.screen;
+    const { renderer } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23189,7 +23177,7 @@ function pick_closest(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
     const plot_matrix = plot_data.data;
-    let min_dist = range ^ 2;
+    let min_dist = Math.pow(range, 2);
     let selection = [
         null,
         0
@@ -23199,7 +23187,7 @@ function pick_closest(scene, xy, range) {
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dx; j++){
-            const d = x - i ^ 2 + (y - j) ^ 2;
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             if (d < min_dist && plot_uuid) {
@@ -23214,7 +23202,7 @@ function pick_closest(scene, xy, range) {
     return selection;
 }
 function pick_sorted(scene, xy, range) {
-    const { renderer  } = scene.screen;
+    const { renderer } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23233,13 +23221,13 @@ function pick_sorted(scene, xy, range) {
         return null;
     }
     const plot_matrix = plot_data.data;
-    const distances = selected.map((x)=>range ^ 2);
+    const distances = selected.map((x)=>Math.pow(range, 2));
     const x = xy[0] + 1 - x0;
     const y = xy[1] + 1 - y0;
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dx; j++){
-            const d = x - i ^ 2 + (y - j) ^ 2;
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             if (plot_matrix.length <= pindex) {
                 continue;
             }
@@ -23275,7 +23263,7 @@ function register_popup(popup, scene, plots_to_pick, callback) {
     if (!scene || !scene.screen) {
         return;
     }
-    const { canvas  } = scene.screen;
+    const { canvas } = scene.screen;
     canvas.addEventListener("mousedown", (event)=>{
         const [x, y] = events2unitless(scene.screen, event);
         const [_, picks] = pick_native(scene, x, y, 1, 1);
@@ -23333,4 +23321,3 @@ export { pick_sorted as pick_sorted };
 export { pick_native_uuid as pick_native_uuid };
 export { pick_native_matrix as pick_native_matrix };
 export { register_popup as register_popup };
-

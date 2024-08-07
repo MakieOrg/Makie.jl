@@ -46,7 +46,13 @@ function initialize_block!(ax::Axis3)
         Makie.set_proj_view!(cam, proj, view)
         scene.transformation.model[] = model
         cam.eyeposition[] = eyepos
-        cam.view_direction[] = -normalize(eyepos)
+        viewdir = -normalize(eyepos)
+        up = Vec3d(0, 0, 1)
+        lookat = Vec3d(0)
+        u_z = normalize(eyepos .- lookat)
+        u_x = normalize(cross(up, u_z))
+        cam.upvector[] = cross(u_z, u_x)
+        cam.view_direction[] = viewdir
     end
 
     ticknode_1 = Observable{Any}()
