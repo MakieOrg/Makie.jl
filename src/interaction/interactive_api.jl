@@ -177,14 +177,21 @@ function screen_relative(scene::Scene, mpos)
 end
 
 """
-    mouseposition(scene = hovered_scene())
+    mouseposition(ax/scene)
 
 Return the current position of the mouse in _data coordinates_ of the
-given `scene`.
-
-By default uses the `scene` that the mouse is currently hovering over.
+given object.
 """
 mouseposition(x) = mouseposition(get_scene(x))
+
+function mouseposition(ax::Axis)
+    pos = mouseposition(get_scene(ax))
+
+    # `pos` has the axis scaling already applied to it, so to get the true data
+    # coordinates we have to invert the scaling.
+    return Vec2{Float64}(inverse_transform(ax.xscale[])(pos[1]),
+                         inverse_transform(ax.yscale[])(pos[2]))
+end
 
 function mouseposition(scene::Scene = hovered_scene())
     return to_world(scene, mouseposition_px(scene))

@@ -16,6 +16,7 @@
 - Fix `marker=FastPixel()` makersize and markerspace, improve `spy` recipe [#4043](https://github.com/MakieOrg/Makie.jl/pull/4043).
 - Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
 - Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
+- Fix `mouseposition(ax)` when the axis has a non-linear scale. [#4090](https://github.com/MakieOrg/Makie.jl/pull/4090)
 
 ## [0.21.5] - 2024-07-07
 

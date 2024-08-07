@@ -208,6 +208,8 @@ include("stats/boxplot.jl")
 include("stats/violin.jl")
 include("stats/hexbin.jl")
 
+# Layout types (Axis, etc)
+include("makielayout/MakieLayout.jl")
 
 # Interactiveness
 include("interaction/events.jl")
@@ -365,7 +367,6 @@ include("figures.jl")
 export content
 export resize_to_layout!
 
-include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
