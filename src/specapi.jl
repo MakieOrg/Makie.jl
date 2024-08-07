@@ -355,7 +355,7 @@ function Base.propertynames(pl::PlotList)
     else
         ()
     end
-    return (Set(keys(pl.attributes)..., inner_pnames...)...,)
+    return Tuple(unique([keys(pl.attributes)..., inner_pnames...]))
 end
 
 function Base.getproperty(pl::PlotList, property::Symbol)
