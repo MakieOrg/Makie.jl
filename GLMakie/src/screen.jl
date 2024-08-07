@@ -145,6 +145,8 @@ function activate!(; inline=LAST_INLINE[], screen_config...)
     return
 end
 
+const unimplemented_error = "GLMakie doesn't own screen.glscreen! If you're embedding GLMakie with a custom window type you must specialize this function for your window type."
+
 """
     Screen(; screen_config...)
 
@@ -158,6 +160,7 @@ $(Base.doc(MakieScreen))
 """
 mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
+    owns_glscreen::Bool
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
     config::Union{Nothing, ScreenConfig}
@@ -185,6 +188,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
 
     function Screen(
             glscreen::GLWindow,
+            owns_glscreen::Bool,
             shader_cache::GLAbstraction.ShaderCache,
             framebuffer::GLFramebuffer,
             config::Union{Nothing, ScreenConfig},
@@ -202,7 +206,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
 
         s = size(framebuffer)
         screen = new{GLWindow}(
-            glscreen, shader_cache, framebuffer,
+            glscreen, owns_glscreen, shader_cache, framebuffer,
             config, stop_renderloop, rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
@@ -220,54 +224,58 @@ Makie.isvisible(screen::Screen) = screen.config.visible
 # gets removed in destroy!(screen)
 const ALL_SCREENS = Set{Screen}()
 
-function empty_screen(debugging::Bool; reuse=true)
-    windowhints = [
-        (GLFW.SAMPLES,      0),
-        (GLFW.DEPTH_BITS,   0),
+function empty_screen(debugging::Bool; reuse=true, window=nothing)
+    owns_glscreen = isnothing(window)
+    initial_resolution = (10, 10)
 
-        # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
-        # WITHOUT ANY ERROR -.-
-        (GLFW.ALPHA_BITS,   8),
-        (GLFW.RED_BITS,     8),
-        (GLFW.GREEN_BITS,   8),
-        (GLFW.BLUE_BITS,    8),
+    if isnothing(window)
+        windowhints = [
+            (GLFW.SAMPLES,      0),
+            (GLFW.DEPTH_BITS,   0),
 
-        (GLFW.STENCIL_BITS, 0),
-        (GLFW.AUX_BUFFERS,  0),
+            # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
+            # WITHOUT ANY ERROR -.-
+            (GLFW.ALPHA_BITS,   8),
+            (GLFW.RED_BITS,     8),
+            (GLFW.GREEN_BITS,   8),
+            (GLFW.BLUE_BITS,    8),
 
-        (GLFW.SCALE_TO_MONITOR, true),
-    ]
-    resolution = (10, 10)
-    window = try
-        GLFW.Window(
-            resolution = resolution,
-            windowhints = windowhints,
-            visible = false,
-            focus = false,
-            fullscreen = false,
-            debugging = debugging,
-        )
-    catch e
-        @warn("""
+            (GLFW.STENCIL_BITS, 0),
+            (GLFW.AUX_BUFFERS,  0),
+
+            (GLFW.SCALE_TO_MONITOR, true),
+        ]
+        window = try
+            GLFW.Window(
+                resolution = initial_resolution,
+                windowhints = windowhints,
+                visible = false,
+                focus = false,
+                fullscreen = false,
+                debugging = debugging,
+            )
+        catch e
+            @warn("""
             GLFW couldn't create an OpenGL window.
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
             Have a look at the troubleshooting section in the GLMakie readme:
             https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
         """)
-        rethrow(e)
-    end
+            rethrow(e)
+        end
 
-    # GLFW doesn't support setting the icon on OSX
-    if !Sys.isapple()
-        GLFW.SetWindowIcon(window, Makie.icon())
+        # GLFW doesn't support setting the icon on OSX
+        if !Sys.isapple()
+            GLFW.SetWindowIcon(window, Makie.icon())
+        end
     end
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    fb = GLFramebuffer(resolution)
+    fb = GLFramebuffer(initial_resolution)
     postprocessors = [
         empty_postprocessor(),
         empty_postprocessor(),
@@ -276,7 +284,7 @@ function empty_screen(debugging::Bool; reuse=true)
     ]
 
     screen = Screen(
-        window, shader_cache, fb,
+        window, owns_glscreen, shader_cache, fb,
         nothing, false,
         nothing,
         Dict{WeakRef, ScreenID}(),
@@ -287,8 +295,11 @@ function empty_screen(debugging::Bool; reuse=true)
         Dict{UInt32, AbstractPlot}(),
         reuse,
     )
-    GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
-    GLFW.SetWindowContentScaleCallback(window, scalechangecb(screen))
+
+    if owns_glscreen
+        GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
+        GLFW.SetWindowContentScaleCallback(window, scalechangecb(screen))
+    end
 
     return screen
 end
@@ -296,6 +307,10 @@ end
 const SCREEN_REUSE_POOL = Set{Screen}()
 
 function reopen!(screen::Screen)
+    if !screen.owns_glscreen
+        error(unimplemented_error)
+    end
+
     @debug("reopening screen")
     gl = screen.glscreen
     @assert !was_destroyed(gl)
@@ -309,10 +324,10 @@ function reopen!(screen::Screen)
     return screen
 end
 
-function screen_from_pool(debugging)
+function screen_from_pool(debugging; window=nothing)
     screen = if isempty(SCREEN_REUSE_POOL)
         @debug("create empty screen for pool")
-        empty_screen(debugging)
+        empty_screen(debugging; window)
     else
         @debug("get old screen from pool")
         pop!(SCREEN_REUSE_POOL)
@@ -343,15 +358,18 @@ end
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
-    ShaderAbstractions.switch_context!(glw)
-    GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
-    GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
-    GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
-    GLFW.SetWindowTitle(glw, config.title)
+    if screen.owns_glscreen
+        ShaderAbstractions.switch_context!(glw)
+        GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
+        GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
+        GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
+        GLFW.SetWindowTitle(glw, config.title)
 
-    if !isnothing(config.monitor)
-        GLFW.SetWindowMonitor(glw, config.monitor)
+        if !isnothing(config.monitor)
+            GLFW.SetWindowMonitor(glw, config.monitor)
+        end
     end
+
     screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
     function replace_processor!(postprocessor, idx)
@@ -388,11 +406,12 @@ end
 function Screen(;
         resolution::Union{Nothing, Tuple{Int, Int}} = nothing,
         start_renderloop = true,
+        window = nothing,
         screen_config...
     )
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
-    screen = screen_from_pool(config.debugging)
+    screen = screen_from_pool(config.debugging; window)
     apply_config!(screen, config; start_renderloop=start_renderloop)
     if !isnothing(resolution)
         resize!(screen, resolution...)
@@ -400,7 +419,14 @@ function Screen(;
     return screen
 end
 
-set_screen_visibility!(screen::Screen, visible::Bool) = set_screen_visibility!(screen.glscreen, visible)
+function set_screen_visibility!(screen::Screen, visible::Bool)
+    if !screen.owns_glscreen
+        error(unimplemented_error)
+    end
+
+    set_screen_visibility!(screen.glscreen, visible)
+end
+
 function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
     @assert nw.handle !== C_NULL
     GLFW.set_visibility!(nw, visible)
@@ -665,18 +691,20 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     window = to_native(screen)
     (w > 0 && h > 0 && isopen(window)) || return nothing
 
-    # Resize the window which appears on the user desktop (if necessary).
-    #
-    # On OSX with a Retina display, the window size is given in logical dimensions and
-    # is automatically scaled by the OS. To support arbitrary scale factors, we must account
-    # for the native scale factor when calculating the effective scaling to apply.
-    #
-    # On Linux and Windows, scale from the logical size to the pixel size.
-    ShaderAbstractions.switch_context!(window)
-    winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
-    winw, winh = round.(Int, winscale .* (w, h))
-    if window_size(window) != (winw, winh)
-        GLFW.SetWindowSize(window, winw, winh)
+    if screen.owns_glscreen
+        # Resize the window which appears on the user desktop (if necessary).
+        #
+        # On OSX with a Retina display, the window size is given in logical dimensions and
+        # is automatically scaled by the OS. To support arbitrary scale factors, we must account
+        # for the native scale factor when calculating the effective scaling to apply.
+        #
+        # On Linux and Windows, scale from the logical size to the pixel size.
+        ShaderAbstractions.switch_context!(window)
+        winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
+        winw, winh = round.(Int, winscale .* (w, h))
+        if window_size(window) != (winw, winh)
+            GLFW.SetWindowSize(window, winw, winh)
+        end
     end
 
     # Then resize the underlying rendering framebuffers as well, which can be scaled
