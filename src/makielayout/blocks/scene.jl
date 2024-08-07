@@ -57,9 +57,3 @@ Makie.cam3d!(ax::LScene; kwargs...) = Makie.cam3d!(ax.scene; kwargs...)
 Makie.cam3d_cad!(ax::LScene; kwargs...) = Makie.cam3d_cad!(ax.scene; kwargs...)
 Makie.old_cam3d!(ax::LScene; kwargs...) = Makie.old_cam3d!(ax.scene; kwargs...)
 Makie.old_cam3d_cad!(ax::LScene; kwargs...) = Makie.old_cam3d_cad!(ax.scene; kwargs...)
-
-function Base.copy(ax::LScene)
-    ax2 = LScene(ax.parent, ax.layoutobservables, ax.blockscene)
-    ax2.scene = Scene(ax.scene; camera=ax.scene.camera, camera_controls=ax.scene.camera_controls)
-    return ax2
-end
