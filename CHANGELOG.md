@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fix label/legend for plotlist [#4079](https://github.com/MakieOrg/Makie.jl/pull/4079).
+- Fix wrong order for colors in RPRMakie [#4098](https://github.com/MakieOrg/Makie.jl/pull/4098).
 - Fixed incorrect distance calculation in `pick_closest` in WGLMakie [#4082](https://github.com/MakieOrg/Makie.jl/pull/4082).
 - Suppress keyboard shortcuts and context menu in JupyterLab output [#4068](https://github.com/MakieOrg/Makie.jl/pull/4068).
 - Introduce stroke_depth_shift + forward normal depth_shift for Poly [#4058](https://github.com/MakieOrg/Makie.jl/pull/4058).
@@ -16,6 +17,7 @@
 - Fix `marker=FastPixel()` makersize and markerspace, improve `spy` recipe [#4043](https://github.com/MakieOrg/Makie.jl/pull/4043).
 - Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
 - Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
+- Update JS OrbitControls to match Julia OrbitControls [#4084](https://github.com/MakieOrg/Makie.jl/pull/4084).
 
 ## [0.21.5] - 2024-07-07
 
