@@ -14,6 +14,7 @@
 - Correct a method ambiguity in `insert!` which was causing `PlotList` to fail on CairoMakie. [#4038](https://github.com/MakieOrg/Makie.jl/pull/4038)
 - Fix `marker=FastPixel()` makersize and markerspace, improve `spy` recipe [#4043](https://github.com/MakieOrg/Makie.jl/pull/4043).
 - Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
+- Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
 
 ## [0.21.5] - 2024-07-07
 
