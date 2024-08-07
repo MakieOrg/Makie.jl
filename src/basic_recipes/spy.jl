@@ -23,6 +23,7 @@ end
 function convert_arguments(::Type{<: Spy}, x::SparseArrays.AbstractSparseArray)
     (0..size(x, 1), 0..size(x, 2), x)
 end
+
 function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
     (x, y, z)
 end
@@ -46,6 +47,7 @@ function plot!(p::Spy)
             msize
         end
     end
+
     # TODO correctly align marker
     xycol = lift(p, rect, p.z, markersize) do rect, z, markersize
         x, y, color = SparseArrays.findnz(z)
@@ -68,9 +70,10 @@ function plot!(p::Spy)
 
     scatter!(
         p,
-        lift(first, p, xycol), color = lift(last, p, xycol),
+        lift(first, p, xycol), color = lift(last, p, xycol), markerspace=:data,
         marker = marker, markersize = markersize, colorrange = p.colorrange,
-        colormap = p.colormap, colorscale = p.colorscale,inspectable = p.inspectable, visible = p.visible
+        strokecolor=:black, strokewidth=1,
+        colormap = p.colormap, colorscale = p.colorscale, inspectable = p.inspectable, visible = p.visible
     )
 
     lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable,

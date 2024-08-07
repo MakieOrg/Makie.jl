@@ -321,7 +321,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
-    
+
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
@@ -362,7 +362,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
-    
+
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
@@ -617,7 +617,7 @@ Plots polygons, which are defined by
     Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
-    
+
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
@@ -721,4 +721,15 @@ or other array-like output.
     linewidth = automatic
     """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
+end
+
+@recipe ShaderToy (rect::Rect2f, shader::String) begin
+    """Defines code that replaces the specified keys in shaders.
+    E.g. `{{my_code}}` will be replaced by `shader_injections["my_code"]`.
+    These code injections happen before compile time and require
+    `GLMakie.closeall()` to be overwritten.
+    """
+    uniforms = Dict{Symbol,Any}()
+    mixin_generic_plot_attributes()...
+    fxaa = false
 end
