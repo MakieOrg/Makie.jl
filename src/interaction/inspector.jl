@@ -310,10 +310,6 @@ function on_hover(inspector)
                     should_clear = false
                     break
                 end
-            elseif plt in inspector.plot.plots || plt in inspector.plot.plots[1].plots # latter case checks the text plots
-                # don't clear the tooltip when hovering over it, this prevents flickering
-                should_clear = false
-                break
             end
         end
 
