@@ -6,6 +6,7 @@ using Makie:
              PointBased,
     ClosedInterval
 using Logging
+using Makie.SparseArrays
 
 function apply_conversion(trait, args...)
     return Makie.convert_arguments(trait, args...)
@@ -96,7 +97,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
         end
         return
     end
-\
+
     indices = [1, 2, 3, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     str = "test"
     strings = fill(str, 10)
@@ -416,8 +417,11 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 @testset "Spy" begin
                     # TODO: assuming internal processing
-                    @test apply_conversion(Spy, sparse)            isa Tuple{ClosedInterval{Int}, ClosedInterval{Int}, typeof(sparse)}
-                    @test apply_conversion(Spy, xs, ys, sparse)    isa Tuple{typeof(xs), typeof(ys), typeof(sparse)}
+                    @test apply_conversion(Spy, sparse) isa
+                          Tuple{ClosedInterval{T_out},ClosedInterval{T_out},SparseArrays.SparseMatrixCSC{eltype(sparse),Int64}}
+                    @test apply_conversion(Spy, i, i, sparse) isa
+                          Tuple{ClosedInterval{T_out},ClosedInterval{T_out},
+                                SparseArrays.SparseMatrixCSC{eltype(sparse),Int64}}
                 end
 
                 @testset "StreamPlot" begin

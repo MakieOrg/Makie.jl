@@ -84,45 +84,6 @@ function start_renderloop(three_scene) {
     renderloop();
 }
 
-// from: https://www.geeksforgeeks.org/javascript-throttling/
-function throttle_function(func, delay) {
-    // Previously called time of the function
-    let prev = 0;
-    // ID of queued future update
-    let future_id = undefined;
-    function inner_throttle(...args) {
-        // Current called time of the function
-        const now = new Date().getTime();
-
-        // If we had a queued run, clear it now, we're
-        // either going to execute now, or queue a new run.
-        if (future_id !== undefined) {
-            clearTimeout(future_id);
-            future_id = undefined;
-        }
-
-        // If difference is greater than delay call
-        // the function again.
-        if (now - prev > delay) {
-            prev = now;
-            // "..." is the spread operator here
-            // returning the function with the
-            // array of arguments
-            return func(...args);
-        } else {
-            // Otherwise, we want to queue this function call
-            // to occur at some later later time, so that it
-            // does not get lost; we'll schedule it so that it
-            // fires just a bit after our choke ends.
-            future_id = setTimeout(
-                () => inner_throttle(...args),
-                now - prev + 1
-            );
-        }
-    }
-    return inner_throttle;
-}
-
 function get_body_size() {
     const bodyStyle = window.getComputedStyle(document.body);
     // Subtract padding that is added by VSCode
@@ -239,7 +200,7 @@ function add_canvas_events(screen, comm, resize_to) {
         comm.notify({ mouseposition: [x, y] });
     }
 
-    const notify_mouse_throttled = throttle_function(mouse_callback, 40);
+    const notify_mouse_throttled = Bonito.throttle_function(mouse_callback, 40);
 
     function mousemove(event) {
         notify_mouse_throttled(event);
@@ -338,7 +299,7 @@ function add_canvas_events(screen, comm, resize_to) {
         }
     }
     if (resize_to) {
-        const resize_callback_throttled = throttle_function(
+        const resize_callback_throttled = Bonito.throttle_function(
             resize_callback,
             100
         );
