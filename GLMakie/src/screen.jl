@@ -243,7 +243,8 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
             (GLFW.STENCIL_BITS, 0),
             (GLFW.AUX_BUFFERS,  0),
 
-            (GLFW.SCALE_TO_MONITOR, true),
+            (GLFW.SCALE_TO_MONITOR, true),  # Windows & X11
+            (GLFW.SCALE_FRAMEBUFFER, true), # OSX & Wayland
         ]
         window = try
             GLFW.Window(
@@ -256,6 +257,7 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
             )
         catch e
             @warn("""
+
             GLFW couldn't create an OpenGL window.
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
@@ -358,13 +360,16 @@ end
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
+
     if screen.owns_glscreen
         ShaderAbstractions.switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
         GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
         GLFW.SetWindowTitle(glw, config.title)
-
+        if GLFW.GetPlatform() != GLFW.PLATFORM_WAYLAND
+            GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
+        end
         if !isnothing(config.monitor)
             GLFW.SetWindowMonitor(glw, config.monitor)
         end
@@ -704,7 +709,10 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         #
         # On Linux and Windows, scale from the logical size to the pixel size.
         ShaderAbstractions.switch_context!(window)
-        winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
+        winscale = screen.scalefactor[]
+        if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
+            winscale /= scale_factor(window)
+        end
         winw, winh = round.(Int, winscale .* (w, h))
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
