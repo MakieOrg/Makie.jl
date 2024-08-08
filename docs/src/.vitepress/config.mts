@@ -29,7 +29,9 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],
     ['script', {src: '/versions.js'}],
-    ['script', {src: `${baseTemp.base}siteinfo.js`}]
+    ['script', {src: `${baseTemp.base}siteinfo.js`}],
+    ['script', {async:'', defer:'', src:'https://api.makie.org/latest.js'}],
+    ['noscript', {}, '<img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/>'],
   ],
   ignoreDeadLinks: true,
 

@@ -112,6 +112,7 @@ include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
 include("bezier.jl")
 include("types.jl")
+include("utilities/timing.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
 include("interaction/liftmacro.jl")
@@ -376,6 +377,7 @@ export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatte
 export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
+export FastPixel
 
 include("precompiles.jl")
 

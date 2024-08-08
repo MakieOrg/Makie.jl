@@ -317,6 +317,7 @@ Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
+    add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
@@ -385,10 +386,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         positions = handle_view(plot[1], gl_attributes)
         positions = apply_transform_and_f32_conversion(scene, plot, positions)
         # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, space)
+        cam = scene.camera
 
         if plot isa Scatter
             mspace = plot.markerspace
-            cam = scene.camera
             gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
                                                  cam.resolution) do space, mspace, _, _
                 return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
@@ -423,9 +424,18 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             if haskey(gl_attributes, :intensity)
                 gl_attributes[:color] = pop!(gl_attributes, :intensity)
             end
+            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model,
+                             :projectionview, :projection, :view, :visible, :resolution, :transparency])
             filter!(gl_attributes) do (k, v,)
-                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview, :visible)
+                return (k in to_keep)
             end
+            gl_attributes[:markerspace] = lift(plot.markerspace) do space
+                space == :pixel && return Int32(0)
+                space == :data && return Int32(1)
+                return error("Unsupported markerspace for FastPixel marker: $space")
+            end
+            gl_attributes[:marker_shape] = lift(x -> x.marker_type, plot.marker)
+            gl_attributes[:upvector] = lift(x-> Vec3f(normalize(x)), cam.upvector)
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
             if plot isa MeshScatter

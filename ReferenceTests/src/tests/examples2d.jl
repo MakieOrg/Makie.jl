@@ -1132,13 +1132,16 @@ end
     hidespines!(ax)
     colormap = :tab10
     colorrange = (1, 10)
-    for i in 1:10
-        color = i
-        lines!(ax, i .* [10, 10], [10, 590]; color, colormap, colorrange, linewidth = 5)
-        scatter!(ax, fill(10 * i + 130, 50), range(10, 590, length = 50); color, colormap, colorrange)
-        poly!(ax, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)]; color, colormap, colorrange)
-        text!(ax, 360, i * 50, text = "$i"; color, colormap, colorrange, fontsize = 40)
-        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange)
+    nan_color = :cyan
+    for i in -1:13
+        color = i == 13 ? NaN : i
+        lowclip = i == 0 ? Makie.automatic : :bisque
+        highclip = i == 11 ? Makie.automatic : :black
+        lines!(ax, i .* [8, 8], [10, 590]; color, colormap, colorrange, lowclip, highclip, nan_color, linewidth = 5)
+        scatter!(ax, fill(8 * i + 130, 50), range(10, 590, length = 50); color, colormap, colorrange, lowclip, highclip, nan_color)
+        poly!(ax, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)]; color, colormap, colorrange, lowclip, highclip, nan_color)
+        text!(ax, 360, i * 50, text = "$i"; color, colormap, colorrange, lowclip, highclip, nan_color, fontsize = 40)
+        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange, lowclip, highclip, nan_color)
     end
     f
 end
@@ -1462,4 +1465,18 @@ end
         ax.title = "scale=:$(scale)"
     end
     fig
+end
+
+@reference_test "Spy" begin
+    f = Figure()
+    data = RNG.rand(10, 10)
+    spy(f[1, 1], (0, 1), (0, 1), data)
+    # if all colorvalues are 1, colorrange will be (0.5, 1.5), mapping everything to blue
+    # TODO, maybe not ideal for spy?
+    sdata = sparse(data .> 0.5)
+    spy(f[1, 2], sdata; colormap=[:black, :blue, :white])
+    spy(f[2, 1], sdata; color=:black, alpha=0.7)
+    data[1, 1] = NaN
+    spy(f[2, 2], data; highclip=:red, lowclip=(:grey, 0.5), nan_color=:black, colorrange=(0.3, 0.7))
+    f
 end
