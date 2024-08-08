@@ -10,10 +10,6 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 
 
 
-#### Missing Backend Features
-
-* `lines(...)` just creates unconnected linesegments and `linestyle` isn't supported
-
 #### Browser Support
 
 
