@@ -4,6 +4,7 @@
 
 - Added the `uv_transform` attribute for meshscatter, mesh, surface and image [#1406](https://github.com/MakieOrg/Makie.jl/pull/1406).
 - Added the ability to use textures with `meshscatter` in WGLMakie [#1406](https://github.com/MakieOrg/Makie.jl/pull/1406).
+- Fix label/legend for plotlist [#4079](https://github.com/MakieOrg/Makie.jl/pull/4079).
 - Fix wrong order for colors in RPRMakie [#4098](https://github.com/MakieOrg/Makie.jl/pull/4098).
 - Fixed incorrect distance calculation in `pick_closest` in WGLMakie [#4082](https://github.com/MakieOrg/Makie.jl/pull/4082).
 - Suppress keyboard shortcuts and context menu in JupyterLab output [#4068](https://github.com/MakieOrg/Makie.jl/pull/4068).
@@ -19,6 +20,7 @@
 - Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
 - Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
 - Update JS OrbitControls to match Julia OrbitControls [#4084](https://github.com/MakieOrg/Makie.jl/pull/4084).
+- Fix `select_point()` [#4101](https://github.com/MakieOrg/Makie.jl/pull/4101).
 
 ## [0.21.5] - 2024-07-07
 

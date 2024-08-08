@@ -489,20 +489,24 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
-function Makie.insertplots!(screen::Screen, scene::Scene)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+function add_scene!(screen::Screen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
         screen.requires_update = true
-        onany(
-            (args...) -> screen.requires_update = true,
-            scene,
-            scene.visible, scene.backgroundcolor, scene.clear,
-            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview, scene.camera.resolution
-        )
+        onany((args...) -> screen.requires_update = true,
+              scene,
+              scene.visible, scene.backgroundcolor, scene.clear,
+              scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
+              scene.camera.resolution)
         return id
     end
+    return
+end
+
+function Makie.insertplots!(screen::Screen, scene::Scene)
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    add_scene!(screen, scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
@@ -943,7 +947,7 @@ function fps_renderloop(screen::Screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
-        
+
         GC.safepoint()
         sleep(screen.timer)
     end
