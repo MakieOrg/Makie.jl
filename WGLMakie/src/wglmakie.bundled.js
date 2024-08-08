@@ -21013,11 +21013,14 @@ function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     const [w, h] = makie_camera.resolution.value;
     const camera = new yt(cam3d.fov.value, w / h, 0.01, 100.0);
     const center = new A(...cam3d.lookat.value);
-    camera.up = new A(...cam3d.upvector.value);
+    camera.up = new A(0, 0, 1);
     camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
     const use_orbit_cam = ()=>!(Bonito.can_send_to_julia && Bonito.can_send_to_julia());
     const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e)=>in_scene(scene, e));
+    controls.target = center.clone();
+    controls.target0 = center.clone();
+    scene.orbitcontrols = controls;
     controls.addEventListener("change", (e)=>{
         const view = camera.matrixWorldInverse;
         const projection = camera.projectionMatrix;
@@ -22851,24 +22854,6 @@ function start_renderloop(three_scene) {
     render_scene(three_scene);
     renderloop();
 }
-function throttle_function(func, delay) {
-    let prev = 0;
-    let future_id = undefined;
-    function inner_throttle(...args) {
-        const now = new Date().getTime();
-        if (future_id !== undefined) {
-            clearTimeout(future_id);
-            future_id = undefined;
-        }
-        if (now - prev > delay) {
-            prev = now;
-            return func(...args);
-        } else {
-            future_id = setTimeout(()=>inner_throttle(...args), now - prev + 1);
-        }
-    }
-    return inner_throttle;
-}
 function get_body_size() {
     const bodyStyle = window.getComputedStyle(document.body);
     const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
@@ -22948,7 +22933,7 @@ function add_canvas_events(screen, comm, resize_to) {
             ]
         });
     }
-    const notify_mouse_throttled = throttle_function(mouse_callback, 40);
+    const notify_mouse_throttled = Bonito.throttle_function(mouse_callback, 40);
     function mousemove(event) {
         notify_mouse_throttled(event);
         return false;
@@ -22980,6 +22965,9 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     canvas.addEventListener("wheel", wheel);
     function keydown(event) {
+        if (event.code === "Space") {
+            event.preventDefault();
+        }
         comm.notify({
             keydown: [
                 event.code,
@@ -23035,7 +23023,7 @@ function add_canvas_events(screen, comm, resize_to) {
         }
     }
     if (resize_to) {
-        const resize_callback_throttled = throttle_function(resize_callback, 100);
+        const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
         window.addEventListener("resize", (event)=>resize_callback_throttled());
         setTimeout(resize_callback, 50);
     }
@@ -23267,7 +23255,7 @@ function pick_closest(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
     const plot_matrix = plot_data.data;
-    let min_dist = range ^ 2;
+    let min_dist = Math.pow(range, 2);
     let selection = [
         null,
         0
@@ -23277,7 +23265,7 @@ function pick_closest(scene, xy, range) {
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dx; j++){
-            const d = x - i ^ 2 + (y - j) ^ 2;
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             if (d < min_dist && plot_uuid) {
@@ -23311,13 +23299,13 @@ function pick_sorted(scene, xy, range) {
         return null;
     }
     const plot_matrix = plot_data.data;
-    const distances = selected.map((x)=>range ^ 2);
+    const distances = selected.map((x)=>Math.pow(range, 2));
     const x = xy[0] + 1 - x0;
     const y = xy[1] + 1 - y0;
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dx; j++){
-            const d = x - i ^ 2 + (y - j) ^ 2;
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             if (plot_matrix.length <= pindex) {
                 continue;
             }

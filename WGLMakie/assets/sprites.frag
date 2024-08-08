@@ -18,6 +18,7 @@ in float frag_distancefield_scale;
 in vec4 frag_uv_offset_width;
 flat in uint frag_instance_id;
 in float o_clip_distance[8];
+flat in vec2 f_sprite_scale;
 
 uniform int num_clip_planes;
 
@@ -48,8 +49,9 @@ float circle(vec2 uv){
     return 0.5-length(uv-vec2(0.5));
 }
 
-float rectangle(vec2 uv){
-    vec2 d = max(-uv, uv-vec2(1));
+float rectangle(vec2 uv) {
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(-uv, uv - vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
 
@@ -130,7 +132,7 @@ void main() {
     } else if(shape == ROUNDED_RECTANGLE)
         signed_distance = rounded_rectangle(frag_uv, vec2(0.2), vec2(0.8));
     else if(shape == RECTANGLE)
-        signed_distance = 1.0; // rectangle(f_uv);
+        signed_distance = rectangle(frag_uv); // rectangle(f_uv);
     else if(shape == TRIANGLE)
         signed_distance = triangle(frag_uv);
 

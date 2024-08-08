@@ -131,7 +131,7 @@ function draw_single(primitive::Lines, ctx, positions)
 
     n = length(positions)
     start = positions[begin]
-    
+
     @inbounds for i in 1:n
         p = positions[i]
         # only take action for non-NaNs
@@ -234,7 +234,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
     prev_nan = isnan(prev_position)
     prev_continued = false
     start = positions[begin]
-    
+
     if !prev_nan
         # first is not nan, move_to
         Cairo.move_to(ctx, positions[begin]...)
@@ -346,6 +346,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
     colors = to_color(primitive.calculated_colors[])
+    markerspace = primitive.markerspace[]
+    space = primitive.space[]
     transfunc = Makie.transform_func(primitive)
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
@@ -465,7 +467,8 @@ function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidt
     nothing
 end
 
-function draw_marker(ctx, ::Type{<: Rect}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, scale, strokecolor, strokewidth,
+                     marker_offset, rotation)
     s2 = Point2((scale .* (1, -1))...)
     pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
@@ -984,6 +987,10 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
         shading_bool = shading
     else
         shading_bool = shading != NoShading
+    end
+
+    if to_value(get(attributes, :invert_normals, false))
+        meshnormals .= -meshnormals
     end
 
     draw_mesh3D(

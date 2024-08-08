@@ -60,7 +60,7 @@ export function attach_3d_camera(
     );
 
     const center = new THREE.Vector3(...cam3d.lookat.value);
-    camera.up = new THREE.Vector3(...cam3d.upvector.value);
+    camera.up = new THREE.Vector3(0, 0, 1);
     camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
 
@@ -69,6 +69,11 @@ export function attach_3d_camera(
     const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e) =>
         in_scene(scene, e)
     );
+    controls.target = center.clone()
+    controls.target0 = center.clone()
+
+    scene.orbitcontrols = controls;
+
     controls.addEventListener("change", (e) => {
         const view = camera.matrixWorldInverse;
         const projection = camera.projectionMatrix;

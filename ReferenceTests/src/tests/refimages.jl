@@ -11,6 +11,7 @@ using ReferenceTests.DelimitedFiles
 using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
 using ReferenceTests.DelaunayTriangulation
+using ReferenceTests.SparseArrays
 using Makie: Record, volume
 
 @testset "categorical" begin

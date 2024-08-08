@@ -8,12 +8,14 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{color_type}}      color;
 {{color_norm_type}} color_norm;
 {{color_map_type}}  color_map;
+{{scale_type}}      scale;
+
+uniform vec2 resolution;
 uniform uint objectid;
 uniform float depth_shift;
 
 flat out vec4 o_color;
 flat out uvec2 o_objectid;
-
 
 float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
@@ -48,13 +50,28 @@ void process_clip_planes(vec3 world_pos)
         gl_ClipDistance[i] = 1.0;
 }
 
-uniform mat4 projectionview, model;
+uniform mat4 projection, projectionview, view, model;
+uniform int markerspace;
+uniform float px_per_unit;
+uniform vec3 upvector;
 
 void main(){
-	colorize(color_map, color, color_norm);
+    vec4 world_position = model * _position(vertex);
+    process_clip_planes(world_position.xyz);
+    vec4 clip_pos = projectionview * world_position;
+    gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
+    if (markerspace == 0) {
+        // pixelspace
+        gl_PointSize = px_per_unit * scale.x;
+    } else {
+        // dataspace with 3D camera
+        // to have a billboard, we project the upvector
+        vec3 scale_vec = upvector * scale.x;
+        vec4 up_clip = projectionview * vec4(world_position.xyz + scale_vec, 1);
+        float yup = abs(up_clip.y - clip_pos.y) / clip_pos.w;
+        gl_PointSize = ceil(0.5 * yup *  resolution.y);
+    }
+
+    colorize(color_map, color, color_norm);
     o_objectid  = uvec2(objectid, gl_VertexID+1);
-    vec4 world_pos = model * _position(vertex);
-    process_clip_planes(world_pos.xyz);
-	gl_Position = projectionview * world_pos;
-    gl_Position.z += gl_Position.w * depth_shift;
 }
