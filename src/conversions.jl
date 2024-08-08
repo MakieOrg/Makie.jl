@@ -638,6 +638,12 @@ function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Func
     return convert_arguments(P, x, y)
 end
 
+function convert_arguments(P::Type{<:Union{Band,Rangebars}}, i::AbstractInterval, f::Function)
+    # f() returns interval for these plottypes
+    x, y = PlotUtils.adapted_grid(x -> mean(f(x)), endpoints(i))
+    return convert_arguments(P, x, f.(x))
+end
+
 # OffsetArrays conversions
 function convert_arguments(sl::GridBased, wm::OffsetArray)
   x1, y1 = wm.offsets .+ 1
