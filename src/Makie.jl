@@ -377,6 +377,7 @@ export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatte
 export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
+export FastPixel
 
 include("precompiles.jl")
 
