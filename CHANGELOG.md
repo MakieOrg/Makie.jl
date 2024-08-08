@@ -18,6 +18,7 @@
 - Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
 - Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
 - Update JS OrbitControls to match Julia OrbitControls [#4084](https://github.com/MakieOrg/Makie.jl/pull/4084).
+- Fix `select_point()` [#4101](https://github.com/MakieOrg/Makie.jl/pull/4101).
 
 ## [0.21.5] - 2024-07-07
 
