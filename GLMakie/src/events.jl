@@ -47,10 +47,12 @@ function Makie.window_area(scene::Scene, screen::Screen)
 
     function windowsizecb(window, width::Cint, height::Cint)
         area = scene.events.window_area
-        sf = screen.scalefactor[]
+        winscale = screen.scalefactor[]
 
         ShaderAbstractions.switch_context!(window)
-        winscale = sf / (@static Sys.isapple() ? scale_factor(window) : 1)
+        if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
+            winscale /= scale_factor(window)
+        end
         winw, winh = round.(Int, (width, height) ./ winscale)
         if Vec(winw, winh) != widths(area[])
             area[] = Recti(minimum(area[]), winw, winh)
@@ -170,13 +172,12 @@ end
 
 function correct_mouse(screen::Screen, w, h)
     nw = to_native(screen)
-    sf = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(nw) : 1)
     _, winh = window_size(nw)
-    @static if Sys.isapple()
-        return w, (winh / sf) - h
-    else
-        return w / sf, (winh - h) / sf
+    sf = screen.scalefactor[]
+    if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
+        sf /= scale_factor(nw)
     end
+    return w / sf, (winh - h) / sf
 end
 
 struct MousePositionUpdater
