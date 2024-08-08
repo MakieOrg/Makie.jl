@@ -892,27 +892,35 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     end
 end
 
-function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+function _draw_rect_heatmap(ctx, xys, ni, nj, colors, margin_factor=0.05f0)
     @inbounds for i in 1:ni, j in 1:nj
         p1 = xys[i, j]
         p2 = xys[i+1, j]
         p3 = xys[i+1, j+1]
         p4 = xys[i, j+1]
-
+        
         # Rectangles and polygons that are directly adjacent usually show
         # white lines between them due to anti aliasing. To avoid this we
         # increase their size slightly.
+        
+        if alpha(colors[i, j]) == 1 && margin_factor > 0
+            # dx and dy are the margin widths that are added to the
+            # heatmap cell sizes further down
+            # adding 5% seems like a good compromise between avoiding artifacts
+            # and not changing pixel sizes too much
+            # how much is added can be controlled via margin_factor
+            dx = abs(p2[1] - p1[1]) * 0.5f0 * margin_factor
+            dy = abs(p4[2] - p1[2]) * 0.5f0 * margin_factor
 
-        if alpha(colors[i, j]) == 1
             # sign.(p - center) gives the direction in which we need to
             # extend the polygon. (Which may change due to rotations in the
             # model matrix.) (i!=1) etc is used to avoid increasing the
             # outer extent of the heatmap.
             center = 0.25f0 * (p1 + p2 + p3 + p4)
-            p1 += sign.(p1 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=1))
-            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=1))
-            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=nj))
-            p4 += sign.(p4 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=nj))
+            p1 += sign.(p1 - center) .* Point2f(dx * (i!=1),  dy * (j!=1))
+            p2 += sign.(p2 - center) .* Point2f(dx * (i!=ni), dy * (j!=1))
+            p3 += sign.(p3 - center) .* Point2f(dx * (i!=ni), dy * (j!=nj))
+            p4 += sign.(p4 - center) .* Point2f(dx * (i!=1),  dy * (j!=nj))
         end
 
         Cairo.set_line_width(ctx, 0)
