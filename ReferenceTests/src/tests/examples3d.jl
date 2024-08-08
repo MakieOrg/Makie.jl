@@ -624,3 +624,9 @@ end
 @reference_test "Heatmap 3D" begin
     heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
 end
+
+@reference_test "Surface interpolate attribute" begin
+    f, ls1, pl = surface(Makie.peaks(20); interpolate=true, axis=(; show_axis=false))
+    ls2, pl = surface(f[1, 2], Makie.peaks(20); interpolate=false, axis=(; show_axis=false))
+    f
+end

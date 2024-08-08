@@ -43,6 +43,10 @@ function code_to_keyboard(code::String)
         return Keyboard.caps_lock
     elseif sym === :contextmenu
         return Keyboard.menu
+    elseif sym === :left_meta
+        return Keyboard.left_super
+    elseif sym === :right_meta
+        return Keyboard.right_super
     else
         return Keyboard.unknown
     end

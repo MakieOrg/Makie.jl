@@ -293,11 +293,14 @@ struct Camera
     Direction in which the camera looks.
     """
     view_direction::Observable{Vec3f}
-
     """
     Eye position of the camera, used for e.g. ray tracing.
     """
     eyeposition::Observable{Vec3f}
+    """
+    Up direction of the current camera (e.g. Vec3f(0, 1, 0) for 2d)
+    """
+    upvector::Observable{Vec3f}
 
     """
     To make camera interactive, steering observables are connected to the different matrices.
