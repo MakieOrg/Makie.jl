@@ -365,7 +365,6 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
         ShaderAbstractions.switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
-        GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
         GLFW.SetWindowTitle(glw, config.title)
         if GLFW.GetPlatform() != GLFW.PLATFORM_WAYLAND
             GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
@@ -703,11 +702,11 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
         #
-        # On OSX with a Retina display, the window size is given in logical dimensions and
+        # On some platforms(OSX and Wayland), the window size is given in logical dimensions and
         # is automatically scaled by the OS. To support arbitrary scale factors, we must account
         # for the native scale factor when calculating the effective scaling to apply.
         #
-        # On Linux and Windows, scale from the logical size to the pixel size.
+        # On others (Windows and X11), scale from the logical size to the pixel size.
         ShaderAbstractions.switch_context!(window)
         winscale = screen.scalefactor[]
         if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)

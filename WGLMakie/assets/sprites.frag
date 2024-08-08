@@ -56,14 +56,8 @@ float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
 }
 
-void fill(bool image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
-    color = mix(color, fillcolor, infill);
-}
-
-void fill(sampler2D image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
-    vec4 im_color = texture(image, uv.yx);
-    color = mix(color, im_color, infill);
-}
+vec4 fill(vec4 fillcolor, bool image, vec2 uv) { return fillcolor; }
+vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
 
 void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
     if (width != 0.0){
@@ -135,8 +129,9 @@ void main() {
     float inside_start = max(-stroke_width, 0.0);
     float inside = aastep(inside_start, signed_distance);
 
-    vec4 final_color = vec4(frag_color.xyz, 0);
-    fill(image, frag_color, frag_uv, inside, final_color);
+    vec4 final_color = fill(frag_color, image, frag_uv);
+    final_color.a = final_color.a * inside;
+
     stroke(get_strokecolor(), signed_distance, -stroke_width, final_color);
     glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance), final_color);
 
