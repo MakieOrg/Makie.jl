@@ -176,7 +176,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
-    render_tick::Observable{Nothing} # listeners must not Consume(true)
+    render_tick::Observable{Makie.TickState} # listeners must not Consume(true)
     window_open::Observable{Bool}
     scalefactor::Observable{Float32}
 
@@ -210,7 +210,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             config, stop_renderloop, rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
-            Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
+            Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0f0), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
@@ -243,7 +243,8 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
             (GLFW.STENCIL_BITS, 0),
             (GLFW.AUX_BUFFERS,  0),
 
-            (GLFW.SCALE_TO_MONITOR, true),
+            (GLFW.SCALE_TO_MONITOR, true),  # Windows & X11
+            (GLFW.SCALE_FRAMEBUFFER, true), # OSX & Wayland
         ]
         window = try
             GLFW.Window(
@@ -256,6 +257,7 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
             )
         catch e
             @warn("""
+
             GLFW couldn't create an OpenGL window.
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
@@ -358,13 +360,15 @@ end
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
+
     if screen.owns_glscreen
         ShaderAbstractions.switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
-        GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
         GLFW.SetWindowTitle(glw, config.title)
-
+        if GLFW.GetPlatform() != GLFW.PLATFORM_WAYLAND
+            GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
+        end
         if !isnothing(config.monitor)
             GLFW.SetWindowMonitor(glw, config.monitor)
         end
@@ -474,10 +478,10 @@ function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat; 
     return screen
 end
 
-function pollevents(screen::Screen)
+function pollevents(screen::Screen, frame_state::Makie.TickState)
     ShaderAbstractions.switch_context!(screen.glscreen)
     GLFW.PollEvents()
-    notify(screen.render_tick)
+    screen.render_tick[] = frame_state
     return
 end
 
@@ -698,13 +702,16 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
         #
-        # On OSX with a Retina display, the window size is given in logical dimensions and
+        # On some platforms(OSX and Wayland), the window size is given in logical dimensions and
         # is automatically scaled by the OS. To support arbitrary scale factors, we must account
         # for the native scale factor when calculating the effective scaling to apply.
         #
-        # On Linux and Windows, scale from the logical size to the pixel size.
+        # On others (Windows and X11), scale from the logical size to the pixel size.
         ShaderAbstractions.switch_context!(window)
-        winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
+        winscale = screen.scalefactor[]
+        if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
+            winscale /= scale_factor(window)
+        end
         winw, winh = round.(Int, winscale .* (w, h))
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
@@ -763,7 +770,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
-    pollevents(screen)
+    pollevents(screen, Makie.BackendTick)
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render
     if screen.config.visible
@@ -896,7 +903,7 @@ function set_framerate!(screen::Screen, fps=30)
 end
 
 function refreshwindowcb(screen, window)
-    screen.render_tick[] = nothing
+    screen.render_tick[] = Makie.BackendTick
     render_frame(screen)
     GLFW.SwapBuffers(window)
     return
@@ -922,14 +929,13 @@ end
 scalechangeobs(screen) = scalefactor -> scalechangeobs(screen, scalefactor)
 
 
-# TODO add render_tick event to scene events
 function vsynced_renderloop(screen)
     while isopen(screen) && !screen.stop_renderloop
         if screen.config.pause_renderloop
-            pollevents(screen); sleep(0.1)
+            pollevents(screen, Makie.PausedRenderTick); sleep(0.1)
             continue
         end
-        pollevents(screen) # GLFW poll
+        pollevents(screen, Makie.RegularRenderTick) # GLFW poll
         render_frame(screen)
         yield()
         GC.safepoint()
@@ -940,10 +946,10 @@ end
 function fps_renderloop(screen::Screen)
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop
-        pollevents(screen)
-
-        if !screen.config.pause_renderloop
-            pollevents(screen) # GLFW poll
+        if screen.config.pause_renderloop
+            pollevents(screen, Makie.PausedRenderTick)
+        else
+            pollevents(screen, Makie.RegularRenderTick)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
@@ -966,14 +972,18 @@ end
 # const time_record = sizehint!(Float64[], 100_000)
 
 function on_demand_renderloop(screen::Screen)
+    tick_state = Makie.UnknownTickState
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop
-        pollevents(screen) # GLFW poll
+        pollevents(screen, tick_state) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
+            tick_state = Makie.RegularRenderTick
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
+        else
+            tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
         end
 
         GC.safepoint()

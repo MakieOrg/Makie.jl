@@ -24,7 +24,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
     attr[:light_colors]     = Observable(sizehint!(RGBf[], MAX_LIGHTS))
     attr[:light_parameters] = Observable(sizehint!(Float32[], MAX_PARAMS))
 
-    on(screen.render_tick, priority = typemin(Int)) do _
+    on(screen.render_tick, priority = -1000) do _
         # derive number of lights from available lights. Both MAX_LIGHTS and
         # MAX_PARAMS are considered for this.
         n_lights = 0
@@ -231,7 +231,7 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
 
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen)
+    pollevents(screen, Makie.BackendTick)
     robj = get!(screen.cache, objectid(plot)) do
 
         filtered = filter(plot.attributes) do (k, v)
@@ -323,13 +323,13 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen)
+    pollevents(screen, Makie.BackendTick)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     else
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent
-            pollevents(screen)
+            pollevents(screen, Makie.BackendTick)
             insert!(screen, scene, x)
         end
     end
@@ -645,9 +645,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), position)
         rect = Rect2f(0, 0, 1, 1)
         gl_attributes[:faces] = decompose(GLTriangleFace, rect)
-        gl_attributes[:texturecoordinates] = map(decompose_uv(rect)) do uv
-            return 1.0f0 .- Vec2f(uv[2], uv[1])
-        end
+        gl_attributes[:texturecoordinates] = decompose_uv(rect)
         get!(gl_attributes, :shading, NoShading)
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
@@ -675,6 +673,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
         gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
         get!(gl_attributes, :fetch_pixel, true)
+        # different default with Patterns (no swapping and flipping of axes)
+        gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
+            if uv_transform === Makie.automatic
+                return Mat{2,3,Float32}(1,0,0,1,0,0)
+            else
+                return convert_attribute(uv_transform, key"uv_transform"())
+            end
+        end
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)

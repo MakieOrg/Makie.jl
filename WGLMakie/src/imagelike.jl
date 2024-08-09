@@ -36,6 +36,17 @@ function create_shader(mscene::Scene, plot::Surface)
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
     uniforms = Dict(:uniform_color => color, :color => false, :model => model)
 
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:surface}())
+        # Why transpose?
+        if M === nothing
+            return Mat3f(0,1,0, 1,0,0, 0,0,1)
+        else
+            return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+        end
+    end
+
     return draw_mesh(mscene, per_vertex, plot, uniforms)
 end
 
@@ -51,6 +62,21 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         :backlight => 0.0f0,
         :model => model,
     )
+    
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    if plot isa Image
+        uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
+            M = convert_attribute(x, Key{:uv_transform}(), Key{:image}())
+            # Why transpose?
+            if M === nothing
+                return Mat3f(0,1,0, 1,0,0, 0,0,1)
+            else
+                return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+            end
+        end
+    else
+        uniforms[:uv_transform] = Observable(Mat3f(0,1,0, -1,0,0, 1,0,1))
+    end
 
     return draw_mesh(mscene, mesh, plot, uniforms)
 end

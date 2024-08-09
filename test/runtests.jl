@@ -41,6 +41,7 @@ using Makie: volume
     include("convert_arguments.jl")
     # from here
     include("conversions.jl")
+    include("convert_attributes.jl")
 
     include("float32convert.jl")
     include("dim-converts.jl")

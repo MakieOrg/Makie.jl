@@ -38,7 +38,7 @@ function BudgetedTimer(callback, delta_time::AbstractFloat, start = true; min_sl
     timer = BudgetedTimer(callback, delta_time, true, nothing, min_sleep)
     if start
         timer.task = @async while timer.running
-            timer.callback()
+            timer.callback(timer)
             sleep(timer)
         end
     end
@@ -50,7 +50,7 @@ function start!(timer::BudgetedTimer)
     timer.last_time = time_ns()
     timer.running = true
     timer.task = @async while timer.running
-        timer.callback()
+        timer.callback(timer)
         sleep(timer)
     end
     return
@@ -61,9 +61,18 @@ function start!(callback, timer::BudgetedTimer)
     return start!(timer)
 end
 
+function set_callback!(callback, timer::BudgetedTimer)
+    timer.callback = callback
+end
+
 function stop!(timer::BudgetedTimer)
     timer.running = false
     return
+end
+
+function Base.close(timer::BudgetedTimer)
+    timer.callback = identity
+    stop!(timer)
 end
 
 function reset!(timer::BudgetedTimer, delta_time = timer.target_delta_time)

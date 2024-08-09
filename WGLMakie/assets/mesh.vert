@@ -61,6 +61,10 @@ vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
     }
 }
 
+// TODO: enable 
+// vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
+
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 {
     // normal in world space
@@ -84,8 +88,7 @@ void main(){
     vec4 position_world = model * vec4(vertex_position, 1);
 
     render(position_world, get_normals(), view, projection);
-    frag_uv = get_uv();
-    frag_uv = vec2(1.0 - frag_uv.y, frag_uv.x);
+    frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);
 
     frag_instance_id = uint(gl_VertexID);

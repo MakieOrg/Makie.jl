@@ -396,7 +396,8 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
     faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
     # create the uv (texture) vectors
-    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
     return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
 end
