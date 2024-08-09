@@ -1,0 +1,1 @@
+import{_ as e,c as o,o as i,a7 as a}from"./chunks/framework.LxoBw7S3.js";const u=JSON.parse('{"title":"API","description":"","frontmatter":{},"headers":[],"relativePath":"api.md","filePath":"api.md","lastUpdated":null}'),s={name:"api.md"},t=a("",851),r=[t];function d(n,c,l,p,h,k){return i(),o("div",null,r)}const b=e(s,[["render",d]]);export{u as __pageData,b as default};
