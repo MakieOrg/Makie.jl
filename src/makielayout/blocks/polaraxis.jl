@@ -543,14 +543,37 @@ end
 
 
 # generates large square with circle sector cutout
-function _polar_clip_polygon(
-        thetamin, thetamax, steps = 120, outer = 1e3,
-        exterior = Point2f[(-outer, -outer), (-outer, outer), (outer, outer), (outer, -outer), (-outer, -outer)]
-    )
-    # make sure we have 2+ points per arc
-    interior = map(theta -> polar2cartesian(1.0, theta), LinRange(thetamin, thetamax, steps))
-    (abs(thetamax - thetamin) ≈ 2pi) || push!(interior, Point2f(0))
-    return [Polygon(exterior, [interior])]
+function _polar_clip_polygon(thetamin, thetamax, steps = 120, outer = 1e3)
+    angles = range(thetamin, thetamax, length=steps)
+
+    interior = [Point2f(cos(x), sin(x)) for x in angles]
+    exterior = [outer * Point2f(cos(x), sin(x)) ./ max(abs(cos(x)), abs(sin(x))) for x in angles]
+
+    ps = Point2f[source[i] for i in 1:steps for source in (interior, exterior)]
+    fs = [GLTriangleFace(i, i+1, i+2) for i in 1:2*steps-2]
+
+    # if we don't have a full circle
+    if !(abs(thetamax - thetamin) ≈ 2pi)
+        idxs = sizehint!([length(ps)], 6) # last exterior point
+        # add the center to interior to avoid cutting off the unclipped region
+        push!(ps, Point2f(0))
+        int_idx = length(ps)
+
+        # add missing corners of the exterior rect
+        for x in ceil(2 * thetamax / pi - 0.5) : 1 : floor(2 * thetamin / pi + 3.5)
+            angle = 0.5pi * x + 0.25pi
+            push!(ps, 10f0 * Point2f(cos(angle), sin(angle)) ./ max(abs(cos(angle)), abs(sin(angle))))
+            push!(idxs, length(ps))
+        end
+        push!(idxs, 2) # first exterior point
+
+        # and add the triangles
+        append!(fs,
+            [GLTriangleFace(int_idx, idxs[i-1], idxs[i]) for i in 2:length(idxs)]
+        )
+    end
+    
+    return GeometryBasics.Mesh(ps, fs)
 end
 
 function draw_axis!(po::PolarAxis)
@@ -725,7 +748,7 @@ function draw_axis!(po::PolarAxis)
     outer_clip = map(po.blockscene, thetadiff, po.sample_density) do diff, sample_density
         return _polar_clip_polygon(0, diff, sample_density)
     end
-    outer_clip_plot = poly!(
+    outer_clip_plot = mesh!(
         po.overlay,
         outer_clip,
         color = clipcolor,
