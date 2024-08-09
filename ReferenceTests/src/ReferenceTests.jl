@@ -27,6 +27,7 @@ using LaTeXStrings
 using GeometryBasics
 using DelimitedFiles
 using DelaunayTriangulation
+using SparseArrays
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))

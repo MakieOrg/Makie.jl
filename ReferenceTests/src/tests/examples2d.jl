@@ -1466,3 +1466,17 @@ end
     end
     fig
 end
+
+@reference_test "Spy" begin
+    f = Figure()
+    data = RNG.rand(10, 10)
+    spy(f[1, 1], (0, 1), (0, 1), data)
+    # if all colorvalues are 1, colorrange will be (0.5, 1.5), mapping everything to blue
+    # TODO, maybe not ideal for spy?
+    sdata = sparse(data .> 0.5)
+    spy(f[1, 2], sdata; colormap=[:black, :blue, :white])
+    spy(f[2, 1], sdata; color=:black, alpha=0.7)
+    data[1, 1] = NaN
+    spy(f[2, 2], data; highclip=:red, lowclip=(:grey, 0.5), nan_color=:black, colorrange=(0.3, 0.7))
+    f
+end

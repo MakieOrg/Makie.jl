@@ -3,11 +3,24 @@
 ## [Unreleased]
 
 - Updated handling of `model` matrices with active Float32 rescaling. This should fix issues with Float32-unsafe translations or scalings of plots, as well as rotated plots in Float32-unsafe ranges. [#4026](https://github.com/MakieOrg/Makie.jl/pull/4026)
+- Fix label/legend for plotlist [#4079](https://github.com/MakieOrg/Makie.jl/pull/4079).
+- Fix wrong order for colors in RPRMakie [#4098](https://github.com/MakieOrg/Makie.jl/pull/4098).
+- Fixed incorrect distance calculation in `pick_closest` in WGLMakie [#4082](https://github.com/MakieOrg/Makie.jl/pull/4082).
+- Suppress keyboard shortcuts and context menu in JupyterLab output [#4068](https://github.com/MakieOrg/Makie.jl/pull/4068).
+- Introduce stroke_depth_shift + forward normal depth_shift for Poly [#4058](https://github.com/MakieOrg/Makie.jl/pull/4058).
+- Use linestyle for Poly and Density legend elements [#4000](https://github.com/MakieOrg/Makie.jl/pull/4000).
+- Bring back interpolation attribute for surface [#4056](https://github.com/MakieOrg/Makie.jl/pull/4056).
 - Improved accuracy of framerate settings in GLMakie [#3954](https://github.com/MakieOrg/Makie.jl/pull/3954)
 - Fix label_formatter being called twice in barplot [#4046](https://github.com/MakieOrg/Makie.jl/pull/4046).
 - Fix error with automatic `highclip` or `lowclip` and scalar colors [#4048](https://github.com/MakieOrg/Makie.jl/pull/4048).
 - Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
 - Correct a method ambiguity in `insert!` which was causing `PlotList` to fail on CairoMakie. [#4038](https://github.com/MakieOrg/Makie.jl/pull/4038)
+- Fix: `band` ignored its `alpha` argument in CairoMakie
+- Fix `marker=FastPixel()` makersize and markerspace, improve `spy` recipe [#4043](https://github.com/MakieOrg/Makie.jl/pull/4043).
+- Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
+- Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
+- Update JS OrbitControls to match Julia OrbitControls [#4084](https://github.com/MakieOrg/Makie.jl/pull/4084).
+- Fix `select_point()` [#4101](https://github.com/MakieOrg/Makie.jl/pull/4101).
 
 ## [0.21.5] - 2024-07-07
 
