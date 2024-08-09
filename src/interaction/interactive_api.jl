@@ -178,7 +178,6 @@ end
 
 """
     mouseposition(scene::Scene)
-    mouseposition(ax::Axis)
 
 Return the current position of the mouse in _data coordinates_ of the
 given object.
