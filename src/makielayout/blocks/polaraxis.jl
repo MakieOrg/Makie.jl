@@ -748,7 +748,7 @@ function draw_axis!(po::PolarAxis)
     outer_clip = map(po.blockscene, thetadiff, po.sample_density) do diff, sample_density
         return _polar_clip_polygon(0, diff, sample_density)
     end
-    outer_clip_plot = mesh!(
+    outer_clip_plot = poly!(
         po.overlay,
         outer_clip,
         color = clipcolor,
