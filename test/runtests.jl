@@ -34,6 +34,8 @@ using Makie: volume
     include("barplot.jl")
     include("bezier.jl")
     include("hist.jl")
+    include("cameras.jl")
+
     # for short tests of resolved issues
     include("issues.jl")
 

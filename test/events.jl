@@ -504,4 +504,18 @@ end
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
         @test point[] != initial_pos
     end
+
+    @testset "select_rectangle()" begin
+        rect = select_rectangle(a)
+        initial_rect = rect[]
+
+        # Similarly to the select_point() test, we initialize the mouse position
+        # and check that the rect isn't updated until the mouse is released.
+        e.mouseposition[] = (200, 200)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mouseposition[] = (100, 100)
+        @test rect[] == initial_rect
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test rect[] != initial_rect
+    end
 end
