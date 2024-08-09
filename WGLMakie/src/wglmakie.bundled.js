@@ -4056,7 +4056,7 @@ var xp = {
     }
     update(e, t) {
         this.parent === null && this.updateMatrixWorld();
-        let { renderTarget: n, activeMipmapLevel: i } = this;
+        let { renderTarget: n , activeMipmapLevel: i  } = this;
         this.coordinateSystem !== e.coordinateSystem && (this.coordinateSystem = e.coordinateSystem, this.updateCoordinateSystem());
         let [r, a, o, c, l, h] = this.children, u = e.getRenderTarget(), d = e.getActiveCubeFace(), f = e.getActiveMipmapLevel(), m = e.xr.enabled;
         e.xr.enabled = !1;
@@ -9069,8 +9069,8 @@ var Ls = class extends Cs {
         }, i = fh(e, t, n);
         if (this._pingPongRenderTarget === null || this._pingPongRenderTarget.width !== e || this._pingPongRenderTarget.height !== t) {
             this._pingPongRenderTarget !== null && this._dispose(), this._pingPongRenderTarget = fh(e, t, n);
-            let { _lodMax: r } = this;
-            ({ sizeLods: this._sizeLods, lodPlanes: this._lodPlanes, sigmas: this._sigmas } = o_(r)), this._blurMaterial = c_(r, e, t);
+            let { _lodMax: r  } = this;
+            ({ sizeLods: this._sizeLods , lodPlanes: this._lodPlanes , sigmas: this._sigmas  } = o_(r)), this._blurMaterial = c_(r, e, t);
         }
         return i;
     }
@@ -9143,7 +9143,7 @@ var Ls = class extends Cs {
         }
         for(let R = 0; R < p.length; R++)p[R] = p[R] / v;
         d.envMap.value = e.texture, d.samples.value = g, d.weights.value = p, d.latitudinal.value = a === "latitudinal", o && (d.poleAxis.value = o);
-        let { _lodMax: x } = this;
+        let { _lodMax: x  } = this;
         d.dTheta.value = m, d.mipInt.value = x - n;
         let y = this._sizeLods[i], b = 3 * y * (i > x - Hi ? i - x + Hi : 0), w = 4 * (this._cubeSize - y);
         lr(t, b, w, 3 * y, 2 * y), c.setRenderTarget(t), c.render(u, $a);
@@ -12779,7 +12779,7 @@ function G0(s1, e, t, n) {
 }
 var Ro = class {
     constructor(e = {}){
-        let { canvas: t = tp(), context: n = null, depth: i = !0, stencil: r = !0, alpha: a = !1, antialias: o = !1, premultipliedAlpha: c = !0, preserveDrawingBuffer: l = !1, powerPreference: h = "default", failIfMajorPerformanceCaveat: u = !1 } = e;
+        let { canvas: t = tp() , context: n = null , depth: i = !0 , stencil: r = !0 , alpha: a = !1 , antialias: o = !1 , premultipliedAlpha: c = !0 , preserveDrawingBuffer: l = !1 , powerPreference: h = "default" , failIfMajorPerformanceCaveat: u = !1  } = e;
         this.isWebGLRenderer = !0;
         let d;
         n !== null ? d = n.getContextAttributes().alpha : d = a;
@@ -14952,7 +14952,7 @@ var ia = class extends Zt {
             ], u = new Array(3), d = {}, f = [];
             for(let m = 0; m < c; m += 3){
                 a ? (l[0] = a.getX(m), l[1] = a.getX(m + 1), l[2] = a.getX(m + 2)) : (l[0] = m, l[1] = m + 1, l[2] = m + 2);
-                let { a: _, b: g, c: p } = Mr;
+                let { a: _ , b: g , c: p  } = Mr;
                 if (_.fromBufferAttribute(o, l[0]), g.fromBufferAttribute(o, l[1]), p.fromBufferAttribute(o, l[2]), Mr.getNormal(ao), u[0] = `${Math.round(_.x * i)},${Math.round(_.y * i)},${Math.round(_.z * i)}`, u[1] = `${Math.round(g.x * i)},${Math.round(g.y * i)},${Math.round(g.z * i)}`, u[2] = `${Math.round(p.x * i)},${Math.round(p.y * i)},${Math.round(p.z * i)}`, !(u[0] === u[1] || u[1] === u[2] || u[2] === u[0])) for(let v = 0; v < 3; v++){
                     let x = (v + 1) % 3, y = u[v], b = u[x], w = Mr[h[v]], R = Mr[h[x]], I = `${y}_${b}`, M = `${b}_${y}`;
                     M in d && d[M] ? (ao.dot(d[M].normal) <= r && (f.push(w.x, w.y, w.z), f.push(R.x, R.y, R.z)), d[M] = null) : I in d || (d[I] = {
@@ -14963,7 +14963,7 @@ var ia = class extends Zt {
                 }
             }
             for(let m in d)if (d[m]) {
-                let { index0: _, index1: g } = d[m];
+                let { index0: _ , index1: g  } = d[m];
                 vr.fromBufferAttribute(o, _), yr.fromBufferAttribute(o, g), f.push(vr.x, vr.y, vr.z), f.push(yr.x, yr.y, yr.z);
             }
             this.setAttribute("position", new ve(f, 3));
@@ -16752,7 +16752,7 @@ var fn = {}, Mc = class extends Error {
                     start (p) {
                         v();
                         function v() {
-                            u.read().then(({ done: x, value: y })=>{
+                            u.read().then(({ done: x , value: y  })=>{
                                 if (x) p.close();
                                 else {
                                     _ += y.byteLength;
@@ -20237,7 +20237,7 @@ function uniform_type(obj) {
     } else if (obj instanceof THREE.Texture) {
         return "sampler2D";
     } else {
-        return;
+        return "invalid";
     }
 }
 function uniforms_to_type_declaration(uniform_dict) {
@@ -20245,7 +20245,7 @@ function uniforms_to_type_declaration(uniform_dict) {
     for(const name in uniform_dict){
         const uniform = uniform_dict[name];
         const type = uniform_type(uniform);
-        result += `uniform ${type} ${name};\n`;
+        if (type != "invalid") result += `uniform ${type} ${name};\n`;
     }
     return result;
 }
@@ -20989,7 +20989,7 @@ class OrbitControls extends sn {
     }
 }
 function events2unitless(screen, event) {
-    const { canvas, winscale, renderer } = screen;
+    const { canvas , winscale , renderer  } = screen;
     const rect = canvas.getBoundingClientRect();
     const x = (event.clientX - rect.left) / winscale;
     const y = (event.clientY - rect.top) / winscale;
@@ -21329,7 +21329,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
-
             out vec3 f_quad_sdf;
             out vec2 f_truncation;              // invalid / not needed
             out float f_linestart;              // constant
@@ -21348,6 +21347,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -21373,6 +21373,37 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2)
+            {
+                float d1, d2;
+                for (int i = 0; i < int(num_clip_planes); i++) {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        return;
+                    }
+                    
+                    // one outside - shorten segment
+                    else if (d1 < 0.0)
+                    {
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+                    }
+                    else if (d2 < 0.0)
+                    {
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+                    }
+                }
+
+                return;
+            }
+
 
             ////////////////////////////////////////////////////////////////////////
             // Main
@@ -21390,16 +21421,29 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
+                // color at line start/end for interpolation
+                f_color1 = color_start;
+                f_color2 = color_end;
+
                 // restrict to visible area (see other shader)
                 vec3 p1, p2;
                 {
                     vec4 _p1 = clip_space(linepoint_start), _p2 = clip_space(linepoint_end);
+
                     vec4 v1 = _p2 - _p1;
 
-                    if (_p1.w < 0.0)
+                    if (_p1.w < 0.0) {
                         _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
-                    if (_p2.w < 0.0)
+                        f_color1 = f_color1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
+                    if (_p2.w < 0.0) {
                         _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(_p1, _p2);
 
                     p1 = screen_space(_p1);
                     p2 = screen_space(_p2);
@@ -21443,7 +21487,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
 
-
                 // linecaps
                 f_capmode = ivec2(linecap);
 
@@ -21468,9 +21511,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = 0.0;
                 f_linelength = segment_length;
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
@@ -21501,6 +21542,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -21615,11 +21657,40 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
             float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
+            {
+                float d1, d2;
+                for(int i = 0; i < int(num_clip_planes); i++)
+                {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+            
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        isvalid[1] = false;
+                        isvalid[2] = false;
+                        return;
+                    // one outside - shorten segment
+                    } else if (d1 < 0.0) {
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+                        isvalid[0] = false;
+                    } else if (d2 < 0.0) {
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+                        isvalid[3] = false;
+                    }
+                }
+            
+                return;
+            } 
 
             ////////////////////////////////////////////////////////////////////////
             // Main
             ////////////////////////////////////////////////////////////////////////
-
 
             void main() {
                 bool is_end = position.x == 1.0;
@@ -21634,6 +21705,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 bool[4] isvalid = bool[4](true, true, true, true);
+
+                // color at start/end of segment
+                f_color1 = color_start;
+                f_color2 = color_end;
 
                 // To apply pixel space linewidths we transform line vertices to pixel space
                 // here. This is dangerous with perspective projection as p.xyz / p.w sends
@@ -21662,11 +21737,17 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         // where (-) gives us the result for the near clipping plane as p.z
                         // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
                         clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+                        f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
                     if (clip_p2.w < 0.0) {
                         isvalid[3] = false;
                         clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(clip_p1, clip_p2, isvalid);
 
                     // transform clip -> screen space, applying xyz / w normalization (which
                     // is now save as all vertices are in front of the camera)
@@ -21854,7 +21935,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
 
-
                 vec3 offset;
                 int x = int(is_end);
                 if (adjustment[x] == 0.0) {
@@ -21909,9 +21989,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = shape_factor * halfwidth * extrusion[0];
                 f_linelength = max(1.0, segment_length - shape_factor * halfwidth * (extrusion[0] - extrusion[1]));
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
@@ -22368,11 +22446,11 @@ function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
-    const { px_per_unit } = scene.screen;
+    const { px_per_unit  } = scene.screen;
     plot_data.uniforms.resolution = cam.resolution;
     plot_data.uniforms.px_per_unit = new mod.Uniform(px_per_unit);
     if (plot_data.uniforms.preprojection) {
-        const { space, markerspace } = plot_data;
+        const { space , markerspace  } = plot_data;
         plot_data.uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
     }
     if (scene.camera_relative_light) {
@@ -22449,7 +22527,7 @@ function create_texture_from_data(data) {
 function create_texture(scene, data) {
     const buffer = data.data;
     if (buffer == "texture_atlas") {
-        const { texture_atlas } = scene.screen;
+        const { texture_atlas  } = scene.screen;
         if (texture_atlas) {
             return texture_atlas;
         } else {
@@ -22668,7 +22746,7 @@ function connect_attributes(mesh, updater) {
 function deserialize_scene(data, screen) {
     const scene = new mod.Scene();
     scene.screen = screen;
-    const { canvas } = screen;
+    const { canvas  } = screen;
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
@@ -22707,7 +22785,7 @@ function deserialize_scene(data, screen) {
 }
 function delete_plot(plot) {
     delete plot_cache[plot.plot_uuid];
-    const { parent } = plot;
+    const { parent  } = plot;
     if (parent) {
         parent.remove(plot);
     }
@@ -22723,7 +22801,7 @@ function delete_three_scene(scene) {
 }
 window.THREE = mod;
 function render_scene(scene, picking = false) {
-    const { camera, renderer, px_per_unit } = scene.screen;
+    const { camera , renderer , px_per_unit  } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("removing WGL context, canvas is not in the DOM anymore!");
@@ -22760,7 +22838,7 @@ function render_scene(scene, picking = false) {
     return scene.scene_children.every((x)=>render_scene(x, picking));
 }
 function start_renderloop(three_scene) {
-    const { fps } = three_scene.screen;
+    const { fps  } = three_scene.screen;
     const time_per_frame = 1 / fps * 1000;
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
@@ -22845,7 +22923,7 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
     Bonito.Connection.send_warning(err);
 }
 function add_canvas_events(screen, comm, resize_to) {
-    const { canvas, winscale } = screen;
+    const { canvas , winscale  } = screen;
     function mouse_callback(event) {
         const [x, y] = events2unitless(screen, event);
         comm.notify({
@@ -22977,7 +23055,7 @@ function threejs_module(canvas) {
     return renderer;
 }
 function set_render_size(screen, width, height) {
-    const { renderer, canvas, scalefactor, winscale, px_per_unit } = screen;
+    const { renderer , canvas , scalefactor , winscale , px_per_unit  } = screen;
     const [swidth, sheight] = [
         winscale * width,
         winscale * height
@@ -22995,7 +23073,7 @@ function set_render_size(screen, width, height) {
     return;
 }
 function add_picking_target(screen) {
-    const { picking_target, canvas } = screen;
+    const { picking_target , canvas  } = screen;
     const [w, h] = [
         canvas.width,
         canvas.height
@@ -23048,8 +23126,8 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
 }
 function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_to_plot) {
     scene.children.forEach((plot, index)=>{
-        const { material } = plot;
-        const { uniforms } = material;
+        const { material  } = plot;
+        const { uniforms  } = material;
         if (picking) {
             uniforms.object_id.value = last_id + index;
             uniforms.picking.value = true;
@@ -23074,7 +23152,7 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_t
     return next_id;
 }
 function pick_native(scene, _x, _y, _w, _h) {
-    const { renderer, picking_target, px_per_unit } = scene.screen;
+    const { renderer , picking_target , px_per_unit  } = scene.screen;
     [_x, _y, _w, _h] = [
         _x,
         _y,
@@ -23129,7 +23207,7 @@ function pick_native(scene, _x, _y, _w, _h) {
     ];
 }
 function get_picking_buffer(scene) {
-    const { renderer, picking_target } = scene.screen;
+    const { renderer , picking_target  } = scene.screen;
     const [w, h] = [
         picking_target.width,
         picking_target.height
@@ -23158,7 +23236,7 @@ function get_picking_buffer(scene) {
     };
 }
 function pick_closest(scene, xy, range) {
-    const { renderer } = scene.screen;
+    const { renderer  } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23202,7 +23280,7 @@ function pick_closest(scene, xy, range) {
     return selection;
 }
 function pick_sorted(scene, xy, range) {
-    const { renderer } = scene.screen;
+    const { renderer  } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23263,7 +23341,7 @@ function register_popup(popup, scene, plots_to_pick, callback) {
     if (!scene || !scene.screen) {
         return;
     }
-    const { canvas } = scene.screen;
+    const { canvas  } = scene.screen;
     canvas.addEventListener("mousedown", (event)=>{
         const [x, y] = events2unitless(scene.screen, event);
         const [_, picks] = pick_native(scene, x, y, 1, 1);
@@ -23321,3 +23399,4 @@ export { pick_sorted as pick_sorted };
 export { pick_native_uuid as pick_native_uuid };
 export { pick_native_matrix as pick_native_matrix };
 export { register_popup as register_popup };
+

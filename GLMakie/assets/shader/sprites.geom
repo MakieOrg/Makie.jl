@@ -49,6 +49,7 @@ in vec3 g_position[];
 in vec4 g_rotation[];
 in vec4 g_offset_width[];
 in uvec2 g_id[];
+in float g_clip_distance[][8];
 
 flat out int  f_primitive_index;
 flat out float f_viewport_from_u_scale;
@@ -61,6 +62,7 @@ flat out uvec2 f_id;
 out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
 flat out vec2 f_sprite_scale;
+out float gl_ClipDistance[8];
 
 uniform mat4 projection, view, model;
 
@@ -89,6 +91,8 @@ void emit_vertex(vec4 vertex, vec2 uv)
     f_glow_color      = g_glow_color[0];
     f_id              = g_id[0];
     f_sprite_scale    = g_offset_width[0].zw;
+    for (int i = 0; i < 8; i++)
+        gl_ClipDistance[i] = g_clip_distance[0][i];
     EmitVertex();
 }
 

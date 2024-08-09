@@ -34,15 +34,31 @@ void colorize(sampler1D color, float intensity, vec2 color_norm){
 vec4 _position(vec3 p){return vec4(p,1);}
 vec4 _position(vec2 p){return vec4(p,0,1);}
 
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
+out float gl_ClipDistance[8];
+
+void process_clip_planes(vec3 world_pos)
+{
+    // distance = dot(world_pos - plane.point, plane.normal)
+    // precalculated: dot(plane.point, plane.normal) -> plane.w
+    for (int i = 0; i < num_clip_planes; i++)
+        gl_ClipDistance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+
+    // TODO: can be skipped?
+    for (int i = num_clip_planes; i < 8; i++)
+        gl_ClipDistance[i] = 1.0;
+}
+
 uniform mat4 projection, projectionview, view, model;
 uniform int markerspace;
 uniform float px_per_unit;
 uniform vec3 upvector;
 
 void main(){
-    vec4 position = _position(vertex);
-    mat4 pvm = projectionview * model;
-    vec4 clip_pos = pvm * position;
+    vec4 world_position = model * _position(vertex);
+    process_clip_planes(world_position.xyz);
+    vec4 clip_pos = projectionview * world_position;
     gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
     if (markerspace == 0) {
         // pixelspace
@@ -51,8 +67,8 @@ void main(){
         // dataspace with 3D camera
         // to have a billboard, we project the upvector
         vec3 scale_vec = upvector * scale.x;
-        vec4 up_clip = pvm * vec4(position.xyz + scale_vec, 1);
-        float yup = (abs(up_clip.y - clip_pos.y) / clip_pos.w);
+        vec4 up_clip = projectionview * vec4(world_position.xyz + scale_vec, 1);
+        float yup = abs(up_clip.y - clip_pos.y) / clip_pos.w;
         gl_PointSize = ceil(0.5 * yup *  resolution.y);
     }
 

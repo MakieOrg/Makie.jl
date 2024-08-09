@@ -16,6 +16,9 @@ in vec3 normals;
 
 uniform mat4 projection, view, model;
 
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
+
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange);
 

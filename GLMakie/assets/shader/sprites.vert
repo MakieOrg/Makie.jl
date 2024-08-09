@@ -87,16 +87,34 @@ out vec4  g_rotation;
 out vec4  g_color;
 out vec4  g_stroke_color;
 out vec4  g_glow_color;
+out float g_clip_distance[8];
 
 vec4 to_vec4(vec3 x){return vec4(x, 1.0);}
 vec4 to_vec4(vec4 x){return x;}
+
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
+
+void process_clip_planes_alt(vec3 world_pos)
+{
+    // distance = dot(world_pos - plane.point, plane.normal)
+    // precalculated: dot(plane.point, plane.normal) -> plane.w
+    for (int i = 0; i < num_clip_planes; i++)
+        g_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+
+    // TODO: can be skipped?
+    for (int i = num_clip_planes; i < 8; i++)
+        g_clip_distance[i] = 1.0;
+}
 
 void main(){
     int index         = gl_VertexID;
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    vec4 p = preprojection * model * vec4(pos, 1);
+    vec4 world_pos = model * vec4(pos, 1);
+    process_clip_planes_alt(world_pos.xyz);
+    vec4 p = preprojection * world_pos;
     if (scale_primitive)
         g_position = p.xyz / p.w + mat3(model) * marker_offset;
     else

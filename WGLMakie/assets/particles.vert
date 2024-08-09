@@ -3,11 +3,14 @@ precision mediump float;
 uniform mat4 projection;
 uniform mat4 view;
 uniform vec3 eyeposition;
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
 
 out vec3 o_normal;
 out vec4 frag_color;
 out vec2 frag_uv;
 out vec3 o_camdir;
+out float o_clip_distance[8];
 
 vec3 qmul(vec4 q, vec3 v){
     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
@@ -24,6 +27,10 @@ vec4 to_vec4(vec4 v4){return v4;}
 vec3 to_vec3(vec2 v3){return vec3(v3, 0.0);}
 vec3 to_vec3(vec3 v4){return v4;}
 
+void process_clip_planes(vec3 world_pos) {
+    for (int i = 0; i < num_clip_planes; i++)
+        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+}
 
 vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
@@ -84,6 +91,7 @@ void main(){
     rotate(get_rotation(), vertex_position, N);
     vertex_position = to_vec3(get_offset()) + vertex_position;
     vec4 position_world = model * vec4(vertex_position, 1);
+    process_clip_planes(position_world.xyz);
     o_normal = N;
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
