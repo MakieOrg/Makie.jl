@@ -1,5 +1,7 @@
 # COV_EXCL_START
 using Test
+using LinearAlgebra
+
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
