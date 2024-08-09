@@ -1252,7 +1252,7 @@ end
         (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
         (7.0, 7.8), (7.0, 7.4)]
     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
-    tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
+    tri = triangulate(points; randomise = false, boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
     fig, ax, sc = triplot(tri,
         show_points=true,
         show_constrained_edges=true,
