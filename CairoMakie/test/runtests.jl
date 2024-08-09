@@ -123,15 +123,25 @@ end
     N = 3
     points = Observable(Point2f[])
     f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(600, 800),))
+
     vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=CairoMakie)
+    tmp_path = vio.path
+
     @test vio.screen isa CairoMakie.Screen{CairoMakie.IMAGE}
     @test size(vio.screen) == size(f.scene) .* 2
     @test vio.screen.device_scaling_factor == 2.0
 
     Makie.recordframe!(vio)
     save("test.mp4", vio)
-    @test isfile("test.mp4") # Make sure no error etc
-    rm("test.mp4")
+    save("test_2.mkv", vio)
+    save("test_3.mp4", vio)
+    # make sure all files are correctly saved:
+    @test all(isfile, ["test.mp4", "test_2.mkv", "test_3.mp4"])
+    @test filesize("test.mp4") == filesize("test_3.mp4") > 3000
+    @test filesize("test.mp4") != filesize("test_2.mkv") > 3000
+    rm.(["test.mp4", "test_2.mkv", "test_3.mp4"])
+    finalize(vio); yield()
+    @test !isfile(tmp_path)
 end
 
 @testset "plotlist no ambiguity (#4038)" begin

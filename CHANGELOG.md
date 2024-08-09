@@ -4,6 +4,7 @@
 
 - Added the `uv_transform` attribute for meshscatter, mesh, surface and image [#1406](https://github.com/MakieOrg/Makie.jl/pull/1406).
 - Added the ability to use textures with `meshscatter` in WGLMakie [#1406](https://github.com/MakieOrg/Makie.jl/pull/1406).
+- Don't remove underlying VideoStream file when doing save() [#3883](https://github.com/MakieOrg/Makie.jl/pull/3883).
 - Fix label/legend for plotlist [#4079](https://github.com/MakieOrg/Makie.jl/pull/4079).
 - Fix wrong order for colors in RPRMakie [#4098](https://github.com/MakieOrg/Makie.jl/pull/4098).
 - Fixed incorrect distance calculation in `pick_closest` in WGLMakie [#4082](https://github.com/MakieOrg/Makie.jl/pull/4082).
@@ -16,6 +17,8 @@
 - Fix error with automatic `highclip` or `lowclip` and scalar colors [#4048](https://github.com/MakieOrg/Makie.jl/pull/4048).
 - Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
 - Correct a method ambiguity in `insert!` which was causing `PlotList` to fail on CairoMakie. [#4038](https://github.com/MakieOrg/Makie.jl/pull/4038)
+- Improve content scaling support for Wayland and fix incorrect mouse scaling on mac [#4062](https://github.com/MakieOrg/Makie.jl/pull/4062)
+- Fix: `band` ignored its `alpha` argument in CairoMakie
 - Fix `marker=FastPixel()` makersize and markerspace, improve `spy` recipe [#4043](https://github.com/MakieOrg/Makie.jl/pull/4043).
 - Fixed `invert_normals` for surface plots in CairoMakie [#4021](https://github.com/MakieOrg/Makie.jl/pull/4021).
 - Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
