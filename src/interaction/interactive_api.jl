@@ -177,7 +177,8 @@ function screen_relative(scene::Scene, mpos)
 end
 
 """
-    mouseposition(ax/scene)
+    mouseposition(scene::Scene)
+    mouseposition(ax::Axis)
 
 Return the current position of the mouse in _data coordinates_ of the
 given object.
@@ -189,8 +190,8 @@ function mouseposition(ax::Axis)
 
     # `pos` has the axis scaling already applied to it, so to get the true data
     # coordinates we have to invert the scaling.
-    return Vec2{Float64}(inverse_transform(ax.xscale[])(pos[1]),
-                         inverse_transform(ax.yscale[])(pos[2]))
+    inv_transform = Makie.inverse_transform(ax.scene.transformation.transform_func[])
+    return Vec2{Float64}(Makie.apply_transform(inv_transform, pos))
 end
 
 function mouseposition(scene::Scene = hovered_scene())
