@@ -152,7 +152,11 @@ function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
-lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
+const ASSETS_DIR = @path joinpath(@__DIR__, "..", "assets")
+function lasset(paths...)
+    asset_path = @path joinpath(ASSETS_DIR, paths...)
+    read(asset_path, String)
+end
 
 isscalar(x::StaticVector) = true
 isscalar(x::Mat) = true
