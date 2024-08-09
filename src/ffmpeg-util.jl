@@ -211,7 +211,7 @@ end
 
 stop!(controller::TickController) = off(controller.filter_callback)
 
-struct VideoStream
+mutable struct VideoStream
     io::Base.PipeEndpoint
     process::Base.Process
     screen::MakieScreen
@@ -268,7 +268,12 @@ function VideoStream(fig::FigureLike;
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
     tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
-    return VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
+    result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
+    finalizer(result) do x
+        @async rm(x.path; force=true)
+        stop!(x.tick_controller)
+    end
+    return result
 end
 
 """
@@ -307,8 +312,6 @@ function save(path::String, io::VideoStream; video_options...)
     else
         cp(io.path, path; force=true)
     end
-    rm(io.path)
-    stop!(io.tick_controller)
     return path
 end
 
