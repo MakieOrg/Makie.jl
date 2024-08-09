@@ -194,7 +194,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     )
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
-    prev_data = Ref(mouseposition(scene))
+    prev_data = Ref(mouseposition(scene; apply_transform=false))
     prev_px = Ref(Makie.mouseposition_px(scene))
     mouse_downed_inside = Ref(false)
     mouse_downed_button = Ref{Optional{Mouse.Button}}(nothing)
@@ -209,7 +209,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     mousepos_observerfunc = on(scene, events(scene).mouseposition; priority=priority) do mp
         consumed = false
         t = time()
-        data = mouseposition(scene)
+        data = mouseposition(scene; apply_transform=false)
         px = mouseposition_px(scene)
         mouse_inside = is_mouse_over_relevant_area()
 

@@ -185,17 +185,15 @@ given object.
 """
 mouseposition(x) = mouseposition(get_scene(x))
 
-function mouseposition(ax::Axis)
-    pos = mouseposition(get_scene(ax))
+function mouseposition(scene::Scene = hovered_scene(); apply_transform=true)
+    pos = to_world(scene, mouseposition_px(scene))
 
-    # `pos` has the axis scaling already applied to it, so to get the true data
-    # coordinates we have to invert the scaling.
-    inv_transform = Makie.inverse_transform(ax.scene.transformation.transform_func[])
-    return Vec2{Float64}(Makie.apply_transform(inv_transform, pos))
-end
-
-function mouseposition(scene::Scene = hovered_scene())
-    return to_world(scene, mouseposition_px(scene))
+    if apply_transform
+        inv_transform = Makie.inverse_transform(scene.transformation.transform_func[])
+        return Vec2{Float64}(Makie.apply_transform(inv_transform, pos))
+    else
+        return pos
+    end
 end
 
 mouseposition_px(x) = mouseposition_px(get_scene(x))
