@@ -811,14 +811,8 @@ end
                 ax.title = "$space"
             end
             scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel())
-            # Somehow Axis3 comes out bigger than expected, by 0.1 units
-            # Not sure how this can happen, but to make the tests pass reliably without z-fighting
-            # Easiest is for now to add some padding for Axis3 + :data.
-            # Will need to investigate in the future why the markersize (and likely the upvector in Axis3)
-            # is off by a small amount
-            padding = space == :data && ax isa Axis3 ? 0.1 : 0.0
             scatter!(ax, data;
-                     markersize=msize + padding, markerspace=space, marker=Rect,
+                     markersize=msize, markerspace=space, marker=Rect,
                      strokewidth=2, strokecolor=:red, color=:transparent,)
         end
     end
