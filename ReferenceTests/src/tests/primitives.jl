@@ -693,8 +693,8 @@ end
 end
 
 @reference_test "Plot transform overwrite" begin
-    # Tests that (primitive) plots can have different transform function to their
-    # parent scene (identity in this case)
+    # Tests that (primitive) plots can have different transform function 
+    # (identity) from their parent scene (log10, log10)
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
@@ -719,6 +719,61 @@ end
     fig
 end
 
+@reference_test "uv_transform" begin
+    fig = Figure(size = (400, 400))
+    img = [RGBf(1,0,0) RGBf(0,1,0); RGBf(0,0,1) RGBf(1,1,1)]
+
+    function create_block(f, gl, args...; kwargs...)
+        ax, p = f(gl[1, 1], args..., uv_transform = I; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[1, 2], args..., uv_transform = :rotr90; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 1], args..., uv_transform = (Vec2f(0.5), Vec2f(0.5)); kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 2], args..., uv_transform = Makie.Mat{2,3,Float32}(-1,0,0,-1,1,1); kwargs...)
+        hidedecorations!(ax)
+    end
+    
+    gl = fig[1, 1] = GridLayout()
+    create_block(mesh, gl, Rect2f(0, 0, 1, 1), color = img)
+    
+    gl = fig[1, 2] = GridLayout()
+    create_block(surface, gl, 0..1, 0..1, zeros(10, 10), color = img)
+    
+    gl = fig[2, 1] = GridLayout()
+    create_block(
+        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img, 
+        marker = Makie.uv_normal_mesh(Rect2f(0,0,1,1)), markersize = 1.0)
+
+    gl = fig[2, 2] = GridLayout()
+    create_block(image, gl, 0..1, 0..1, img)
+
+    fig
+end
+
+@testset "per element uv_transform" begin
+    cow = loadasset("cow.png")
+
+    N = 8; M = 10
+    f = Figure(size = (500, 400))
+    a, p = meshscatter(
+        f[1, 1],
+        [Point2f(x, y) for x in 1:M for y in 1:N],
+        color = cow,
+        uv_transform = [
+            Makie.uv_transform(:rotl90) * 
+            Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
+            for x in range(0, 1, length = M+1)[1:M] 
+            for y in range(0, 1, length = N+1)[1:N]
+        ],
+        markersize = Vec3f(0.9, 0.9, 1),
+        marker = uv_normal_mesh(Rect2f(-0.5, -0.5, 1, 1))
+    )
+    hidedecorations!(a)
+    xlims!(a, 0.3, M+0.7)
+    ylims!(a, 0.3, N+0.7)
+    f
+end
 @reference_test "Scatter with FastPixel" begin
     f = Figure()
     row = [(1, :pixel, 20), (2, :data, 0.5)]
