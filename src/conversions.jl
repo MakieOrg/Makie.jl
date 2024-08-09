@@ -356,30 +356,37 @@ function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::Abstract
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
+
+function to_endpoints(x::Tuple{<:Real,<:Real})
+    T = float_type(x...)
+    return T.(x)
+end
+to_endpoints(x::ClosedInterval) = to_endpoints(endpoints(x))
+function to_endpoints(x::Union{Interval,AbstractVector,ClosedInterval})
+    return to_endpoints((minimum(x), maximum(x)))
+end
+function to_endpoints(x, dim)
+    # having minimum and maximum here actually invites bugs
+    x isa AbstractVector && print_range_warning(dim, x)
+    return to_endpoints(x)
+end
+
+function convert_arguments(::GridBased, x::EndPointsTypes, y::EndPointsTypes,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (to_endpoints(x), to_endpoints(y), el32convert(z))
+end
+
 function print_range_warning(side::String, value)
     @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait.
         Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop.
         Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
 end
 
-to_interval(x::Tuple{<: Real, <: Real}) = float_convert(x[1]) .. float_convert(x[2])
-function to_interval(x::Union{Interval,AbstractVector,ClosedInterval})
-    return float_convert(minimum(x)) .. float_convert(maximum(x))
-end
-
-
-function to_interval(x, dim)
-    # having minimum and maximum here actually invites bugs
-    x isa AbstractVector && print_range_warning(dim, x)
-    return to_interval(x)
-end
-
-
 
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
                            data::AbstractMatrix{<:Union{Real,Colorant}})
-    x = to_interval(xs, "x")
-    y = to_interval(ys, "y")
+    x = to_endpoints(xs, "x")
+    y = to_endpoints(ys, "y")
     return (x, y, el32convert(data))
 end
 
@@ -428,7 +435,7 @@ end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
-    return (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(data))
+    return (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(data))
 end
 
 """
@@ -439,7 +446,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::RealArray{3})
-    (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(i))
+    (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(i))
 end
 
 ################################################################################
@@ -626,7 +633,7 @@ function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::Real
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
     # TODO only allow  unitranges to map over since we dont support irregular x/y/z values
-    return (map(to_interval, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+    return (map(to_endpoints, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
@@ -918,9 +925,9 @@ convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
 convert_attribute(x::Nothing, ::key"uv_transform") = x
 
 function convert_attribute(angle::Real, ::key"uv_transform")
-    # To rotate an image with uvs in the 0..1 range we need to translate, 
+    # To rotate an image with uvs in the 0..1 range we need to translate,
     # rotate, translate back.
-    # For patterns and in terms of what's actually happening to the uvs we 
+    # For patterns and in terms of what's actually happening to the uvs we
     # should not translate at all.
     error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
 end
@@ -929,11 +936,11 @@ end
     uv_transform(args::Tuple)
     uv_transform(args...)
 
-Returns a 3x3 uv transformation matrix combinign all the given arguments. This 
+Returns a 3x3 uv transformation matrix combinign all the given arguments. This
 lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
 like matrices `(op3, op2, op1)`.
 
-Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to 
+Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
 `uv_transform(translation, scale)` as a special case.
 """
 uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
@@ -971,7 +978,7 @@ end
 """
     uv_transform(action::Symbol)
 
-Creates a 3x3 uv transformation matrix from a given named action. They assume 
+Creates a 3x3 uv transformation matrix from a given named action. They assume
 `0 < uv < 1` and thus may not work correctly with Patterns. The actions include
 - `:rotr90` corresponding to `rotr90(texture)`
 - `:rotl90` corresponding to `rotl90(texture)`

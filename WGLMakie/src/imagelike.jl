@@ -33,7 +33,7 @@ function create_shader(mscene::Scene, plot::Surface)
     end)
     normals = Buffer(lift(plot, ps, fs, plot.invert_normals) do ps, fs, invert
         ns = Makie.nan_aware_normals(ps, fs)
-        return invert ? -ns : ns 
+        return invert ? -ns : ns
     end)
 
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
@@ -63,7 +63,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         :shininess => 0.0f0,
         :backlight => 0.0f0,
     )
-    
+
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
     if plot isa Image
         uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
@@ -130,8 +130,8 @@ end
 
 
 
+xy_convert(x::Makie.EndPoints, n) = x
 xy_convert(x::AbstractArray, n) = copy(x)
-xy_convert(x, n) = [LinRange(extrema(x)..., n + 1);]
 
 # TODO, speed up GeometryBasics
 function fast_faces(nvertices)
@@ -168,8 +168,7 @@ function limits_to_uvmesh(plot)
 
     # TODO, this branch is only hit by Image, but not for Heatmap with stepranges
     # because convert_arguments converts x/y to Vector{Float32}
-    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t) &&
-            isnothing(f32_conversion(plot))
+    if px[] isa Makie.EndPoints && py[] isa Makie.EndPoints && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
             xmin, xmax = extrema(x)
             ymin, ymax = extrema(y)

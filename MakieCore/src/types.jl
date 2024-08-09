@@ -149,3 +149,5 @@ const RealArray{T,N} = AbstractArray{T,N} where {T<:Real}
 const RealVector{T} = RealArray{1}
 const RealMatrix{T} = RealArray{2}
 const FloatType = Union{Float32,Float64}
+const EndPointsTypes = Union{ClosedInterval, Tuple{Real, Real}}
+const EndPoints = NTuple{2,<:FloatType}

@@ -136,18 +136,19 @@ expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
 expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
 
 function expand_dimensions(::ImageLike, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
+    # Float32, because all ploteable sizes should fit into float32
     n, m = Float32.(size(data))
-    return (Float32(0) .. n, Float32(0) .. m, el32convert(data))
+    return ((0f0, n), (0f0, m), el32convert(data))
 end
 
 function expand_dimensions(::GridBased, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
     n, m = Float32.(size(data))
-    return (1.0f0 .. n, 1.0f0 .. m, data)
+    return ((0.5f0, n + 0.5f0), (0.5f0, m + 0.5f0), data)
 end
 
 function expand_dimensions(::VolumeLike, data::RealArray{3})
     n, m, k = Float32.(size(data))
-    return (0.0f0 .. n, 0.0f0 .. m, 0.0f0 .. k, data)
+    return ((0.0f0, n), (0.0f0, m), (0.0f0, k), data)
 end
 
 function apply_expand_dimensions(trait, args, args_obs, deregister)
