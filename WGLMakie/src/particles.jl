@@ -72,7 +72,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     handle_color!(plot, uniform_dict, per_instance)
     # handle_color_getter!(uniform_dict, per_instance)
     instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
-    uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
+    uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, false)
 
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
         to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
