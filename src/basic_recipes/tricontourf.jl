@@ -63,7 +63,7 @@ function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real
     z = elconvert(T, z)
     points = [elconvert(T, x)'; elconvert(T, y)']
     if triangulation isa DelaunayTriangulation
-        tri = DelTri.triangulate(points)
+        tri = DelTri.triangulate(points, randomise = false)
     elseif !(triangulation isa DelTri.Triangulation)
         # Wrap user's provided triangulation into a Triangulation. Their triangulation must be such that DelTri.add_triangle! is defined.
         if typeof(triangulation) <: AbstractMatrix{<:Int} && size(triangulation, 1) != 3

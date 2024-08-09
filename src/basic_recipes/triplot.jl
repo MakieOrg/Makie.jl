@@ -181,7 +181,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     # Handle transform_func early so tessellation is in cartesian space.
     tri = map(p, p.transformation.transform_func, p[1]) do tf, ps
         transformed = Makie.apply_transform(tf, ps)
-        return DelTri.triangulate(transformed)
+        return DelTri.triangulate(transformed, randomise = false)
     end
 
     attr[:transformation] = Transformation(p.transformation; transform_func=identity)
