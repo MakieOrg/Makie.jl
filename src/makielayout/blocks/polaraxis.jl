@@ -544,7 +544,7 @@ end
 
 # generates large square with circle sector cutout
 function _polar_clip_polygon(
-        thetamin, thetamax, steps = 120, outer = 1e4,
+        thetamin, thetamax, steps = 120, outer = 1e3,
         exterior = Point2f[(-outer, -outer), (-outer, outer), (outer, outer), (outer, -outer), (-outer, -outer)]
     )
     # make sure we have 2+ points per arc
