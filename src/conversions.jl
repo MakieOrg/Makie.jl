@@ -902,6 +902,116 @@ to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
 
+## UV Transforms
+
+# defaults that place a cow image the same way as the image
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+
+# defaults matching master
+# Note - defaults with Patterns should be identity (handled in backends)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+
+convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
+convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
+convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
+convert_attribute(x::Nothing, ::key"uv_transform") = x
+
+function convert_attribute(angle::Real, ::key"uv_transform")
+    # To rotate an image with uvs in the 0..1 range we need to translate, 
+    # rotate, translate back.
+    # For patterns and in terms of what's actually happening to the uvs we 
+    # should not translate at all.
+    error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
+end
+
+"""
+    uv_transform(args::Tuple)
+    uv_transform(args...)
+
+Returns a 3x3 uv transformation matrix combinign all the given arguments. This 
+lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
+like matrices `(op3, op2, op1)`.
+
+Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to 
+`uv_transform(translation, scale)` as a special case.
+"""
+uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
+uv_transform(packed...) = uv_transform(packed)
+uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+
+
+# prefer scale as single argument since it may be useful for patterns
+# while just translation is mostly useless
+"""
+    uv_transform(scale::VecTypes{2})
+    uv_transform(translation::VecTypes{2}, scale::VecTypes{2})
+    uv_transform(angle::Real)
+
+Creates a 3x3 uv transformation matrix based on the given translation and scale
+or rotation angle (around z axis).
+"""
+uv_transform(x::Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}) = uv_transform(x[1], x[2])
+uv_transform(scale::VecTypes{2, <: Real}) = uv_transform(Vec2f(0), scale)
+function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real})
+    return Mat3f(
+        scale[1], 0, 0,
+        0, scale[2], 0,
+        translation[1], translation[2], 1
+    )
+end
+function uv_transform(angle::Real)
+    return Mat3f(
+         cos(angle), sin(angle), 0,
+        -sin(angle), cos(angle), 0,
+        0, 0, 1
+    )
+end
+
+"""
+    uv_transform(action::Symbol)
+
+Creates a 3x3 uv transformation matrix from a given named action. They assume 
+`0 < uv < 1` and thus may not work correctly with Patterns. The actions include
+- `:rotr90` corresponding to `rotr90(texture)`
+- `:rotl90` corresponding to `rotl90(texture)`
+- `:rot180` corresponding to `rot180(texture)`
+- `:swap_xy, :transpose` which corresponds to transposing the texture
+- `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
+- `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+"""
+function uv_transform(action::Symbol)
+    # TODO: do some explicitly named operations
+    if action == :rotr90
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
+    elseif action == :rotl90
+        return Mat3f(0,1,0, -1,0,0, 1,0,1)
+    elseif action == :rot180
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
+    elseif action in (:swap_xy, :transpose)
+        return Mat3f(0,1,0, 1,0,0, 0,0,1)
+    elseif action in (:flip_x, :invert_x)
+        return Mat3f(-1,0,0, 0,1,0, 1,0,1)
+    elseif action in (:flip_y, :invert_y)
+        return Mat3f(1,0,0, 0,-1,0, 0,1,1)
+    elseif action in (:flip_xy, :invert_xy)
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
+    elseif action in (:meshscatter, :mesh, :image, :surface)
+        M = convert_attribute(automatic, key"uv_transform"(), Key{action}())
+        return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
+    # elseif action == :surface
+        # return Mat3f(I)
+    else
+        error("Transformation :$action not recognized.")
+    end
+end
+
 convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
 convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
 

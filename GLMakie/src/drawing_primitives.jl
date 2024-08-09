@@ -317,6 +317,7 @@ Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
+    add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
@@ -646,9 +647,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         gl_attributes[:vertices] = apply_transform_and_f32_conversion(scene, plot, position)
         rect = Rect2f(0, 0, 1, 1)
         gl_attributes[:faces] = decompose(GLTriangleFace, rect)
-        gl_attributes[:texturecoordinates] = map(decompose_uv(rect)) do uv
-            return 1.0f0 .- Vec2f(uv[2], uv[1])
-        end
+        gl_attributes[:texturecoordinates] = decompose_uv(rect)
         get!(gl_attributes, :shading, NoShading)
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
@@ -676,6 +675,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
         gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
         get!(gl_attributes, :fetch_pixel, true)
+        # different default with Patterns (no swapping and flipping of axes)
+        gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
+            if uv_transform === Makie.automatic
+                return Mat{2,3,Float32}(1,0,0,1,0,0)
+            else
+                return convert_attribute(uv_transform, key"uv_transform"())
+            end
+        end
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)

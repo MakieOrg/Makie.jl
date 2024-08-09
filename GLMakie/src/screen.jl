@@ -243,7 +243,8 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
             (GLFW.STENCIL_BITS, 0),
             (GLFW.AUX_BUFFERS,  0),
 
-            (GLFW.SCALE_TO_MONITOR, true),
+            (GLFW.SCALE_TO_MONITOR, true),  # Windows & X11
+            (GLFW.SCALE_FRAMEBUFFER, true), # OSX & Wayland
         ]
         window = try
             GLFW.Window(
@@ -256,6 +257,7 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
             )
         catch e
             @warn("""
+
             GLFW couldn't create an OpenGL window.
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
@@ -358,13 +360,15 @@ end
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
+
     if screen.owns_glscreen
         ShaderAbstractions.switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
-        GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
         GLFW.SetWindowTitle(glw, config.title)
-
+        if GLFW.GetPlatform() != GLFW.PLATFORM_WAYLAND
+            GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
+        end
         if !isnothing(config.monitor)
             GLFW.SetWindowMonitor(glw, config.monitor)
         end
@@ -489,20 +493,24 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
-function Makie.insertplots!(screen::Screen, scene::Scene)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+function add_scene!(screen::Screen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
         screen.requires_update = true
-        onany(
-            (args...) -> screen.requires_update = true,
-            scene,
-            scene.visible, scene.backgroundcolor, scene.clear,
-            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview, scene.camera.resolution
-        )
+        onany((args...) -> screen.requires_update = true,
+              scene,
+              scene.visible, scene.backgroundcolor, scene.clear,
+              scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
+              scene.camera.resolution)
         return id
     end
+    return
+end
+
+function Makie.insertplots!(screen::Screen, scene::Scene)
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    add_scene!(screen, scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
@@ -694,13 +702,16 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
         #
-        # On OSX with a Retina display, the window size is given in logical dimensions and
+        # On some platforms(OSX and Wayland), the window size is given in logical dimensions and
         # is automatically scaled by the OS. To support arbitrary scale factors, we must account
         # for the native scale factor when calculating the effective scaling to apply.
         #
-        # On Linux and Windows, scale from the logical size to the pixel size.
+        # On others (Windows and X11), scale from the logical size to the pixel size.
         ShaderAbstractions.switch_context!(window)
-        winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
+        winscale = screen.scalefactor[]
+        if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
+            winscale /= scale_factor(window)
+        end
         winw, winh = round.(Int, winscale .* (w, h))
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
@@ -943,7 +954,7 @@ function fps_renderloop(screen::Screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
-        
+
         GC.safepoint()
         sleep(screen.timer)
     end

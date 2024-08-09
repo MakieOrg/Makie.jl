@@ -821,17 +821,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     t = Makie.transform_func(primitive)
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    xy_aligned = let
-        # Only allow scaling and translation
-        pv = scene.camera.projectionview[]
-        M = Mat4f(
-            pv[1, 1], 0.0,      0.0,      0.0,
-            0.0,      pv[2, 2], 0.0,      0.0,
-            0.0,      0.0,      pv[3, 3], 0.0,
-            pv[1, 4], pv[2, 4], pv[3, 4], 1.0
-        )
-        pv ≈ M
-    end
+    xy_aligned = Makie.is_translation_scale_matrix(scene.camera.projectionview[])
 
     if interpolate
         if !regular_grid
@@ -849,6 +839,21 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     xy = project_position(primitive, space, Point2(first.(imsize)), model)
     xymax = project_position(primitive, space, Point2(last.(imsize)), model)
     w, h = xymax .- xy
+
+    uv_transform = if primitive isa Image
+        val = to_value(get(primitive, :uv_transform, I))
+        T = Makie.convert_attribute(val, Makie.key"uv_transform"(), Makie.key"image"())
+        # Cairo uses pixel units so we need to transform those to a 0..1 range, 
+        # then apply uv_transform, then scale them back to pixel units.
+        # Cairo also doesn't have the yflip we have in OpenGL, so we need to
+        # invert y.
+        T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
+        T3 = Makie.uv_transform(Vec2f(size(image))) * T3 * 
+            Makie.uv_transform(Vec2f(0, 1), 1f0 ./ Vec2f(size(image, 1), -size(image, 2)))
+        T3[Vec(1, 2), Vec(1,2,3)]
+    else
+        Mat{2, 3, Float32}(1,0,0,1,0,0)
+    end
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
         (interpolate || xy_aligned)
@@ -874,8 +879,10 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
         end
         filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
         Cairo.pattern_set_filter(p, filt)
+        pattern_set_matrix(p, Cairo.CairoMatrix(uv_transform...))
         Cairo.fill(ctx)
         Cairo.restore(ctx)
+        pattern_set_matrix(p, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     else
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
@@ -940,7 +947,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         if !haskey(primitive, :faceculling)
             primitive[:faceculling] = Observable(-10)
         end
-        draw_mesh3D(scene, screen, primitive, mesh)
+        uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
+        draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
     end
     return nothing
 end
@@ -952,6 +960,11 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+    # Note: This assume the function is only called from mesh plots
+    uv_transform = Makie.convert_attribute(plot[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
+    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+        uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
+    end
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     return draw_mesh2D(screen, cols, vs, fs)
@@ -1000,7 +1013,10 @@ end
 nan2zero(x) = !isnan(x) * x
 
 
-function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0, rotation = Mat4f(I))
+function draw_mesh3D(
+        scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0, rotation = Mat4f(I),
+        uv_transform = Mat{2, 3, Float32}(1,0,0,1,0,0)
+    )
     @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling))
 
     matcap = to_value(get(attributes, :matcap, nothing))
@@ -1009,9 +1025,12 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
+    if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+        meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
+    end
+
     # Priorize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
-
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
     model = attributes.model[]::Mat4d
@@ -1197,7 +1216,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     if !haskey(primitive, :faceculling)
         primitive[:faceculling] = Observable(-10)
     end
-    draw_mesh3D(scene, screen, primitive, mesh)
+    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"surface"())
+    draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
     primitive[:color] = old
     return nothing
 end
@@ -1235,22 +1255,20 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     submesh[:model] = model
     scales = primitive[:markersize][]
+    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
     for i in zorder
         p = pos[i]
         if color isa AbstractVector
             submesh[:calculated_colors] = color[i]
         end
         scale = markersize isa Vector ? markersize[i] : markersize
-        _rotation = if rotation isa Vector
-            Makie.rotationmatrix4(to_rotation(rotation[i]))
-        else
-            Makie.rotationmatrix4(to_rotation(rotation))
-        end
+        _rotation = Makie.rotationmatrix4(to_rotation(Makie.sv_getindex(rotation, i)))
+        _uv_transform = Makie.sv_getindex(uv_transform, i)
 
         draw_mesh3D(
             scene, screen, submesh, marker, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
-            rotation = _rotation
+            rotation = _rotation, uv_transform = _uv_transform
         )
     end
 

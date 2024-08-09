@@ -49,6 +49,7 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
     get!(uniforms, uniform_color_name, false)
     get!(uniforms, :colormap, false)
     get!(uniforms, :colorrange, false)
+    get!(uniforms, :pattern, false)
     get!(uniforms, :highclip, RGBAf(0, 0, 0, 0))
     get!(uniforms, :lowclip, RGBAf(0, 0, 0, 0))
     get!(uniforms, :nan_color, RGBAf(0, 0, 0, 0))
@@ -62,7 +63,6 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
     handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
-    get!(uniforms, :pattern, false)
     get!(uniforms, :ambient, Vec3f(1))
     get!(uniforms, :light_direction, Vec3f(1))
     get!(uniforms, :light_color, Vec3f(1))
@@ -116,6 +116,16 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
             attributes[key] = Buffer(get_attribute(mesh_signal, key))
         else
             uniforms[key] = Observable(default)
+        end
+    end
+
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:mesh}())
+        if M === nothing
+            return Mat3f(I)
+        else
+            return Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
         end
     end
 

@@ -142,7 +142,7 @@ function draw_surface(screen, main, data::Dict)
         highclip = RGBAf(0, 0, 0, 0)
         lowclip = RGBAf(0, 0, 0, 0)
 
-        uv_scale = Vec2f(1)
+        uv_transform = Vec4f(1, 1, 0, 0)
         instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         transparency = false
         shader = GLVisualizeShader(
