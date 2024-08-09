@@ -1,32 +1,30 @@
 """
-    pie(fractions; kwargs...)
+    pie(values; kwargs...)
 
-Creates a pie chart with the given `fractions`.
-
-## Attributes
-$(ATTRIBUTES)
+Creates a pie chart from the given `values`.
 """
-@recipe(Pie, values) do scene
-    Theme(
-        normalize = true,
-        color = :gray,
-        strokecolor = :black,
-        strokewidth = 1,
-        vertex_per_deg = 1,
-        radius = 1,
-        inner_radius = 0,
-        offset = 0,
-        inspectable = theme(scene, :inspectable),
-        visible = true,
-        transparency = false
-    )
+@recipe Pie (values,) begin
+    "If `true`, the sum of all values is normalized to 2π (a full circle)."
+    normalize = true
+    color = :gray
+    strokecolor = :black
+    strokewidth = 1
+    "Controls how many polygon vertices are used for one degree of rotation."
+    vertex_per_deg = 1
+    "The outer radius of the pie segments."
+    radius = 1
+    "The inner radius of the pie segments. If this is larger than zero, the pie pieces become ring sections."
+    inner_radius = 0
+    "The angular offset of the first pie segment from the (1, 0) vector in radians."
+    offset = 0
+    MakieCore.mixin_generic_plot_attributes()...
 end
 
 function plot!(plot::Pie)
 
     values = plot[1]
 
-    polys = lift(values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize) do vals, vertex_per_deg, radius, inner_radius, offset, normalize
+    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize) do vals, vertex_per_deg, radius, inner_radius, offset, normalize
 
         T = eltype(vals)
 
@@ -66,9 +64,9 @@ function plot!(plot::Pie)
 
     # plot pieces as polys
     poly!(
-        plot, polys, 
-        color = plot.color, strokewidth = plot.strokewidth, 
-        strokecolor = plot.strokecolor, inspectable = plot.inspectable, 
+        plot, polys,
+        color = plot.color, strokewidth = plot.strokewidth,
+        strokecolor = plot.strokecolor, inspectable = plot.inspectable,
         visible = plot.visible, transparency = plot.transparency
     )
 

@@ -10,6 +10,7 @@ abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
+
 """
 Screen constructors implemented by all backends:
 
@@ -50,16 +51,43 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
-struct Combined{Typ, T} <: ScenePlot{Typ}
-    parent::SceneLike
-    transformation::Transformable
+"""
+    Plot{PlotFunc}(args::Tuple, kw::Dict{Symbol, Any})
+
+Creates a Plot corresponding to the recipe function `PlotFunc`.
+Each recipe defines an alias for `Plot{PlotFunc}`.
+Example:
+```julia
+const Scatter = Plot{scatter} # defined in the scatter recipe
+Plot{scatter}((1:4,), Dict{Symbol, Any}(:color => :red)) isa Scatter
+# Same as:
+Scatter((1:4,), Dict{Symbol, Any}(:color => :red))
+```
+"""
+mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
+    transformation::Union{Nothing, Transformable}
+
+    # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
+    kw::Dict{Symbol,Any}
+    args::Vector{Any}
+
+    converted::Vector{Observable}
+    # Converted and processed arguments
     attributes::Attributes
-    input_args::Tuple
-    converted::Tuple
-    plots::Vector{AbstractPlot}
+
+    plots::Vector{Plot}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
+    parent::Union{AbstractScene,Plot}
+
+    function Plot{Typ,T}(
+                         kw::Dict{Symbol,Any}, args::Vector{Any}, converted::Vector{Observable},
+            deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
+            ) where {Typ,T}
+        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[], deregister_callbacks)
+    end
 end
 
-function Base.show(io::IO, plot::Combined)
+function Base.show(io::IO, plot::Plot)
     print(io, typeof(plot))
 end
 
@@ -110,3 +138,14 @@ end
 Billboard() = Billboard(0f0)
 Billboard(angle::Real) = Billboard(Float32(angle))
 Billboard(angles::Vector) = Billboard(Float32.(angles))
+
+@enum ShadingAlgorithm begin
+    NoShading
+    FastShading
+    MultiLightShading
+end
+
+const RealArray{T,N} = AbstractArray{T,N} where {T<:Real}
+const RealVector{T} = RealArray{1}
+const RealMatrix{T} = RealArray{2}
+const FloatType = Union{Float32,Float64}

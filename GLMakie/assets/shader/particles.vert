@@ -28,12 +28,12 @@ in vec3 vertices;
 in vec3 normals;
 {{texturecoordinates_type}} texturecoordinates;
 
-uniform vec3 lightposition;
 uniform mat4 view, model, projection;
 uniform uint objectid;
 uniform int len;
 
 flat out uvec2 o_id;
+flat out int o_InstanceID;
 out vec4 o_color;
 out vec2 o_uv;
 
@@ -91,22 +91,37 @@ vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, N
     return vec4(0);
 }
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 
-vec2 get_uv(Nothing x){return vec2(0.0);}
-vec2 get_uv(vec2 x){return vec2(1.0 - x.y, x.x);}
+{{uv_transform_type}} uv_transform;
+vec2 apply_uv_transform(Nothing t1, int i, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, int i, vec2 uv){ return transform * vec3(uv, 1); }
+vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3x2 transform;
+    transform[0] = texelFetch(transforms, 3 * index + 0).xy;
+    transform[1] = texelFetch(transforms, 3 * index + 1).xy;
+    transform[2] = texelFetch(transforms, 3 * index + 2).xy;
+    return transform * vec3(uv, 1);
+}
+
+vec2 get_uv(int index, Nothing uv){ return vec2(0.0); }
+vec2 get_uv(int index, vec2 uv){
+    return apply_uv_transform(uv_transform, index, uv);
+}
 
 void main(){
     int index = gl_InstanceID;
     o_id = uvec2(objectid, index+1);
     vec3 s = _scale(scale, index);
     vec3 V = vertices * s;
-    vec3 N = normals;
+    vec3 N = normals / s; // see issue #3702
     vec3 pos;
     {{position_calc}}
     o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
-    o_uv = get_uv(texturecoordinates);
+    o_uv = get_uv(index, texturecoordinates);
+    o_InstanceID = index;
     rotate(rotation, index, V, N);
-    render(model * vec4(pos + V, 1), N, view, projection, lightposition);
+    render(model * vec4(pos + V, 1), N, view, projection);
 }

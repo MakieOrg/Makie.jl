@@ -16,7 +16,7 @@ size(A::GPUArray) = A.size
 function checkdimensions(value::Array, ranges::Union{Integer, UnitRange}...)
     array_size   = size(value)
     indexes_size = map(length, ranges)
-    (array_size != indexes_size) && throw(DimensionMismatch("asigning a $array_size to a $(indexes_size) location"))
+    (array_size != indexes_size) && throw(DimensionMismatch("Assigning a $array_size to a $(indexes_size) location"))
     return true
 end
 function to_range(index)
@@ -57,8 +57,8 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2
 end
 function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     switch_context!(A)
-    if length(A) != length(value)
-        if isa(A, GLBuffer)
+    if size(A) != size(value)
+        if isa(A, GLBuffer) && length(A) != length(value)
             resize!(A, length(value))
         elseif isa(A, Texture)
             resize_nocopy!(A, size(value))
@@ -193,12 +193,11 @@ max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happen
 function (::Type{GPUArrayType})(data::Observable; kw...) where GPUArrayType <: GPUArray
     gpu_mem = GPUArrayType(data[]; kw...)
     # TODO merge these and handle update tracking during contruction
-    obs1 = on(_-> gpu_mem.requires_update[] = true, data)
     obs2 = on(new_data -> update!(gpu_mem, new_data), data)
     if GPUArrayType <: TextureBuffer
-        push!(gpu_mem.buffer.observers, obs1, obs2)
+        push!(gpu_mem.buffer.observers, obs2)
     else
-        push!(gpu_mem.observers, obs1, obs2)
+        push!(gpu_mem.observers, obs2)
     end
     return gpu_mem
 end

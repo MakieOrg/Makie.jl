@@ -8,12 +8,8 @@ in vec2 o_uv;
 flat in uvec2 o_objectid;
 
 {{intensity_type}} intensity;
-uniform sampler1D color_map;
+{{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
-
-uniform float stroke_width;
-uniform vec4 stroke_color;
-uniform float levels;
 
 uniform vec4 highclip;
 uniform vec4 lowclip;
@@ -38,7 +34,7 @@ vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     return texture(color_map, i01);
 }
 
-vec4 get_color(sampler2D intensity, vec2 uv, Nothing color_norm, sampler1D color_map){
+vec4 get_color(sampler2D intensity, vec2 uv, Nothing color_norm, Nothing color_map){
     return getindex(intensity, uv);
 }
 

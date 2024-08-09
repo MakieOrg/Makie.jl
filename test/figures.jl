@@ -17,6 +17,7 @@ end
     @test fig isa Figure
     @test ax isa Axis
     @test p isa Scatter
+    @test_throws ArgumentError lines!(fap, 1:10)
 
     fig2, ax2, p2 = scatter(rand(100, 3))
     @test fig2 isa Figure
@@ -34,6 +35,7 @@ end
     ap = scatter(gridpos, rand(100, 2))
     @test ap isa Makie.AxisPlot
     @test current_axis() === ap.axis
+    @test_throws ArgumentError lines!(ap, 1:10)
 
     ax2, p2 = scatter(fig[1, 2], rand(100, 2))
     @test ax2 isa Axis
@@ -62,6 +64,7 @@ end
     current_axis!(ax2)
     @test current_axis() === ax2
     @test current_figure() === fig
+
 end
 
 @testset "Deleting from figures" begin
@@ -133,19 +136,19 @@ end
 
 @testset "Nested axis assignment" begin
     fig = Figure()
-    @test Axis(fig[1, 1]) isa Axis
-    @test Axis(fig[1, 1][2, 3]) isa Axis
-    @test Axis(fig[1, 1][2, 3][4, 5]) isa Axis
-    @test_throws ErrorException scatter(fig[1, 1])
-    @test_throws ErrorException scatter(fig[1, 1][2, 3])
-    @test_throws ErrorException scatter(fig[1, 1][2, 3][4, 5])
-    @test scatter(fig[1, 2], 1:10) isa Makie.AxisPlot
-    @test scatter(fig[1, 1][1, 1], 1:10) isa Makie.AxisPlot
-    @test scatter(fig[1, 1][1, 1][1, 1], 1:10) isa Makie.AxisPlot
+    Axis(fig[1, 1]) isa Axis
+    Axis(fig[1, 1][2, 3]) isa Axis
+    Axis(fig[1, 1][2, 3][4, 5]) isa Axis
+    @test_throws ArgumentError scatter(fig[1, 1])
+    @test_throws ArgumentError scatter(fig[1, 1][2, 3])
+    @test_throws ArgumentError scatter(fig[1, 1][2, 3][4, 5])
+    scatter(fig[1, 2], 1:10) isa Makie.AxisPlot
+    scatter(fig[1, 1][1, 1], 1:10) isa Makie.AxisPlot
+    scatter(fig[1, 1][1, 1][1, 1], 1:10) isa Makie.AxisPlot
 
     fig = Figure()
     fig[1, 1] = GridLayout()
-    @test Axis(fig[1, 1][1, 1]) isa Axis
+    Axis(fig[1, 1][1, 1]) isa Axis
     fig[1, 1] = GridLayout()
     @test_throws ErrorException Axis(fig[1, 1][1, 1])
 end
@@ -155,10 +158,10 @@ end
 end
 
 @testset "Figure and axis kwargs validation" begin
-    @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()), figure = (resolution = (100, 100)))
-    @test_throws ArgumentError lines(1:10, figure = (resolution = (100, 100)))
+    @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()), figure = (size = (100, 100)))
+    @test_throws ArgumentError lines(1:10, figure = (size = (100, 100)))
     @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()))
-    
+
     # these just shouldn't error
     lines(1:10, axis = (aspect = DataAspect(),))
     lines(1:10, axis = Attributes(aspect = DataAspect()))
