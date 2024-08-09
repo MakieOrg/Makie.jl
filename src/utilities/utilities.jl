@@ -438,7 +438,8 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
     faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
     # create the uv (texture) vectors
-    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
     return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
 end
@@ -455,14 +456,20 @@ Creates points on the grid spanned by x, y, z.
 Allows to supply `f`, which gets applied to every point.
 """
 function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    g = map(CartesianIndices(z)) do i
-        return f(Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
-    end
-    return vec(g)
+    return f(matrix_grid(x, y, z))
 end
 
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
+    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+    matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
+    ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
+    return vec(ps)
 end
 
 ############################################################

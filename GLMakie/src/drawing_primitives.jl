@@ -24,7 +24,7 @@ function handle_lights(attr::Dict, screen::Screen, lights::Vector{Makie.Abstract
     attr[:light_colors]     = Observable(sizehint!(RGBf[], MAX_LIGHTS))
     attr[:light_parameters] = Observable(sizehint!(Float32[], MAX_PARAMS))
 
-    on(screen.render_tick, priority = typemin(Int)) do _
+    on(screen.render_tick, priority = -1000) do _
         # derive number of lights from available lights. Both MAX_LIGHTS and
         # MAX_PARAMS are considered for this.
         n_lights = 0
@@ -231,7 +231,7 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
 
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen)
+    pollevents(screen, Makie.BackendTick)
     robj = get!(screen.cache, objectid(plot)) do
 
         filtered = filter(plot.attributes) do (k, v)
@@ -261,7 +261,11 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             gl_value = lift_convert(key, value, plot, screen)
             gl_key => gl_value
         end)
-        gl_attributes[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
+
+        # :f32c should get passed to apply_transform_and_f32_conversion but not
+        # make it to uniforms
+        gl_attributes[:f32c], gl_attributes[:model] = Makie.patch_model(plot)
+
         if haskey(plot, :markerspace)
             gl_attributes[:markerspace] = plot.markerspace
         end
@@ -346,13 +350,13 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen)
+    pollevents(screen, Makie.BackendTick)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     else
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent
-            pollevents(screen)
+            pollevents(screen, Makie.BackendTick)
             insert!(screen, scene, x)
         end
     end
@@ -411,8 +415,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
 
         space = plot.space
         positions = handle_view(plot[1], gl_attributes)
-        positions = apply_transform_and_f32_conversion(scene, plot, positions)
-        # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, space)
+        positions = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
         cam = scene.camera
 
         if plot isa Scatter
@@ -512,21 +515,22 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             data[:pattern] = nothing
             data[:fast] = true
 
-            # positions = lift(apply_transform, plot, transform_func, positions, space)
-            positions = apply_transform_and_f32_conversion(scene, plot, positions)
+            positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
         else
             data[:pattern] = linestyle
             data[:fast] = false
 
-            pvm = lift(*, plot, data[:projectionview], data[:model])
+            # TODO: Skip patch_model() when this branch is used
+            pop!(data, :f32c)
+            pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
+                Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
+            end
             transform_func = transform_func_obs(plot)
-            positions = lift(plot, f32_conversion_obs(scene), transform_func, positions,
-                    space, pvm) do f32c, f, ps, space, pvm
-
-                transformed = apply_transform_and_f32_conversion(f32c, f, ps, space)
+            positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
+                transformed = apply_transform(f, ps, space)
                 output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
-                    output[i] = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
+                    output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
                 end
                 output
             end
@@ -554,8 +558,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
 
 
         positions = handle_view(plot[1], data)
-        # positions = lift(apply_transform, plot, transform_func_obs(plot), positions, plot.space)
-        positions = apply_transform_and_f32_conversion(scene, plot, positions)
+        positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
         if haskey(data, :intensity)
             data[:color] = pop!(data, :intensity)
         end
@@ -569,18 +572,15 @@ function draw_atomic(screen::Screen, scene::Scene,
     return cached_robj!(screen, scene, plot) do gl_attributes
         glyphcollection = plot[1]
 
-        transfunc = Makie.transform_func_obs(plot)
-        pos = gl_attributes[:position]
+        pos = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), gl_attributes[:position])
         space = plot.space
         markerspace = plot.markerspace
         offset = pop!(gl_attributes, :offset, Vec2f(0))
         atlas = gl_texture_atlas()
 
         # calculate quad metrics
-        glyph_data = lift(
-                plot, pos, glyphcollection, offset, f32_conversion_obs(scene), transfunc, space
-            ) do pos, gc, offset, f32c, transfunc, space
-            return Makie.text_quads(atlas, pos, to_value(gc), offset, f32c, transfunc, space)
+        glyph_data = lift(plot, pos, glyphcollection, offset) do pos, gc, offset
+            return Makie.text_quads(atlas, pos, to_value(gc), offset)
         end
 
         # unpack values from the one signal:
@@ -652,19 +652,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         t = Makie.transform_func_obs(plot)
         mat = plot[3]
         space = plot.space # needs to happen before connect_camera! call
-        xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do f32c, t, x, y, space
+        xypos = lift(plot, pop!(gl_attributes, :f32c), t, plot.model, plot[1], plot[2], space) do f32c, t, model, x, y, space
+            # TODO: fix heatmaps for transforms that mix dimensions:
+            # - transform_func's like Polar
+            # - model matrices with rotation & Float32 precisionissues
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
-            # Only if transform doesn't do anything, we can stay linear in 1/2D
-            if Makie.is_identity_transform(t)
-                return (Makie.f32_convert(f32c, x1d, 1), Makie.f32_convert(f32c, y1d, 2))
-            else
-                # If we do any transformation, we have to assume things aren't on the grid anymore
-                # so x + y need to become matrices.
-                x1d = Makie.apply_transform_and_f32_conversion(f32c, t, x1d, 1, space)
-                y1d = Makie.apply_transform_and_f32_conversion(f32c, t, y1d, 2, space)
-                return (x1d, y1d)
-            end
+            
+            x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
+            y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
+
+            return (x1d, y1d)
         end
         xpos = lift(first, plot, xypos)
         ypos = lift(last, plot, xypos)
@@ -695,12 +693,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
             rect =  Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2d, rect)
         end
-        gl_attributes[:vertices] = apply_transform_and_f32_conversion(scene, plot, position)
+        gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), position)
         rect = Rect2f(0, 0, 1, 1)
         gl_attributes[:faces] = decompose(GLTriangleFace, rect)
-        gl_attributes[:texturecoordinates] = map(decompose_uv(rect)) do uv
-            return 1.0f0 .- Vec2f(uv[2], uv[1])
-        end
+        gl_attributes[:texturecoordinates] = decompose_uv(rect)
         get!(gl_attributes, :shading, NoShading)
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
@@ -728,6 +724,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
         gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
         get!(gl_attributes, :fetch_pixel, true)
+        # different default with Patterns (no swapping and flipping of axes)
+        gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
+            if uv_transform === Makie.automatic
+                return Mat{2,3,Float32}(1,0,0,1,0,0)
+            else
+                return convert_attribute(uv_transform, key"uv_transform"())
+            end
+        end
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
@@ -753,7 +757,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
 
     # TODO: avoid intermediate observable
     positions = map(m -> metafree(coordinates(m)), mesh)
-    gl_attributes[:vertices] = apply_transform_and_f32_conversion(Makie.parent_scene(plot), plot, positions)
+    gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
     gl_attributes[:faces] = lift(x-> decompose(GLTriangleFace, x), mesh)
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
@@ -807,17 +811,26 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(plot)
             mat = plot[3]
-            xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do f32c, t, x, y, space
+            xypos = lift(plot, pop!(gl_attributes, :f32c), plot.model, t, plot[1], plot[2], space) do f32c, model, t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t) && isnothing(f32c)
                     return (x, y)
-                else
+                elseif Makie.is_translation_scale_matrix(model)
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
                         Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
                         [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+                    end
+                    return (first.(matrix), last.(matrix))
+                else
+                    matrix = if x isa AbstractMatrix && y isa AbstractMatrix
+                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), space, Point2d), space)
+                    else
+                        # If we do any transformation, we have to assume things aren't on the grid anymore
+                        # so x + y need to become matrices.
+                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), space, Point2d), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end

@@ -1,6 +1,5 @@
 in vec2 frag_uv;
 in vec4 frag_color;
-flat in int sample_frag_color;
 
 in vec3 o_normal;
 in vec3 o_camdir;

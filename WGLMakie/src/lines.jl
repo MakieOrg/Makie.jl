@@ -1,8 +1,9 @@
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     Makie.@converted_attribute plot (linewidth, linestyle, linecap, joinstyle)
 
+    f32c, model = Makie.patch_model(plot)
     uniforms = Dict(
-        :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
+        :model => model,
         :depth_shift => plot.depth_shift,
         :picking => false,
         :linecap => linecap,
@@ -44,10 +45,10 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     # make the p1 -- p2 segment draw, which is what indices does.
     indices = Observable(Int[])
     points_transformed = lift(
-            plot, f32_conversion_obs(scene), transform_func_obs(plot), plot[1], plot.space
-        ) do f32c, tf, ps, space
+            plot, f32c, transform_func_obs(plot), plot.model, plot[1], plot.space
+        ) do f32c, tf, model, ps, space
 
-        transformed_points = apply_transform_and_f32_conversion(f32c, tf, ps, space)
+        transformed_points = apply_transform_and_f32_conversion(f32c, tf, model, ps, space)
         # TODO: Do this in javascript?
         empty!(indices[])
         if isempty(transformed_points)

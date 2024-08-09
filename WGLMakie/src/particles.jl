@@ -51,7 +51,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
 
-    per_instance[:offset] = apply_transform_and_f32_conversion(scene, plot, plot[1])
+    f32c, model = Makie.patch_model(plot)
+    per_instance[:offset] = apply_transform_and_f32_conversion(plot, f32c, plot[1])
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -69,9 +70,15 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[k] = lift_convert(k, v, plot)
     end
 
-    handle_color!(plot, uniform_dict, per_instance, :color)
-    handle_color_getter!(uniform_dict, per_instance)
+    handle_color!(plot, uniform_dict, per_instance)
+    # handle_color_getter!(uniform_dict, per_instance)
     instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
+    uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, false)
+
+    if haskey(uniform_dict, :color) && haskey(per_instance, :color)
+        to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
+        to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
+    end
 
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
@@ -93,9 +100,29 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:object_id] = UInt32(0)
     uniform_dict[:shading] = map(x -> x != NoShading, plot.shading)
 
-    uniform_dict[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
+    uniform_dict[:model] = model
 
-    return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uv_transform = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:meshscatter}())
+        # why transpose?
+        T = Mat3f(0,1,0, 1,0,0, 0,0,1)
+        if M === nothing
+            return T
+        elseif M isa Mat
+            return T * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+        elseif M isa Vector
+            return [T * Mat3f(m[1], m[2], 0, m[3], m[4], 0, m[5], m[6], 1) for m in M]
+        end
+    end
+
+    if to_value(uv_transform) isa Vector
+        per_instance[:uv_transform] = Buffer(uv_transform)
+    else
+        uniform_dict[:uv_transform] = uv_transform
+    end
+
+    return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
 
@@ -220,13 +247,14 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes = copy(plot.attributes.attributes)
     space = get(attributes, :space, :data)
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    attributes[:pos] = apply_transform_and_f32_conversion(scene, plot, plot[1], space)
+    f32c, model = Makie.patch_model(plot)
+    attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
 
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
-    attributes[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
+    attributes[:model] = model
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
     delete!(attributes, :uv_offset_width)
@@ -241,15 +269,14 @@ value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
-    f32c = f32_conversion_obs(plot)
-    transfunc = transform_func_obs(plot)
-    pos = plot.position
+    f32c, model = Makie.patch_model(plot)
+    pos = apply_transform_and_f32_conversion(plot, f32c, plot.position)
     space = plot.space
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
-    glyph_data = lift(plot, pos, glyphcollection, offset, f32c, transfunc, space; ignore_equal_values=true) do pos, gc, offset, f32c, transfunc, space
-        Makie.text_quads(atlas, pos, to_value(gc), offset, f32c, transfunc, space)
+    glyph_data = lift(plot, pos, glyphcollection, offset; ignore_equal_values=true) do pos, gc, offset
+        Makie.text_quads(atlas, pos, to_value(gc), offset)
     end
 
     # unpack values from the one signal:
@@ -278,7 +305,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     plot_attributes = copy(plot.attributes)
     plot_attributes.attributes[:calculated_colors] = uniform_color
     uniforms = Dict(
-        :model => map(Makie.patch_model, f32_conversion_obs(plot), plot.model),
+        :model => model,
         :shape_type => Observable(Cint(3)),
         :rotation => uniform_rotation,
         :pos => positions,

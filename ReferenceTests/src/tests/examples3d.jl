@@ -429,19 +429,7 @@ end
         p => p .+ Point(normalize(n) .* 0.05f0)
     end
     linesegments!(pos, color=:blue)
-    bb = boundingbox(a.scene, p -> Makie.isaxis(p))
-    if bb !== HyperRectangle{3, Float64}([-0.2163253277540207, -0.052062273025512695, -0.4081778824329376], [0.4326506555080414, 1.016284465789795, 1.4193272590637207])
-        @info "Bbox maybe wrong"
-        @info "Full bb = $bb"
-        @info "No exclude = $(boundingbox(a.scene))"
-        @info "plots in scene:"
-        println.(a.scene.plots)
-        @info "isaxis? $(Makie.isaxis.(a.scene.plots))"
-        @info "space $(map(p -> get(p.attributes, :space, :unset), a.scene.plots))"
-        @info "Individual bboxes:"
-        println.(boundingbox.(a.scene.plots))
-        @info "Recompute full: $(boundingbox(a.scene, p -> Makie.isaxis(p)))"
-    end
+    Makie.update_state_before_display!(f)
     f
 end
 

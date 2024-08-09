@@ -37,3 +37,87 @@ include("unit_tests.jl")
     GLMakie.closeall()
     GC.gc(true) # make sure no finalizers act up!
 end
+
+@testset "Tick Events" begin
+    function check_tick(tick, state, count)
+        @test tick.state == state
+        @test tick.count == count
+        @test tick.time > 1e-9
+        @test tick.delta_time > 1e-9
+    end
+
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
+
+    filename = "$(tempname()).png"
+    try
+        save(filename, f)
+        tick = events(f).tick[]
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
+    finally
+        rm(filename)
+    end
+
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        dt = 1.0 / 30.0
+
+        for (i, tick) in enumerate(tick_record)
+            @test tick.state == Makie.OneTimeRenderTick
+            @test tick.count == i-1
+            @test tick.time ≈ dt * (i-1)
+            @test tick.delta_time ≈ dt
+        end
+    finally
+        rm(filename)
+    end
+
+    # test destruction of tick overwrite
+    f, a, p = scatter(rand(10));
+    let
+        io = VideoStream(f)
+        @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+        nothing
+    end
+    tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+    events(f).tick[] = tick
+    @test events(f).tick[] == tick
+
+    
+    f, a, p = scatter(rand(10));
+    tick_record = Makie.Tick[]
+    on(t -> push!(tick_record, t), events(f).tick)
+    screen = GLMakie.Screen(render_on_demand = true, framerate = 30.0, pause_rendering = false, visible = false)
+    display(screen, f.scene)
+    sleep(0.15)
+    GLMakie.pause_renderloop!(screen)
+    sleep(0.1)
+    GLMakie.closeall()
+
+        # Why does it start with a skipped tick?
+    i = 1
+    while tick_record[i].state == Makie.SkippedRenderTick
+        check_tick(tick_record[1], Makie.SkippedRenderTick, i)
+        i += 1
+    end
+
+    check_tick(tick_record[i], Makie.RegularRenderTick, i)
+    i += 1
+
+    while tick_record[i].state == Makie.SkippedRenderTick
+            check_tick(tick_record[i], Makie.SkippedRenderTick, i)
+            i += 1
+        end
+
+    while (i <= length(tick_record)) && (tick_record[i].state == Makie.PausedRenderTick)
+        check_tick(tick_record[i], Makie.PausedRenderTick, i)
+        i += 1
+    end
+
+    @test i == length(tick_record)+1
+end

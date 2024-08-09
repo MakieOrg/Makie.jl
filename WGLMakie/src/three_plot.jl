@@ -69,6 +69,6 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     on(session, done_init) do val
         window_open[] = true
     end
-    connect_scene_events!(scene, comm)
+    connect_scene_events!(screen, scene, comm)
     return wrapper, done_init
 end
