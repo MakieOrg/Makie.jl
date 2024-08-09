@@ -159,18 +159,16 @@ end
 
 function limits_to_uvmesh(plot, f32c)
     px, py, pz = plot[1], plot[2], plot[3]
-    px = map((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
-    py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
     # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
 
     # TODO, this branch is only hit by Image, but not for Heatmap with stepranges
     # because convert_arguments converts x/y to Vector{Float32}
-    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
+    if px[] isa Makie.Interval && py[] isa Makie.Interval && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
-            xmin, xmax = extrema(x)
-            ymin, ymax = extrema(y)
+            xmin, xmax = Makie.endpoints(x)
+            ymin, ymax = Makie.endpoints(y)
             return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         ps = lift(rect -> decompose(Point2f, rect), plot, rect)
@@ -178,6 +176,8 @@ function limits_to_uvmesh(plot, f32c)
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
         uv = Buffer(lift(decompose_uv, plot, rect))
     else
+        px = map((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
+        py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
         # TODO: Use Makie.surface2mesh
         positions = let
             grid_ps = lift((x, y) -> Makie.matrix_grid(x, y, zeros(length(x), length(y))), plot, px, py)
