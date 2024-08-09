@@ -138,14 +138,14 @@ function limits_to_uvmesh(plot, f32c)
 
     # TODO, this branch is only hit by Image, but not for Heatmap with stepranges
     # because convert_arguments converts x/y to Vector{Float32}
-    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t) &&
-            isnothing(f32_conversion(plot))
+    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
             xmin, xmax = extrema(x)
             ymin, ymax = extrema(y)
             return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
         end
-        positions = Buffer(lift(rect -> decompose(Point2f, rect), plot, rect))
+        ps = lift(rect -> decompose(Point2f, rect), plot, rect)
+        positions = Buffer(apply_transform_and_f32_conversion(plot, f32c, ps))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
         uv = Buffer(lift(decompose_uv, plot, rect))
     else
