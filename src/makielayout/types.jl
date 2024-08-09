@@ -1821,7 +1821,7 @@ end
         "The background color of the axis."
         backgroundcolor = inherit(scene, :backgroundcolor, :white)
         "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
-        sample_density::Int = 120
+        sample_density::Int = 90
         "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
         clip::Bool = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
