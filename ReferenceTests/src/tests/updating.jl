@@ -173,3 +173,22 @@ end
     ax.title = "identity"
     Makie.step!(st)
 end
+
+
+@reference_test "event ticks in record" begin
+    # Checks whether record calculates and triggers event.tick by drawing a 
+    # Point at y = 1 for each frame where it does. The animation is irrelevant
+    # here, so we can just check the final image.
+    # The first point maybe at 0 depending on when the backend sets up it's
+    # reference time
+    ps = Observable(Point2f[])
+    f, a, p = scatter(ps)
+    xlims!(a, 0, 61)
+    ylims!(a, -0.1, 1.1)
+    Record(f, 1:60, framerate = 30) do i
+        push!(ps.val,  Point2f(i, f.scene.events.tick[].delta_time > 1e-6))
+        notify(ps)
+        f.scene.events.tick[] = Makie.Tick(Makie.UnknownTickState, 0, 0.0, 0.0)
+    end
+    f
+end

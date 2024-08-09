@@ -341,6 +341,7 @@ function FileIO.save(
             config = Dict{Symbol, Any}(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
+            events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
             backend_show(screen, io, mime, scene)
         end
     catch e

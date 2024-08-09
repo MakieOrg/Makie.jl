@@ -249,3 +249,47 @@ end
 
     @test_throws ArgumentError save(filename, Figure(), pdf_version="foo")
 end
+
+@testset "Tick Events" begin
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
+
+    filename = "$(tempname()).png"
+    try
+        save(filename, f)
+        tick = events(f).tick[]
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
+    finally
+        rm(filename)
+    end
+
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        dt = 1.0 / 30.0
+
+        for (i, tick) in enumerate(tick_record)
+            @test tick.state == Makie.OneTimeRenderTick
+            @test tick.count == i-1
+            @test tick.time ≈ dt * (i-1)
+            @test tick.delta_time ≈ dt
+        end
+    finally
+        rm(filename)
+    end
+
+    # test destruction of tick overwrite
+    f, a, p = scatter(rand(10));
+    let
+        io = VideoStream(f)
+        @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+        nothing
+    end
+    tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+    events(f).tick[] = tick
+    @test events(f).tick[] == tick
+end
