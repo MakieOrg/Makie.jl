@@ -131,7 +131,6 @@ include("scenes.jl")
 include("float32-scaling.jl")
 
 include("interfaces.jl")
-include("conversions.jl")
 include("units.jl")
 include("shorthands.jl")
 include("theming.jl")
@@ -185,6 +184,9 @@ include("basic_recipes/tooltip.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
 include("basic_recipes/makiecore_examples/lines.jl")
+
+# conversions: need to be after plot recipes
+include("conversions.jl")
 
 # layouting of plots
 include("layouting/transformation.jl")
