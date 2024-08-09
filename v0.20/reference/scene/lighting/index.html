@@ -1,0 +1,194 @@
+<!DOCTYPE html><HTML lang="en"><head><meta charset="UTF-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><link href="../../../libs/highlight/github.min.css" rel="stylesheet"/><link href="../../../css/franklin.css" rel="stylesheet"/><link href="../../../css/minimal-mistakes.css" rel="stylesheet"/><link href="../../../css/makie.css" rel="stylesheet"/><link href="../../../assets/icon_transparent.png" rel="icon"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/><style>
+    .stork-wrapper {
+      width:99%
+    }
+    .stork-wrapper .stork-results {
+      max-height: 42vh;
+    }
+</style><title>Lighting · Makie</title></head><body class="layout--single"><div class="site-container"><div class="masthead"><div class="masthead__inner-wrap"><div class="masthead__menu"><nav class="greedy-nav" id="site-nav"><a class="title-icon" href="../../.."><img src="../../../assets/makie_logo_transparent.svg"/></a><ul class="visible-links"><li class="masthead__menu-item"><a href="https://github.com/JuliaPlots/Makie.jl"><img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/></a></li><li class="masthead__menu-item"><a href="../..">Reference</a></li><li class="masthead__menu-item"><a href="../../../tutorials/">Tutorials</a></li><li class="masthead__menu-item"><a href="../../../how-to/">How-Tos</a></li><li class="masthead__menu-item"><a href="../../../explanations/">Explanations</a></li><li class="masthead__menu-item"><a href="../../../api/">API</a></li><li class="masthead__menu-item"><a href="../../../news/">News</a></li><li class="masthead__menu-item" id="masthead-search-button"><script>
+                            function toggleSearchOverlay(){
+                                const overlay = document.querySelector("#makiesearch-overlay-container");
+                                overlay.classList.toggle("hidden");
+                                overlay.querySelector("input").focus();
+                                overlay.onclick = function(e){
+                                    if (e.target !== this){
+                                        return
+                                    }
+                                    this.classList.toggle("hidden");
+                                };
+                            }
+                        </script><button onclick="toggleSearchOverlay()"><i class="fas fa-search"></i> Search</button></li></ul><button class="greedy-nav__toggle" type="button"><span class="visually-hidden">Toggle menu</span><div class="navicon"></div></button><ul class="hidden-links hidden"></ul></nav></div></div></div><div id="main" role="main"><div id="overlay"></div><div class="hidden" id="makiesearch-overlay-container"><div id="makiesearch-overlay-container-inner"><div id="makiesearch-overlay"></div></div></div><div class="content-table-hidden" id="content-table-container"><button id="on-this-page" onclick="toggle_content_table_visibility()">On this page</button><script>
+            function toggle_content_table_visibility(){
+              const c = document.querySelector("#content-table-container");
+              const ct = c.querySelector("#content-table");
+              const vh = window.visualViewport.height;
+              ct.style.height = `${Math.min(ct.scrollHeight, 0.66*vh)}px`;
+              c.classList.toggle("content-table-hidden");
+            }
+          </script><div id="content-table"><ul class="page-content"><li><a href="#material_attributes">Material Attributes</a></li><li><a href="#lighting_algorithm">Lighting algorithm</a></li><li><a href="#types_of_light">Types of Light</a></li><li><ul><li><a href="#ambientlight">AmbientLight</a></li><li><a href="#directionallight">DirectionalLight</a></li><li><a href="#pointlight">PointLight</a></li><li><a href="#spotlight">SpotLight</a></li><li><a href="#rectlight">RectLight</a></li><li><a href="#environmentlight">EnvironmentLight</a></li></ul></li></ul></div></div><div id="navbar-container"><div id="navbar"><div id="makiesearch"></div><ul><li><div class="tocitem-container"><a href="../../..">Home</a></div></li><li><input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2"><i class="docs-chevron"></i></label><a href="../..">Reference</a></div><ul><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-1"><i class="docs-chevron"></i></label><a href="../../blocks">Blocks</a></div><ul><li><div class="tocitem-container"><a href="../../blocks/axis">Axis</a></div></li><li><div class="tocitem-container"><a href="../../blocks/axis3">Axis3</a></div></li><li><div class="tocitem-container"><a href="../../blocks/box">Box</a></div></li><li><div class="tocitem-container"><a href="../../blocks/button">Button</a></div></li><li><div class="tocitem-container"><a href="../../blocks/colorbar">Colorbar</a></div></li><li><div class="tocitem-container"><a href="../../blocks/gridlayout">GridLayout</a></div></li><li><div class="tocitem-container"><a href="../../blocks/intervalslider">IntervalSlider</a></div></li><li><div class="tocitem-container"><a href="../../blocks/label">Label</a></div></li><li><div class="tocitem-container"><a href="../../blocks/legend">Legend</a></div></li><li><div class="tocitem-container"><a href="../../blocks/lscene">LScene</a></div></li><li><div class="tocitem-container"><a href="../../blocks/menu">Menu</a></div></li><li><div class="tocitem-container"><a href="../../blocks/polaraxis">PolarAxis</a></div></li><li><div class="tocitem-container"><a href="../../blocks/slider">Slider</a></div></li><li><div class="tocitem-container"><a href="../../blocks/slidergrid">SliderGrid</a></div></li><li><div class="tocitem-container"><a href="../../blocks/textbox">Textbox</a></div></li><li><div class="tocitem-container"><a href="../../blocks/toggle">Toggle</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-2"><i class="docs-chevron"></i></label><a href="../../plots">Plots</a></div><ul><li><div class="tocitem-container"><a href="../../plots/ablines">ablines</a></div></li><li><div class="tocitem-container"><a href="../../plots/arc">arc</a></div></li><li><div class="tocitem-container"><a href="../../plots/arrows">arrows</a></div></li><li><div class="tocitem-container"><a href="../../plots/band">band</a></div></li><li><div class="tocitem-container"><a href="../../plots/barplot">barplot</a></div></li><li><div class="tocitem-container"><a href="../../plots/boxplot">boxplot</a></div></li><li><div class="tocitem-container"><a href="../../plots/bracket">bracket</a></div></li><li><div class="tocitem-container"><a href="../../plots/contour">contour</a></div></li><li><div class="tocitem-container"><a href="../../plots/contour3d">contour3d</a></div></li><li><div class="tocitem-container"><a href="../../plots/contourf">contourf</a></div></li><li><div class="tocitem-container"><a href="../../plots/crossbar">crossbar</a></div></li><li><div class="tocitem-container"><a href="../../plots/datashader">datashader</a></div></li><li><div class="tocitem-container"><a href="../../plots/density">density</a></div></li><li><div class="tocitem-container"><a href="../../plots/ecdf">ecdfplot</a></div></li><li><div class="tocitem-container"><a href="../../plots/errorbars">errorbars</a></div></li><li><div class="tocitem-container"><a href="../../plots/heatmap">heatmap</a></div></li><li><div class="tocitem-container"><a href="../../plots/hexbin">hexbin</a></div></li><li><div class="tocitem-container"><a href="../../plots/hist">hist</a></div></li><li><div class="tocitem-container"><a href="../../plots/hvlines">hlines and vlines</a></div></li><li><div class="tocitem-container"><a href="../../plots/hvspan">hspan and vspan</a></div></li><li><div class="tocitem-container"><a href="../../plots/image">image</a></div></li><li><div class="tocitem-container"><a href="../../plots/lines">lines</a></div></li><li><div class="tocitem-container"><a href="../../plots/linesegments">linesegments</a></div></li><li><div class="tocitem-container"><a href="../../plots/mesh">mesh</a></div></li><li><div class="tocitem-container"><a href="../../plots/meshscatter">meshscatter</a></div></li><li><div class="tocitem-container"><a href="../../plots/pie">pie</a></div></li><li><div class="tocitem-container"><a href="../../plots/poly">poly</a></div></li><li><div class="tocitem-container"><a href="../../plots/qqplot">qqplot and qqnorm</a></div></li><li><div class="tocitem-container"><a href="../../plots/rainclouds">rainclouds</a></div></li><li><div class="tocitem-container"><a href="../../plots/rangebars">rangebars</a></div></li><li><div class="tocitem-container"><a href="../../plots/scatter">scatter</a></div></li><li><div class="tocitem-container"><a href="../../plots/scatterlines">scatterlines</a></div></li><li><div class="tocitem-container"><a href="../../plots/series">series</a></div></li><li><div class="tocitem-container"><a href="../../plots/spy">spy</a></div></li><li><div class="tocitem-container"><a href="../../plots/stairs">stairs</a></div></li><li><div class="tocitem-container"><a href="../../plots/stem">stem</a></div></li><li><div class="tocitem-container"><a href="../../plots/stephist">stephist</a></div></li><li><div class="tocitem-container"><a href="../../plots/streamplot">streamplot</a></div></li><li><div class="tocitem-container"><a href="../../plots/surface">surface</a></div></li><li><div class="tocitem-container"><a href="../../plots/text">text</a></div></li><li><div class="tocitem-container"><a href="../../plots/tooltip">tooltip</a></div></li><li><div class="tocitem-container"><a href="../../plots/tricontourf">tricontourf</a></div></li><li><div class="tocitem-container"><a href="../../plots/triplot">triplot</a></div></li><li><div class="tocitem-container"><a href="../../plots/violin">violin</a></div></li><li><div class="tocitem-container"><a href="../../plots/volume">volume</a></div></li><li><div class="tocitem-container"><a href="../../plots/volumeslices">volumeslices</a></div></li><li><div class="tocitem-container"><a href="../../plots/voronoiplot">voronoiplot</a></div></li><li><div class="tocitem-container"><a href="../../plots/waterfall">waterfall</a></div></li><li><div class="tocitem-container"><a href="../../plots/wireframe">wireframe</a></div></li></ul></li><li><input checked="" class="collapse-toggle" id="menuitem-2-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-3"><i class="docs-chevron"></i></label><a href="..">Scene</a></div><ul><li><div class="tocitem-container"><a href="../SSAO">SSAO</a></div></li><li><div class="tocitem-container"><a class="active" href="">Lighting</a></div></li><li><div class="tocitem-container"><a href="../matcap">Matcap</a></div></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-3"><i class="docs-chevron"></i></label><a href="../../../tutorials">Tutorials</a></div><ul><li><div class="tocitem-container"><a href="../../../tutorials/aspect-tutorial">Aspect ratio and size control tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/basic-tutorial">Basic Tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/layout-tutorial">Layout Tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/scenes">Scene tutorial</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-4"><i class="docs-chevron"></i></label><a href="../../../how-to">How-Tos</a></div><ul><li><div class="tocitem-container"><a href="../../../how-to/draw-boxes-around-subfigures">How to draw boxes around subfigures</a></div></li><li><div class="tocitem-container"><a href="../../../how-to/save-figure-with-transparency">How to save a <code>Figure</code> with transparency</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5"><i class="docs-chevron"></i></label><a href="../../../explanations">Explanations</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/animation">Animations</a></div></li><li><input class="collapse-toggle" id="menuitem-5-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-2"><i class="docs-chevron"></i></label><a href="../../../explanations/backends">Backends</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/backends/cairomakie">CairoMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/glmakie">GLMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/rprmakie">RPRMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/wglmakie">WGLMakie</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../explanations/blocks">Blocks</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/cameras">Cameras</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/colors">Colors</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/events">Events</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/faq">Frequently Asked Questions</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/figure">Figures</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/fonts">Fonts</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/headless">Headless</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/inspector">Inspecting Data</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/latex">LaTeX</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/layouting">How layouts work</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/nodes">Observables &amp; Interaction</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/plot_method_signatures">Plot Method Signatures</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/recipes">Plot Recipes</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/scenes">Scenes</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/specapi">SpecApi</a></div></li><li><input class="collapse-toggle" id="menuitem-5-19" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-19"><i class="docs-chevron"></i></label><a href="../../../explanations/theming">Theming</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/theming/predefined_themes">Predefined themes</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../explanations/transparency">Basic transparency</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../api">API</a></div></li><li><div class="tocitem-container"><a href="../../../news">Changelog</a></div></li></ul></div></div><div class="franklin-content"><h1 id="lighting"><a class="header-anchor" href="#lighting">Lighting</a></h1><p>The Lighting capabilities of Makie differ between backends and plot types. They are implemented for mesh related plot types (<code>mesh</code>, <code>meshscatter</code>, <code>surface</code>), their derivatives (e.g. 3D <code>arrows</code>) and to some degree <code>volume</code> plots (and <code>contour3d</code>). With respect to Backends:</p><ul><li><p>GLMakie implements the baseline lighting model and will act as our default for this page.</p></li><li><p>WGLMakie implements a simplified version of GLMakie's lighting.</p></li><li><p>CairoMakie implements limited lighting due to its limited 3D capabilities</p></li><li><p>RPRMakie implements parts of Makies lighting model but can also use more sophisticated methods from RadeonProRender.</p></li></ul><h2 id="material_attributes"><a class="header-anchor" href="#material_attributes">Material Attributes</a></h2><p>In 3D rendering a material describes how an object reacts to light. This can include the color of an object, how bright and sharp specular reflections are, how metallic it looks, how rough it is and more. In Makie however the model is still fairly simple and limited. Currently the following material attributes are available:</p><ul><li><p><code>diffuse::Vec3f = Vec3f(1.0)</code>: controls how strong the diffuse reflections of an object are in the red, green and blue color channel. A diffuse reflection is one where incoming light is scattered in every direction. The strength of this reflection is based on the amount of light hitting the surface, which is proportional to <code>dot(light_direction, -normal)</code>. It generally makes up the main color of an object in light.</p></li><li><p><code>specular::Vec3f = Vec3f(0.4)</code>: controls the strength of specular reflection in the red, green and blue color channels. A specular reflection is a direct reflection of light, i.e. one where the incoming angle <code>dot(light_direction, -normal)</code> matches the outgoing angle <code>dot(camera_direction, -normal)</code>. It responsible for bright spots on objects. Note that this does not take the color of the object into account, as specular reflections typically match the light color.</p></li><li><p><code>shininess::Float32 = 32f0</code>: controls how sharp specular reflections are. Low shininess will allow a larger difference between incoming outgoing angle to take effect, creating a larger and smoother bright spot. High shininess will respectively reduce the size of the bright spot and increase its sharpness. This value must be positive.</p></li><li><p><code>backlight::Real = 0</code> controls how strongly light interacts with the backside of an object. Setting this to a value <code>&gt; 0</code> can be helpful when visualizing a surface. (More precisely the light calculation is repeated with inverted normals and the result is mixed in with <code>backlight</code> as a prefactor.)</p></li></ul><div class="admonition note"><p class="admonition-title">Note</p><p>RPRMakie does not use these material attributes. Instead it relies on RadeonProRender's material system, which is passed through the <code>material</code> attribute. See the <a href="https://docs.makie.org/stable/documentation/backends/rprmakie/">RPRMakie page</a> for examples.</p></div><h2 id="lighting_algorithm"><a class="header-anchor" href="#lighting_algorithm">Lighting algorithm</a></h2><p>Lights are controlled through the <code>lights</code> vector in a <code>scene</code> and by the <code>shading</code> attribute in a plot. Generally you will not need to set <code>shading</code> yourself, as it is derived based on the lights vector. The possible options for <code>shading</code> are:</p><ul><li><p><code>shading = NoShading</code> disables light calculations, resulting in the plain color of an object being shown.</p></li><li><p><code>shading = FastShading</code> enables a simplified lighting model which only allows for one <code>AmbientLight</code> and one <code>DirectionalLight</code>.</p></li><li><p><code>shading = MultiLightShading</code> is a GLMakie exclusive option which enables multiple light sources (as set in the <code>ScreenConfig</code>, default up to 64) as well as <code>PointLight</code> and <code>SpotLight</code>.</p></li><li><p><code>shading = Makie.automatic</code> derive one of the above options based on the lights in <code>scene.lights</code></p></li></ul><div class="admonition note"><p class="admonition-title">Note</p><p>You can access the underlying scene of an <code>Axis3</code> with <code>ax.scene</code>.</p></div><p>For reference all the lighting calculations (except ambient) in GLMakie, WGLMakie and to some extend CairoMakie end up using the <a href="https://en.wikipedia.org/wiki/Blinn%E2%80%93Phong_reflection_model">Blinn-Phong reflection model</a> which boils down to</p><pre><code class="language-julia">function blinn_phong(
+        diffuse, specular, shininess, normal, object_color,
+        light_color, light_direction, camera_direction
+    )
+    diffuse_coefficient = max(dot(light_direction, -normal), 0.0)
+    H = normalize(light_direction + camera_direction)
+    specular_coefficient = max(dot(H, -normal), 0.0)^shininess
+    return light_color * (
+        diffuse * diffuse_coefficient * object_color +
+        specular * specular_coefficient
+    )
+end</code></pre><p>The different light sources control the <code>light_direction</code> and may further adjust the result of this function. For example, <code>SpotLight</code> adds a factor which reduces light intensity outside its area.</p><h2 id="types_of_light"><a class="header-anchor" href="#types_of_light">Types of Light</a></h2><h3 id="ambientlight"><a class="header-anchor" href="#ambientlight">AmbientLight</a></h3><div class="docstring"><div class="doc-header" id="AmbientLight"><a href="#AmbientLight">AmbientLight</a></div><div class="doc-content"><pre><code>AmbientLight(color) &lt;: AbstractLight</code></pre><p>A simple ambient light that uniformly lights every object based on its light color.</p><p>Availability:</p><ul><li><p>All backends with <code>shading = FastShading</code> or <code>MultiLightShading</code></p></li></ul></div></div><pre><code class="language-julia">using CairoMakie
+
+fig = Figure(size = (600, 600))
+ax11 = LScene(fig[1, 1], scenekw = (lights = [],))
+ax12 = LScene(fig[1, 2], scenekw = (lights = [AmbientLight(RGBf(0, 0, 0))],))
+ax21 = LScene(fig[2, 1], scenekw = (lights = [AmbientLight(RGBf(0.7, 0.7, 0.7))],))
+ax22 = LScene(fig[2, 2], scenekw = (lights = [AmbientLight(RGBf(0.8, 0.3, 0))],))
+for ax in (ax11, ax12, ax21, ax22)
+    mesh!(ax, Sphere(Point3f(0), 1f0), color = :white)
+end
+fig</code></pre><p></p><p><a id="example_b3109d0b"><img height="600" src="../../../assets/reference/scene/lighting/code/output/example_b3109d0b.png" width="600"/></a></p><h3 id="directionallight"><a class="header-anchor" href="#directionallight">DirectionalLight</a></h3><div class="docstring"><div class="doc-header" id="DirectionalLight"><a href="#DirectionalLight">DirectionalLight</a></div><div class="doc-content"><pre><code>DirectionalLight(color, direction[, camera_relative = false])</code></pre><p>A light type which simulates a distant light source with parallel light rays going in the given <code>direction</code>.</p><p>Availability:</p><ul><li><p>All backends with <code>shading = FastShading</code> or <code>MultiLightShading</code></p></li></ul></div></div><pre><code class="language-julia">using GLMakie
+
+fig = Figure(size = (600, 600))
+ax11 = LScene(fig[1, 1], scenekw = (lights = [DirectionalLight(RGBf(0, 0, 0), Vec3f(-1, 0, 0))],))
+ax12 = LScene(fig[1, 2], scenekw = (lights = [DirectionalLight(RGBf(1, 1, 1), Vec3f(-1, 0, 0))],))
+lights = [
+    DirectionalLight(RGBf(0, 0, 0.7), Vec3f(-1, -1, 0)),
+    DirectionalLight(RGBf(0.7, 0.2, 0), Vec3f(-1, 1, -1)),
+    DirectionalLight(RGBf(0.7, 0.7, 0.7), Vec3f(1, -1, -1))
+]
+ax21 = LScene(fig[2, 1], scenekw = (lights = lights,))
+ax22 = LScene(fig[2, 2], scenekw = (lights = [DirectionalLight(RGBf(4, 2, 1), Vec3f(0, 0, -1))],))
+for ax in (ax11, ax12, ax21, ax22)
+    mesh!(ax, Sphere(Point3f(0), 1f0), color = :white)
+end
+fig</code></pre><p></p><p><a id="example_b6c61f6a"><img height="600" src="../../../assets/reference/scene/lighting/code/output/example_b6c61f6a.png" width="600"/></a></p><h3 id="pointlight"><a class="header-anchor" href="#pointlight">PointLight</a></h3><div class="docstring"><div class="doc-header" id="PointLight"><a href="#PointLight">PointLight</a></div><div class="doc-content"><pre><code>PointLight(color, position[, attenuation = Vec2f(0)])
+PointLight(color, position, range::Real)</code></pre><p>A point-like light source placed at the given <code>position</code> with the given light <code>color</code>.</p><p>Optionally an attenuation parameter can be used to reduce the brightness of the light source with distance. The reduction is given by <code>1 / (1 + attenuation[1] * distance + attenuation[2] * distance^2)</code>. Alternatively you can pass a light <code>range</code> to generate matching default attenuation parameters. Note that you may need to set the light intensity, i.e. the light color to values greater than 1 to get satisfying results.</p><p>Availability:</p><ul><li><p>GLMakie with <code>shading = MultiLightShading</code></p></li><li><p>RPRMakie</p></li></ul></div></div><pre><code class="language-julia">using GLMakie
+
+fig = Figure(size = (600, 600))
+ax = LScene(fig[1, 1], scenekw = (lights = [PointLight(RGBf(1, 1, 1), Point3f(0, 0, 0))],))
+ps = [Point3f(x, y, z) for x in (-1, 0, 1) for y in (-1, 0, 1) for z in (-1, 0, 1)]
+meshscatter!(ax, ps, color = :white)
+fig</code></pre><p></p><p><a id="example_353e407d"><img height="600" src="../../../assets/reference/scene/lighting/code/output/example_353e407d.png" width="600"/></a></p><pre><code class="language-julia">using GLMakie
+
+lights = [
+    PointLight(RGBf(1, 1, 1), Point3f(0, 0, 5), 50),
+    PointLight(RGBf(2, 0, 0), Point3f(-3, -3, 2), 10),
+    PointLight(RGBf(0, 2, 0), Point3f(-3,  3, 2), 10),
+    PointLight(RGBf(0, 0, 2), Point3f( 3,  3, 2), 10),
+    PointLight(RGBf(2, 2, 0), Point3f( 3, -3, 2), 10),
+]
+
+fig = Figure(size = (600, 600))
+ax = LScene(fig[1, 1], scenekw = (lights = lights,))
+ps = [Point3f(x, y, 0) for x in -5:5 for y in -5:5]
+meshscatter!(ax, ps, color = :white, markersize = 0.75)
+scatter!(ax, map(l -&gt; l.position[], lights), color = map(l -&gt; l.color[], lights), strokewidth = 1, strokecolor = :black)
+fig</code></pre><p></p><p><a id="example_06caae43"><img height="600" src="../../../assets/reference/scene/lighting/code/output/example_06caae43.png" width="600"/></a></p><p>With a strong PointLight and Attenuation you can create different colors at different distances.</p><pre><code class="language-julia">using GLMakie, GeometryBasics
+
+ps = [
+    Point3f(cosd(phi) * cosd(theta), sind(phi) * cosd(theta), sind(theta))
+    for theta in range(-20, 20, length = 21) for phi in range(60, 340, length=30)
+]
+faces = [QuadFace(30j + i, 30j + mod1(i+1, 30), 30*(j+1) + mod1(i+1, 30), 30*(j+1) + i) for j in 0:19 for i in 1:29]
+marker_mesh = GeometryBasics.Mesh(meta(ps, normals = ps), decompose(GLTriangleFace, faces))
+
+lights = [PointLight(RGBf(10, 4, 2), Point3f(0, 0, 0), 5)]
+
+fig = Figure(size = (600, 600), backgroundcolor = :black)
+ax = LScene(fig[1, 1], scenekw = (lights = lights,), show_axis = false)
+update_cam!(ax.scene, ax.scene.camera_controls, Rect3f(Point3f(-2), Vec3f(4)))
+meshscatter!(
+    ax, [Point3f(0) for _ in 1:14], marker = marker_mesh, markersize = 0.1:0.2:3.0,
+    color = :white, backlight = 1, transparency = false)
+fig</code></pre><p></p><p><a id="example_fa1acde1"><img height="600" src="../../../assets/reference/scene/lighting/code/output/example_fa1acde1.png" width="600"/></a></p><h3 id="spotlight"><a class="header-anchor" href="#spotlight">SpotLight</a></h3><div class="docstring"><div class="doc-header" id="SpotLight"><a href="#SpotLight">SpotLight</a></div><div class="doc-content"><pre><code>SpotLight(color, position, direction, angles)</code></pre><p>Creates a spot light which illuminates objects in a light cone starting at <code>position</code> pointing in <code>direction</code>. The opening angle is defined by an inner and outer angle given in <code>angles</code>, between which the light intensity drops off.</p><p>Availability:</p><ul><li><p>GLMakie with <code>shading = MultiLightShading</code></p></li><li><p>RPRMakie</p></li></ul></div></div><pre><code class="language-julia">using GLMakie
+
+lights = [
+    SpotLight(RGBf(1, 0, 0), Point3f(-3, 0, 3), Vec3f(0,  0, -1), Vec2f(0.0, 0.3pi)),
+    SpotLight(RGBf(0, 1, 0), Point3f( 0, 3, 3), Vec3f(0, -0.5, -1), Vec2f(0.2pi, 0.25pi)),
+    SpotLight(RGBf(0, 0, 1), Point3f( 3, 0, 3), Vec3f(0,  0, -1), Vec2f(0.25pi, 0.25pi)),
+]
+
+fig = Figure(size = (600, 600))
+ax = LScene(fig[1, 1], scenekw = (lights = lights,))
+ps = [Point3f(x, y, 0) for x in -5:5 for y in -5:5]
+meshscatter!(ax, ps, color = :white, markersize = 0.75)
+scatter!(ax, map(l -&gt; l.position[], lights), color = map(l -&gt; l.color[], lights), strokewidth = 1, strokecolor = :black)
+fig</code></pre><p></p><p><a id="example_50335bb3"><img height="600" src="../../../assets/reference/scene/lighting/code/output/example_50335bb3.png" width="600"/></a></p><h3 id="rectlight"><a class="header-anchor" href="#rectlight">RectLight</a></h3><div class="docstring"><div class="doc-header" id="RectLight"><a href="#RectLight">RectLight</a></div><div class="doc-content"><pre><code>RectLight(color, r::Rect2[, direction = -normal])
+RectLight(color, center::Point3f, b1::Vec3f, b2::Vec3f[, direction = -normal])</code></pre><p>Creates a RectLight with a given color. The first constructor derives the light from a <code>Rect2</code> extending in x and y directions. The second specifies the <code>center</code> of the rect (or more accurately parallelogram) with <code>b1</code> and <code>b2</code> specifying the width and height vectors (including scale).</p><p>Note that RectLight implements <code>translate!</code>, <code>rotate!</code> and <code>scale!</code> to simplify adjusting the light.</p><p>Availability:</p><ul><li><p>GLMakie with <code>Shading = MultiLightShading</code></p></li></ul></div></div><pre><code class="language-julia">using FileIO, GeometryBasics, LinearAlgebra, GLMakie
+
+# Create mesh from RectLight parameters
+function to_mesh(l::RectLight)
+    n = -normalize(cross(l.u1[], l.u2[]))
+    p = l.position[] - 0.5 * l.u1[] - 0.5 * l.u2[]
+    positions = [p, p + l.u1[], p + l.u2[], p + l.u1[] + l.u2[]]
+    faces = GLTriangleFace[(1,2,3), (2,3,4)]
+    normals = [n,n,n,n]
+    return GeometryBasics.Mesh(meta(positions, normals = normals), faces)
+end
+
+fig = Figure(backgroundcolor = :black)
+
+# Prepare lights
+lights = Makie.AbstractLight[
+    AmbientLight(RGBf(0.1, 0.1, 0.1)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f(-1.9, -1.9, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f(-1.9,  0.1, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f( 0.1,  0.1, 1.8, 1.8)),
+    RectLight(RGBf(0.9, 1, 0.8), Rect2f( 0.1, -1.9, 1.8, 1.8)),
+]
+
+for l in lights
+    if l isa RectLight
+        angle = pi/4
+        p = l.position[]
+        Makie.rotate!(l, Vec3f(0, 1, 0), angle)
+
+        p = 3 * Vec3f(1+sin(angle), 0, cos(angle)) +
+            p[1] * normalize(l.u1[]) +
+            p[2] * normalize(l.u2[])
+        translate!(l, p)
+    end
+end
+
+# Set scene
+scene = LScene(
+    fig[1, 1], show_axis = false,
+    scenekw=(lights = lights, backgroundcolor = :black, center = false),
+)
+
+# floor
+msh = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
+translate!(msh, 0, 0, -5)
+
+# Cat
+cat_mesh = FileIO.load(Makie.assetpath("cat.obj"))
+cat_texture = FileIO.load(Makie.assetpath("diffusemap.png"))
+p2 = mesh!(scene, cat_mesh, color = cat_texture)
+Makie.rotate!(p2, Vec3f(1,0,0), pi/2)
+translate!(p2, -2, 2, -5)
+scale!(p2, Vec3f(4))
+
+# Window/light source markers
+for l in lights
+    if l isa RectLight
+        mesh!(to_mesh(l), color = :white, backlight = 1)
+    end
+end
+
+# place camera
+update_cam!(scene.scene, Vec3f(1.5, -13, 2), Vec3f(1, -2, 0), Vec3f(0, 0, 1))
+
+fig</code></pre><p></p><p><a id="example_816daaa1"><img height="450" src="../../../assets/reference/scene/lighting/code/output/example_816daaa1.png" width="600"/></a></p><h3 id="environmentlight"><a class="header-anchor" href="#environmentlight">EnvironmentLight</a></h3><div class="docstring"><div class="doc-header" id="EnvironmentLight"><a href="#EnvironmentLight">EnvironmentLight</a></div><div class="doc-content"><pre><code>EnvironmentLight(intensity, image)</code></pre><p>An environment light that uses a spherical environment map to provide lighting. See: https://en.wikipedia.org/wiki/Reflection_mapping</p><p>Availability:</p><ul><li><p>RPRMakie</p></li></ul></div></div><div class="page-foot"><div class="copyright">
+    © Makie.jl. Last modified: May 07, 2024. Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia programming language</a>.
+      <p>These docs were autogenerated using Makie: v0.20.10, GLMakie: v0.9.11, CairoMakie: v0.11.12, WGLMakie: v0.9.10</p></div></div></div></div><div class="page__footer"><footer><div class="page__footer-follow"><ul class="social-icons"><li><a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i> Twitter</a></li><li><a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-github"></i> GitHub</a></li></ul></div><div class="page__footer-copyright">© Makie.jl. Powered by <a href="https://github.com/tlienart/Franklin.jl">Franklin</a> &amp; <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.</div></footer></div></div><script src="../../../../versions.js" type="text/javascript"></script><script src="../../../siteinfo.js" type="text/javascript"></script><script src="../../../libs/warner.js" type="text/javascript"></script><script src="../../../libs/navbar.js"></script><link href="../../../pagefind/pagefind-ui.css" rel="stylesheet"/><script src="../../../pagefind/pagefind-ui.js" type="text/javascript"></script><script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            new PagefindUI({
+              element: "#makiesearch",
+              showImages: false
+            });
+            new PagefindUI({
+              element: "#makiesearch-overlay",
+              showImages: false
+            });
+        });
+    </script><script async="" defer="" src="https://api.makie.org/latest.js"></script><noscript><img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/></noscript><script src="../../../libs/highlight/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});</script></body></HTML>

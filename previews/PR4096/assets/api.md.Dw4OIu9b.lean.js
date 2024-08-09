@@ -1,0 +1,1 @@
+import{_ as e,c as i,o,a7 as s}from"./chunks/framework.CISPYPFO.js";const u=JSON.parse('{"title":"API","description":"","frontmatter":{},"headers":[],"relativePath":"api.md","filePath":"api.md","lastUpdated":null}'),a={name:"api.md"},t=s("",851),r=[t];function d(n,l,c,p,h,k){return o(),i("div",null,r)}const b=e(a,[["render",d]]);export{u as __pageData,b as default};
