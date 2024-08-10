@@ -19,6 +19,22 @@ ivec2 ind2sub(ivec2 dim, int linearindex){
     return ivec2(linearindex % dim.x, linearindex / dim.x);
 }
 
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
+out float gl_ClipDistance[8];
+
+void process_clip_planes(vec3 world_pos)
+{
+    // distance = dot(world_pos - plane.point, plane.normal)
+    // precalculated: dot(plane.point, plane.normal) -> plane.w
+    for (int i = 0; i < num_clip_planes; i++)
+        gl_ClipDistance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+
+    // TODO: can be skipped?
+    for (int i = num_clip_planes; i < 8; i++)
+        gl_ClipDistance[i] = 1.0;
+}
+
 void main(){
     //Outputs for ssao, which we don't use for 2d shaders like heatmap/image
     o_view_pos = vec3(0);
@@ -38,6 +54,8 @@ void main(){
     float x = texelFetch(position_x, index2D.x, 0).x;
     float y = texelFetch(position_y, index2D.y, 0).x;
 
-    gl_Position = projection * view * model * vec4(x, y, 0, 1);
+    vec4 world_pos = model * vec4(x, y, 0, 1);
+    process_clip_planes(world_pos.xyz);
+    gl_Position = projection * view * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 }

@@ -11,10 +11,10 @@
             f[1, 1], thetalimits = (0, pi/4), rticklabelrotation = Makie.automatic,
             rticklabelpad = 10f0
         )
-        rticklabelplot = po.overlay.plots[5].plots[1]
+        rticklabelplot = po.overlay.plots[8].plots[1]
 
         # Mostly for verfication that we got the right plot
-        @test po.overlay.plots[5][1][] == [("0.0", Point2f(0.0, 0.0)), ("2.5", Point2f(0.25, 0.0)), ("5.0", Point2f(0.5, 0.0)), ("7.5", Point2f(0.75, 0.0)), ("10.0", Point2f(1.0, 0.0))]
+        @test po.overlay.plots[8][1][] == [("0.0", Point2f(0.0, 0.0)), ("2.5", Point2f(0.25, 0.0)), ("5.0", Point2f(0.5, 0.0)), ("7.5", Point2f(0.75, 0.0)), ("10.0", Point2f(1.0, 0.0))]
 
         # automatic
         for i in 1:4

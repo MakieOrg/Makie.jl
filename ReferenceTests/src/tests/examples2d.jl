@@ -1461,6 +1461,27 @@ end
     fig
 end
 
+@reference_test "Clip planes - CairoMakie overrides" begin
+    f = Figure()
+    a = Axis(f[1, 1])
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(1, 0, 0), 0)]
+    xlims!(a, -3.5, 3.5)
+    ylims!(a, -3.5, 3.5)
+
+    poly!(a, Rect2f(Point2f(-3.0, 1.8), Vec2f(6, 1)), strokewidth = 2)
+    poly!(a, Point2f[(-3, 1.5), (3, 1.5), (3, 0.5), (-3, 0.5), (-3, 1.5)], strokewidth = 2)
+    xs = range(-3.0, 3.0, length=101)
+    b = band!(a, xs, -0.4 .* sin.(3 .* xs) .- 2.5, 0.4 .* sin.(3 .* xs) .- 1.0)
+
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn()
+    p = tricontourf!(a, x, y, z)
+    translate!(p, 0, 0, 1)
+
+    f
+end
+
 @reference_test "Spy" begin
     f = Figure()
     data = RNG.rand(10, 10)
