@@ -424,12 +424,13 @@ end
 
 @reference_test "Normals of a Cat" begin
     x = loadasset("cat.obj")
-    mesh(x, color=:black)
+    f, a, p = mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
         p => p .+ Point(normalize(n) .* 0.05f0)
     end
     linesegments!(pos, color=:blue)
-    current_figure()
+    Makie.update_state_before_display!(f)
+    f
 end
 
 @reference_test "Sphere Mesh" begin
@@ -622,6 +623,110 @@ end
 # TODO: get 3D images working in CairoMakie and test them here too
 @reference_test "Heatmap 3D" begin
     heatmap(-2..2, -1..1, RNG.rand(100, 100); axis = (; type = LScene))
+end
+
+# Clip Planes
+@reference_test "Clip planes - general" begin
+    # Test
+    # - inheritance of clip planes from scene and parent plot (wireframe)
+    # - test clipping of linesegments, mesh, surface, scatter, image, heatmap
+    f = Figure()
+    a = LScene(f[1, 1])
+    a.scene.theme[:clip_planes][] = Makie.planes(Rect3f(Point3f(-0.75), Vec3f(1.5)))
+    linesegments!(
+        a, Rect3f(Point3f(-0.75), Vec3f(1.5)), clip_planes = Plane3f[], 
+        fxaa = true, transparency = false, linewidth = 3)
+
+    p = mesh!(Sphere(Point3f(0,0,1), 1f0), transparency = false, color = :orange, backlight = 1.0)
+    wireframe!(p[1][], fxaa = true, color = :cyan)
+    r = range(-pi, pi, length = 101)
+    surface!(-pi..pi, -pi..pi, [sin(-x - y) for x in r, y in r], transparency = false)
+    scatter!(-1.4:0.1:2, 2:-0.1:-1.4, color = :red)
+    p = heatmap!(-2..2, -2..2, [sin(x+y) for x in r, y in r], colormap = [:purple, :pink])
+    translate!(p, 0, 0, -0.666)
+    p = image!(-2..2, -2..2, [cos(x+y) for x in r, y in r], colormap = [:red, :orange])
+    translate!(p, 0, 0, -0.333)
+    text!(-1:0.2:1, 1:-0.2:-1, text = ["█" for i in -1:0.2:1], color = :purple)
+    f
+end
+
+@reference_test "Clip planes - lines" begin
+    # red vs green matters here, not light vs dark
+    plane = Plane3f(normalize(Vec3f(1)), 0)
+
+    f,a,p = mesh(
+        Makie.to_mesh(plane, scale = 1.5), color = (:black, 0.5),
+        transparency = true, visible = true
+    )
+
+    cam3d!(a.scene, center = false)
+
+    attr = (color = :red, linewidth = 5, fxaa = true)
+    linesegments!(a, Rect3f(Point3f(-1), Vec3f(2)); attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in range(0, 2pi, length=101)]; attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in 1:4:80]; attr...)
+    lines!(a, [Point3f(-1), Point3f(1)]; attr...)
+
+    attr = (color = RGBf(0,1,0), overdraw = true, clip_planes = [plane], linewidth = 5, fxaa = true)
+    linesegments!(a, Rect3f(Point3f(-1), Vec3f(2)), ; attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in range(0, 2pi, length=101)]; attr...)
+    lines!(a, [Point3f(cos(x), sin(x), 0) for x in 1:4:80]; attr...)
+    lines!(a, [Point3f(-1), Point3f(1)]; attr...)
+
+    lines!(a, [Point3f(1, -1, 0), Point3f(-1, 1, 0)], color = :black, overdraw = true)
+
+    update_cam!(a.scene, Vec3f(1.5, 4, 2), Vec3f(0))
+    f
+end
+
+@reference_test "Clip planes - voxel" begin
+    f = Figure()
+    a = LScene(f[1, 1])
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-2, -1, -0.5), 0.0), Plane3f(Vec3f(-0.5, -1, -2), 0.0)]
+    r = -10:10
+    p = voxels!(a, [cos(sin(x+y)+z) for x in r, y in r, z in r])
+    f
+end
+
+@reference_test "Clip planes - volume" begin
+    f = Figure(size = (600, 400))
+    r = -10:10
+    data = [1 - (1 + cos(x^2) + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
+    clip_planes = [Plane3f(Vec3f(-1), 0.0)]
+    
+    attr = (clip_planes = clip_planes, axis = (show_axis = false,))
+
+    volume(f[1, 1], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :iso, isovalue = 1.0, isorange = 0.1)
+    volume(f[2, 1], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :absorption)
+
+    volume(f[1, 2], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :mip)
+    volume(f[2, 2], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :absorptionrgba)
+
+    volume(f[1, 3], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :additive)
+    volume(f[2, 3], -10..10, -10..10, -10..10, data; attr...,
+        algorithm = :indexedabsorption)
+    
+    f
+end
+
+@reference_test "Clip planes - only data space" begin
+    f = Figure()
+    a = LScene(f[1, 1])
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1, 0, 0), 0), Plane3f(Vec3f(-1, 0, 0), -100)]
+
+    # verify that clipping is working
+    wireframe!(a, Rect3f(Point3f(-1), Vec3f(2)), color = :green, linewidth = 5)
+
+    # verify that space != :data is excluded
+    lines!(a, -1..1, sin, space = :clip, color = :gray, linewidth = 5)
+    linesegments!(a, [100, 200, 300, 400], [100, 100, 100, 100], space = :pixel, color = :gray, linewidth = 5)
+    scatter!(a, [0.2, 0.8], [0.4, 0.6], space = :relative, color = :gray, markersize = 20)
+    f
 end
 
 @reference_test "Surface interpolate attribute" begin

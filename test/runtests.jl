@@ -1,5 +1,7 @@
 # COV_EXCL_START
 using Test
+using LinearAlgebra
+
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -39,7 +41,9 @@ using Makie: volume
     include("convert_arguments.jl")
     # from here
     include("conversions.jl")
+    include("convert_attributes.jl")
 
     include("float32convert.jl")
     include("dim-converts.jl")
+    include("Plane.jl")
 end
