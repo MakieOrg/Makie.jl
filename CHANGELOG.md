@@ -20,6 +20,7 @@
 - Fix error with automatic `highclip` or `lowclip` and scalar colors [#4048](https://github.com/MakieOrg/Makie.jl/pull/4048).
 - Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
 - Correct a method ambiguity in `insert!` which was causing `PlotList` to fail on CairoMakie. [#4038](https://github.com/MakieOrg/Makie.jl/pull/4038)
+- Delaunay triangulations created via `tricontourf`, `triplot`, and `voronoiplot` no longer use any randomisation in the point insertion order so that results are unique. [#4044](https://github.com/MakieOrg/Makie.jl/pull/4044)
 - Improve content scaling support for Wayland and fix incorrect mouse scaling on mac [#4062](https://github.com/MakieOrg/Makie.jl/pull/4062)
 - Fix: `band` ignored its `alpha` argument in CairoMakie
 - Fix `marker=FastPixel()` makersize and markerspace, improve `spy` recipe [#4043](https://github.com/MakieOrg/Makie.jl/pull/4043).
