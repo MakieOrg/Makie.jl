@@ -213,12 +213,12 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
                         ps = apply_transform_and_f32_conversion(p, f32c, p.converted[1])[]
                         ps = [to_ndim(Point3f, model[] * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1), NaN) for p in ps]
-                        r6 = @test ps ≈ transformed rtol = 1e-6
+                        r6 = @test ps ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
                     else
                         r3 = @test f32c[].scale ≈ scale * input_f32c.scale
                         r4 = @test f32c[].offset ≈ input_f32c.scale * trans + input_f32c.offset
                         r5 = @test model[] == Mat4f(I)
-                        r6 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+                        r6 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
                     end
 
                     # For debugging

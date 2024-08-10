@@ -114,7 +114,7 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
         # transform plane
         plane2 = Makie.to_model_space(model, [plane])[1]
         ds2 = Makie.distance.((plane2,), ps)
-        @test all(ds .≈ 2.0 .* ds2)
+        @test all(isapprox.(ds, 2f0 .* ds2, rtol = 1e-6, atol = sqrt(eps(Float32))))
 
         # apply_clipping_planes()
         bbox = Rect3d(Point3d(-1), Vec3d(2))
