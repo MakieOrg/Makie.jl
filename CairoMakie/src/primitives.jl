@@ -916,7 +916,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     return nothing
 end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
