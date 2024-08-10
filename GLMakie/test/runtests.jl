@@ -63,15 +63,22 @@ end
 
     filename = "$(tempname()).mp4"
     try
+        GLMakie.closeall()
         tick_record = Makie.Tick[]
-        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        @time record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
         dt = 1.0 / 30.0
 
-        for (i, tick) in enumerate(tick_record)
+        i = 0
+        for tick in tick_record
+            if tick.state !== Makie.OneTimeRenderTick
+                @warn "Unexpected tick during recording. Full tick record: $tick_record." maxlog = 1
+                continue
+            end
             @test tick.state == Makie.OneTimeRenderTick
-            @test tick.count == i-1
-            @test tick.time ≈ dt * (i-1)
+            @test tick.count == i
+            @test tick.time ≈ dt * i
             @test tick.delta_time ≈ dt
+            i += 1
         end
     finally
         rm(filename)

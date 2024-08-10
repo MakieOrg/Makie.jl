@@ -47,4 +47,5 @@ using Makie: volume
 
     include("float32convert.jl")
     include("dim-converts.jl")
+    include("Plane.jl")
 end

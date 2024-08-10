@@ -238,7 +238,7 @@ end
             lines!(po, range(0, 20pi, length=201), range(0, 10, length=201), color = :white, linewidth = 5)
 
             b = Box(f[i, j], color = (:blue, 0.2))
-            translate!(b.blockscene, 0, 0, 9001)
+            translate!(b.blockscene, 0, 0, 9999)
         end
     end
     colgap!(f.layout, 5)
