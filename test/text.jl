@@ -125,10 +125,12 @@ end
 end
 
 @testset "reduce overlaps" begin
-    ax = Axis()
+    fig = Figure();
+    ax = Axis(fig[1, 1])
     mtexts = [mtext!(ax, divrem(i, 2)...; text = "hello") for i in 0:2]
+    xlims!(ax, -1, 20)
+    ylims!(ax, -1, 20)
     reduce_overlap!(mtexts)
-    for (mtext, p) in zip(mtexts, [Point2f(0, 0), Point2f(0, 1), Point2f(1, 0)] #= FIXME when I can run this =#)
-        @test mtext.position[] == p
-    end
+    @test mtexts[2].position[][2] - mtexts[1].position[][2] > 1.01
+    @test mtexts[3].position[][1] - mtexts[1].position[][1] > 1.01
 end

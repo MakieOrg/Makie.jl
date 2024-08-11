@@ -68,4 +68,4 @@ function overlapvolume(rects::AbstractVector{HyperRectangle{N,T}}) where {N,T}
 end
 
 rect2(rect::HyperRectangle{2}) = rect
-rect2(rect::HyperRectangle{3}) = HyperRectangle{2}(rect.origin[SOneTo(2)], rect.widths[SOneTo(2)])
+rect2(rect::HyperRectangle{3}) = HyperRectangle{2}(rect.origin[GeometryBasics.SOneTo(2)], rect.widths[GeometryBasics.SOneTo(2)])

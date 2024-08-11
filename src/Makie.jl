@@ -65,6 +65,7 @@ import REPL
 import MacroTools
 
 using ForwardDiff: ForwardDiff   # for reduce_overlaps.jl (FIXME: remove this dependency)
+using CoordinateTransformations: AffineMap   # for reduce_overlaps.jl (FIXME: remove this dependency)
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
