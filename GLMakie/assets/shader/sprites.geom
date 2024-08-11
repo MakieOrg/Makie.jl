@@ -104,8 +104,6 @@ void emit_vertex(vec4 vertex, vec2 uv)
     f_glow_color      = g_glow_color[0];
     f_id              = g_id[0];
     f_sprite_scale    = g_offset_width[0].zw;
-    for (int i = 0; i < 8; i++)
-        gl_ClipDistance[i] = g_clip_distance[0][i];
     EmitVertex();
 }
 
