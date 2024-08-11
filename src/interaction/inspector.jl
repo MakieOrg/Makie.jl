@@ -815,18 +815,12 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    bbox = plot.plots[1][1][][idx]
-    tt_frac = if plot.direction[] === :y
-        Point2f(0.5, 1.0)
-    else
-        Point2f(1.0, 0.5)
-    end
-    tt_pos = fractionpoint(bbox, tt_frac)
-    proj_pos = shift_project(scene, apply_transform_and_model(plot, to_ndim(Point3f, tt_pos, 0)))
+    proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
         model = plot.model[]
+        bbox = plot.plots[1][1][][idx]
 
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
