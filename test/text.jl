@@ -123,3 +123,12 @@ end
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
     # @test_throws err text(1, 2, text = "hi", textsize = 30)
 end
+
+@testset "reduce overlaps" begin
+    ax = Axis()
+    mtexts = [mtext!(ax, divrem(i, 2)...; text = "hello") for i in 0:2]
+    reduce_overlap!(mtexts)
+    for (mtext, p) in zip(mtexts, [Point2f(0, 0), Point2f(0, 1), Point2f(1, 0)] #= FIXME when I can run this =#)
+        @test mtext.position[] == p
+    end
+end
