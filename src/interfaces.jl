@@ -346,6 +346,8 @@ plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
 
+clip_planes_obs(parent::AbstractPlot) = attributes(parent).clip_planes
+clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
 
 # all the plotting functions that get a plot type
 const PlotFunc = Type{<:AbstractPlot}
@@ -379,7 +381,13 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.model = transformationmatrix(plot)
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
+
+    if to_value(get(attributes(plot), :clip_planes, automatic)) === automatic
+        attributes(plot)[:clip_planes] = map(identity, plot, clip_planes_obs(parent))
+    end
+
     plot!(plot)
+    
     conversions = get_conversions(plot)
     if !isnothing(conversions)
         connect_conversions!(scene.conversions, conversions)
