@@ -29,6 +29,7 @@
 - Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
 - Update JS OrbitControls to match Julia OrbitControls [#4084](https://github.com/MakieOrg/Makie.jl/pull/4084).
 - Fix `select_point()` [#4101](https://github.com/MakieOrg/Makie.jl/pull/4101).
+- Fix `absrect()` and `select_rectangle()` [#4110](https://github.com/MakieOrg/Makie.jl/issues/4110).
 
 ## [0.21.5] - 2024-07-07
 
