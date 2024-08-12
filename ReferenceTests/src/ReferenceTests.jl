@@ -11,7 +11,6 @@ using FileIO
 using MacroTools
 using Makie
 using Makie: Record, Stepper, Axis
-using Makie.FFMPEG
 using Printf
 using Tar
 using Downloads
@@ -27,6 +26,8 @@ using Colors
 using LaTeXStrings
 using GeometryBasics
 using DelimitedFiles
+using DelaunayTriangulation
+using SparseArrays
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))

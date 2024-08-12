@@ -72,6 +72,7 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
 {{stroke_color_type}} stroke_color;
 {{glow_color_type}} glow_color;
 
+uniform bool scale_primitive;
 uniform mat4 preprojection;
 uniform mat4 model;
 uniform uint objectid;
@@ -86,17 +87,38 @@ out vec4  g_rotation;
 out vec4  g_color;
 out vec4  g_stroke_color;
 out vec4  g_glow_color;
+out float g_clip_distance[8];
 
 vec4 to_vec4(vec3 x){return vec4(x, 1.0);}
 vec4 to_vec4(vec4 x){return x;}
+
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
+
+void process_clip_planes_alt(vec3 world_pos)
+{
+    // distance = dot(world_pos - plane.point, plane.normal)
+    // precalculated: dot(plane.point, plane.normal) -> plane.w
+    for (int i = 0; i < num_clip_planes; i++)
+        g_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+
+    // TODO: can be skipped?
+    for (int i = num_clip_planes; i < 8; i++)
+        g_clip_distance[i] = 1.0;
+}
 
 void main(){
     int index         = gl_VertexID;
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    vec4 p = preprojection * model * vec4(pos, 1);
-    g_position        = p.xyz / p.w + mat3(model) * marker_offset;
+    vec4 world_pos = model * vec4(pos, 1);
+    process_clip_planes_alt(world_pos.xyz);
+    vec4 p = preprojection * world_pos;
+    if (scale_primitive)
+        g_position = p.xyz / p.w + mat3(model) * marker_offset;
+    else
+        g_position = p.xyz / p.w + marker_offset;
     g_offset_width.xy = quad_offset.xy;
     g_offset_width.zw = scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);

@@ -69,11 +69,10 @@ include("glshaders/image_like.jl")
 include("glshaders/mesh.jl")
 include("glshaders/particles.jl")
 include("glshaders/surface.jl")
+include("glshaders/voxel.jl")
 
 include("picking.jl")
 include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")
 include("display.jl")
-
-Base.@deprecate_binding GLVisualize GLMakie true "The module `GLVisualize` has been removed and integrated into GLMakie, so simply replace all usage of `GLVisualize` with `GLMakie`."

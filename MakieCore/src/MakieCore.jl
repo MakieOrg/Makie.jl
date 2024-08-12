@@ -8,7 +8,9 @@ end
 using Observables
 using Observables: to_value
 using Base: RefValue
-
+using GeometryBasics
+using ColorTypes
+using IntervalSets: ClosedInterval, Interval
 
 include("types.jl")
 include("attributes.jl")

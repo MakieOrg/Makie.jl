@@ -1,10 +1,16 @@
 {{GLSL_VERSION}}
 
+// Sets which shading procedures to use
+// Options:
+// NO_SHADING           - skip shading calculation, handled outside
+// FAST_SHADING         - single point light (forward rendering)
+// MULTI_LIGHT_SHADING  - simple shading with multiple lights (forward rendering)
+{{shading}}
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
 in vec3 frag_vert;
-in vec3 o_light_dir;
 
 {{volumedata_type}} volumedata;
 
@@ -15,17 +21,14 @@ in vec3 o_light_dir;
 uniform float absorption = 1.0;
 uniform vec3 eyeposition;
 
-uniform vec3 ambient;
-uniform vec3 diffuse;
-uniform vec3 specular;
-uniform float shininess;
-
 uniform mat4 modelinv;
 uniform int algorithm;
 uniform float isovalue;
 uniform float isorange;
 
 uniform mat4 model, projectionview;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
 
 const float max_distance = 1.3;
 
@@ -72,9 +75,17 @@ vec4 color_lookup(Nothing colormap, int index)
     return vec4(0);
 }
 
-vec3 gennormal(vec3 uvw, float d)
+vec3 gennormal(vec3 uvw, float d, vec3 o)
 {
+    // uvw samples positions (0..1 values)
+    // d is the sampling step. Could be any small value here
+    // o is half the uvw distance between two voxels. A distance smaller than
+    // that will result in equal positions when sampling on the edge of the
+    // volume, generating broken normals.
     vec3 a, b;
+
+    float eps = 0.001;
+
     // handle normals at edges!
     if(uvw.x + d >= 1.0){
         return vec3(1, 0, 0);
@@ -96,32 +107,33 @@ vec3 gennormal(vec3 uvw, float d)
         return vec3(0, 0, -1);
     }
 
-    a.x = texture(volumedata, uvw - vec3(d,0.0,0.0)).r;
-    b.x = texture(volumedata, uvw + vec3(d,0.0,0.0)).r;
+    a.x = texture(volumedata, uvw - vec3(o.x, 0.0, 0.0)).r;
+    b.x = texture(volumedata, uvw + vec3(o.x, 0.0, 0.0)).r;
 
-    a.y = texture(volumedata, uvw - vec3(0.0,d,0.0)).r;
-    b.y = texture(volumedata, uvw + vec3(0.0,d,0.0)).r;
+    a.y = texture(volumedata, uvw - vec3(0.0, o.y, 0.0)).r;
+    b.y = texture(volumedata, uvw + vec3(0.0, o.y, 0.0)).r;
 
-    a.z = texture(volumedata, uvw - vec3(0.0,0.0,d)).r;
-    b.z = texture(volumedata, uvw + vec3(0.0,0.0,d)).r;
-    return normalize(a-b);
+    a.z = texture(volumedata, uvw - vec3(0.0, 0.0, o.z)).r;
+    b.z = texture(volumedata, uvw + vec3(0.0, 0.0, o.z)).r;
+
+    vec3 diff = a - b;
+    float n = length(diff);
+
+    if (n < 0.000000000001) // 1e-12
+        return diff;
+
+    return diff / n;
 }
 
-// Includes front and back-facing normals (N, -N)
-vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0) + max(dot(L, -N), 0.0);
-    // specular coefficient
-    vec3 H = normalize(L + V);
-    float spec_coeff = pow(max(dot(H, N), 0.0) + max(dot(H, -N), 0.0), shininess);
-    if (diff_coeff <= 0.0 || isnan(spec_coeff))
-        spec_coeff = 0.0;
-    // final lighting model
-    return vec3(
-        ambient * color +
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
-    );
+#ifndef NO_SHADING
+vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color);
+#endif
+
+#ifdef NO_SHADING
+vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
+    return normal;
 }
+#endif
 
 // Simple random generator found: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 float rand(){
@@ -208,7 +220,8 @@ vec4 contours(vec3 front, vec3 dir)
     float T = 1.0;
     vec3 Lo = vec3(0.0);
     int i = 0;
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
+    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
     {{depth_init}}
     // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i) {
@@ -220,9 +233,9 @@ vec4 contours(vec3 front, vec3 dir)
             // may write
             // vec4 frag_coord = projectionview * model * vec4(pos, 1);
             // depth = min(depth, frag_coord.z / frag_coord.w);
-            vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
-            vec3 opaque = blinnphong(N, camdir, L, density.rgb);
+            vec3 N = gennormal(pos, step_size, edge_gap);
+            vec4 world_pos = model * vec4(pos, 1);
+            vec3 opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;
             if (T <= 0.01)
@@ -242,7 +255,8 @@ vec4 isosurface(vec3 front, vec3 dir)
     vec4 c = vec4(0.0);
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
+    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
     {{depth_init}}
     // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i){
@@ -252,10 +266,10 @@ vec4 isosurface(vec3 front, vec3 dir)
             // may write:
             // vec4 frag_coord = projectionview * model * vec4(pos, 1);
             // depth = min(depth, frag_coord.z / frag_coord.w);
-            vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
+            vec3 N = gennormal(pos, step_size, edge_gap);
+            vec4 world_pos = model * vec4(pos, 1);
             c = vec4(
-                blinnphong(N, camdir, L, diffuse_color.rgb),
+                illuminate(world_pos.xyz / world_pos.w, camdir, N, diffuse_color.rgb),
                 diffuse_color.a
             );
             break;
@@ -286,6 +300,33 @@ uniform uint objectid;
 void write2framebuffer(vec4 color, uvec2 id);
 
 const float typemax = 100000000000000000000000000000000000000.0;
+
+
+bool process_clip_planes(inout vec3 p1, inout vec3 p2)
+{
+    float d1, d2;
+    for (int i = 0; i < _num_clip_planes; i++) {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            return true;
+        }
+        
+        // one outside - shorten segment
+        else if (d1 < 0.0)
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+        else if (d2 < 0.0)
+            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+    }
+
+    return false;
+}
+
 
 bool no_solution(float x){
     return x <= 0.0001 || isinf(x) || isnan(x);
@@ -330,6 +371,11 @@ void main()
     float solution = min_bigger_0(solution_1, solution_0);
 
     vec3 start = back_position + solution * dir;
+
+    // if completely clipped discard this ray tracing attempt
+    if (process_clip_planes(start, back_position))
+        discard;
+
     vec3 step_in_dir = (back_position - start) / num_samples;
 
     float steps = 0.1;

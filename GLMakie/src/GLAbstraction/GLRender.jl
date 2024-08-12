@@ -4,12 +4,26 @@ function render(list::Tuple)
     end
     return
 end
+
+function setup_clip_planes(robj)
+    N = to_value(get(robj.uniforms, :num_clip_planes, 0))
+    for i in 0:min(7, N-1)
+        glEnable(GL_CLIP_DISTANCE0 + UInt32(i))
+    end
+    # TODO: This crashes?
+    # for i in N:7
+    #     glDisable(GL_CLIP_DISTANCE0 + UInt32(i))
+    # end
+end
+
+
 """
 When rendering a specialised list of Renderables, we can do some optimizations
 """
 function render(list::Vector{RenderObject{Pre}}) where Pre
     isempty(list) && return nothing
     first(list).prerenderfunction()
+    setup_clip_planes(first(list))
     vertexarray = first(list).vertexarray
     program = vertexarray.program
     glUseProgram(program.id)
@@ -55,10 +69,9 @@ So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
-    renderobject.requires_update = false
-    
     if renderobject.visible
         renderobject.prerenderfunction()
+        setup_clip_planes(renderobject)
         program = vertexarray.program
         glUseProgram(program.id)
         for (key, value) in program.uniformloc

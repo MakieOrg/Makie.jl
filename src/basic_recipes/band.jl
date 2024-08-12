@@ -1,23 +1,23 @@
 """
     band(x, ylower, yupper; kwargs...)
     band(lower, upper; kwargs...)
+    band(x, lowerupper; kwargs...)
 
 Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
 between the points in `lower` and `upper`.
-
-## Attributes
-$(ATTRIBUTES)
+Both bounds can be passed together as `lowerupper`, a vector of intervals.
 """
-@recipe(Band, lowerpoints, upperpoints) do scene
-    attr = Attributes(;
-        default_theme(scene, Mesh)...,
-        colorrange = automatic,
-    )
-    attr[:shading][] = false
-    attr
+@recipe Band (lowerpoints, upperpoints) begin
+    MakieCore.documented_attributes(Mesh)...
+    shading = NoShading
 end
 
-convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
+function convert_arguments(::Type{<: Band}, x, ylower, yupper)
+    return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
+end
+
+convert_arguments(P::Type{<: Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
+    convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
 
 function band_connect(n)
     ns = 1:n-1
