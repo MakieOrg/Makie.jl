@@ -597,8 +597,13 @@ xy_convert(x::AbstractArray, n) = copy(x)
 xy_convert(x, n) = [LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
+    t = Makie.transform_func_obs(plot)
+
+    if plot.x[] isa Makie.EndPoints && plot.y[] isa Makie.EndPoints && Makie.is_identity_transform(t[])
+        # Fast path for regular heatmaps
+        return draw_image(screen, scene, plot)
+    end
     return cached_robj!(screen, scene, plot) do gl_attributes
-        t = Makie.transform_func_obs(plot)
         mat = plot[3]
         space = plot.space # needs to happen before connect_camera! call
         xypos = lift(plot, f32_conversion_obs(scene), t, plot[1], plot[2], space) do f32c, t, x, y, space
@@ -636,12 +641,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Image)
+function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
     return cached_robj!(screen, scene, plot) do gl_attributes
         position = lift(plot, plot[1], plot[2]) do x, y
             xmin, xmax = extrema(x)
             ymin, ymax = extrema(y)
-            rect =  Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
+            rect = Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2d, rect)
         end
         gl_attributes[:vertices] = apply_transform_and_f32_conversion(scene, plot, position)
@@ -658,6 +663,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         end
         return draw_mesh(screen, gl_attributes)
     end
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Image)
+    return draw_image(screen, scene, plot)
 end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=:data)

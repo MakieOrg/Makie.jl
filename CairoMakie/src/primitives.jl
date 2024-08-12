@@ -843,12 +843,12 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     uv_transform = if primitive isa Image
         val = to_value(get(primitive, :uv_transform, I))
         T = Makie.convert_attribute(val, Makie.key"uv_transform"(), Makie.key"image"())
-        # Cairo uses pixel units so we need to transform those to a 0..1 range, 
+        # Cairo uses pixel units so we need to transform those to a 0..1 range,
         # then apply uv_transform, then scale them back to pixel units.
         # Cairo also doesn't have the yflip we have in OpenGL, so we need to
         # invert y.
         T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
-        T3 = Makie.uv_transform(Vec2f(size(image))) * T3 * 
+        T3 = Makie.uv_transform(Vec2f(size(image))) * T3 *
             Makie.uv_transform(Vec2f(0, 1), 1f0 ./ Vec2f(size(image, 1), -size(image, 2)))
         T3[Vec(1, 2), Vec(1,2,3)]
     else
