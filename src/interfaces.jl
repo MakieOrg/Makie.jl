@@ -146,6 +146,11 @@ function expand_dimensions(::GridBased, data::AbstractMatrix{<:Union{<:Real, <:C
     return ((0.5f0, n + 0.5f0), (0.5f0, m + 0.5f0), data)
 end
 
+function expand_dimensions(::VertexGrid, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
+    n, m = Float32.(size(data))
+    return ((1f0, n), (1f0, m), data)
+end
+
 function expand_dimensions(::VolumeLike, data::RealArray{3})
     n, m, k = Float32.(size(data))
     return ((0.0f0, n), (0.0f0, m), (0.0f0, k), data)
@@ -238,7 +243,6 @@ function conversion_pipeline(
         kw_convert = isempty(kw) ? "" : "; kw..."
         conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
         types = MakieCore.types_for_plot_arguments(P, PTrait)
-        @show P PTrait types
         throw(ArgumentError("""
             Conversion failed for $(P)$(conv_trait) with args: $(typeof(args)) $(kw_str).
             $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
@@ -387,7 +391,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     end
 
     plot!(plot)
-    
+
     conversions = get_conversions(plot)
     if !isnothing(conversions)
         connect_conversions!(scene.conversions, conversions)

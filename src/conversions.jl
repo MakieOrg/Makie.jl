@@ -375,8 +375,12 @@ function to_endpoints(x, dim)
     return to_endpoints(x)
 end
 
-
 function convert_arguments(::GridBased, x::EndPointsTypes, y::EndPointsTypes,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (to_endpoints(x), to_endpoints(y), el32convert(z))
+end
+
+function convert_arguments(::CellGrid, x::EndPointsTypes, y::EndPointsTypes,
                            z::AbstractMatrix{<:Union{Real,Colorant}})
     return (to_endpoints(x), to_endpoints(y), el32convert(z))
 end
