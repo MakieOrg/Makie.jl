@@ -200,7 +200,8 @@ function absrect(rect)
     xy = ntuple(Val(2)) do i
         wh[i] < 0 ? xy[i] + wh[i] : xy[i]
     end
-    return Rect2(Vec2(xy), Vec2(abs.(wh)))
+
+    return Rect2(Vec2(xy), abs.(wh))
 end
 
 
