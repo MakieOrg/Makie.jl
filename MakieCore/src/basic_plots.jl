@@ -252,8 +252,8 @@ If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(
 
 Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
 """
-@recipe Heatmap (x::Union{EndPoints,RealVector},
-                 y::Union{EndPoints,RealVector},
+@recipe Heatmap (x::Union{EndPoints,RealVector, RealMatrix},
+                 y::Union{EndPoints,RealVector, RealMatrix},
                  values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated"
     interpolate = false

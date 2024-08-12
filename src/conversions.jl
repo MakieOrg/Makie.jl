@@ -356,6 +356,10 @@ function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::Abstract
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
+function convert_arguments(::VertexGrid, x::EndPointsTypes, y::EndPointsTypes,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
+end
 
 function to_endpoints(x::Tuple{<:Real,<:Real})
     T = float_type(x...)
@@ -370,6 +374,7 @@ function to_endpoints(x, dim)
     x isa AbstractVector && print_range_warning(dim, x)
     return to_endpoints(x)
 end
+
 
 function convert_arguments(::GridBased, x::EndPointsTypes, y::EndPointsTypes,
                            z::AbstractMatrix{<:Union{Real,Colorant}})
