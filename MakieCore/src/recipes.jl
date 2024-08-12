@@ -719,7 +719,7 @@ end
 
 function attribute_name_allowlist()
     return (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
-            :dim_conversions, :cycle)
+            :dim_conversions, :cycle, :clip_planes)
 end
 
 function validate_attribute_keys(plot::P) where {P<:Plot}

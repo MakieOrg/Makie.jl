@@ -455,6 +455,15 @@ end
     f
 end
 
+@testset "Legend with plotlists" begin
+    Axis(Figure()[1, 1])
+    plotlist!([Makie.SpecApi.Scatter(1:10)], label="MyPlot 1")
+    @test_nowarn axislegend()
+
+    plotlist([Makie.SpecApi.Scatter(1:10)], label="MyPlot 2")
+    @test_nowarn axislegend()
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp

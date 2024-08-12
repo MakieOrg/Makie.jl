@@ -815,8 +815,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    pos = plot[1][][idx]
-    proj_pos = shift_project(scene, apply_transform_and_model(plot, to_ndim(Point3f, pos, 0)))
+    proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
@@ -830,7 +829,6 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
-            translate!(p, Vec3f(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
         elseif !isempty(inspector.temp_plots)
             p = inspector.temp_plots[1]
@@ -841,6 +839,13 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         a.indicator_visible[] = true
     end
 
+    # We pass the input space position to user defined
+    # functions to keep the user from dealing with
+    # log space scaling in their function.
+    pos = plot[1][][idx] # input space position/data
+    if plot.direction[] === :x
+        pos = reverse(pos)
+    end
     if to_value(get(plot, :inspector_label, automatic)) == automatic
         tt.text[] = position2string(pos)
     else
