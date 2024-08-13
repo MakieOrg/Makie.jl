@@ -645,7 +645,7 @@ end
 # el32convert doesn't copy for array of Float32
 # But we assume that xy_convert copies when we use it
 xy_convert(x::AbstractArray, n) = copy(x)
-xy_convert(x, n) = [LinRange(extrema(x)..., n + 1);]
+xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     t = Makie.transform_func_obs(plot)
@@ -663,7 +663,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
             # - model matrices with rotation & Float32 precisionissues
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
-            
+
             x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
             y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
 
@@ -888,7 +888,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         gl_attributes[:num_clip_planes] = Observable(0)
         pop!(gl_attributes, :clip_planes)
         gl_attributes[:clip_planes] = map(plot, gl_attributes[:modelinv], plot.clip_planes, plot.space) do modelinv, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8] 
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
@@ -899,7 +899,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             for i in 1:min(length(planes), 8)
                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
                 normal = transpose(gl_attributes[:model][]) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
                     Vec3f(normal[1], normal[2], normal[3]))
                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
             end
@@ -961,7 +961,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         gl_attributes[:num_clip_planes] = Observable(0)
         pop!(gl_attributes, :clip_planes)
         gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes, plot.space) do model, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8] 
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
@@ -973,7 +973,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             for i in 1:min(length(planes), 8)
                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
                 normal = transpose(model) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
                     Vec3f(normal[1], normal[2], normal[3]))
                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
             end

@@ -149,5 +149,17 @@ const RealArray{T,N} = AbstractArray{T,N} where {T<:Real}
 const RealVector{T} = RealArray{1}
 const RealMatrix{T} = RealArray{2}
 const FloatType = Union{Float32,Float64}
-const EndPointsTypes = Union{ClosedInterval, Tuple{Real, Real}}
-const EndPoints = NTuple{2,<:FloatType}
+
+struct EndPoints{T} <: AbstractVector{T}
+    data::NTuple{2,T}
+end
+EndPoints(a::Number, b::Number) = EndPoints((a, b))
+EndPoints{T}(a::Number, b::Number) where {T} = EndPoints{T}((T(a), T(b)))
+Base.size(::EndPoints) = (2,)
+Base.getindex(e::EndPoints, i::Int) = e.data[i]
+Base.broadcasted(f, e::EndPoints) = EndPoints(f.(e.data))
+Base.broadcasted(f, a::EndPoints, b) = EndPoints(f.(a.data, b))
+Base.broadcasted(f, a, b::EndPoints) = EndPoints(f.(a, b.data))
+Base.:(==)(a::EndPoints, b::NTuple{2}) = a.data == b
+# Something we can convert to an EndPoints type
+const EndPointsLike = Union{ClosedInterval,Tuple{Real,Real}}

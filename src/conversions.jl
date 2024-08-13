@@ -356,14 +356,14 @@ function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::Abstract
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
-function convert_arguments(::VertexGrid, x::EndPointsTypes, y::EndPointsTypes,
+function convert_arguments(::VertexGrid, x::EndPointsLike, y::EndPointsLike,
                            z::AbstractMatrix{<:Union{Real,Colorant}})
     return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
 end
 
 function to_endpoints(x::Tuple{<:Real,<:Real})
     T = float_type(x...)
-    return T.(x)
+    return EndPoints(T.(x))
 end
 to_endpoints(x::ClosedInterval) = to_endpoints(endpoints(x))
 function to_endpoints(x::Union{Interval,AbstractVector,ClosedInterval})
@@ -371,18 +371,29 @@ function to_endpoints(x::Union{Interval,AbstractVector,ClosedInterval})
 end
 function to_endpoints(x, dim)
     # having minimum and maximum here actually invites bugs
-    x isa AbstractVector && print_range_warning(dim, x)
+    x isa AbstractVector && !(x isa EndPoints) && print_range_warning(dim, x)
     return to_endpoints(x)
 end
 
-function convert_arguments(::GridBased, x::EndPointsTypes, y::EndPointsTypes,
+function convert_arguments(::GridBased, x::EndPointsLike, y::EndPointsLike,
                            z::AbstractMatrix{<:Union{Real,Colorant}})
     return (to_endpoints(x), to_endpoints(y), el32convert(z))
 end
 
-function convert_arguments(::CellGrid, x::EndPointsTypes, y::EndPointsTypes,
+function convert_arguments(::CellGrid, x::EndPoints, y::EndPoints,
                            z::AbstractMatrix{<:Union{Real,Colorant}})
-    return (to_endpoints(x), to_endpoints(y), el32convert(z))
+    return (x, y, el32convert(z))
+end
+
+function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    xstep = step(range(extrema(x)...; length = size(z, 1))) / 2.0
+    ystep = step(range(extrema(y)...; length = size(z, 2))) / 2.0
+    xe = to_endpoints(x)
+    ye = to_endpoints(y)
+    Tx = typeof(xe[1])
+    Ty = typeof(ye[1])
+    return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
 function print_range_warning(side::String, value)

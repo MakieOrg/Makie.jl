@@ -336,16 +336,17 @@ end
     v1 = collect(1:10)
     v2 = collect(1:6)
 
-    i1 = 1..10
-    i2 = 1..6
+    i1 = 1 .. 10
+    i2 = 1 .. 6
 
     o3 = Float32.(m3)
 
-    # Conversions
+    xx = convert_arguments(Image, m3)
+    xx == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
     @testset "ImageLike conversion" begin
-        @test convert_arguments(Image, m3)         == (0f0..10f0, 0f0..6f0, o3)
-        @test convert_arguments(Image, v1, r2, m3) == (1f0..10f0, 1f0..6f0, o3)
-        @test convert_arguments(Image, i1, v2, m3) == (1f0..10f0, 1f0..6f0, o3)
+        @test convert_arguments(Image, m3) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, v1, r2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, i1, v2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
         @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end
@@ -355,26 +356,31 @@ end
         vo2 = Float32.(v2)
         mo1 = Float32.(m1)
         mo2 = Float32.(m2)
-        @test convert_arguments(Surface, m3)          == (vo1, vo2, o3)
-        @test convert_arguments(Contour, i1, v2, m3)  == (vo1, vo2, o3)
+        @test convert_arguments(Surface, m3) == (vo1, vo2, o3)
+        @test convert_arguments(Contour, i1, v2, m3) == (vo1, vo2, o3)
         @test convert_arguments(Contourf, v1, r2, m3) == (vo1, vo2, o3)
-        @test convert_arguments(Surface, m1, m2, m3)  == (mo1, mo2, o3)
-        @test convert_arguments(Surface, m1, m2)      == (mo1, mo2, zeros(Float32, size(o3)))
+        @test convert_arguments(Surface, m1, m2, m3) == (mo1, mo2, o3)
+        @test convert_arguments(Surface, m1, m2) == (mo1, mo2, zeros(Float32, size(o3)))
     end
 
     @testset "CellGrid conversion" begin
-        o1 = Float32.(0.5:1:10.5)
-        o2 = Float32.(0.5:1:6.5)
-        @test convert_arguments(Heatmap, m3)         == (o1, o2, o3)
-        @test convert_arguments(Heatmap, r1, i2, m3) == (o1, o2, o3)
-        @test convert_arguments(Heatmap, v1, r2, m3) == (o1, o2, o3)
-        @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0f0:10f0), o2, o3)
+        o1 = (0.5, 10.5)
+        o2 = (0.5, 6.5)
+        or1 = (0.5:1:10.5)
+        or2 = (0.5:1:6.5)
+        convert_arguments(Heatmap, m3)
+        Makie.expand_dimensions(CellGrid(), m3)
+        @test convert_arguments(Heatmap, m3) == (o1, o2, o3)
+        @test convert_arguments(Heatmap, r1, i2, m3) == (or1, or2, o3)
+        @test convert_arguments(Heatmap, v1, r2, m3) == (or1, or2, o3)
+        @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0.0f0:10.0f0), or2, o3)
         # TODO, this throws ERROR: MethodError: no method matching adjust_axes(::CellGrid, ::Matrix{Int64}, ::Matrix{Int64}, ::Matrix{Float64})
         # Is this what we want to test for?
         @test_throws MethodError convert_arguments(Heatmap, m1, m2, m3) === (m1, m2, m3)
         @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
         # https://github.com/MakieOrg/Makie.jl/issues/3515
-        @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) == (0.5:8.5, 0.5:8.5, zeros(8, 8))
+        @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) ==
+            (0.5:8.5, 0.5:8.5, zeros(8, 8))
     end
 end
 
