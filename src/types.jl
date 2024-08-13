@@ -16,6 +16,43 @@ end
 
 include("interaction/iodevices.jl")
 
+"""
+    enum TickState
+
+Identifies the source of a tick:
+- `BackendTick`: A tick used for backend purposes which is not present in `event.tick`.
+- `UnknownTickState`: A tick from an uncategorized source (e.g. intialization of Events).
+- `PausedRenderTick`: A tick from a paused renderloop.
+- `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
+- `RegularRenderTick`: A tick from a running renderloop where a new image was produced. 
+- `OneTimeRenderTick`: A tick from a call to `colorbuffer`, i.e. an image request from `save` or `record`.
+"""
+@enum TickState begin
+    BackendTick
+    UnknownTickState # GLMakie only allows states > UnknownTickState
+    PausedRenderTick
+    SkippedRenderTick
+    RegularRenderTick
+    OneTimeRenderTick
+end
+
+"""
+    struct TickState
+
+Contains information for tick events:
+- `state::TickState`: identifies what caused the tick (see Makie.TickState)
+- `count::Int64`: number of ticks produced since the start of rendering (display or record)
+- `time::Float64`: time that has passed since the first tick in seconds
+- `delta_time`: time that has passed since the last tick in seconds
+"""
+struct Tick
+    state::TickState    # flag for the type of tick event
+    count::Int64        # number of ticks since start
+    time::Float64       # time since scene initialization
+    delta_time::Float64 # time since last tick
+end
+Tick() = Tick(UnknownTickState, 0, 0.0, 0.0)
+
 
 """
 This struct provides accessible `Observable`s to monitor the events
@@ -103,6 +140,17 @@ struct Events
     Whether the mouse is inside the window or not.
     """
     entered_window::Observable{Bool}
+
+    """
+    A `tick` is triggered whenever a new frame is requested, i.e. during normal
+    rendering (even if the renderloop is paused) or when an image is produced
+    for `save` or `record`. A Tick contains:
+    - `state` which identifies what caused the tick (see Makie.TickState)
+    - `count` which increments with every tick
+    - `time` which is the total time since the screen has been created 
+    - `delta_time` which is the time since the last frame
+    """
+    tick::Observable{Tick}
 end
 
 function Base.show(io::IO, events::Events)
@@ -132,6 +180,7 @@ function Events()
         Observable(String[]),
         Observable(false),
         Observable(false),
+        Observable(Tick())
     )
 
     connect_states!(events)
@@ -244,11 +293,14 @@ struct Camera
     Direction in which the camera looks.
     """
     view_direction::Observable{Vec3f}
-
     """
     Eye position of the camera, used for e.g. ray tracing.
     """
     eyeposition::Observable{Vec3f}
+    """
+    Up direction of the current camera (e.g. Vec3f(0, 1, 0) for 2d)
+    """
+    upvector::Observable{Vec3f}
 
     """
     To make camera interactive, steering observables are connected to the different matrices.
