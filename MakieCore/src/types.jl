@@ -150,6 +150,11 @@ const RealVector{T} = RealArray{1}
 const RealMatrix{T} = RealArray{2}
 const FloatType = Union{Float32,Float64}
 
+# This could be simply a tuple or ClosedInterval
+# But ClosedInterval doesn't support all operations/constructions we need
+# And a plain tuple does not work, since for heatmap we need a final type that spans the corners.
+# E.g. (0, 3) becomes (-0.5, 3.5) for a 3x3 heatmap, so if we have a tuple as input we need to do this calculation
+# And only if it's an EndPoint type, we can be sure its already in the correct format.
 struct EndPoints{T} <: AbstractVector{T}
     data::NTuple{2,T}
 end

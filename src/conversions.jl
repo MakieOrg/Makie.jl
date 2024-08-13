@@ -393,6 +393,11 @@ function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
     ye = to_endpoints(y)
     Tx = typeof(xe[1])
     Ty = typeof(ye[1])
+    # heatmaps are centered on the edges, so we need to adjust the range
+    # This is done in conversions, since it's also how we calculate the boundingbox (heatmapplot.x, heatmap.y)
+    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), whcih only substracts the step
+    # Will end in a stackoverflow, since convert_arguments gets called every time the `args_in != args_out`.
+    # If we return a different type with no conversion overload, it stops that recursion
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
