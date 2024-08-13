@@ -196,7 +196,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     uniforms[:num_clip_planes] = map(plot, plot.clip_planes, plot.space) do planes, space
         return Makie.is_data_space(space) ? length(planes) : 0
     end
-    
+
     uniforms[:clip_planes] = map(plot, scene.camera.projectionview, plot.clip_planes, plot.space) do pv, planes, space
         Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
@@ -226,7 +226,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :uniform_updater => uniform_updater(plot, uniforms),
         :attributes => attributes,
         :transparency => plot.transparency,
-        :overdraw => plot.overdraw
+        :overdraw => plot.overdraw,
+        :zvalue => Makie.zvalue2d(plot)
     )
     return attr
 end
