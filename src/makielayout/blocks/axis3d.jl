@@ -18,6 +18,11 @@ function initialize_block!(ax::Axis3)
     ax.scene = scene
     cam = OrthographicCamera()
     cameracontrols!(scene, cam)
+    scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
+        mini = Point3f(model * to_ndim(Point4f, minimum(lims), 1))
+        maxi = Point3f(model * to_ndim(Point4f, maximum(lims), 1))
+        return planes(Rect3f(mini, maxi .- mini))
+    end
 
     mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
     mi2 = Observable(0 <= mod1(ax.azimuth[], 2pi) < pi)
@@ -111,6 +116,7 @@ function initialize_block!(ax::Axis3)
         font = ax.titlefont,
         color = ax.titlecolor,
         markerspace = :data,
+        clip_planes = Plane3f[],
         inspectable = false)
 
     ax.mouseeventhandle = addmouseevents!(scene)
@@ -138,10 +144,20 @@ function initialize_block!(ax::Axis3)
         reset_limits!(ax)
     end
 
-    on(scene, ax.targetlimits) do lims
+    zoom = Observable(1f0)
+    on(scene, events(scene).scroll, priority = 1) do (dx, dy)
+        zoom[] = zoom[] * 1.03f0^Float32(dy)
+    end
+
+    onany(scene, ax.targetlimits, zoom) do lims, zoom_mult
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
-        ax.finallimits[] = lims
+        ws = widths(lims)
+        mini = minimum(lims)
+        center = mini .+ 0.5 * ws
+        ws = zoom_mult * ws
+        mini = center .- 0.5 * ws
+        ax.finallimits[] = Rect3f(mini, ws)
     end
 
     function process_event(event)
@@ -382,7 +398,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
     gridline1 = linesegments!(scene, endpoints, color = attr(:gridcolor),
-        linewidth = attr(:gridwidth),
+        linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
 
@@ -399,7 +415,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
     gridline2 = linesegments!(scene, endpoints2, color = attr(:gridcolor),
-        linewidth = attr(:gridwidth),
+        linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
 
@@ -433,7 +449,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
-        visible = attr(:spinesvisible), inspectable = false)
+        clip_planes = Plane3f[], visible = attr(:spinesvisible), inspectable = false)
 
     return gridline1, gridline2, framelines
 end
@@ -513,7 +529,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     ticks = linesegments!(topscene, tick_segments,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        transparency = true, inspectable = false,
+        transparency = true, inspectable = false, clip_planes = Plane3f[],
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
     # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
     # to clip into plot objects anymore
@@ -545,7 +561,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
 
     ticklabels_text = text!(topscene, labels_positions, align = align,
-        color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
+        color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize), clip_planes = Plane3f[],
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
@@ -633,7 +649,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     notify(attr(:labelalign))
 
     label = text!(topscene, label_position,
-        text = attr(:label),
+        text = attr(:label), clip_planes = Plane3f[],
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
         font = attr(:labelfont),
