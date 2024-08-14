@@ -119,6 +119,8 @@ end
         axis=(; type=Axis, autolimitaspect = 1),
         figure=(;figure_padding=0, size=(1200, 600))
     )
+    # Zoom into the hotspot
+    limits!(ax, Rect2f(-74.175, 40.619, 0.5, 0.25))
     # make image fill the whole screen
     hidedecorations!(ax)
     hidespines!(ax)
@@ -147,7 +149,7 @@ points = Mmap.mmap(open(path, "r"), Vector{Point2f});
         # For a big dataset its interesting to see how long each aggregation takes
         show_timings = true,
         # Use a local operation which is faster to calculate and looks good!
-        local_post=x-> log10(x + 1),
+        local_operation=x-> log10(x + 1),
         #=
             in the code we used to save the binary, we had the points in the wrong order.
             A good chance to demonstrate the `point_transform` argument,
