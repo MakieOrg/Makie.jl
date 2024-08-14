@@ -159,6 +159,7 @@ export function deserialize_plot(scene, data) {
     mesh.frustumCulled = false;
     mesh.matrixAutoUpdate = false;
     mesh.plot_uuid = data.uuid;
+    mesh.renderOrder = data.zvalue;
     update_visible(data.visible.value);
     data.visible.on(update_visible);
     connect_uniforms(mesh, data.uniform_updater);
@@ -453,7 +454,7 @@ function create_material(scene, program) {
         transparent: true,
         glslVersion: THREE.GLSL3,
         depthTest: !program.overdraw.value,
-        depthWrite: !program.transparency.value
+        depthWrite: !program.transparency.value,
     });
 }
 

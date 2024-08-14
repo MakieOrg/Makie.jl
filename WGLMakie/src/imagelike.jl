@@ -30,7 +30,7 @@ function create_shader(mscene::Scene, plot::Surface)
     end)
     normals = Buffer(lift(plot, ps, fs, plot.invert_normals) do ps, fs, invert
         ns = Makie.nan_aware_normals(ps, fs)
-        return invert ? -ns : ns 
+        return invert ? -ns : ns
     end)
 
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
@@ -62,7 +62,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         :backlight => 0.0f0,
         :model => model,
     )
-    
+
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
     if plot isa Image
         uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
@@ -129,8 +129,8 @@ end
 
 
 
-xy_convert(x::AbstractArray, n) = copy(x)
-xy_convert(x, n) = [LinRange(extrema(x)..., n + 1);]
+xy_convert(x::Makie.EndPoints, n) = LinRange(extrema(x)..., n + 1)
+xy_convert(x::AbstractArray, n) = x
 
 # TODO, speed up GeometryBasics
 function fast_faces(nvertices)
@@ -163,12 +163,10 @@ function limits_to_uvmesh(plot, f32c)
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
 
-    # TODO, this branch is only hit by Image, but not for Heatmap with stepranges
-    # because convert_arguments converts x/y to Vector{Float32}
-    if px[] isa Makie.Interval && py[] isa Makie.Interval && Makie.is_identity_transform(t)
+    if px[] isa Makie.EndPoints && py[] isa Makie.EndPoints && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
-            xmin, xmax = Makie.endpoints(x)
-            ymin, ymax = Makie.endpoints(y)
+            xmin, xmax = extrema(x)
+            ymin, ymax = extrema(y)
             return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         ps = lift(rect -> decompose(Point2f, rect), plot, rect)
@@ -176,13 +174,11 @@ function limits_to_uvmesh(plot, f32c)
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
         uv = Buffer(lift(decompose_uv, plot, rect))
     else
-        px = map((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
-        py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
+        px = lift((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
+        py = lift((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
         # TODO: Use Makie.surface2mesh
-        positions = let
-            grid_ps = lift((x, y) -> Makie.matrix_grid(x, y, zeros(length(x), length(y))), plot, px, py)
-            Buffer(apply_transform_and_f32_conversion(plot, f32c, grid_ps))
-        end
+        grid_ps = lift((x, y) -> Makie.matrix_grid(x, y, zeros(length(x), length(y))), plot, px, py)
+        positions = Buffer(apply_transform_and_f32_conversion(plot, f32c, grid_ps))
         resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values=true)
         faces = Buffer(lift(fast_faces, plot, resolution))
         uv = Buffer(lift(fast_uv, plot, resolution))

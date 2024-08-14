@@ -339,6 +339,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     mesh[:uuid] = js_uuid(plot)
     mesh[:transparency] = plot.transparency
     mesh[:overdraw] = plot.overdraw
+    mesh[:zvalue] = Makie.zvalue2d(plot)
 
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
@@ -371,11 +372,11 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
 
     # Handle clip planes
     if plot isa Voxels
-        
+
         clip_planes = map(
                 plot, plot.converted..., plot.model, plot.clip_planes, plot.space
             ) do xs, ys, zs, chunk, model, planes, space
-    
+
             Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
             # model/modelinv has no perspective projection so we should be fine
@@ -393,7 +394,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             for i in 1:min(length(planes), 8)
                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
                 normal = transpose(_model) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
                     Vec3f(normal[1], normal[2], normal[3]))
                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
             end
@@ -428,7 +429,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             for i in 1:min(length(planes), 8)
                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
                 normal = transpose(model2[]) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4], 
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
                     Vec3f(normal[1], normal[2], normal[3]))
                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
             end
@@ -466,9 +467,9 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
         updater[] = [:clip_planes, serialize_three(value)]
         return
     end
-    
+
     uniforms[:num_clip_planes] = serialize_three(
-        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0    
+        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0
     )
     onany(plot, plot.clip_planes, plot.space) do planes, space
         N = Makie.is_data_space(space) ? length(planes) : 0

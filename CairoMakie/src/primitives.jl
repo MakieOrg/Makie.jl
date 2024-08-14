@@ -31,7 +31,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
 
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
-    # TODO: If we have neither perspective projection not clip_planes we can 
+    # TODO: If we have neither perspective projection not clip_planes we can
     #       use the normal projection_position() here
     projected_positions, indices, color = project_line_points(scene, primitive, positions, color)
 
@@ -223,7 +223,7 @@ end
 
 function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
     isempty(indices) && return
-    
+
     linewidths = linewidths[indices]
     @assert length(positions) == length(colors) "$(length(positions)) != $(length(colors))"
     @assert length(linewidths) == length(colors) "$(length(linewidths)) != $(length(colors))"
@@ -334,7 +334,7 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
     @get_attribute(primitive, (
-        markersize, strokecolor, strokewidth, marker, marker_offset, rotation, 
+        markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
         transform_marker, model, markerspace, space, clip_planes)
     )
 
@@ -356,8 +356,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
 end
 
 function draw_atomic_scatter(
-        scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, 
-        marker, marker_offset, rotation, model, positions, size_model, font, 
+        scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotation, model, positions, size_model, font,
         markerspace, space, clip_planes
     )
 
@@ -370,7 +370,7 @@ function draw_atomic_scatter(
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         isnan(pos) && return
-        
+
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
 
@@ -737,14 +737,14 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
-    if !(xs isa AbstractVector)
+    if xs isa Makie.EndPoints
         l, r = extrema(xs)
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
-    if !(ys isa AbstractVector)
+    if ys isa Makie.EndPoints
         l, r = extrema(ys)
         N = size(image, 2)
         ys = range(l, r, length = N+1)
@@ -785,12 +785,12 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     uv_transform = if primitive isa Image
         val = to_value(get(primitive, :uv_transform, I))
         T = Makie.convert_attribute(val, Makie.key"uv_transform"(), Makie.key"image"())
-        # Cairo uses pixel units so we need to transform those to a 0..1 range, 
+        # Cairo uses pixel units so we need to transform those to a 0..1 range,
         # then apply uv_transform, then scale them back to pixel units.
         # Cairo also doesn't have the yflip we have in OpenGL, so we need to
         # invert y.
         T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
-        T3 = Makie.uv_transform(Vec2f(size(image))) * T3 * 
+        T3 = Makie.uv_transform(Vec2f(size(image))) * T3 *
             Makie.uv_transform(Vec2f(0, 1), 1f0 ./ Vec2f(size(image, 1), -size(image, 2)))
         T3[Vec(1, 2), Vec(1,2,3)]
     else
@@ -839,13 +839,13 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
             else
                 Plane3f[]
             end
-            
+
             for i in eachindex(transformed)
                 if is_clipped(planes, transformed[i])
                     transformed[i] = T(NaN)
                 end
             end
-            
+
             _project_position(scene, space, transformed, model, true)
         end
         colors = to_color(primitive.calculated_colors[])
@@ -1103,7 +1103,7 @@ function draw_mesh3D(
     end
 
     draw_pattern(
-        ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, 
+        ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         lightdirection, light_color, shininess, diffuse, ambient, specular)
     return
 end
