@@ -475,7 +475,9 @@ function set_picking_uniforms(
             // we also collect the picked/matched plots as part of the clean up
             const id = uniforms.object_id.value;
             if (id in picked_plots) {
-                plots.push([plot, picked_plots[id]]);
+                picked_plots[id].forEach(index => {
+                    plots.push([plot, index]);
+                });
                 id_to_plot[id] = plot; // create mapping from id to plot at the same time
             }
         }
@@ -534,7 +536,14 @@ export function pick_native(scene, _x, _y, _w, _h) {
         const id = reinterpret_view.getUint16(i * 4);
         const index = reinterpret_view.getUint16(i * 4 + 2);
         picked_plots_array.push([id, index]);
-        picked_plots[id] = index;
+        if (!picked_plots[id]) {
+            picked_plots[id] = [];
+        }
+        // Assuming the number of indices per plot
+        // is less than ~100, linear search is fine.
+        if (!picked_plots[id].includes(index)) {
+            picked_plots[id].push(index);
+        }
     }
     // dict of plot_uuid => primitive_index (e.g. instance id or triangle index)
     const plots = [];
@@ -649,7 +658,7 @@ export function pick_sorted(scene, xy, range) {
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             const plot_index = selected.findIndex(
-                (x) => x[0].plot_uuid == plot_uuid
+                (x) => x[0].plot_uuid == plot_uuid && x[1] == index
             );
             if (plot_index >= 0 && d < distances[plot_index]) {
                 distances[plot_index] = d;
