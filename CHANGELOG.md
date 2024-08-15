@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fix selected list in `WGLMakie.pick_sorted` [#4136](https://github.com/MakieOrg/Makie.jl/pull/4136)
+
 ## [0.21.6] - 2024-08-14
 
 - Fix RectangleZoom in WGLMakie [#4127](https://github.com/MakieOrg/Makie.jl/pull/4127)
