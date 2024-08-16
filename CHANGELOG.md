@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Apply px per unit in `pick_closest`/`pick_sorted` [#4137]https://github.com/MakieOrg/Makie.jl/pull/4137
+
 ## [0.21.6] - 2024-08-14
 
 - Fix RectangleZoom in WGLMakie [#4127](https://github.com/MakieOrg/Makie.jl/pull/4127)
