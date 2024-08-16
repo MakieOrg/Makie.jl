@@ -1,17 +1,22 @@
-function convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
-    X, Y, Z = to_ndim(Vec3{Int}, size(chunk), 1)
-    return convert_arguments(T, -0.5X..0.5X, -0.5Y..0.5Y, -0.5Z..0.5Z, chunk)
+function Makie.convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
+    X, Y, Z = map(x-> (-0.5*x, 0.5*x), size(chunk))
+    return convert_arguments(T, X, Y, Z, chunk)
 end
+
 function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
-    xi = Float32(minimum(xs))..Float32(maximum(xs))
-    yi = Float32(minimum(ys))..Float32(maximum(ys))
-    zi = Float32(minimum(zs))..Float32(maximum(zs))
+    xi = Float32.(to_endpoints(xs))
+    yi = Float32.(to_endpoints(ys))
+    zi = Float32.(to_endpoints(zs))
     return convert_arguments(T, xi, yi, zi, chunk)
 end
-function convert_arguments(::Type{<:Voxels}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array{<: Real, 3})
+
+function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints, zs::EndPoints,
+                           chunk::Array{<:Real,3})
     return (xs, ys, zs, Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...))
 end
-function convert_arguments(::Type{<:Voxels}, xs::ClosedInterval{Float32}, ys::ClosedInterval{Float32}, zs::ClosedInterval{Float32}, chunk::Array{UInt8, 3})
+
+function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints,
+                           zs::EndPoints, chunk::Array{UInt8,3})
     return (xs, ys, zs, chunk)
 end
 

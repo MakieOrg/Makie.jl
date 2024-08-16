@@ -672,16 +672,19 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, ax.blockscene, Observable(ax.scene), ax.finallimits,
+    rect_scene = Scene(ax.scene)
+    selection_vertices = lift(_selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
                               r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = NoShading,
-                 inspectable = false, visible=r.active, transparency=true)
+    mesh = mesh!(rect_scene,
+        selection_vertices, faces, space=:pixel,
+        color = (:black, 0.2), shading = NoShading,
+        inspectable = false, transparency=true, overdraw=true, visible=r.active)
     # translate forward so selection mesh and frame are never behind data
-    translate!(mesh, 0, 0, 100)
+    translate!(mesh, 0, 0, 1000)
     return r
 end
 
