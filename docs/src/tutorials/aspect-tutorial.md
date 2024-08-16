@@ -172,9 +172,8 @@ plot is a histogram of the second variable.
 We begin by initializing a figure and an internal GridLayout to keep the marginal
 histogram contained.  Then, we create the axes, and set the appropriate sizes for the columns.
 
-\begin{examplefigure}{svg = true}
-```julia
-fig = Figure(resolution = (1000, 1000), backgroundcolor = RGBf(0.98, 0.98, 0.98))
+```@figure aspect
+fig = Figure(size = (1000, 1000), backgroundcolor = RGBf(0.98, 0.98, 0.98))
 histogram_gl = fig[1, 1] = GridLayout()
 
 central_axis = Axis(histogram_gl[1, 1])
@@ -189,12 +188,11 @@ rowsize!(histogram_gl, 0, Relative(marginal_plot_width))
 
 fig
 ```
-\end{examplefigure}
+
 
 Now, we can remove the decorations and force the axes to be flush against each other:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 top_axis.xtickalign = 1
 top_axis.ytickalign = 1
 hidedecorations!(top_axis; grid = false, minorgrid = false, ticks = false)
@@ -209,12 +207,11 @@ colgap!(histogram_gl, 1, 0)
 rowgap!(histogram_gl, 1, 0)
 fig
 ```
-\end{examplefigure}
+
 
 Finally, we plot to it:
 
-\begin{examplefigure}{svg = true}
-```julia
+```@figure aspect
 import Makie.StatsBase
 
 x_data = randn(500)
@@ -230,4 +227,4 @@ right_hist = hist!(right_axis, y_data; nbins = nbins, direction = :x, strokewidt
 
 fig
 ```
-\end{examplefigure}
+
