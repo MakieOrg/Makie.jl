@@ -23138,10 +23138,12 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_t
             material.blending = mod.NormalBlending;
             const id = uniforms.object_id.value;
             if (id in picked_plots) {
-                plots.push([
-                    plot,
-                    picked_plots[id]
-                ]);
+                picked_plots[id].forEach((index)=>{
+                    plots.push([
+                        plot,
+                        index
+                    ]);
+                });
                 id_to_plot[id] = plot;
             }
         }
@@ -23183,7 +23185,12 @@ function pick_native(scene, _x, _y, _w, _h) {
             id,
             index
         ]);
-        picked_plots[id] = index;
+        if (!picked_plots[id]) {
+            picked_plots[id] = [];
+        }
+        if (!picked_plots[id].includes(index)) {
+            picked_plots[id].push(index);
+        }
     }
     const plots = [];
     const id_to_plot = {};
@@ -23312,7 +23319,7 @@ function pick_sorted(scene, xy, range) {
             }
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
-            const plot_index = selected.findIndex((x)=>x[0].plot_uuid == plot_uuid);
+            const plot_index = selected.findIndex((x)=>x[0].plot_uuid == plot_uuid && x[1] == index);
             if (plot_index >= 0 && d < distances[plot_index]) {
                 distances[plot_index] = d;
             }
