@@ -12,7 +12,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     rx, ry = minimum(rect)
     rw, rh = widths(rect)
-    w, h = size(screen.root_scene)
+    w, h = size(fb) # pixel dimensions
     ppu = screen.px_per_unit[]
     if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
         rx, ry, rw, rh = round.(Int, ppu .* (rx, ry, rw, rh))
@@ -32,7 +32,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = floor.(Int, xy)
-    w, h = size(screen.root_scene)
+    w, h = size(fb) # pixel dimensions
     ppu = screen.px_per_unit[]
     if x > 0 && y > 0 && x <= w && y <= h
         x, y = round.(Int, ppu .* (x, y))
@@ -70,17 +70,17 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     w, h = size(scene) # unitless dimensions
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
+    fb = screen.framebuffer
     ppu = screen.px_per_unit[]
-    w, h = size(screen.root_scene) # pixel dimensions
+    w, h = size(fb) # pixel dimensions
     x0, y0 = max.(1, floor.(Int, ppu .* (xy .- range)))
     x1, y1 = min.((w, h), ceil.(Int, ppu .* (xy .+ range)))
     dx = x1 - x0; dy = y1 - y0
 
     ShaderAbstractions.switch_context!(screen.glscreen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
+    buff = fb.buffers[:objectid]
     picks = zeros(SelectionID{UInt32}, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, picks)
 
@@ -111,17 +111,17 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
         return Tuple{AbstractPlot, Int}[]
     end
 
+    fb = screen.framebuffer
     ppu = screen.px_per_unit[]
-    w, h = size(screen.root_scene) # pixel dimensions
+    w, h = size(fb) # pixel dimensions
     x0, y0 = max.(1, floor.(Int, ppu .* (xy .- range)))
     x1, y1 = min.((w, h), ceil.(Int, ppu .* (xy .+ range)))
     dx = x1 - x0; dy = y1 - y0
 
     ShaderAbstractions.switch_context!(screen.glscreen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
+    buff = fb.buffers[:objectid]
     picks = zeros(SelectionID{UInt32}, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, picks)
 
