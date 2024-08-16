@@ -436,10 +436,16 @@ end
 function display_scene!(screen::Screen, scene::Scene)
     @debug("display scene on screen")
     resize!(screen, size(scene)...)
+    
+    # insert scene content
+    @assert isempty(screen.scene_tree.scenes) "There should be no scenes in the tree when inserting the root"
+    screen.root_scene = scene
+    insert_scene!(screen.scene_tree, scene, nothing, 0)
     insertplots!(screen, scene)
+
     Makie.push_screen!(scene, screen)
     connect_screen(scene, screen)
-    screen.root_scene = scene
+
     return
 end
 
@@ -490,32 +496,34 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
-function add_scene!(screen::Screen, scene::Scene)
+function Base.insert!(screen::Screen, scene::Scene, parent::Scene, idx::Integer)
     if !haskey(screen.scene_tree, scene)
-        # TODO: shortcut for now
-        if isnothing(scene.parent)
-            idx = 1
-        else
-            idx = findfirst(==(scene), scene.parent.children)
-            if !haskey(screen.scene_tree, scene.parent)
-                add_scene!(screen, scene.parent)
-            end
-        end
-        insert_scene!(screen.scene_tree, scene, scene.parent, idx)
-
-        screen.requires_update = true
-        onany((args...) -> screen.requires_update = true,
-              scene,
-              scene.visible, scene.backgroundcolor, scene.clear,
-              scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
-              scene.camera.resolution)
+        insert_scene!(screen, scene, parent, idx)
     end
     return
 end
 
+function insert_scene!(screen::Screen, scene::Scene, parent::Union{Scene, Nothing}, idx::Integer)
+    insert_scene!(screen.scene_tree, scene, parent, idx)
+
+    screen.requires_update = true
+    onany((args...) -> screen.requires_update = true,
+          scene,
+          scene.visible, scene.backgroundcolor, scene.clear,
+          scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
+          scene.camera.resolution)
+end
+
 function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    add_scene!(screen, scene)
+    
+    # TODO: organize this better?
+    # typemin(Int) to force boundserror if scene is not root_scene
+    if !haskey(screen.scene_tree, scene)
+        idx = isnothing(scene.parent) ? typemin(Int) : findfirst(==(scene), scene.parent.children)
+        insert!(screen, scene, scene.parent, idx)
+    end
+
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
@@ -570,7 +578,7 @@ function Base.empty!(screen::Screen)
 
     if !isnothing(screen.root_scene)
         Makie.disconnect_screen(screen.root_scene, screen)
-        delete!(screen, screen.root_scene)
+        delete!(screen, screen.root_scene) # this should wipe all scenes and plots
         screen.root_scene = nothing
     end
 

@@ -322,7 +322,7 @@ function Scene(
             error("viewport must be an Observable{Rect2} or a Rect2")
         end
     end
-    push!(parent.children, child)
+    push!(parent, child)
     child.parent = parent
     return child
 end
@@ -419,13 +419,20 @@ function free(scene::Scene)
 end
 
 function Base.empty!(scene::Scene; free=false)
+    # clear all child scenes
     foreach(empty!, copy(scene.children))
+
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
     end
 
-    # clear all child scenes
+    # delete scene in backend
+    for screen in scene.current_screens
+        delete!(screen, scene)
+    end
+
+    # remove from parent
     if !isnothing(scene.parent)
         filter!(x-> x !== scene, scene.parent.children)
     end
@@ -449,6 +456,15 @@ function Base.empty!(scene::Scene; free=false)
     return nothing
 end
 
+function Base.push!(parent::Scene, child::Scene)
+    @assert isempty(child.children) "Adding a scene with children to a parent not yet implemented"
+    push!(parent.children, child)
+    idx = length(parent.children)
+    for screen in parent.current_screens
+        Base.invokelatest(insert!, screen, child, parent, idx)
+    end
+end
+
 function Base.push!(plot::Plot, subplot)
     MakieCore.validate_attribute_keys(subplot)
     subplot.parent = plot
@@ -461,6 +477,10 @@ function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
     end
+end
+
+function Base.insert!(screen::MakieScreen, scene::Scene, parent::Scene, idx::Integer)
+    @debug "Inserting scenes not implemented for backend $(typeof(screen))"
 end
 
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)

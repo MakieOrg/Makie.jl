@@ -47,7 +47,7 @@ function Base.show(io::IO, glscene::GLScene)
         "clear = ", glscene.clear[], ", ", 
         "backgroundcolor = ", glscene.backgroundcolor[], ", ", 
         "visible = ", glscene.visible[], ", ", 
-        "ssao = ", glscene.ssao, ", ", 
+        "ssao = ..., ", 
         length(glscene.renderobjects), " RenderObjects",
         ")"
     )
@@ -152,11 +152,37 @@ function insert_scene!(tree::GLSceneTree, scene::Scene, parent::Scene, index::In
 
     @assert !isempty(tree.scenes) "An empty scene tree should not be reachable here."
 
+    # Figure out where the scene should be inserted
     parent_index = tree.scene2index[WeakRef(parent)]
-    index = parent_index + index
-    tree.scene2index[WeakRef(scene)] = index
-    insert!(tree.scenes, index, GLScene(scene))
-    insert!(tree.depth, index, tree.depth[parent_index] + 1)
+    insert_index = parent_index
+    @info insert_index
+    while (index > 0) && (insert_index < length(tree.scenes))
+        @info "loop"
+        insert_index += 1
+        if tree.depth[insert_index] == tree.depth[parent_index] + 1
+            # found a child of parent
+            index -= 1
+        elseif tree.depth[insert_index] == tree.depth[parent_index]
+            # found a sibling of parent
+            # we can insert here but no further down
+            if index != 1
+                error("Cannot insert scene because other children of its parent are missing.")
+            end
+            index -= 1
+            break
+        end
+    end
+    @info insert_index, tree.depth[insert_index], tree.depth[parent_index]
+    if index == 1 && insert_index == length(tree.scenes)
+        insert_index += 1
+    elseif index != 0
+        error("Failed to find scene insertion index.")
+    end
+    @info insert_index
+    
+    tree.scene2index[WeakRef(scene)] = insert_index
+    insert!(tree.scenes, insert_index, GLScene(scene))
+    insert!(tree.depth,  insert_index, tree.depth[parent_index] + 1)
 
     return
 end
