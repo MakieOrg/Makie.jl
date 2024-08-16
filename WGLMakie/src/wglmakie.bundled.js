@@ -23152,14 +23152,16 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_t
     });
     return next_id;
 }
-function pick_native(scene, _x, _y, _w, _h) {
+function pick_native(scene, _x, _y, _w, _h, apply_ppu = true) {
     const { renderer , picking_target , px_per_unit  } = scene.screen;
-    [_x, _y, _w, _h] = [
-        _x,
-        _y,
-        _w,
-        _h
-    ].map((x)=>Math.ceil(x * px_per_unit));
+    if (apply_ppu) {
+        [_x, _y, _w, _h] = [
+            _x,
+            _y,
+            _w,
+            _h
+        ].map((x)=>Math.round(x * px_per_unit));
+    }
     const [x, y, w, h] = [
         _x,
         _y,
@@ -23237,7 +23239,7 @@ function get_picking_buffer(scene) {
     };
 }
 function pick_closest(scene, xy, range) {
-    const { renderer  } = scene.screen;
+    const { canvas , px_per_unit , renderer  } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23248,21 +23250,21 @@ function pick_closest(scene, xy, range) {
             0
         ];
     }
-    const x0 = Math.max(1, xy[0] - range);
-    const y0 = Math.max(1, xy[1] - range);
-    const x1 = Math.min(width, Math.floor(xy[0] + range));
-    const y1 = Math.min(height, Math.floor(xy[1] + range));
+    const x0 = Math.max(1, Math.floor(px_per_unit * (xy[0] - range)));
+    const y0 = Math.max(1, Math.floor(px_per_unit * (xy[1] - range)));
+    const x1 = Math.min(canvas.width, Math.ceil(px_per_unit * (xy[0] + range)));
+    const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
+    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
     const plot_matrix = plot_data.data;
     let min_dist = Math.pow(range, 2);
     let selection = [
         null,
         0
     ];
-    const x = xy[0] + 1 - x0;
-    const y = xy[1] + 1 - y0;
+    const x = xy[0] * px_per_unit + 1 - x0;
+    const y = xy[1] * px_per_unit + 1 - y0;
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dx; j++){
@@ -23281,7 +23283,7 @@ function pick_closest(scene, xy, range) {
     return selection;
 }
 function pick_sorted(scene, xy, range) {
-    const { renderer  } = scene.screen;
+    const { canvas , px_per_unit , renderer  } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23289,20 +23291,20 @@ function pick_sorted(scene, xy, range) {
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return null;
     }
-    const x0 = Math.max(1, xy[0] - range);
-    const y0 = Math.max(1, xy[1] - range);
-    const x1 = Math.min(width, Math.floor(xy[0] + range));
-    const y1 = Math.min(height, Math.floor(xy[1] + range));
+    const x0 = Math.max(1, Math.floor(px_per_unit * (xy[0] - range)));
+    const y0 = Math.max(1, Math.floor(px_per_unit * (xy[1] - range)));
+    const x1 = Math.min(canvas.width, Math.ceil(px_per_unit * (xy[0] + range)));
+    const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
+    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy, false);
     if (selected.length == 0) {
         return null;
     }
     const plot_matrix = plot_data.data;
     const distances = selected.map((x)=>Math.pow(range, 2));
-    const x = xy[0] + 1 - x0;
-    const y = xy[1] + 1 - y0;
+    const x = xy[0] * px_per_unit + 1 - x0;
+    const y = xy[1] * px_per_unit + 1 - y0;
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dx; j++){
