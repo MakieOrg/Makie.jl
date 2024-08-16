@@ -10,10 +10,11 @@ unicode_input(scene, native_window) = not_implemented_for(native_window)
 dropped_files(scene, native_window) = not_implemented_for(native_window)
 hasfocus(scene, native_window) = not_implemented_for(native_window)
 entered_window(scene, native_window) = not_implemented_for(native_window)
+frame_tick(scene, native_window) = not_implemented_for(native_window)
 
 function connect_screen(scene::Scene, screen)
 
-    on(screen.window_open) do open
+    on(scene, screen.window_open) do open
         events(scene).window_open[] = open
     end
 
@@ -27,6 +28,7 @@ function connect_screen(scene::Scene, screen)
     dropped_files(scene, screen)
     hasfocus(scene, screen)
     entered_window(scene, screen)
+    frame_tick(scene, screen)
 
     return
 end
@@ -49,12 +51,13 @@ function disconnect_screen(scene::Scene, screen)
         disconnect!(screen, dropped_files)
         disconnect!(screen, hasfocus)
         disconnect!(screen, entered_window)
+        disconnect!(screen, frame_tick)
     end
     return
 end
 
 """
-Picks a mouse position.  Implemented by the backend.
+Picks a mouse position. Implemented by the backend.
 """
 function pick end
 
@@ -65,9 +68,33 @@ end
 
 """
     onpick(func, plot)
-Calls `func` if one clicks on `plot`.  Implemented by the backend.
+Calls `func` if one clicks on `plot`. Implemented by the backend.
 """
 function onpick end
+
+
+mutable struct TickCallback
+    event::Observable{Makie.Tick}
+    start_time::UInt64
+    last_time::UInt64
+    TickCallback(tick::Observable{Makie.Tick}) = new(tick, time_ns(), time_ns())
+end
+TickCallback(scene::SceneLike) = TickCallback(events(scene).tick)
+
+function (cb::TickCallback)(x::Makie.TickState)
+    if x > Makie.UnknownTickState # not backend or Unknown
+        cb.last_time = Makie.next_tick!(cb.event, x, cb.start_time, cb.last_time)
+    end
+    return nothing
+end
+
+function next_tick!(tick::Observable{Tick}, state::TickState, start_time::UInt64, last_time::UInt64)
+    t = time_ns()
+    since_start = 1e-9 * (t - start_time)
+    delta_time = 1e-9 * (t - last_time)
+    tick[] = Tick(state, tick[].count + 1, since_start, delta_time)
+    return t
+end
 
 
 ################################################################################
@@ -75,15 +102,13 @@ function onpick end
 ################################################################################
 
 
-abstract type BooleanOperator end
-
 """
     And(left, right[, rest...])
 
 Creates an `And` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `And` structs is created.
 
-See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`&`](@ref)
+See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), `&`
 """
 struct And{L, R} <: BooleanOperator
     left::L
@@ -98,7 +123,7 @@ And(left, right::Bool) = right ? left : false
 Creates an `Or` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `Or` structs is created.
 
-See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`|`](@ref)
+See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), `|`
 """
 struct Or{L, R} <: BooleanOperator
     left::L
@@ -112,7 +137,7 @@ Or(left, right::Bool) = right ? true : left
 
 Creates a `Not` struct with the given argument for later evaluation.
 
-See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), [`!`](@ref)
+See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), `!`
 """
 struct Not{T} <: BooleanOperator
     x::T
@@ -134,7 +159,7 @@ button under a `Not` must not be pressed and that this follows automatically
 from the subset of buttons that must be pressed.
 
 See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
+`&`, `|`, `!`
 """
 struct Exclusively <: BooleanOperator
     x::Set{Union{Keyboard.Button, Mouse.Button}}
@@ -224,10 +249,10 @@ create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
 # ispressed and logic evaluation
 
 """
-    ispressed(parent, result::Bool)
-    ispressed(parent, button::Union{Mouse.Button, Keyboard.Button)
-    ispressed(parent, collection::Union{Set, Vector, Tuple})
-    ispressed(parent, op::BooleanOperator)
+ispressed(parent, result::Bool[, waspressed = nothing])
+ispressed(parent, button::Union{Mouse.Button, Keyboard.Button[, waspressed = nothing])
+    ispressed(parent, collection::Union{Set, Vector, Tuple}[, waspressed = nothing])
+    ispressed(parent, op::BooleanOperator[, waspressed = nothing])
 
 This function checks if a button or combination of buttons is pressed.
 
@@ -251,25 +276,31 @@ Furthermore you can also make any button, button collection or boolean
 expression exclusive by wrapping it in `Exclusively(...)`. With that `ispressed`
 will only return true if the currently pressed buttons match the request exactly.
 
-See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
-"""
-ispressed(events::Events, mb::Mouse.Button) = mb in events.mousebuttonstate
-ispressed(events::Events, key::Keyboard.Button) = key in events.keyboardstate
-ispressed(parent, result::Bool) = result
+For cases where you want to react to a release event you can optionally add
+a key or mousebutton `waspressed` which is then assumed to be pressed regardless
+of it's current state. For example, when reacting to a mousebutton event, you can
+pass `event.button` so that a key combination including that button still evaluates
+as true.
 
-ispressed(parent, mb::Mouse.Button) = ispressed(events(parent), mb)
-ispressed(parent, key::Keyboard.Button) = ispressed(events(parent), key)
-@deprecate ispressed(scene, ::Nothing) ispressed(parent, true)
+See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
+`&`, `|`, `!`
+"""
+ispressed(events::Events, mb::Mouse.Button, waspressed = nothing) = mb in events.mousebuttonstate || mb == waspressed
+ispressed(events::Events, key::Keyboard.Button, waspressed = nothing) = key in events.keyboardstate || key == waspressed
+ispressed(parent, result::Bool, waspressed = nothing) = result
+
+ispressed(parent, mb::Mouse.Button, waspressed = nothing) = ispressed(events(parent), mb, waspressed)
+ispressed(parent, key::Keyboard.Button, waspressed = nothing) = ispressed(events(parent), key, waspressed)
 
 # Boolean Operator evaluation
-ispressed(parent, op::And) = ispressed(parent, op.left) && ispressed(parent, op.right)
-ispressed(parent, op::Or)  = ispressed(parent, op.left) || ispressed(parent, op.right)
-ispressed(parent, op::Not) = !ispressed(parent, op.x)
-ispressed(parent, op::Exclusively) = ispressed(events(parent), op)
-ispressed(e::Events, op::Exclusively) = op.x == union(e.keyboardstate, e.mousebuttonstate)
+ispressed(parent, op::And, waspressed = nothing) = ispressed(parent, op.left, waspressed) && ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Or, waspressed = nothing)  = ispressed(parent, op.left, waspressed) || ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Not, waspressed = nothing) = !ispressed(parent, op.x, waspressed)
+ispressed(parent, op::Exclusively, waspressed = nothing) = ispressed(events(parent), op, waspressed)
+ispressed(e::Events, op::Exclusively, waspressed::Union{Mouse.Button, Keyboard.Button}) = op.x == union(e.keyboardstate, e.mousebuttonstate, waspressed)
+ispressed(e::Events, op::Exclusively, waspressed = nothing) = op.x == union(e.keyboardstate, e.mousebuttonstate)
 
 # collections
-ispressed(parent, set::Set) = all(x -> ispressed(parent, x), set)
-ispressed(parent, set::Vector) = all(x -> ispressed(parent, x), set)
-ispressed(parent, set::Tuple) = all(x -> ispressed(parent, x), set)
+ispressed(parent, set::Set, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
+ispressed(parent, set::Vector, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
+ispressed(parent, set::Tuple, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)

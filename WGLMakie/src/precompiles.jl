@@ -1,4 +1,4 @@
-using SnoopPrecompile
+using PrecompileTools
 
 macro compile(block)
     return quote
@@ -9,11 +9,11 @@ macro compile(block)
             # while precompiling
             # So we just do all parts of the stack we can do without browser
             scene = Makie.get_scene(figlike)
-            session = Session(JSServe.NoConnection(); asset_server=JSServe.NoServer())
-            three_display(session, scene)
-            JSServe.jsrender(session, figlike)
+            session = Session(Bonito.NoConnection(); asset_server=Bonito.NoServer())
+            three_display(Screen(scene), session, scene)
+            Bonito.jsrender(session, figlike)
             s = serialize_scene(scene)
-            JSServe.SerializedMessage(session, Dict(:data => s))
+            Bonito.SerializedMessage(session, Dict(:data => s))
             close(session)
             return nothing
         end
@@ -21,13 +21,13 @@ macro compile(block)
 end
 
 let
-    @precompile_all_calls begin
+    @compile_workload begin
         DISABLE_JS_FINALZING[] = true # to not start cleanup task
         WGLMakie.activate!()
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
-        Makie._current_figure[] = nothing
+        Makie.CURRENT_FIGURE[] = nothing
         Observables.clear(TEXTURE_ATLAS)
         TEXTURE_ATLAS[] = Float32[]
         nothing

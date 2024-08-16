@@ -28,7 +28,7 @@ struct Shader
     id::GLuint
     context::GLContext
     function Shader(name, source, typ, id)
-        new(name, source, typ, id, current_context())
+        new(Symbol(name), source, typ, id, current_context())
     end
 end
 
@@ -174,21 +174,8 @@ mutable struct GLVertexArray{T}
     buffers::Dict{String,GLBuffer}
     indices::T
     context::GLContext
-    requires_update::Observable{Bool}
-
     function GLVertexArray{T}(program, id, bufferlength, buffers, indices) where T
-        va = new(program, id, bufferlength, buffers, indices, current_context(), true)
-        if indices isa GLBuffer
-            on(indices.requires_update) do _ # only triggers true anyway
-                va.requires_update[] = true
-            end
-        end
-        for (name, buffer) in buffers
-            on(buffer.requires_update) do _ # only triggers true anyway
-                va.requires_update[] = true
-            end
-        end
-
+        va = new(program, id, bufferlength, buffers, indices, current_context())
         return va
     end
 end
@@ -318,7 +305,6 @@ mutable struct RenderObject{Pre}
     prerenderfunction::Pre
     postrenderfunction
     id::UInt32
-    requires_update::Bool
     visible::Bool
 
     function RenderObject{Pre}(
@@ -326,7 +312,7 @@ mutable struct RenderObject{Pre}
             uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
             vertexarray::GLVertexArray,
             prerenderfunctions, postrenderfunctions,
-            visible, track_updates = true
+            visible
         ) where Pre
         fxaa = Bool(to_value(get!(uniforms, :fxaa, true)))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
@@ -340,57 +326,13 @@ mutable struct RenderObject{Pre}
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, true, visible[]
+            id, visible[]
         )
-
-        if track_updates
-            # visible changes should always trigger updates so that plots
-            # actually become invisible when visible is changed.
-            # Other uniforms and buffers don't need to trigger updates when
-            # visible = false
-            on(visible) do visible
-                robj.visible = visible
-                robj.requires_update = true
-            end
-
-            function request_update(_::Any)
-                if robj.visible
-                    robj.requires_update = true
-                end
-                return
-            end
-
-            # gather update requests for polling in renderloop
-            for uniform in values(uniforms)
-                if uniform isa Observable
-                    on(request_update, uniform)
-                elseif uniform isa GPUArray
-                    on(request_update, uniform.requires_update)
-                end
-            end
-            on(request_update, vertexarray.requires_update)
-        else
-            on(visible) do visible
-                robj.visible = visible
-            end
-
-            # remove tracking from GPUArrays
-            for uniform in values(uniforms)
-                if uniform isa GPUArray
-                    foreach(off, uniform.requires_update.inputs)
-                    empty!(uniform.requires_update.inputs)
-                end
-            end
-            for buffer in vertexarray.buffers
-                if buffer isa GPUArray
-                    foreach(off, buffer.requires_update.inputs)
-                    empty!(buffer.requires_update.inputs)
-                end
-            end
-            foreach(off, vertexarray.requires_update.inputs)
-            empty!(vertexarray.requires_update.inputs)
+        push!(observables, visible)
+        on(visible) do visible
+            robj.visible = visible
+            return
         end
-
         return robj
     end
 end
@@ -408,45 +350,60 @@ function RenderObject(
     # through @gen_defaults! and adjust constructors instead.
     track_updates = to_value(pop!(data, :track_updates, true))
 
+    # Explicit conversion targets for gl_convert
     targets = get(data, :gl_convert_targets, Dict())
     delete!(data, :gl_convert_targets)
-    passthrough = Dict{Symbol,Any}() # we also save a few non opengl related values in data
+
+    # Not handled as uniform
+    visible = pop!(data, :visible, Observable(true))
+
+    # for clean up on deletion
     observables = Observable[]
 
-    for (k, v) in data # convert everything to OpenGL compatible types
-        v isa Observable && push!(observables, v) # save for clean up
+    # Overwriting data with break direct iteration over it
+    _keys = collect(keys(data))
+    for k in _keys
+        v = data[k]
+        v isa Observable && push!(observables, v)
+
         if haskey(targets, k)
-            # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
-            # e.g. Texture{T,1} and GLBuffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
-            # but in some cases we want a Texture, sometimes a GLBuffer or TextureBuffer
+            # glconvert is designed to convert everything to a fitting opengl datatype, but sometimes
+            # the conversion is not unique. (E.g. Array -> Texture, TextureBuffer, GLBuffer, ...)
+            # In these cases an explicit conversion target is required
             data[k] = gl_convert(targets[k], v)
         else
             k in (:indices, :visible, :ssao, :label, :cycle) && continue
-            # structs are treated differently, since they have to be composed into their fields
+
+            # structs are decomposed into fields
+            #     $k.$fieldname -> v.$fieldname
             if isa_gl_struct(v)
                 merge!(data, gl_convert_struct(v, k))
-            elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
+                delete!(data, k)
+
+            # try direct conversion
+            elseif applicable(gl_convert, v)
                 try
                     data[k] = gl_convert(v)
                 catch e
-                    @warn("Can't convert $(typeof(v)) to opengl, for attribute $(k)")
+                    @error "gl_convert for key `$k` failed"
                     rethrow(e)
                 end
-            else # put it in passthrough
-                delete!(data, k)
-                passthrough[k] = v
+
+            # Otherwise just let the value pass through
+            # TODO: Is this ok/ever not filtered?
+            else
+                @debug "Passed on $k -> $(typeof(v)) without conversion."
             end
         end
     end
+
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
-    uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key !== :indices, data)
-    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
     program = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
-    visible = pop!(uniforms, :visible, Observable(true))
+
     # remove all uniforms not occuring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
-    special = Set([:ssao, :transparency, :instances, :fxaa])
+    special = Set([:ssao, :transparency, :instances, :fxaa, :num_clip_planes])
     for k in setdiff(keys(data), keys(program.nametype))
         if !(k in special)
             delete!(data, k)
@@ -460,11 +417,12 @@ function RenderObject(
         vertexarray,
         pre,
         post,
-        visible,
-        track_updates
+        visible
     )
+
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id
+
     return robj
 end
 
@@ -486,7 +444,6 @@ function clean_up_observables(x::T) where T
         foreach(off, x.observers)
         empty!(x.observers)
     end
-    Observables.clear(x.requires_update)
 end
 
 # OpenGL has the annoying habit of reusing id's when creating a new context

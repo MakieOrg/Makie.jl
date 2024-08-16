@@ -10,7 +10,7 @@ Returns true if the mouse currently hovers any of `plots`.
 mouseover(x, plots::AbstractPlot...) = mouseover(get_scene(x), plots...)
 function mouseover(scene::Scene, plots::AbstractPlot...)
     p, idx = pick(scene)
-    return p in flatten_plots(plots)
+    return p in collect_atomic_plots(plots)
 end
 
 """
@@ -22,40 +22,13 @@ hovered element
 """
 onpick(f, x, plots::AbstractPlot...; range=1) = onpick(f, get_scene(x), plots..., range = range)
 function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
-    fplots = flatten_plots(plots)
+    fplots = collect_atomic_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
         p, idx = pick(args...)
         (p in fplots) && f(p, idx)
         return Consume(false)
     end
-end
-
-@deprecate mouse_selection pick
-
-function flatten_plots(x::Combined, plots = AbstractPlot[])
-    if isempty(x.plots)
-        # Atomic plot!
-        push!(plots, x)
-    else
-        for elem in x.plots
-            flatten_plots(elem, plots)
-        end
-    end
-    return plots
-end
-
-function flatten_plots(array, plots = AbstractPlot[])
-    for elem in array
-        flatten_plots(elem, plots)
-    end
-    plots
-end
-
-function flatten_plots(scene::Scene, plots = AbstractPlot[])
-    flatten_plots(scene.plots, plots)
-    flatten_plots(scene.children, plots)
-    plots
 end
 
 """
@@ -69,7 +42,7 @@ function mouse_in_scene(scene::Scene; priority = 0)
     p = rootparent(scene)
     output = Observable(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp
-        output[] = Vec(mp) .- minimum(pixelarea(scene)[])
+        output[] = Vec(mp) .- minimum(viewport(scene)[])
         return Consume(false)
     end
     output
@@ -200,7 +173,7 @@ Normalizes mouse position `pos` relative to the screen rectangle.
 """
 screen_relative(x, mpos) = screen_relative(get_scene(x), mpos)
 function screen_relative(scene::Scene, mpos)
-    return Point2f(mpos) .- Point2f(minimum(pixelarea(scene)[]))
+    return Point2f(mpos) .- Point2f(minimum(viewport(scene)[]))
 end
 
 """
@@ -374,13 +347,12 @@ The `kwargs...` are propagated into `scatter!` which plots the selected point.
 """
 function select_point(scene; blocking = false, priority=2, kwargs...)
     key = Mouse.left
-    pmarker = Circle(Point2f(0, 0), Float32(1))
     waspressed = Observable(false)
     point = Observable([Point2f(0,0)])
     point_ret = Observable(Point2f(0,0))
     # Create an initially hidden  arrow
     plotted_point = scatter!(
-        scene, point; visible = false, marker = pmarker, markersize = 20px,
+        scene, point; visible = false, marker = Circle, markersize = 20px,
         color = RGBAf(0.1, 0.1, 0.8, 0.5), kwargs...,
     )
 

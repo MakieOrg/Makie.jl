@@ -2,12 +2,13 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 in vec3 frag_vert;
-in vec3 o_light_dir;
 
 const float max_distance = 1.3;
 
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
+
+uniform vec4 clip_planes[8];
 
 float _normalize(float val, float from, float to)
 {
@@ -54,16 +55,25 @@ vec3 gennormal(vec3 uvw, float d)
     return normalize(a-b);
 }
 
+// Smoothes out edge around 0 light intensity, see GLMakie
+float smooth_zero_max(float x) {
+    const float c = 0.00390625, xswap = 0.6406707120152759, yswap = 0.20508383900190955;
+    const float shift = 1.0 + xswap - yswap;
+    float pow8 = x + shift;
+    pow8 = pow8 * pow8; pow8 = pow8 * pow8; pow8 = pow8 * pow8;
+    return x < yswap ? c * pow8 : x;
+}
+
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0) + max(dot(L, -N), 0.0);
+    // TODO use backlight here too?
+    float diff_coeff = smooth_zero_max(dot(L, -N)) + smooth_zero_max(dot(L, N));
     // specular coefficient
     vec3 H = normalize(L + V);
-    float spec_coeff = pow(max(dot(H, N), 0.0) + max(dot(H, -N), 0.0), shininess);
+    float spec_coeff = pow(max(dot(H, -N), 0.0) + max(dot(H, N), 0.0), shininess);
     // final lighting model
-    return vec3(
-        ambient * color +
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
+    return ambient * color + get_light_color() * vec3(
+        get_diffuse() * diff_coeff * color +
+        get_specular() * spec_coeff
     );
 }
 
@@ -122,14 +132,14 @@ vec4 contours(vec3 front, vec3 dir)
     float T = 1.0;
     vec3 Lo = vec3(0.0);
     int i = 0;
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 density = color_lookup(intensity, colormap, colorrange);
         float opacity = density.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
+            vec3 L = get_light_direction();
             vec3 opaque = blinnphong(N, camdir, L, density.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;
@@ -147,12 +157,12 @@ vec4 isosurface(vec3 front, vec3 dir)
     vec4 c = vec4(0.0);
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, colormap, colorrange);
-    vec3 camdir = normalize(-dir);
+    vec3 camdir = normalize(dir);
     for (i; i < num_samples; ++i){
         float density = texture(volumedata, pos).x;
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = normalize(o_light_dir - pos);
+            vec3 L = get_light_direction();
             c = vec4(
                 blinnphong(N, camdir, L, diffuse_color.rgb),
                 diffuse_color.a
@@ -180,6 +190,33 @@ vec4 mip(vec3 front, vec3 dir)
 uniform uint objectid;
 
 const float typemax = 100000000000000000000000000000000000000.0;
+
+uniform int num_clip_planes;
+bool process_clip_planes(inout vec3 p1, inout vec3 p2)
+{
+    float d1, d2;
+    for (int i = 0; i < num_clip_planes; i++) {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            return true;
+        }
+        
+        // one outside - shorten segment
+        else if (d1 < 0.0)
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+        else if (d2 < 0.0)
+            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+    }
+
+    return false;
+}
+
 
 bool no_solution(float x){
     return x <= 0.0001 || isinf(x) || isnan(x);
@@ -231,6 +268,11 @@ void main()
     float solution = min_bigger_0(solution_1, solution_0);
 
     vec3 start = back_position + solution * dir;
+    
+    // if completely clipped discard this ray tracing attempt
+    if (process_clip_planes(start, back_position))
+        discard;
+
     vec3 step_in_dir = (back_position - start) / float(num_samples);
 
     float steps = 0.1;

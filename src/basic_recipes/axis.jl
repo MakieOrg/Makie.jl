@@ -66,6 +66,7 @@ $(ATTRIBUTES)
         scale = Vec3f(1),
         padding = 0.1,
         inspectable = false,
+        clip_planes = Plane3f[],
         fonts = theme(scene, :fonts),
         names = Attributes(
             axisnames = ("x", "y", "z"),
@@ -209,7 +210,7 @@ end
 function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
     a, b = extrema(ranges[dim])
     whalf = Float32(((b - a) / 2))
-    halfaxis = unit(Point{N, Float32}, dim) .* whalf
+    halfaxis = GeometryBasics.unit(Point{N, Float32}, dim) .* whalf
 
     origin .+ (halfaxis .+ (normalize(dir) * tgap))
 end
@@ -258,7 +259,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     tgap = 0.01limit_widths[offset_indices] .* tgap
 
     for i in 1:N
-        axis_vec = unit(Point{N, Float32}, i)
+        axis_vec = GeometryBasics.unit(Point{N, Float32}, i)
         width = Float32(limit_widths[i])
         stop = origin .+ (width .* axis_vec)
         if showaxis[i]
@@ -267,7 +268,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
         if showticks[i]
             range = ranges[i]
             j = offset_indices[i]
-            tickdir = unit(Vec{N, Float32}, j)
+            tickdir = GeometryBasics.unit(Vec{N, Float32}, j)
             offset2 = Float32(limit_widths[j] + tgap[i]) * tickdir
             for (j, tick) in enumerate(range)
                 labels = ticklabels[i]
@@ -290,7 +291,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
                 end / scale[j]
                 pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                 push!(
-                    textbuffer, to_latex(axisnames[i]), pos,
+                    textbuffer, UnicodeFun.to_latex(axisnames[i]), pos;
                     fontsize = axisnames_size[i], color = axisnames_color[i],
                     rotation = axisrotation[i], align = axisalign[i], font = axisnames_font[i]
                 )
@@ -301,7 +302,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
             thickness = gridthickness[i]
             for _j = (i + 1):(i + N - 1)
                 j = mod1(_j, N)
-                dir = unit(Point{N, Float32}, j)
+                dir = GeometryBasics.unit(Point{N, Float32}, j)
                 range = ranges[j]
                 for tick in range
                     offset = Float32(tick - origin[j]) * dir
@@ -317,8 +318,8 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     return
 end
 
-function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
-    axis = Axis3D(scene, attributes, args)
+function plot!(axis::Axis3D)
+    scene = get_scene(axis)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
     textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,
@@ -334,15 +335,14 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals..., axis.padding
     )
-    map_once(
+    onany(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
+        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...; update=true
     )
-    push!(scene, axis)
     return axis
 end
 
-function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
+function axis3d!(scene::Scene, lims = boundingbox(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
     axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

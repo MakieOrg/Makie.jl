@@ -1,53 +1,3 @@
-function block_docs(::Type{Menu})
-    """
-    A drop-down menu with multiple selectable options. You can pass options
-    with the keyword argument `options`.
-
-    Options are given as an iterable of elements.
-    For each element, the option label in the menu is determined with `optionlabel(element)`
-    and the option value with `optionvalue(element)`. These functions can be
-    overloaded for custom types. The default is that tuples of two elements are expected to be label and value,
-    where `string(label)` is used as the label, while for all other objects, label = `string(object)` and value = object.
-
-    When an item is selected in the menu, the menu's `selection` attribute is set to
-    `optionvalue(selected_element)`. When nothing is selected, that value is `nothing`.
-
-    You can set the initial selection by passing one of the labels with the `default` keyword.
-
-    ## Constructors
-
-    ```julia
-    Menu(fig_or_scene; default = nothing, kwargs...)
-    ```
-
-    ## Examples
-
-    Menu with string entries, second preselected:
-
-    ```julia
-    menu1 = Menu(fig[1, 1], options = ["first", "second", "third"], default = "second")
-    ```
-
-    Menu with two-element entries, label and function:
-
-    ```julia
-    funcs = [sin, cos, tan]
-    labels = ["Sine", "Cosine", "Tangens"]
-
-    menu2 = Menu(fig[1, 1], options = zip(labels, funcs))
-    ```
-
-    Executing a function when a selection is made:
-
-    ```julia
-    on(menu2.selection) do selected_function
-        # do something with the selected function
-    end
-    ```
-    """
-end
-
-
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
@@ -59,7 +9,7 @@ function initialize_block!(m::Menu; default = 1)
 
     map!(blockscene, _direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
         if dir == Makie.automatic
-            pxa = pixelarea(blockscene)[]
+            pxa = viewport(blockscene)[]
             bottomspace = abs(bottom(pxa) - bottom(bb))
             topspace = abs(top(pxa) - top(bb))
             # slight preference for down
@@ -81,7 +31,7 @@ function initialize_block!(m::Menu; default = 1)
                 left(bbox),
                 right(bbox),
                 d === :down ? max(0, bottom(bbox) - h) : top(bbox),
-                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
+                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))))
     end
 
     menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
@@ -104,7 +54,7 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    selectionarea = Observable(Rect2f(0, 0, 0, 0); ignore_equal_values=true)
+    selectionarea = Observable(Rect2d(0, 0, 0, 0); ignore_equal_values=true)
 
     selectionpoly = poly!(
         blockscene, selectionarea, color = m.selection_cell_color_inactive[];
@@ -118,20 +68,20 @@ function initialize_block!(m::Menu; default = 1)
     )
 
     onany(blockscene, selected_text, m.fontsize, m.textpadding) do _, _, (l, r, b, t)
-        bb = boundingbox(selectiontext)
+        bb = boundingbox(selectiontext, :data)
         m.layoutobservables.autosize[] = width(bb) + l + r, height(bb) + b + t
     end
     notify(selected_text)
 
     on(blockscene, m.layoutobservables.computedbbox) do cbb
-        selectionarea[] = cbb
+        selectionarea[] = Rect2d(origin(cbb), widths(cbb))
         ch = height(cbb)
         selectiontextpos[] = cbb.origin + Point2f(m.textpadding[][1], ch/2)
     end
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values=true)
 
-    optionrects = Observable([Rect2f(0, 0, 0, 0)]; ignore_equal_values=true)
+    optionrects = Observable([Rect2d(0, 0, 0, 0)]; ignore_equal_values=true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values=true)
 
     function update_option_colors!(hovered)
@@ -162,7 +112,7 @@ function initialize_block!(m::Menu; default = 1)
 
     onany(blockscene, optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
-        bbs = map(x -> boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
+        bbs = map(x -> string_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
         heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
         heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         h = sum(heights)
@@ -256,7 +206,7 @@ function initialize_block!(m::Menu; default = 1)
                     m.is_open[] = !m.is_open[]
                     if m.is_open[]
                         t = translation(menuscene)[]
-                        y_for_top_align = height(menuscene.px_area[]) - listheight[]
+                        y_for_top_align = height(menuscene.viewport[]) - listheight[]
                         translate!(menuscene, t[1], y_for_top_align, t[3])
                     end
                     return Consume(true)
@@ -295,7 +245,7 @@ function initialize_block!(m::Menu; default = 1)
             t = translation(menuscene)[]
             # Hack to differentiate mousewheel and trackpad scrolling
             step = m.scroll_speed[] * y
-            new_y = max(min(t[2] - step, 0), height(menuscene.px_area[]) - listheight[])
+            new_y = max(min(t[2] - step, 0), height(menuscene.viewport[]) - listheight[])
             translate!(menuscene, t[1], new_y, t[3])
             return Consume(true)
         else
@@ -330,7 +280,7 @@ function initialize_block!(m::Menu; default = 1)
     end
     dropdown_arrow = scatter!(
         blockscene, symbol_pos;
-        marker=lift(iso -> iso ? '▴' : '▾', blockscene, m.is_open),
+        marker=lift(iso -> iso ? :utriangle : :dtriangle, blockscene, m.is_open),
         markersize = m.dropdown_arrow_size,
         color = m.dropdown_arrow_color,
         strokecolor = :transparent,

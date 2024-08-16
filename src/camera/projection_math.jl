@@ -216,10 +216,91 @@ function transformationmatrix(translation, scale)
     )
 end
 
-function transformationmatrix(translation, scale, rotation::Quaternion)
+function transformationmatrix(translation, scale, rotation::Quaternion{T}) where T
     trans_scale = transformationmatrix(translation, scale)
-    rotation = Mat4f(rotation)
+    rotation = Mat4{T}(rotation)
     trans_scale*rotation
+end
+
+function is_translation_scale_matrix(mat::Mat4{T}) where T
+    # Checks that matrix has form: (* being any number)
+    #   *  0  0  *
+    #   0  *  0  *
+    #   0  0  *  *
+    #   0  0  0  1
+    T0 = zero(T)
+    return (mat[2, 1] == T0) && (mat[3, 1] == T0) && (mat[4, 1] == T0) &&
+           (mat[1, 2] == T0) && (mat[3, 2] == T0) && (mat[4, 2] == T0) &&
+           (mat[1, 3] == T0) && (mat[2, 3] == T0) && (mat[4, 3] == T0) &&
+           (mat[4, 4] == one(T))
+end
+
+"""
+    decompose_translation_scale_rotation_matrix(transform::Mat4)
+
+Decomposes a transformation matrix into a translation vector, scale vector and
+rotation Quaternion. Note that this is only valid for a transformation matrix
+created with matching order, i.e. 
+`transform = translation_matrix * scale_matrix * rotation_matrix`. The model 
+matrix created by `Transformation` is one such matrix.
+"""
+function decompose_translation_scale_rotation_matrix(model::Mat4{T}) where T
+    trans = Vec3{T}(model[Vec(1,2,3), 4])
+    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+    if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
+        scale = Vec3{T}(diag(m33))
+        rot = Quaternion{T}(0, 0, 0, 1)
+        return trans, scale, rot
+    else
+        # m33 = Scale * Rotation; Scale * Rotation * Rotation' * Scale' = Scale^2
+        scale = Vec3{T}(sqrt.(diag(m33 * m33')))
+        R = Diagonal(1 ./ scale) * m33
+
+        # inverse of Mat4(q::Quaternion)
+        xz = 0.5 * (R[1, 3] + R[3, 1])
+        sy = 0.5 * (R[1, 3] - R[3, 1])
+        yz = 0.5 * (R[2, 3] + R[3, 2])
+        sx = 0.5 * (R[3, 2] - R[2, 3])
+        xy = 0.5 * (R[1, 2] + R[2, 1])
+        sz = 0.5 * (R[2, 1] - R[1, 2])
+
+        m = max(abs(xy), abs(xz), abs(yz))
+        if abs(xy) == m
+            q4 = sqrt(0.5 * sx * sy / xy)
+        elseif abs(xz) == m
+            q4 = sqrt(0.5 * sx * sz / xz)
+        else
+            q4 = sqrt(0.5 * sy * sz / yz)
+        end
+
+        q1 = 0.5 * sx / q4
+        q2 = 0.5 * sy / q4
+        q3 = 0.5 * sz / q4
+        rot = Quaternion{T}(q1, q2, q3, q4)
+
+        return trans, scale, rot
+    end
+end
+
+"""
+    decompose_translation_scale_matrix(transform::Mat4)
+
+Like `decompose_translation_scale_rotation_matrix(transform)` but skips the 
+extraction of the rotation component. This still works if a rotation is involved
+and requires the same order of operations, i.e. 
+`transform = translation_matrix * scale_matrix * rotation_matrix`.
+"""
+function decompose_translation_scale_matrix(model::Mat4{T}) where T
+    trans = Vec3{T}(model[Vec(1,2,3), 4])
+    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+    if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
+        scale = Vec3{T}(diag(m33))
+        return trans, scale
+    else
+        # m33 = Scale * Rotation; Scale * Rotation * Rotation' * Scale' = Scale^2
+        scale = Vec3{T}(sqrt.(diag(m33 * m33')))
+        return trans, scale
+    end
 end
 
 #Calculate rotation between two vectors
@@ -238,22 +319,22 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
-function to_world(scene::Scene, point::T) where T <: StaticVector
-    cam = scene.camera
-    x = to_world(
-        point,
-        inv(transformationmatrix(scene)[]) *
-        inv(cam.view[]) *
-        inv(cam.projection[]),
-        T(widths(pixelarea(scene)[]))
+function to_world(scene::SceneLike, point::VecTypes{2})
+    cam = camera(scene)
+    x = _to_world(
+        Point2d(point[1], point[2]),
+        inv(Mat4d(cam.projectionview[])),
+        Vec2d(cam.resolution[])
     )
-    Point2f(x[1], x[2])
+    return inv_f32_convert(scene, Point2d(x[1], x[2]))
 end
 
 w_component(x::Point) = 1.0
 w_component(x::Vec) = 0.0
 
-function to_world(
+@deprecate to_world(p::VecTypes, M::Mat4, res::Vec2) to_world(scene::Scene, p::VecTypes) false
+
+function _to_world(
         p::StaticVector{N, T},
         prj_view_inv::Mat4,
         cam_res::StaticVector
@@ -266,10 +347,10 @@ function to_world(
         T(0), w_component(p)
     )
     ws = prj_view_inv * pix_space
-    ws ./ ws[4]
+    return ws ./ ws[4]
 end
 
-function to_world(
+function _to_world(
         p::Vec{N, T},
         prj_view_inv::Mat4,
         cam_res::StaticVector
@@ -278,41 +359,55 @@ function to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
-function project(scene::Scene, point::T) where T<:StaticVector
+
+# TODO: consider warning here to discourage risky functions
+function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}
+    T = promote_type(Float32, T1, T2)
+    p = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), dim4)
+    p = matrix * p
+    to_ndim(VT, p, 0.0)
+end
+
+function project(scene::Scene, point::VecTypes)
     cam = scene.camera
-    area = pixelarea(scene)[]
+    area = viewport(scene)[]
     # TODO, I think we need  .+ minimum(area)
     # Which would be semi breaking at this point though, I suppose
     return project(
         cam.projectionview[] *
+        f32_convert_matrix(scene.float32convert, :data) *
         transformationmatrix(scene)[],
         Vec2f(widths(area)),
         Point(point)
     )
 end
 
-function project(matrix::Mat4f, p::T, dim4 = 1.0) where T <: VecTypes
-    p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
-    p = matrix * p
-    to_ndim(T, p, 0.0)
-end
-
-function project(proj_view::Mat4f, resolution::Vec2, point::Point)
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
+# TODO: consider warning here to discourage risky functions
+function project(proj_view::Mat4{T1}, resolution::Vec2, point::Point{N, T2}) where {N, T1, T2}
+    T = promote_type(Float32, T1, T2)
+    p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     clip = proj_view * p4d
+    # at this point the visible range is strictly -1..1 so FLoat64 doesn't matter
     p = (clip ./ clip[4])[Vec(1, 2)]
-    p = Vec2f(p[1], p[2])
-    return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
+    p = Vec2{T}(p[1], p[2])
+    return (0.5 .* (p .+ 1) .* (resolution .- 1)) .+ 1
 end
 
-function project_point2(mat4::Mat4, point2::Point2)
-    Point2f(mat4 * to_ndim(Point4f, to_ndim(Point3f, point2, 0), 1))
+# TODO: consider warning here to discourage risky functions
+function project_point2(mat4::Mat4{T1}, point2::Point2{T2}) where {T1, T2}
+    T = promote_type(Float32, T1, T2)
+    Point2{T2}(mat4 * to_ndim(Point4{T}, to_ndim(Point3{T}, point2, 0), 1))
 end
 
-function transform(model::Mat4, x::T) where T
-    x4d = to_ndim(Vec4f, x, 0.0)
-    to_ndim(T, model * x4d, 0.0)
+# TODO: consider warning here to discourage risky functions
+function transform(model::Mat4{T1}, x::VT) where {T1, VT<:VecTypes}
+    T = promote_type(Float32, T1, eltype(VT))
+    # TODO: no w = 1? Is this meant to skip translations?
+    x4d = to_ndim(Vec4{T}, x, 0.0)
+    to_ndim(VT, model * x4d, 0.0)
 end
+
+################################################################################
 
 # project between different coordinate systems/spaces
 function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
@@ -321,9 +416,9 @@ function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
     elseif is_pixel_space(space)
         return cam.pixel_space[]
     elseif is_relative_space(space)
-        return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+        return Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
     elseif is_clip_space(space)
-        return Mat4f(I)
+        return Mat4d(I)
     else
         error("Space $space not recognized. Must be one of $(spaces())")
     end
@@ -334,21 +429,54 @@ function clip_to_space(cam::Camera, space::Symbol)
         return inv(cam.projectionview[])
     elseif is_pixel_space(space)
         w, h = cam.resolution[]
-        return Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
+        return Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
     elseif is_relative_space(space)
-        return Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
+        return Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
     elseif is_clip_space(space)
-        return Mat4f(I)
+        return Mat4d(I)
     else
         error("Space $space not recognized. Must be one of $(spaces())")
     end
 end
 
-function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
-    input_space === output_space && return to_ndim(Point3f, pos, 0)
+function get_space(scene::Scene)
+    space = get_space(cameracontrols(scene))::Symbol
+    space === :data ? (:data,) : (:data, space)
+end
+get_space(::AbstractCamera) = :data
+# TODO: Should this be less specialized? ScenePlot? AbstractPlot?
+get_space(plot::Plot) = to_value(get(plot, :space, :data))::Symbol
+
+is_space_compatible(a, b) = is_space_compatible(get_space(a), get_space(b))
+is_space_compatible(a::Symbol, b::Symbol) = a === b
+is_space_compatible(a::Symbol, b::Union{Tuple, Vector}) = a in b
+function is_space_compatible(a::Union{Tuple, Vector}, b::Union{Tuple, Vector})
+    any(x -> is_space_compatible(x, b), a)
+end
+is_space_compatible(a::Union{Tuple, Vector}, b::Symbol) = is_space_compatible(b, a)
+
+# TODO: consider warning here to discourage risky functions
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos::VecTypes{N, T1}) where {N, T1}
+    T = promote_type(Float32, T1) # always float, maybe Float64
+    input_space === output_space && return to_ndim(Point3{T}, pos, 0)
     clip_from_input = space_to_clip(cam, input_space)
     output_from_clip = clip_to_space(cam, output_space)
-    p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
     transformed = output_from_clip * clip_from_input * p4d
-    return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
+    return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
+end
+
+function project(scenelike::SceneLike, input_space::Symbol, output_space::Symbol, pos::VecTypes{N, T1}) where {N, T1}
+    T = promote_type(Float32, T1) # always float, maybe Float64
+    input_space === output_space && return to_ndim(Point3{T}, pos, 0)
+    cam = camera(scenelike)
+
+    input_f32c = f32_convert_matrix(scenelike, input_space)
+    clip_from_input = space_to_clip(cam, input_space)
+    output_from_clip = clip_to_space(cam, output_space)
+    output_f32c = inv_f32_convert_matrix(scenelike, output_space)
+
+    p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
+    transformed = output_f32c * output_from_clip * clip_from_input * input_f32c * p4d
+    return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end

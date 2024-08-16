@@ -30,7 +30,7 @@ function uniformfunc(typ::DataType, dims::Tuple{Int})
 end
 function uniformfunc(typ::DataType, dims::Tuple{Int, Int})
     M, N = dims
-    Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)", opengl_postfix(typ)))
+    Symbol(string("glUniformMatrix", M == N ? "$M" : "$(N)x$(M)", opengl_postfix(typ)))
 end
 
 gluniform(location::Integer, x::Nothing) = nothing
@@ -105,7 +105,7 @@ end
 
 function glsl_typename(t::Type{T}) where T <: Mat
     M, N = size(t)
-    string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(M, "x", N))
+    string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(N, "x", M))
 end
 toglsltype_string(t::Observable) = toglsltype_string(to_value(t))
 toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Texture, Colorant, TextureBuffer, Nothing}} = "uniform $(glsl_typename(x))"
@@ -200,6 +200,7 @@ gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
 gl_convert(s::Nothing) = s
 
 
+isa_gl_struct(x::Observable) = isa_gl_struct(to_value(x))
 isa_gl_struct(x::AbstractArray) = false
 isa_gl_struct(x::NATIVE_TYPES) = false
 isa_gl_struct(x::Colorant) = false
@@ -211,10 +212,19 @@ function isa_gl_struct(x::T) where T
     fnames = fieldnames(T)
     !isempty(fnames) && all(name -> isconcretetype(fieldtype(T, name)) && isbits(getfield(x, name)), fnames)
 end
+function gl_convert_struct(obs::Observable{T}, uniform_name::Symbol) where T
+    if isa_gl_struct(obs)
+        return Dict{Symbol, Any}(map(fieldnames(T)) do name
+            Symbol("$uniform_name.$name") => map(x -> gl_convert(getfield(x, name)), obs)
+        end)
+    else
+        error("can't convert $obs to a OpenGL type. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
+    end
+end
 function gl_convert_struct(x::T, uniform_name::Symbol) where T
     if isa_gl_struct(x)
-        return Dict{Symbol, Any}(map(fieldnames(x)) do name
-            (Symbol("$uniform_name.$name") => gl_convert(getfield(x, name)))
+        return Dict{Symbol, Any}(map(fieldnames(T)) do name
+            Symbol("$uniform_name.$name") => gl_convert(getfield(x, name))
         end)
     else
         error("can't convert $x to a OpenGL type. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
@@ -231,6 +241,7 @@ gl_convert(x::Mat{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
 gl_convert(a::AbstractVector{<: AbstractFace}) = indexbuffer(s)
 gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a
 gl_convert(::Type{<: GPUArray}, a::StaticVector) = gl_convert(a)
+gl_convert(x::Vector) = x
 
 function gl_convert(T::Type{<: GPUArray}, a::AbstractArray{X, N}; kw_args...) where {X, N}
     T(convert(AbstractArray{gl_promote(X), N}, a); kw_args...)
@@ -249,18 +260,6 @@ function gl_convert(::Type{T}, a::Observable{<: AbstractArray{X, N}}; kw_args...
     TGL = gl_promote(X)
     s = (X == TGL) ? a : lift(x-> convert(Array{TGL, N}, x), a)
     T(s; kw_args...)
-end
-
-lift_convert(a::AbstractArray, T, N) = lift(x -> convert(Array{T, N}, x), a)
-function lift_convert(a::ShaderAbstractions.Sampler, T, N)
-    ShaderAbstractions.Sampler(
-        lift(x -> convert(Array{T, N}, x.data), a),
-        minfilter = a[].minfilter, magfilter = a[].magfilter,
-        x_repeat = a[].repeat[1],
-        y_repeat = a[].repeat[min(2, N)],
-        z_repeat = a[].repeat[min(3, N)],
-        anisotropic = a[].anisotropic, swizzle_mask = a[].swizzle_mask
-    )
 end
 
 gl_convert(f::Function, a) = f(a)
