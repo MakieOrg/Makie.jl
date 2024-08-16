@@ -232,7 +232,12 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen, Makie.BackendTick)
-    robj = get!(screen.cache, objectid(plot)) do
+
+    @assert haskey(screen.scene_tree, scene)
+    glscene = screen.scene_tree[scene]
+
+
+    robj = get!(glscene.plot2robj, objectid(plot)) do
 
         filtered = filter(plot.attributes) do (k, v)
             return !in(k, EXCLUDE_KEYS)
@@ -337,10 +342,12 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         robj = robj_func(gl_attributes)
 
         get!(gl_attributes, :ssao, Observable(false))
-        screen.cache2plot[robj.id] = plot
+        glscene.robj2plot[robj.id] = plot
         return robj
     end
-    push!(screen, scene, robj)
+    
+    push!(glscene.renderobjects, robj)
+
     return robj
 end
 
@@ -348,11 +355,12 @@ Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
-    add_scene!(screen, scene)
+    add_scene!(screen, scene) # TODO: redundant?
     # poll inside functions to make wait on compile less prominent
     pollevents(screen, Makie.BackendTick)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
+
     else
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent

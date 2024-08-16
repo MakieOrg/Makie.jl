@@ -169,12 +169,14 @@ mutable struct Screen{GLWindow} <: MakieScreen
     timer::BudgetedTimer
     px_per_unit::Observable{Float32}
 
-    screen2scene::Dict{WeakRef, ScreenID}
-    screens::Vector{ScreenArea}
-    renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
+    # screen2scene::Dict{WeakRef, ScreenID}
+    # screens::Vector{ScreenArea}
+    # renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
+    # cache::Dict{UInt64, RenderObject}
+    # cache2plot::Dict{UInt32, AbstractPlot}
+    scene_tree::GLSceneTree
     postprocessors::Vector{PostProcessor}
-    cache::Dict{UInt64, RenderObject}
-    cache2plot::Dict{UInt32, AbstractPlot}
+
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Makie.TickState} # listeners must not Consume(true)
     window_open::Observable{Bool}
@@ -195,21 +197,21 @@ mutable struct Screen{GLWindow} <: MakieScreen
             stop_renderloop::Bool,
             rendertask::Union{Nothing, Task},
 
-            screen2scene::Dict{WeakRef, ScreenID},
-            screens::Vector{ScreenArea},
-            renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
+            # screen2scene::Dict{WeakRef, ScreenID},
+            # screens::Vector{ScreenArea},
+            # renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             postprocessors::Vector{PostProcessor},
-            cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt32, AbstractPlot},
+            # cache::Dict{UInt64, RenderObject},
+            # cache2plot::Dict{UInt32, AbstractPlot},
             reuse::Bool
         ) where {GLWindow}
 
         s = size(framebuffer)
         screen = new{GLWindow}(
             glscreen, owns_glscreen, shader_cache, framebuffer,
-            config, stop_renderloop, rendertask, BudgetedTimer(1.0 / 30.0),
-            Observable(0f0), screen2scene,
-            screens, renderlist, postprocessors, cache, cache2plot,
+            config, stop_renderloop, rendertask, 
+            BudgetedTimer(1.0 / 30.0), Observable(0f0), 
+            GLSceneTree(), postprocessors, 
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0f0), nothing, reuse, true, false
         )
@@ -289,12 +291,7 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
         window, owns_glscreen, shader_cache, fb,
         nothing, false,
         nothing,
-        Dict{WeakRef, ScreenID}(),
-        ScreenArea[],
-        Tuple{ZIndex, ScreenID, RenderObject}[],
         postprocessors,
-        Dict{UInt64, RenderObject}(),
-        Dict{UInt32, AbstractPlot}(),
         reuse,
     )
 
@@ -494,16 +491,24 @@ Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
 function add_scene!(screen::Screen, scene::Scene)
-    get!(screen.screen2scene, WeakRef(scene)) do
-        id = length(screen.screens) + 1
-        push!(screen.screens, (id, scene))
+    if !haskey(screen.scene_tree, scene)
+        # TODO: shortcut for now
+        if isnothing(scene.parent)
+            idx = 1
+        else
+            idx = findfirst(==(scene), scene.parent.children)
+            if !haskey(screen.scene_tree, scene.parent)
+                add_scene!(screen, scene.parent)
+            end
+        end
+        insert_scene!(screen.scene_tree, scene, scene.parent, idx)
+
         screen.requires_update = true
         onany((args...) -> screen.requires_update = true,
               scene,
               scene.visible, scene.backgroundcolor, scene.clear,
               scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
               scene.camera.resolution)
-        return id
     end
     return
 end
@@ -520,41 +525,7 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
 end
 
 function Base.delete!(screen::Screen, scene::Scene)
-    for child in scene.children
-        delete!(screen, child)
-    end
-    for plot in scene.plots
-        delete!(screen, scene, plot)
-    end
-    filter!(x -> x !== screen, scene.current_screens)
-    if haskey(screen.screen2scene, WeakRef(scene))
-        deleted_id = pop!(screen.screen2scene, WeakRef(scene))
-        # TODO: this should always find something but sometimes doesn't...
-        i = findfirst(id_scene -> id_scene[1] == deleted_id, screen.screens)
-        i !== nothing && deleteat!(screen.screens, i)
-
-        # Remap scene IDs to a continuous range by replacing the largest ID
-        # with the one that got removed
-        if deleted_id - 1 != length(screen.screens)
-            key, max_id = first(screen.screen2scene)
-            for p in screen.screen2scene
-                if p[2] > max_id
-                    key, max_id = p
-                end
-            end
-
-            i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
-            screen.screens[i] = (deleted_id, screen.screens[i][2])
-
-            screen.screen2scene[key] = deleted_id
-
-            for (i, (z, id, robj)) in enumerate(screen.renderlist)
-                if id == max_id
-                    screen.renderlist[i] = (z, deleted_id, robj)
-                end
-            end
-        end
-    end
+    delete_scene!(screen.scene_tree, scene)
     return
 end
 
@@ -583,22 +554,7 @@ function destroy!(rob::RenderObject)
 end
 
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
-    if !isempty(plot.plots)
-        # this plot consists of children, so we flatten it and delete the children instead
-        for cplot in Makie.collect_atomic_plots(plot)
-            delete!(screen, scene, cplot)
-        end
-    else
-        # I think we can double delete renderobjects, so this may be ok
-        # TODO, is it?
-        renderobject = get(screen.cache, objectid(plot), nothing)
-        if !isnothing(renderobject)
-            destroy!(renderobject)
-            filter!(x-> x[3] !== renderobject, screen.renderlist)
-            delete!(screen.cache2plot, renderobject.id)
-        end
-        delete!(screen.cache, objectid(plot))
-    end
+    delete_plot!(screen.scene_tree, scene, plot)
     screen.requires_update = true
     return
 end
@@ -608,9 +564,9 @@ function Base.empty!(screen::Screen)
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
 
-    for plot in collect(values(screen.cache2plot))
-        delete!(screen, Makie.rootparent(plot), plot)
-    end
+    # for plot in collect(values(screen.cache2plot))
+    #     delete!(screen, Makie.rootparent(plot), plot)
+    # end
 
     if !isnothing(screen.root_scene)
         Makie.disconnect_screen(screen.root_scene, screen)
@@ -618,12 +574,12 @@ function Base.empty!(screen::Screen)
         screen.root_scene = nothing
     end
 
-    @assert isempty(screen.renderlist)
-    @assert isempty(screen.cache2plot)
-    @assert isempty(screen.cache)
+    # @assert isempty(screen.renderlist)
+    # @assert isempty(screen.cache2plot)
+    # @assert isempty(screen.cache)
 
-    empty!(screen.screen2scene)
-    empty!(screen.screens)
+    # empty!(screen.screen2scene)
+    # empty!(screen.screens)
     Observables.clear(screen.px_per_unit)
     Observables.clear(screen.scalefactor)
     Observables.clear(screen.render_tick)
@@ -792,19 +748,19 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     end
 end
 
-function Base.push!(screen::Screen, scene::Scene, robj)
-    # filter out gc'ed elements
-    filter!(screen.screen2scene) do (k, v)
-        k.value !== nothing
-    end
-    screenid = get!(screen.screen2scene, WeakRef(scene)) do
-        id = length(screen.screens) + 1
-        push!(screen.screens, (id, scene))
-        return id
-    end
-    push!(screen.renderlist, (0, screenid, robj))
-    return robj
-end
+# function Base.push!(screen::Screen, scene::Scene, robj)
+#     # filter out gc'ed elements
+#     filter!(screen.screen2scene) do (k, v)
+#         k.value !== nothing
+#     end
+#     screenid = get!(screen.screen2scene, WeakRef(scene)) do
+#         id = length(screen.screens) + 1
+#         push!(screen.screens, (id, scene))
+#         return id
+#     end
+#     push!(screen.renderlist, (0, screenid, robj))
+#     return robj
+# end
 
 Makie.to_native(x::Screen) = x.glscreen
 

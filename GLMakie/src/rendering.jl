@@ -1,91 +1,151 @@
-function setup!(screen::Screen)
-    glEnable(GL_SCISSOR_TEST)
-    if isopen(screen) && !isnothing(screen.root_scene)
-        ppu = screen.px_per_unit[]
-        glScissor(0, 0, round.(Int, size(screen.root_scene) .* ppu)...)
-        glClearColor(1, 1, 1, 1)
-        glClear(GL_COLOR_BUFFER_BIT)
-        for (id, scene) in screen.screens
-            if scene.visible[]
-                a = viewport(scene)[]
-                rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-                glViewport(rt...)
-                if scene.clear[]
-                    c = scene.backgroundcolor[]
-                    glScissor(rt...)
-                    glClearColor(red(c), green(c), blue(c), alpha(c))
-                    glClear(GL_COLOR_BUFFER_BIT)
-                end
-            end
-        end
-    end
-    glDisable(GL_SCISSOR_TEST)
-    return
-end
-
 """
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
+    render_frame(screen, screen.scene_tree.scenes, resize_buffers)
+end
+
+function render_frame(screen::Screen, glscenes::Vector{GLScene}, resize_buffers=true)
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
-    function sortby(x)
-        robj = x[3]
-        plot = screen.cache2plot[robj.id]
-        # TODO, use actual boundingbox
-        return Makie.zvalue2d(plot)
-    end
-    zvals = sortby.(screen.renderlist)
-    permute!(screen.renderlist, sortperm(zvals))
 
-    # NOTE
-    # The transparent color buffer is reused by SSAO and FXAA. Changing the
-    # render order here may introduce artifacts because of that.
-
+    # Resize buffers
     fb = screen.framebuffer
     if resize_buffers && !isnothing(screen.root_scene)
         ppu = screen.px_per_unit[]
         resize!(fb, round.(Int, ppu .* size(screen.root_scene))...)
     end
+    
+    # Clear final output
+    # TODO: Could be skipped if glscenes[1] clears
+    OUTPUT_FRAMEBUFFER_ID = 0
+    glBindFramebuffer(GL_FRAMEBUFFER, OUTPUT_FRAMEBUFFER_ID)
+    wh = framebuffer_size(nw)
+    glViewport(0, 0, wh[1], wh[2])
 
-    # prepare stencil (for sub-scenes)
+    glClearColor(1,0,0,1)
+    glClear(GL_COLOR_BUFFER_BIT)
+    
+    # Reset all intermediate buffers
+    # TODO: really just need color, objectid here? (additionals clear per scene)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
     glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
     glClearColor(0, 0, 0, 0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
-    glDrawBuffer(fb.render_buffer_ids[1])
-    setup!(screen)
-    glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
+    # Draw scene by scene
+    glEnable(GL_SCISSOR_TEST)
+    for glscene in glscenes
+        render_frame(screen, glscene)
+    end
+    glDisable(GL_SCISSOR_TEST)
 
+    # TODO: copy accumulation buffer to screen buffer
+    # screen.postprocessors[4].render(screen)
+end
+
+
+function render_frame(screen::Screen, glscene::GLScene)
+    clear = glscene.clear[]::Bool
+    renderlist = glscene.renderobjects::Vector{RenderObject}
+
+    # if the scene doesn't have a visual impact we skip
+    if !glscene.visible[] || (isempty(renderlist) && !clear)
+        return
+    end
+
+    # TODO: Not like this
+    if glscene.scene === nothing
+        return
+    end
+
+    nw = to_native(screen)
+    fb = screen.framebuffer # required
+
+    # z-sorting
+    function sortby(robj)
+        plot = glscene.robj2plot[robj.id]
+        # TODO, use actual boundingbox
+        return Makie.zvalue2d(plot)
+    end
+    zvals = sortby.(glscene.renderobjects)
+    permute!(glscene.renderobjects, sortperm(zvals))
+
+    # Redundant?
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
+
+    # Set/Restrict draw area
+    mini = screen.px_per_unit[] .* minimum(glscene.viewport[])
+    wh   = screen.px_per_unit[] .* widths(glscene.viewport[])
+    @inbounds glViewport(mini[1], mini[2], wh[1], wh[2])
+    @inbounds glScissor(mini[1], mini[2], wh[1], wh[2])
+
+    # TODO: better solution
+    # render buffers are (color, objectid, maybe position, maybe normals)
+    # color, objectid should only be cleared if glscene.clear == true
+    # position, normals are only relevant for SSAO but should be cleared
+    # TODO: make DEPTH clear optional?
+    # TODO: unpadded clears may create edge-artifacts with SSAO, FXAA
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
+    glDrawBuffers(length(fb.render_buffer_ids)-2, fb.render_buffer_ids[2:end])
+    glClearColor(0, 0, 0, 0)
+    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+
+    if glscene.clear[]
+        # Draw background color
+        glDrawBuffer(fb.render_buffer_ids[1]) # accumulation color buffer
+        c = glscene.backgroundcolor[]::RGBAf
+        glClearColor(red(c), green(c), blue(c), alpha(c))
+        glClear(GL_COLOR_BUFFER_BIT)
+
+        # If previous picked plots are no longer visible they should not be pickable
+        if alpha(c) == 1.0
+            glDrawBuffer(fb.render_buffer_ids[2]) # objectid, i.e. picking
+            glClearColor(0, 0, 0, 0)
+            glClear(GL_COLOR_BUFFER_BIT)
+        end
+    else
+        # TODO: maybe SSAO needs this cleared if we run it per scene...?
+        glDrawBuffer(fb.render_buffer_ids[1]) # accumulation color buffer
+        glClearColor(0, 0, 1, 0)
+        glClear(GL_COLOR_BUFFER_BIT)
+    end
+
+    # NOTE
+    # The transparent color buffer is reused by SSAO and FXAA. Changing the
+    # render order here may introduce artifacts because of that.
+
+    # TODO: clear SSAO buffers here?
     # render with SSAO
+    glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids) # activate all render outputs
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    GLAbstraction.render(screen) do robj
+    GLAbstraction.render(glscene) do robj
         return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
     end
-    # SSAO
-    screen.postprocessors[1].render(screen)
+    # SSAO postprocessor
+    # TODO: when moving postprocessors to Scene the postprocessor should not need any extra inputs
+    screen.postprocessors[1].render(screen, glscene.ssao, glscene.scene.value.camera.projection[])
 
     # render no SSAO
-    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]) # color, objectid
     # render all non ssao
-    GLAbstraction.render(screen) do robj
+    GLAbstraction.render(glscene) do robj
         return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
     end
 
     # TRANSPARENT RENDER
     # clear sums to 0
-    glDrawBuffer(GL_COLOR_ATTACHMENT2)
+    glDrawBuffer(GL_COLOR_ATTACHMENT2) # HDR color (i.e. 16 Bit precision)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
     # clear alpha product to 1
-    glDrawBuffer(GL_COLOR_ATTACHMENT3)
+    glDrawBuffer(GL_COLOR_ATTACHMENT3) # OIT weight buffer
     glClearColor(1, 1, 1, 1)
     glClear(GL_COLOR_BUFFER_BIT)
     # draw
-    glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3])
+    glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3]) # HDR color, objectid, OIT weight
     # Render only transparent objects
-    GLAbstraction.render(screen) do robj
+    GLAbstraction.render(glscene) do robj
         return Bool(robj[:transparency][])
     end
 
@@ -96,10 +156,114 @@ function render_frame(screen::Screen; resize_buffers=true)
     screen.postprocessors[3].render(screen)
 
     # transfer everything to the screen
-    screen.postprocessors[4].render(screen)
+    # TODO: accumulation buffer would avoid viewport/scissor reset
+    screen.postprocessors[4].render(screen, mini[1], mini[2], wh[1], wh[2])
 
     return
 end
+
+# function setup!(screen::Screen)
+#     glEnable(GL_SCISSOR_TEST)
+#     if isopen(screen) && !isnothing(screen.root_scene)
+#         ppu = screen.px_per_unit[]
+#         glScissor(0, 0, round.(Int, size(screen.root_scene) .* ppu)...)
+#         glClearColor(1, 1, 1, 1)
+#         glClear(GL_COLOR_BUFFER_BIT)
+#         for (id, scene) in screen.screens
+#             if scene.visible[]
+#                 a = viewport(scene)[]
+#                 rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+#                 glViewport(rt...)
+#                 if scene.clear[]
+#                     c = scene.backgroundcolor[]
+#                     glScissor(rt...)
+#                     glClearColor(red(c), green(c), blue(c), alpha(c))
+#                     glClear(GL_COLOR_BUFFER_BIT)
+#                 end
+#             end
+#         end
+#     end
+#     glDisable(GL_SCISSOR_TEST)
+#     return
+# end
+
+# """
+# Renders a single frame of a `window`
+# """
+# function render_frame(screen::Screen; resize_buffers=true)
+#     nw = to_native(screen)
+#     ShaderAbstractions.switch_context!(nw)
+#     function sortby(x)
+#         robj = x[3]
+#         plot = screen.cache2plot[robj.id]
+#         # TODO, use actual boundingbox
+#         return Makie.zvalue2d(plot)
+#     end
+#     zvals = sortby.(screen.renderlist)
+#     permute!(screen.renderlist, sortperm(zvals))
+
+#     # NOTE
+#     # The transparent color buffer is reused by SSAO and FXAA. Changing the
+#     # render order here may introduce artifacts because of that.
+
+#     fb = screen.framebuffer
+#     if resize_buffers && !isnothing(screen.root_scene)
+#         ppu = screen.px_per_unit[]
+#         resize!(fb, round.(Int, ppu .* size(screen.root_scene))...)
+#     end
+
+#     # prepare stencil (for sub-scenes)
+#     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
+#     glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
+#     glClearColor(0, 0, 0, 0)
+#     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+
+#     glDrawBuffer(fb.render_buffer_ids[1])
+#     setup!(screen)
+#     glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
+
+#     # render with SSAO
+#     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+#     GLAbstraction.render(screen) do robj
+#         return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
+#     end
+#     # SSAO
+#     screen.postprocessors[1].render(screen)
+
+#     # render no SSAO
+#     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+#     # render all non ssao
+#     GLAbstraction.render(screen) do robj
+#         return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
+#     end
+
+#     # TRANSPARENT RENDER
+#     # clear sums to 0
+#     glDrawBuffer(GL_COLOR_ATTACHMENT2)
+#     glClearColor(0, 0, 0, 0)
+#     glClear(GL_COLOR_BUFFER_BIT)
+#     # clear alpha product to 1
+#     glDrawBuffer(GL_COLOR_ATTACHMENT3)
+#     glClearColor(1, 1, 1, 1)
+#     glClear(GL_COLOR_BUFFER_BIT)
+#     # draw
+#     glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3])
+#     # Render only transparent objects
+#     GLAbstraction.render(screen) do robj
+#         return Bool(robj[:transparency][])
+#     end
+
+#     # TRANSPARENT BLEND
+#     screen.postprocessors[2].render(screen)
+
+#     # FXAA
+#     screen.postprocessors[3].render(screen)
+
+#     # transfer everything to the screen
+#     screen.postprocessors[4].render(screen)
+
+#     return
+# end
 
 function id2scene(screen, id1)
     # TODO maybe we should use a different data structure
@@ -109,19 +273,33 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(filter_elem_func, screen::Screen)
+# function GLAbstraction.render(filter_elem_func, screen::Screen)
+#     # Somehow errors in here get ignored silently!?
+#     try
+#         for (zindex, screenid, elem) in screen.renderlist
+#             filter_elem_func(elem)::Bool || continue
+
+#             found, scene = id2scene(screen, screenid)
+#             found || continue
+#             scene.visible[] || continue
+#             ppu = screen.px_per_unit[]
+#             a = viewport(scene)[]
+#             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+#             render(elem)
+#         end
+#     catch e
+#         @error "Error while rendering!" exception = e
+#         rethrow(e)
+#     end
+#     return
+# end
+
+function GLAbstraction.render(filter_elem_func, glscene::GLScene)
     # Somehow errors in here get ignored silently!?
     try
-        for (zindex, screenid, elem) in screen.renderlist
-            filter_elem_func(elem)::Bool || continue
-
-            found, scene = id2scene(screen, screenid)
-            found || continue
-            scene.visible[] || continue
-            ppu = screen.px_per_unit[]
-            a = viewport(scene)[]
-            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            render(elem)
+        for robj in glscene.renderobjects
+            filter_elem_func(robj)::Bool || continue
+            render(robj)
         end
     catch e
         @error "Error while rendering!" exception = e
