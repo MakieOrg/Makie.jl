@@ -222,8 +222,8 @@ nbins = 30
 central_heatmap = plot!(central_axis, StatsBase.fit(StatsBase.Histogram, (x_data, y_data); nbins = nbins); interpolate = false)
 
 # We use Makie's hist recipe for the rest:
-top_hist   = hist!(top_axis, x_data; nbins = nbins, strokewidth = 1, strokecolor = (:black, 0.6))
-right_hist = hist!(right_axis, y_data; nbins = nbins, direction = :x, strokewidth = 1, strokecolor = (:black, 0.6))
+top_hist   = hist!(top_axis, x_data; bins = nbins, strokewidth = 1, strokecolor = (:black, 0.6))
+right_hist = hist!(right_axis, y_data; bins = nbins, direction = :x, strokewidth = 1, strokecolor = (:black, 0.6))
 
 fig
 ```
