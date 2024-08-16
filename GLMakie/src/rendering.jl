@@ -75,8 +75,9 @@ function render_frame(screen::Screen, glscene::GLScene)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
 
     # Set/Restrict draw area
-    mini = screen.px_per_unit[] .* minimum(glscene.viewport[])
-    wh   = screen.px_per_unit[] .* widths(glscene.viewport[])
+    # TODO: move to glscreen?
+    mini = round.(Int, screen.px_per_unit[] .* minimum(glscene.viewport[]))
+    wh   = round.(Int, screen.px_per_unit[] .* widths(glscene.viewport[]))
     @inbounds glViewport(mini[1], mini[2], wh[1], wh[2])
     @inbounds glScissor(mini[1], mini[2], wh[1], wh[2])
 
