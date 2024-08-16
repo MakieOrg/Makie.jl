@@ -40,9 +40,10 @@ Camera3D
 
 `cam3d!` and `cam3d_cad!` but create a `Camera3D` with some specific options.
 
-## Example - Visualizing the cameras view box
+## Example - Visualizing the camera's view box
 
-```julia
+```@figure frustum
+using Makie, GLMakie
 using GeometryBasics, LinearAlgebra
 
 function frustum_snapshot(cam)
