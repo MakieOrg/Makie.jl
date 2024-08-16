@@ -67,7 +67,7 @@ end
 # Skips one set of allocations
 function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = size(scene) # unitless dimensions
+    w, h = size(screen.root_scene) # unitless dimensions
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
     fb = screen.framebuffer
@@ -106,7 +106,7 @@ end
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = size(scene) # unitless dimensions
+    w, h = size(screen.root_scene) # unitless dimensions
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end
