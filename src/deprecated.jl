@@ -14,5 +14,7 @@ end
 
 @deprecate pixelarea viewport true
 
-function Combined end
-Combined(args...) = Base.depwarn("Makie.Combined(args...) is deprecated, use Makie.Plot(args...) instead"); Plot(args...)
+function Combined(args...) 
+    Base.depwarn("Makie.Combined(args...) is deprecated, use Makie.Plot(args...) instead")
+    Plot(args...)
+end
