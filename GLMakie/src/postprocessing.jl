@@ -64,6 +64,8 @@ function OIT_postprocessor(framebuffer, shader_cache)
     color_id = framebuffer[:color][1]
     full_render = screen -> begin
         # Blend transparent onto opaque
+        wh = framebuffer_size(to_native(screen))
+        glViewport(0, 0, wh[1], wh[2])
         glDrawBuffer(color_id)
         GLAbstraction.render(pass)
     end
@@ -151,6 +153,9 @@ function ssao_postprocessor(framebuffer, shader_cache)
     color_id = framebuffer[:color][1]
 
     full_render = (screen, settings, projection) -> begin
+        wh = framebuffer_size(to_native(screen))
+        glViewport(0, 0, wh[1], wh[2])
+
         glDrawBuffer(normal_occ_id)  # occlusion buffer
         data1[:projection] = projection
         data1[:bias] = ssao.bias[]
@@ -212,6 +217,10 @@ function fxaa_postprocessor(framebuffer, shader_cache)
 
     color_id = framebuffer[:color][1]
     full_render = screen -> begin
+        # TODO: make scissor explicit?
+        wh = framebuffer_size(to_native(screen))
+        glViewport(0, 0, wh[1], wh[2])
+
         # FXAA - calculate LUMA
         glDrawBuffer(luma_id)
         # necessary with negative SSAO bias...
