@@ -181,7 +181,7 @@ end
 
 # TODO destructor?
 mutable struct DataInspector
-    root::Scene
+    scene::Scene
     attributes::Attributes
 
     temp_plots::Vector{AbstractPlot}
@@ -202,7 +202,7 @@ end
 function cleanup(inspector::DataInspector)
     off.(inspector.obsfuncs)
     empty!(inspector.obsfuncs)
-    delete!(inspector.root, inspector.plot)
+    delete!(inspector.scene, inspector.plot)
     clear_temporary_plots!(inspector, inspector.selection)
     inspector
 end
@@ -248,6 +248,8 @@ end
 function DataInspector(scene::Scene; priority = 100, kwargs...)
     parent = root(scene)
     @assert origin(viewport(parent)[]) == Vec2f(0)
+    scene = Scene(parent, viewport = parent.viewport, clear = false)
+    campixel!(scene)
 
     attrib_dict = Dict(kwargs)
     base_attrib = Attributes(
@@ -271,13 +273,13 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
         _color = RGBAf(0,0,0,0),
     )
 
-    plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); visible=false, attrib_dict...)
+    plot = tooltip!(scene, Observable(Point2f(0)), text = Observable(""); visible=false, attrib_dict...)
     on(z -> translate!(plot, 0, 0, z), base_attrib.depth)
     notify(base_attrib.depth)
 
-    inspector = DataInspector(parent, plot, base_attrib)
+    inspector = DataInspector(scene, plot, base_attrib)
 
-    e = events(parent)
+    e = events(scene)
     f1 = on(_ -> on_hover(inspector), e.mouseposition, priority = priority)
     f2 = on(_ -> on_hover(inspector), e.scroll, priority = priority)
 
@@ -297,7 +299,7 @@ end
 DataInspector(; kwargs...) = DataInspector(current_figure(); kwargs...)
 
 function on_hover(inspector)
-    parent = inspector.root
+    parent = inspector.scene
     lock(inspector.lock) do
         (inspector.attributes.enabled[] && is_mouseinside(parent)) || return Consume(false)
 
@@ -405,7 +407,7 @@ end
 function update_tooltip_alignment!(inspector, proj_pos)
     inspector.plot[1][] = proj_pos
 
-    wx, wy = widths(viewport(inspector.root)[])
+    wx, wy = widths(viewport(inspector.scene)[])
     px, py = proj_pos
 
     placement = py < 0.75wy ? (:above) : (:below)
@@ -549,7 +551,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     scene = parent_scene(plot)
 
     bbox = boundingbox(plot)
-    proj_pos = Point2f(mouseposition_px(inspector.root))
+    proj_pos = Point2f(mouseposition_px(inspector.scene))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
@@ -597,7 +599,7 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     a = inspector.attributes
     tt = inspector.plot
 
-    proj_pos = Point2f(mouseposition_px(inspector.root))
+    proj_pos = Point2f(mouseposition_px(inspector.scene))
     update_tooltip_alignment!(inspector, proj_pos)
 
     pos = position_on_plot(plot, idx, apply_transform = false)
@@ -672,7 +674,7 @@ function show_imagelike(inspector, plot, name, edge_based)
         z
     end
 
-    proj_pos = Point2f(mouseposition_px(inspector.root))
+    proj_pos = Point2f(mouseposition_px(inspector.scene))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
@@ -815,7 +817,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    proj_pos = Point2f(mouseposition_px(inspector.root))
+    proj_pos = Point2f(mouseposition_px(inspector.scene))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
@@ -864,7 +866,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     tt = inspector.plot
     pos = plot[1][][idx]
 
-    mpos = Point2f(mouseposition_px(inspector.root))
+    mpos = Point2f(mouseposition_px(inspector.scene))
     update_tooltip_alignment!(inspector, mpos)
 
     p = vec2string(pos)
@@ -889,7 +891,7 @@ function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
     idx = show_poly(inspector, plot, plot.plots[1], idx, source)
     level = plot.plots[1].color[][idx]
 
-    mpos = Point2f(mouseposition_px(inspector.root))
+    mpos = Point2f(mouseposition_px(inspector.scene))
     update_tooltip_alignment!(inspector, mpos)
     tt[1][] = mpos
     if to_value(get(plot, :inspector_label, automatic)) == automatic
@@ -960,7 +962,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
 
     i, j, val = _pixelated_getindex(child[1][], child[2][], child[3][], pos, true)
 
-    proj_pos = Point2f(mouseposition_px(inspector.root))
+    proj_pos = Point2f(mouseposition_px(inspector.scene))
     update_tooltip_alignment!(inspector, proj_pos)
     tt[1][] = proj_pos
 
@@ -1028,7 +1030,7 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
         end
 
         # Update tooltip
-        update_tooltip_alignment!(inspector, mouseposition_px(inspector.root))
+        update_tooltip_alignment!(inspector, mouseposition_px(inspector.scene))
 
         if to_value(get(plot, :inspector_label, automatic)) == automatic
             P1 = apply_transform_and_model(mesh, P1, Point2f)
