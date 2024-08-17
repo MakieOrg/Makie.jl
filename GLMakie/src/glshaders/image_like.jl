@@ -75,7 +75,7 @@ function draw_volume(screen, main::VolumeTypes, data::Dict)
         transparency = false
         shader = GLVisualizeShader(
             screen,
-            "util.vert", "volume.vert",
+            "volume.vert",
             "fragment_output.frag", "lighting.frag", "volume.frag",
             view = Dict(
                 "shading" => light_calc(shading),

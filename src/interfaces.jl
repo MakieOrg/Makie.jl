@@ -135,19 +135,20 @@ expand_dimensions(trait, args...) = nothing
 expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
 expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
 
-function expand_dimensions(::ImageLike, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
-    n, m = Float32.(size(data))
-    return (Float32(0) .. n, Float32(0) .. m, el32convert(data))
+function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
+    # Float32, because all ploteable sizes should fit into float32
+    x, y = map(x-> (0f0, Float32(x)), size(data))
+    return (x, y, data)
 end
 
-function expand_dimensions(::GridBased, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
-    n, m = Float32.(size(data))
-    return (1.0f0 .. n, 1.0f0 .. m, data)
+function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
+    x, y = map(x-> (1f0, Float32(x)), size(data))
+    return (x, y, data)
 end
 
 function expand_dimensions(::VolumeLike, data::RealArray{3})
-    n, m, k = Float32.(size(data))
-    return (0.0f0 .. n, 0.0f0 .. m, 0.0f0 .. k, data)
+    x, y, z = map(x-> (0f0, Float32(x)), size(data))
+    return (x, y, z, data)
 end
 
 function apply_expand_dimensions(trait, args, args_obs, deregister)
@@ -344,6 +345,8 @@ plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
 
+clip_planes_obs(parent::AbstractPlot) = attributes(parent).clip_planes
+clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
 
 # all the plotting functions that get a plot type
 const PlotFunc = Type{<:AbstractPlot}
@@ -377,7 +380,13 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.model = transformationmatrix(plot)
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
+
+    if to_value(get(attributes(plot), :clip_planes, automatic)) === automatic
+        attributes(plot)[:clip_planes] = map(identity, plot, clip_planes_obs(parent))
+    end
+
     plot!(plot)
+
     conversions = get_conversions(plot)
     if !isnothing(conversions)
         connect_conversions!(scene.conversions, conversions)
