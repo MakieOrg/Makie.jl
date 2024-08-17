@@ -12,7 +12,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     rx, ry = minimum(rect)
     rw, rh = widths(rect)
-    w, h = size(fb) # pixel dimensions
+    w, h = size(screen.root_scene)
     ppu = screen.px_per_unit[]
     if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
         rx, ry, rw, rh = round.(Int, ppu .* (rx, ry, rw, rh))
@@ -32,7 +32,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = floor.(Int, xy)
-    w, h = size(fb) # pixel dimensions
+    w, h = size(screen.root_scene)
     ppu = screen.px_per_unit[]
     if x > 0 && y > 0 && x <= w && y <= h
         x, y = round.(Int, ppu .* (x, y))
