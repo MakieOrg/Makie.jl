@@ -40,7 +40,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
     data = Dict{Symbol, Any}(
         # :opaque_color => framebuffer[:color][2],
         :sum_color => framebuffer[:HDR_color][2],
-        :prod_alpha => framebuffer[:OIT_weight][2],
+        :transmittance => framebuffer[:OIT_weight][2],
     )
     pass = RenderObject(
         data, shader,
@@ -49,13 +49,21 @@ function OIT_postprocessor(framebuffer, shader_cache)
             glDisable(GL_DEPTH_TEST)
             glDisable(GL_CULL_FACE)
             glEnable(GL_BLEND)
-            # shader computes:
-            # src.rgb = sum_color / sum_weight * (1 - prod_alpha)
-            # src.a = prod_alpha
-            # blending: (assumes opaque.a = 1)
-            # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
-            # opaque.a   = 0 * src.a   + 1 * opaque.a
-            glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
+            # prepare:
+            #   sum_color = 0
+            #   transmittance = 1
+            # main render + blend: (w/o clamping)
+            #   weight = alpha * (factor) * (1 - z)^3
+            #   sum_color  += (weight * rgb, weight)
+            #   transmittance *= (1 - alpha)
+            # postprocessor shader:
+            #   out = (sum_color.rgb / sum_color.w * (1 - transmittance), tranmittance)
+            # blending (here)
+            #   src = ^ = (pre-multiplied color, transmittance)
+            #   dst = (pre-multiplied color, transmittance) (from non-OIT draw)
+            # combines to another (pre-multiplied color, transmittance) as:
+            #   src.rgb + dst.rgb, src.a * dst.a            
+            glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ZERO, GL_SRC_ALPHA)
         end,
         nothing
     )
@@ -260,7 +268,9 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_CULL_FACE)
         glEnable(GL_BLEND)
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+        # glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+        # see GLRender.jl enabletransparency()
+        glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
     end, nothing)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 

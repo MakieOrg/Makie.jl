@@ -95,22 +95,26 @@ function render_frame(screen::Screen, glscene::GLScene)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
     if glscene.clear[]
+        @info "clearing"
         # Draw background color
         glDrawBuffer(fb.render_buffer_ids[1]) # accumulation color buffer
         c = glscene.backgroundcolor[]::RGBAf
-        glClearColor(red(c), green(c), blue(c), alpha(c))
+        a = alpha(c)
+        @info a * red(c), a * green(c), a * blue(c), 1f0 - a
+        glClearColor(a * red(c), a * green(c), a * blue(c), 1f0 - a)
         glClear(GL_COLOR_BUFFER_BIT)
 
         # If previous picked plots are no longer visible they should not be pickable
-        if alpha(c) == 1.0
+        if alpha(c) == 1f0
             glDrawBuffer(fb.render_buffer_ids[2]) # objectid, i.e. picking
             glClearColor(0, 0, 0, 0)
             glClear(GL_COLOR_BUFFER_BIT)
         end
     else
+        @info "no clear"
         # TODO: maybe SSAO needs this cleared if we run it per scene...?
         glDrawBuffer(fb.render_buffer_ids[1]) # accumulation color buffer
-        glClearColor(0, 0, 1, 0)
+        glClearColor(0, 0, 0, 1)
         glClear(GL_COLOR_BUFFER_BIT)
     end
 
@@ -156,7 +160,7 @@ function render_frame(screen::Screen, glscene::GLScene)
     screen.postprocessors[2].render(screen)
 
     # FXAA
-    screen.postprocessors[3].render(screen)
+    # screen.postprocessors[3].render(screen)
 
     # transfer everything to the screen
     # TODO: accumulation buffer would avoid viewport/scissor reset
