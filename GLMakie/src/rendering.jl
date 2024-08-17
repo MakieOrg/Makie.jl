@@ -162,7 +162,7 @@ function render_frame(screen::Screen, glscene::GLScene)
     screen.postprocessors[2].render(screen)
 
     # FXAA
-    # screen.postprocessors[3].render(screen)
+    screen.postprocessors[3].render(screen)
 
     # transfer everything to the screen
     # TODO: accumulation buffer would avoid viewport/scissor reset
