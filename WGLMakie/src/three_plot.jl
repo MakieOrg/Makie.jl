@@ -33,7 +33,14 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], scene, viewport(scene))
-    canvas = DOM.m("canvas"; tabindex="0", style="display: block")
+    canvas = DOM.m("canvas";
+        tabindex="0", style="display: block",
+        # Pass JupyterLab specific attributes to prevent it from capturing keyboard shortcuts
+        # and to suppress the JupyterLab context menu in Makie plots, see:
+        # https://jupyterlab.readthedocs.io/en/4.2.x/extension/notebook.html#keyboard-interaction-model
+        # https://jupyterlab.readthedocs.io/en/4.2.x/extension/extension_points.html#context-menu
+        dataLmSuppressShortcuts=true, dataJpSuppressContextMenu=nothing,
+    )
     wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
@@ -62,6 +69,6 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     on(session, done_init) do val
         window_open[] = true
     end
-    connect_scene_events!(scene, comm)
+    connect_scene_events!(screen, scene, comm)
     return wrapper, done_init
 end

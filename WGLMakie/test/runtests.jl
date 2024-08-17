@@ -19,17 +19,7 @@ import Electron
 end
 
 excludes = Set([
-    "Streamplot animation",
-    "Transforming lines",
     "image scatter",
-    "Line GIF",
-    "surface + contour3d",
-    # Hm weird, looks like some internal Bonito error missing an Observable:
-    "Errorbars x y low high",
-    "Rangebars x y low high",
-    # These are a bit sad, since it's just missing interpolations
-    "FEM mesh 2D",
-    "FEM polygon 2D",
     # missing transparency & image
     "Image on Surface Sphere",
     # Marker size seems wrong in some occasions:
@@ -39,14 +29,11 @@ excludes = Set([
     "Test heatmap + image overlap",
     # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
     "Order Independent Transparency",
-    "Record Video",
     "fast pixel marker",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "lines and linestyles",
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
-    "colorscale (lines)", # also z-fighting
 ])
 Makie.inline!(Makie.automatic)
 
@@ -82,4 +69,63 @@ end
     # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
     # we used Retain for global_obs, so it should stay as long as root session is open
     @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
+end
+
+@testset "Tick Events" begin
+    function check_tick(tick, state, count)
+        @test tick.state == state
+        @test tick.count == count
+        @test tick.time > 1e-9
+        @test tick.delta_time > 1e-9
+    end
+
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
+
+    filename = "$(tempname()).png"
+    try
+        tick_record = Makie.Tick[]
+        on(tick -> push!(tick_record, tick), events(f).tick)
+        save(filename, f)
+        idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
+        tick = tick_record[idx]
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
+    finally
+        close(f.scene.current_screens[1])
+        rm(filename)
+    end
+
+    
+    f, a, p = scatter(rand(10));
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        dt = 1.0 / 30.0
+
+        for (i, tick) in enumerate(tick_record)
+            @test tick.state == Makie.OneTimeRenderTick
+            @test tick.count == i-1
+            @test tick.time ≈ dt * (i-1)
+            @test tick.delta_time ≈ dt
+        end
+    finally
+        rm(filename)
+    end
+
+    # test destruction of tick overwrite
+    f, a, p = scatter(rand(10));
+    let
+        io = VideoStream(f)
+        @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+        nothing
+    end
+    tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+    events(f).tick[] = tick
+    @test events(f).tick[] == tick
+
+    # TODO: test normal rendering
 end

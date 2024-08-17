@@ -195,34 +195,6 @@ end
 GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
 
 """
-apply for return type PlotSpec
-"""
-function apply_convert!(P, attributes::Attributes, x::PlotSpec)
-    args, kwargs = x.args, x.kwargs
-    # Note that kw_args in the plot spec that are not part of the target plot type
-    # will end in the "global plot" kw_args (rest)
-    for (k, v) in pairs(kwargs)
-        attributes[k] = v
-    end
-    return (plottype(plottype(x), P), (args...,))
-end
-
-function apply_convert!(P, ::Attributes, x::AbstractVector{PlotSpec})
-    return (PlotList, (x,))
-end
-
-"""
-apply for return type
-    (args...,)
-"""
-apply_convert!(P, ::Attributes, x::Tuple) = (P, x)
-
-function MakieCore.argtypes(plot::PlotSpec)
-    args_converted = convert_arguments(plottype(plot), plot.args...)
-    return MakieCore.argtypes(args_converted)
-end
-
-"""
 See documentation for specapi.
 """
 struct _SpecApi end
@@ -377,8 +349,40 @@ plots[] = [
     Attributes()
 end
 
+function Base.propertynames(pl::PlotList)
+    inner_pnames = if length(pl.plots) == 1
+        Base.propertynames(pl.plots[1])
+    else
+        ()
+    end
+    return Tuple(unique([keys(pl.attributes)..., inner_pnames...]))
+end
+
+function Base.getproperty(pl::PlotList, property::Symbol)
+    hasfield(typeof(pl), property) && return getfield(pl, property)
+    haskey(pl.attributes, property) && return pl.attributes[property]
+    if length(pl.plots) == 1
+        return getproperty(pl.plots[1], property)
+    else
+        error("Can't get property $property on PlotList with multiple plots.")
+    end
+end
+
+function Base.setproperty!(pl::PlotList, property::Symbol, value)
+    hasfield(typeof(pl), property) && return setfield!(pl, property, value)
+    property === :model && return setproperty!(pl.attributes, property, value)
+    if length(pl.plots) == 1
+        setproperty!(pl.plots[1], property, value)
+    else
+        error("Can't set property $property on PlotList with multiple plots.")
+    end
+end
+
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
-plottype(::AbstractVector{PlotSpec}) = PlotList
+
+plottype(::Type{<:Plot{F}}, ::Union{PlotSpec,AbstractVector{PlotSpec}}) where {F} = PlotList
+plottype(::Type{<:Plot{F}}, ::Union{GridLayoutSpec,BlockSpec}) where {F} = Plot{plot}
+plottype(::Type{<:Plot}, ::Union{GridLayoutSpec,BlockSpec}) = Plot{plot}
 
 # Since we directly plot into the parent scene (hacky), we need to overload these
 Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
@@ -448,6 +452,8 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     # and re-create it if it ever returns.
     unused_plots = IdDict{PlotSpec,Plot}()
     obs_to_notify = Observable[]
+
+    update_plotlist(spec::PlotSpec) = update_plotlist([spec])
     function update_plotlist(plotspecs)
         # Global list of observables that need updating
         # Updating them all at once in the end avoids problems with triggering updates while updating
@@ -483,11 +489,13 @@ function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist
     return
 end
 
-function Makie.plot!(p::PlotList{<: Tuple{<: AbstractArray{PlotSpec}}})
+function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotSpec}}}})
     scene = Makie.parent_scene(p)
     update_plotspecs!(scene, p[1], p)
     return
 end
+
+
 
 ## BlockSpec
 
@@ -732,12 +740,6 @@ plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
 function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
-    update_fig!(fig, plot[1])
+    update_fig!(fig, plot.converted[1])
     return fig
 end
-
-function apply_convert!(P, ::Attributes, x::GridLayoutSpec)
-    return (Plot{plot}, (x,))
-end
-
-MakieCore.argtypes(::GridLayoutSpec) = Tuple{Nothing}

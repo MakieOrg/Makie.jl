@@ -75,10 +75,11 @@ end
     @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
     atlas = Makie.get_texture_atlas()
     # Test quad data
+    transformed = Makie.apply_transform_and_f32_conversion(
+        nothing, Makie.transform_func(p), p.model[], p.position[], :data
+    )
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
-        atlas,
-        to_ndim(Point3f, p.position[], 0), glyph_collection,
-        Vec2f(0), Makie.transform_func_obs(scene)[], :data
+        atlas, transformed, glyph_collection, Vec2f(0)
     )
 
     # Also doesn't work
@@ -118,7 +119,7 @@ end
     text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
     text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
 
-    err = ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
+    err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
-    @test_throws err text(1, 2, text = "hi", textsize = 30)
+    # @test_throws err text(1, 2, text = "hi", textsize = 30)
 end

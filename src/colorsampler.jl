@@ -164,9 +164,9 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
         if isnan(scaled_number)
             return nan_color
-        elseif !isnothing(lowclip) && scaled_number < scaled_cmin
+        elseif lowclip !== automatic && scaled_number < scaled_cmin
             return lowclip
-        elseif !isnothing(highclip) && scaled_number > scaled_cmax
+        elseif highclip !== automatic && scaled_number > scaled_cmax
             return highclip
         end
         return interpolated_getindex(
@@ -225,17 +225,18 @@ fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized
 """
-struct Categorical{T} <: AbstractVector{RGBAf}
-    values::Vector{T}
+struct Categorical
+    values::Any
 end
-Categorical(values) = Categorical(to_colormap(values))
 Base.getindex(c::Categorical, i) = c.values[i]
 Base.size(c::Categorical) = size(c.values)
 
-_array_value_type(::Categorical{T}) where T = Vector{T}
+_array_value_type(::Categorical) = Vector{eltype(values)}
 _array_value_type(A::AbstractArray{<:Number}) = typeof(A)
 _array_value_type(r::AbstractRange) = Vector{eltype(r)} # use vector instead, to have a few less types to worry about
 
+to_colormap(x::Categorical) = to_colormap(x.values)
+_to_colormap(x::Categorical) = to_colormap(x.values)
 _to_colormap(x::PlotUtils.ColorGradient) = to_colormap(x.colors)
 _to_colormap(x) = to_colormap(x)
 
@@ -362,7 +363,6 @@ end
 
 function assemble_colors(::Number, color, plot)
     plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value. Pass an explicit colorrange.")
-
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
     return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
                       cm.nan_color)

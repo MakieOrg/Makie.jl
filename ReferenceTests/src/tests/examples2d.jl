@@ -373,6 +373,41 @@ end
     pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
 end
 
+@reference_test "Pie Position" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1]; autolimitaspect=1)
+
+    vs = 0:6 |> Vector
+    vs_ = vs ./ sum(vs) .* (3/2*π)
+    cs = Makie.wong_colors()
+    Δx = [1, 1, 1, -1, -1, -1, 1] ./ 10
+    Δy = [1, 1, 1, 1, 1, -1, -1] ./ 10
+    Δr1 = [0, 0, 0.2, 0, 0.2, 0, 0]
+    Δr2 = [0, 0, 0.2, 0, 0, 0, 0]
+
+    pie!(ax, vs; color=cs)
+    pie!(ax, 3 .+ Δx, 0, vs; color=cs)
+    pie!(ax, 0, 3 .+ Δy, vs; color=cs)
+    pie!(ax, 3 .+ Δx, 3 .+ Δy, vs; color=cs)
+
+    pie!(ax, 7, 0, vs; color=cs, offset_radius=Δr1)
+    pie!(ax, 7, 3, vs; color=cs, offset_radius=0.2)
+    pie!(ax, 10 .+ Δx, 3 .+ Δy, vs; color=cs, offset_radius=0.2)
+    pie!(ax, 10, 0, vs_; color=cs, offset_radius=Δr1, normalize=false, offset=π/2)
+
+    pie!(ax, Point2(0.5, -3), vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
+    pie!(ax, Point2.(3.5, -3 .+ Δy), vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
+    pie!(ax, Point2.(6.5 .+ Δx, -3), vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
+    pie!(ax, Point2.(9.5 .+ Δx, -3 .+ Δy), vs_; color=cs, offset_radius=Δr2, normalize=false, offset=π/2)
+
+    pie!(ax, 0.5, -6, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
+    pie!(ax, 3.5, -6 .+ Δy, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
+    pie!(ax, 6.5 .+ Δx, -6, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
+    pie!(ax, 9.5 .+ Δx, -6 .+ Δy, vs_; inner_radius=0.2, color=cs, offset_radius=0.2, normalize=false, offset=π/2)
+
+    fig
+end
+
 @reference_test "intersecting polygon" begin
     x = LinRange(0, 2pi, 100)
     poly(Point2f.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
@@ -767,8 +802,8 @@ end
     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
     edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
-    tri = triangulate(points; boundary_nodes = boundary_nodes, edges = edges, check_arguments = false)
-    z = [(x - 1) * (y + 1) for (x, y) in each_point(tri)]
+    tri = triangulate(points; boundary_nodes = boundary_nodes, segments = edges, check_arguments = false)
+    z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)]
     f, ax, _ = tricontourf(tri, z, levels = 30)
     f
 end
@@ -783,7 +818,7 @@ end
     end
     boundary_nodes, points = convert_boundary_points_to_indices(xy)
     tri = triangulate(points; boundary_nodes=boundary_nodes, check_arguments=false)
-    z = [(x - 3/2)^2 + y^2 for (x, y) in each_point(tri)]
+    z = [(x - 3/2)^2 + y^2 for (x, y) in DelaunayTriangulation.each_point(tri)]
 
     f, ax, tr = tricontourf(tri, z, colormap = :matter)
     f
@@ -1102,6 +1137,12 @@ end
     fig
 end
 
+@reference_test "hist(...; gap=0.1)" begin
+    fig = Figure(size = (400, 400))
+    hist(fig[1,1], RNG.randn(1000); gap=0.1)
+    fig
+end
+
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
@@ -1126,13 +1167,16 @@ end
     hidespines!(ax)
     colormap = :tab10
     colorrange = (1, 10)
-    for i in 1:10
-        color = i
-        lines!(ax, i .* [10, 10], [10, 590]; color, colormap, colorrange, linewidth = 5)
-        scatter!(ax, fill(10 * i + 130, 50), range(10, 590, length = 50); color, colormap, colorrange)
-        poly!(ax, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)]; color, colormap, colorrange)
-        text!(ax, 360, i * 50, text = "$i"; color, colormap, colorrange, fontsize = 40)
-        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange)
+    nan_color = :cyan
+    for i in -1:13
+        color = i == 13 ? NaN : i
+        lowclip = i == 0 ? Makie.automatic : :bisque
+        highclip = i == 11 ? Makie.automatic : :black
+        lines!(ax, i .* [8, 8], [10, 590]; color, colormap, colorrange, lowclip, highclip, nan_color, linewidth = 5)
+        scatter!(ax, fill(8 * i + 130, 50), range(10, 590, length = 50); color, colormap, colorrange, lowclip, highclip, nan_color)
+        poly!(ax, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)]; color, colormap, colorrange, lowclip, highclip, nan_color)
+        text!(ax, 360, i * 50, text = "$i"; color, colormap, colorrange, lowclip, highclip, nan_color, fontsize = 40)
+        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange, lowclip, highclip, nan_color)
     end
     f
 end
@@ -1151,10 +1195,10 @@ end
 
     fig = Figure(size = (600, 600))
     # Create a recipe plot
-    ax, plot_top = heatmap(fig[1, 1], randn(10, 10))
+    ax, plot_top = heatmap(fig[1, 1], randn(10, 10), colormap = [:transparent])
     # Plot some recipes at the level below the contour
-    scatterlineplot_1 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
-    scatterlineplot_2 = scatterlines!(plot_top, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
+    scatterlineplot_1 = scatterlines!(ax, 1:10, 1:10; linewidth = 20, markersize = 20, color = :red)
+    scatterlineplot_2 = scatterlines!(ax, 1:10, 1:10; linewidth = 20, markersize = 30, color = :blue)
     # Translate the lowest level plots (scatters)
     translate!(scatterlineplot_1.plots[2], 0, 0, 1)
     translate!(scatterlineplot_2.plots[2], 0, 0, -1)
@@ -1213,59 +1257,57 @@ end
     fig
 end
 
-# TODO: as noted in https://github.com/MakieOrg/Makie.jl/pull/3520#issuecomment-1873382060
-# this test has some issues with random number generation across Julia 1.6 and 1, for now
-# it's disabled until someone has time to look into it
-
-# @reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
-#     curve_1 = [[
-#         (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
-#         (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
-#         (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
-#         (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
-#         (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
-#         (-4.0, 0.0), (0.0, 0.0),
-#     ]]
-#     curve_2 = [[
-#         (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
-#         (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
-#         (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
-#     ]]
-#     curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
-#     curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
-#     curves = [curve_1, curve_2, curve_3, curve_4]
-#     points = [
-#         (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
-#         (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
-#         (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
-#         (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
-#         (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
-#         (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
-#         (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
-#         (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
-#         (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
-#         (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
-#         (7.0, 7.8), (7.0, 7.4)]
-#     boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
-#     tri = triangulate(points; boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
-#     refine!(tri, max_area = 1e-3get_total_area(tri), rng = RNG.STABLE_RNG)
-#     fig, ax, sc = triplot(tri,
-#         show_points=true,
-#         show_constrained_edges=true,
-#         constrained_edge_linewidth=2,
-#         strokewidth=0.2,
-#         markersize=15,
-#         point_color=:blue,
-#         show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
-#         marker='x',
-#         bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
-#     fig
-# end
+@reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
+    curve_1 = [[
+        (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
+        (12.0, 8.0), (14.0, 10.0), (16.0, 12.0), (16.0, 16.0),
+        (14.0, 18.0), (12.0, 20.0), (12.0, 24.0), (12.0, 28.0),
+        (8.0, 28.0), (4.0, 28.0), (0.0, 28.0), (-2.0, 26.0), (0.0, 22.0),
+        (0.0, 18.0), (0.0, 10.0), (0.0, 8.0), (0.0, 4.0), (-4.0, 4.0),
+        (-4.0, 0.0), (0.0, 0.0),
+    ]]
+    curve_2 = [[
+        (4.0, 26.0), (8.0, 26.0), (10.0, 26.0), (10.0, 24.0),
+        (10.0, 22.0), (10.0, 20.0), (8.0, 20.0), (6.0, 20.0),
+        (4.0, 20.0), (4.0, 22.0), (4.0, 24.0), (4.0, 26.0)
+    ]]
+    curve_3 = [[(4.0, 16.0), (12.0, 16.0), (12.0, 14.0), (4.0, 14.0), (4.0, 16.0)]]
+    curve_4 = [[(4.0, 8.0), (10.0, 8.0), (8.0, 6.0), (6.0, 6.0), (4.0, 8.0)]]
+    curves = [curve_1, curve_2, curve_3, curve_4]
+    points = [
+        (2.0, 26.0), (2.0, 24.0), (6.0, 24.0), (6.0, 22.0), (8.0, 24.0), (8.0, 22.0),
+        (2.0, 22.0), (0.0, 26.0), (10.0, 18.0), (8.0, 18.0), (4.0, 18.0), (2.0, 16.0),
+        (2.0, 12.0), (6.0, 12.0), (2.0, 8.0), (2.0, 4.0), (4.0, 2.0),
+        (-2.0, 2.0), (4.0, 6.0), (10.0, 2.0), (10.0, 6.0), (8.0, 10.0), (4.0, 10.0),
+        (10.0, 12.0), (12.0, 12.0), (14.0, 26.0), (16.0, 24.0), (18.0, 28.0),
+        (16.0, 20.0), (18.0, 12.0), (16.0, 8.0), (14.0, 4.0), (14.0, -2.0),
+        (6.0, -2.0), (2.0, -4.0), (-4.0, -2.0), (-2.0, 8.0), (-2.0, 16.0),
+        (-4.0, 22.0), (-4.0, 26.0), (-2.0, 28.0), (6.0, 15.0), (7.0, 15.0),
+        (8.0, 15.0), (9.0, 15.0), (10.0, 15.0), (6.2, 7.8),
+        (5.6, 7.8), (5.6, 7.6), (5.6, 7.4), (6.2, 7.4), (6.0, 7.6),
+        (7.0, 7.8), (7.0, 7.4)]
+    boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+    tri = triangulate(points; randomise = false, boundary_nodes=boundary_nodes, rng = RNG.STABLE_RNG)
+    fig, ax, sc = triplot(tri,
+        show_points=true,
+        show_constrained_edges=true,
+        constrained_edge_linewidth=2,
+        strokewidth=0.2,
+        markersize=15,
+        markercolor=:blue,
+        show_ghost_edges=true, # not as good because the outer boundary is not convex, but just testing
+        marker='x',
+        bounding_box = (-5,20,-5,35)) # also testing the conversion to Float64 for bbox here
+    fig
+end
 
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]] 
+    noise = i -> 1f-4 * (isodd(i) ? 1 : -1) * i/sqrt(50) # should have small discrepancy
+    points = points .+ [Point2f(noise(i), noise(i)) for i in eachindex(points)]
+    # The noise forces the triangulation to be unique. Not using RNG to not disrupt the RNG stream later
     tr = triplot!(ax, points)
     f
 end
@@ -1303,9 +1345,8 @@ end
 end
 
 @reference_test "Voronoiplot for a centroidal tessellation with an automatic colormap" begin
-    points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
+    points = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0),(0.2,0.2),(0.25,0.6),(0.5,0.3),(0.1,0.15)]
     tri = triangulate(points; boundary_nodes = [1,2,3,4,1], rng = RNG.STABLE_RNG)
-    refine!(tri; max_area=1e-2, min_angle = 29.871, rng = RNG.STABLE_RNG)
     vorn = voronoi(tri)
     smooth_vorn = centroidal_smooth(vorn; maxiters = 250, rng = RNG.STABLE_RNG)
     cmap = cgrad(:matter)
@@ -1316,7 +1357,7 @@ end
 @reference_test "Voronoiplot for a tessellation with a custom bounding box" begin
     pts = 25RNG.randn(2, 50)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    vorn = voronoi(tri, false)
+    vorn = voronoi(tri, clip = false)
     fig, ax, sc = voronoiplot(vorn,
         show_generators=true,
         colormap=:RdBu,
@@ -1334,7 +1375,7 @@ end
 @reference_test "Voronoiplots with clipped tessellation and unbounded polygons" begin
     pts = 25RNG.randn(2, 10)
     tri = triangulate(pts; rng = RNG.STABLE_RNG)
-    vorn = voronoi(tri, true)
+    vorn = voronoi(tri, clip = true)
     fig, ax, sc = voronoiplot(vorn, color = (:blue,0.2), markersize = 20, strokewidth = 4)
 
     # used to be bugged
@@ -1350,7 +1391,9 @@ end
 @reference_test "Voronoiplot with a nonlinear transform" begin
     f = Figure()
     ax = PolarAxis(f[1, 1], theta_as_x = false)
-    points = Point2f[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    points = Point2d[(r, phi) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
+    noise = i -> 1f-4 * (isodd(i) ? 1 : -1) * i/sqrt(50) # should have small discrepancy
+    points = points .+ [Point2f(noise(i), noise(i)) for i in eachindex(points)] # make triangulation unique
     polygon_color = [r for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     polygon_color_2 = [phi for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     tr = voronoiplot!(ax, points, smooth = false, show_generators = false, color = polygon_color)
@@ -1360,6 +1403,7 @@ end
     Makie.rlims!(ax, 12)
     f
 end
+
 
 @reference_test "Voronoiplot with some custom bounding boxes may not contain all data sites" begin
     points = [(-3.0, 7.0), (1.0, 6.0), (-1.0, 3.0), (-2.0, 4.0), (3.0, -2.0), (5.0, 5.0), (-4.0, -3.0), (3.0, 8.0)]
@@ -1450,4 +1494,39 @@ end
         ax.title = "scale=:$(scale)"
     end
     fig
+end
+
+@reference_test "Clip planes - CairoMakie overrides" begin
+    f = Figure()
+    a = Axis(f[1, 1])
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(1, 0, 0), 0)]
+    xlims!(a, -3.5, 3.5)
+    ylims!(a, -3.5, 3.5)
+
+    poly!(a, Rect2f(Point2f(-3.0, 1.8), Vec2f(6, 1)), strokewidth = 2)
+    poly!(a, Point2f[(-3, 1.5), (3, 1.5), (3, 0.5), (-3, 0.5), (-3, 1.5)], strokewidth = 2)
+    xs = range(-3.0, 3.0, length=101)
+    b = band!(a, xs, -0.4 .* sin.(3 .* xs) .- 2.5, 0.4 .* sin.(3 .* xs) .- 1.0)
+
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn()
+    p = tricontourf!(a, x, y, z)
+    translate!(p, 0, 0, 1)
+
+    f
+end
+
+@reference_test "Spy" begin
+    f = Figure()
+    data = RNG.rand(10, 10)
+    spy(f[1, 1], (0, 1), (0, 1), data)
+    # if all colorvalues are 1, colorrange will be (0.5, 1.5), mapping everything to blue
+    # TODO, maybe not ideal for spy?
+    sdata = sparse(data .> 0.5)
+    spy(f[1, 2], sdata; colormap=[:black, :blue, :white])
+    spy(f[2, 1], sdata; color=:black, alpha=0.7)
+    data[1, 1] = NaN
+    spy(f[2, 2], data; highclip=:red, lowclip=(:grey, 0.5), nan_color=:black, colorrange=(0.3, 0.7))
+    f
 end

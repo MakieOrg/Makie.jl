@@ -41,7 +41,7 @@ end
 """
 Converts a point in fractions of rect dimensions into real coordinates.
 """
-function fractionpoint(bbox::Rect2f, point::T) where T <: Point2
+function fractionpoint(bbox::Rect2, point::T) where T <: Point2
     T(left(bbox) + point[1] * width(bbox), bottom(bbox) + point[2] * height(bbox))
 end
 
